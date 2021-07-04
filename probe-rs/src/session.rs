@@ -1,9 +1,7 @@
 #![warn(missing_docs)]
 
 use crate::architecture::arm::sequences::DefaultArmSequence;
-use crate::config::{
-    ChipInfo, Core as CoreConfig, MemoryRegion, RegistryError, Target, TargetSelector,
-};
+use crate::config::{ChipInfo, MemoryRegion, RegistryError, Target, TargetSelector};
 use crate::core::{Architecture, CoreState, SpecificCoreState};
 use crate::{
     architecture::{
@@ -19,7 +17,6 @@ use crate::{
 };
 use crate::{AttachMethod, Core, CoreType, Error, Probe};
 use anyhow::anyhow;
-use std::borrow::{Borrow, BorrowMut};
 use std::time::Duration;
 
 /// The `Session` struct represents an active debug session.
@@ -123,7 +120,7 @@ impl Session {
 
         let mut session = match target.architecture() {
             Architecture::Arm => {
-                let mut interface = probe.try_into_arm_interface().map_err(|(_, err)| err)?;
+                let interface = probe.try_into_arm_interface().map_err(|(_, err)| err)?;
 
                 let sequence_handle = match &target.debug_sequence {
                     DebugSequence::Arm(sequence) => sequence.clone(),
@@ -152,7 +149,7 @@ impl Session {
                         sequence_handle.reset_hardware_deassert(&mut memory_interface)?;
                     }
 
-                    let (mut interface, target, core) = {
+                    let (mut interface, target, _core) = {
                         let cores = target
                             .cores
                             .iter()

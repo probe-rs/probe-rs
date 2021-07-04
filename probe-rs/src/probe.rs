@@ -5,30 +5,15 @@ pub(crate) mod ftdi;
 pub(crate) mod jlink;
 pub(crate) mod stlink;
 
-use crate::architecture::arm::{ap::AccessPort, DapAccess};
+use crate::architecture::{
+    arm::{PortType, SwoAccess},
+    riscv::communication_interface::RiscvCommunicationInterface,
+};
+use crate::config::{RegistryError, TargetSelector};
+use crate::error::Error;
 use crate::Session;
-use crate::{
-    architecture::arm::{ap::MemoryAp, MemoryApInformation},
-    error::Error,
-};
-use crate::{
-    architecture::arm::{
-        dp::DebugPortVersion, memory::adi_v5_memory_interface::ADIMemoryInterface,
-    },
-    config::{RegistryError, TargetSelector},
-};
-use crate::{
-    architecture::{
-        arm::{
-            ap::memory_ap::mock::MockMemoryAp, communication_interface::ArmProbeInterface,
-            PortType, RawDapAccess, SwoAccess,
-        },
-        riscv::communication_interface::RiscvCommunicationInterface,
-    },
-    Memory,
-};
 
-use crate::architecture::arm::communication_interface::{SwdSequence, UninitializedArmProbe};
+use crate::architecture::arm::communication_interface::UninitializedArmProbe;
 use std::{convert::TryFrom, fmt};
 
 use self::jlink::list_jlink_devices;

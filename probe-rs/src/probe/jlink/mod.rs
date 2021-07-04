@@ -5,12 +5,12 @@ use jaylink::{Capability, Interface, JayLink, SpeedConfig, SwoMode};
 use std::convert::{TryFrom, TryInto};
 use std::iter;
 
-use crate::architecture::arm::{PortType, RawDapAccess};
+use crate::architecture::arm::RawDapAccess;
 use crate::{
     architecture::{
         arm::{
             communication_interface::DapProbe, communication_interface::UninitializedArmProbe,
-            swo::SwoConfig, ArmCommunicationInterface, DapAccess, SwoAccess,
+            swo::SwoConfig, ArmCommunicationInterface, SwoAccess,
         },
         riscv::communication_interface::RiscvCommunicationInterface,
     },

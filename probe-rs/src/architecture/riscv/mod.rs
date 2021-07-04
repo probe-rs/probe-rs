@@ -15,8 +15,6 @@ use bitfield::bitfield;
 use register::RISCV_REGISTERS;
 use std::time::{Duration, Instant};
 
-use super::arm::communication_interface::Initialized;
-
 #[macro_use]
 mod register;
 pub(crate) mod assembly;

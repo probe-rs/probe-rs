@@ -1,5 +1,5 @@
 use super::{CortexState, Dfsr, ARM_REGISTER_FILE};
-use crate::architecture::arm::communication_interface::Initialized;
+
 use crate::architecture::arm::sequences::ArmDebugSequence;
 use crate::core::{RegisterDescription, RegisterFile, RegisterKind};
 use crate::error::Error;

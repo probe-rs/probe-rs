@@ -1,12 +1,11 @@
 use super::{Chip, Core, CoreType, MemoryRegion, RawFlashAlgorithm, TargetDescriptionSource};
-use crate::architecture::arm::communication_interface::UninitializedArmProbe;
+
 use crate::architecture::arm::sequences::nxp::LPC55S69;
 use crate::architecture::arm::sequences::ArmDebugSequence;
 use crate::{core::Architecture, flashing::FlashLoader};
 use std::sync::Arc;
 
-use crate::architecture::arm::{sequences::DefaultArmSequence, ArmCommunicationInterface};
-use crate::{Error, Memory};
+use crate::architecture::arm::sequences::DefaultArmSequence;
 
 /// This describes a complete target with a fixed chip model and variant.
 #[derive(Clone)]
@@ -178,8 +177,14 @@ impl From<Target> for TargetSelector {
     }
 }
 
+/// This is the type to denote a general debug sequence.
+/// It can differentiate between ARM and RISC-V for now.
+/// Currently, only the ARM variant does something sensible;
+/// RISC-V will be ignored when encountered.
 #[derive(Clone)]
 pub enum DebugSequence {
+    /// An ARM debug sequence.
     Arm(Arc<dyn ArmDebugSequence>),
+    /// A RISC-V debug sequence.
     Riscv,
 }

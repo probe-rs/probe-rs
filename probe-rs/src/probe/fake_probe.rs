@@ -4,7 +4,7 @@ use crate::{
     architecture::arm::{
         ap::{memory_ap::mock::MockMemoryAp, AccessPort, MemoryAp},
         communication_interface::{
-            ArmDebugState, DapProbe, Initialized, SwdSequence, Uninitialized, UninitializedArmProbe,
+            ArmDebugState, Initialized, SwdSequence, Uninitialized, UninitializedArmProbe,
         },
         dp::DebugPortVersion,
         memory::adi_v5_memory_interface::ADIMemoryInterface,
@@ -163,15 +163,15 @@ impl RawDapAccess for FakeProbe {
         }
     }
 
-    fn swj_sequence(&mut self, bit_len: u8, bits: u64) -> Result<(), DebugProbeError> {
+    fn swj_sequence(&mut self, _bit_len: u8, _bits: u64) -> Result<(), DebugProbeError> {
         todo!()
     }
 
     fn swj_pins(
         &mut self,
-        pin_out: u32,
-        pin_select: u32,
-        pin_wait: u32,
+        _pin_out: u32,
+        _pin_select: u32,
+        _pin_wait: u32,
     ) -> Result<u32, DebugProbeError> {
         todo!()
     }
@@ -210,7 +210,7 @@ impl<'interface> FakeArmInterface<Uninitialized> {
 }
 
 impl FakeArmInterface<Initialized> {
-    fn from_uninitialized(mut interface: FakeArmInterface<Uninitialized>) -> Self {
+    fn from_uninitialized(interface: FakeArmInterface<Uninitialized>) -> Self {
         let memory_ap = MockMemoryAp::with_pattern();
         FakeArmInterface::<Initialized> {
             probe: interface.probe,
@@ -248,8 +248,8 @@ impl UninitializedArmProbe for FakeArmInterface<Uninitialized> {
     }
 
     fn initialize(
-        mut self: Box<Self>,
-        sequence: &dyn ArmDebugSequence,
+        self: Box<Self>,
+        _sequence: &dyn ArmDebugSequence,
     ) -> Result<Box<dyn ArmProbeInterface>, Error> {
         // TODO: Do we need this?
         // sequence.debug_port_setup(&mut self.probe)?;
@@ -359,7 +359,7 @@ mod test {
 
     #[test]
     fn create_session_with_fake_probe() {
-        let mut fake_probe = FakeProbe::new();
+        let fake_probe = FakeProbe::new();
 
         let probe = fake_probe.into_probe();
 

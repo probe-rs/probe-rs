@@ -6,8 +6,8 @@ use probe_rs_target::CoreType;
 use crate::architecture::{
     arm::core::CortexState, riscv::communication_interface::RiscvCommunicationInterface,
 };
+use crate::error;
 use crate::Target;
-use crate::{architecture::arm::communication_interface::Initialized, error};
 use crate::{Error, Memory, MemoryInterface};
 use anyhow::{anyhow, Result};
 use std::time::Duration;

@@ -11,11 +11,10 @@ use crate::{
             ArmCommunicationInterfaceState, ArmProbeInterface, Initialized, Register, SwdSequence,
             UninitializedArmProbe,
         },
-        dp::{DebugPortVersion, DpAccess, DPIDR},
+        dp::{DebugPortVersion, DPIDR},
         memory::{adi_v5_memory_interface::ArmProbe, Component},
         sequences::ArmDebugSequence,
-        ApInformation, ArmChipInfo, DapAccess, PortType, RawDapAccess, SwoAccess, SwoConfig,
-        SwoMode,
+        ApInformation, ArmChipInfo, DapAccess, SwoAccess, SwoConfig, SwoMode,
     },
     DebugProbeSelector, Error as ProbeRsError, Memory, Probe,
 };
@@ -1125,7 +1124,7 @@ impl UninitializedArmProbe for UninitializedStLink {
 
     fn initialize(
         self: Box<Self>,
-        sequence: &dyn ArmDebugSequence,
+        _sequence: &dyn ArmDebugSequence,
     ) -> Result<Box<dyn ArmProbeInterface>, ProbeRsError> {
         let interface = StlinkArmDebug::new(self.probe).map_err(|(_s, e)| ProbeRsError::from(e))?;
 

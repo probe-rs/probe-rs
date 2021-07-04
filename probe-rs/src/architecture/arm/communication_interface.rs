@@ -76,9 +76,7 @@ pub trait UninitializedArmProbe: SwdSequence {
         sequence: &dyn ArmDebugSequence,
     ) -> Result<Box<dyn ArmProbeInterface>, ProbeRsError>;
 
-    fn initialize_unspecified(
-        mut self: Box<Self>,
-    ) -> Result<Box<dyn ArmProbeInterface>, ProbeRsError> {
+    fn initialize_unspecified(self: Box<Self>) -> Result<Box<dyn ArmProbeInterface>, ProbeRsError> {
         self.initialize(&DefaultArmSequence {})
     }
 

@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use anyhow::Result;
 use probe_rs::{architecture::arm::sequences::DefaultArmSequence, Probe};
 

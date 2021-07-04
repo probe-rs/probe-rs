@@ -3,9 +3,9 @@
 
 use crate::architecture::arm::sequences::ArmDebugSequence;
 use crate::core::RegisterFile;
+use crate::error::Error;
 use crate::memory::Memory;
 use crate::CoreRegisterAddress;
-use crate::{architecture::arm::communication_interface::Initialized, error::Error};
 use crate::{
     architecture::arm::core::register, CoreStatus, DebugProbeError, HaltReason, MemoryInterface,
 };

@@ -8,7 +8,7 @@ use super::{
     dtm::{DmiOperation, DmiOperationStatus, Dtm},
     register, Dmcontrol, Dmstatus,
 };
-use crate::architecture::{arm::communication_interface::Initialized, riscv::*};
+use crate::architecture::riscv::*;
 use crate::DebugProbeError;
 use crate::{MemoryInterface, Probe};
 

@@ -1,11 +1,10 @@
 use crate::architecture::arm::sequences::ArmDebugSequence;
+use crate::core::{
+    CoreInformation, CoreInterface, CoreRegister, CoreRegisterAddress, RegisterFile,
+};
 use crate::error::Error;
 use crate::memory::Memory;
 use crate::DebugProbeError;
-use crate::{
-    architecture::arm::communication_interface::Initialized,
-    core::{CoreInformation, CoreInterface, CoreRegister, CoreRegisterAddress, RegisterFile},
-};
 
 use super::{register, CortexState, Dfsr, ARM_REGISTER_FILE};
 use crate::{
