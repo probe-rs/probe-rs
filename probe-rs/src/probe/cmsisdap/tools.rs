@@ -92,16 +92,11 @@ fn get_cmsisdap_info(device: &Device<rusb::Context>) -> Option<DebugProbeInfo> {
             }
         }
 
-        if cmsis_dap_interface.is_none() {
-            log::debug!("Did not find an USB HID interface for CMSIS-DAP, using interface 0.")
+        if let Some(interface) = cmsis_dap_interface {
+            log::trace!("Will use interface number {} for CMSIS-DAPv1", interface);
+        } else {
+            log::trace!("No HID interface for CMSIS-DAP found.")
         }
-
-        let cmsis_dap_interface = cmsis_dap_interface.unwrap_or(0);
-
-        log::trace!(
-            "Will use interface number {} for CMSIS-DAPv1",
-            cmsis_dap_interface
-        );
 
         Some(DebugProbeInfo {
             identifier: prod_str,
@@ -109,7 +104,7 @@ fn get_cmsisdap_info(device: &Device<rusb::Context>) -> Option<DebugProbeInfo> {
             product_id: d_desc.product_id(),
             serial_number: sn_str,
             probe_type: DebugProbeType::CmsisDap,
-            hid_interface: Some(cmsis_dap_interface),
+            hid_interface: cmsis_dap_interface,
         })
     } else {
         None
