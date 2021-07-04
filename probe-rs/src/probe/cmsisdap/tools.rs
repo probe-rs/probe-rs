@@ -321,6 +321,9 @@ pub fn open_device_from_selector(
 
     let mut device_list = hid_api.device_list();
 
+    // We have to filter manually so that we can check the correct HID interface number.
+    // Using HidApi::open() will return the first device which matches PID and VID,
+    // which is not always what we want.
     let device_info = device_list
         .find(|info| {
             let mut device_match = info.vendor_id() == vid && info.product_id() == pid;
@@ -339,16 +342,6 @@ pub fn open_device_from_selector(
 
     let device = device_info.open_device(&hid_api)?;
 
-    /*
-    let hid_device = match sn {
-        Some(sn) => hidapi::HidApi::new().and_then(|api| api.open_serial(vid, pid, &sn)),
-        None => hidapi::HidApi::new().and_then(|api| api.open(vid, pid)),
-    };
-
-
-    match hid_device {
-        Ok(device) => {
-    */
     match device.get_product_string() {
         Ok(Some(s)) if s.contains("CMSIS-DAP") => Ok(CmsisDapDevice::V1 {
             handle: device,
@@ -364,13 +357,4 @@ pub fn open_device_from_selector(
             Err(ProbeCreationError::NotFound)
         }
     }
-    /*
-        }
-
-        // If hidapi couldn't open the device, it may be because this is not
-        // a HID device at all and some other probe module should try to load
-        // it instead.
-        Err(_) => Err(ProbeCreationError::NotFound),
-    }
-    */
 }
