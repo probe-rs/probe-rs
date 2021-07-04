@@ -4,7 +4,7 @@ use crate::{
     DebugProbeSelector,
 };
 use hidapi::HidApi;
-use rusb::{Device, DeviceDescriptor, UsbContext};
+use rusb::{constants::LIBUSB_CLASS_HID, Device, DeviceDescriptor, UsbContext};
 use std::time::Duration;
 
 /// Finds all CMSIS-DAP devices, either v1 (HID) or v2 (WinUSB Bulk).
@@ -74,11 +74,16 @@ fn get_cmsisdap_info(device: &Device<rusb::Context>) -> Option<DebugProbeInfo> {
 
         'interface_loop: for interface in config_descriptor.interfaces() {
             for descriptor in interface.descriptors() {
+                // Check if this is a HID interface
+                if descriptor.class_code() != LIBUSB_CLASS_HID {
+                    continue;
+                }
+
                 let interface_desc = handle
                     .read_interface_string(language, &descriptor, timeout)
                     .ok()?;
 
-                log::trace!(" Interface {}", interface_desc);
+                log::trace!("  Interface {}", interface_desc);
 
                 if interface_desc.contains("CMSIS-DAP") {
                     cmsis_dap_interface = Some(interface.number());
@@ -88,7 +93,7 @@ fn get_cmsisdap_info(device: &Device<rusb::Context>) -> Option<DebugProbeInfo> {
         }
 
         if cmsis_dap_interface.is_none() {
-            log::debug!("Did not find an USB interface for CMSIS-DAP, using interface 0.")
+            log::debug!("Did not find an USB HID interface for CMSIS-DAP, using interface 0.")
         }
 
         let cmsis_dap_interface = cmsis_dap_interface.unwrap_or(0);
