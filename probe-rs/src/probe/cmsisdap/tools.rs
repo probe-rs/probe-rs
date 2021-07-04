@@ -3,6 +3,7 @@ use crate::{
     probe::{DebugProbeInfo, DebugProbeType, ProbeCreationError},
     DebugProbeSelector,
 };
+use hidapi::HidApi;
 use rusb::{Device, DeviceDescriptor, UsbContext};
 use std::time::Duration;
 
@@ -62,12 +63,48 @@ fn get_cmsisdap_info(device: &Device<rusb::Context>) -> Option<DebugProbeInfo> {
 
     // All CMSIS-DAP probes must have "CMSIS-DAP" in their product string.
     if prod_str.contains("CMSIS-DAP") {
+        let config_descriptor = device.active_config_descriptor().ok()?;
+
+        log::trace!(
+            "CMSIS-DAP device with {} interfaces",
+            config_descriptor.num_interfaces()
+        );
+
+        let mut cmsis_dap_interface = None;
+
+        'interface_loop: for interface in config_descriptor.interfaces() {
+            for descriptor in interface.descriptors() {
+                let interface_desc = handle
+                    .read_interface_string(language, &descriptor, timeout)
+                    .ok()?;
+
+                log::trace!(" Interface {}", interface_desc);
+
+                if interface_desc.contains("CMSIS-DAP") {
+                    cmsis_dap_interface = Some(interface.number());
+                    break 'interface_loop;
+                }
+            }
+        }
+
+        if cmsis_dap_interface.is_none() {
+            log::debug!("Did not find an USB interface for CMSIS-DAP, using interface 0.")
+        }
+
+        let cmsis_dap_interface = cmsis_dap_interface.unwrap_or(0);
+
+        log::trace!(
+            "Using interface number {} for CMSIS-DAP",
+            cmsis_dap_interface
+        );
+
         Some(DebugProbeInfo {
             identifier: prod_str,
             vendor_id: d_desc.vendor_id(),
             product_id: d_desc.product_id(),
             serial_number: sn_str,
             probe_type: DebugProbeType::CmsisDap,
+            hid_interface: Some(cmsis_dap_interface),
         })
     } else {
         None
@@ -78,12 +115,20 @@ fn get_cmsisdap_info(device: &Device<rusb::Context>) -> Option<DebugProbeInfo> {
 fn get_cmsisdap_hid_info(device: &hidapi::DeviceInfo) -> Option<DebugProbeInfo> {
     if let Some(prod_str) = device.product_string() {
         if prod_str.contains("CMSIS-DAP") {
+            log::trace!("CMSIS-DAP device with USB path: {:?}", device.path());
+            log::trace!("                product_string: {:?}", prod_str);
+            log::trace!(
+                "                     interface: {}",
+                device.interface_number()
+            );
+
             return Some(DebugProbeInfo {
                 identifier: prod_str.to_owned(),
                 vendor_id: device.vendor_id(),
                 product_id: device.product_id(),
                 serial_number: device.serial_number().map(|s| s.to_owned()),
                 probe_type: DebugProbeType::CmsisDap,
+                hid_interface: Some(device.interface_number() as u8),
             });
         }
     }
@@ -266,28 +311,55 @@ pub fn open_device_from_selector(
     );
 
     // Attempt to open provided VID/PID/SN with hidapi
+
+    let hid_api = HidApi::new()?;
+
+    let mut device_list = hid_api.device_list();
+
+    let device_info = device_list
+        .find(|info| {
+            let mut device_match = info.vendor_id() == vid && info.product_id() == pid;
+
+            if let Some(sn) = sn {
+                device_match &= Some(sn.as_ref()) == info.serial_number();
+            }
+
+            if let Some(hid_interface) = selector.usb_hid_interface {
+                device_match &= info.interface_number() == hid_interface as i32;
+            }
+
+            device_match
+        })
+        .ok_or(ProbeCreationError::NotFound)?;
+
+    let device = device_info.open_device(&hid_api)?;
+
+    /*
     let hid_device = match sn {
         Some(sn) => hidapi::HidApi::new().and_then(|api| api.open_serial(vid, pid, &sn)),
         None => hidapi::HidApi::new().and_then(|api| api.open(vid, pid)),
     };
 
+
     match hid_device {
         Ok(device) => {
-            match device.get_product_string() {
-                Ok(Some(s)) if s.contains("CMSIS-DAP") => Ok(CmsisDapDevice::V1 {
-                    handle: device,
-                    // Start with a default 64-byte report size, which is the most
-                    // common size for CMSIS-DAPv1 HID devices. We'll request the
-                    // actual size to use from the probe later.
-                    report_size: 64,
-                }),
-                _ => {
-                    // Return NotFound if this VID:PID was not a valid CMSIS-DAP probe,
-                    // or if it couldn't be opened, so that other probe modules can
-                    // attempt to open it instead.
-                    Err(ProbeCreationError::NotFound)
-                }
-            }
+    */
+    match device.get_product_string() {
+        Ok(Some(s)) if s.contains("CMSIS-DAP") => Ok(CmsisDapDevice::V1 {
+            handle: device,
+            // Start with a default 64-byte report size, which is the most
+            // common size for CMSIS-DAPv1 HID devices. We'll request the
+            // actual size to use from the probe later.
+            report_size: 64,
+        }),
+        _ => {
+            // Return NotFound if this VID:PID was not a valid CMSIS-DAP probe,
+            // or if it couldn't be opened, so that other probe modules can
+            // attempt to open it instead.
+            Err(ProbeCreationError::NotFound)
+        }
+    }
+    /*
         }
 
         // If hidapi couldn't open the device, it may be because this is not
@@ -295,4 +367,5 @@ pub fn open_device_from_selector(
         // it instead.
         Err(_) => Err(ProbeCreationError::NotFound),
     }
+    */
 }
