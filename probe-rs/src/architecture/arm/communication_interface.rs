@@ -90,7 +90,7 @@ pub trait ArmDebugState {}
 
 pub struct Uninitialized {
     /// Specify if overrun detect should be enabled when the probe is initialized.
-    use_overrun_detect: bool,
+    pub(crate) use_overrun_detect: bool,
 }
 
 #[derive(Debug)]

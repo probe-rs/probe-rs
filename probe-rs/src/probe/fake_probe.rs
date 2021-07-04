@@ -3,9 +3,12 @@ use std::fmt::Debug;
 use crate::{
     architecture::arm::{
         ap::{memory_ap::mock::MockMemoryAp, AccessPort, MemoryAp},
-        communication_interface::{SwdSequence, UninitializedArmProbe},
+        communication_interface::{
+            ArmDebugState, DapProbe, Initialized, SwdSequence, Uninitialized, UninitializedArmProbe,
+        },
         dp::DebugPortVersion,
         memory::adi_v5_memory_interface::ADIMemoryInterface,
+        sequences::ArmDebugSequence,
         ArmProbeInterface, DapAccess, MemoryApInformation, PortType, RawDapAccess, SwoAccess,
     },
     DebugProbe, DebugProbeError, DebugProbeSelector, Error, Memory, Probe, WireProtocol,
@@ -128,8 +131,7 @@ impl DebugProbe for FakeProbe {
         self: Box<Self>,
     ) -> Result<Box<dyn UninitializedArmProbe + 'probe>, (Box<dyn DebugProbe>, DebugProbeError)>
     {
-        // Ok(Box::new(FakeArmInterface::new(self)))
-        todo!();
+        Ok(Box::new(FakeArmInterface::new(self)))
     }
 
     fn has_arm_interface(&self) -> bool {
@@ -175,25 +177,90 @@ impl RawDapAccess for FakeProbe {
     }
 
     fn into_probe(self: Box<Self>) -> Box<dyn DebugProbe> {
-        todo!()
+        self
     }
 }
 
 #[derive(Debug)]
-struct FakeArmInterface {
+struct FakeArmInterface<S: ArmDebugState> {
     probe: Box<FakeProbe>,
 
     memory_ap: MockMemoryAp,
+
+    state: S,
 }
 
-impl FakeArmInterface {
-    fn new(probe: Box<FakeProbe>) -> Self {
+impl<'interface> FakeArmInterface<Uninitialized> {
+    pub(crate) fn new(probe: Box<FakeProbe>) -> Self {
+        let state = Uninitialized {
+            use_overrun_detect: false,
+        };
         let memory_ap = MockMemoryAp::with_pattern();
-        FakeArmInterface { probe, memory_ap }
+
+        Self {
+            probe,
+            state,
+            memory_ap,
+        }
+    }
+
+    fn into_initialized(self) -> Result<FakeArmInterface<Initialized>, (Self, DebugProbeError)> {
+        Ok(FakeArmInterface::<Initialized>::from_uninitialized(self))
     }
 }
 
-impl ArmProbeInterface for FakeArmInterface {
+impl FakeArmInterface<Initialized> {
+    fn from_uninitialized(mut interface: FakeArmInterface<Uninitialized>) -> Self {
+        let memory_ap = MockMemoryAp::with_pattern();
+        FakeArmInterface::<Initialized> {
+            probe: interface.probe,
+            state: Initialized {
+                debug_port_version: DebugPortVersion::DPv1,
+                current_dpbanksel: 0,
+                current_apsel: 0,
+                current_apbanksel: 0,
+                ap_information: Vec::new(),
+            },
+            memory_ap,
+        }
+    }
+}
+
+impl<S: ArmDebugState> SwdSequence for FakeArmInterface<S> {
+    fn swj_sequence(&mut self, bit_len: u8, bits: u64) -> Result<(), Error> {
+        self.probe.swj_sequence(bit_len, bits)?;
+
+        Ok(())
+    }
+
+    fn swj_pins(&mut self, pin_out: u32, pin_select: u32, pin_wait: u32) -> Result<u32, Error> {
+        let value = self.probe.swj_pins(pin_out, pin_select, pin_wait)?;
+
+        Ok(value)
+    }
+}
+
+impl UninitializedArmProbe for FakeArmInterface<Uninitialized> {
+    fn read_dpidr(&mut self) -> Result<u32, Error> {
+        let result = self.probe.raw_read_register(PortType::DebugPort, 0)?;
+
+        Ok(result)
+    }
+
+    fn initialize(
+        mut self: Box<Self>,
+        sequence: &dyn ArmDebugSequence,
+    ) -> Result<Box<dyn ArmProbeInterface>, Error> {
+        // TODO: Do we need this?
+        // sequence.debug_port_setup(&mut self.probe)?;
+
+        let interface = self.into_initialized().map_err(|(_s, err)| err)?;
+
+        Ok(Box::new(interface))
+    }
+}
+
+impl ArmProbeInterface for FakeArmInterface<Initialized> {
     fn memory_interface(&mut self, access_port: MemoryAp) -> Result<Memory<'_>, Error> {
         let ap_information = MemoryApInformation {
             port_number: access_port.port_number(),
@@ -202,11 +269,9 @@ impl ArmProbeInterface for FakeArmInterface {
             supports_hnonsec: false,
         };
 
-        todo!("Fix this!");
+        let memory = ADIMemoryInterface::new(&mut self.memory_ap, &ap_information)?;
 
-        // let memory = ADIMemoryInterface::new(&mut self.memory_ap, &ap_information)?;
-
-        // Ok(Memory::new(memory, access_port))
+        Ok(Memory::new(memory, access_port))
     }
 
     fn ap_information(
@@ -231,7 +296,7 @@ impl ArmProbeInterface for FakeArmInterface {
     }
 }
 
-impl SwoAccess for FakeArmInterface {
+impl SwoAccess for FakeArmInterface<Initialized> {
     fn enable_swo(&mut self, _config: &crate::architecture::arm::SwoConfig) -> Result<(), Error> {
         unimplemented!()
     }
@@ -245,16 +310,7 @@ impl SwoAccess for FakeArmInterface {
     }
 }
 
-impl SwdSequence for FakeArmInterface {
-    fn swj_sequence(&mut self, _bit_len: u8, _bits: u64) -> Result<(), Error> {
-        todo!()
-    }
-    fn swj_pins(&mut self, _pin_out: u32, _pin_select: u32, _pin_wait: u32) -> Result<u32, Error> {
-        todo!()
-    }
-}
-
-impl DapAccess for FakeArmInterface {
+impl DapAccess for FakeArmInterface<Initialized> {
     fn debug_port_version(&self) -> DebugPortVersion {
         DebugPortVersion::DPv2
     }
