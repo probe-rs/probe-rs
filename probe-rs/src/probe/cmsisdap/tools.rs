@@ -83,7 +83,7 @@ fn get_cmsisdap_info(device: &Device<rusb::Context>) -> Option<DebugProbeInfo> {
                     .read_interface_string(language, &descriptor, timeout)
                     .ok()?;
 
-                log::trace!("  Interface {}", interface_desc);
+                log::trace!("  Interface {}: {}", interface.number(), interface_desc);
 
                 if interface_desc.contains("CMSIS-DAP") {
                     cmsis_dap_interface = Some(interface.number());
@@ -99,7 +99,7 @@ fn get_cmsisdap_info(device: &Device<rusb::Context>) -> Option<DebugProbeInfo> {
         let cmsis_dap_interface = cmsis_dap_interface.unwrap_or(0);
 
         log::trace!(
-            "Using interface number {} for CMSIS-DAP",
+            "Will use interface number {} for CMSIS-DAPv1",
             cmsis_dap_interface
         );
 
