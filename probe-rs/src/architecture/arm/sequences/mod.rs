@@ -18,7 +18,10 @@ pub struct DefaultArmSequence;
 impl ArmDebugSequence for DefaultArmSequence {}
 
 pub trait ArmDebugSequence: Send + Sync {
-    /// Implementation of the debug sequence `ResetHardwareAssert` from the ARM debug sequences.
+    /// Assert a system-wide reset line nRST. This is based on the
+    /// `ResetHardwareAssert` function from the [ARM SVD Debug Description].
+    ///
+    /// [ARM SVD Debug Description]: http://www.keil.com/pack/doc/cmsis/Pack/html/debug_description.html#resetHardwareAssert
     #[doc(alias = "ResetHardwareAssert")]
     fn reset_hardware_assert(&self, interface: &mut dyn DapProbe) -> Result<(), crate::Error> {
         let mut n_reset = Pins(0);
@@ -29,6 +32,11 @@ pub trait ArmDebugSequence: Send + Sync {
         Ok(())
     }
 
+    /// De-Assert a system-wide reset line nRST. This is based on the
+    /// `ResetHardwareDeassert` function from the [ARM SVD Debug Description].
+    ///
+    /// [ARM SVD Debug Description]: http://www.keil.com/pack/doc/cmsis/Pack/html/debug_description.html#resetHardwareDeassert
+    #[doc(alias = "ResetHardwareDeassert")]
     fn reset_hardware_deassert(&self, memory: &mut Memory) -> Result<(), crate::Error> {
         let interface = memory.get_arm_interface()?;
 
@@ -54,7 +62,10 @@ pub trait ArmDebugSequence: Send + Sync {
         }
     }
 
-    /// Implementation of the debug sequence *DebugPortSetup* from CMSIS Pack debug sequences.
+    /// Prepare the target debug port for connection. This is based on the
+    /// `DebugPortSetup` function from the [ARM SVD Debug Description].
+    ///
+    /// [ARM SVD Debug Description]: http://www.keil.com/pack/doc/cmsis/Pack/html/debug_description.html#debugPortSetup
     #[doc(alias = "DebugPortSetup")]
     fn debug_port_setup(&self, interface: &mut Box<dyn DapProbe>) -> Result<(), crate::Error> {
         // TODO: Handle this differently for ST-Link?
@@ -81,6 +92,11 @@ pub trait ArmDebugSequence: Send + Sync {
         Ok(())
     }
 
+    /// Connect to the target debug port and power it up. This is based on the
+    /// `DebugPortStart` function from the [ARM SVD Debug Description].
+    ///
+    /// [ARM SVD Debug Description]: http://www.keil.com/pack/doc/cmsis/Pack/html/debug_description.html#debugPortStart
+    #[doc(alias = "DebugPortStart")]
     fn debug_port_start(&self, memory: &mut Memory, dp: DpAddress) -> Result<(), crate::Error> {
         let interface = memory.get_arm_interface()?;
 
@@ -155,10 +171,11 @@ pub trait ArmDebugSequence: Send + Sync {
         Ok(())
     }
 
-    /// Enable debugging on an ARM core. This is based on the
+    /// Initialize core debug system. This is based on the
     /// `DebugCoreStart` function from the [ARM SVD Debug Description].
     ///
     /// [ARM SVD Debug Description]: http://www.keil.com/pack/doc/cmsis/Pack/html/debug_description.html#debugCoreStart
+    #[doc(alias = "DebugCoreStart")]
     fn debug_core_start(&self, core: &mut Memory) -> Result<(), crate::Error> {
         use crate::architecture::arm::core::m4::Dhcsr;
 
@@ -180,11 +197,12 @@ pub trait ArmDebugSequence: Send + Sync {
         Ok(())
     }
 
-    /// Setup the core to stop after reset. After this, the core will halt when it comes
+    /// Configure the target to stop code execution after a reset. After this, the core will halt when it comes
     /// out of reset. This is based on the `ResetCatchSet` function from
     /// the [ARM SVD Debug Description].
     ///
     /// [ARM SVD Debug Description]: http://www.keil.com/pack/doc/cmsis/Pack/html/debug_description.html#resetCatchSet
+    #[doc(alias = "ResetCatchSet")]
     fn reset_catch_set(&self, core: &mut Memory) -> Result<(), crate::Error> {
         use crate::architecture::arm::core::m4::{Demcr, Dhcsr};
 
@@ -200,11 +218,12 @@ pub trait ArmDebugSequence: Send + Sync {
         Ok(())
     }
 
-    /// Undo the settings of the `reset_catch_set` function.
+    /// Free hardware resources allocated by ResetCatchSet.
     /// This is based on the `ResetCatchSet` function from
     /// the [ARM SVD Debug Description].
     ///
     /// [ARM SVD Debug Description]: http://www.keil.com/pack/doc/cmsis/Pack/html/debug_description.html#resetCatchClear
+    #[doc(alias = "ResetCatchClear")]
     fn reset_catch_clear(&self, core: &mut Memory) -> Result<(), crate::Error> {
         use crate::architecture::arm::core::m4::Demcr;
 
@@ -216,6 +235,12 @@ pub trait ArmDebugSequence: Send + Sync {
         Ok(())
     }
 
+    /// Executes a system-wide reset without debug domain (or warm-reset that preserves debug connection) via software mechanisms,
+    /// for example AIRCR.SYSRESETREQ.  This is based on the
+    /// `ResetSystem` function from the [ARM SVD Debug Description].
+    ///
+    /// [ARM SVD Debug Description]: http://www.keil.com/pack/doc/cmsis/Pack/html/debug_description.html#resetSystem
+    #[doc(alias = "ResetSystem")]
     fn reset_system(&self, interface: &mut Memory) -> Result<(), crate::Error> {
         use crate::architecture::arm::core::m4::{Aircr, Dhcsr};
 
@@ -239,11 +264,23 @@ pub trait ArmDebugSequence: Send + Sync {
         Err(crate::Error::Probe(DebugProbeError::Timeout))
     }
 
+    /// Check if the device is in a locked state and unlock it.
+    /// Use query command elements for user confirmation.
+    /// Executed after having powered up the debug port. This is based on the
+    /// `DebugDeviceUnlock` function from the [ARM SVD Debug Description].
+    ///
+    /// [ARM SVD Debug Description]: http://www.keil.com/pack/doc/cmsis/Pack/html/debug_description.html#debugDeviceUnlock
+    #[doc(alias = "DebugDeviceUnlock")]
     fn debug_device_unlock(&self, _interface: &mut crate::Memory) -> Result<(), crate::Error> {
         // Empty by default
         Ok(())
     }
 
+    /// Executed before step or run command to support recovery from a lost target connection, e.g. after a low power mode.
+    /// This is based on the `RecoverSupportStart` function from the [ARM SVD Debug Description].
+    ///
+    /// [ARM SVD Debug Description]: http://www.keil.com/pack/doc/cmsis/Pack/html/debug_description.html#recoverSupportStart
+    #[doc(alias = "RecoverSupportStart")]
     fn recover_support_start(&self, _interface: &mut crate::Memory) -> Result<(), crate::Error> {
         // Empty by default
         Ok(())
