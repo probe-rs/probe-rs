@@ -31,3 +31,4 @@ dunce = "1.0.1"
 sentry = { version = "0.22.0", features = ["anyhow"], optional = true }
 simplelog = "0.10.0"
 terminal_size = "0.1.13"
+structopt = "0.3"
