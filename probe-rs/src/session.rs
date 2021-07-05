@@ -278,8 +278,7 @@ impl Session {
         // TODO
         let dp = DpAddress::Default;
 
-        // TODO unwrap
-        for ap_index in 0..(interface.num_access_ports(dp).unwrap() as u8) {
+        for ap_index in 0..(interface.num_access_ports(dp)? as u8) {
             let ap_information = interface
                 .ap_information(GenericAp::new(ApAddress { dp, ap: ap_index }))?
                 .clone();
