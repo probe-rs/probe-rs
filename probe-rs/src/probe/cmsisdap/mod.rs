@@ -613,7 +613,7 @@ impl RawDapAccess for CmsisDap {
                     ])?)?;
 
                     // TARGETSEL write.
-                    // the TARGETSEL write is not ACKed by design. We can't use a normal register write
+                    // The TARGETSEL write is not ACKed by design. We can't use a normal register write
                     // because many probes don't even send the data phase when NAK.
                     let parity = targetsel.count_ones() % 2;
                     let data = &((parity as u64) << 45 | (targetsel as u64) << 13 | 0x1f99)
