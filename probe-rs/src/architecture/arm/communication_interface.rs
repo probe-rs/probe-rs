@@ -1,15 +1,16 @@
 use super::{
     ap::{
-        valid_access_ports, AccessPort, ApAccess, ApClass, BaseaddrFormat, GenericAp, MemoryAp,
-        BASE, BASE2, CSW, IDR,
+        valid_access_ports, AccessPort, ApClass, BaseaddrFormat, GenericAp, MemoryAp, BASE, BASE2,
+        CSW, IDR,
     },
-    dp::{Abort, Ctrl, DebugPortError, DebugPortId, DebugPortVersion, DpAccess, Select, DPIDR},
+    dp::{Abort, Ctrl, DebugPortError, DebugPortId, DebugPortVersion, Select, DPIDR},
     memory::{adi_v5_memory_interface::ADIMemoryInterface, Component},
-    ApAddress, DapAccess, DpAddress, PortType, RawDapAccess, SwoAccess, SwoConfig,
+    ApAddress, DpAddress, PortType, RawDapAccess, SwoAccess, SwoConfig, TypedDapAccess,
+    UntypedDapAccess,
 };
 use crate::{
-    architecture::arm::ap::DataSize, CommunicationInterface, DebugProbe, DebugProbeError,
-    Error as ProbeRsError, Memory, Probe,
+    architecture::arm::ap::DataSize, DebugProbe, DebugProbeError, Error as ProbeRsError, Memory,
+    Probe,
 };
 use anyhow::anyhow;
 use jep106::JEP106Code;
@@ -43,7 +44,7 @@ pub trait Register: Clone + From<u32> + Into<u32> + Sized + Debug {
     const NAME: &'static str;
 }
 
-pub trait ArmProbeInterface: DapAccess + SwoAccess + Debug + Send {
+pub trait ArmProbeInterface: UntypedDapAccess + SwoAccess + Debug + Send {
     fn memory_interface(&mut self, access_port: MemoryAp) -> Result<Memory<'_>, ProbeRsError>;
 
     fn ap_information(&mut self, access_port: GenericAp) -> Result<&ApInformation, ProbeRsError>;
@@ -131,7 +132,7 @@ impl ApInformation {
         access_port: GenericAp,
     ) -> Result<Self, DebugProbeError>
     where
-        P: ApAccess,
+        P: TypedDapAccess,
     {
         let idr: IDR = probe.read_ap_register(access_port)?;
 
@@ -478,12 +479,6 @@ impl<'interface> ArmCommunicationInterface {
     }
 }
 
-impl CommunicationInterface for ArmCommunicationInterface {
-    fn flush(&mut self) -> Result<(), DebugProbeError> {
-        self.probe.raw_flush()
-    }
-}
-
 impl SwoAccess for ArmCommunicationInterface {
     fn enable_swo(&mut self, config: &SwoConfig) -> Result<(), ProbeRsError> {
         match self.probe.get_swo_interface_mut() {
@@ -507,7 +502,7 @@ impl SwoAccess for ArmCommunicationInterface {
     }
 }
 
-impl DapAccess for ArmCommunicationInterface {
+impl UntypedDapAccess for ArmCommunicationInterface {
     fn read_raw_dp_register(&mut self, dp: DpAddress, address: u8) -> Result<u32, DebugProbeError> {
         self.select_dp_and_dp_bank(dp, address)?;
         let result = self.probe.raw_read_register(PortType::DebugPort, address)?;
@@ -572,6 +567,10 @@ impl DapAccess for ArmCommunicationInterface {
         self.probe
             .raw_write_block(PortType::AccessPort, address, values)?;
         Ok(())
+    }
+
+    fn flush(&mut self) -> Result<(), DebugProbeError> {
+        self.probe.raw_flush()
     }
 }
 

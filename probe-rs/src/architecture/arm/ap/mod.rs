@@ -12,7 +12,8 @@ pub use memory_ap::{
 };
 use probe_rs_target::Core;
 
-use super::{ApAddress, DapAccess, DpAddress, Register};
+use super::TypedDapAccess;
+use super::{ApAddress, DpAddress, Register};
 
 #[derive(Debug, thiserror::Error)]
 pub enum AccessPortError {
@@ -74,116 +75,11 @@ pub trait AccessPort {
     fn ap_address(&self) -> ApAddress;
 }
 
-pub trait ApAccess {
-    fn read_ap_register<PORT, R>(&mut self, port: impl Into<PORT>) -> Result<R, DebugProbeError>
-    where
-        PORT: AccessPort,
-        R: ApRegister<PORT>;
-
-    /// Read a register using a block transfer. This can be used
-    /// to read multiple values from the same register.
-    fn read_ap_register_repeated<PORT, R>(
-        &mut self,
-        port: impl Into<PORT> + Clone,
-        register: R,
-        values: &mut [u32],
-    ) -> Result<(), DebugProbeError>
-    where
-        PORT: AccessPort,
-        R: ApRegister<PORT>;
-
-    fn write_ap_register<PORT, R>(
-        &mut self,
-        port: impl Into<PORT>,
-        register: R,
-    ) -> Result<(), DebugProbeError>
-    where
-        PORT: AccessPort,
-        R: ApRegister<PORT>;
-
-    /// Write a register using a block transfer. This can be used
-    /// to write multiple values to the same register.
-    fn write_ap_register_repeated<PORT, R>(
-        &mut self,
-        port: impl Into<PORT> + Clone,
-        register: R,
-        values: &[u32],
-    ) -> Result<(), DebugProbeError>
-    where
-        PORT: AccessPort,
-        R: ApRegister<PORT>;
-}
-
-impl<T: DapAccess> ApAccess for T {
-    fn read_ap_register<PORT, R>(&mut self, port: impl Into<PORT>) -> Result<R, DebugProbeError>
-    where
-        PORT: AccessPort,
-        R: ApRegister<PORT>,
-    {
-        log::debug!("Reading register {}", R::NAME);
-        let raw_value = self.read_raw_ap_register(port.into().ap_address(), R::ADDRESS)?;
-
-        log::debug!("Read register    {}, value=0x{:x?}", R::NAME, raw_value);
-
-        Ok(raw_value.into())
-    }
-
-    fn write_ap_register<PORT, R>(
-        &mut self,
-        port: impl Into<PORT>,
-        register: R,
-    ) -> Result<(), DebugProbeError>
-    where
-        PORT: AccessPort,
-        R: ApRegister<PORT>,
-    {
-        log::debug!("Writing register {}, value={:x?}", R::NAME, register);
-        self.write_raw_ap_register(port.into().ap_address(), R::ADDRESS, register.into())
-    }
-
-    fn write_ap_register_repeated<PORT, R>(
-        &mut self,
-        port: impl Into<PORT>,
-        _register: R,
-        values: &[u32],
-    ) -> Result<(), DebugProbeError>
-    where
-        PORT: AccessPort,
-        R: ApRegister<PORT>,
-    {
-        log::debug!(
-            "Writing register {}, block with len={} words",
-            R::NAME,
-            values.len(),
-        );
-        self.write_raw_ap_register_repeated(port.into().ap_address(), R::ADDRESS, values)
-    }
-
-    fn read_ap_register_repeated<PORT, R>(
-        &mut self,
-        port: impl Into<PORT>,
-        _register: R,
-        values: &mut [u32],
-    ) -> Result<(), DebugProbeError>
-    where
-        PORT: AccessPort,
-        R: ApRegister<PORT>,
-    {
-        log::debug!(
-            "Reading register {}, block with len={} words",
-            R::NAME,
-            values.len(),
-        );
-
-        self.read_raw_ap_register_repeated(port.into().ap_address(), R::ADDRESS, values)
-    }
-}
-
 /// Determine if an AP exists with the given AP number.
 /// Can fail silently under the hood testing an ap that doesnt exist and would require cleanup.
 pub fn access_port_is_valid<AP>(debug_port: &mut AP, access_port: GenericAp) -> bool
 where
-    AP: ApAccess,
+    AP: TypedDapAccess,
 {
     let idr_result: Result<IDR, DebugProbeError> = debug_port.read_ap_register(access_port);
 
@@ -197,7 +93,7 @@ where
 /// Can fail silently under the hood testing an ap that doesnt exist and would require cleanup.
 pub(crate) fn valid_access_ports<AP>(debug_port: &mut AP, dp: DpAddress) -> Vec<GenericAp>
 where
-    AP: ApAccess,
+    AP: TypedDapAccess,
 {
     (0..=255)
         .map(|ap| GenericAp::new(ApAddress { dp, ap }))
@@ -208,7 +104,7 @@ where
 /// Tries to find the first AP with the given idr value, returns `None` if there isn't any
 pub fn get_ap_by_idr<AP, P>(debug_port: &mut AP, dp: DpAddress, f: P) -> Option<GenericAp>
 where
-    AP: ApAccess,
+    AP: TypedDapAccess,
     P: Fn(IDR) -> bool,
 {
     (0..=255)

@@ -1,8 +1,8 @@
 use super::super::ap::{
-    AccessPortError, AddressIncrement, ApAccess, ApRegister, DataSize, MemoryAp, CSW, DRW, TAR,
+    AccessPortError, AddressIncrement, ApRegister, DataSize, MemoryAp, CSW, DRW, TAR,
 };
-use crate::architecture::arm::{dp::DpAccess, MemoryApInformation};
-use crate::{CommunicationInterface, CoreRegister, CoreRegisterAddress, DebugProbeError, Error};
+use crate::architecture::arm::{MemoryApInformation, TypedDapAccess};
+use crate::{CoreRegister, CoreRegisterAddress, DebugProbeError, Error};
 use scroll::{Pread, Pwrite, LE};
 use std::convert::TryInto;
 use std::{
@@ -33,7 +33,7 @@ pub trait ArmProbe {
 /// A struct to give access to a targets memory using a certain DAP.
 pub(crate) struct ADIMemoryInterface<'interface, AP>
 where
-    AP: CommunicationInterface + ApAccess + DpAccess,
+    AP: TypedDapAccess,
 {
     interface: &'interface mut AP,
     only_32bit_data_size: bool,
@@ -53,7 +53,7 @@ where
 
 impl<'interface, AP> ADIMemoryInterface<'interface, AP>
 where
-    AP: CommunicationInterface + ApAccess + DpAccess,
+    AP: TypedDapAccess,
 {
     /// Creates a new MemoryInterface for given AccessPort.
     pub fn new(
@@ -71,7 +71,7 @@ where
 
 impl<AP> ADIMemoryInterface<'_, AP>
 where
-    AP: CommunicationInterface + ApAccess + DpAccess,
+    AP: TypedDapAccess,
 {
     /// Build the correct CSW register for a memory access
     ///
@@ -145,7 +145,7 @@ where
     fn read_ap_register<R>(&mut self, access_port: MemoryAp) -> Result<R, AccessPortError>
     where
         R: ApRegister<MemoryAp>,
-        AP: ApAccess,
+        AP: TypedDapAccess,
     {
         self.interface
             .read_ap_register(access_port)
@@ -162,7 +162,7 @@ where
     ) -> Result<(), AccessPortError>
     where
         R: ApRegister<MemoryAp>,
-        AP: ApAccess,
+        AP: TypedDapAccess,
     {
         self.interface
             .read_ap_register_repeated(access_port, register, values)
@@ -177,7 +177,7 @@ where
     ) -> Result<(), AccessPortError>
     where
         R: ApRegister<MemoryAp>,
-        AP: ApAccess,
+        AP: TypedDapAccess,
     {
         self.interface
             .write_ap_register(access_port, register)
@@ -194,7 +194,7 @@ where
     ) -> Result<(), AccessPortError>
     where
         R: ApRegister<MemoryAp>,
-        AP: ApAccess,
+        AP: TypedDapAccess,
     {
         self.interface
             .write_ap_register_repeated(access_port, register, values)
@@ -586,7 +586,7 @@ where
 
 impl<AP> ArmProbe for ADIMemoryInterface<'_, AP>
 where
-    AP: CommunicationInterface + ApAccess + DpAccess,
+    AP: TypedDapAccess,
 {
     fn read_core_reg(&mut self, ap: MemoryAp, addr: CoreRegisterAddress) -> Result<u32, Error> {
         // Write the DCRSR value to select the register we want to read.

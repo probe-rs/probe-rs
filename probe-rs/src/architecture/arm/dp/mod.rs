@@ -1,7 +1,7 @@
 #[macro_use]
 mod register_generation;
 
-use super::{DapAccess, DpAddress, Register};
+use super::Register;
 use bitfield::bitfield;
 use jep106::JEP106Code;
 
@@ -22,36 +22,6 @@ pub enum DebugPortError {
 impl From<DebugPortError> for DebugProbeError {
     fn from(error: DebugPortError) -> Self {
         DebugProbeError::ArchitectureSpecific(Box::new(error))
-    }
-}
-
-pub trait DpAccess {
-    fn read_dp_register<R: DpRegister>(&mut self, dp: DpAddress) -> Result<R, DebugPortError>;
-
-    fn write_dp_register<R: DpRegister>(
-        &mut self,
-        dp: DpAddress,
-        register: R,
-    ) -> Result<(), DebugPortError>;
-}
-
-impl<T: DapAccess> DpAccess for T {
-    fn read_dp_register<R: DpRegister>(&mut self, dp: DpAddress) -> Result<R, DebugPortError> {
-        log::debug!("Reading DP register {}", R::NAME);
-        let result = self.read_raw_dp_register(dp, R::ADDRESS)?;
-        log::debug!("Read    DP register {}, value=0x{:08x}", R::NAME, result);
-        Ok(result.into())
-    }
-
-    fn write_dp_register<R: DpRegister>(
-        &mut self,
-        dp: DpAddress,
-        register: R,
-    ) -> Result<(), DebugPortError> {
-        let value = register.into();
-        log::debug!("Writing DP register {}, value=0x{:08x}", R::NAME, value);
-        self.write_raw_dp_register(dp, R::ADDRESS, value)?;
-        Ok(())
     }
 }
 

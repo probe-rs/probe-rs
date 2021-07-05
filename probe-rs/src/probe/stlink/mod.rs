@@ -6,10 +6,11 @@ use self::usb_interface::{StLinkUsb, StLinkUsbDevice};
 use super::{DebugProbe, DebugProbeError, ProbeCreationError, WireProtocol};
 use crate::{
     architecture::arm::{
-        ap::{valid_access_ports, AccessPort, ApAccess, ApClass, MemoryAp, IDR},
+        ap::{valid_access_ports, AccessPort, ApClass, MemoryAp, IDR},
         communication_interface::ArmProbeInterface,
         memory::{adi_v5_memory_interface::ArmProbe, Component},
-        ApAddress, ApInformation, ArmChipInfo, DapAccess, DpAddress, SwoAccess, SwoConfig, SwoMode,
+        ApAddress, ApInformation, ArmChipInfo, DpAddress, SwoAccess, SwoConfig, SwoMode,
+        TypedDapAccess, UntypedDapAccess,
     },
     DebugProbeSelector, Error as ProbeRsError, Memory, Probe,
 };
@@ -1136,7 +1137,7 @@ impl StlinkArmDebug {
     }
 }
 
-impl DapAccess for StlinkArmDebug {
+impl UntypedDapAccess for StlinkArmDebug {
     fn read_raw_dp_register(&mut self, dp: DpAddress, address: u8) -> Result<u32, DebugProbeError> {
         if dp != DpAddress::Default {
             Err(StlinkError::MultidropNotSupported)?;
@@ -1178,6 +1179,10 @@ impl DapAccess for StlinkArmDebug {
         }
 
         self.probe.write_register(ap.ap as u16, address, value)
+    }
+
+    fn flush(&mut self) -> Result<(), DebugProbeError> {
+        Ok(())
     }
 }
 

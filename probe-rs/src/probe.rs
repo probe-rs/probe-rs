@@ -9,7 +9,7 @@ use crate::{
     config::{RegistryError, TargetSelector},
 };
 use crate::{
-    architecture::arm::{ap::AccessPort, ApAddress, DapAccess, DpAddress},
+    architecture::arm::{ap::AccessPort, ApAddress, DpAddress, UntypedDapAccess},
     Session,
 };
 use crate::{
@@ -852,7 +852,7 @@ impl ArmProbeInterface for FakeArmInterface {
     }
 }
 
-impl DapAccess for FakeArmInterface {
+impl UntypedDapAccess for FakeArmInterface {
     fn read_raw_dp_register(
         &mut self,
         _dp: DpAddress,
@@ -902,6 +902,10 @@ impl DapAccess for FakeArmInterface {
         _address: u8,
         _values: &[u32],
     ) -> Result<(), DebugProbeError> {
+        todo!()
+    }
+
+    fn flush(&mut self) -> Result<(), DebugProbeError> {
         todo!()
     }
 }

@@ -3,7 +3,7 @@
 #[doc(hidden)]
 pub(crate) mod mock;
 
-use super::{AccessPort, ApAccess, ApRegister, GenericAp, Register};
+use super::{AccessPort, ApRegister, GenericAp, Register, TypedDapAccess};
 use crate::{architecture::arm::ApAddress, DebugProbeError};
 use enum_primitive_derive::Primitive;
 use num_traits::{FromPrimitive, ToPrimitive};
@@ -17,7 +17,7 @@ define_ap!(MemoryAp);
 impl MemoryAp {
     pub fn base_address<A>(&self, interface: &mut A) -> Result<u64, DebugProbeError>
     where
-        A: ApAccess,
+        A: TypedDapAccess,
     {
         let base_register: BASE = interface.read_ap_register(*self)?;
 

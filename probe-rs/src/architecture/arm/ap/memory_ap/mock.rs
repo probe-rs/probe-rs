@@ -1,11 +1,11 @@
 use anyhow::anyhow;
 
-use super::super::{ApAccess, Register};
+use super::super::{Register, TypedDapAccess};
 use super::{AddressIncrement, ApRegister, DataSize, CSW, DRW, TAR};
 use crate::architecture::arm::{ap::AccessPort, DpAddress};
 use crate::{
-    architecture::arm::dp::{DebugPortError, DpAccess, DpRegister},
-    CommunicationInterface, DebugProbeError,
+    architecture::arm::dp::{DebugPortError, DpRegister},
+    DebugProbeError,
 };
 use std::collections::HashMap;
 use std::convert::TryInto;
@@ -33,13 +33,7 @@ impl MockMemoryAp {
     }
 }
 
-impl CommunicationInterface for MockMemoryAp {
-    fn flush(&mut self) -> Result<(), DebugProbeError> {
-        Ok(())
-    }
-}
-
-impl ApAccess for MockMemoryAp {
+impl TypedDapAccess for MockMemoryAp {
     /// Mocks the read_register method of a AP.
     ///
     /// Returns an Error if any bad instructions or values are chosen.
@@ -223,9 +217,7 @@ impl ApAccess for MockMemoryAp {
 
         Ok(())
     }
-}
 
-impl DpAccess for MockMemoryAp {
     fn read_dp_register<R: DpRegister>(&mut self, _dp: DpAddress) -> Result<R, DebugPortError> {
         // Ignore for Tests
         Ok(0.into())
@@ -236,6 +228,10 @@ impl DpAccess for MockMemoryAp {
         _dp: DpAddress,
         _register: R,
     ) -> Result<(), DebugPortError> {
+        Ok(())
+    }
+
+    fn flush(&mut self) -> Result<(), DebugProbeError> {
         Ok(())
     }
 }

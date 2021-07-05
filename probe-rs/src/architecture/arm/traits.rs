@@ -1,5 +1,10 @@
 use crate::DebugProbeError;
 
+use super::{
+    ap::{AccessPort, ApRegister},
+    dp::{DebugPortError, DpRegister},
+};
+
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub enum PortType {
     DebugPort,
@@ -101,7 +106,7 @@ pub trait RawDapAccess {
 /// Operations on this trait perform logical register reads/writes. Implementations
 /// are responsible for bank switching and AP selection, so one method call can result
 /// in multiple transactions on the wire, if necessary.
-pub trait DapAccess {
+pub trait UntypedDapAccess {
     /// Read a Debug Port register.
     ///
     /// Highest 4 bits of `addr` are interpreted as the bank number, implementations
@@ -172,5 +177,144 @@ pub trait DapAccess {
             self.write_raw_ap_register(ap, addr, *val)?;
         }
         Ok(())
+    }
+
+    fn flush(&mut self) -> Result<(), DebugProbeError>;
+}
+
+pub trait TypedDapAccess {
+    fn read_ap_register<PORT, R>(&mut self, port: impl Into<PORT>) -> Result<R, DebugProbeError>
+    where
+        PORT: AccessPort,
+        R: ApRegister<PORT>;
+
+    /// Read a register using a block transfer. This can be used
+    /// to read multiple values from the same register.
+    fn read_ap_register_repeated<PORT, R>(
+        &mut self,
+        port: impl Into<PORT> + Clone,
+        register: R,
+        values: &mut [u32],
+    ) -> Result<(), DebugProbeError>
+    where
+        PORT: AccessPort,
+        R: ApRegister<PORT>;
+
+    fn write_ap_register<PORT, R>(
+        &mut self,
+        port: impl Into<PORT>,
+        register: R,
+    ) -> Result<(), DebugProbeError>
+    where
+        PORT: AccessPort,
+        R: ApRegister<PORT>;
+
+    /// Write a register using a block transfer. This can be used
+    /// to write multiple values to the same register.
+    fn write_ap_register_repeated<PORT, R>(
+        &mut self,
+        port: impl Into<PORT> + Clone,
+        register: R,
+        values: &[u32],
+    ) -> Result<(), DebugProbeError>
+    where
+        PORT: AccessPort,
+        R: ApRegister<PORT>;
+
+    fn read_dp_register<R: DpRegister>(&mut self, dp: DpAddress) -> Result<R, DebugPortError>;
+
+    fn write_dp_register<R: DpRegister>(
+        &mut self,
+        dp: DpAddress,
+        register: R,
+    ) -> Result<(), DebugPortError>;
+
+    fn flush(&mut self) -> Result<(), DebugProbeError>;
+}
+
+impl<T: UntypedDapAccess> TypedDapAccess for T {
+    fn read_ap_register<PORT, R>(&mut self, port: impl Into<PORT>) -> Result<R, DebugProbeError>
+    where
+        PORT: AccessPort,
+        R: ApRegister<PORT>,
+    {
+        log::debug!("Reading register {}", R::NAME);
+        let raw_value = self.read_raw_ap_register(port.into().ap_address(), R::ADDRESS)?;
+
+        log::debug!("Read register    {}, value=0x{:x?}", R::NAME, raw_value);
+
+        Ok(raw_value.into())
+    }
+
+    fn write_ap_register<PORT, R>(
+        &mut self,
+        port: impl Into<PORT>,
+        register: R,
+    ) -> Result<(), DebugProbeError>
+    where
+        PORT: AccessPort,
+        R: ApRegister<PORT>,
+    {
+        log::debug!("Writing register {}, value={:x?}", R::NAME, register);
+        self.write_raw_ap_register(port.into().ap_address(), R::ADDRESS, register.into())
+    }
+
+    fn write_ap_register_repeated<PORT, R>(
+        &mut self,
+        port: impl Into<PORT>,
+        _register: R,
+        values: &[u32],
+    ) -> Result<(), DebugProbeError>
+    where
+        PORT: AccessPort,
+        R: ApRegister<PORT>,
+    {
+        log::debug!(
+            "Writing register {}, block with len={} words",
+            R::NAME,
+            values.len(),
+        );
+        self.write_raw_ap_register_repeated(port.into().ap_address(), R::ADDRESS, values)
+    }
+
+    fn read_ap_register_repeated<PORT, R>(
+        &mut self,
+        port: impl Into<PORT>,
+        _register: R,
+        values: &mut [u32],
+    ) -> Result<(), DebugProbeError>
+    where
+        PORT: AccessPort,
+        R: ApRegister<PORT>,
+    {
+        log::debug!(
+            "Reading register {}, block with len={} words",
+            R::NAME,
+            values.len(),
+        );
+
+        self.read_raw_ap_register_repeated(port.into().ap_address(), R::ADDRESS, values)
+    }
+
+    fn read_dp_register<R: DpRegister>(&mut self, dp: DpAddress) -> Result<R, DebugPortError> {
+        log::debug!("Reading DP register {}", R::NAME);
+        let result = self.read_raw_dp_register(dp, R::ADDRESS)?;
+        log::debug!("Read    DP register {}, value=0x{:08x}", R::NAME, result);
+        Ok(result.into())
+    }
+
+    fn write_dp_register<R: DpRegister>(
+        &mut self,
+        dp: DpAddress,
+        register: R,
+    ) -> Result<(), DebugPortError> {
+        let value = register.into();
+        log::debug!("Writing DP register {}, value=0x{:08x}", R::NAME, value);
+        self.write_raw_dp_register(dp, R::ADDRESS, value)?;
+        Ok(())
+    }
+
+    fn flush(&mut self) -> Result<(), DebugProbeError> {
+        UntypedDapAccess::flush(self)
     }
 }

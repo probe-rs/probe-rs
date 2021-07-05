@@ -1,7 +1,3 @@
-pub(crate) mod communication_interface;
-
-pub use communication_interface::CommunicationInterface;
-
 use crate::architecture::{
     arm::core::CortexState, riscv::communication_interface::RiscvCommunicationInterface,
 };
