@@ -384,7 +384,7 @@ impl FlashOptions {
                 TargetSelector::Specified(probe_rs::config::get_target_by_name(chip).map_err(
                     |error| CargoFlashError::ChipNotFound {
                         source: error,
-                        name: self.chip.as_ref().unwrap().clone(),
+                        name: chip.clone(),
                     },
                 )?)
             }
