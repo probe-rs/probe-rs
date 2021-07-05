@@ -8,12 +8,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Added initial multicore support. (#565)
+- Added SWDv2 multidrop support for multi-DP chips. (#720)
+- Added RP2040 target (Raspberry Pi Pico). (#720)
 
 ### Target Support
 
 ### Changed
 
 ### Fixed
+- Detect proper USB HID interface to use for CMSIS-DAP v1 probes. Without this, CMSIS-DAP probes with multiple HID interfaces, e.g. MCUlink, were not working properly on MacOS (#722).
 
 ## [0.11.0]
 

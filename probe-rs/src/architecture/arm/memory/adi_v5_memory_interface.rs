@@ -809,20 +809,30 @@ fn aligned_range(address: u32, len: usize) -> Result<Range<u32>, AccessPortError
 
 #[cfg(test)]
 mod tests {
+    use crate::architecture::arm::{ap::AccessPort, ApAddress, DpAddress, MemoryApInformation};
+
     use super::super::super::ap::memory_ap::mock::MockMemoryAp;
+    use super::super::super::ap::memory_ap::MemoryAp;
     use super::ADIMemoryInterface;
+
+    const DUMMY_AP: MemoryAp = MemoryAp::new(ApAddress {
+        dp: DpAddress::Default,
+        ap: 0,
+    });
 
     impl<'interface> ADIMemoryInterface<'interface, MockMemoryAp> {
         /// Creates a new MemoryInterface for given AccessPort.
         fn new_mock(
             mock: &'interface mut MockMemoryAp,
         ) -> ADIMemoryInterface<'interface, MockMemoryAp> {
-            Self {
-                interface: mock,
+            let ap_information = MemoryApInformation {
+                address: DUMMY_AP.ap_address(),
                 only_32bit_data_size: false,
                 supports_hnonsec: false,
-                cached_csw_value: None,
-            }
+                debug_base_address: 0xf000_0000,
+            };
+
+            Self::new(mock, &ap_information).unwrap()
         }
 
         fn mock_memory(&self) -> &[u8] {
@@ -846,7 +856,7 @@ mod tests {
 
         for &address in &[0, 4] {
             let value = mi
-                .read_word_32(0.into(), address)
+                .read_word_32(DUMMY_AP, address)
                 .expect("read_word_32 failed");
             assert_eq!(value, DATA32[address as usize / 4]);
         }
@@ -860,7 +870,7 @@ mod tests {
 
         for address in 0..8 {
             let value = mi
-                .read_word_8(0.into(), address)
+                .read_word_8(DUMMY_AP, address)
                 .unwrap_or_else(|_| panic!("read_word_8 failed, address = {}", address));
             assert_eq!(value, DATA8[address as usize], "address = {}", address);
         }
@@ -875,7 +885,7 @@ mod tests {
             let mut expected = Vec::from(mi.mock_memory());
             expected[(address as usize)..(address as usize) + 4].copy_from_slice(&DATA8[..4]);
 
-            mi.write_word_32(0.into(), address, DATA32[0])
+            mi.write_word_32(DUMMY_AP, address, DATA32[0])
                 .unwrap_or_else(|_| panic!("write_word_32 failed, address = {}", address));
             assert_eq!(
                 mi.mock_memory(),
@@ -895,7 +905,7 @@ mod tests {
             let mut expected = Vec::from(mi.mock_memory());
             expected[address] = DATA8[0];
 
-            mi.write_word_8(0.into(), address as u32, DATA8[0])
+            mi.write_word_8(DUMMY_AP, address as u32, DATA8[0])
                 .unwrap_or_else(|_| panic!("write_word_8 failed, address = {}", address));
             assert_eq!(
                 mi.mock_memory(),
@@ -915,7 +925,7 @@ mod tests {
         for &address in &[0, 4] {
             for len in 0..3 {
                 let mut data = vec![0u32; len];
-                mi.read_32(0.into(), address, &mut data)
+                mi.read_32(DUMMY_AP, address, &mut data)
                     .unwrap_or_else(|_| {
                         panic!("read_32 failed, address = {}, len = {}", address, len)
                     });
@@ -937,7 +947,7 @@ mod tests {
         let mut mi = ADIMemoryInterface::new_mock(&mut mock);
 
         for &address in &[1, 3, 127] {
-            assert!(mi.read_32(0.into(), address, &mut [0u32; 4]).is_err());
+            assert!(mi.read_32(DUMMY_AP, address, &mut [0u32; 4]).is_err());
         }
     }
 
@@ -950,7 +960,7 @@ mod tests {
         for address in 0..4 {
             for len in 0..12 {
                 let mut data = vec![0u8; len];
-                mi.read_8(0.into(), address, &mut data).unwrap_or_else(|_| {
+                mi.read_8(DUMMY_AP, address, &mut data).unwrap_or_else(|_| {
                     panic!("read_8 failed, address = {}, len = {}", address, len)
                 });
 
@@ -977,7 +987,7 @@ mod tests {
                     .copy_from_slice(&DATA8[..len * 4]);
 
                 let data = &DATA32[..len];
-                mi.write_32(0.into(), address, data).unwrap_or_else(|_| {
+                mi.write_32(DUMMY_AP, address, data).unwrap_or_else(|_| {
                     panic!("write_32 failed, address = {}, len = {}", address, len)
                 });
 
@@ -999,7 +1009,7 @@ mod tests {
 
         for &address in &[1, 3, 127] {
             assert!(mi
-                .write_32(0.into(), address, &[0xDEAD_BEEF, 0xABBA_BABE])
+                .write_32(DUMMY_AP, address, &[0xDEAD_BEEF, 0xABBA_BABE])
                 .is_err());
         }
     }
@@ -1015,7 +1025,7 @@ mod tests {
                 expected[address as usize..(address as usize) + len].copy_from_slice(&DATA8[..len]);
 
                 let data = &DATA8[..len];
-                mi.write_8(0.into(), address, data).unwrap_or_else(|_| {
+                mi.write_8(DUMMY_AP, address, data).unwrap_or_else(|_| {
                     panic!("write_8 failed, address = {}, len = {}", address, len)
                 });
 

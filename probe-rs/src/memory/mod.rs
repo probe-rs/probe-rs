@@ -1,5 +1,9 @@
 use crate::{
-    architecture::arm::{ap::MemoryAp, memory::adi_v5_memory_interface::ArmProbe},
+    architecture::arm::{
+        ap::{AccessPort, MemoryAp},
+        memory::adi_v5_memory_interface::ArmProbe,
+        ApAddress,
+    },
     CoreRegisterAddress,
 };
 use crate::{
@@ -206,5 +210,9 @@ impl<'probe> Memory<'probe> {
         &mut self,
     ) -> Result<&mut ArmCommunicationInterface<Initialized>, error::Error> {
         self.inner.get_arm_communication_interface()
+    }
+
+    pub fn get_ap(&mut self) -> ApAddress {
+        self.ap_sel.ap_address()
     }
 }

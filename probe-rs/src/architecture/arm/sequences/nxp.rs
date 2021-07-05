@@ -5,10 +5,9 @@ use std::{
 
 use crate::{
     architecture::arm::{
-        ap::ApAccess,
-        ap::IDR,
+        ap::{ApAccess, GenericAp, IDR},
         dp::{Abort, Ctrl, DpAccess, Select, DPIDR},
-        DapAccess,
+        ApAddress, DapAccess, DpAddress,
     },
     core::CoreRegister,
     CommunicationInterface, DebugProbeError,
@@ -19,19 +18,23 @@ use super::ArmDebugSequence;
 pub struct LPC55S69 {}
 
 impl ArmDebugSequence for LPC55S69 {
-    fn debug_port_start(&self, memory: &mut crate::Memory) -> Result<(), crate::Error> {
+    fn debug_port_start(
+        &self,
+        memory: &mut crate::Memory,
+        dp: DpAddress,
+    ) -> Result<(), crate::Error> {
         let interface = memory.get_arm_interface()?;
 
         log::info!("debug_port_start");
 
         interface
-            .write_dp_register(Select(0))
+            .write_dp_register(dp, Select(0))
             .map_err(DebugProbeError::from)?;
 
         //let powered_down = interface.read_dp_register::<Select>::()
 
         let ctrl = interface
-            .read_dp_register::<Ctrl>()
+            .read_dp_register::<Ctrl>(dp)
             .map_err(DebugProbeError::from)?;
 
         let powered_down = !(ctrl.csyspwrupack() && ctrl.cdbgpwrupack());
@@ -42,7 +45,7 @@ impl ArmDebugSequence for LPC55S69 {
             ctrl.set_csyspwrupreq(true);
 
             interface
-                .write_dp_register(ctrl)
+                .write_dp_register(dp, ctrl)
                 .map_err(DebugProbeError::from)?;
 
             let start = Instant::now();
@@ -51,7 +54,7 @@ impl ArmDebugSequence for LPC55S69 {
 
             while start.elapsed() < Duration::from_micros(100_0000) {
                 let ctrl = interface
-                    .read_dp_register::<Ctrl>()
+                    .read_dp_register::<Ctrl>(dp)
                     .map_err(DebugProbeError::from)?;
 
                 if ctrl.csyspwrupack() && ctrl.cdbgpwrupack() {
@@ -77,7 +80,7 @@ impl ArmDebugSequence for LPC55S69 {
             ctrl.set_mask_lane(0b1111);
 
             interface
-                .write_dp_register(ctrl)
+                .write_dp_register(dp, ctrl)
                 .map_err(DebugProbeError::from)?;
 
             let mut abort = Abort(0);
@@ -88,7 +91,7 @@ impl ArmDebugSequence for LPC55S69 {
             abort.set_stkcmpclr(true);
 
             interface
-                .write_dp_register(abort)
+                .write_dp_register(dp, abort)
                 .map_err(DebugProbeError::from)?;
 
             enable_debug_mailbox(memory)?;
@@ -250,11 +253,15 @@ fn wait_for_stop_after_reset(memory: &mut crate::Memory) -> Result<(), crate::Er
 }
 
 pub fn enable_debug_mailbox(memory: &mut crate::Memory) -> Result<(), crate::Error> {
+    let dp = memory.get_ap().dp;
+
     let interface = memory.get_arm_interface()?;
 
     log::info!("LPC55xx connect srcipt start");
 
-    let status: IDR = interface.read_ap_register(2)?;
+    let ap = ApAddress { dp, ap: 2 };
+
+    let status: IDR = interface.read_ap_register(GenericAp::new(ap))?;
 
     //let status = read_ap(interface, 2, 0xFC)?;
 
@@ -262,29 +269,29 @@ pub fn enable_debug_mailbox(memory: &mut crate::Memory) -> Result<(), crate::Err
     log::info!("APIDR: 0x{:08X}", u32::from(status));
 
     let status: u32 = interface
-        .read_dp_register::<DPIDR>()
+        .read_dp_register::<DPIDR>(dp)
         .map_err(DebugProbeError::from)?
         .into();
 
     log::info!("DPIDR: 0x{:08X}", status);
 
     // Active DebugMailbox
-    interface.write_raw_ap_register(2, 0x0, 0x0000_0021)?;
+    interface.write_raw_ap_register(ap, 0x0, 0x0000_0021)?;
     interface.flush()?;
 
     // DAP_Delay(30000)
     thread::sleep(Duration::from_micros(30000));
 
-    let _ = interface.read_raw_ap_register(2, 0)?;
+    let _ = interface.read_raw_ap_register(ap, 0)?;
 
     // Enter Debug session
-    interface.write_raw_ap_register(2, 0x4, 0x0000_0007)?;
+    interface.write_raw_ap_register(ap, 0x4, 0x0000_0007)?;
     interface.flush()?;
 
     // DAP_Delay(30000)
     thread::sleep(Duration::from_micros(30000));
 
-    let _ = interface.read_raw_ap_register(2, 8)?;
+    let _ = interface.read_raw_ap_register(ap, 8)?;
 
     log::info!("LPC55xx connect srcipt end");
     Ok(())

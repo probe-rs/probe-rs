@@ -1,12 +1,13 @@
 #![warn(missing_docs)]
 
 use crate::architecture::arm::sequences::DefaultArmSequence;
+use crate::architecture::arm::{ApAddress, DpAddress};
 use crate::config::{ChipInfo, MemoryRegion, RegistryError, Target, TargetSelector};
 use crate::core::{Architecture, CoreState, SpecificCoreState};
 use crate::{
     architecture::{
         arm::{
-            ap::{AccessPortError, MemoryAp},
+            ap::{AccessPortError, GenericAp, MemoryAp},
             communication_interface::{ArmProbeInterface, MemoryApInformation},
             memory::Component,
             ApInformation, SwoConfig,
@@ -80,7 +81,16 @@ impl ArchitectureInterface {
                     }
                 }?;
 
-                let memory = state.memory_interface(arm_core_access_options.ap.into())?;
+                let dp = match arm_core_access_options.psel {
+                    0 => DpAddress::Default,
+                    x => DpAddress::Multidrop(x),
+                };
+
+                let ap = ApAddress {
+                    dp,
+                    ap: arm_core_access_options.ap,
+                };
+                let memory = state.memory_interface(MemoryAp::new(ap))?;
 
                 core.attach_arm(core_state, memory, target)
             }
@@ -101,6 +111,11 @@ impl Session {
             log::debug!("Asserting reset");
             probe.target_reset_assert()?;
         }
+
+        let default_memory_ap = MemoryAp::new(ApAddress {
+            dp: DpAddress::Default,
+            ap: 0,
+        });
 
         probe.inner_attach()?;
 
@@ -132,7 +147,7 @@ impl Session {
                 let mut interface = interface.initialize(sequence_handle.as_ref())?;
 
                 {
-                    let mut memory_interface = interface.memory_interface(MemoryAp::from(0))?;
+                    let mut memory_interface = interface.memory_interface(default_memory_ap)?;
 
                     // Enable debug mode
                     sequence_handle.debug_device_unlock(&mut memory_interface)?;
@@ -143,7 +158,7 @@ impl Session {
 
                 let session = if attach_method == AttachMethod::UnderReset {
                     {
-                        let mut memory_interface = interface.memory_interface(MemoryAp::from(0))?;
+                        let mut memory_interface = interface.memory_interface(default_memory_ap)?;
                         // we need to halt the chip here
                         sequence_handle.reset_catch_set(&mut memory_interface)?;
                         sequence_handle.reset_hardware_deassert(&mut memory_interface)?;
@@ -184,7 +199,7 @@ impl Session {
                     };
 
                     {
-                        let mut memory_interface = interface.memory_interface(MemoryAp::from(0))?;
+                        let mut memory_interface = interface.memory_interface(default_memory_ap)?;
                         // we need to halt the chip here
                         sequence_handle.reset_catch_clear(&mut memory_interface)?;
                     }
@@ -305,38 +320,34 @@ impl Session {
 
         let mut components = Vec::new();
 
-        for ap_index in 0..(interface.num_access_ports() as u8) {
+        // TODO
+        let dp = DpAddress::Default;
+
+        for ap_index in 0..(interface.num_access_ports(dp)? as u8) {
             let ap_information = interface
-                .ap_information(ap_index.into())
-                .ok_or_else(|| anyhow!("AP {} does not exist on chip.", ap_index))?;
+                .ap_information(GenericAp::new(ApAddress { dp, ap: ap_index }))?
+                .clone();
 
             let component = match ap_information {
                 ApInformation::MemoryAp(MemoryApInformation {
-                    port_number: _,
-                    only_32bit_data_size: _,
                     debug_base_address: 0,
-                    supports_hnonsec: _,
+                    ..
                 }) => Err(Error::Other(anyhow!("AP has a base address of 0"))),
-
                 ApInformation::MemoryAp(MemoryApInformation {
-                    port_number,
+                    address,
                     only_32bit_data_size: _,
                     debug_base_address,
                     supports_hnonsec: _,
                 }) => {
-                    let access_port_number = *port_number;
-                    let base_address = *debug_base_address;
-
-                    let mut memory = interface.memory_interface(access_port_number.into())?;
-
-                    Component::try_parse(&mut memory, base_address)
+                    let mut memory = interface.memory_interface(MemoryAp::new(address))?;
+                    Component::try_parse(&mut memory, debug_base_address)
                         .map_err(Error::architecture_specific)
                 }
-                ApInformation::Other { port_number } => {
+                ApInformation::Other { address } => {
                     // Return an error, only possible to get Component from MemoryAP
                     Err(Error::Other(anyhow!(
-                        "AP {} is not a MemoryAP, unable to get ARM component.",
-                        port_number
+                        "AP {:#x?} is not a MemoryAP, unable to get ARM component.",
+                        address
                     )))
                 }
             };
@@ -475,10 +486,14 @@ fn get_target_from_selector(
                         //let chip_result = try_arm_autodetect(interface);
                         log::debug!("Autodetect: Trying DAP interface...");
 
-                        let found_arm_chip = interface.read_from_rom_table().unwrap_or_else(|e| {
-                            log::info!("Error during auto-detection of ARM chips: {}", e);
-                            None
-                        });
+                        // TODO
+                        let dp = DpAddress::Default;
+
+                        let found_arm_chip =
+                            interface.read_from_rom_table(dp).unwrap_or_else(|e| {
+                                log::info!("Error during auto-detection of ARM chips: {}", e);
+                                None
+                            });
 
                         found_chip = found_arm_chip.map(ChipInfo::from);
 

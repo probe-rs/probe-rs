@@ -49,24 +49,18 @@ macro_rules! define_ap {
     ($name:ident) => {
         #[derive(Clone, Copy, Debug)]
         pub struct $name {
-            port_number: u8,
+            address: ApAddress,
         }
 
         impl $name {
-            pub fn new(port_number: u8) -> Self {
-                Self { port_number }
-            }
-        }
-
-        impl From<u8> for $name {
-            fn from(value: u8) -> Self {
-                $name { port_number: value }
+            pub const fn new(address: ApAddress) -> Self {
+                Self { address }
             }
         }
 
         impl AccessPort for $name {
-            fn port_number(&self) -> u8 {
-                self.port_number
+            fn ap_address(&self) -> ApAddress {
+                self.address
             }
         }
     };

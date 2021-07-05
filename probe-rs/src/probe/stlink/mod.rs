@@ -8,16 +8,17 @@ use crate::{
     architecture::arm::{
         ap::{valid_access_ports, AccessPort, ApAccess, ApClass, MemoryAp, IDR},
         communication_interface::{
-            ArmCommunicationInterfaceState, ArmProbeInterface, Initialized, Register, SwdSequence,
-            UninitializedArmProbe,
+            ArmProbeInterface, Initialized, Register, SwdSequence, UninitializedArmProbe,
         },
         dp::{DebugPortVersion, DPIDR},
         memory::{adi_v5_memory_interface::ArmProbe, Component},
         sequences::ArmDebugSequence,
-        ApInformation, ArmChipInfo, DapAccess, Pins, SwoAccess, SwoConfig, SwoMode,
+        ApAddress, ApInformation, ArmChipInfo, DapAccess, DpAddress, Pins, SwoAccess, SwoConfig,
+        SwoMode,
     },
     DebugProbeSelector, Error as ProbeRsError, Memory, Probe,
 };
+use anyhow::anyhow;
 use constants::{commands, JTagFrequencyToDivider, Mode, Status, SwdFrequencyToDelayCount};
 use scroll::{Pread, Pwrite, BE, LE};
 use std::{cmp::Ordering, convert::TryInto, time::Duration};
@@ -1125,6 +1126,8 @@ pub(crate) enum StlinkError {
     JTAGNotSupportedOnProbe,
     #[error("Manchester-coded SWO mode not supported")]
     ManchesterSwoNotSupported,
+    #[error("Multidrop SWD not supported")]
+    MultidropNotSupported,
     #[error("Unaligned")]
     UnalignedAddress,
 }
@@ -1185,28 +1188,32 @@ impl SwdSequence for UninitializedStLink {
 #[derive(Debug)]
 struct StlinkArmDebug {
     probe: Box<StLink<StLinkUsbDevice>>,
-    state: ArmCommunicationInterfaceState,
+
+    /// Information about the APs of the target.
+    /// APs are identified by a number, starting from zero.
+    pub ap_information: Vec<ApInformation>,
 }
 
 impl StlinkArmDebug {
     fn new(
         probe: Box<StLink<StLinkUsbDevice>>,
     ) -> Result<Self, (Box<StLink<StLinkUsbDevice>>, DebugProbeError)> {
-        let state = ArmCommunicationInterfaceState::new();
-
         // Determine the number and type of available APs.
 
-        let mut interface = Self { probe, state };
+        let mut interface = Self {
+            probe,
+            ap_information: Vec::new(),
+        };
 
-        for ap in valid_access_ports(&mut interface) {
+        for ap in valid_access_ports(&mut interface, DpAddress::Default) {
             let ap_state = match ApInformation::read_from_target(&mut interface, ap) {
                 Ok(state) => state,
                 Err(e) => return Err((interface.probe, e)),
             };
 
-            log::debug!("AP {}: {:?}", ap.port_number(), ap_state);
+            log::debug!("AP {:#x?}: {:?}", ap.ap_address(), ap_state);
 
-            interface.state.ap_information.push(ap_state);
+            interface.ap_information.push(ap_state);
         }
 
         Ok(interface)
@@ -1214,31 +1221,47 @@ impl StlinkArmDebug {
 }
 
 impl DapAccess for StlinkArmDebug {
-    fn read_raw_dp_register(&mut self, address: u8) -> Result<u32, DebugProbeError> {
+    fn read_raw_dp_register(&mut self, dp: DpAddress, address: u8) -> Result<u32, DebugProbeError> {
+        if dp != DpAddress::Default {
+            Err(StlinkError::MultidropNotSupported)?;
+        }
         let result = self.probe.read_register(DP_PORT, address)?;
         Ok(result)
     }
 
-    fn write_raw_dp_register(&mut self, address: u8, value: u32) -> Result<(), DebugProbeError> {
+    fn write_raw_dp_register(
+        &mut self,
+        dp: DpAddress,
+        address: u8,
+        value: u32,
+    ) -> Result<(), DebugProbeError> {
+        if dp != DpAddress::Default {
+            Err(StlinkError::MultidropNotSupported)?;
+        }
+
         self.probe.write_register(DP_PORT, address, value)?;
         Ok(())
     }
 
-    fn debug_port_version(&self) -> DebugPortVersion {
-        self.state.debug_port_version
-    }
+    fn read_raw_ap_register(&mut self, ap: ApAddress, address: u8) -> Result<u32, DebugProbeError> {
+        if ap.dp != DpAddress::Default {
+            Err(StlinkError::MultidropNotSupported)?;
+        }
 
-    fn read_raw_ap_register(&mut self, port: u8, address: u8) -> Result<u32, DebugProbeError> {
-        self.probe.read_register(port as u16, address)
+        self.probe.read_register(ap.ap as u16, address)
     }
 
     fn write_raw_ap_register(
         &mut self,
-        port: u8,
+        ap: ApAddress,
         address: u8,
         value: u32,
     ) -> Result<(), DebugProbeError> {
-        self.probe.write_register(port as u16, address, value)
+        if ap.dp != DpAddress::Default {
+            Err(StlinkError::MultidropNotSupported)?;
+        }
+
+        self.probe.write_register(ap.ap as u16, address, value)
     }
 }
 
@@ -1250,18 +1273,30 @@ impl<'probe> ArmProbeInterface for StlinkArmDebug {
     }
 
     fn ap_information(
-        &self,
+        &mut self,
         access_port: crate::architecture::arm::ap::GenericAp,
-    ) -> Option<&crate::architecture::arm::communication_interface::ApInformation> {
-        self.state
-            .ap_information
-            .get(access_port.port_number() as usize)
+    ) -> Result<&crate::architecture::arm::communication_interface::ApInformation, ProbeRsError>
+    {
+        let addr = access_port.ap_address();
+        if addr.dp != DpAddress::Default {
+            Err(DebugProbeError::from(StlinkError::MultidropNotSupported))?;
+        }
+
+        match self.ap_information.get(addr.ap as usize) {
+            Some(res) => Ok(res),
+            None => Err(anyhow!("AP {:#x?} does not exist", addr).into()),
+        }
     }
 
     fn read_from_rom_table(
         &mut self,
+        dp: DpAddress,
     ) -> Result<Option<crate::architecture::arm::ArmChipInfo>, ProbeRsError> {
-        for access_port in valid_access_ports(self) {
+        if dp != DpAddress::Default {
+            Err(DebugProbeError::from(StlinkError::MultidropNotSupported))?;
+        }
+
+        for access_port in valid_access_ports(self, dp) {
             let idr: IDR = self
                 .read_ap_register(access_port)
                 .map_err(ProbeRsError::Probe)?;
@@ -1293,8 +1328,12 @@ impl<'probe> ArmProbeInterface for StlinkArmDebug {
         Ok(None)
     }
 
-    fn num_access_ports(&self) -> usize {
-        self.state.ap_information.len()
+    fn num_access_ports(&mut self, dp: DpAddress) -> Result<usize, ProbeRsError> {
+        if dp != DpAddress::Default {
+            Err(DebugProbeError::from(StlinkError::MultidropNotSupported))?;
+        }
+
+        Ok(self.ap_information.len())
     }
 
     fn close(self: Box<Self>) -> Probe {
@@ -1351,7 +1390,7 @@ impl ArmProbe for StLinkMemoryInterface<'_> {
             self.probe.probe.read_mem_32bit(
                 address + (index * STLINK_MAX_READ_LEN) as u32,
                 &mut buff,
-                ap.port_number(),
+                ap.ap_address().ap,
             )?;
 
             for (index, word) in buff.chunks_exact(4).enumerate() {
@@ -1378,7 +1417,7 @@ impl ArmProbe for StLinkMemoryInterface<'_> {
             chunk.copy_from_slice(&self.probe.probe.read_mem_8bit(
                 address + (index * chunk_size) as u32,
                 chunk.len() as u16,
-                ap.port_number(),
+                ap.ap_address().ap,
             )?);
         }
 
@@ -1400,7 +1439,7 @@ impl ArmProbe for StLinkMemoryInterface<'_> {
             self.probe.probe.write_mem_32bit(
                 address + (index * STLINK_MAX_WRITE_LEN) as u32,
                 chunk,
-                ap.port_number(),
+                ap.ap_address().ap,
             )?;
         }
 
@@ -1422,7 +1461,7 @@ impl ArmProbe for StLinkMemoryInterface<'_> {
             log::trace!("write_8: small - direct 8 bit write to {:08x}", address);
             self.probe
                 .probe
-                .write_mem_8bit(address, data, ap.port_number())?;
+                .write_mem_8bit(address, data, ap.ap_address().ap)?;
         } else {
             // Handle unaligned data in the beginning.
             let bytes_beginning = if address % 4 == 0 {
@@ -1442,7 +1481,7 @@ impl ArmProbe for StLinkMemoryInterface<'_> {
                 self.probe.probe.write_mem_8bit(
                     current_address,
                     &data[..bytes_beginning],
-                    ap.port_number(),
+                    ap.ap_address().ap,
                 )?;
 
                 current_address += bytes_beginning as u32;
@@ -1466,7 +1505,7 @@ impl ArmProbe for StLinkMemoryInterface<'_> {
                 self.probe.probe.write_mem_32bit(
                     current_address + (index * STLINK_MAX_WRITE_LEN) as u32,
                     chunk,
-                    ap.port_number(),
+                    ap.ap_address().ap,
                 )?;
             }
 
@@ -1483,7 +1522,7 @@ impl ArmProbe for StLinkMemoryInterface<'_> {
                 self.probe.probe.write_mem_8bit(
                     current_address,
                     remaining_bytes,
-                    ap.port_number(),
+                    ap.ap_address().ap,
                 )?;
             }
         }

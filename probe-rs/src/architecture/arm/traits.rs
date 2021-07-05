@@ -1,7 +1,5 @@
 use crate::{DebugProbe, DebugProbeError};
 
-use super::dp::DebugPortVersion;
-
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub enum PortType {
     DebugPort,
@@ -21,6 +19,24 @@ bitfield::bitfield! {
     pub swclk_tck, set_swclk_tck: 0;
 }
 
+/// Debug port address.
+#[derive(Debug, Eq, PartialEq, Clone, Copy, Hash)]
+pub enum DpAddress {
+    /// Access the single DP on the bus, assuming there is only one.
+    /// Will cause corruption if multiple are present.
+    Default,
+    /// Select a particular DP on a SWDv2 multidrop bus. The contained `u32` is
+    /// the `TARGETSEL` value to select it.
+    Multidrop(u32),
+}
+
+/// Access port address.
+#[derive(Debug, PartialEq, Clone, Copy)]
+pub struct ApAddress {
+    pub dp: DpAddress,
+    pub ap: u8,
+}
+
 /// Low-level DAP register access.
 ///
 /// Operations on this trait closely match the transactions on the wire. Implementors
@@ -29,6 +45,8 @@ bitfield::bitfield! {
 /// Almost everything is the responsibility of the caller. For example, the caller must
 /// handle bank switching and AP selection.
 pub trait RawDapAccess {
+    fn select_dp(&mut self, dp: DpAddress) -> Result<(), DebugProbeError>;
+
     /// Read a DAP register.
     ///
     /// Only the lowest 4 bits of `addr` are used. Bank switching is the caller's responsibility.
@@ -122,26 +140,28 @@ pub trait RawDapAccess {
 /// are responsible for bank switching and AP selection, so one method call can result
 /// in multiple transactions on the wire, if necessary.
 pub trait DapAccess {
-    /// Version of the Debug Port implementation.
-    fn debug_port_version(&self) -> DebugPortVersion;
-
     /// Read a Debug Port register.
     ///
     /// Highest 4 bits of `addr` are interpreted as the bank number, implementations
     /// will do bank switching if necessary.
-    fn read_raw_dp_register(&mut self, addr: u8) -> Result<u32, DebugProbeError>;
+    fn read_raw_dp_register(&mut self, dp: DpAddress, addr: u8) -> Result<u32, DebugProbeError>;
 
     /// Write a Debug Port register.
     ///
     /// Highest 4 bits of `addr` are interpreted as the bank number, implementations
     /// will do bank switching if necessary.
-    fn write_raw_dp_register(&mut self, addr: u8, value: u32) -> Result<(), DebugProbeError>;
+    fn write_raw_dp_register(
+        &mut self,
+        dp: DpAddress,
+        addr: u8,
+        value: u32,
+    ) -> Result<(), DebugProbeError>;
 
     /// Read an Access Port register.
     ///
     /// Highest 4 bits of `addr` are interpreted as the bank number, implementations
     /// will do bank switching if necessary.
-    fn read_raw_ap_register(&mut self, port: u8, addr: u8) -> Result<u32, DebugProbeError>;
+    fn read_raw_ap_register(&mut self, ap: ApAddress, addr: u8) -> Result<u32, DebugProbeError>;
 
     /// Read multiple values from the same Access Port register.
     ///
@@ -152,12 +172,12 @@ pub trait DapAccess {
     /// will do bank switching if necessary.
     fn read_raw_ap_register_repeated(
         &mut self,
-        port: u8,
+        ap: ApAddress,
         addr: u8,
         values: &mut [u32],
     ) -> Result<(), DebugProbeError> {
         for val in values {
-            *val = self.read_raw_ap_register(port, addr)?;
+            *val = self.read_raw_ap_register(ap, addr)?;
         }
         Ok(())
     }
@@ -168,7 +188,7 @@ pub trait DapAccess {
     /// will do bank switching if necessary.
     fn write_raw_ap_register(
         &mut self,
-        port: u8,
+        ap: ApAddress,
         addr: u8,
         value: u32,
     ) -> Result<(), DebugProbeError>;
@@ -182,12 +202,12 @@ pub trait DapAccess {
     /// will do bank switching if necessary.
     fn write_raw_ap_register_repeated(
         &mut self,
-        port: u8,
+        ap: ApAddress,
         addr: u8,
         values: &[u32],
     ) -> Result<(), DebugProbeError> {
         for val in values {
-            self.write_raw_ap_register(port, addr, *val)?;
+            self.write_raw_ap_register(ap, addr, *val)?;
         }
         Ok(())
     }

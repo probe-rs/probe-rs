@@ -10,7 +10,7 @@ use crate::{core::CoreRegister, DebugProbeError, Memory};
 use super::{
     communication_interface::{DapProbe, SwdSequence},
     dp::{Abort, Ctrl, DpAccess, Select, DPIDR},
-    Pins, PortType, Register,
+    DpAddress, Pins, PortType, Register,
 };
 
 pub struct DefaultArmSequence;
@@ -81,17 +81,17 @@ pub trait ArmDebugSequence: Send + Sync {
         Ok(())
     }
 
-    fn debug_port_start(&self, memory: &mut Memory) -> Result<(), crate::Error> {
+    fn debug_port_start(&self, memory: &mut Memory, dp: DpAddress) -> Result<(), crate::Error> {
         let interface = memory.get_arm_interface()?;
 
         interface
-            .write_dp_register(Select(0))
+            .write_dp_register(dp, Select(0))
             .map_err(DebugProbeError::from)?;
 
         //let powered_down = interface.read_dp_register::<Select>::()
 
         let ctrl = interface
-            .read_dp_register::<Ctrl>()
+            .read_dp_register::<Ctrl>(dp)
             .map_err(DebugProbeError::from)?;
 
         let powered_down = !(ctrl.csyspwrupack() && ctrl.cdbgpwrupack());
@@ -102,7 +102,7 @@ pub trait ArmDebugSequence: Send + Sync {
             ctrl.set_csyspwrupreq(true);
 
             interface
-                .write_dp_register(ctrl)
+                .write_dp_register(dp, ctrl)
                 .map_err(DebugProbeError::from)?;
 
             let start = Instant::now();
@@ -111,7 +111,7 @@ pub trait ArmDebugSequence: Send + Sync {
 
             while start.elapsed() < Duration::from_micros(100_0000) {
                 let ctrl = interface
-                    .read_dp_register::<Ctrl>()
+                    .read_dp_register::<Ctrl>(dp)
                     .map_err(DebugProbeError::from)?;
 
                 if ctrl.csyspwrupack() && ctrl.cdbgpwrupack() {
@@ -137,7 +137,7 @@ pub trait ArmDebugSequence: Send + Sync {
             ctrl.set_mask_lane(0b1111);
 
             interface
-                .write_dp_register(ctrl)
+                .write_dp_register(dp, ctrl)
                 .map_err(DebugProbeError::from)?;
 
             let mut abort = Abort(0);
@@ -148,7 +148,7 @@ pub trait ArmDebugSequence: Send + Sync {
             abort.set_stkcmpclr(true);
 
             interface
-                .write_dp_register(abort)
+                .write_dp_register(dp, abort)
                 .map_err(DebugProbeError::from)?;
         }
 

@@ -7,7 +7,7 @@ use probe_rs::{
             m0::Demcr,
             memory::Component,
             sequences::DefaultArmSequence,
-            ApInformation, ArmProbeInterface, MemoryApInformation,
+            ApAddress, ApInformation, ArmProbeInterface, DpAddress, MemoryApInformation,
         },
         riscv::communication_interface::RiscvCommunicationInterface,
     },
@@ -128,10 +128,15 @@ fn try_show_info(mut probe: Probe, protocol: WireProtocol) -> (Probe, Result<()>
 fn show_arm_info(interface: &mut Box<dyn ArmProbeInterface>) -> Result<()> {
     println!("\nAvailable Access Ports:");
 
-    let num_access_ports = interface.num_access_ports();
+    let dp = DpAddress::Default;
+    let num_access_ports = interface.num_access_ports(dp).unwrap();
 
     for ap_index in 0..num_access_ports {
-        let access_port = GenericAp::from(ap_index as u8);
+        let ap = ApAddress {
+            ap: ap_index as u8,
+            dp,
+        };
+        let access_port = GenericAp::new(ap);
 
         let ap_information = interface.ap_information(access_port).unwrap();
 
