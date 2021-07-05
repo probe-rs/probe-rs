@@ -6,8 +6,8 @@ use crate::{
         communication_interface::{ArmProbeInterface, DapProbe},
         dp::{Abort, Ctrl},
         swo::poll_interval_from_buf_size,
-        ArmCommunicationInterface, DapError, PortType, RawDapAccess, Register, SwoAccess,
-        SwoConfig, SwoMode,
+        ArmCommunicationInterface, DapError, DpAddress, PortType, RawDapAccess, Register,
+        SwoAccess, SwoConfig, SwoMode,
     },
     probe::{cmsisdap::commands::CmsisDapError, BatchCommand},
     DebugProbe, DebugProbeError, DebugProbeSelector, Error as ProbeRsError, WireProtocol,
@@ -36,7 +36,7 @@ use commands::{
     CmsisDapDevice, SendError, Status,
 };
 
-use log::debug;
+use log::{debug, warn};
 
 use std::time::Duration;
 
@@ -597,6 +597,47 @@ impl DebugProbe for CmsisDap {
 }
 
 impl RawDapAccess for CmsisDap {
+    fn select_dp(&mut self, dp: DpAddress) -> Result<(), DebugProbeError> {
+        match dp {
+            DpAddress::Default => Ok(()), // nop
+            DpAddress::Multidrop(targetsel) => {
+                for _i in 0..5 {
+                    // Flush just in case there were writes queued from before.
+                    self.process_batch()?;
+
+                    // dormant-to-swd + line reset
+                    self.send_swj_sequences(SequenceRequest::new(&[
+                        0xff, 0x92, 0xf3, 0x09, 0x62, 0x95, 0x2d, 0x85, 0x86, 0xe9, 0xaf, 0xdd,
+                        0xe3, 0xa2, 0x0e, 0xbc, 0x19, 0xa0, 0xf1, 0xff, 0xff, 0xff, 0xff, 0xff,
+                        0xff, 0xff, 0xff, 0x00,
+                    ])?)?;
+
+                    // TARGETSEL write.
+                    // The TARGETSEL write is not ACKed by design. We can't use a normal register write
+                    // because many probes don't even send the data phase when NAK.
+                    let parity = targetsel.count_ones() % 2;
+                    let data = &((parity as u64) << 45 | (targetsel as u64) << 13 | 0x1f99)
+                        .to_le_bytes()[..6];
+                    self.send_swj_sequences(SequenceRequest::new(data)?)?;
+
+                    // "A write to the TARGETSEL register must always be followed by a read of the DPIDR register or a line reset. If the
+                    // response to the DPIDR read is incorrect, or there is no response, the host must start the sequence again."
+                    match self.raw_read_register(PortType::DebugPort, 0) {
+                        Ok(res) => {
+                            debug!("DPIDR read {:08x}", res);
+                            return Ok(());
+                        }
+                        Err(e) => {
+                            debug!("DPIDR read failed, retrying. Error: {:?}", e);
+                        }
+                    }
+                }
+                warn!("Giving up on TARGETSEL, too many retries.");
+                Err(DapError::NoAcknowledge.into())
+            }
+        }
+    }
+
     /// Reads the DAP register on the specified port and address.
     fn raw_read_register(&mut self, port: PortType, addr: u8) -> Result<u32, DebugProbeError> {
         self.batch_add(BatchCommand::Read(port, addr as u16))

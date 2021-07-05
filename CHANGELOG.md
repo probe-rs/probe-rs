@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Added initial multicore support. (#565)
+- Added SWDv2 multidrop support for multi-DP chips. (#720)
+- Added RP2040 target (Raspberry Pi Pico). (#720)
 
 ### Target Support
 
