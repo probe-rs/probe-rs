@@ -24,10 +24,6 @@ use structopt::StructOpt;
 pub struct FlashOptions {
     #[structopt(short = "V", long = "version")]
     pub version: bool,
-    #[structopt(name = "chip", long = "chip")]
-    pub chip: Option<String>,
-    #[structopt(name = "chip description file path", long = "chip-description-path")]
-    pub chip_description_path: Option<String>,
     #[structopt(name = "list-chips", long = "list-chips")]
     pub list_chips: bool,
     #[structopt(
@@ -39,19 +35,6 @@ pub struct FlashOptions {
     pub list_probes: bool,
     #[structopt(name = "disable-progressbars", long = "disable-progressbars")]
     pub disable_progressbars: bool,
-    #[structopt(name = "protocol", long = "protocol", default_value = "swd")]
-    pub protocol: WireProtocol,
-    #[structopt(
-        long = "probe",
-        help = "Use this flag to select a specific probe in the list.\n\
-        Use '--probe VID:PID' or '--probe VID:PID:Serial' if you have more than one probe with the same VID:PID."
-    )]
-    pub probe_selector: Option<DebugProbeSelector>,
-    #[structopt(
-        long = "connect-under-reset",
-        help = "Use this flag to assert the nreset & ntrst pins during attaching the probe to the chip."
-    )]
-    pub connect_under_reset: bool,
     #[structopt(
         name = "reset-halt",
         long = "reset-halt",
@@ -65,8 +48,6 @@ pub struct FlashOptions {
         Default is `warning`. Possible choices are [error, warning, info, debug, trace]."
     )]
     pub log: Option<log::Level>,
-    #[structopt(name = "speed", long = "speed", help = "The protocol speed in kHz.")]
-    pub speed: Option<u32>,
     #[structopt(
         name = "restore-unwritten",
         long = "restore-unwritten",
@@ -91,13 +72,37 @@ pub struct FlashOptions {
         help = "The work directory from which cargo-flash should operate from."
     )]
     pub work_dir: Option<String>,
-
     #[structopt(long = "dry-run")]
     pub dry_run: bool,
-
     #[structopt(flatten)]
     /// Arguments which are forwarded to 'cargo build'.
     pub cargo_options: CargoOptions,
+    #[structopt(flatten)]
+    /// Argument relating to probe/chip selection/configuration.
+    pub probe_options: ProbeOptions,
+}
+
+#[derive(StructOpt, Debug)]
+pub struct ProbeOptions {
+    #[structopt(name = "chip", long = "chip")]
+    pub chip: Option<String>,
+    #[structopt(name = "chip description file path", long = "chip-description-path")]
+    pub chip_description_path: Option<String>,
+    #[structopt(name = "protocol", long = "protocol", default_value = "swd")]
+    pub protocol: WireProtocol,
+    #[structopt(
+        long = "probe",
+        help = "Use this flag to select a specific probe in the list.\n\
+        Use '--probe VID:PID' or '--probe VID:PID:Serial' if you have more than one probe with the same VID:PID."
+    )]
+    pub probe_selector: Option<DebugProbeSelector>,
+    #[structopt(
+        long = "connect-under-reset",
+        help = "Use this flag to assert the nreset & ntrst pins during attaching the probe to the chip."
+    )]
+    pub connect_under_reset: bool,
+    #[structopt(name = "speed", long = "speed", help = "The protocol speed in kHz.")]
+    pub speed: Option<u32>,
 }
 
 #[derive(StructOpt, Debug)]
@@ -247,7 +252,7 @@ impl FlashOptions {
     /// Add targets contained in file given by --chip-description-path
     /// to probe-rs registery.
     pub fn try_load_chip_desc(&self) -> Result<(), CargoFlashError> {
-        if let Some(ref cdp) = self.chip_description_path {
+        if let Some(ref cdp) = self.probe_options.chip_description_path {
             probe_rs::config::add_target_from_yaml(&Path::new(cdp)).map_err(|error| {
                 CargoFlashError::FailedChipDescriptionParsing {
                     source: error,
@@ -266,7 +271,7 @@ impl FlashOptions {
         let meta = read_metadata(&crate_root).ok();
 
         // First use command line, then manifest, then default to auto.
-        match (&self.chip, meta.map(|m| m.chip).flatten()) {
+        match (&self.probe_options.chip, meta.map(|m| m.chip).flatten()) {
             (Some(c), _) => c.into(),
             (_, Some(c)) => c.into(),
             _ => TargetSelector::Auto,
@@ -285,7 +290,7 @@ impl FlashOptions {
 
             // If we got a probe selector as an argument, open the probe
             // matching the selector if possible.
-            match &self.probe_selector {
+            match &self.probe_options.probe_selector {
                 Some(selector) => {
                     Probe::open(selector.clone()).map_err(CargoFlashError::FailedToOpenProbe)
                 }
@@ -307,13 +312,13 @@ impl FlashOptions {
         }?;
 
         // Select protocol and speed
-        probe.select_protocol(self.protocol).map_err(|error| {
-            CargoFlashError::FailedToSelectProtocol {
+        probe
+            .select_protocol(self.probe_options.protocol)
+            .map_err(|error| CargoFlashError::FailedToSelectProtocol {
                 source: error,
-                protocol: self.protocol,
-            }
-        })?;
-        let _protocol_speed = if let Some(speed) = self.speed {
+                protocol: self.probe_options.protocol,
+            })?;
+        let _protocol_speed = if let Some(speed) = self.probe_options.speed {
             let actual_speed = probe.set_speed(speed).map_err(|error| {
                 CargoFlashError::FailedToSelectProtocolSpeed {
                     source: error,
@@ -345,11 +350,12 @@ impl FlashOptions {
         let _chip = self.resolve_chip(&crate_root);
 
         let (target_selector, flash_loader) = {
-            let target = probe_rs::config::get_target_by_name(self.chip.as_ref().unwrap())
-                .map_err(|error| CargoFlashError::ChipNotFound {
-                    source: error,
-                    name: self.chip.as_ref().unwrap().clone(),
-                })?;
+            let target =
+                probe_rs::config::get_target_by_name(self.probe_options.chip.as_ref().unwrap())
+                    .map_err(|error| CargoFlashError::ChipNotFound {
+                        source: error,
+                        name: self.probe_options.chip.as_ref().unwrap().clone(),
+                    })?;
 
             let loader = build_flashloader(&target, &elf_path)?;
             (TargetSelector::Specified(target), Some(loader))
@@ -361,14 +367,14 @@ impl FlashOptions {
         // If we wanto attach under reset, we do this with a special function call.
         // In this case we assume the target to be known.
         // If we do an attach without a hard reset, we also try to automatically detect the chip at hand to improve the userexperience.
-        let session = if self.connect_under_reset {
+        let session = if self.probe_options.connect_under_reset {
             probe.attach_under_reset(target_selector)
         } else {
             probe.attach(target_selector)
         }
         .map_err(|error| CargoFlashError::AttachingFailed {
             source: error,
-            connect_under_reset: self.connect_under_reset,
+            connect_under_reset: self.probe_options.connect_under_reset,
         })?;
 
         Ok((session, flash_loader.unwrap()))
@@ -379,7 +385,7 @@ impl FlashOptions {
     pub fn target_session(&self) -> Result<Session, CargoFlashError> {
         let probe = self.attach_to_probe()?;
 
-        let target = match &self.chip {
+        let target = match &self.probe_options.chip {
             Some(chip) => {
                 TargetSelector::Specified(probe_rs::config::get_target_by_name(chip).map_err(
                     |error| CargoFlashError::ChipNotFound {
@@ -391,14 +397,14 @@ impl FlashOptions {
             None => TargetSelector::Auto,
         };
 
-        if self.connect_under_reset {
+        if self.probe_options.connect_under_reset {
             probe.attach_under_reset(target)
         } else {
             probe.attach(target)
         }
         .map_err(|error| CargoFlashError::AttachingFailed {
             source: error,
-            connect_under_reset: self.connect_under_reset,
+            connect_under_reset: self.probe_options.connect_under_reset,
         })
     }
 }
