@@ -92,6 +92,7 @@ pub fn setup_swv(
     // Configure DWT
     let mut dwt = Dwt::new(core, find_component(components, PeripheralType::Dwt)?);
     dwt.enable()?;
+    dwt.enable_exception_trace()?;
 
     core.flush()
 }
