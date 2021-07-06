@@ -613,9 +613,6 @@ pub struct DebugProbeSelector {
     pub vendor_id: u16,
     pub product_id: u16,
     pub serial_number: Option<String>,
-
-    /// USB HID interface, necessary for composite devices
-    usb_hid_interface: Option<u8>,
 }
 
 impl TryFrom<&str> for DebugProbeSelector {
@@ -627,7 +624,6 @@ impl TryFrom<&str> for DebugProbeSelector {
                 vendor_id: u16::from_str_radix(split[0], 16)?,
                 product_id: u16::from_str_radix(split[1], 16)?,
                 serial_number: None,
-                usb_hid_interface: None,
             }
         } else {
             return Err(DebugProbeSelectorParseError::Format);
@@ -661,7 +657,6 @@ impl From<DebugProbeInfo> for DebugProbeSelector {
             vendor_id: selector.vendor_id,
             product_id: selector.product_id,
             serial_number: selector.serial_number,
-            usb_hid_interface: selector.hid_interface,
         }
     }
 }
@@ -672,7 +667,6 @@ impl From<&DebugProbeInfo> for DebugProbeSelector {
             vendor_id: selector.vendor_id,
             product_id: selector.product_id,
             serial_number: selector.serial_number.clone(),
-            usb_hid_interface: selector.hid_interface,
         }
     }
 }
