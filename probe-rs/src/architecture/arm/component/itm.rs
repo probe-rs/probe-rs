@@ -34,10 +34,11 @@ impl<'probe: 'core, 'core> Itm<'probe, 'core> {
             .component
             .read_reg(self.core, REGISTER_OFFSET_ITM_TCR)?;
 
-        value |= 1; // itm enable
-        value |= 1 << 1; // timestamp enable
-        value |= 1 << 2; // Enable sync pulses, note DWT_CTRL.SYNCTAP must be configured.
-        value |= 1 << 3; // tx enable (for DWT)
+        value |= 1 << 0; // ITMENA: enable ITM (master switch)
+        value |= 1 << 1; // TSENA: enable local timestamps
+        value |= 1 << 2; // SYNENA: Enable sync pulses, note DWT_CTRL.SYNCTAP must be configured.
+        value |= 1 << 3; // TXENA: forward DWT packets to ITM
+        value |= 1 << 11; // GTSFREQ: generate global timestamp every 8192 cycles
         value |= 13 << 16; // 7 bits trace bus ID
         self.component
             .write_reg(self.core, REGISTER_OFFSET_ITM_TCR, value)?;
