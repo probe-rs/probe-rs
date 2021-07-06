@@ -265,10 +265,14 @@ impl FlashOptions {
     }
 
     /// Returns the approach used to select target chip.
-    pub fn resolve_chip(&self, crate_root: &Path) -> TargetSelector {
+    pub fn resolve_chip(&self) -> TargetSelector {
         // Load the cargo manifest if it is available and parse the meta
         // object.
-        let meta = read_metadata(&crate_root).ok();
+        let work_dir = match &self.work_dir {
+            Some(dir) => PathBuf::from(dir),
+            None => PathBuf::from("."),
+        };
+        let meta = read_metadata(&work_dir).ok();
 
         // First use command line, then manifest, then default to auto.
         match (&self.probe_options.chip, meta.map(|m| m.chip).flatten()) {
@@ -344,10 +348,10 @@ impl FlashOptions {
 
     pub fn acquire_session(
         &self,
-        crate_root: &Path,
+        _crate_root: &Path,
         elf_path: &Path,
     ) -> Result<(Session, FlashLoader), CargoFlashError> {
-        let _chip = self.resolve_chip(&crate_root);
+        // let _chip = self.resolve_chip(&crate_root);
 
         let (target_selector, flash_loader) = {
             let target =
@@ -383,20 +387,19 @@ impl FlashOptions {
     /// Attaches to target session as specified by [FlashOptions]
     /// parameters.
     pub fn target_session(&self) -> Result<Session, CargoFlashError> {
-        let probe = self.attach_to_probe()?;
-
-        let target = match &self.probe_options.chip {
-            Some(chip) => {
-                TargetSelector::Specified(probe_rs::config::get_target_by_name(chip).map_err(
+        let target = match self.resolve_chip() {
+            TargetSelector::Unspecified(desc) => {
+                TargetSelector::Specified(probe_rs::config::get_target_by_name(&desc).map_err(
                     |error| CargoFlashError::ChipNotFound {
                         source: error,
-                        name: chip.clone(),
+                        name: desc,
                     },
                 )?)
             }
-            None => TargetSelector::Auto,
+            a => a,
         };
 
+        let probe = self.attach_to_probe()?;
         if self.probe_options.connect_under_reset {
             probe.attach_under_reset(target)
         } else {
