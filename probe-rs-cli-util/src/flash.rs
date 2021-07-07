@@ -405,8 +405,19 @@ impl ProbeOptions {
 }
 
 impl CommonFlashOptions {
-    // returns the approach used to select target chip.
-    // pub fn resolve_chip(&self) ->
+    pub fn early_exit(self, f: impl Write) -> Result<bool, CargoFlashError> {
+        if self.list_probes {
+            list_connected_probes(f)?;
+            return Ok(true);
+        }
+
+        if self.list_chips {
+            print_families(f)?;
+            return Ok(true);
+        }
+
+        Ok(false)
+    }
 }
 
 /// Builds a new flash loader for the given target and ELF.
