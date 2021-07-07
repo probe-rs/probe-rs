@@ -21,7 +21,7 @@ use probe_rs::{
 use structopt::StructOpt;
 
 #[derive(Debug, StructOpt)]
-pub struct FlashOptions {
+pub struct CommonFlashOptions {
     #[structopt(short = "V", long = "version")]
     pub version: bool,
     #[structopt(name = "list-chips", long = "list-chips")]
@@ -72,8 +72,6 @@ pub struct FlashOptions {
         help = "The work directory from which cargo-flash should operate from."
     )]
     pub work_dir: Option<String>,
-    #[structopt(long = "dry-run")]
-    pub dry_run: bool,
     #[structopt(flatten)]
     /// Arguments which are forwarded to 'cargo build'.
     pub cargo_options: CargoOptions,
@@ -103,6 +101,8 @@ pub struct ProbeOptions {
     pub connect_under_reset: bool,
     #[structopt(name = "speed", long = "speed", help = "The protocol speed in kHz.")]
     pub speed: Option<u32>,
+    #[structopt(long = "dry-run")]
+    pub dry_run: bool,
 }
 
 #[derive(StructOpt, Debug)]
@@ -248,11 +248,11 @@ pub fn print_families(mut f: impl Write) -> Result<(), CargoFlashError> {
     Ok(())
 }
 
-impl FlashOptions {
+impl ProbeOptions {
     /// Add targets contained in file given by --chip-description-path
     /// to probe-rs registery.
     pub fn try_load_chip_desc(&self) -> Result<(), CargoFlashError> {
-        if let Some(ref cdp) = self.probe_options.chip_description_path {
+        if let Some(ref cdp) = self.chip_description_path {
             probe_rs::config::add_target_from_yaml(&Path::new(cdp)).map_err(|error| {
                 CargoFlashError::FailedChipDescriptionParsing {
                     source: error,
@@ -261,24 +261,6 @@ impl FlashOptions {
             })
         } else {
             Ok(())
-        }
-    }
-
-    /// Returns the approach used to select target chip.
-    pub fn resolve_chip(&self) -> TargetSelector {
-        // Load the cargo manifest if it is available and parse the meta
-        // object.
-        let work_dir = match &self.work_dir {
-            Some(dir) => PathBuf::from(dir),
-            None => PathBuf::from("."),
-        };
-        let meta = read_metadata(&work_dir).ok();
-
-        // First use command line, then manifest, then default to auto.
-        match (&self.probe_options.chip, meta.map(|m| m.chip).flatten()) {
-            (Some(c), _) => c.into(),
-            (_, Some(c)) => c.into(),
-            _ => TargetSelector::Auto,
         }
     }
 
@@ -294,7 +276,7 @@ impl FlashOptions {
 
             // If we got a probe selector as an argument, open the probe
             // matching the selector if possible.
-            match &self.probe_options.probe_selector {
+            match &self.probe_selector {
                 Some(selector) => {
                     Probe::open(selector.clone()).map_err(CargoFlashError::FailedToOpenProbe)
                 }
@@ -316,13 +298,13 @@ impl FlashOptions {
         }?;
 
         // Select protocol and speed
-        probe
-            .select_protocol(self.probe_options.protocol)
-            .map_err(|error| CargoFlashError::FailedToSelectProtocol {
+        probe.select_protocol(self.protocol).map_err(|error| {
+            CargoFlashError::FailedToSelectProtocol {
                 source: error,
-                protocol: self.probe_options.protocol,
-            })?;
-        let _protocol_speed = if let Some(speed) = self.probe_options.speed {
+                protocol: self.protocol,
+            }
+        })?;
+        let _protocol_speed = if let Some(speed) = self.speed {
             let actual_speed = probe.set_speed(speed).map_err(|error| {
                 CargoFlashError::FailedToSelectProtocolSpeed {
                     source: error,
@@ -354,12 +336,11 @@ impl FlashOptions {
         // let _chip = self.resolve_chip(&crate_root);
 
         let (target_selector, flash_loader) = {
-            let target =
-                probe_rs::config::get_target_by_name(self.probe_options.chip.as_ref().unwrap())
-                    .map_err(|error| CargoFlashError::ChipNotFound {
-                        source: error,
-                        name: self.probe_options.chip.as_ref().unwrap().clone(),
-                    })?;
+            let target = probe_rs::config::get_target_by_name(self.chip.as_ref().unwrap())
+                .map_err(|error| CargoFlashError::ChipNotFound {
+                    source: error,
+                    name: self.chip.as_ref().unwrap().clone(),
+                })?;
 
             let loader = build_flashloader(&target, &elf_path)?;
             (TargetSelector::Specified(target), Some(loader))
@@ -371,14 +352,14 @@ impl FlashOptions {
         // If we wanto attach under reset, we do this with a special function call.
         // In this case we assume the target to be known.
         // If we do an attach without a hard reset, we also try to automatically detect the chip at hand to improve the userexperience.
-        let session = if self.probe_options.connect_under_reset {
+        let session = if self.connect_under_reset {
             probe.attach_under_reset(target_selector)
         } else {
             probe.attach(target_selector)
         }
         .map_err(|error| CargoFlashError::AttachingFailed {
             source: error,
-            connect_under_reset: self.probe_options.connect_under_reset,
+            connect_under_reset: self.connect_under_reset,
         })?;
 
         Ok((session, flash_loader.unwrap()))
@@ -386,8 +367,8 @@ impl FlashOptions {
 
     /// Attaches to target session as specified by [FlashOptions]
     /// parameters.
-    pub fn target_session(&self) -> Result<Session, CargoFlashError> {
-        let target = match self.resolve_chip() {
+    pub fn target_session(&self, work_dir: &Path) -> Result<Session, CargoFlashError> {
+        let target = match self.resolve_chip(&work_dir) {
             TargetSelector::Unspecified(desc) => {
                 TargetSelector::Specified(probe_rs::config::get_target_by_name(&desc).map_err(
                     |error| CargoFlashError::ChipNotFound {
@@ -400,16 +381,32 @@ impl FlashOptions {
         };
 
         let probe = self.attach_to_probe()?;
-        if self.probe_options.connect_under_reset {
+        if self.connect_under_reset {
             probe.attach_under_reset(target)
         } else {
             probe.attach(target)
         }
         .map_err(|error| CargoFlashError::AttachingFailed {
             source: error,
-            connect_under_reset: self.probe_options.connect_under_reset,
+            connect_under_reset: self.connect_under_reset,
         })
     }
+
+    pub fn resolve_chip(&self, work_dir: &Path) -> TargetSelector {
+        let meta = read_metadata(&work_dir).ok();
+
+        // First use command line, then manifest, then default to auto.
+        match (&self.chip, meta.map(|m| m.chip).flatten()) {
+            (Some(c), _) => c.into(),
+            (_, Some(c)) => c.into(),
+            _ => TargetSelector::Auto,
+        }
+    }
+}
+
+impl CommonFlashOptions {
+    // returns the approach used to select target chip.
+    // pub fn resolve_chip(&self) ->
 }
 
 /// Builds a new flash loader for the given target and ELF.
