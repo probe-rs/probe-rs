@@ -108,6 +108,8 @@ pub enum DebugProbeError {
     TargetNotFound,
     #[error("Some functionality was not implemented yet: {0}")]
     NotImplemented(&'static str),
+    #[error("This debug sequence is not supported on the used probe: {0}")]
+    DebugSequenceNotSupported(&'static str),
     #[error("Error in previous batched command")]
     BatchError(BatchCommand),
     #[error("Command not supported by probe: {0}")]

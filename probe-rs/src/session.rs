@@ -137,6 +137,13 @@ impl Session {
                 if AttachMethod::UnderReset == attach_method {
                     if let Some(dap_probe) = probe.try_as_dap_probe() {
                         sequence_handle.reset_hardware_assert(dap_probe)?;
+                    } else {
+                        log::info!(
+                            "Custom reset sequences are not supported on {}.",
+                            probe.get_name()
+                        );
+                        log::info!("Falling back to standard probe reset.");
+                        probe.target_reset_assert()?;
                     }
                 }
 
