@@ -6,7 +6,6 @@ use crate::{
         communication_interface::{
             ArmDebugState, Initialized, SwdSequence, Uninitialized, UninitializedArmProbe,
         },
-        dp::DebugPortVersion,
         memory::adi_v5_memory_interface::ADIMemoryInterface,
         sequences::ArmDebugSequence,
         ApAddress, ArmProbeInterface, DapAccess, DpAddress, MemoryApInformation, PortType,

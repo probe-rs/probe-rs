@@ -10,7 +10,7 @@ use crate::{
         communication_interface::{
             ArmProbeInterface, Initialized, Register, SwdSequence, UninitializedArmProbe,
         },
-        dp::{DebugPortVersion, DPIDR},
+        dp::DPIDR,
         memory::{adi_v5_memory_interface::ArmProbe, Component},
         sequences::ArmDebugSequence,
         ApAddress, ApInformation, ArmChipInfo, DapAccess, DpAddress, Pins, SwoAccess, SwoConfig,

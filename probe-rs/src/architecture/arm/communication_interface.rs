@@ -323,7 +323,7 @@ impl UninitializedArmProbe for ArmCommunicationInterface<Uninitialized> {
 }
 
 impl<S: ArmDebugState> ArmCommunicationInterface<S> {
-    fn get_debug_port_version(&mut self) -> Result<DebugPortVersion, DebugProbeError> {
+    fn _get_debug_port_version(&mut self) -> Result<DebugPortVersion, DebugProbeError> {
         let dpidr = DPIDR(self.probe.raw_read_register(PortType::DebugPort, 0)?);
 
         Ok(DebugPortVersion::from(dpidr.version()))
@@ -332,10 +332,10 @@ impl<S: ArmDebugState> ArmCommunicationInterface<S> {
 
 impl<'interface> ArmCommunicationInterface<Initialized> {
     fn from_uninitialized(
-        mut interface: ArmCommunicationInterface<Uninitialized>,
+        interface: ArmCommunicationInterface<Uninitialized>,
         use_overrun_detect: bool,
     ) -> Result<Self, (ArmCommunicationInterface<Uninitialized>, DebugProbeError)> {
-        let mut initialized_interface = ArmCommunicationInterface {
+        let initialized_interface = ArmCommunicationInterface {
             probe: interface.probe,
             state: Initialized::new(use_overrun_detect),
         };
