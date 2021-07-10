@@ -6,7 +6,7 @@ pub(crate) mod jlink;
 pub(crate) mod stlink;
 
 use crate::architecture::{
-    arm::{PortType, SwoAccess},
+    arm::{communication_interface::DapProbe, PortType, SwoAccess},
     riscv::communication_interface::RiscvCommunicationInterface,
 };
 use crate::error::Error;
@@ -363,6 +363,10 @@ impl Probe {
     pub fn get_swo_interface_mut(&mut self) -> Option<&mut dyn SwoAccess> {
         self.inner.get_swo_interface_mut()
     }
+
+    pub fn try_as_dap_probe(&mut self) -> Option<&mut dyn DapProbe> {
+        self.inner.try_as_dap_probe()
+    }
 }
 
 pub trait DebugProbe: Send + fmt::Debug {
@@ -459,6 +463,10 @@ pub trait DebugProbe: Send + fmt::Debug {
     }
 
     fn into_probe(self: Box<Self>) -> Box<dyn DebugProbe>;
+
+    fn try_as_dap_probe(&mut self) -> Option<&mut dyn DapProbe> {
+        None
+    }
 
     /// Reads the target voltage in Volts, if possible. Returns `Ok(None)`
     /// if the probe doesn’t support reading the target voltage.

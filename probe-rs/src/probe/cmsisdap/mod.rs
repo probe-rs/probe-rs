@@ -570,6 +570,10 @@ impl DebugProbe for CmsisDap {
     fn into_probe(self: Box<Self>) -> Box<dyn DebugProbe> {
         self
     }
+
+    fn try_as_dap_probe(&mut self) -> Option<&mut dyn DapProbe> {
+        Some(self)
+    }
 }
 
 impl RawDapAccess for CmsisDap {

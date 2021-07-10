@@ -584,6 +584,10 @@ impl DebugProbe for JLink {
         self
     }
 
+    fn try_as_dap_probe(&mut self) -> Option<&mut dyn DapProbe> {
+        Some(self)
+    }
+
     fn try_get_arm_interface<'probe>(
         mut self: Box<Self>,
     ) -> Result<Box<dyn UninitializedArmProbe + 'probe>, (Box<dyn DebugProbe>, DebugProbeError)>

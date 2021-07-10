@@ -102,24 +102,11 @@ impl ArchitectureInterface {
 impl Session {
     /// Open a new session with a given debug target.
     pub(crate) fn new(
-        mut probe: Probe,
+        probe: Probe,
         target: TargetSelector,
         attach_method: AttachMethod,
     ) -> Result<Self, Error> {
-        if AttachMethod::UnderReset == attach_method {
-            // TODO: Use sequence
-            log::debug!("Asserting reset");
-            probe.target_reset_assert()?;
-        }
-
-        let default_memory_ap = MemoryAp::new(ApAddress {
-            dp: DpAddress::Default,
-            ap: 0,
-        });
-
-        probe.inner_attach()?;
-
-        let (probe, target) = get_target_from_selector(target, probe)?;
+        let (mut probe, target) = get_target_from_selector(target, attach_method, probe)?;
 
         let cores = target
             .cores
@@ -135,7 +122,10 @@ impl Session {
 
         let mut session = match target.architecture() {
             Architecture::Arm => {
-                let interface = probe.try_into_arm_interface().map_err(|(_, err)| err)?;
+                let default_memory_ap = MemoryAp::new(ApAddress {
+                    dp: DpAddress::Default,
+                    ap: 0,
+                });
 
                 let sequence_handle = match &target.debug_sequence {
                     DebugSequence::Arm(sequence) => sequence.clone(),
@@ -143,6 +133,16 @@ impl Session {
                         panic!("Mismatch between architecture and sequence type!")
                     }
                 };
+
+                if AttachMethod::UnderReset == attach_method {
+                    if let Some(dap_probe) = probe.try_as_dap_probe() {
+                        sequence_handle.reset_hardware_assert(dap_probe)?;
+                    }
+                }
+
+                probe.inner_attach()?;
+
+                let interface = probe.try_into_arm_interface().map_err(|(_, err)| err)?;
 
                 let mut interface = interface.initialize(sequence_handle.as_ref())?;
 
@@ -468,6 +468,7 @@ impl Drop for Session {
 /// information read from the chip.
 fn get_target_from_selector(
     target: TargetSelector,
+    attach_method: AttachMethod,
     probe: Probe,
 ) -> Result<(Probe, Target), Error> {
     let mut probe = probe;
@@ -478,6 +479,16 @@ fn get_target_from_selector(
         TargetSelector::Auto => {
             let mut found_chip = None;
 
+            // At this point we do not know what the target is, so we cannot use the chip specific reset sequence.
+            // Thus, we try just using a normal reset for target detection if we want to do so under reset.
+            // This can of course fail, but target detection is a best effort, not a guarantee!
+            if AttachMethod::UnderReset == attach_method {
+                probe.target_reset_assert()?;
+            }
+            probe.inner_attach()?;
+            // Now we can deassert reset in case we asserted it before. This is always okay.
+            probe.target_reset_deassert()?;
+
             if probe.has_arm_interface() {
                 match probe.try_into_arm_interface() {
                     Ok(interface) => {
@@ -486,7 +497,7 @@ fn get_target_from_selector(
                         //let chip_result = try_arm_autodetect(interface);
                         log::debug!("Autodetect: Trying DAP interface...");
 
-                        // TODO
+                        // TODO:
                         let dp = DpAddress::Default;
 
                         let found_arm_chip =
