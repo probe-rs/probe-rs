@@ -22,6 +22,8 @@ use crate::{
 
 use self::swd::{RawSwdIo, SwdSettings, SwdStatistics};
 
+use super::CommandResult;
+
 mod swd;
 
 const SWO_BUFFER_SIZE: u16 = 128;
@@ -688,6 +690,24 @@ impl JTAGAccess for JLink {
 
     fn set_idle_cycles(&mut self, idle_cycles: u8) {
         self.jtag_idle_cycles = idle_cycles;
+    }
+
+    fn supports_batch_access(&self) -> bool {
+        false
+    }
+
+    fn execute(&mut self) -> Result<Vec<CommandResult>, DebugProbeError> {
+        unimplemented!()
+    }
+
+    fn schedule_write_register(
+        &mut self,
+        _address: u32,
+        _data: &[u8],
+        _len: u32,
+        _transform: fn(Vec<u8>) -> Result<u32, DebugProbeError>,
+    ) -> usize {
+        unimplemented!()
     }
 }
 
