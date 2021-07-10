@@ -486,8 +486,6 @@ fn get_target_from_selector(
                 probe.target_reset_assert()?;
             }
             probe.inner_attach()?;
-            // Now we can deassert reset in case we asserted it before. This is always okay.
-            probe.target_reset_deassert()?;
 
             if probe.has_arm_interface() {
                 match probe.try_into_arm_interface() {
@@ -536,6 +534,9 @@ fn get_target_from_selector(
             } else {
                 log::debug!("No RISCV interface was present. Skipping Riscv autodetect.");
             }
+
+            // Now we can deassert reset in case we asserted it before. This is always okay.
+            probe.target_reset_deassert()?;
 
             if let Some(chip) = found_chip {
                 crate::config::get_target_by_chip_info(chip)?
