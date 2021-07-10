@@ -34,7 +34,7 @@ pub enum SendError {
     #[error("Error in the USB HID access")]
     HidApi(#[from] hidapi::HidError),
     #[error("Error in the USB access")]
-    UsbError(#[from] rusb::Error),
+    UsbError(rusb::Error),
     #[error("Not enough data in response from probe")]
     NotEnoughData,
     #[error("Status can only be 0x00 or 0xFF")]
@@ -47,8 +47,19 @@ pub enum SendError {
     UnexpectedAnswer,
     #[error("Failed to write word at data_offset {0}. This is a bug. Please report it.")]
     WriteToOffsetBug(usize),
+    #[error("Timeout in USB communication.")]
+    Timeout,
     #[error("This is a bug. Please report it.")]
     Bug,
+}
+
+impl From<rusb::Error> for SendError {
+    fn from(error: rusb::Error) -> Self {
+        match error {
+            rusb::Error::Timeout => SendError::Timeout,
+            other => SendError::UsbError(other),
+        }
+    }
 }
 
 impl From<CmsisDapError> for DebugProbeError {
@@ -81,7 +92,11 @@ impl CmsisDapDevice {
     /// Read from the probe into `buf`, returning the number of bytes read on success.
     fn read(&self, buf: &mut [u8]) -> Result<usize, SendError> {
         match self {
-            CmsisDapDevice::V1 { handle, .. } => Ok(handle.read_timeout(buf, 100)?),
+            CmsisDapDevice::V1 { handle, .. } => match handle.read_timeout(buf, 100)? {
+                // Timeout is not indicated by error, but by returning 0 read bytes
+                0 => Err(SendError::Timeout),
+                n => Ok(n),
+            },
             CmsisDapDevice::V2 { handle, in_ep, .. } => {
                 let timeout = Duration::from_millis(100);
                 Ok(handle.read_bulk(*in_ep, buf, timeout)?)
@@ -239,15 +254,20 @@ pub(crate) fn send_command<Req: Request, Res: Response>(
     }
 
     // Send buffer to the device.
-    device.write(&buffer[..size])?;
+    let _ = device.write(&buffer[..size])?;
     trace_buffer("Transmit buffer", &buffer[..size]);
 
-    // Read back resonse.
-    device.read(&mut buffer)?;
-    trace_buffer("Receive buffer", &buffer[..]);
+    // Read back response.
+    let bytes_read = device.read(&mut buffer)?;
+    let response_data = &buffer[..bytes_read];
+    trace_buffer("Receive buffer", response_data);
 
-    if buffer[0] == *Req::CATEGORY {
-        Res::from_bytes(&buffer, 1)
+    if response_data.is_empty() {
+        return Err(SendError::NotEnoughData);
+    }
+
+    if response_data[0] == *Req::CATEGORY {
+        Res::from_bytes(response_data, 1)
     } else {
         Err(SendError::InvalidDataFor(*Req::CATEGORY))
     }
