@@ -1564,7 +1564,9 @@ impl ArmProbe for StLinkMemoryInterface<'_> {
         &mut self,
     ) -> Result<&mut crate::architecture::arm::ArmCommunicationInterface<Initialized>, ProbeRsError>
     {
-        todo!()
+        Err(ProbeRsError::Probe(DebugProbeError::NotImplemented(
+            "ST-Links do not support raw SWD access.",
+        )))
     }
 }
 
