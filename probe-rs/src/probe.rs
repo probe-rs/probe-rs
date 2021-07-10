@@ -110,8 +110,8 @@ pub enum DebugProbeError {
     NotImplemented(&'static str),
     #[error("Error in previous batched command")]
     BatchError(BatchCommand),
-    #[error("Command not supported by probe")]
-    CommandNotSupportedByProbe,
+    #[error("Command not supported by probe: {0}")]
+    CommandNotSupportedByProbe(&'static str),
     #[error("Unable to set hardware breakpoint, all available breakpoint units are in use.")]
     BreakpointUnitsExceeded,
     #[error(transparent)]

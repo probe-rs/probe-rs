@@ -592,7 +592,9 @@ impl<'probe> CoreInterface for M4<'probe> {
             Ok(reg.num_code())
         } else {
             log::warn!("This chip uses FPBU revision {}, which is not yet supported. HW breakpoints are not available.", reg.rev());
-            Err(Error::Probe(DebugProbeError::CommandNotSupportedByProbe))
+            Err(Error::Probe(DebugProbeError::CommandNotSupportedByProbe(
+                "get_available_breakpoint_units",
+            )))
         }
     }
 

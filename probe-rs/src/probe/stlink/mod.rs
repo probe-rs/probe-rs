@@ -338,7 +338,7 @@ impl StLink<StLinkUsbDevice> {
             Ok(0xFFFF_FFFF)
         } else {
             // This is not supported for ST-Links, unfortunately.
-            Err(DebugProbeError::CommandNotSupportedByProbe.into())
+            Err(DebugProbeError::CommandNotSupportedByProbe("swj_pins").into())
         }
     }
 }
@@ -535,7 +535,9 @@ impl<D: StLinkUsb> StLink<D> {
         frequency_khz: u32,
     ) -> Result<(), DebugProbeError> {
         if self.hw_version != 3 {
-            return Err(DebugProbeError::CommandNotSupportedByProbe);
+            return Err(DebugProbeError::CommandNotSupportedByProbe(
+                "set_communication_frequency",
+            ));
         }
 
         let cmd_proto = match protocol {
@@ -556,7 +558,9 @@ impl<D: StLinkUsb> StLink<D> {
         protocol: WireProtocol,
     ) -> Result<(Vec<u32>, u32), DebugProbeError> {
         if self.hw_version != 3 {
-            return Err(DebugProbeError::CommandNotSupportedByProbe);
+            return Err(DebugProbeError::CommandNotSupportedByProbe(
+                "get_communication_frequencies",
+            ));
         }
 
         let cmd_proto = match protocol {
@@ -615,7 +619,7 @@ impl<D: StLinkUsb> StLink<D> {
     fn open_ap(&mut self, apsel: u8) -> Result<(), DebugProbeError> {
         // Ensure this command is actually supported
         if self.hw_version < 3 && self.jtag_version < Self::MIN_JTAG_VERSION_MULTI_AP {
-            return Err(DebugProbeError::CommandNotSupportedByProbe);
+            return Err(DebugProbeError::CommandNotSupportedByProbe("open_ap"));
         }
 
         let mut buf = [0; 2];
@@ -635,7 +639,7 @@ impl<D: StLinkUsb> StLink<D> {
     fn _close_ap(&mut self, apsel: u8) -> Result<(), DebugProbeError> {
         // Ensure this command is actually supported
         if self.hw_version < 3 && self.jtag_version < Self::MIN_JTAG_VERSION_MULTI_AP {
-            return Err(DebugProbeError::CommandNotSupportedByProbe);
+            return Err(DebugProbeError::CommandNotSupportedByProbe("close_ap"));
         }
 
         let mut buf = [0; 2];
@@ -1172,7 +1176,7 @@ impl UninitializedArmProbe for UninitializedStLink {
 impl SwdSequence for UninitializedStLink {
     fn swj_sequence(&mut self, _bit_len: u8, _bits: u64) -> Result<(), ProbeRsError> {
         // This is not supported for ST-Links, unfortunately.
-        Err(DebugProbeError::CommandNotSupportedByProbe.into())
+        Err(DebugProbeError::CommandNotSupportedByProbe("swj_sequence").into())
     }
 
     fn swj_pins(
@@ -1344,7 +1348,7 @@ impl<'probe> ArmProbeInterface for StlinkArmDebug {
 impl SwdSequence for StlinkArmDebug {
     fn swj_sequence(&mut self, _bit_len: u8, _bits: u64) -> Result<(), ProbeRsError> {
         // This is not supported for ST-Links, unfortunately.
-        Err(DebugProbeError::CommandNotSupportedByProbe.into())
+        Err(DebugProbeError::CommandNotSupportedByProbe("swj_seqeunce").into())
     }
 
     fn swj_pins(

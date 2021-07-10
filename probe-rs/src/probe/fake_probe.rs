@@ -113,7 +113,7 @@ impl DebugProbe for FakeProbe {
 
     /// Resets the target device.
     fn target_reset(&mut self) -> Result<(), DebugProbeError> {
-        Err(DebugProbeError::CommandNotSupportedByProbe)
+        Err(DebugProbeError::CommandNotSupportedByProbe("target_reset"))
     }
 
     fn target_reset_assert(&mut self) -> Result<(), DebugProbeError> {
@@ -142,7 +142,7 @@ impl DebugProbe for FakeProbe {
 
 impl RawDapAccess for FakeProbe {
     fn select_dp(&mut self, _dp: DpAddress) -> Result<(), DebugProbeError> {
-        Err(DebugProbeError::CommandNotSupportedByProbe)
+        Err(DebugProbeError::CommandNotSupportedByProbe("select_dp"))
     }
 
     /// Reads the DAP register on the specified port and address
@@ -150,7 +150,9 @@ impl RawDapAccess for FakeProbe {
         if let Some(handler) = &self.dap_register_read_handler {
             handler(port, addr)
         } else {
-            Err(DebugProbeError::CommandNotSupportedByProbe)
+            Err(DebugProbeError::CommandNotSupportedByProbe(
+                "raw_read_register",
+            ))
         }
     }
 
@@ -164,7 +166,9 @@ impl RawDapAccess for FakeProbe {
         if let Some(handler) = &self.dap_register_write_handler {
             handler(port, addr, value)
         } else {
-            Err(DebugProbeError::CommandNotSupportedByProbe)
+            Err(DebugProbeError::CommandNotSupportedByProbe(
+                "raw_write_register",
+            ))
         }
     }
 
