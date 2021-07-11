@@ -114,16 +114,12 @@ pub trait ArmDebugSequence: Send + Sync {
             let mut ctrl = Ctrl(0);
             ctrl.set_cdbgpwrupreq(true);
             ctrl.set_csyspwrupreq(true);
-
             interface.write_dp_register(dp, ctrl)?;
 
             let start = Instant::now();
-
             let mut timeout = true;
-
             while start.elapsed() < Duration::from_micros(100_0000) {
                 let ctrl = interface.read_dp_register::<Ctrl>(dp)?;
-
                 if ctrl.csyspwrupack() && ctrl.cdbgpwrupack() {
                     timeout = false;
                     break;
@@ -140,21 +136,16 @@ pub trait ArmDebugSequence: Send + Sync {
 
             // Init AP Transfer Mode, Transaction Counter, and Lane Mask (Normal Transfer Mode, Include all Byte Lanes)
             let mut ctrl = Ctrl(0);
-
             ctrl.set_cdbgpwrupreq(true);
             ctrl.set_csyspwrupreq(true);
-
             ctrl.set_mask_lane(0b1111);
-
             interface.write_dp_register(dp, ctrl)?;
 
             let mut abort = Abort(0);
-
             abort.set_orunerrclr(true);
             abort.set_wderrclr(true);
             abort.set_stkerrclr(true);
             abort.set_stkcmpclr(true);
-
             interface.write_dp_register(dp, abort)?;
         }
 

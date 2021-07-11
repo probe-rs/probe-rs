@@ -460,8 +460,20 @@ impl<'interface> ArmCommunicationInterface<Initialized> {
             let sequence = self.state.sequence.clone();
 
             self.state.dps.insert(dp, DpState::new());
-            self.init_dp(dp)?;
-            sequence.debug_port_start(self, dp).unwrap();
+            // self.init_dp(dp)?;
+            sequence.debug_port_start(self, dp)?;
+
+            /* determine the number and type of available APs */
+            log::trace!("Searching valid APs");
+
+            for ap in valid_access_ports(self, dp) {
+                let ap_state = ApInformation::read_from_target(self, ap)?;
+                log::debug!("AP {:x?}: {:?}", ap, ap_state);
+
+                // note(unwrap): we have inserted the state above, it must exist.
+                let state = self.state.dps.get_mut(&dp).unwrap();
+                state.ap_information.push(ap_state);
+            }
         }
 
         Ok(())
