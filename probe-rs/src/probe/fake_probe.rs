@@ -1,4 +1,4 @@
-use std::fmt::Debug;
+use std::{fmt::Debug, sync::Arc};
 
 use crate::{
     architecture::arm::{
@@ -212,17 +212,25 @@ impl<'interface> FakeArmInterface<Uninitialized> {
         }
     }
 
-    fn into_initialized(self) -> Result<FakeArmInterface<Initialized>, (Self, DebugProbeError)> {
-        Ok(FakeArmInterface::<Initialized>::from_uninitialized(self))
+    fn into_initialized(
+        self,
+        sequence: Arc<dyn ArmDebugSequence>,
+    ) -> Result<FakeArmInterface<Initialized>, (Self, DebugProbeError)> {
+        Ok(FakeArmInterface::<Initialized>::from_uninitialized(
+            self, sequence,
+        ))
     }
 }
 
 impl FakeArmInterface<Initialized> {
-    fn from_uninitialized(interface: FakeArmInterface<Uninitialized>) -> Self {
+    fn from_uninitialized(
+        interface: FakeArmInterface<Uninitialized>,
+        sequence: Arc<dyn ArmDebugSequence>,
+    ) -> Self {
         let memory_ap = MockMemoryAp::with_pattern();
         FakeArmInterface::<Initialized> {
             probe: interface.probe,
-            state: Initialized::new(false),
+            state: Initialized::new(sequence, false),
             memory_ap,
         }
     }
@@ -251,12 +259,12 @@ impl UninitializedArmProbe for FakeArmInterface<Uninitialized> {
 
     fn initialize(
         self: Box<Self>,
-        _sequence: &dyn ArmDebugSequence,
+        sequence: Arc<dyn ArmDebugSequence>,
     ) -> Result<Box<dyn ArmProbeInterface>, Error> {
         // TODO: Do we need this?
         // sequence.debug_port_setup(&mut self.probe)?;
 
-        let interface = self.into_initialized().map_err(|(_s, err)| err)?;
+        let interface = self.into_initialized(sequence).map_err(|(_s, err)| err)?;
 
         Ok(Box::new(interface))
     }

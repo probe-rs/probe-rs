@@ -8,9 +8,9 @@ use std::{
 use crate::{core::CoreRegister, DebugProbeError, Memory};
 
 use super::{
-    communication_interface::{DapProbe, SwdSequence},
+    communication_interface::{DapProbe, Initialized, SwdSequence},
     dp::{Abort, Ctrl, DpAccess, Select, DPIDR},
-    DpAddress, Pins, PortType, Register,
+    ArmCommunicationInterface, DpAddress, Pins, PortType, Register,
 };
 
 pub struct DefaultArmSequence;
@@ -97,18 +97,16 @@ pub trait ArmDebugSequence: Send + Sync {
     ///
     /// [ARM SVD Debug Description]: http://www.keil.com/pack/doc/cmsis/Pack/html/debug_description.html#debugPortStart
     #[doc(alias = "DebugPortStart")]
-    fn debug_port_start(&self, memory: &mut Memory, dp: DpAddress) -> Result<(), crate::Error> {
-        let interface = memory.get_arm_interface()?;
-
-        interface
-            .write_dp_register(dp, Select(0))
-            .map_err(DebugProbeError::from)?;
+    fn debug_port_start(
+        &self,
+        interface: &mut ArmCommunicationInterface<Initialized>,
+        dp: DpAddress,
+    ) -> Result<(), crate::DebugProbeError> {
+        interface.write_dp_register(dp, Select(0))?;
 
         //let powered_down = interface.read_dp_register::<Select>::()
 
-        let ctrl = interface
-            .read_dp_register::<Ctrl>(dp)
-            .map_err(DebugProbeError::from)?;
+        let ctrl = interface.read_dp_register::<Ctrl>(dp)?;
 
         let powered_down = !(ctrl.csyspwrupack() && ctrl.cdbgpwrupack());
 
@@ -117,18 +115,14 @@ pub trait ArmDebugSequence: Send + Sync {
             ctrl.set_cdbgpwrupreq(true);
             ctrl.set_csyspwrupreq(true);
 
-            interface
-                .write_dp_register(dp, ctrl)
-                .map_err(DebugProbeError::from)?;
+            interface.write_dp_register(dp, ctrl)?;
 
             let start = Instant::now();
 
             let mut timeout = true;
 
             while start.elapsed() < Duration::from_micros(100_0000) {
-                let ctrl = interface
-                    .read_dp_register::<Ctrl>(dp)
-                    .map_err(DebugProbeError::from)?;
+                let ctrl = interface.read_dp_register::<Ctrl>(dp)?;
 
                 if ctrl.csyspwrupack() && ctrl.cdbgpwrupack() {
                     timeout = false;
@@ -137,7 +131,7 @@ pub trait ArmDebugSequence: Send + Sync {
             }
 
             if timeout {
-                return Err(crate::Error::Probe(DebugProbeError::Timeout));
+                return Err(DebugProbeError::Timeout);
             }
 
             // TODO: Handle JTAG Specific part
@@ -152,9 +146,7 @@ pub trait ArmDebugSequence: Send + Sync {
 
             ctrl.set_mask_lane(0b1111);
 
-            interface
-                .write_dp_register(dp, ctrl)
-                .map_err(DebugProbeError::from)?;
+            interface.write_dp_register(dp, ctrl)?;
 
             let mut abort = Abort(0);
 
@@ -163,9 +155,7 @@ pub trait ArmDebugSequence: Send + Sync {
             abort.set_stkerrclr(true);
             abort.set_stkcmpclr(true);
 
-            interface
-                .write_dp_register(dp, abort)
-                .map_err(DebugProbeError::from)?;
+            interface.write_dp_register(dp, abort)?;
         }
 
         Ok(())

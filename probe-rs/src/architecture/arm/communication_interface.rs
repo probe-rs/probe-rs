@@ -15,7 +15,7 @@ use crate::{
 use anyhow::anyhow;
 use jep106::JEP106Code;
 
-use std::{collections::HashMap, fmt::Debug, time::Duration};
+use std::{collections::HashMap, fmt::Debug, sync::Arc, time::Duration};
 
 #[derive(Debug, thiserror::Error, Clone, PartialEq)]
 pub enum DapError {
@@ -44,7 +44,7 @@ pub trait Register: Clone + From<u32> + Into<u32> + Sized + Debug {
     const NAME: &'static str;
 }
 
-pub trait ArmProbeInterface: DapAccess + SwdSequence + SwoAccess + Debug + Send {
+pub trait ArmProbeInterface: DapAccess + SwdSequence + SwoAccess + Send {
     fn memory_interface(&mut self, access_port: MemoryAp) -> Result<Memory<'_>, ProbeRsError>;
 
     fn ap_information(&mut self, access_port: GenericAp) -> Result<&ApInformation, ProbeRsError>;
@@ -73,11 +73,11 @@ pub trait SwdSequence {
 pub trait UninitializedArmProbe: SwdSequence {
     fn initialize(
         self: Box<Self>,
-        sequence: &dyn ArmDebugSequence,
+        sequence: Arc<dyn ArmDebugSequence>,
     ) -> Result<Box<dyn ArmProbeInterface>, ProbeRsError>;
 
     fn initialize_unspecified(self: Box<Self>) -> Result<Box<dyn ArmProbeInterface>, ProbeRsError> {
-        self.initialize(&DefaultArmSequence {})
+        self.initialize(Arc::new(DefaultArmSequence {}))
     }
 
     /// Read DPDIR Register
@@ -91,19 +91,20 @@ pub struct Uninitialized {
     pub(crate) use_overrun_detect: bool,
 }
 
-#[derive(Debug)]
 pub struct Initialized {
     current_dp: Option<DpAddress>,
     dps: HashMap<DpAddress, DpState>,
     use_overrun_detect: bool,
+    sequence: Arc<dyn ArmDebugSequence>,
 }
 
 impl Initialized {
-    pub fn new(use_overrun_detect: bool) -> Self {
+    pub fn new(sequence: Arc<dyn ArmDebugSequence>, use_overrun_detect: bool) -> Self {
         Self {
             current_dp: None,
             dps: HashMap::new(),
             use_overrun_detect,
+            sequence,
         }
     }
 }
@@ -296,10 +297,15 @@ impl<'interface> ArmCommunicationInterface<Uninitialized> {
 
     fn into_initialized(
         self,
+        sequence: Arc<dyn ArmDebugSequence>,
     ) -> Result<ArmCommunicationInterface<Initialized>, (Self, DebugProbeError)> {
         let use_overrun_detect = self.state.use_overrun_detect;
 
-        ArmCommunicationInterface::<Initialized>::from_uninitialized(self, use_overrun_detect)
+        ArmCommunicationInterface::<Initialized>::from_uninitialized(
+            self,
+            sequence,
+            use_overrun_detect,
+        )
     }
 }
 
@@ -312,11 +318,11 @@ impl UninitializedArmProbe for ArmCommunicationInterface<Uninitialized> {
 
     fn initialize(
         mut self: Box<Self>,
-        sequence: &dyn ArmDebugSequence,
+        sequence: Arc<dyn ArmDebugSequence>,
     ) -> Result<Box<dyn ArmProbeInterface>, ProbeRsError> {
         sequence.debug_port_setup(&mut self.probe)?;
 
-        let interface = self.into_initialized().map_err(|(_s, err)| err)?;
+        let interface = self.into_initialized(sequence).map_err(|(_s, err)| err)?;
 
         Ok(Box::new(interface))
     }
@@ -333,11 +339,12 @@ impl<S: ArmDebugState> ArmCommunicationInterface<S> {
 impl<'interface> ArmCommunicationInterface<Initialized> {
     fn from_uninitialized(
         interface: ArmCommunicationInterface<Uninitialized>,
+        sequence: Arc<dyn ArmDebugSequence>,
         use_overrun_detect: bool,
     ) -> Result<Self, (ArmCommunicationInterface<Uninitialized>, DebugProbeError)> {
         let initialized_interface = ArmCommunicationInterface {
             probe: interface.probe,
-            state: Initialized::new(use_overrun_detect),
+            state: Initialized::new(sequence, use_overrun_detect),
         };
 
         Ok(initialized_interface)
@@ -377,8 +384,6 @@ impl<'interface> ArmCommunicationInterface<Initialized> {
         // Maybe change this in the future when other versions are released.
 
         log::debug!("Initializing DP {:x?}", dp);
-
-        self.state.dps.insert(dp, DpState::new());
 
         // Read the DP ID.
         let dpidr: DPIDR = self.read_dp_register(dp)?;
@@ -452,7 +457,11 @@ impl<'interface> ArmCommunicationInterface<Initialized> {
         self.state.current_dp = Some(dp);
 
         if !self.state.dps.contains_key(&dp) {
+            let sequence = self.state.sequence.clone();
+
+            self.state.dps.insert(dp, DpState::new());
             self.init_dp(dp)?;
+            sequence.debug_port_start(self, dp).unwrap();
         }
 
         Ok(())

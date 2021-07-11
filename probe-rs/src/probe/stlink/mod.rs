@@ -21,7 +21,7 @@ use crate::{
 use anyhow::anyhow;
 use constants::{commands, JTagFrequencyToDivider, Mode, Status, SwdFrequencyToDelayCount};
 use scroll::{Pread, Pwrite, BE, LE};
-use std::{cmp::Ordering, convert::TryInto, time::Duration};
+use std::{cmp::Ordering, convert::TryInto, sync::Arc, time::Duration};
 use usb_interface::TIMEOUT;
 
 /// Maximum length of 32 bit reads in bytes.
@@ -1165,7 +1165,7 @@ impl UninitializedArmProbe for UninitializedStLink {
 
     fn initialize(
         self: Box<Self>,
-        _sequence: &dyn ArmDebugSequence,
+        _sequence: Arc<dyn ArmDebugSequence>,
     ) -> Result<Box<dyn ArmProbeInterface>, ProbeRsError> {
         let interface = StlinkArmDebug::new(self.probe).map_err(|(_s, e)| ProbeRsError::from(e))?;
 

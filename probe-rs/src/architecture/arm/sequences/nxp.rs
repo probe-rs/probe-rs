@@ -6,8 +6,9 @@ use std::{
 use crate::{
     architecture::arm::{
         ap::{ApAccess, GenericAp, IDR},
+        communication_interface::Initialized,
         dp::{Abort, Ctrl, DpAccess, Select, DPIDR},
-        ApAddress, DapAccess, DpAddress,
+        ApAddress, ArmCommunicationInterface, DapAccess, DpAddress,
     },
     core::CoreRegister,
     CommunicationInterface, DebugProbeError,
@@ -20,22 +21,16 @@ pub struct LPC55S69 {}
 impl ArmDebugSequence for LPC55S69 {
     fn debug_port_start(
         &self,
-        memory: &mut crate::Memory,
+        interface: &mut ArmCommunicationInterface<Initialized>,
         dp: DpAddress,
-    ) -> Result<(), crate::Error> {
-        let interface = memory.get_arm_interface()?;
-
+    ) -> Result<(), DebugProbeError> {
         log::info!("debug_port_start");
 
-        interface
-            .write_dp_register(dp, Select(0))
-            .map_err(DebugProbeError::from)?;
+        interface.write_dp_register(dp, Select(0))?;
 
         //let powered_down = interface.read_dp_register::<Select>::()
 
-        let ctrl = interface
-            .read_dp_register::<Ctrl>(dp)
-            .map_err(DebugProbeError::from)?;
+        let ctrl = interface.read_dp_register::<Ctrl>(dp)?;
 
         let powered_down = !(ctrl.csyspwrupack() && ctrl.cdbgpwrupack());
 
@@ -44,18 +39,14 @@ impl ArmDebugSequence for LPC55S69 {
             ctrl.set_cdbgpwrupreq(true);
             ctrl.set_csyspwrupreq(true);
 
-            interface
-                .write_dp_register(dp, ctrl)
-                .map_err(DebugProbeError::from)?;
+            interface.write_dp_register(dp, ctrl)?;
 
             let start = Instant::now();
 
             let mut timeout = true;
 
             while start.elapsed() < Duration::from_micros(100_0000) {
-                let ctrl = interface
-                    .read_dp_register::<Ctrl>(dp)
-                    .map_err(DebugProbeError::from)?;
+                let ctrl = interface.read_dp_register::<Ctrl>(dp)?;
 
                 if ctrl.csyspwrupack() && ctrl.cdbgpwrupack() {
                     timeout = false;
@@ -79,9 +70,7 @@ impl ArmDebugSequence for LPC55S69 {
 
             ctrl.set_mask_lane(0b1111);
 
-            interface
-                .write_dp_register(dp, ctrl)
-                .map_err(DebugProbeError::from)?;
+            interface.write_dp_register(dp, ctrl)?;
 
             let mut abort = Abort(0);
 
@@ -90,11 +79,9 @@ impl ArmDebugSequence for LPC55S69 {
             abort.set_stkerrclr(true);
             abort.set_stkcmpclr(true);
 
-            interface
-                .write_dp_register(dp, abort)
-                .map_err(DebugProbeError::from)?;
+            interface.write_dp_register(dp, abort)?;
 
-            enable_debug_mailbox(memory)?;
+            enable_debug_mailbox(interface, dp)?;
         }
 
         Ok(())
@@ -217,7 +204,10 @@ fn wait_for_stop_after_reset(memory: &mut crate::Memory) -> Result<(), crate::Er
 
     thread::sleep(Duration::from_millis(10));
 
-    enable_debug_mailbox(memory)?;
+    let dp = memory.get_ap().dp;
+    let interface = memory.get_arm_interface()?;
+
+    enable_debug_mailbox(interface, dp)?;
 
     let mut timeout = true;
 
@@ -252,11 +242,10 @@ fn wait_for_stop_after_reset(memory: &mut crate::Memory) -> Result<(), crate::Er
     Ok(())
 }
 
-pub fn enable_debug_mailbox(memory: &mut crate::Memory) -> Result<(), crate::Error> {
-    let dp = memory.get_ap().dp;
-
-    let interface = memory.get_arm_interface()?;
-
+pub fn enable_debug_mailbox(
+    interface: &mut ArmCommunicationInterface<Initialized>,
+    dp: DpAddress,
+) -> Result<(), DebugProbeError> {
     log::info!("LPC55xx connect srcipt start");
 
     let ap = ApAddress { dp, ap: 2 };
@@ -268,10 +257,7 @@ pub fn enable_debug_mailbox(memory: &mut crate::Memory) -> Result<(), crate::Err
     log::info!("APIDR: {:?}", status);
     log::info!("APIDR: 0x{:08X}", u32::from(status));
 
-    let status: u32 = interface
-        .read_dp_register::<DPIDR>(dp)
-        .map_err(DebugProbeError::from)?
-        .into();
+    let status: u32 = interface.read_dp_register::<DPIDR>(dp)?.into();
 
     log::info!("DPIDR: 0x{:08X}", status);
 

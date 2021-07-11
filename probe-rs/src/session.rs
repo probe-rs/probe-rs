@@ -18,6 +18,7 @@ use crate::{
 };
 use crate::{AttachMethod, Core, CoreType, Error, Probe};
 use anyhow::anyhow;
+use std::sync::Arc;
 use std::time::Duration;
 
 /// The `Session` struct represents an active debug session.
@@ -39,14 +40,12 @@ use std::time::Duration;
 /// Please see the [Session::core()] method for more usage guidelines.
 ///
 
-#[derive(Debug)]
 pub struct Session {
     target: Target,
     interface: ArchitectureInterface,
     cores: Vec<(SpecificCoreState, CoreState)>,
 }
 
-#[derive(Debug)]
 enum ArchitectureInterface {
     Arm(Box<dyn ArmProbeInterface + 'static>),
     Riscv(Box<RiscvCommunicationInterface>),
@@ -151,7 +150,7 @@ impl Session {
 
                 let interface = probe.try_into_arm_interface().map_err(|(_, err)| err)?;
 
-                let mut interface = interface.initialize(sequence_handle.as_ref())?;
+                let mut interface = interface.initialize(sequence_handle.clone())?;
 
                 {
                     let mut memory_interface = interface.memory_interface(default_memory_ap)?;
@@ -497,7 +496,8 @@ fn get_target_from_selector(
             if probe.has_arm_interface() {
                 match probe.try_into_arm_interface() {
                     Ok(interface) => {
-                        let mut interface = interface.initialize(&DefaultArmSequence {})?;
+                        let mut interface =
+                            interface.initialize(Arc::new(DefaultArmSequence {}))?;
 
                         //let chip_result = try_arm_autodetect(interface);
                         log::debug!("Autodetect: Trying DAP interface...");

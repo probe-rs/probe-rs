@@ -16,7 +16,7 @@
             },
             "program": "${cargo:program}",
             "args": [
-                "--dut-definitions=../probe-rs-testboards/"
+                "--dut-definitions=../dut-definitions/"
             ]
         },
         {
