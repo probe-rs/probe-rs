@@ -1,6 +1,7 @@
 pub mod nxp;
 
 use std::{
+    sync::Arc,
     thread,
     time::{Duration, Instant},
 };
@@ -13,7 +14,13 @@ use super::{
     ArmCommunicationInterface, DpAddress, Pins, PortType, Register,
 };
 
-pub struct DefaultArmSequence;
+pub struct DefaultArmSequence(());
+
+impl DefaultArmSequence {
+    pub fn new() -> Arc<dyn ArmDebugSequence> {
+        Arc::new(Self(()))
+    }
+}
 
 impl ArmDebugSequence for DefaultArmSequence {}
 

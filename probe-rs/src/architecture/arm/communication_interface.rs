@@ -77,7 +77,7 @@ pub trait UninitializedArmProbe: SwdSequence {
     ) -> Result<Box<dyn ArmProbeInterface>, ProbeRsError>;
 
     fn initialize_unspecified(self: Box<Self>) -> Result<Box<dyn ArmProbeInterface>, ProbeRsError> {
-        self.initialize(Arc::new(DefaultArmSequence {}))
+        self.initialize(DefaultArmSequence::new())
     }
 
     /// Read DPDIR Register

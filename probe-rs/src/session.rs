@@ -18,7 +18,6 @@ use crate::{
 };
 use crate::{AttachMethod, Core, CoreType, Error, Probe};
 use anyhow::anyhow;
-use std::sync::Arc;
 use std::time::Duration;
 
 /// The `Session` struct represents an active debug session.
@@ -496,8 +495,7 @@ fn get_target_from_selector(
             if probe.has_arm_interface() {
                 match probe.try_into_arm_interface() {
                     Ok(interface) => {
-                        let mut interface =
-                            interface.initialize(Arc::new(DefaultArmSequence {}))?;
+                        let mut interface = interface.initialize(DefaultArmSequence::new())?;
 
                         //let chip_result = try_arm_autodetect(interface);
                         log::debug!("Autodetect: Trying DAP interface...");

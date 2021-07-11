@@ -1,7 +1,4 @@
-use std::{
-    thread,
-    time::{Duration, Instant},
-};
+use std::{sync::Arc, thread, time::{Duration, Instant}};
 
 use crate::{
     architecture::arm::{
@@ -16,7 +13,13 @@ use crate::{
 
 use super::ArmDebugSequence;
 
-pub struct LPC55S69 {}
+pub struct LPC55S69(());
+
+impl LPC55S69 {
+    pub fn new() -> Arc<dyn ArmDebugSequence> {
+        Arc::new(Self(()))
+    }
+}
 
 impl ArmDebugSequence for LPC55S69 {
     fn debug_port_start(
