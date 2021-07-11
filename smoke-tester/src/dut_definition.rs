@@ -39,11 +39,13 @@ impl RawDutDefinition {
     }
 }
 
+#[derive(Clone)]
 pub enum DefinitionSource {
     File(PathBuf),
     Cli,
 }
 
+#[derive(Clone)]
 pub struct DutDefinition {
     pub chip: Target,
 
