@@ -11,6 +11,8 @@ use std::time::Duration;
 
 use log::log_enabled;
 
+use general::info::{Command, PacketSize};
+
 #[derive(Debug, thiserror::Error)]
 pub enum CmsisDapError {
     #[error(transparent)]
@@ -25,8 +27,8 @@ pub enum CmsisDapError {
     SwoTraceStreamError,
     #[error("Requested SWO mode is not available on this probe")]
     SwoModeNotAvailable,
-    #[error("Could not determine a suitable report size for this probe")]
-    NoReportSize,
+    #[error("Could not determine a suitable packet size for this probe")]
+    NoPacketSize,
     #[error("An error with the DAP communication occured")]
     Dap(#[from] DapError),
 }
@@ -155,10 +157,10 @@ impl CmsisDapDevice {
         }
     }
 
-    /// Determine the correct packet size for this device.
+    /// Set the packet size to use for this device.
     ///
-    /// The resulting size is set in the device (either max_packet_size for V2 devices,
-    /// or report_size for V1 devices) and returned.
+    /// Sets either the HID report size for V1 devices,
+    /// or the maximum bulk transfer size for V2 devices.
     pub(super) fn set_packet_size(&mut self, packet_size: usize) {
         log::debug!("Configuring probe to use packet size {}", packet_size);
         match self {
@@ -175,6 +177,36 @@ impl CmsisDapDevice {
                 *max_packet_size = packet_size;
             }
         }
+    }
+
+    /// Attempt to determine the correct packet size for this device.
+    ///
+    /// Tries to request the CMSIS-DAP maximum packet size, allowing several
+    /// failures to accommodate some buggy probes which must receive a full
+    /// packet worth of data before responding, but we don't know how much
+    /// data that is before we get a response.
+    ///
+    /// The device is then configured to use the detected size, which is returned.
+    pub(super) fn find_packet_size(&mut self) -> Result<usize, CmsisDapError> {
+        for repeat in 0..16 {
+            log::debug!("Attempt {} to find packet size", repeat + 1);
+            match send_command(self, Command::PacketSize) {
+                Ok(PacketSize(size)) => {
+                    log::debug!("Success: packet size is {}", size);
+                    self.set_packet_size(size as usize);
+                    return Ok(size as usize);
+                }
+
+                // Ignore timeouts and retry.
+                Err(SendError::Timeout) => (),
+
+                // Raise other errors.
+                Err(e) => return Err(e.into()),
+            }
+        }
+
+        // If we didn't return early, no sizes worked, report an error.
+        Err(CmsisDapError::NoPacketSize)
     }
 
     /// Check if SWO streaming is supported by this device.
