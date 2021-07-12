@@ -66,7 +66,8 @@ fn get_cmsisdap_info(device: &Device<rusb::Context>) -> Option<DebugProbeInfo> {
         let config_descriptor = device.active_config_descriptor().ok()?;
 
         log::trace!(
-            "CMSIS-DAP device with {} interfaces",
+            "{}: CMSIS-DAP device with {} interfaces",
+            prod_str,
             config_descriptor.num_interfaces()
         );
 
@@ -76,12 +77,21 @@ fn get_cmsisdap_info(device: &Device<rusb::Context>) -> Option<DebugProbeInfo> {
             for descriptor in interface.descriptors() {
                 // Check if this is a HID interface
                 if descriptor.class_code() != LIBUSB_CLASS_HID {
+                    log::trace!("Interface {} is not HID, skipping", interface.number());
                     continue;
                 }
 
-                let interface_desc = handle
-                    .read_interface_string(language, &descriptor, timeout)
-                    .ok()?;
+                let interface_desc =
+                    match handle.read_interface_string(language, &descriptor, timeout) {
+                        Ok(desc) => desc,
+                        Err(_) => {
+                            log::trace!(
+                                "Could not read string for interface {}, skipping",
+                                interface.number()
+                            );
+                            continue;
+                        }
+                    };
 
                 log::trace!("  Interface {}: {}", interface.number(), interface_desc);
 
