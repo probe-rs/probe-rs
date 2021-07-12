@@ -36,6 +36,6 @@ chrono = "0.4"
 crossterm = "<= 0.20.1"
 goblin = "0.4.2"
 tui = { version = "0.15.0", default-features = false, features = ["crossterm"] }
-anyhow = "1.0.41"
+anyhow = "1.0.42"
 textwrap = "0.14.0"
 defmt-decoder = { version = "0.2.2", features = ["unstable"] }
