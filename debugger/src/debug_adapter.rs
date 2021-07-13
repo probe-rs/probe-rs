@@ -105,9 +105,7 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
     }
 
     pub(crate) fn pause(&mut self, core_data: &mut CoreData, request: &Request) -> bool {
-        // let args: PauseArguments = get_arguments(&request)?;
-
-        match core_data.target_core.halt(Duration::from_millis(100)) {
+        match halt_core(&mut core_data.target_core) {
             Ok(cpu_info) => {
                 let event_body = Some(StoppedEventBody {
                     reason: "pause".to_owned(),
@@ -130,9 +128,7 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
 
                 true
             }
-            Err(error) => {
-                self.send_response::<()>(&request, Err(DebuggerError::Other(anyhow!("{}", error))))
-            }
+            Err(error) => self.send_response::<()>(&request, Err(error)),
         }
 
         //TODO: This is from original probe_rs_cli 'halt' function ... disasm code at memory location
@@ -963,7 +959,6 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
     }
 
     pub(crate) fn r#continue(&mut self, core_data: &mut CoreData, request: &Request) -> bool {
-        // let args: ContinueArguments = get_arguments(&request)?;
         match core_data.target_core.run() {
             Ok(_) => {
                 self.last_known_status = core_data
@@ -1175,25 +1170,7 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
                             match protocol_message.type_.as_str() {
                                 "request" => {
                                     match serde_json::from_slice::<Request>(&message_content) {
-                                        Ok(request) => {
-                                            //This is the SUCCESS request for new requests from the client
-                                            match self.console_log_level {
-                                                ConsoleLog::Error => {}
-                                                ConsoleLog::Info => {
-                                                    self.log_to_console(format!(
-                                                        "\nReceived DAP Request sequence #{} : {}",
-                                                        request.seq, request.command
-                                                    ));
-                                                }
-                                                ConsoleLog::Debug => {
-                                                    self.log_to_console(format!(
-                                                        "\nReceived DAP Request: {:#?}",
-                                                        request
-                                                    ));
-                                                }
-                                            }
-                                            request
-                                        }
+                                        Ok(request) => request,
                                         Err(error) => {
                                             let request = Request {
                                                 seq: self.seq,
@@ -1390,20 +1367,7 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
             };
             self.send_data(&encoded_resp);
             if !resp.success {
-                self.log_to_console(&resp.message.unwrap());
-            } else {
-                match self.console_log_level {
-                    ConsoleLog::Error => {}
-                    ConsoleLog::Info => {
-                        self.log_to_console(format!(
-                            "   Sent DAP Response sequence #{} : {}",
-                            resp.seq, resp.command
-                        ));
-                    }
-                    ConsoleLog::Debug => {
-                        self.log_to_console(format!("\nSent DAP Response: {:#?}", resp));
-                    }
-                }
+                self.log_to_console(format!("ERROR: {}", &resp.message.unwrap()));
             }
         } else {
             //DebugAdapterType::CommandLine
@@ -1469,10 +1433,13 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
                 match self.console_log_level {
                     ConsoleLog::Error => {}
                     ConsoleLog::Info => {
-                        self.log_to_console(format!("\nTriggered DAP Event: {}", new_event.event));
+                        self.log_to_console(format!(
+                            "INFO: Triggered DAP Event: {}",
+                            new_event.event
+                        ));
                     }
                     ConsoleLog::Debug => {
-                        self.log_to_console(format!("\nTriggered DAP Event: {:#?}", new_event));
+                        self.log_to_console(format!("INFO: Triggered DAP Event: {:#?}", new_event));
                     }
                 }
             }
@@ -1498,18 +1465,7 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
                         self.last_known_status.short_long_status().1.to_owned()
                     );
                 }
-                other => match self.console_log_level {
-                    ConsoleLog::Error => {}
-                    ConsoleLog::Info => {
-                        self.log_to_console(format!("Triggered Event: {}", other));
-                    }
-                    ConsoleLog::Debug => {
-                        self.log_to_console(format!(
-                            "Triggered Event: {:#?}",
-                            serde_json::to_value(event_body).unwrap_or_default()
-                        ));
-                    }
-                },
+                _ => {}
             }
         }
         true
@@ -1542,6 +1498,17 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
 }
 
 // SECTION: Some helper functions
+
+/// Provides halt functionality that is re-used elsewhere, in context of multiple DAP Requests
+pub(crate) fn halt_core(
+    target_core: &mut probe_rs::Core,
+) -> Result<probe_rs::CoreInformation, DebuggerError> {
+    match target_core.halt(Duration::from_millis(100)) {
+        Ok(cpu_info) => Ok(cpu_info),
+        Err(error) => Err(DebuggerError::Other(anyhow!("{}", error))),
+    }
+}
+
 pub fn get_arguments<T: DeserializeOwned>(req: &Request) -> Result<T, crate::DebuggerError> {
     let value = req
         .arguments
