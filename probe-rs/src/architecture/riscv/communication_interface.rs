@@ -8,8 +8,11 @@ use super::{
     dtm::{DmiOperation, DmiOperationStatus, Dtm},
     register, Dmcontrol, Dmstatus,
 };
-use crate::DebugProbeError;
 use crate::{architecture::riscv::*, probe::CommandResult};
+use crate::{
+    probe::{CommandResults, DeferredCommandResult},
+    DebugProbeError,
+};
 use crate::{MemoryInterface, Probe};
 
 use crate::{probe::JTAGAccess, CoreRegisterAddress, Error as ProbeRsError};
@@ -590,75 +593,48 @@ impl<'probe> RiscvCommunicationInterface {
         sbcs.set_sbreadondata(true);
         sbcs.set_sbautoincrement(true);
 
-        if self.dtm.supports_batch_access() {
-            self.schedule_write_dm_register(sbcs);
+        self.schedule_write_dm_register(sbcs);
 
-            self.schedule_write_dm_register(Sbaddress0(address));
+        self.schedule_write_dm_register(Sbaddress0(address));
 
-            let data_len = data.len();
+        let data_len = data.len();
 
-            let mut read_indices: Vec<usize> = vec![];
-            for _ in data[..data_len - 1].iter() {
-                let idx = self.schedule_read_large_dtm_register::<V, Sbdata>();
-                read_indices.push(idx);
-            }
+        let mut read_results: Vec<Box<dyn DeferredCommandResult>> = vec![];
+        for _ in data[..data_len - 1].iter() {
+            let idx = self.schedule_read_large_dtm_register::<V, Sbdata>();
+            read_results.push(idx);
+        }
 
-            sbcs.set_sbautoincrement(false);
-            self.schedule_write_dm_register(sbcs);
+        sbcs.set_sbautoincrement(false);
+        self.schedule_write_dm_register(sbcs);
 
-            // Read last value
-            read_indices.push(self.schedule_read_large_dtm_register::<V, Sbdata>());
+        // Read last value
+        read_results.push(self.schedule_read_large_dtm_register::<V, Sbdata>());
 
-            let ok_index = self.schedule_read_dm_register::<Sbcs>();
+        let sbcs_result = self.schedule_read_dm_register::<Sbcs>();
 
-            let result = self.execute();
+        let result = self.execute();
 
-            let result = result?;
-            for (out_index, idx) in read_indices.iter().enumerate() {
-                data[out_index] = match result[*idx] {
-                    CommandResult::U32(data) => V::from_register_value(data),
-                    _ => unimplemented!("This shouldn't happen. Internal error."),
-                };
-            }
-
-            // Check that the read was succesful
-            let sbcs = match result[ok_index] {
-                CommandResult::U32(res) => res,
+        let result = result?;
+        for (out_index, idx) in read_results.iter().enumerate() {
+            data[out_index] = match idx.get(&*result) {
+                CommandResult::U32(data) => V::from_register_value(data),
                 _ => unimplemented!("This shouldn't happen. Internal error."),
             };
+        }
 
-            let sbcs = Sbcs(sbcs);
+        // Check that the read was succesful
+        let sbcs = match sbcs_result.get(&*result) {
+            CommandResult::U32(res) => res,
+            _ => unimplemented!("This shouldn't happen. Internal error."),
+        };
 
-            if sbcs.sberror() != 0 {
-                Err(RiscvError::SystemBusAccess)
-            } else {
-                Ok(())
-            }
+        let sbcs = Sbcs(sbcs);
+
+        if sbcs.sberror() != 0 {
+            Err(RiscvError::SystemBusAccess)
         } else {
-            self.write_dm_register(sbcs)?;
-
-            self.write_dm_register(Sbaddress0(address))?;
-
-            let data_len = data.len();
-
-            for value in data[..data_len - 1].iter_mut() {
-                *value = self.read_large_dtm_register::<V, Sbdata>()?;
-            }
-
-            sbcs.set_sbautoincrement(false);
-            self.write_dm_register(sbcs)?;
-
-            // Read last value
-            data[data.len() - 1] = self.read_large_dtm_register::<V, Sbdata>()?;
-
-            // Check that the read was succesful
-            let sbcs = self.read_dm_register::<Sbcs>()?;
-
-            if sbcs.sberror() != 0 {
-                Err(RiscvError::SystemBusAccess)
-            } else {
-                Ok(())
-            }
+            Ok(())
         }
     }
 
@@ -798,50 +774,31 @@ impl<'probe> RiscvCommunicationInterface {
         sbcs.set_sbaccess(V::WIDTH as u32);
         sbcs.set_sbautoincrement(true);
 
-        if self.dtm.supports_batch_access() {
-            self.schedule_write_dm_register(sbcs);
+        self.schedule_write_dm_register(sbcs);
 
-            self.schedule_write_dm_register(Sbaddress0(address));
+        self.schedule_write_dm_register(Sbaddress0(address));
 
-            for value in data {
-                self.schedule_write_large_dtm_register::<V, Sbdata>(*value);
-            }
+        for value in data {
+            self.schedule_write_large_dtm_register::<V, Sbdata>(*value);
+        }
 
-            // Check that the write was succesful
-            let ok_index = self.schedule_read_dm_register::<Sbcs>();
+        // Check that the write was succesful
+        let ok_index = self.schedule_read_dm_register::<Sbcs>();
 
-            let result = self.execute()?;
+        let result = self.execute()?;
 
-            // Check that the write was succesful
-            let sbcs = match result[ok_index] {
-                CommandResult::U32(res) => res,
-                _ => unimplemented!("This shouldn't have happened. Internal error."),
-            };
+        // Check that the write was succesful
+        let sbcs = match ok_index.get(&*result) {
+            CommandResult::U32(res) => res,
+            _ => unimplemented!("This shouldn't have happened. Internal error."),
+        };
 
-            let sbcs = Sbcs(sbcs);
+        let sbcs = Sbcs(sbcs);
 
-            if sbcs.sberror() != 0 {
-                Err(RiscvError::SystemBusAccess)
-            } else {
-                Ok(())
-            }
+        if sbcs.sberror() != 0 {
+            Err(RiscvError::SystemBusAccess)
         } else {
-            self.write_dm_register(sbcs)?;
-
-            self.write_dm_register(Sbaddress0(address))?;
-
-            for value in data {
-                self.write_large_dtm_register::<V, Sbdata>(*value)?;
-            }
-
-            // Check that the write was succesful
-            let sbcs = self.read_dm_register::<Sbcs>()?;
-
-            if sbcs.sberror() != 0 {
-                Err(RiscvError::SystemBusAccess)
-            } else {
-                Ok(())
-            }
+            Ok(())
         }
     }
 
@@ -1281,7 +1238,7 @@ impl<'probe> RiscvCommunicationInterface {
         Probe::from_attached_probe(self.dtm.probe.into_probe())
     }
 
-    pub(super) fn execute(&mut self) -> Result<Vec<CommandResult>, DebugProbeError> {
+    pub(super) fn execute(&mut self) -> Result<Box<dyn CommandResults>, DebugProbeError> {
         self.dtm.execute()
     }
 
@@ -1301,12 +1258,18 @@ impl<'probe> RiscvCommunicationInterface {
     /// Write to a DM register
     ///
     /// Use the [`write_dm_register`] function if possible.
-    fn schedule_write_dm_register_untyped(&mut self, address: u64, value: u32) -> usize {
+    fn schedule_write_dm_register_untyped(
+        &mut self,
+        address: u64,
+        value: u32,
+    ) -> Box<dyn DeferredCommandResult> {
         self.dtm
             .schedule_dmi_register_access(address, value, DmiOperation::Write)
     }
 
-    pub(super) fn schedule_read_dm_register<R: DebugRegister>(&mut self) -> usize {
+    pub(super) fn schedule_read_dm_register<R: DebugRegister>(
+        &mut self,
+    ) -> Box<dyn DeferredCommandResult> {
         log::debug!("Reading DM register '{}' at {:#010x}", R::NAME, R::ADDRESS);
 
         self.schedule_read_dm_register_untyped(R::ADDRESS as u64)
@@ -1315,7 +1278,10 @@ impl<'probe> RiscvCommunicationInterface {
     /// Read from a DM register
     ///
     /// Use the [`read_dm_register`] function if possible.
-    fn schedule_read_dm_register_untyped(&mut self, address: u64) -> usize {
+    fn schedule_read_dm_register_untyped(
+        &mut self,
+        address: u64,
+    ) -> Box<dyn DeferredCommandResult> {
         // Prepare the read by sending a read request with the register address
         self.dtm
             .schedule_dmi_register_access(address, 0, DmiOperation::Read);
@@ -1325,7 +1291,7 @@ impl<'probe> RiscvCommunicationInterface {
             .schedule_dmi_register_access(0, 0, DmiOperation::NoOp)
     }
 
-    fn schedule_read_large_dtm_register<V, R>(&mut self) -> usize
+    fn schedule_read_large_dtm_register<V, R>(&mut self) -> Box<dyn DeferredCommandResult>
     where
         V: RiscvValue,
         R: LargeRegister,
@@ -1333,7 +1299,10 @@ impl<'probe> RiscvCommunicationInterface {
         V::schedule_read_from_register::<R>(self)
     }
 
-    fn schedule_write_large_dtm_register<V, R>(&mut self, value: V) -> usize
+    fn schedule_write_large_dtm_register<V, R>(
+        &mut self,
+        value: V,
+    ) -> Box<dyn DeferredCommandResult>
     where
         V: RiscvValue,
         R: LargeRegister,
@@ -1405,14 +1374,16 @@ pub(crate) trait RiscvValue: std::fmt::Debug + Copy + Sized {
     where
         R: LargeRegister;
 
-    fn schedule_read_from_register<R>(interface: &mut RiscvCommunicationInterface) -> usize
+    fn schedule_read_from_register<R>(
+        interface: &mut RiscvCommunicationInterface,
+    ) -> Box<dyn DeferredCommandResult>
     where
         R: LargeRegister;
 
     fn schedule_write_to_register<R>(
         interface: &mut RiscvCommunicationInterface,
         value: Self,
-    ) -> usize
+    ) -> Box<dyn DeferredCommandResult>
     where
         R: LargeRegister;
 }
@@ -1441,7 +1412,9 @@ impl RiscvValue for u8 {
         interface.write_dm_register_untyped(R::R0_ADDRESS as u64, value as u32)
     }
 
-    fn schedule_read_from_register<R>(interface: &mut RiscvCommunicationInterface) -> usize
+    fn schedule_read_from_register<R>(
+        interface: &mut RiscvCommunicationInterface,
+    ) -> Box<dyn DeferredCommandResult>
     where
         R: LargeRegister,
     {
@@ -1451,7 +1424,7 @@ impl RiscvValue for u8 {
     fn schedule_write_to_register<R>(
         interface: &mut RiscvCommunicationInterface,
         value: Self,
-    ) -> usize
+    ) -> Box<dyn DeferredCommandResult>
     where
         R: LargeRegister,
     {
@@ -1482,7 +1455,9 @@ impl RiscvValue for u16 {
         interface.write_dm_register_untyped(R::R0_ADDRESS as u64, value as u32)
     }
 
-    fn schedule_read_from_register<R>(interface: &mut RiscvCommunicationInterface) -> usize
+    fn schedule_read_from_register<R>(
+        interface: &mut RiscvCommunicationInterface,
+    ) -> Box<dyn DeferredCommandResult>
     where
         R: LargeRegister,
     {
@@ -1492,7 +1467,7 @@ impl RiscvValue for u16 {
     fn schedule_write_to_register<R>(
         interface: &mut RiscvCommunicationInterface,
         value: Self,
-    ) -> usize
+    ) -> Box<dyn DeferredCommandResult>
     where
         R: LargeRegister,
     {
@@ -1521,7 +1496,9 @@ impl RiscvValue for u32 {
         interface.write_dm_register_untyped(R::R0_ADDRESS as u64, value)
     }
 
-    fn schedule_read_from_register<R>(interface: &mut RiscvCommunicationInterface) -> usize
+    fn schedule_read_from_register<R>(
+        interface: &mut RiscvCommunicationInterface,
+    ) -> Box<dyn DeferredCommandResult>
     where
         R: LargeRegister,
     {
@@ -1530,7 +1507,7 @@ impl RiscvValue for u32 {
     fn schedule_write_to_register<R>(
         interface: &mut RiscvCommunicationInterface,
         value: Self,
-    ) -> usize
+    ) -> Box<dyn DeferredCommandResult>
     where
         R: LargeRegister,
     {
@@ -1572,7 +1549,9 @@ impl RiscvValue for u64 {
         interface.write_dm_register_untyped(R::R0_ADDRESS as u64, lower_bits)
     }
 
-    fn schedule_read_from_register<R>(interface: &mut RiscvCommunicationInterface) -> usize
+    fn schedule_read_from_register<R>(
+        interface: &mut RiscvCommunicationInterface,
+    ) -> Box<dyn DeferredCommandResult>
     where
         R: LargeRegister,
     {
@@ -1583,7 +1562,7 @@ impl RiscvValue for u64 {
     fn schedule_write_to_register<R>(
         interface: &mut RiscvCommunicationInterface,
         value: Self,
-    ) -> usize
+    ) -> Box<dyn DeferredCommandResult>
     where
         R: LargeRegister,
     {
@@ -1634,7 +1613,9 @@ impl RiscvValue for u128 {
         interface.write_dm_register_untyped(R::R0_ADDRESS as u64, bits_0)
     }
 
-    fn schedule_read_from_register<R>(interface: &mut RiscvCommunicationInterface) -> usize
+    fn schedule_read_from_register<R>(
+        interface: &mut RiscvCommunicationInterface,
+    ) -> Box<dyn DeferredCommandResult>
     where
         R: LargeRegister,
     {
@@ -1647,7 +1628,7 @@ impl RiscvValue for u128 {
     fn schedule_write_to_register<R>(
         interface: &mut RiscvCommunicationInterface,
         value: Self,
-    ) -> usize
+    ) -> Box<dyn DeferredCommandResult>
     where
         R: LargeRegister,
     {

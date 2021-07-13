@@ -7,7 +7,7 @@ use bitfield::bitfield;
 
 use super::communication_interface::RiscvError;
 use crate::{
-    probe::{CommandResult, JTAGAccess},
+    probe::{CommandResults, DeferredCommandResult, JTAGAccess},
     DebugProbeError,
 };
 
@@ -79,12 +79,8 @@ impl Dtm {
         Ok(())
     }
 
-    pub fn execute(&mut self) -> Result<Vec<CommandResult>, DebugProbeError> {
+    pub fn execute(&mut self) -> Result<Box<dyn CommandResults>, DebugProbeError> {
         self.probe.execute()
-    }
-
-    pub fn supports_batch_access(&mut self) -> bool {
-        self.probe.supports_batch_access()
     }
 
     pub fn schedule_dmi_register_access(
@@ -92,7 +88,7 @@ impl Dtm {
         address: u64,
         value: u32,
         op: DmiOperation,
-    ) -> usize {
+    ) -> Box<dyn DeferredCommandResult> {
         let register_value: u128 = ((address as u128) << DMI_ADDRESS_BIT_OFFSET)
             | ((value as u128) << DMI_VALUE_BIT_OFFSET)
             | op as u128;

@@ -16,7 +16,7 @@ mod commands;
 
 use self::commands::{JtagCommand, WriteRegisterCommand};
 
-use super::CommandResult;
+use super::{CommandResult, CommandResults, DeferredCommandResult};
 
 #[derive(Debug)]
 struct JtagChainItem {
@@ -582,7 +582,7 @@ impl JTAGAccess for FtdiProbe {
         data: &[u8],
         len: u32,
         transform: fn(Vec<u8>) -> Result<u32, DebugProbeError>,
-    ) -> usize {
+    ) -> Box<dyn DeferredCommandResult> {
         self.queued_commands
             .push(Box::new(WriteRegisterCommand::new(
                 address,
@@ -593,10 +593,12 @@ impl JTAGAccess for FtdiProbe {
             )));
         self.output_transformers.push(Some(transform));
 
-        self.queued_commands.len() - 1
+        Box::new(FtdiDeferredCommandResult::new(
+            self.queued_commands.len() - 1,
+        ))
     }
 
-    fn execute(&mut self) -> Result<Vec<CommandResult>, DebugProbeError> {
+    fn execute(&mut self) -> Result<Box<dyn CommandResults>, DebugProbeError> {
         const CHUNK_SIZE: usize = 40;
 
         let mut index_offset = 0;
@@ -671,11 +673,40 @@ impl JTAGAccess for FtdiProbe {
             index_offset += cmd_chunk.len();
         }
 
-        Ok(results)
+        self.queued_commands = vec![];
+        Ok(Box::new(FtdiCommandResults::new(results)))
     }
+}
 
-    fn supports_batch_access(&self) -> bool {
-        true
+struct FtdiDeferredCommandResult {
+    index: usize,
+}
+
+impl FtdiDeferredCommandResult {
+    fn new(index: usize) -> FtdiDeferredCommandResult {
+        FtdiDeferredCommandResult { index }
+    }
+}
+
+impl DeferredCommandResult for FtdiDeferredCommandResult {
+    fn get(&self, command_results: &dyn CommandResults) -> CommandResult {
+        command_results.get(self.index)
+    }
+}
+
+struct FtdiCommandResults {
+    results: Vec<CommandResult>,
+}
+
+impl FtdiCommandResults {
+    fn new(results: Vec<CommandResult>) -> FtdiCommandResults {
+        FtdiCommandResults { results }
+    }
+}
+
+impl CommandResults for FtdiCommandResults {
+    fn get(&self, index: usize) -> CommandResult {
+        self.results[index].clone()
     }
 }
 
