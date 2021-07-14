@@ -126,10 +126,10 @@ Building requires Rust and Cargo which can be installed [using rustup](https://r
 
 ```console
 # Ubuntu
-> sudo apt install -y libusb-1.0-0-dev libftdi1-dev
+> sudo apt install -y libusb-1.0-0-dev libftdi1-dev libudev-dev
 
 # Fedora
-> sudo dnf install -y libusbx-devel libftdi-devel
+> sudo dnf install -y libusbx-devel libftdi-devel libudev-devel
 ```
 
 On Windows you can use [vcpkg](https://github.com/microsoft/vcpkg#quick-start-windows):

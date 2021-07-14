@@ -29,10 +29,10 @@ jobs:
       - name: Checkout sources
         uses: actions/checkout@v2.3.4
 
-      - name: Install libusb and libftdi (linux)
+      - name: Install libusb, libudev and libftdi (linux)
         run: |
           sudo apt update
-          sudo apt install -y libusb-1.0-0-dev libftdi1-dev
+          sudo apt install -y libusb-1.0-0-dev libftdi1-dev libudev-dev
         # Only install on Ubuntu
         if: (matrix.os == 'ubuntu-latest') || (matrix.os == 'ubuntu-20.04')
 
@@ -94,7 +94,7 @@ jobs:
       - name: Install libusb and libftdi (linux)
         run: |
           sudo apt update
-          sudo apt install -y libusb-1.0-0-dev libftdi1-dev
+          sudo apt install -y libusb-1.0-0-dev libftdi1-dev libudev-dev
         # Only install on Ubuntu
         if: matrix.os == 'ubuntu-latest'
 
@@ -160,7 +160,7 @@ jobs:
       - name: Install libusb
         run: |
           sudo apt update
-          sudo apt install -y libusb-1.0-0-dev libftdi1-dev
+          sudo apt install -y libusb-1.0-0-dev libftdi1-dev libudev-dev
 
       - name: Install stable toolchain
         uses: actions-rs/toolchain@v1.0.7
