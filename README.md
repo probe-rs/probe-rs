@@ -1,3 +1,9 @@
+### User Survey
+
+> We love feedback! Please give us < 5 minutes of your time so we can get to know our users better.
+> 
+> Help us shape knurling by filling out [this short survey](https://forms.office.com/r/aMfHG79N9K).
+
 # `probe-run`
 
 > Runs embedded programs just like native ones
