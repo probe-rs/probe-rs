@@ -3,6 +3,7 @@ use crossterm::{
     event::{self, KeyCode},
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
+    ExecutableCommand,
 };
 use probe_rs_rtt::RttChannel;
 use std::{fmt::write, path::PathBuf, sync::mpsc::RecvTimeoutError};
@@ -487,5 +488,5 @@ impl App {
 
 pub fn clean_up_terminal() {
     let _ = disable_raw_mode();
-    let _ = execute!(std::io::stdout(), LeaveAlternateScreen, DisableMouseCapture);
+    let _ = execute!(std::io::stdout(), LeaveAlternateScreen);
 }
