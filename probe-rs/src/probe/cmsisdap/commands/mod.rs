@@ -4,14 +4,16 @@ pub mod swj;
 pub mod swo;
 pub mod transfer;
 
-use crate::architecture::arm::DapError;
 use crate::DebugProbeError;
+use crate::{
+    architecture::arm::DapError, probe::cmsisdap::commands::general::info::PacketSizeCommand,
+};
 use core::ops::Deref;
 use std::time::Duration;
 
 use log::log_enabled;
 
-use general::info::{Command, PacketSize};
+use general::info::PacketSize;
 
 #[derive(Debug, thiserror::Error)]
 pub enum CmsisDapError {
@@ -53,8 +55,6 @@ pub enum SendError {
     WriteToOffsetBug(usize),
     #[error("Timeout in USB communication.")]
     Timeout,
-    #[error("This is a bug. Please report it.")]
-    Bug,
 }
 
 impl From<rusb::Error> for SendError {
@@ -190,7 +190,7 @@ impl CmsisDapDevice {
     pub(super) fn find_packet_size(&mut self) -> Result<usize, CmsisDapError> {
         for repeat in 0..16 {
             log::debug!("Attempt {} to find packet size", repeat + 1);
-            match send_command(self, Command::PacketSize) {
+            match send_command(self, PacketSizeCommand {}) {
                 Ok(PacketSize(size)) => {
                     log::debug!("Success: packet size is {}", size);
                     self.set_packet_size(size as usize);
@@ -275,19 +275,19 @@ impl Deref for Category {
 pub(crate) trait Request {
     const CATEGORY: Category;
 
+    type Response;
+
     /// Convert the request to bytes, which can be sent to the probe.
     /// Returns the amount of bytes written to the buffer.
     fn to_bytes(&self, buffer: &mut [u8], offset: usize) -> Result<usize, SendError>;
+
+    fn from_bytes(&self, buffer: &[u8], offset: usize) -> Result<Self::Response, SendError>;
 }
 
-pub(crate) trait Response: Sized {
-    fn from_bytes(buffer: &[u8], offset: usize) -> Result<Self, SendError>;
-}
-
-pub(crate) fn send_command<Req: Request, Res: Response>(
+pub(crate) fn send_command<Req: Request>(
     device: &mut CmsisDapDevice,
     request: Req,
-) -> Result<Res, SendError> {
+) -> Result<Req::Response, SendError> {
     // Size the buffer for the maximum packet size.
     // On v1, we always send this full-sized report, while
     // on v2 we can truncate to just the required data.
@@ -326,7 +326,7 @@ pub(crate) fn send_command<Req: Request, Res: Response>(
     }
 
     if response_data[0] == *Req::CATEGORY {
-        Res::from_bytes(response_data, 1)
+        request.from_bytes(response_data, 1)
     } else {
         Err(SendError::InvalidDataFor(*Req::CATEGORY))
     }

@@ -1,4 +1,4 @@
-use super::super::{Category, Request, Response, SendError};
+use super::super::{Category, Request, SendError};
 
 #[derive(Clone, Copy, Debug)]
 pub struct HostStatusRequest {
@@ -26,18 +26,18 @@ impl HostStatusRequest {
 impl Request for HostStatusRequest {
     const CATEGORY: Category = Category(0x01);
 
+    type Response = HostStatusResponse;
+
     fn to_bytes(&self, buffer: &mut [u8], offset: usize) -> Result<usize, SendError> {
         buffer[offset] = self.status_type;
         buffer[offset + 1] = self.status;
         Ok(2)
     }
+
+    fn from_bytes(&self, _buffer: &[u8], _offset: usize) -> Result<Self::Response, SendError> {
+        Ok(HostStatusResponse)
+    }
 }
 
 #[derive(Copy, Clone, Debug)]
 pub struct HostStatusResponse;
-
-impl Response for HostStatusResponse {
-    fn from_bytes(_buffer: &[u8], _offset: usize) -> Result<Self, SendError> {
-        Ok(HostStatusResponse)
-    }
-}

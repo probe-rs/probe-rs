@@ -1,85 +1,132 @@
-use super::super::{Category, Request, Response, SendError};
+use super::super::{Category, Request, SendError};
 
 use scroll::{Pread, LE};
 
-#[allow(unused)]
-#[derive(Copy, Clone, Debug)]
-pub enum Command {
-    VendorID = 0x01,
-    ProductID = 0x02,
-    SerialNumber = 0x03,
-    FirmwareVersion = 0x04,
-    TargetDeviceVendor = 0x05,
-    TargetDeviceName = 0x06,
-    Capabilities = 0xF0,
-    TestDomainTimerParameter = 0xF1,
-    SWOTraceBufferSize = 0xFD,
-    PacketCount = 0xFE,
-    PacketSize = 0xFF,
-}
+#[derive(Clone, Default, Debug)]
+struct VendorCommand {}
 
-impl Request for Command {
+impl Request for VendorCommand {
     const CATEGORY: Category = Category(0x00);
 
+    type Response = VendorID;
+
     fn to_bytes(&self, buffer: &mut [u8], offset: usize) -> Result<usize, SendError> {
-        buffer[offset] = *self as u8;
+        buffer[offset] = 0x01;
         Ok(1)
+    }
+
+    fn from_bytes(&self, buffer: &[u8], offset: usize) -> Result<Self::Response, SendError> {
+        string_from_bytes(buffer, offset, &VendorID)
     }
 }
 
 #[derive(Clone, Default, Debug)]
 pub struct VendorID(pub(crate) String);
 
-impl Response for VendorID {
-    fn from_bytes(buffer: &[u8], offset: usize) -> Result<Self, SendError> {
-        string_from_bytes(buffer, offset, &VendorID)
-    }
-}
+#[derive(Clone, Default, Debug)]
+struct ProductIdCommand {}
 
 #[derive(Clone, Default, Debug)]
 pub struct ProductID(pub(crate) String);
 
-impl Response for ProductID {
-    fn from_bytes(buffer: &[u8], offset: usize) -> Result<Self, SendError> {
+impl Request for ProductIdCommand {
+    const CATEGORY: Category = Category(0x00);
+
+    type Response = ProductID;
+
+    fn to_bytes(&self, buffer: &mut [u8], offset: usize) -> Result<usize, SendError> {
+        buffer[offset] = 0x02;
+        Ok(1)
+    }
+    fn from_bytes(&self, buffer: &[u8], offset: usize) -> Result<Self::Response, SendError> {
         string_from_bytes(buffer, offset, &ProductID)
     }
 }
 
 #[derive(Clone, Default, Debug)]
+struct SerialNumberCommand {}
+
+#[derive(Clone, Default, Debug)]
 pub struct SerialNumber(pub(crate) String);
 
-impl Response for SerialNumber {
-    fn from_bytes(buffer: &[u8], offset: usize) -> Result<Self, SendError> {
+impl Request for SerialNumberCommand {
+    const CATEGORY: Category = Category(0x00);
+
+    type Response = SerialNumber;
+
+    fn to_bytes(&self, buffer: &mut [u8], offset: usize) -> Result<usize, SendError> {
+        buffer[offset] = 0x03;
+        Ok(1)
+    }
+
+    fn from_bytes(&self, buffer: &[u8], offset: usize) -> Result<Self::Response, SendError> {
         string_from_bytes(buffer, offset, &SerialNumber)
     }
 }
 
 #[derive(Clone, Default, Debug)]
+struct FirmwareVersionCommand {}
+
+#[derive(Clone, Default, Debug)]
 pub struct FirmwareVersion(pub(crate) String);
 
-impl Response for FirmwareVersion {
-    fn from_bytes(buffer: &[u8], offset: usize) -> Result<Self, SendError> {
+impl Request for FirmwareVersionCommand {
+    const CATEGORY: Category = Category(0x00);
+
+    type Response = FirmwareVersion;
+
+    fn to_bytes(&self, buffer: &mut [u8], offset: usize) -> Result<usize, SendError> {
+        buffer[offset] = 0x04;
+        Ok(1)
+    }
+
+    fn from_bytes(&self, buffer: &[u8], offset: usize) -> Result<Self::Response, SendError> {
         string_from_bytes(buffer, offset, &FirmwareVersion)
     }
 }
 
 #[derive(Clone, Default, Debug)]
+struct TargetDeviceVendorCommand {}
+
+#[derive(Clone, Default, Debug)]
 pub struct TargetDeviceVendor(pub(crate) String);
 
-impl Response for TargetDeviceVendor {
-    fn from_bytes(buffer: &[u8], offset: usize) -> Result<Self, SendError> {
+impl Request for TargetDeviceVendorCommand {
+    const CATEGORY: Category = Category(0x00);
+
+    type Response = TargetDeviceVendor;
+
+    fn to_bytes(&self, buffer: &mut [u8], offset: usize) -> Result<usize, SendError> {
+        buffer[offset] = 0x05;
+        Ok(1)
+    }
+    fn from_bytes(&self, buffer: &[u8], offset: usize) -> Result<Self::Response, SendError> {
         string_from_bytes(buffer, offset, &TargetDeviceVendor)
     }
 }
 
 #[derive(Clone, Default, Debug)]
+struct TargetDeviceNameCommand {}
+
+#[derive(Clone, Default, Debug)]
 pub struct TargetDeviceName(pub(crate) String);
 
-impl Response for TargetDeviceName {
-    fn from_bytes(buffer: &[u8], offset: usize) -> Result<Self, SendError> {
+impl Request for TargetDeviceNameCommand {
+    const CATEGORY: Category = Category(0x00);
+
+    type Response = TargetDeviceName;
+
+    fn to_bytes(&self, buffer: &mut [u8], offset: usize) -> Result<usize, SendError> {
+        buffer[offset] = 0x06;
+        Ok(1)
+    }
+    fn from_bytes(&self, buffer: &[u8], offset: usize) -> Result<Self::Response, SendError> {
         string_from_bytes(buffer, offset, &TargetDeviceName)
     }
 }
+
+#[derive(Copy, Clone, Debug)]
+pub struct CapabilitiesCommand {}
 
 #[derive(Copy, Clone, Debug)]
 pub struct Capabilities {
@@ -92,8 +139,16 @@ pub struct Capabilities {
     pub(crate) swo_streaming_trace_implemented: bool,
 }
 
-impl Response for Capabilities {
-    fn from_bytes(buffer: &[u8], offset: usize) -> Result<Self, SendError> {
+impl Request for CapabilitiesCommand {
+    const CATEGORY: Category = Category(0x00);
+
+    type Response = Capabilities;
+
+    fn to_bytes(&self, buffer: &mut [u8], offset: usize) -> Result<usize, SendError> {
+        buffer[offset] = 0xF0;
+        Ok(1)
+    }
+    fn from_bytes(&self, buffer: &[u8], offset: usize) -> Result<Self::Response, SendError> {
         // This response can contain two info bytes.
         // In the docs only the first byte is described, so for now we always will only parse that specific byte.
         if buffer[offset] > 0 {
@@ -113,14 +168,23 @@ impl Response for Capabilities {
 }
 
 #[derive(Copy, Clone, Debug)]
+pub struct TestDomainTimeCommand {}
+
+#[derive(Copy, Clone, Debug)]
 pub struct TestDomainTime(pub(crate) u32);
 
-impl Response for TestDomainTime {
-    fn from_bytes(buffer: &[u8], offset: usize) -> Result<Self, SendError> {
+impl Request for TestDomainTimeCommand {
+    const CATEGORY: Category = Category(0x00);
+
+    type Response = TestDomainTime;
+
+    fn to_bytes(&self, buffer: &mut [u8], offset: usize) -> Result<usize, SendError> {
+        buffer[offset] = 0xF1;
+        Ok(1)
+    }
+    fn from_bytes(&self, buffer: &[u8], offset: usize) -> Result<Self::Response, SendError> {
         if buffer[offset] == 0x08 {
-            let res = buffer
-                .pread_with::<u32>(offset + 1, LE)
-                .map_err(|_| SendError::Bug)?;
+            let res = buffer.pread_with::<u32>(offset + 1, LE).unwrap();
             Ok(TestDomainTime(res))
         } else {
             Err(SendError::UnexpectedAnswer)
@@ -129,14 +193,23 @@ impl Response for TestDomainTime {
 }
 
 #[derive(Copy, Clone, Debug)]
+pub struct SWOTraceBufferSizeCommand {}
+
+#[derive(Copy, Clone, Debug)]
 pub struct SWOTraceBufferSize(pub(crate) u32);
 
-impl Response for SWOTraceBufferSize {
-    fn from_bytes(buffer: &[u8], offset: usize) -> Result<Self, SendError> {
+impl Request for SWOTraceBufferSizeCommand {
+    const CATEGORY: Category = Category(0x00);
+
+    type Response = SWOTraceBufferSize;
+
+    fn to_bytes(&self, buffer: &mut [u8], offset: usize) -> Result<usize, SendError> {
+        buffer[offset] = 0xFD;
+        Ok(1)
+    }
+    fn from_bytes(&self, buffer: &[u8], offset: usize) -> Result<Self::Response, SendError> {
         if buffer[offset] == 0x04 {
-            let res = buffer
-                .pread_with::<u32>(offset + 1, LE)
-                .map_err(|_| SendError::Bug)?;
+            let res = buffer.pread_with::<u32>(offset + 1, LE).unwrap();
             Ok(SWOTraceBufferSize(res))
         } else {
             Err(SendError::UnexpectedAnswer)
@@ -145,14 +218,23 @@ impl Response for SWOTraceBufferSize {
 }
 
 #[derive(Copy, Clone, Debug)]
+pub struct PacketCountCommand {}
+
+#[derive(Copy, Clone, Debug)]
 pub struct PacketCount(pub(crate) u8);
 
-impl Response for PacketCount {
-    fn from_bytes(buffer: &[u8], offset: usize) -> Result<Self, SendError> {
+impl Request for PacketCountCommand {
+    const CATEGORY: Category = Category(0x00);
+
+    type Response = PacketCount;
+
+    fn to_bytes(&self, buffer: &mut [u8], offset: usize) -> Result<usize, SendError> {
+        buffer[offset] = 0xFE;
+        Ok(1)
+    }
+    fn from_bytes(&self, buffer: &[u8], offset: usize) -> Result<Self::Response, SendError> {
         if buffer[offset] == 0x01 {
-            let res = buffer
-                .pread_with::<u8>(offset + 1, LE)
-                .map_err(|_| SendError::Bug)?;
+            let res = buffer.pread_with::<u8>(offset + 1, LE).unwrap();
             Ok(PacketCount(res))
         } else {
             Err(SendError::UnexpectedAnswer)
@@ -161,14 +243,23 @@ impl Response for PacketCount {
 }
 
 #[derive(Copy, Clone, Debug)]
+pub struct PacketSizeCommand {}
+
+#[derive(Copy, Clone, Debug)]
 pub struct PacketSize(pub(crate) u16);
 
-impl Response for PacketSize {
-    fn from_bytes(buffer: &[u8], offset: usize) -> Result<Self, SendError> {
+impl Request for PacketSizeCommand {
+    const CATEGORY: Category = Category(0x00);
+
+    type Response = PacketSize;
+
+    fn to_bytes(&self, buffer: &mut [u8], offset: usize) -> Result<usize, SendError> {
+        buffer[offset] = 0xFF;
+        Ok(1)
+    }
+    fn from_bytes(&self, buffer: &[u8], offset: usize) -> Result<Self::Response, SendError> {
         if buffer[offset] == 0x02 {
-            let res = buffer
-                .pread_with::<u16>(offset + 1, LE)
-                .map_err(|_| SendError::Bug)?;
+            let res = buffer.pread_with::<u16>(offset + 1, LE).unwrap();
             Ok(PacketSize(res))
         } else {
             Err(SendError::UnexpectedAnswer)
@@ -190,6 +281,7 @@ fn string_from_bytes<R, F: Fn(String) -> R>(
     let string_start = offset + 1;
     let string_end = string_start + string_len;
 
-    let res = std::str::from_utf8(&buffer[string_start..string_end]).map_err(|_| SendError::Bug)?;
+    let res = std::str::from_utf8(&buffer[string_start..string_end])
+        .expect("Unable to parse received string.");
     Ok(constructor(res.to_owned()))
 }

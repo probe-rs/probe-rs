@@ -9,7 +9,13 @@ use crate::{
         ArmCommunicationInterface, DapError, DpAddress, PortType, RawDapAccess, Register,
         SwoAccess, SwoConfig, SwoMode,
     },
-    probe::{cmsisdap::commands::CmsisDapError, BatchCommand},
+    probe::{
+        cmsisdap::commands::{
+            general::info::{CapabilitiesCommand, PacketCountCommand, SWOTraceBufferSizeCommand},
+            CmsisDapError,
+        },
+        BatchCommand,
+    },
     DebugProbe, DebugProbeError, DebugProbeSelector, Error as ProbeRsError, WireProtocol,
 };
 
@@ -18,7 +24,7 @@ use commands::{
         connect::{ConnectRequest, ConnectResponse},
         disconnect::{DisconnectRequest, DisconnectResponse},
         host_status::{HostStatusRequest, HostStatusResponse},
-        info::{Capabilities, Command, PacketCount, SWOTraceBufferSize},
+        info::{Capabilities, PacketCount, SWOTraceBufferSize},
         reset::{ResetRequest, ResetResponse},
     },
     swd,
@@ -31,7 +37,7 @@ use commands::{
     transfer::{
         configure::{ConfigureRequest, ConfigureResponse},
         Ack, InnerTransferRequest, TransferBlockRequest, TransferBlockResponse, TransferRequest,
-        TransferResponse, RW,
+        RW,
     },
     CmsisDapDevice, SendError, Status,
 };
@@ -91,13 +97,13 @@ impl CmsisDap {
         let packet_size = device.find_packet_size()? as u16;
 
         // Read remaining probe information.
-        let PacketCount(packet_count) = commands::send_command(&mut device, Command::PacketCount)?;
-        let caps: Capabilities = commands::send_command(&mut device, Command::Capabilities)?;
+        let PacketCount(packet_count) = commands::send_command(&mut device, PacketCountCommand {})?;
+        let caps: Capabilities = commands::send_command(&mut device, CapabilitiesCommand {})?;
         debug!("Detected probe capabilities: {:?}", caps);
         let mut swo_buffer_size = None;
         if caps.swo_uart_implemented || caps.swo_manchester_implemented {
             let swo_size: SWOTraceBufferSize =
-                commands::send_command(&mut device, Command::SWOTraceBufferSize)?;
+                commands::send_command(&mut device, SWOTraceBufferSizeCommand {})?;
             swo_buffer_size = Some(swo_size.0 as usize);
             debug!("Probe SWO buffer size: {}", swo_size.0);
         }
@@ -122,19 +128,16 @@ impl CmsisDap {
     ///
     /// The actual clock frequency used by the device might be lower.
     fn set_swj_clock(&mut self, clock_hz: u32) -> Result<(), CmsisDapError> {
-        commands::send_command::<SWJClockRequest, SWJClockResponse>(
-            &mut self.device,
-            SWJClockRequest(clock_hz),
-        )
-        .map_err(CmsisDapError::from)
-        .and_then(|v| match v {
-            SWJClockResponse(Status::DAPOk) => Ok(()),
-            SWJClockResponse(Status::DAPError) => Err(CmsisDapError::ErrorResponse),
-        })
+        commands::send_command::<SWJClockRequest>(&mut self.device, SWJClockRequest(clock_hz))
+            .map_err(CmsisDapError::from)
+            .and_then(|v| match v {
+                SWJClockResponse(Status::DAPOk) => Ok(()),
+                SWJClockResponse(Status::DAPError) => Err(CmsisDapError::ErrorResponse),
+            })
     }
 
     fn transfer_configure(&mut self, request: ConfigureRequest) -> Result<(), CmsisDapError> {
-        commands::send_command::<ConfigureRequest, ConfigureResponse>(&mut self.device, request)
+        commands::send_command::<ConfigureRequest>(&mut self.device, request)
             .map_err(CmsisDapError::from)
             .and_then(|v| match v {
                 ConfigureResponse(Status::DAPOk) => Ok(()),
@@ -146,15 +149,14 @@ impl CmsisDap {
         &mut self,
         request: swd::configure::ConfigureRequest,
     ) -> Result<(), CmsisDapError> {
-        commands::send_command::<swd::configure::ConfigureRequest, swd::configure::ConfigureResponse>(
-            &mut self.device,
-            request
-        )
-        .map_err(CmsisDapError::from)
-        .and_then(|v| match v {
-            swd::configure::ConfigureResponse(Status::DAPOk) => Ok(()),
-            swd::configure::ConfigureResponse(Status::DAPError) => Err(CmsisDapError::ErrorResponse),
-        })
+        commands::send_command::<swd::configure::ConfigureRequest>(&mut self.device, request)
+            .map_err(CmsisDapError::from)
+            .and_then(|v| match v {
+                swd::configure::ConfigureResponse(Status::DAPOk) => Ok(()),
+                swd::configure::ConfigureResponse(Status::DAPError) => {
+                    Err(CmsisDapError::ErrorResponse)
+                }
+            })
     }
 
     fn send_swj_sequences(&mut self, request: SequenceRequest) -> Result<(), CmsisDapError> {
@@ -163,7 +165,7 @@ impl CmsisDap {
         12 38 FF FF FF FF FF FF FF -> 12 00 // SWJ Sequence */
         //let sequence_1 = SequenceRequest::new(&[0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF]);
 
-        commands::send_command::<SequenceRequest, SequenceResponse>(&mut self.device, request)
+        commands::send_command::<SequenceRequest>(&mut self.device, request)
             .map_err(CmsisDapError::from)
             .and_then(|v| match v {
                 SequenceResponse(Status::DAPOk) => Ok(()),
@@ -199,7 +201,7 @@ impl CmsisDap {
                 })
                 .collect();
 
-            let response = commands::send_command::<TransferRequest, TransferResponse>(
+            let response = commands::send_command::<TransferRequest>(
                 &mut self.device,
                 TransferRequest::new(&transfers),
             )

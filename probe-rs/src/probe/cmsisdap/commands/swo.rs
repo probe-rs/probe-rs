@@ -1,4 +1,6 @@
-use super::{Category, Request, Response, SendError, Status};
+use scroll::{Pread, LE};
+
+use super::{Category, Request, SendError, Status};
 use std::convert::TryInto;
 
 #[repr(u8)]
@@ -13,20 +15,20 @@ pub enum TransportRequest {
 impl Request for TransportRequest {
     const CATEGORY: Category = Category(0x17);
 
+    type Response = TransportResponse;
+
     fn to_bytes(&self, buffer: &mut [u8], offset: usize) -> Result<usize, SendError> {
         buffer[offset] = *self as u8;
         Ok(1)
+    }
+
+    fn from_bytes(&self, buffer: &[u8], offset: usize) -> Result<Self::Response, SendError> {
+        Ok(TransportResponse(Status::from_byte(buffer[offset])?))
     }
 }
 
 #[derive(Debug)]
 pub struct TransportResponse(pub(crate) Status);
-
-impl Response for TransportResponse {
-    fn from_bytes(buffer: &[u8], offset: usize) -> Result<Self, SendError> {
-        Ok(TransportResponse(Status::from_byte(buffer[offset])?))
-    }
-}
 
 #[repr(u8)]
 #[allow(unused)]
@@ -40,26 +42,28 @@ pub enum ModeRequest {
 impl Request for ModeRequest {
     const CATEGORY: Category = Category(0x18);
 
+    type Response = ModeResponse;
+
     fn to_bytes(&self, buffer: &mut [u8], offset: usize) -> Result<usize, SendError> {
         buffer[offset] = *self as u8;
         Ok(1)
+    }
+
+    fn from_bytes(&self, buffer: &[u8], offset: usize) -> Result<Self::Response, SendError> {
+        Ok(ModeResponse(Status::from_byte(buffer[offset])?))
     }
 }
 
 #[derive(Debug)]
 pub struct ModeResponse(pub(crate) Status);
 
-impl Response for ModeResponse {
-    fn from_bytes(buffer: &[u8], offset: usize) -> Result<Self, SendError> {
-        Ok(ModeResponse(Status::from_byte(buffer[offset])?))
-    }
-}
-
 #[derive(Copy, Clone, Debug)]
 pub struct BaudrateRequest(pub(crate) u32);
 
 impl Request for BaudrateRequest {
     const CATEGORY: Category = Category(0x19);
+
+    type Response = BaudrateResponse;
 
     fn to_bytes(&self, buffer: &mut [u8], offset: usize) -> Result<usize, SendError> {
         assert!(
@@ -69,26 +73,20 @@ impl Request for BaudrateRequest {
         buffer[offset..offset + 4].copy_from_slice(&self.0.to_le_bytes());
         Ok(4)
     }
-}
 
-#[derive(Copy, Clone, Debug)]
-pub struct BaudrateResponse(pub(crate) u32);
-
-impl Response for BaudrateResponse {
-    fn from_bytes(buffer: &[u8], offset: usize) -> Result<Self, SendError> {
+    fn from_bytes(&self, buffer: &[u8], offset: usize) -> Result<Self::Response, SendError> {
         if buffer.len() - offset < 4 {
             return Err(SendError::NotEnoughData);
         }
 
-        let baud = u32::from_le_bytes(
-            buffer[offset..offset + 4]
-                .try_into()
-                .expect("This is a bug. Please report it."),
-        );
+        let baud: u32 = buffer.pread_with(offset, LE).unwrap();
 
         Ok(BaudrateResponse(baud))
     }
 }
+
+#[derive(Copy, Clone, Debug)]
+pub struct BaudrateResponse(pub(crate) u32);
 
 #[repr(u8)]
 #[derive(Copy, Clone, Debug)]
@@ -100,20 +98,20 @@ pub enum ControlRequest {
 impl Request for ControlRequest {
     const CATEGORY: Category = Category(0x1a);
 
+    type Response = ControlResponse;
+
     fn to_bytes(&self, buffer: &mut [u8], offset: usize) -> Result<usize, SendError> {
         buffer[offset] = *self as u8;
         Ok(1)
+    }
+
+    fn from_bytes(&self, buffer: &[u8], offset: usize) -> Result<Self::Response, SendError> {
+        Ok(ControlResponse(Status::from_byte(buffer[offset])?))
     }
 }
 
 #[derive(Debug)]
 pub struct ControlResponse(pub(crate) Status);
-
-impl Response for ControlResponse {
-    fn from_bytes(buffer: &[u8], offset: usize) -> Result<Self, SendError> {
-        Ok(ControlResponse(Status::from_byte(buffer[offset])?))
-    }
-}
 
 #[derive(Debug)]
 pub struct StatusRequest;
@@ -121,8 +119,20 @@ pub struct StatusRequest;
 impl Request for StatusRequest {
     const CATEGORY: Category = Category(0x1b);
 
+    type Response = StatusResponse;
+
     fn to_bytes(&self, _buffer: &mut [u8], _offset: usize) -> Result<usize, SendError> {
         Ok(0)
+    }
+
+    fn from_bytes(&self, buffer: &[u8], offset: usize) -> Result<Self::Response, SendError> {
+        let status = TraceStatus::from(buffer[offset]);
+        let count = u32::from_le_bytes(
+            buffer[offset + 1..offset + 5]
+                .try_into()
+                .expect("Failed to read status reponse"),
+        );
+        Ok(StatusResponse { status, count })
     }
 }
 
@@ -149,18 +159,6 @@ pub struct StatusResponse {
     pub(crate) count: u32,
 }
 
-impl Response for StatusResponse {
-    fn from_bytes(buffer: &[u8], offset: usize) -> Result<Self, SendError> {
-        let status = TraceStatus::from(buffer[offset]);
-        let count = u32::from_le_bytes(
-            buffer[offset + 1..offset + 5]
-                .try_into()
-                .map_err(|_| SendError::Bug)?,
-        );
-        Ok(StatusResponse { status, count })
-    }
-}
-
 #[derive(Debug)]
 pub struct ExtendedStatusRequest {
     pub(crate) request_status: bool,
@@ -171,6 +169,8 @@ pub struct ExtendedStatusRequest {
 impl Request for ExtendedStatusRequest {
     const CATEGORY: Category = Category(0x1e);
 
+    type Response = ExtendedStatusResponse;
+
     fn to_bytes(&self, buffer: &mut [u8], offset: usize) -> Result<usize, SendError> {
         let control = (self.request_status as u8)
             | ((self.request_count as u8) << 1)
@@ -178,18 +178,8 @@ impl Request for ExtendedStatusRequest {
         buffer[offset] = control;
         Ok(1)
     }
-}
 
-#[derive(Debug)]
-pub struct ExtendedStatusResponse {
-    pub(crate) status: TraceStatus,
-    pub(crate) count: u32,
-    pub(crate) index: u32,
-    pub(crate) timestamp: u32,
-}
-
-impl Response for ExtendedStatusResponse {
-    fn from_bytes(buffer: &[u8], offset: usize) -> Result<Self, SendError> {
+    fn from_bytes(&self, buffer: &[u8], offset: usize) -> Result<Self::Response, SendError> {
         if buffer.len() - offset < 13 {
             return Err(SendError::NotEnoughData);
         }
@@ -220,12 +210,22 @@ impl Response for ExtendedStatusResponse {
 }
 
 #[derive(Debug)]
+pub struct ExtendedStatusResponse {
+    pub(crate) status: TraceStatus,
+    pub(crate) count: u32,
+    pub(crate) index: u32,
+    pub(crate) timestamp: u32,
+}
+
+#[derive(Debug)]
 pub struct DataRequest {
     pub(crate) max_count: u16,
 }
 
 impl Request for DataRequest {
     const CATEGORY: Category = Category(0x1c);
+
+    type Response = DataResponse;
 
     fn to_bytes(&self, buffer: &mut [u8], offset: usize) -> Result<usize, SendError> {
         assert!(
@@ -235,16 +235,8 @@ impl Request for DataRequest {
         buffer[offset..offset + 2].copy_from_slice(&self.max_count.to_le_bytes());
         Ok(2)
     }
-}
 
-#[derive(Debug)]
-pub struct DataResponse {
-    pub(crate) status: TraceStatus,
-    pub(crate) data: Vec<u8>,
-}
-
-impl Response for DataResponse {
-    fn from_bytes(buffer: &[u8], offset: usize) -> Result<Self, SendError> {
+    fn from_bytes(&self, buffer: &[u8], offset: usize) -> Result<Self::Response, SendError> {
         let status = TraceStatus::from(buffer[offset]);
         let count = u16::from_le_bytes(
             buffer[offset + 1..offset + 3]
@@ -262,4 +254,10 @@ impl Response for DataResponse {
             data: buffer[start..end].to_vec(),
         })
     }
+}
+
+#[derive(Debug)]
+pub struct DataResponse {
+    pub(crate) status: TraceStatus,
+    pub(crate) data: Vec<u8>,
 }
