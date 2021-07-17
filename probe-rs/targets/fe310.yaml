@@ -38,8 +38,8 @@ flash_algorithms:
     data_section_offset: 568
     flash_properties:
       address_range:
-        start: 536870912
-        end: 570425344
+        start: 0x20000000
+        end: 0x40000000
       page_size: 256
       erased_byte_value: 255
       program_page_timeout: 1000
