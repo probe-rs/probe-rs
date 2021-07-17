@@ -7,7 +7,6 @@ use crate::architecture::arm::{
 };
 use crate::{CommunicationInterface, CoreRegister, CoreRegisterAddress, DebugProbeError, Error};
 use scroll::{Pread, Pwrite, LE};
-use std::any::TypeId;
 use std::convert::TryInto;
 use std::{
     ops::Range,
