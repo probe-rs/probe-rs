@@ -279,9 +279,9 @@ pub(crate) trait Request {
 
     /// Convert the request to bytes, which can be sent to the probe.
     /// Returns the amount of bytes written to the buffer.
-    fn to_bytes(&self, buffer: &mut [u8], offset: usize) -> Result<usize, SendError>;
+    fn to_bytes(&self, buffer: &mut [u8]) -> Result<usize, SendError>;
 
-    fn from_bytes(&self, buffer: &[u8], offset: usize) -> Result<Self::Response, SendError>;
+    fn from_bytes(&self, buffer: &[u8]) -> Result<Self::Response, SendError>;
 }
 
 pub(crate) fn send_command<Req: Request>(
@@ -302,7 +302,7 @@ pub(crate) fn send_command<Req: Request>(
 
     // Leave byte 0 as the HID report, and write the command and request to the buffer.
     buffer[1] = *Req::CATEGORY;
-    let mut size = request.to_bytes(&mut buffer, 2)? + 2;
+    let mut size = request.to_bytes(&mut buffer[2..])? + 2;
 
     // For HID devices we must write a full report every time,
     // so set the transfer size to the report size, plus one
@@ -326,7 +326,7 @@ pub(crate) fn send_command<Req: Request>(
     }
 
     if response_data[0] == *Req::CATEGORY {
-        request.from_bytes(response_data, 1)
+        request.from_bytes(&response_data[1..])
     } else {
         Err(SendError::InvalidDataFor(*Req::CATEGORY))
     }

@@ -58,8 +58,8 @@ fn creating_inner_transfer_request() {
 }
 
 impl InnerTransferRequest {
-    fn to_bytes(&self, buffer: &mut [u8], offset: usize) -> Result<usize, SendError> {
-        buffer[offset] = (self.APnDP as u8)
+    fn to_bytes(&self, buffer: &mut [u8]) -> Result<usize, SendError> {
+        buffer[0] = (self.APnDP as u8)
             | (self.RnW as u8) << 1
             | (if self.A2 { 1 } else { 0 }) << 2
             | (if self.A3 { 1 } else { 0 }) << 3
@@ -68,7 +68,7 @@ impl InnerTransferRequest {
             | (if self.td_timestamp_request { 1 } else { 0 }) << 7;
         if let Some(data) = self.data {
             let data = data.to_le_bytes();
-            buffer[offset + 1..offset + 5].copy_from_slice(&data[..]);
+            buffer[1..5].copy_from_slice(&data[..]);
             Ok(5)
         } else {
             Ok(1)
@@ -108,40 +108,40 @@ impl Request for TransferRequest {
 
     type Response = TransferResponse;
 
-    fn to_bytes(&self, buffer: &mut [u8], offset: usize) -> Result<usize, SendError> {
+    fn to_bytes(&self, buffer: &mut [u8]) -> Result<usize, SendError> {
         let mut size = 0;
 
-        buffer[offset] = self.dap_index;
+        buffer[0] = self.dap_index;
         size += 1;
 
-        buffer[offset + 1] = self.transfer_count;
+        buffer[1] = self.transfer_count;
         size += 1;
 
         for transfer in self.transfers.iter() {
-            size += transfer.to_bytes(buffer, offset + size)?;
+            size += transfer.to_bytes(&mut buffer[size..])?;
         }
 
         Ok(size)
     }
 
-    fn from_bytes(&self, buffer: &[u8], offset: usize) -> Result<Self::Response, SendError> {
-        let transfer_count = buffer[offset];
+    fn from_bytes(&self, buffer: &[u8]) -> Result<Self::Response, SendError> {
+        let transfer_count = buffer[0];
 
         let transfer_response = InnerTransferResponse {
-            ack: match buffer[offset + 1] & 0x7 {
+            ack: match buffer[1] & 0x7 {
                 1 => Ack::Ok,
                 2 => Ack::Wait,
                 4 => Ack::Fault,
                 7 => Ack::NoAck,
                 _ => Ack::NoAck,
             },
-            protocol_error: buffer[offset + 1] & 0x8 > 1,
-            value_missmatch: buffer[offset + 1] & 0x10 > 1,
+            protocol_error: buffer[1] & 0x8 > 1,
+            value_missmatch: buffer[1] & 0x10 > 1,
         };
 
-        let transfer_data = if buffer.len() >= offset + 2 + 4 {
+        let transfer_data = if buffer.len() >= 2 + 4 {
             buffer
-                .pread_with(offset + 2, LE)
+                .pread_with(2, LE)
                 .expect("Failed to read resposne for single transfer")
         } else {
             // TODO: Proper return for error case
@@ -210,19 +210,19 @@ impl Request for TransferBlockRequest {
 
     type Response = TransferBlockResponse;
 
-    fn to_bytes(&self, buffer: &mut [u8], offset: usize) -> Result<usize, SendError> {
+    fn to_bytes(&self, buffer: &mut [u8]) -> Result<usize, SendError> {
         let mut size = 0;
-        buffer[offset] = self.dap_index;
+        buffer[0] = self.dap_index;
         size += 1;
 
         buffer
-            .pwrite_with(self.transfer_count, offset + 1, LE)
+            .pwrite_with(self.transfer_count, 1, LE)
             .expect("Failed to build TransferBlockRequest");
         size += 2;
 
-        size += self.transfer_request.to_bytes(buffer, offset + 3)?;
+        size += self.transfer_request.to_bytes(buffer, 3)?;
 
-        let mut data_offset = offset + 4;
+        let mut data_offset = 4;
 
         for word in &self.transfer_data {
             buffer
@@ -235,17 +235,17 @@ impl Request for TransferBlockRequest {
         Ok(size)
     }
 
-    fn from_bytes(&self, buffer: &[u8], offset: usize) -> Result<Self::Response, SendError> {
+    fn from_bytes(&self, buffer: &[u8]) -> Result<Self::Response, SendError> {
         let transfer_count = buffer
-            .pread_with(offset, LE)
+            .pread_with(0, LE)
             .expect("Failed to read transfer count");
         let transfer_response = buffer
-            .pread_with(offset + 2, LE)
+            .pread_with(2, LE)
             .expect("Failed to read transfer response");
 
         let mut data = Vec::with_capacity(transfer_count as usize);
 
-        let num_transfers = (buffer.len() - offset - 3) / 4;
+        let num_transfers = (buffer.len() - 3) / 4;
 
         log::debug!(
             "Expected {} responses, got {} responses.",
@@ -256,7 +256,7 @@ impl Request for TransferBlockRequest {
         for data_offset in 0..num_transfers {
             data.push(
                 buffer
-                    .pread_with(offset + 3 + data_offset * 4, LE)
+                    .pread_with(3 + data_offset * 4, LE)
                     .expect("Failed to read transfer response data"),
             );
         }

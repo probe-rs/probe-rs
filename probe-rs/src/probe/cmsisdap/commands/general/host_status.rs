@@ -28,13 +28,13 @@ impl Request for HostStatusRequest {
 
     type Response = HostStatusResponse;
 
-    fn to_bytes(&self, buffer: &mut [u8], offset: usize) -> Result<usize, SendError> {
-        buffer[offset] = self.status_type;
-        buffer[offset + 1] = self.status;
+    fn to_bytes(&self, buffer: &mut [u8]) -> Result<usize, SendError> {
+        buffer[0] = self.status_type;
+        buffer[1] = self.status;
         Ok(2)
     }
 
-    fn from_bytes(&self, _buffer: &[u8], _offset: usize) -> Result<Self::Response, SendError> {
+    fn from_bytes(&self, _buffer: &[u8]) -> Result<Self::Response, SendError> {
         Ok(HostStatusResponse)
     }
 }

@@ -17,13 +17,13 @@ impl Request for TransportRequest {
 
     type Response = TransportResponse;
 
-    fn to_bytes(&self, buffer: &mut [u8], offset: usize) -> Result<usize, SendError> {
-        buffer[offset] = *self as u8;
+    fn to_bytes(&self, buffer: &mut [u8]) -> Result<usize, SendError> {
+        buffer[0] = *self as u8;
         Ok(1)
     }
 
-    fn from_bytes(&self, buffer: &[u8], offset: usize) -> Result<Self::Response, SendError> {
-        Ok(TransportResponse(Status::from_byte(buffer[offset])?))
+    fn from_bytes(&self, buffer: &[u8]) -> Result<Self::Response, SendError> {
+        Ok(TransportResponse(Status::from_byte(buffer[0])?))
     }
 }
 
@@ -44,13 +44,13 @@ impl Request for ModeRequest {
 
     type Response = ModeResponse;
 
-    fn to_bytes(&self, buffer: &mut [u8], offset: usize) -> Result<usize, SendError> {
-        buffer[offset] = *self as u8;
+    fn to_bytes(&self, buffer: &mut [u8]) -> Result<usize, SendError> {
+        buffer[0] = *self as u8;
         Ok(1)
     }
 
-    fn from_bytes(&self, buffer: &[u8], offset: usize) -> Result<Self::Response, SendError> {
-        Ok(ModeResponse(Status::from_byte(buffer[offset])?))
+    fn from_bytes(&self, buffer: &[u8]) -> Result<Self::Response, SendError> {
+        Ok(ModeResponse(Status::from_byte(buffer[0])?))
     }
 }
 
@@ -65,21 +65,18 @@ impl Request for BaudrateRequest {
 
     type Response = BaudrateResponse;
 
-    fn to_bytes(&self, buffer: &mut [u8], offset: usize) -> Result<usize, SendError> {
-        assert!(
-            buffer.len() >= offset + 4,
-            "This is a bug. Please report it."
-        );
-        buffer[offset..offset + 4].copy_from_slice(&self.0.to_le_bytes());
+    fn to_bytes(&self, buffer: &mut [u8]) -> Result<usize, SendError> {
+        assert!(buffer.len() >= 4, "This is a bug. Please report it.");
+        buffer[0..4].copy_from_slice(&self.0.to_le_bytes());
         Ok(4)
     }
 
-    fn from_bytes(&self, buffer: &[u8], offset: usize) -> Result<Self::Response, SendError> {
-        if buffer.len() - offset < 4 {
+    fn from_bytes(&self, buffer: &[u8]) -> Result<Self::Response, SendError> {
+        if buffer.len() < 4 {
             return Err(SendError::NotEnoughData);
         }
 
-        let baud: u32 = buffer.pread_with(offset, LE).unwrap();
+        let baud: u32 = buffer.pread_with(0, LE).unwrap();
 
         Ok(BaudrateResponse(baud))
     }
@@ -100,13 +97,13 @@ impl Request for ControlRequest {
 
     type Response = ControlResponse;
 
-    fn to_bytes(&self, buffer: &mut [u8], offset: usize) -> Result<usize, SendError> {
-        buffer[offset] = *self as u8;
+    fn to_bytes(&self, buffer: &mut [u8]) -> Result<usize, SendError> {
+        buffer[0] = *self as u8;
         Ok(1)
     }
 
-    fn from_bytes(&self, buffer: &[u8], offset: usize) -> Result<Self::Response, SendError> {
-        Ok(ControlResponse(Status::from_byte(buffer[offset])?))
+    fn from_bytes(&self, buffer: &[u8]) -> Result<Self::Response, SendError> {
+        Ok(ControlResponse(Status::from_byte(buffer[0])?))
     }
 }
 
@@ -121,14 +118,14 @@ impl Request for StatusRequest {
 
     type Response = StatusResponse;
 
-    fn to_bytes(&self, _buffer: &mut [u8], _offset: usize) -> Result<usize, SendError> {
+    fn to_bytes(&self, _buffer: &mut [u8]) -> Result<usize, SendError> {
         Ok(0)
     }
 
-    fn from_bytes(&self, buffer: &[u8], offset: usize) -> Result<Self::Response, SendError> {
-        let status = TraceStatus::from(buffer[offset]);
+    fn from_bytes(&self, buffer: &[u8]) -> Result<Self::Response, SendError> {
+        let status = TraceStatus::from(buffer[0]);
         let count = u32::from_le_bytes(
-            buffer[offset + 1..offset + 5]
+            buffer[1..5]
                 .try_into()
                 .expect("Failed to read status reponse"),
         );
@@ -171,32 +168,32 @@ impl Request for ExtendedStatusRequest {
 
     type Response = ExtendedStatusResponse;
 
-    fn to_bytes(&self, buffer: &mut [u8], offset: usize) -> Result<usize, SendError> {
+    fn to_bytes(&self, buffer: &mut [u8]) -> Result<usize, SendError> {
         let control = (self.request_status as u8)
             | ((self.request_count as u8) << 1)
             | ((self.request_index_timestamp as u8) << 2);
-        buffer[offset] = control;
+        buffer[0] = control;
         Ok(1)
     }
 
-    fn from_bytes(&self, buffer: &[u8], offset: usize) -> Result<Self::Response, SendError> {
-        if buffer.len() - offset < 13 {
+    fn from_bytes(&self, buffer: &[u8]) -> Result<Self::Response, SendError> {
+        if buffer.len() < 13 {
             return Err(SendError::NotEnoughData);
         }
 
-        let status = TraceStatus::from(buffer[offset]);
+        let status = TraceStatus::from(buffer[0]);
         let count = u32::from_le_bytes(
-            buffer[offset + 1..offset + 5]
+            buffer[1..5]
                 .try_into()
                 .expect("This is a bug. Please report it."),
         );
         let index = u32::from_le_bytes(
-            buffer[offset + 5..offset + 9]
+            buffer[5..9]
                 .try_into()
                 .expect("This is a bug. Please report it."),
         );
         let timestamp = u32::from_le_bytes(
-            buffer[offset + 9..offset + 13]
+            buffer[9..13]
                 .try_into()
                 .expect("This is a bug. Please report it."),
         );
@@ -227,23 +224,20 @@ impl Request for DataRequest {
 
     type Response = DataResponse;
 
-    fn to_bytes(&self, buffer: &mut [u8], offset: usize) -> Result<usize, SendError> {
-        assert!(
-            buffer.len() >= offset + 2,
-            "This is a bug. Please report it."
-        );
-        buffer[offset..offset + 2].copy_from_slice(&self.max_count.to_le_bytes());
+    fn to_bytes(&self, buffer: &mut [u8]) -> Result<usize, SendError> {
+        assert!(buffer.len() >= 2, "This is a bug. Please report it.");
+        buffer[0..2].copy_from_slice(&self.max_count.to_le_bytes());
         Ok(2)
     }
 
-    fn from_bytes(&self, buffer: &[u8], offset: usize) -> Result<Self::Response, SendError> {
-        let status = TraceStatus::from(buffer[offset]);
+    fn from_bytes(&self, buffer: &[u8]) -> Result<Self::Response, SendError> {
+        let status = TraceStatus::from(buffer[0]);
         let count = u16::from_le_bytes(
-            buffer[offset + 1..offset + 3]
+            buffer[1..3]
                 .try_into()
                 .expect("This is a bug. Please report it."),
         );
-        let start = offset + 3;
+        let start = 3;
         let end = start + count as usize;
         if end > buffer.len() {
             return Err(SendError::NotEnoughData);

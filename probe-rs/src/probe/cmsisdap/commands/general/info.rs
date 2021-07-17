@@ -10,13 +10,13 @@ impl Request for VendorCommand {
 
     type Response = VendorID;
 
-    fn to_bytes(&self, buffer: &mut [u8], offset: usize) -> Result<usize, SendError> {
-        buffer[offset] = 0x01;
+    fn to_bytes(&self, buffer: &mut [u8]) -> Result<usize, SendError> {
+        buffer[0] = 0x01;
         Ok(1)
     }
 
-    fn from_bytes(&self, buffer: &[u8], offset: usize) -> Result<Self::Response, SendError> {
-        string_from_bytes(buffer, offset, &VendorID)
+    fn from_bytes(&self, buffer: &[u8]) -> Result<Self::Response, SendError> {
+        string_from_bytes(buffer, 0, &VendorID)
     }
 }
 
@@ -34,12 +34,12 @@ impl Request for ProductIdCommand {
 
     type Response = ProductID;
 
-    fn to_bytes(&self, buffer: &mut [u8], offset: usize) -> Result<usize, SendError> {
-        buffer[offset] = 0x02;
+    fn to_bytes(&self, buffer: &mut [u8]) -> Result<usize, SendError> {
+        buffer[0] = 0x02;
         Ok(1)
     }
-    fn from_bytes(&self, buffer: &[u8], offset: usize) -> Result<Self::Response, SendError> {
-        string_from_bytes(buffer, offset, &ProductID)
+    fn from_bytes(&self, buffer: &[u8]) -> Result<Self::Response, SendError> {
+        string_from_bytes(buffer, 0, &ProductID)
     }
 }
 
@@ -54,13 +54,13 @@ impl Request for SerialNumberCommand {
 
     type Response = SerialNumber;
 
-    fn to_bytes(&self, buffer: &mut [u8], offset: usize) -> Result<usize, SendError> {
-        buffer[offset] = 0x03;
+    fn to_bytes(&self, buffer: &mut [u8]) -> Result<usize, SendError> {
+        buffer[0] = 0x03;
         Ok(1)
     }
 
-    fn from_bytes(&self, buffer: &[u8], offset: usize) -> Result<Self::Response, SendError> {
-        string_from_bytes(buffer, offset, &SerialNumber)
+    fn from_bytes(&self, buffer: &[u8]) -> Result<Self::Response, SendError> {
+        string_from_bytes(buffer, 0, &SerialNumber)
     }
 }
 
@@ -75,13 +75,13 @@ impl Request for FirmwareVersionCommand {
 
     type Response = FirmwareVersion;
 
-    fn to_bytes(&self, buffer: &mut [u8], offset: usize) -> Result<usize, SendError> {
-        buffer[offset] = 0x04;
+    fn to_bytes(&self, buffer: &mut [u8]) -> Result<usize, SendError> {
+        buffer[0] = 0x04;
         Ok(1)
     }
 
-    fn from_bytes(&self, buffer: &[u8], offset: usize) -> Result<Self::Response, SendError> {
-        string_from_bytes(buffer, offset, &FirmwareVersion)
+    fn from_bytes(&self, buffer: &[u8]) -> Result<Self::Response, SendError> {
+        string_from_bytes(buffer, 0, &FirmwareVersion)
     }
 }
 
@@ -96,12 +96,12 @@ impl Request for TargetDeviceVendorCommand {
 
     type Response = TargetDeviceVendor;
 
-    fn to_bytes(&self, buffer: &mut [u8], offset: usize) -> Result<usize, SendError> {
-        buffer[offset] = 0x05;
+    fn to_bytes(&self, buffer: &mut [u8]) -> Result<usize, SendError> {
+        buffer[0] = 0x05;
         Ok(1)
     }
-    fn from_bytes(&self, buffer: &[u8], offset: usize) -> Result<Self::Response, SendError> {
-        string_from_bytes(buffer, offset, &TargetDeviceVendor)
+    fn from_bytes(&self, buffer: &[u8]) -> Result<Self::Response, SendError> {
+        string_from_bytes(buffer, 0, &TargetDeviceVendor)
     }
 }
 
@@ -116,12 +116,12 @@ impl Request for TargetDeviceNameCommand {
 
     type Response = TargetDeviceName;
 
-    fn to_bytes(&self, buffer: &mut [u8], offset: usize) -> Result<usize, SendError> {
-        buffer[offset] = 0x06;
+    fn to_bytes(&self, buffer: &mut [u8]) -> Result<usize, SendError> {
+        buffer[0] = 0x06;
         Ok(1)
     }
-    fn from_bytes(&self, buffer: &[u8], offset: usize) -> Result<Self::Response, SendError> {
-        string_from_bytes(buffer, offset, &TargetDeviceName)
+    fn from_bytes(&self, buffer: &[u8]) -> Result<Self::Response, SendError> {
+        string_from_bytes(buffer, 0, &TargetDeviceName)
     }
 }
 
@@ -144,22 +144,22 @@ impl Request for CapabilitiesCommand {
 
     type Response = Capabilities;
 
-    fn to_bytes(&self, buffer: &mut [u8], offset: usize) -> Result<usize, SendError> {
-        buffer[offset] = 0xF0;
+    fn to_bytes(&self, buffer: &mut [u8]) -> Result<usize, SendError> {
+        buffer[0] = 0xF0;
         Ok(1)
     }
-    fn from_bytes(&self, buffer: &[u8], offset: usize) -> Result<Self::Response, SendError> {
+    fn from_bytes(&self, buffer: &[u8]) -> Result<Self::Response, SendError> {
         // This response can contain two info bytes.
         // In the docs only the first byte is described, so for now we always will only parse that specific byte.
-        if buffer[offset] > 0 {
+        if buffer[0] > 0 {
             Ok(Capabilities {
-                swd_implemented: buffer[offset + 1] & 0x01 > 0,
-                jtag_implemented: buffer[offset + 1] & 0x02 > 0,
-                swo_uart_implemented: buffer[offset + 1] & 0x04 > 0,
-                swo_manchester_implemented: buffer[offset + 1] & 0x08 > 0,
-                atomic_commands_implemented: buffer[offset + 1] & 0x10 > 0,
-                test_domain_timer_implemented: buffer[offset + 1] & 0x20 > 0,
-                swo_streaming_trace_implemented: buffer[offset + 1] & 0x40 > 0,
+                swd_implemented: buffer[1] & 0x01 > 0,
+                jtag_implemented: buffer[1] & 0x02 > 0,
+                swo_uart_implemented: buffer[1] & 0x04 > 0,
+                swo_manchester_implemented: buffer[1] & 0x08 > 0,
+                atomic_commands_implemented: buffer[1] & 0x10 > 0,
+                test_domain_timer_implemented: buffer[1] & 0x20 > 0,
+                swo_streaming_trace_implemented: buffer[1] & 0x40 > 0,
             })
         } else {
             Err(SendError::UnexpectedAnswer)
@@ -178,13 +178,13 @@ impl Request for TestDomainTimeCommand {
 
     type Response = TestDomainTime;
 
-    fn to_bytes(&self, buffer: &mut [u8], offset: usize) -> Result<usize, SendError> {
-        buffer[offset] = 0xF1;
+    fn to_bytes(&self, buffer: &mut [u8]) -> Result<usize, SendError> {
+        buffer[0] = 0xF1;
         Ok(1)
     }
-    fn from_bytes(&self, buffer: &[u8], offset: usize) -> Result<Self::Response, SendError> {
-        if buffer[offset] == 0x08 {
-            let res = buffer.pread_with::<u32>(offset + 1, LE).unwrap();
+    fn from_bytes(&self, buffer: &[u8]) -> Result<Self::Response, SendError> {
+        if buffer[0] == 0x08 {
+            let res = buffer.pread_with::<u32>(1, LE).unwrap();
             Ok(TestDomainTime(res))
         } else {
             Err(SendError::UnexpectedAnswer)
@@ -203,13 +203,13 @@ impl Request for SWOTraceBufferSizeCommand {
 
     type Response = SWOTraceBufferSize;
 
-    fn to_bytes(&self, buffer: &mut [u8], offset: usize) -> Result<usize, SendError> {
-        buffer[offset] = 0xFD;
+    fn to_bytes(&self, buffer: &mut [u8]) -> Result<usize, SendError> {
+        buffer[0] = 0xFD;
         Ok(1)
     }
-    fn from_bytes(&self, buffer: &[u8], offset: usize) -> Result<Self::Response, SendError> {
-        if buffer[offset] == 0x04 {
-            let res = buffer.pread_with::<u32>(offset + 1, LE).unwrap();
+    fn from_bytes(&self, buffer: &[u8]) -> Result<Self::Response, SendError> {
+        if buffer[0] == 0x04 {
+            let res = buffer.pread_with::<u32>(1, LE).unwrap();
             Ok(SWOTraceBufferSize(res))
         } else {
             Err(SendError::UnexpectedAnswer)
@@ -228,13 +228,13 @@ impl Request for PacketCountCommand {
 
     type Response = PacketCount;
 
-    fn to_bytes(&self, buffer: &mut [u8], offset: usize) -> Result<usize, SendError> {
-        buffer[offset] = 0xFE;
+    fn to_bytes(&self, buffer: &mut [u8]) -> Result<usize, SendError> {
+        buffer[0] = 0xFE;
         Ok(1)
     }
-    fn from_bytes(&self, buffer: &[u8], offset: usize) -> Result<Self::Response, SendError> {
-        if buffer[offset] == 0x01 {
-            let res = buffer.pread_with::<u8>(offset + 1, LE).unwrap();
+    fn from_bytes(&self, buffer: &[u8]) -> Result<Self::Response, SendError> {
+        if buffer[0] == 0x01 {
+            let res = buffer.pread_with::<u8>(1, LE).unwrap();
             Ok(PacketCount(res))
         } else {
             Err(SendError::UnexpectedAnswer)
@@ -253,13 +253,13 @@ impl Request for PacketSizeCommand {
 
     type Response = PacketSize;
 
-    fn to_bytes(&self, buffer: &mut [u8], offset: usize) -> Result<usize, SendError> {
-        buffer[offset] = 0xFF;
+    fn to_bytes(&self, buffer: &mut [u8]) -> Result<usize, SendError> {
+        buffer[0] = 0xFF;
         Ok(1)
     }
-    fn from_bytes(&self, buffer: &[u8], offset: usize) -> Result<Self::Response, SendError> {
-        if buffer[offset] == 0x02 {
-            let res = buffer.pread_with::<u16>(offset + 1, LE).unwrap();
+    fn from_bytes(&self, buffer: &[u8]) -> Result<Self::Response, SendError> {
+        if buffer[0] == 0x02 {
+            let res = buffer.pread_with::<u16>(1, LE).unwrap();
             Ok(PacketSize(res))
         } else {
             Err(SendError::UnexpectedAnswer)

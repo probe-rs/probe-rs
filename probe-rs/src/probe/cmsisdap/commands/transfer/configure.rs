@@ -16,19 +16,17 @@ impl Request for ConfigureRequest {
 
     type Response = ConfigureResponse;
 
-    fn to_bytes(&self, buffer: &mut [u8], offset: usize) -> Result<usize, SendError> {
+    fn to_bytes(&self, buffer: &mut [u8]) -> Result<usize, SendError> {
         use scroll::{Pwrite, LE};
 
-        buffer[offset] = self.idle_cycles;
-        buffer.pwrite_with(self.wait_retry, offset + 1, LE).unwrap();
-        buffer
-            .pwrite_with(self.match_retry, offset + 3, LE)
-            .unwrap();
+        buffer[0] = self.idle_cycles;
+        buffer.pwrite_with(self.wait_retry, 1, LE).unwrap();
+        buffer.pwrite_with(self.match_retry, 3, LE).unwrap();
         Ok(5)
     }
 
-    fn from_bytes(&self, buffer: &[u8], offset: usize) -> Result<Self::Response, SendError> {
-        Ok(ConfigureResponse(Status::from_byte(buffer[offset])?))
+    fn from_bytes(&self, buffer: &[u8]) -> Result<Self::Response, SendError> {
+        Ok(ConfigureResponse(Status::from_byte(buffer[0])?))
     }
 }
 

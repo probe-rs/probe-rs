@@ -8,14 +8,14 @@ impl Request for ConfigureRequest {
 
     type Response = ConfigureResponse;
 
-    fn to_bytes(&self, buffer: &mut [u8], offset: usize) -> Result<usize, SendError> {
+    fn to_bytes(&self, buffer: &mut [u8]) -> Result<usize, SendError> {
         // TODO: Allow configuration
-        buffer[offset] = 0;
+        buffer[0] = 0;
         Ok(1)
     }
 
-    fn from_bytes(&self, buffer: &[u8], offset: usize) -> Result<Self::Response, SendError> {
-        Ok(ConfigureResponse(Status::from_byte(buffer[offset])?))
+    fn from_bytes(&self, buffer: &[u8]) -> Result<Self::Response, SendError> {
+        Ok(ConfigureResponse(Status::from_byte(buffer[0])?))
     }
 }
 

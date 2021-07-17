@@ -8,14 +8,14 @@ impl Request for ResetRequest {
 
     type Response = ResetResponse;
 
-    fn to_bytes(&self, _buffer: &mut [u8], _offset: usize) -> Result<usize, SendError> {
+    fn to_bytes(&self, _buffer: &mut [u8]) -> Result<usize, SendError> {
         Ok(0)
     }
 
-    fn from_bytes(&self, buffer: &[u8], offset: usize) -> Result<Self::Response, SendError> {
+    fn from_bytes(&self, buffer: &[u8]) -> Result<Self::Response, SendError> {
         Ok(ResetResponse {
-            status: Status::from_byte(buffer[offset])?,
-            execute: Execute::from_byte(buffer[offset + 1])?,
+            status: Status::from_byte(buffer[0])?,
+            execute: Execute::from_byte(buffer[1])?,
         })
     }
 }
