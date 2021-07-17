@@ -589,6 +589,12 @@ impl CommunicationInterface for ArmCommunicationInterface<Initialized> {
     fn flush(&mut self) -> Result<(), DebugProbeError> {
         self.probe.raw_flush()
     }
+
+    fn get_arm_communication_interface(
+        &mut self,
+    ) -> Result<&mut ArmCommunicationInterface<Initialized>, ProbeRsError> {
+        Ok(self)
+    }
 }
 
 impl SwoAccess for ArmCommunicationInterface<Initialized> {

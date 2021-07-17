@@ -7,6 +7,7 @@ use crate::architecture::arm::{
 };
 use crate::{CommunicationInterface, CoreRegister, CoreRegisterAddress, DebugProbeError, Error};
 use scroll::{Pread, Pwrite, LE};
+use std::any::TypeId;
 use std::convert::TryInto;
 use std::{
     ops::Range,
@@ -692,8 +693,7 @@ where
     fn get_arm_communication_interface(
         &mut self,
     ) -> Result<&mut ArmCommunicationInterface<Initialized>, Error> {
-        todo!();
-        // Ok(self.interface)
+        CommunicationInterface::get_arm_communication_interface(self.interface)
     }
 }
 
