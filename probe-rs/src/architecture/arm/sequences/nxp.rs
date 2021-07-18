@@ -1,4 +1,8 @@
-use std::{sync::Arc, thread, time::{Duration, Instant}};
+use std::{
+    sync::Arc,
+    thread,
+    time::{Duration, Instant},
+};
 
 use crate::{
     architecture::arm::{
