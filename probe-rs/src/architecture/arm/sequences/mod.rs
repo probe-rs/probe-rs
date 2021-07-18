@@ -79,6 +79,8 @@ pub trait ArmDebugSequence: Send + Sync {
 
         // TODO: Use atomic block
 
+        // todo!();
+
         // Ensure current debug interface is in reset state
         interface.swj_sequence(51, 0x0007_FFFF_FFFF_FFFF)?;
 
@@ -92,7 +94,7 @@ pub trait ArmDebugSequence: Send + Sync {
         // End of atomic block
 
         // Read DPIDR to enable SWD interface
-        let _ = interface.raw_read_register(PortType::DebugPort, DPIDR::ADDRESS)?;
+        let _ = interface.raw_read_register(PortType::DebugPort, DPIDR::ADDRESS);
 
         //interface.read_dpidr()?;
 

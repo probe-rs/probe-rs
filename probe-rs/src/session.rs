@@ -88,6 +88,7 @@ impl ArchitectureInterface {
                     dp,
                     ap: arm_core_access_options.ap,
                 };
+                log::debug!("muha");
                 let memory = state.memory_interface(MemoryAp::new(ap))?;
 
                 core.attach_arm(core_state, memory, target)
@@ -120,9 +121,20 @@ impl Session {
 
         let mut session = match target.architecture() {
             Architecture::Arm => {
+                let config = target.cores[0].clone();
+                let arm_core_access_options = match config.core_access_options {
+                    probe_rs_target::CoreAccessOptions::Arm(opt) => Ok(opt),
+                    probe_rs_target::CoreAccessOptions::Riscv(_) => {
+                        Err(AccessPortError::InvalidCoreAccessOption(config.clone()))
+                    }
+                }?;
+
                 let default_memory_ap = MemoryAp::new(ApAddress {
-                    dp: DpAddress::Default,
-                    ap: 0,
+                    dp: match arm_core_access_options.psel {
+                        0 => DpAddress::Default,
+                        x => DpAddress::Multidrop(x),
+                    },
+                    ap: arm_core_access_options.ap,
                 });
 
                 let sequence_handle = match &target.debug_sequence {
@@ -326,6 +338,7 @@ impl Session {
         let mut components = Vec::new();
 
         // TODO
+        log::debug!("UFF");
         let dp = DpAddress::Default;
 
         for ap_index in 0..(interface.num_access_ports(dp)? as u8) {
