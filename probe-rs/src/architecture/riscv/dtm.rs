@@ -88,7 +88,7 @@ impl Dtm {
         address: u64,
         value: u32,
         op: DmiOperation,
-    ) -> Box<dyn DeferredCommandResult> {
+    ) -> Result<Box<dyn DeferredCommandResult>, DebugProbeError> {
         let register_value: u128 = ((address as u128) << DMI_ADDRESS_BIT_OFFSET)
             | ((value as u128) << DMI_VALUE_BIT_OFFSET)
             | op as u128;

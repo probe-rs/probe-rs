@@ -949,7 +949,7 @@ pub trait JTAGAccess: DebugProbe {
         data: &[u8],
         len: u32,
         transform: fn(Vec<u8>) -> Result<u32, DebugProbeError>,
-    ) -> Box<dyn DeferredCommandResult>;
+    ) -> Result<Box<dyn DeferredCommandResult>, DebugProbeError>;
 
     /// Executes register writes scheduled by `schedule_write_register`
     /// If the probe doesn't support batching this will be emulated.

@@ -1,3 +1,5 @@
+use std::io;
+
 use bitvec::{order::Lsb0, prelude::BitVec, slice::BitSlice};
 
 use crate::{probe::CommandResult, DebugProbeError};
@@ -23,15 +25,14 @@ impl WriteRegisterCommand {
         data: Vec<u8>,
         len: usize,
         idle_cycles: usize,
-        chain_params: Option<ChainParams>,
-    ) -> WriteRegisterCommand {
-        let target_transfer = TargetTransferCommand::new(address, data, len, chain_params);
-
+        chain_params: ChainParams,
+    ) -> io::Result<WriteRegisterCommand> {
+        let target_transfer = TargetTransferCommand::new(address, data, len, chain_params)?;
         let idle = IdleCommand::new(idle_cycles);
 
-        WriteRegisterCommand {
+        Ok(WriteRegisterCommand {
             subcommands: [Box::new(target_transfer), Box::new(idle)],
-        }
+        })
     }
 }
 
@@ -58,9 +59,9 @@ struct TargetTransferCommand {
     address: u32,
     data: Vec<u8>,
     len: usize,
-    chain_params: Option<ChainParams>,
-    shift_ir_cmd: Option<ShiftIrCommand>,
-    transfer_dr_cmd: Option<TransferDrCommand>,
+    chain_params: ChainParams,
+    shift_ir_cmd: ShiftIrCommand,
+    transfer_dr_cmd: TransferDrCommand,
 }
 
 impl TargetTransferCommand {
@@ -68,42 +69,28 @@ impl TargetTransferCommand {
         address: u32,
         data: Vec<u8>,
         len: usize,
-        chain_params: Option<ChainParams>,
-    ) -> TargetTransferCommand {
-        TargetTransferCommand {
-            address,
-            data,
-            len,
-            chain_params,
-            shift_ir_cmd: None,
-            transfer_dr_cmd: None,
-        }
-    }
-}
-
-impl JtagCommand for TargetTransferCommand {
-    fn add_bytes(&mut self, buffer: &mut Vec<u8>) {
-        let params = &self.chain_params.unwrap();
+        chain_params: ChainParams,
+    ) -> io::Result<TargetTransferCommand> {
+        let params = &chain_params;
         let max_address = (1 << params.irlen) - 1;
-        assert!(self.address <= max_address);
+        assert!(address <= max_address);
 
         // Write IR register
         let irbits = params.irpre + params.irlen + params.irpost;
         assert!(irbits <= 32);
         let mut ir: u32 = (1 << params.irpre) - 1;
-        ir |= self.address << params.irpre;
+        ir |= address << params.irpre;
         ir |= ((1 << params.irpost) - 1) << (params.irpre + params.irlen);
 
-        let mut shift_ir_cmd = ShiftIrCommand::new(ir.to_le_bytes().to_vec(), irbits);
-        shift_ir_cmd.add_bytes(buffer);
-        self.shift_ir_cmd = Some(shift_ir_cmd);
+        let shift_ir_cmd = ShiftIrCommand::new(ir.to_le_bytes().to_vec(), irbits);
 
-        let data = Some(&self.data);
-        let drbits = params.drpre + self.len + params.drpost;
-        let request = if let Some(data_slice) = data {
-            let data = BitSlice::<Lsb0, u8>::from_slice(data_slice).unwrap();
+        let drbits = params.drpre + len + params.drpost;
+        let request = {
+            let data = BitSlice::<Lsb0, u8>::from_slice(&data).ok_or_else(|| {
+                io::Error::new(io::ErrorKind::InvalidData, "could not create bitslice")
+            })?;
             let mut data = BitVec::<Lsb0, u8>::from_bitslice(&data);
-            data.truncate(self.len);
+            data.truncate(len);
 
             let mut buf = BitVec::<Lsb0, u8>::new();
             buf.resize(params.drpre, false);
@@ -111,23 +98,34 @@ impl JtagCommand for TargetTransferCommand {
             buf.resize(buf.len() + params.drpost, false);
 
             buf.into_vec()
-        } else {
-            vec![0; (drbits + 7) / 8]
         };
 
-        let mut transfer_dr = TransferDrCommand::new(request.to_vec(), drbits);
-        transfer_dr.add_bytes(buffer);
-        self.transfer_dr_cmd = Some(transfer_dr);
+        let transfer_dr = TransferDrCommand::new(request.to_vec(), drbits);
+
+        Ok(TargetTransferCommand {
+            address,
+            data,
+            len,
+            chain_params,
+            shift_ir_cmd: shift_ir_cmd,
+            transfer_dr_cmd: transfer_dr,
+        })
+    }
+}
+
+impl JtagCommand for TargetTransferCommand {
+    fn add_bytes(&mut self, buffer: &mut Vec<u8>) {
+        self.shift_ir_cmd.add_bytes(buffer);
+        self.transfer_dr_cmd.add_bytes(buffer);
     }
 
     fn bytes_to_read(&self) -> usize {
-        self.shift_ir_cmd.as_ref().unwrap().bytes_to_read()
-            + self.transfer_dr_cmd.as_ref().unwrap().bytes_to_read()
+        self.shift_ir_cmd.bytes_to_read() + self.transfer_dr_cmd.bytes_to_read()
     }
 
     fn process_output(&self, data: &[u8]) -> Result<CommandResult, DebugProbeError> {
-        let params = self.chain_params.as_ref().unwrap();
-        let reply = self.transfer_dr_cmd.as_ref().unwrap().process_output(data);
+        let params = self.chain_params;
+        let reply = self.transfer_dr_cmd.process_output(data);
 
         let reply = if let Ok(CommandResult::VecU8(reply)) = reply {
             reply
@@ -151,12 +149,12 @@ impl JtagCommand for TargetTransferCommand {
 
 #[derive(Debug)]
 struct ShiftIrCommand {
-    subcommands: Vec<Box<dyn JtagCommand>>,
+    subcommands: [Box<dyn JtagCommand>; 3],
 }
 impl ShiftIrCommand {
     pub fn new(data: Vec<u8>, bits: usize) -> ShiftIrCommand {
         ShiftIrCommand {
-            subcommands: vec![
+            subcommands: [
                 Box::new(ShiftTmsCommand::new(vec![0b0011], 4)),
                 Box::new(ShiftTdiCommand::new(data, bits)),
                 Box::new(ShiftTmsCommand::new(vec![0b01], 2)),
@@ -246,21 +244,23 @@ struct ShiftTmsCommand {
 
 impl ShiftTmsCommand {
     pub fn new(data: Vec<u8>, bits: usize) -> ShiftTmsCommand {
+        assert!(bits > 0);
+        assert!((bits + 7) / 8 <= data.len());
+
         ShiftTmsCommand { data, bits }
     }
 }
 
 impl JtagCommand for ShiftTmsCommand {
     fn add_bytes(&mut self, buffer: &mut Vec<u8>) {
-        assert!(self.bits > 0);
-        assert!((self.bits + 7) / 8 <= self.data.len());
-
         let mut command = vec![];
 
         let mut bits = self.bits;
         let mut data: &[u8] = &self.data;
         while bits > 0 {
             if bits >= 8 {
+                // 0x4b = Clock Data to TMS pin (no read)
+                // see https://www.ftdichip.com/Support/Documents/AppNotes/AN_108_Command_Processor_for_MPSSE_and_MCU_Host_Bus_Emulation_Modes.pdf
                 command.extend_from_slice(&[0x4b, 0x07, data[0]]);
                 data = &data[1..];
                 bits -= 8;

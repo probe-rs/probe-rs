@@ -718,7 +718,7 @@ impl JTAGAccess for JLink {
         data: &[u8],
         len: u32,
         transform: fn(Vec<u8>) -> Result<u32, DebugProbeError>,
-    ) -> Box<dyn DeferredCommandResult> {
+    ) -> Result<Box<dyn DeferredCommandResult>, DebugProbeError> {
         let mut data_vec = Vec::new();
         data_vec.extend_from_slice(data);
 
@@ -729,9 +729,9 @@ impl JTAGAccess for JLink {
             transform,
         });
 
-        Box::new(JlinkDeferredCommandResult::new(
+        Ok(Box::new(JlinkDeferredCommandResult::new(
             self.queued_commands.len() - 1,
-        ))
+        )))
     }
 }
 

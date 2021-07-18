@@ -582,23 +582,29 @@ impl JTAGAccess for FtdiProbe {
         data: &[u8],
         len: u32,
         transform: fn(Vec<u8>) -> Result<u32, DebugProbeError>,
-    ) -> Box<dyn DeferredCommandResult> {
-        self.queued_commands
-            .push(Box::new(WriteRegisterCommand::new(
+    ) -> Result<Box<dyn DeferredCommandResult>, DebugProbeError> {
+        self.queued_commands.push(Box::new(
+            WriteRegisterCommand::new(
                 address,
                 data.to_vec(),
                 len as usize,
                 self.idle_cycles as usize,
-                self.adapter.chain_params,
-            )));
+                self.adapter
+                    .get_chain_params()
+                    .map_err(|e| DebugProbeError::ProbeSpecific(Box::new(e)))?,
+            )
+            .map_err(|e| DebugProbeError::ProbeSpecific(Box::new(e)))?,
+        ));
         self.output_transformers.push(Some(transform));
 
-        Box::new(FtdiDeferredCommandResult::new(
+        Ok(Box::new(FtdiDeferredCommandResult::new(
             self.queued_commands.len() - 1,
-        ))
+        )))
     }
 
     fn execute(&mut self) -> Result<Box<dyn CommandResults>, DebugProbeError> {
+        // this value was determined by experimenting and doesn't match e.g
+        // the libftdi read/write chunk size - it is hopefully useful for every setup
         const CHUNK_SIZE: usize = 40;
 
         let mut index_offset = 0;
@@ -611,7 +617,11 @@ impl JTAGAccess for FtdiProbe {
                 cmd.add_bytes(&mut out_buffer);
                 size += cmd.bytes_to_read();
             }
-            out_buffer.push(0x87); // Send Immediate: This will make the chip flush its buffer back to the PC.
+
+            // Send Immediate: This will make the FTDI chip flush its buffer back to the PC.
+            // See https://www.ftdichip.com/Support/Documents/AppNotes/AN_108_Command_Processor_for_MPSSE_and_MCU_Host_Bus_Emulation_Modes.pdf
+            // section 5.1
+            out_buffer.push(0x87);
 
             self.adapter
                 .device
@@ -657,7 +667,7 @@ impl JTAGAccess for FtdiProbe {
                             Some(transformer) => {
                                 let data = match data {
                                     CommandResult::VecU8(data) => data,
-                                    _ => unimplemented!("This shouldn't have happened"),
+                                    _ => panic!("Internal error occured. Cannot have a transformer function for outputs other than Vec<u8>"),
                                 };
                                 results.push(CommandResult::U32(transformer(data)?));
                             }
