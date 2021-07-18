@@ -320,9 +320,7 @@ impl UninitializedArmProbe for ArmCommunicationInterface<Uninitialized> {
         mut self: Box<Self>,
         sequence: Arc<dyn ArmDebugSequence>,
     ) -> Result<Box<dyn ArmProbeInterface>, ProbeRsError> {
-        log::debug!("hehexd");
         sequence.debug_port_setup(&mut self.probe)?;
-        log::debug!("kekekekeke");
 
         let interface = self.into_initialized(sequence).map_err(|(_s, err)| err)?;
 
@@ -445,7 +443,6 @@ impl<'interface> ArmCommunicationInterface<Initialized> {
     }
 
     fn select_dp(&mut self, dp: DpAddress) -> Result<(), DebugProbeError> {
-        log::debug!("hehe DP {:x?}", dp);
         if self.state.current_dp == Some(dp) {
             return Ok(());
         }

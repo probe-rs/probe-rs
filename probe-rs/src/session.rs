@@ -88,7 +88,6 @@ impl ArchitectureInterface {
                     dp,
                     ap: arm_core_access_options.ap,
                 };
-                log::debug!("muha");
                 let memory = state.memory_interface(MemoryAp::new(ap))?;
 
                 core.attach_arm(core_state, memory, target)
@@ -338,7 +337,6 @@ impl Session {
         let mut components = Vec::new();
 
         // TODO
-        log::debug!("UFF");
         let dp = DpAddress::Default;
 
         for ap_index in 0..(interface.num_access_ports(dp)? as u8) {
