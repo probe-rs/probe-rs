@@ -11,6 +11,8 @@ use std::time::Duration;
 
 use log::log_enabled;
 
+use general::info::{Command, PacketSize};
+
 #[derive(Debug, thiserror::Error)]
 pub enum CmsisDapError {
     #[error(transparent)]
@@ -25,6 +27,8 @@ pub enum CmsisDapError {
     SwoTraceStreamError,
     #[error("Requested SWO mode is not available on this probe")]
     SwoModeNotAvailable,
+    #[error("Could not determine a suitable packet size for this probe")]
+    NoPacketSize,
     #[error("An error with the DAP communication occured")]
     Dap(#[from] DapError),
 }
@@ -34,7 +38,7 @@ pub enum SendError {
     #[error("Error in the USB HID access")]
     HidApi(#[from] hidapi::HidError),
     #[error("Error in the USB access")]
-    UsbError(#[from] rusb::Error),
+    UsbError(rusb::Error),
     #[error("Not enough data in response from probe")]
     NotEnoughData,
     #[error("Status can only be 0x00 or 0xFF")]
@@ -47,8 +51,19 @@ pub enum SendError {
     UnexpectedAnswer,
     #[error("Failed to write word at data_offset {0}. This is a bug. Please report it.")]
     WriteToOffsetBug(usize),
+    #[error("Timeout in USB communication.")]
+    Timeout,
     #[error("This is a bug. Please report it.")]
     Bug,
+}
+
+impl From<rusb::Error> for SendError {
+    fn from(error: rusb::Error) -> Self {
+        match error {
+            rusb::Error::Timeout => SendError::Timeout,
+            other => SendError::UsbError(other),
+        }
+    }
 }
 
 impl From<CmsisDapError> for DebugProbeError {
@@ -81,7 +96,11 @@ impl CmsisDapDevice {
     /// Read from the probe into `buf`, returning the number of bytes read on success.
     fn read(&self, buf: &mut [u8]) -> Result<usize, SendError> {
         match self {
-            CmsisDapDevice::V1 { handle, .. } => Ok(handle.read_timeout(buf, 100)?),
+            CmsisDapDevice::V1 { handle, .. } => match handle.read_timeout(buf, 100)? {
+                // Timeout is not indicated by error, but by returning 0 read bytes
+                0 => Err(SendError::Timeout),
+                n => Ok(n),
+            },
             CmsisDapDevice::V2 { handle, in_ep, .. } => {
                 let timeout = Duration::from_millis(100);
                 Ok(handle.read_bulk(*in_ep, buf, timeout)?)
@@ -101,6 +120,9 @@ impl CmsisDapDevice {
         }
     }
 
+    /// Drain any pending data from the probe, ensuring future responses are
+    /// synchronised to requests. Swallows any errors, which are expected if
+    /// there is no pending data to read.
     pub(super) fn drain(&self) {
         log::debug!("Draining probe of any pending data.");
 
@@ -133,6 +155,58 @@ impl CmsisDapDevice {
                 }
             }
         }
+    }
+
+    /// Set the packet size to use for this device.
+    ///
+    /// Sets either the HID report size for V1 devices,
+    /// or the maximum bulk transfer size for V2 devices.
+    pub(super) fn set_packet_size(&mut self, packet_size: usize) {
+        log::debug!("Configuring probe to use packet size {}", packet_size);
+        match self {
+            CmsisDapDevice::V1 {
+                ref mut report_size,
+                ..
+            } => {
+                *report_size = packet_size;
+            }
+            CmsisDapDevice::V2 {
+                ref mut max_packet_size,
+                ..
+            } => {
+                *max_packet_size = packet_size;
+            }
+        }
+    }
+
+    /// Attempt to determine the correct packet size for this device.
+    ///
+    /// Tries to request the CMSIS-DAP maximum packet size, allowing several
+    /// failures to accommodate some buggy probes which must receive a full
+    /// packet worth of data before responding, but we don't know how much
+    /// data that is before we get a response.
+    ///
+    /// The device is then configured to use the detected size, which is returned.
+    pub(super) fn find_packet_size(&mut self) -> Result<usize, CmsisDapError> {
+        for repeat in 0..16 {
+            log::debug!("Attempt {} to find packet size", repeat + 1);
+            match send_command(self, Command::PacketSize) {
+                Ok(PacketSize(size)) => {
+                    log::debug!("Success: packet size is {}", size);
+                    self.set_packet_size(size as usize);
+                    return Ok(size as usize);
+                }
+
+                // Ignore timeouts and retry.
+                Err(SendError::Timeout) => (),
+
+                // Raise other errors.
+                Err(e) => return Err(e.into()),
+            }
+        }
+
+        // If we didn't return early, no sizes worked, report an error.
+        Err(CmsisDapError::NoPacketSize)
     }
 
     /// Check if SWO streaming is supported by this device.
@@ -239,15 +313,20 @@ pub(crate) fn send_command<Req: Request, Res: Response>(
     }
 
     // Send buffer to the device.
-    device.write(&buffer[..size])?;
+    let _ = device.write(&buffer[..size])?;
     trace_buffer("Transmit buffer", &buffer[..size]);
 
-    // Read back resonse.
-    device.read(&mut buffer)?;
-    trace_buffer("Receive buffer", &buffer[..]);
+    // Read back response.
+    let bytes_read = device.read(&mut buffer)?;
+    let response_data = &buffer[..bytes_read];
+    trace_buffer("Receive buffer", response_data);
 
-    if buffer[0] == *Req::CATEGORY {
-        Res::from_bytes(&buffer, 1)
+    if response_data.is_empty() {
+        return Err(SendError::NotEnoughData);
+    }
+
+    if response_data[0] == *Req::CATEGORY {
+        Res::from_bytes(response_data, 1)
     } else {
         Err(SendError::InvalidDataFor(*Req::CATEGORY))
     }

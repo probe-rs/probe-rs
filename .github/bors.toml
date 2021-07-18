@@ -4,6 +4,7 @@ delete_merged_branches = true
 status = [
     "Check (ubuntu-latest)",
     "Check (windows-latest)",
+    "Check (macos-latest)",
     "Test Suite (ubuntu-latest)",
     "Test Suite (windows-latest)",
     "Rustfmt",

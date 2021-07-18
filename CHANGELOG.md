@@ -15,10 +15,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - Enabled the generation of global timestamps for ARM targets on `Session::setup_swv`.
+- Changed to `hidraw` for HID access on Linux. This should allow access to HID-based probes without udev rules (#737).
 - Support batching of FTDI commands and use it for RISCV (#717)
 
 ### Fixed
 - Detect proper USB HID interface to use for CMSIS-DAP v1 probes. Without this, CMSIS-DAP probes with multiple HID interfaces, e.g. MCUlink, were not working properly on MacOS (#722).
+- When reading from a HID device, check number of bytes returned to detect USB HID timeouts.
+- Fix connecting to EDBG and similar probes on MacOS (#681, #721)
+- Fixed incorrect flash range in `fe310` causing flashing to fail (#732).
 
 ## [0.11.0]
 
