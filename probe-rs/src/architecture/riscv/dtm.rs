@@ -6,7 +6,10 @@ use std::{
 use bitfield::bitfield;
 
 use super::communication_interface::RiscvError;
-use crate::{probe::JTAGAccess, DebugProbeError};
+use crate::{
+    probe::{CommandResults, DeferredCommandResult, JTAGAccess},
+    DebugProbeError,
+};
 
 ///! Debug Transport Module (DTM) handling
 ///!
@@ -74,6 +77,49 @@ impl Dtm {
             .write_register(DTMCS_ADDRESS, &bytes, DTMCS_WIDTH)?;
 
         Ok(())
+    }
+
+    pub fn execute(&mut self) -> Result<Box<dyn CommandResults>, DebugProbeError> {
+        self.probe.execute()
+    }
+
+    pub fn schedule_dmi_register_access(
+        &mut self,
+        address: u64,
+        value: u32,
+        op: DmiOperation,
+    ) -> Result<Box<dyn DeferredCommandResult>, DebugProbeError> {
+        let register_value: u128 = ((address as u128) << DMI_ADDRESS_BIT_OFFSET)
+            | ((value as u128) << DMI_VALUE_BIT_OFFSET)
+            | op as u128;
+
+        let bytes = register_value.to_le_bytes();
+
+        let bit_size = self.abits + DMI_ADDRESS_BIT_OFFSET;
+
+        self.probe
+            .schedule_write_register(DMI_ADDRESS, &bytes, bit_size, |response_bytes| {
+                let response_value: u128 =
+                    response_bytes.iter().enumerate().fold(0, |acc, elem| {
+                        let (byte_offset, value) = elem;
+                        acc + ((*value as u128) << (8 * byte_offset))
+                    });
+
+                // Verify that the transfer was ok
+                let op = (response_value & DMI_OP_MASK) as u8;
+
+                if op != 0 {
+                    return Err(DebugProbeError::ProbeSpecific(Box::new(
+                        std::io::Error::new(
+                            std::io::ErrorKind::Other,
+                            format!("Operation Status = {:?}", DmiOperationStatus::parse(op)),
+                        ),
+                    )));
+                }
+
+                let value = (response_value >> 2) as u32;
+                Ok(value)
+            })
     }
 
     /// Perform an access to the dmi register of the JTAG Transport module.

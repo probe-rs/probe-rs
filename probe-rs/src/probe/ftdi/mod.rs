@@ -12,14 +12,20 @@ use std::time::Duration;
 mod ftdi_impl;
 use ftdi_impl as ftdi;
 
+mod commands;
+
+use self::commands::{JtagCommand, WriteRegisterCommand};
+
+use super::{CommandResult, CommandResults, DeferredCommandResult};
+
 #[derive(Debug)]
 struct JtagChainItem {
     idcode: u32,
     irlen: usize,
 }
 
-#[derive(Clone, Debug)]
-struct ChainParams {
+#[derive(Clone, Copy, Debug)]
+pub(super) struct ChainParams {
     irpre: usize,
     irpost: usize,
     drpre: usize,
@@ -387,6 +393,8 @@ pub struct FtdiProbe {
     adapter: JtagAdapter,
     speed_khz: u32,
     idle_cycles: u8,
+    queued_commands: Vec<Box<dyn JtagCommand + Send>>,
+    output_transformers: Vec<Option<fn(Vec<u8>) -> Result<u32, DebugProbeError>>>,
 }
 
 impl DebugProbe for FtdiProbe {
@@ -412,6 +420,8 @@ impl DebugProbe for FtdiProbe {
             adapter,
             speed_khz: 0,
             idle_cycles: 0,
+            queued_commands: vec![],
+            output_transformers: vec![],
         };
         log::debug!("opened probe: {:?}", probe);
         Ok(Box::new(probe))
@@ -564,6 +574,149 @@ impl JTAGAccess for FtdiProbe {
             .map_err(|e| DebugProbeError::ProbeSpecific(Box::new(e)))?;
         log::debug!("write_register result: {:?})", r);
         Ok(r)
+    }
+
+    fn schedule_write_register(
+        &mut self,
+        address: u32,
+        data: &[u8],
+        len: u32,
+        transform: fn(Vec<u8>) -> Result<u32, DebugProbeError>,
+    ) -> Result<Box<dyn DeferredCommandResult>, DebugProbeError> {
+        self.queued_commands.push(Box::new(
+            WriteRegisterCommand::new(
+                address,
+                data.to_vec(),
+                len as usize,
+                self.idle_cycles as usize,
+                self.adapter
+                    .get_chain_params()
+                    .map_err(|e| DebugProbeError::ProbeSpecific(Box::new(e)))?,
+            )
+            .map_err(|e| DebugProbeError::ProbeSpecific(Box::new(e)))?,
+        ));
+        self.output_transformers.push(Some(transform));
+
+        Ok(Box::new(FtdiDeferredCommandResult::new(
+            self.queued_commands.len() - 1,
+        )))
+    }
+
+    fn execute(&mut self) -> Result<Box<dyn CommandResults>, DebugProbeError> {
+        // this value was determined by experimenting and doesn't match e.g
+        // the libftdi read/write chunk size - it is hopefully useful for every setup
+        const CHUNK_SIZE: usize = 40;
+
+        let mut index_offset = 0;
+        let mut results = Vec::<CommandResult>::new();
+
+        for cmd_chunk in self.queued_commands.chunks_mut(CHUNK_SIZE) {
+            let mut out_buffer = Vec::<u8>::new();
+            let mut size = 0;
+            for cmd in cmd_chunk.iter_mut() {
+                cmd.add_bytes(&mut out_buffer);
+                size += cmd.bytes_to_read();
+            }
+
+            // Send Immediate: This will make the FTDI chip flush its buffer back to the PC.
+            // See https://www.ftdichip.com/Support/Documents/AppNotes/AN_108_Command_Processor_for_MPSSE_and_MCU_Host_Bus_Emulation_Modes.pdf
+            // section 5.1
+            out_buffer.push(0x87);
+
+            self.adapter
+                .device
+                .write_all(&out_buffer)
+                .map_err(|e| DebugProbeError::ProbeSpecific(Box::new(e)))?;
+
+            let timeout = Duration::from_millis(10);
+            let mut result = Vec::new();
+
+            let t0 = std::time::Instant::now();
+            while result.len() < size {
+                if t0.elapsed() > timeout {
+                    return Err(DebugProbeError::Timeout);
+                }
+
+                self.adapter
+                    .device
+                    .read_to_end(&mut result)
+                    .map_err(|e| DebugProbeError::ProbeSpecific(Box::new(e)))?;
+            }
+
+            if result.len() > size {
+                return Err(DebugProbeError::ProbeSpecific(Box::new(io::Error::new(
+                    io::ErrorKind::InvalidData,
+                    "Read more data than expected",
+                ))));
+            }
+
+            let mut pos = 0;
+            for (index, cmd) in cmd_chunk.iter().enumerate() {
+                let index = index + index_offset;
+                let len = cmd.bytes_to_read();
+                let mut data = Vec::<u8>::new();
+                data.extend_from_slice(&result[pos..(pos + len)]);
+
+                let result = cmd.process_output(&data);
+
+                match result {
+                    Ok(data) => {
+                        let transformer = self.output_transformers[index];
+
+                        match transformer {
+                            Some(transformer) => {
+                                let data = match data {
+                                    CommandResult::VecU8(data) => data,
+                                    _ => panic!("Internal error occured. Cannot have a transformer function for outputs other than Vec<u8>"),
+                                };
+                                results.push(CommandResult::U32(transformer(data)?));
+                            }
+                            None => results.push(data),
+                        }
+                    }
+                    Err(e) => return Err(e),
+                }
+
+                pos += len;
+            }
+
+            index_offset += cmd_chunk.len();
+        }
+
+        self.queued_commands = vec![];
+        Ok(Box::new(FtdiCommandResults::new(results)))
+    }
+}
+
+struct FtdiDeferredCommandResult {
+    index: usize,
+}
+
+impl FtdiDeferredCommandResult {
+    fn new(index: usize) -> FtdiDeferredCommandResult {
+        FtdiDeferredCommandResult { index }
+    }
+}
+
+impl DeferredCommandResult for FtdiDeferredCommandResult {
+    fn get(&self, command_results: &dyn CommandResults) -> CommandResult {
+        command_results.get(self.index)
+    }
+}
+
+struct FtdiCommandResults {
+    results: Vec<CommandResult>,
+}
+
+impl FtdiCommandResults {
+    fn new(results: Vec<CommandResult>) -> FtdiCommandResults {
+        FtdiCommandResults { results }
+    }
+}
+
+impl CommandResults for FtdiCommandResults {
+    fn get(&self, index: usize) -> CommandResult {
+        self.results[index].clone()
     }
 }
 
