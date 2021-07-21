@@ -9,11 +9,10 @@ use crate::{
     architecture::arm::DapError, probe::cmsisdap::commands::general::info::PacketSizeCommand,
 };
 use core::ops::Deref;
+use std::str::Utf8Error;
 use std::time::Duration;
 
 use log::log_enabled;
-
-use general::info::PacketSize;
 
 #[derive(Debug, thiserror::Error)]
 pub enum CmsisDapError {
@@ -44,11 +43,17 @@ pub enum SendError {
     #[error("Not enough data in response from probe")]
     NotEnoughData,
     #[error("Status can only be 0x00 or 0xFF")]
-    NonZeroOrFF,
+    InvalidResponseStatus,
     #[error("Connecting to target failed, received: {0:x}")]
     ConnectResponseError(u8),
     #[error("Received invalid data for {0:?}")]
     InvalidDataFor(u8),
+    /// String in response is not valid UTF-8.
+    ///
+    /// Strings are required to be UTF-8 encoded by the
+    /// CMSIS-DAP specification.
+    #[error("String in response is not valid UTF-8.")]
+    InvalidString(#[from] Utf8Error),
     #[error("Unexpected answer to command")]
     UnexpectedAnswer,
     #[error("Failed to write word at data_offset {0}. This is a bug. Please report it.")]
@@ -191,7 +196,7 @@ impl CmsisDapDevice {
         for repeat in 0..16 {
             log::debug!("Attempt {} to find packet size", repeat + 1);
             match send_command(self, PacketSizeCommand {}) {
-                Ok(PacketSize(size)) => {
+                Ok(size) => {
                     log::debug!("Success: packet size is {}", size);
                     self.set_packet_size(size as usize);
                     return Ok(size as usize);
@@ -257,7 +262,7 @@ impl Status {
         match value {
             0x00 => Ok(Status::DAPOk),
             0xFF => Ok(Status::DAPError),
-            _ => Err(SendError::NonZeroOrFF),
+            _ => Err(SendError::InvalidResponseStatus),
         }
     }
 }

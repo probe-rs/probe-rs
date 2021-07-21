@@ -63,7 +63,7 @@ pub struct BaudrateRequest(pub(crate) u32);
 impl Request for BaudrateRequest {
     const CATEGORY: Category = Category(0x19);
 
-    type Response = BaudrateResponse;
+    type Response = u32;
 
     fn to_bytes(&self, buffer: &mut [u8]) -> Result<usize, SendError> {
         assert!(buffer.len() >= 4, "This is a bug. Please report it.");
@@ -78,12 +78,9 @@ impl Request for BaudrateRequest {
 
         let baud: u32 = buffer.pread_with(0, LE).unwrap();
 
-        Ok(BaudrateResponse(baud))
+        Ok(baud)
     }
 }
-
-#[derive(Copy, Clone, Debug)]
-pub struct BaudrateResponse(pub(crate) u32);
 
 #[repr(u8)]
 #[derive(Copy, Clone, Debug)]

@@ -24,7 +24,7 @@ use commands::{
         connect::{ConnectRequest, ConnectResponse},
         disconnect::{DisconnectRequest, DisconnectResponse},
         host_status::{HostStatusRequest, HostStatusResponse},
-        info::{Capabilities, PacketCount, SWOTraceBufferSize},
+        info::Capabilities,
         reset::{ResetRequest, ResetResponse},
     },
     swd,
@@ -97,15 +97,14 @@ impl CmsisDap {
         let packet_size = device.find_packet_size()? as u16;
 
         // Read remaining probe information.
-        let PacketCount(packet_count) = commands::send_command(&mut device, PacketCountCommand {})?;
+        let packet_count = commands::send_command(&mut device, PacketCountCommand {})?;
         let caps: Capabilities = commands::send_command(&mut device, CapabilitiesCommand {})?;
         debug!("Detected probe capabilities: {:?}", caps);
         let mut swo_buffer_size = None;
         if caps.swo_uart_implemented || caps.swo_manchester_implemented {
-            let swo_size: SWOTraceBufferSize =
-                commands::send_command(&mut device, SWOTraceBufferSizeCommand {})?;
-            swo_buffer_size = Some(swo_size.0 as usize);
-            debug!("Probe SWO buffer size: {}", swo_size.0);
+            let swo_size = commands::send_command(&mut device, SWOTraceBufferSizeCommand {})?;
+            swo_buffer_size = Some(swo_size as usize);
+            debug!("Probe SWO buffer size: {}", swo_size);
         }
 
         Ok(Self {
@@ -298,7 +297,7 @@ impl CmsisDap {
         let response = commands::send_command(&mut self.device, transport)?;
         match response {
             swo::TransportResponse(Status::DAPOk) => Ok(()),
-            swo::TransportResponse(Status::DAPError) => Err(SendError::UnexpectedAnswer.into()),
+            swo::TransportResponse(Status::DAPError) => Err(CmsisDapError::ErrorResponse.into()),
         }
     }
 
@@ -309,7 +308,7 @@ impl CmsisDap {
         let response = commands::send_command(&mut self.device, mode)?;
         match response {
             swo::ModeResponse(Status::DAPOk) => Ok(()),
-            swo::ModeResponse(Status::DAPError) => Err(SendError::UnexpectedAnswer.into()),
+            swo::ModeResponse(Status::DAPError) => Err(CmsisDapError::ErrorResponse.into()),
         }
     }
 
@@ -320,12 +319,12 @@ impl CmsisDap {
     /// and returns the configured baud rate on success (which
     /// may differ from the requested baud rate).
     fn set_swo_baudrate(&mut self, baud: swo::BaudrateRequest) -> Result<u32, DebugProbeError> {
-        let response: swo::BaudrateResponse = commands::send_command(&mut self.device, baud)?;
-        debug!("Requested baud {}, got {}", baud.0, response.0);
-        if response.0 == 0 {
+        let response = commands::send_command(&mut self.device, baud)?;
+        debug!("Requested baud {}, got {}", baud.0, response);
+        if response == 0 {
             Err(CmsisDapError::SwoBaudrateNotConfigured.into())
         } else {
-            Ok(response.0)
+            Ok(response)
         }
     }
 
@@ -334,7 +333,7 @@ impl CmsisDap {
         let response = commands::send_command(&mut self.device, swo::ControlRequest::Start)?;
         match response {
             swo::ControlResponse(Status::DAPOk) => Ok(()),
-            swo::ControlResponse(Status::DAPError) => Err(SendError::UnexpectedAnswer.into()),
+            swo::ControlResponse(Status::DAPError) => Err(CmsisDapError::ErrorResponse.into()),
         }
     }
 
@@ -343,7 +342,7 @@ impl CmsisDap {
         let response = commands::send_command(&mut self.device, swo::ControlRequest::Stop)?;
         match response {
             swo::ControlResponse(Status::DAPOk) => Ok(()),
-            swo::ControlResponse(Status::DAPError) => Err(SendError::UnexpectedAnswer.into()),
+            swo::ControlResponse(Status::DAPError) => Err(CmsisDapError::ErrorResponse.into()),
         }
     }
 
@@ -503,7 +502,7 @@ impl DebugProbe for CmsisDap {
 
         match response {
             DisconnectResponse(Status::DAPOk) => Ok(()),
-            DisconnectResponse(Status::DAPError) => Err(SendError::UnexpectedAnswer.into()),
+            DisconnectResponse(Status::DAPError) => Err(CmsisDapError::ErrorResponse.into()),
         }
     }
 
