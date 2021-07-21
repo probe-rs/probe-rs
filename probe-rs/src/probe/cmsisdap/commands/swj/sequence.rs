@@ -1,6 +1,6 @@
 /// Implementation of the DAP_SWJ_SEQUENCE command
 ///
-use super::super::{Category, CmsisDapError, Request, SendError, Status};
+use super::super::{CmsisDapError, CommandId, Request, SendError, Status};
 
 #[derive(Clone, Copy, Debug)]
 pub struct SequenceRequest {
@@ -9,7 +9,7 @@ pub struct SequenceRequest {
 }
 
 impl Request for SequenceRequest {
-    const CATEGORY: Category = Category(0x12);
+    const COMMAND_ID: CommandId = CommandId(0x12);
 
     type Response = SequenceResponse;
 

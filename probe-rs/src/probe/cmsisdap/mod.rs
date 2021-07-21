@@ -39,18 +39,12 @@ use commands::{
         Ack, InnerTransferRequest, TransferBlockRequest, TransferBlockResponse, TransferRequest,
         RW,
     },
-    CmsisDapDevice, SendError, Status,
+    CmsisDapDevice, Status,
 };
 
 use log::{debug, warn};
 
 use std::time::Duration;
-
-impl From<SendError> for DebugProbeError {
-    fn from(e: SendError) -> Self {
-        Self::from(CmsisDapError::from(e))
-    }
-}
 
 pub struct CmsisDap {
     pub device: CmsisDapDevice,

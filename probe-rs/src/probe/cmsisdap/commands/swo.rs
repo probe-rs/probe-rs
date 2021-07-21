@@ -1,6 +1,6 @@
 use scroll::{Pread, LE};
 
-use super::{Category, Request, SendError, Status};
+use super::{CommandId, Request, SendError, Status};
 use std::convert::TryInto;
 
 #[repr(u8)]
@@ -13,7 +13,7 @@ pub enum TransportRequest {
 }
 
 impl Request for TransportRequest {
-    const CATEGORY: Category = Category(0x17);
+    const COMMAND_ID: CommandId = CommandId(0x17);
 
     type Response = TransportResponse;
 
@@ -40,7 +40,7 @@ pub enum ModeRequest {
 }
 
 impl Request for ModeRequest {
-    const CATEGORY: Category = Category(0x18);
+    const COMMAND_ID: CommandId = CommandId(0x18);
 
     type Response = ModeResponse;
 
@@ -61,7 +61,7 @@ pub struct ModeResponse(pub(crate) Status);
 pub struct BaudrateRequest(pub(crate) u32);
 
 impl Request for BaudrateRequest {
-    const CATEGORY: Category = Category(0x19);
+    const COMMAND_ID: CommandId = CommandId(0x19);
 
     type Response = u32;
 
@@ -90,7 +90,7 @@ pub enum ControlRequest {
 }
 
 impl Request for ControlRequest {
-    const CATEGORY: Category = Category(0x1a);
+    const COMMAND_ID: CommandId = CommandId(0x1a);
 
     type Response = ControlResponse;
 
@@ -111,7 +111,7 @@ pub struct ControlResponse(pub(crate) Status);
 pub struct StatusRequest;
 
 impl Request for StatusRequest {
-    const CATEGORY: Category = Category(0x1b);
+    const COMMAND_ID: CommandId = CommandId(0x1b);
 
     type Response = StatusResponse;
 
@@ -161,7 +161,7 @@ pub struct ExtendedStatusRequest {
 }
 
 impl Request for ExtendedStatusRequest {
-    const CATEGORY: Category = Category(0x1e);
+    const COMMAND_ID: CommandId = CommandId(0x1e);
 
     type Response = ExtendedStatusResponse;
 
@@ -217,7 +217,7 @@ pub struct DataRequest {
 }
 
 impl Request for DataRequest {
-    const CATEGORY: Category = Category(0x1c);
+    const COMMAND_ID: CommandId = CommandId(0x1c);
 
     type Response = DataResponse;
 

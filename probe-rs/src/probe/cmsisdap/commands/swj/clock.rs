@@ -1,10 +1,10 @@
-use super::super::{Category, Request, SendError, Status};
+use super::super::{CommandId, Request, SendError, Status};
 
 #[derive(Debug)]
 pub struct SWJClockRequest(pub(crate) u32);
 
 impl Request for SWJClockRequest {
-    const CATEGORY: Category = Category(0x11);
+    const COMMAND_ID: CommandId = CommandId(0x11);
 
     type Response = SWJClockResponse;
 

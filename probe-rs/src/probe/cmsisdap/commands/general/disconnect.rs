@@ -1,10 +1,10 @@
-use super::super::{Category, Request, SendError, Status};
+use super::super::{CommandId, Request, SendError, Status};
 
 #[derive(Clone, Copy, Debug)]
 pub struct DisconnectRequest;
 
 impl Request for DisconnectRequest {
-    const CATEGORY: Category = Category(0x03);
+    const COMMAND_ID: CommandId = CommandId(0x03);
 
     type Response = DisconnectResponse;
 

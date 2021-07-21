@@ -1,6 +1,6 @@
 pub mod configure;
 
-use super::{Category, Request, SendError};
+use super::{CommandId, Request, SendError};
 use crate::architecture::arm::PortType;
 use scroll::{Pread, Pwrite, LE};
 
@@ -104,7 +104,7 @@ impl TransferRequest {
 }
 
 impl Request for TransferRequest {
-    const CATEGORY: Category = Category(0x05);
+    const COMMAND_ID: CommandId = CommandId(0x05);
 
     type Response = TransferResponse;
 
@@ -206,7 +206,7 @@ pub(crate) struct TransferBlockRequest {
 }
 
 impl Request for TransferBlockRequest {
-    const CATEGORY: Category = Category(0x06);
+    const COMMAND_ID: CommandId = CommandId(0x06);
 
     type Response = TransferBlockResponse;
 

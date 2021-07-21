@@ -1,4 +1,4 @@
-use super::super::{Category, Request, SendError};
+use super::super::{CommandId, Request, SendError};
 
 #[derive(Clone, Copy, Debug)]
 pub struct HostStatusRequest {
@@ -24,7 +24,7 @@ impl HostStatusRequest {
 }
 
 impl Request for HostStatusRequest {
-    const CATEGORY: Category = Category(0x01);
+    const COMMAND_ID: CommandId = CommandId(0x01);
 
     type Response = HostStatusResponse;
 

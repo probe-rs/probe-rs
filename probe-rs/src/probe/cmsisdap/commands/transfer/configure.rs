@@ -1,4 +1,4 @@
-use super::super::{Category, Request, SendError, Status};
+use super::super::{CommandId, Request, SendError, Status};
 
 /// The DAP_TransferConfigure Command sets parameters for DAP_Transfer and DAP_TransferBlock.
 #[derive(Debug)]
@@ -12,7 +12,7 @@ pub struct ConfigureRequest {
 }
 
 impl Request for ConfigureRequest {
-    const CATEGORY: Category = Category(0x04);
+    const COMMAND_ID: CommandId = CommandId(0x04);
 
     type Response = ConfigureResponse;
 

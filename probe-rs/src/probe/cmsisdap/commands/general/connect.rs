@@ -1,4 +1,4 @@
-use super::super::{Category, Request, SendError};
+use super::super::{CommandId, Request, SendError};
 
 #[derive(Clone, Copy, Debug)]
 pub enum ConnectRequest {
@@ -8,7 +8,7 @@ pub enum ConnectRequest {
 }
 
 impl Request for ConnectRequest {
-    const CATEGORY: Category = Category(0x02);
+    const COMMAND_ID: CommandId = CommandId(0x02);
 
     type Response = ConnectResponse;
 

@@ -1,10 +1,10 @@
-use super::super::{Category, Request, SendError, Status};
+use super::super::{CommandId, Request, SendError, Status};
 
 #[derive(Debug)]
 pub struct ResetRequest;
 
 impl Request for ResetRequest {
-    const CATEGORY: Category = Category(0x0A);
+    const COMMAND_ID: CommandId = CommandId(0x0A);
 
     type Response = ResetResponse;
 

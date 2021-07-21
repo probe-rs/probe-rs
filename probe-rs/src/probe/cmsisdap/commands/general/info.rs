@@ -1,4 +1,4 @@
-use super::super::{Category, Request, SendError};
+use super::super::{CommandId, Request, SendError};
 
 use scroll::{Pread, LE};
 
@@ -8,7 +8,7 @@ macro_rules! info_command {
         pub struct $name {}
 
         impl Request for $name {
-            const CATEGORY: Category = Category(0x00);
+            const COMMAND_ID: CommandId = CommandId(0x00);
 
             type Response = $response_type;
 
@@ -46,7 +46,7 @@ info_command!(0xF0, CapabilitiesCommand, Capabilities);
 pub struct TestDomainTimeCommand {}
 
 impl Request for TestDomainTimeCommand {
-    const CATEGORY: Category = Category(0x00);
+    const COMMAND_ID: CommandId = CommandId(0x00);
 
     type Response = u32;
 

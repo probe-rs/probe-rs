@@ -16,8 +16,11 @@ use log::log_enabled;
 
 #[derive(Debug, thiserror::Error)]
 pub enum CmsisDapError {
-    #[error(transparent)]
-    Send(#[from] SendError),
+    #[error("Error handling CMSIS-DAP command {command_id:?}")]
+    Send {
+        command_id: CommandId,
+        source: SendError,
+    },
     #[error("CMSIS-DAP responded with an error")]
     ErrorResponse,
     #[error("Too much data provided for SWJ Sequence command")]
@@ -203,7 +206,10 @@ impl CmsisDapDevice {
                 }
 
                 // Ignore timeouts and retry.
-                Err(SendError::Timeout) => (),
+                Err(CmsisDapError::Send {
+                    source: SendError::Timeout,
+                    ..
+                }) => (),
 
                 // Raise other errors.
                 Err(e) => return Err(e.into()),
@@ -242,7 +248,10 @@ impl CmsisDapDevice {
                             buf.truncate(0);
                             Ok(buf)
                         }
-                        Err(e) => Err(SendError::from(e).into()),
+                        Err(e) => Err(CmsisDapError::Send {
+                            source: SendError::from(e),
+                            command_id: CommandId(0),
+                        }),
                     }
                 }
                 None => Err(CmsisDapError::SwoModeNotAvailable),
@@ -267,9 +276,10 @@ impl Status {
     }
 }
 
-pub(crate) struct Category(u8);
+#[derive(Debug)]
+pub struct CommandId(u8);
 
-impl Deref for Category {
+impl Deref for CommandId {
     type Target = u8;
 
     fn deref(&self) -> &Self::Target {
@@ -278,7 +288,7 @@ impl Deref for Category {
 }
 
 pub(crate) trait Request {
-    const CATEGORY: Category;
+    const COMMAND_ID: CommandId;
 
     type Response;
 
@@ -290,6 +300,16 @@ pub(crate) trait Request {
 }
 
 pub(crate) fn send_command<Req: Request>(
+    device: &mut CmsisDapDevice,
+    request: Req,
+) -> Result<Req::Response, CmsisDapError> {
+    send_command_inner(device, request).map_err(|e| CmsisDapError::Send {
+        command_id: Req::COMMAND_ID,
+        source: e,
+    })
+}
+
+fn send_command_inner<Req: Request>(
     device: &mut CmsisDapDevice,
     request: Req,
 ) -> Result<Req::Response, SendError> {
@@ -306,7 +326,7 @@ pub(crate) fn send_command<Req: Request>(
     let mut buffer = vec![0; buffer_len];
 
     // Leave byte 0 as the HID report, and write the command and request to the buffer.
-    buffer[1] = *Req::CATEGORY;
+    buffer[1] = *Req::COMMAND_ID;
     let mut size = request.to_bytes(&mut buffer[2..])? + 2;
 
     // For HID devices we must write a full report every time,
@@ -330,10 +350,10 @@ pub(crate) fn send_command<Req: Request>(
         return Err(SendError::NotEnoughData);
     }
 
-    if response_data[0] == *Req::CATEGORY {
+    if response_data[0] == *Req::COMMAND_ID {
         request.from_bytes(&response_data[1..])
     } else {
-        Err(SendError::InvalidDataFor(*Req::CATEGORY))
+        Err(SendError::InvalidDataFor(*Req::COMMAND_ID))
     }
 }
 

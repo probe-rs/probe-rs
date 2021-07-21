@@ -1,4 +1,4 @@
-use super::super::{Category, Request, SendError};
+use super::super::{CommandId, Request, SendError};
 
 pub struct SWJPinsRequest {
     /// A mask of the values the different pins selected in the selection mask will be set to.
@@ -112,7 +112,7 @@ bitfield::bitfield! {
 }
 
 impl Request for SWJPinsRequest {
-    const CATEGORY: Category = Category(0x10);
+    const COMMAND_ID: CommandId = CommandId(0x10);
 
     type Response = SWJPinsResponse;
 

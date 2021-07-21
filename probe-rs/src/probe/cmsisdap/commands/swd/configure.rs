@@ -1,10 +1,10 @@
-use super::super::{Category, Request, SendError, Status};
+use super::super::{CommandId, Request, SendError, Status};
 
 #[derive(Debug)]
 pub struct ConfigureRequest;
 
 impl Request for ConfigureRequest {
-    const CATEGORY: Category = Category(0x13);
+    const COMMAND_ID: CommandId = CommandId(0x13);
 
     type Response = ConfigureResponse;
 
