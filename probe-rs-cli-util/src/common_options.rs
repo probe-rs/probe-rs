@@ -248,6 +248,9 @@ pub fn print_families(mut f: impl Write) -> Result<(), OperationError> {
     Ok(())
 }
 
+static mut PROBE: Option<Probe> = None;
+static mut TARGET_SELECTOR: Option<TargetSelector> = None;
+
 impl ProbeOptions {
     /// Add targets contained in file given by --chip-description-path
     /// to probe-rs registery.
@@ -264,14 +267,14 @@ impl ProbeOptions {
         }
     }
 
-    pub fn attach_to_probe(&self) -> Result<Probe, OperationError> {
+    pub fn attach_to_probe(&self) -> Result<&Probe, OperationError> {
         // Tries to open the debug probe from the given commandline
         // arguments. This ensures that there is only one probe
         // connected or if multiple probes are found, a single one is
         // specified via the commandline parameters.
         let mut probe = {
             if self.dry_run {
-                return Ok(Probe::from_specific_probe(Box::new(FakeProbe::new())));
+                Probe::from_specific_probe(Box::new(FakeProbe::new()));
             }
 
             // If we got a probe selector as an argument, open the probe
@@ -313,57 +316,16 @@ impl ProbeOptions {
             })?;
         }
 
-        Ok(probe)
-    }
-
-    pub fn get_target_selector(&self) -> Result<TargetSelector, OperationError> {
-        if let Some(chip_name) = &self.chip {
-            let target = probe_rs::config::get_target_by_name(chip_name).map_err(|error| {
-                OperationError::ChipNotFound {
-                    source: error,
-                    name: chip_name.clone(),
-                }
-            })?;
-
-            Ok(TargetSelector::Specified(target))
-        } else {
-            Ok(TargetSelector::Auto)
+        unsafe {
+            PROBE = Some(probe);
+            Ok(PROBE.as_ref().unwrap())
         }
     }
 
-    pub fn build_flashloader(&self, elf_path: &Path) -> Result<Option<FlashLoader>, OperationError> {
-        if let Some(chip_name) = &self.chip {
-            let target = probe_rs::config::get_target_by_name(chip_name).map_err(|error| {
-                OperationError::ChipNotFound {
-                    source: error,
-                    name: chip_name.clone(),
-                }
-            })?;
-
-            let loader = build_flashloader(&target, elf_path)?;
-            Ok(Some(loader))
-        } else {
-            Ok(None)
-        }
-    }
-
-    /// Attaches to target session as specified by [FlashOptions]
-    /// parameters.
-    pub fn target_session(&self, work_dir: &Path) -> Result<Session, OperationError> {
-        let target = match self.resolve_chip(&work_dir) {
-            TargetSelector::Unspecified(desc) => {
-                TargetSelector::Specified(probe_rs::config::get_target_by_name(&desc).map_err(
-                    |error| OperationError::ChipNotFound {
-                        source: error,
-                        name: desc,
-                    },
-                )?)
-            }
-            a => a,
-        };
-
-        let probe = self.attach_to_probe()?;
-        if self.connect_under_reset {
+    pub fn attach(&self) -> Result<Session, OperationError> {
+        let probe = unsafe { PROBE.take().unwrap() };
+        let target = unsafe { TARGET_SELECTOR.take().unwrap() };
+        let session = if self.connect_under_reset {
             probe.attach_under_reset(target)
         } else {
             probe.attach(target)
@@ -371,7 +333,41 @@ impl ProbeOptions {
         .map_err(|error| OperationError::AttachingFailed {
             source: error,
             connect_under_reset: self.connect_under_reset,
-        })
+        })?;
+
+        Ok(session)
+    }
+
+    pub fn get_target_selector(&self) -> Result<&TargetSelector, OperationError> {
+        let target = if let Some(chip_name) = &self.chip {
+            let target = probe_rs::config::get_target_by_name(chip_name).map_err(|error| {
+                OperationError::ChipNotFound {
+                    source: error,
+                    name: chip_name.clone(),
+                }
+            })?;
+
+            TargetSelector::Specified(target)
+        } else {
+            TargetSelector::Auto
+        };
+
+        unsafe {
+            TARGET_SELECTOR = Some(target);
+            Ok(TARGET_SELECTOR.as_ref().unwrap())
+        }
+    }
+
+    pub fn build_flashloader(
+        &self,
+        session: &mut Session,
+        elf_path: &Path,
+    ) -> Result<FlashLoader, OperationError> {
+        if let TargetSelector::Specified(ref target) = unsafe { TARGET_SELECTOR.as_ref().unwrap() } {
+            Ok(build_flashloader(target, elf_path)?)
+        } else {
+            Ok(build_flashloader(session.target(), elf_path)?)
+        }
     }
 
     pub fn resolve_chip(&self, work_dir: &Path) -> TargetSelector {
