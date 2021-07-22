@@ -304,65 +304,47 @@ impl ProbeOptions {
                 protocol: self.protocol,
             }
         })?;
-        let _protocol_speed = if let Some(speed) = self.speed {
-            let actual_speed = probe.set_speed(speed).map_err(|error| {
+        if let Some(speed) = self.speed {
+            let _actual_speed = probe.set_speed(speed).map_err(|error| {
                 OperationError::FailedToSelectProtocolSpeed {
                     source: error,
                     speed,
                 }
             })?;
-
-            if actual_speed < speed {
-                log::warn!(
-                    "Unable to use specified speed of {} kHz, actual speed used is {} kHz",
-                    speed,
-                    actual_speed
-                );
-            }
-
-            actual_speed
-        } else {
-            probe.speed_khz()
-        };
+        }
 
         Ok(probe)
     }
 
-    pub fn acquire_session(
-        &self,
-        _crate_root: &Path,
-        elf_path: &Path,
-    ) -> Result<(Session, FlashLoader), OperationError> {
-        // let _chip = self.resolve_chip(&crate_root);
-
-        let (target_selector, flash_loader) = {
-            let target = probe_rs::config::get_target_by_name(self.chip.as_ref().unwrap())
-                .map_err(|error| OperationError::ChipNotFound {
+    pub fn get_target_selector(&self) -> Result<TargetSelector, OperationError> {
+        if let Some(chip_name) = &self.chip {
+            let target = probe_rs::config::get_target_by_name(chip_name).map_err(|error| {
+                OperationError::ChipNotFound {
                     source: error,
-                    name: self.chip.as_ref().unwrap().clone(),
-                })?;
+                    name: chip_name.clone(),
+                }
+            })?;
 
-            let loader = build_flashloader(&target, &elf_path)?;
-            (TargetSelector::Specified(target), Some(loader))
-        };
-
-        let probe = self.attach_to_probe()?;
-
-        // Create a new session.
-        // If we wanto attach under reset, we do this with a special function call.
-        // In this case we assume the target to be known.
-        // If we do an attach without a hard reset, we also try to automatically detect the chip at hand to improve the userexperience.
-        let session = if self.connect_under_reset {
-            probe.attach_under_reset(target_selector)
+            Ok(TargetSelector::Specified(target))
         } else {
-            probe.attach(target_selector)
+            Ok(TargetSelector::Auto)
         }
-        .map_err(|error| OperationError::AttachingFailed {
-            source: error,
-            connect_under_reset: self.connect_under_reset,
-        })?;
+    }
 
-        Ok((session, flash_loader.unwrap()))
+    pub fn build_flashloader(&self, elf_path: &Path) -> Result<Option<FlashLoader>, OperationError> {
+        if let Some(chip_name) = &self.chip {
+            let target = probe_rs::config::get_target_by_name(chip_name).map_err(|error| {
+                OperationError::ChipNotFound {
+                    source: error,
+                    name: chip_name.clone(),
+                }
+            })?;
+
+            let loader = build_flashloader(&target, elf_path)?;
+            Ok(Some(loader))
+        } else {
+            Ok(None)
+        }
     }
 
     /// Attaches to target session as specified by [FlashOptions]
@@ -395,7 +377,7 @@ impl ProbeOptions {
     pub fn resolve_chip(&self, work_dir: &Path) -> TargetSelector {
         let meta = read_metadata(&work_dir).ok();
 
-        // First use command line, then manifest, then default to auto.
+        // First use structopt, then manifest, then default to auto.
         match (&self.chip, meta.map(|m| m.chip).flatten()) {
             (Some(c), _) => c.into(),
             (_, Some(c)) => c.into(),
