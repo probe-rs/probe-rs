@@ -251,7 +251,7 @@ pub fn print_families(mut f: impl Write) -> Result<(), OperationError> {
 impl ProbeOptions {
     /// Add targets contained in file given by --chip-description-path
     /// to probe-rs registery.
-    pub fn try_load_chip_desc(&self) -> Result<(), OperationError> {
+    pub fn maybe_load_chip_desc(&self) -> Result<(), OperationError> {
         if let Some(ref cdp) = self.chip_description_path {
             probe_rs::config::add_target_from_yaml(&Path::new(cdp)).map_err(|error| {
                 OperationError::FailedChipDescriptionParsing {
