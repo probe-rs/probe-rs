@@ -282,7 +282,7 @@ pub struct CargoOptions {
 }
 
 impl CargoOptions {
-    pub fn help_message(example_cmd: &str) -> String {
+    pub fn help_message(bin: &str) -> String {
         format!(r#"
 CARGO BUILD OPTIONS:
 
@@ -298,9 +298,9 @@ CARGO BUILD OPTIONS:
         --all-features
         --features
 
-    For example, if you run the command '{}',
+    For example, if you run the command '{} --release',
     this means that 'cargo build --release' will be called.
-"#, example_cmd)
+"#, bin)
     }
 
     pub fn to_cargo_arguments(&self) -> Vec<String> {
