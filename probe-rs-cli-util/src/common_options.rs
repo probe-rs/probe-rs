@@ -80,6 +80,22 @@ pub struct FlashOptions {
     pub probe_options: ProbeOptions,
 }
 
+impl FlashOptions {
+    pub fn early_exit(&self, f: impl Write) -> Result<bool, OperationError> {
+        if self.list_probes {
+            list_connected_probes(f)?;
+            return Ok(true);
+        }
+
+        if self.list_chips {
+            print_families(f)?;
+            return Ok(true);
+        }
+
+        Ok(false)
+    }
+}
+
 #[derive(StructOpt, Debug)]
 pub struct ProbeOptions {
     #[structopt(name = "chip", long = "chip")]
@@ -103,6 +119,140 @@ pub struct ProbeOptions {
     pub speed: Option<u32>,
     #[structopt(long = "dry-run")]
     pub dry_run: bool,
+}
+
+static mut PROBE: Option<Probe> = None;
+static mut TARGET_SELECTOR: Option<TargetSelector> = None;
+
+impl ProbeOptions {
+    /// Add targets contained in file given by --chip-description-path
+    /// to probe-rs registery.
+    pub fn maybe_load_chip_desc(&self) -> Result<(), OperationError> {
+        if let Some(ref cdp) = self.chip_description_path {
+            probe_rs::config::add_target_from_yaml(&Path::new(cdp)).map_err(|error| {
+                OperationError::FailedChipDescriptionParsing {
+                    source: error,
+                    path: cdp.clone(),
+                }
+            })
+        } else {
+            Ok(())
+        }
+    }
+
+    pub fn attach_to_probe(&self) -> Result<&Probe, OperationError> {
+        // Tries to open the debug probe from the given commandline
+        // arguments. This ensures that there is only one probe
+        // connected or if multiple probes are found, a single one is
+        // specified via the commandline parameters.
+        let mut probe = {
+            if self.dry_run {
+                Probe::from_specific_probe(Box::new(FakeProbe::new()));
+            }
+
+            // If we got a probe selector as an argument, open the probe
+            // matching the selector if possible.
+            match &self.probe_selector {
+                Some(selector) => {
+                    Probe::open(selector.clone()).map_err(OperationError::FailedToOpenProbe)
+                }
+                None => {
+                    // Only automatically select a probe if there is
+                    // only a single probe detected.
+                    let list = Probe::list_all();
+                    if list.len() > 1 {
+                        return Err(OperationError::MultipleProbesFound { number: list.len() });
+                    }
+
+                    if let Some(info) = list.first() {
+                        Probe::open(info).map_err(OperationError::FailedToOpenProbe)
+                    } else {
+                        Err(OperationError::NoProbesFound)
+                    }
+                }
+            }
+        }?;
+
+        // Select protocol and speed
+        probe.select_protocol(self.protocol).map_err(|error| {
+            OperationError::FailedToSelectProtocol {
+                source: error,
+                protocol: self.protocol,
+            }
+        })?;
+        if let Some(speed) = self.speed {
+            let _actual_speed = probe.set_speed(speed).map_err(|error| {
+                OperationError::FailedToSelectProtocolSpeed {
+                    source: error,
+                    speed,
+                }
+            })?;
+        }
+
+        unsafe {
+            PROBE = Some(probe);
+            Ok(PROBE.as_ref().unwrap())
+        }
+    }
+
+    pub fn attach(&self) -> Result<Session, OperationError> {
+        let probe = unsafe { PROBE.take().unwrap() };
+        let target = unsafe { TARGET_SELECTOR.take().unwrap() };
+        let session = if self.connect_under_reset {
+            probe.attach_under_reset(target)
+        } else {
+            probe.attach(target)
+        }
+        .map_err(|error| OperationError::AttachingFailed {
+            source: error,
+            connect_under_reset: self.connect_under_reset,
+        })?;
+
+        Ok(session)
+    }
+
+    pub fn get_target_selector(&self) -> Result<&TargetSelector, OperationError> {
+        let target = if let Some(chip_name) = &self.chip {
+            let target = probe_rs::config::get_target_by_name(chip_name).map_err(|error| {
+                OperationError::ChipNotFound {
+                    source: error,
+                    name: chip_name.clone(),
+                }
+            })?;
+
+            TargetSelector::Specified(target)
+        } else {
+            TargetSelector::Auto
+        };
+
+        unsafe {
+            TARGET_SELECTOR = Some(target);
+            Ok(TARGET_SELECTOR.as_ref().unwrap())
+        }
+    }
+
+    pub fn build_flashloader(
+        &self,
+        session: &mut Session,
+        elf_path: &Path,
+    ) -> Result<FlashLoader, OperationError> {
+        if let TargetSelector::Specified(ref target) = unsafe { TARGET_SELECTOR.as_ref().unwrap() } {
+            Ok(build_flashloader(target, elf_path)?)
+        } else {
+            Ok(build_flashloader(session.target(), elf_path)?)
+        }
+    }
+
+    pub fn resolve_chip(&self, work_dir: &Path) -> TargetSelector {
+        let meta = read_metadata(&work_dir).ok();
+
+        // First use structopt, then manifest, then default to auto.
+        match (&self.chip, meta.map(|m| m.chip).flatten()) {
+            (Some(c), _) => c.into(),
+            (_, Some(c)) => c.into(),
+            _ => TargetSelector::Auto,
+        }
+    }
 }
 
 #[derive(StructOpt, Debug)]
@@ -246,156 +396,6 @@ pub fn print_families(mut f: impl Write) -> Result<(), OperationError> {
         }
     }
     Ok(())
-}
-
-static mut PROBE: Option<Probe> = None;
-static mut TARGET_SELECTOR: Option<TargetSelector> = None;
-
-impl ProbeOptions {
-    /// Add targets contained in file given by --chip-description-path
-    /// to probe-rs registery.
-    pub fn maybe_load_chip_desc(&self) -> Result<(), OperationError> {
-        if let Some(ref cdp) = self.chip_description_path {
-            probe_rs::config::add_target_from_yaml(&Path::new(cdp)).map_err(|error| {
-                OperationError::FailedChipDescriptionParsing {
-                    source: error,
-                    path: cdp.clone(),
-                }
-            })
-        } else {
-            Ok(())
-        }
-    }
-
-    pub fn attach_to_probe(&self) -> Result<&Probe, OperationError> {
-        // Tries to open the debug probe from the given commandline
-        // arguments. This ensures that there is only one probe
-        // connected or if multiple probes are found, a single one is
-        // specified via the commandline parameters.
-        let mut probe = {
-            if self.dry_run {
-                Probe::from_specific_probe(Box::new(FakeProbe::new()));
-            }
-
-            // If we got a probe selector as an argument, open the probe
-            // matching the selector if possible.
-            match &self.probe_selector {
-                Some(selector) => {
-                    Probe::open(selector.clone()).map_err(OperationError::FailedToOpenProbe)
-                }
-                None => {
-                    // Only automatically select a probe if there is
-                    // only a single probe detected.
-                    let list = Probe::list_all();
-                    if list.len() > 1 {
-                        return Err(OperationError::MultipleProbesFound { number: list.len() });
-                    }
-
-                    if let Some(info) = list.first() {
-                        Probe::open(info).map_err(OperationError::FailedToOpenProbe)
-                    } else {
-                        Err(OperationError::NoProbesFound)
-                    }
-                }
-            }
-        }?;
-
-        // Select protocol and speed
-        probe.select_protocol(self.protocol).map_err(|error| {
-            OperationError::FailedToSelectProtocol {
-                source: error,
-                protocol: self.protocol,
-            }
-        })?;
-        if let Some(speed) = self.speed {
-            let _actual_speed = probe.set_speed(speed).map_err(|error| {
-                OperationError::FailedToSelectProtocolSpeed {
-                    source: error,
-                    speed,
-                }
-            })?;
-        }
-
-        unsafe {
-            PROBE = Some(probe);
-            Ok(PROBE.as_ref().unwrap())
-        }
-    }
-
-    pub fn attach(&self) -> Result<Session, OperationError> {
-        let probe = unsafe { PROBE.take().unwrap() };
-        let target = unsafe { TARGET_SELECTOR.take().unwrap() };
-        let session = if self.connect_under_reset {
-            probe.attach_under_reset(target)
-        } else {
-            probe.attach(target)
-        }
-        .map_err(|error| OperationError::AttachingFailed {
-            source: error,
-            connect_under_reset: self.connect_under_reset,
-        })?;
-
-        Ok(session)
-    }
-
-    pub fn get_target_selector(&self) -> Result<&TargetSelector, OperationError> {
-        let target = if let Some(chip_name) = &self.chip {
-            let target = probe_rs::config::get_target_by_name(chip_name).map_err(|error| {
-                OperationError::ChipNotFound {
-                    source: error,
-                    name: chip_name.clone(),
-                }
-            })?;
-
-            TargetSelector::Specified(target)
-        } else {
-            TargetSelector::Auto
-        };
-
-        unsafe {
-            TARGET_SELECTOR = Some(target);
-            Ok(TARGET_SELECTOR.as_ref().unwrap())
-        }
-    }
-
-    pub fn build_flashloader(
-        &self,
-        session: &mut Session,
-        elf_path: &Path,
-    ) -> Result<FlashLoader, OperationError> {
-        if let TargetSelector::Specified(ref target) = unsafe { TARGET_SELECTOR.as_ref().unwrap() } {
-            Ok(build_flashloader(target, elf_path)?)
-        } else {
-            Ok(build_flashloader(session.target(), elf_path)?)
-        }
-    }
-
-    pub fn resolve_chip(&self, work_dir: &Path) -> TargetSelector {
-        let meta = read_metadata(&work_dir).ok();
-
-        // First use structopt, then manifest, then default to auto.
-        match (&self.chip, meta.map(|m| m.chip).flatten()) {
-            (Some(c), _) => c.into(),
-            (_, Some(c)) => c.into(),
-            _ => TargetSelector::Auto,
-        }
-    }
-}
-
-impl FlashOptions {
-    pub fn early_exit(&self, f: impl Write) -> Result<bool, OperationError> {
-        if self.list_probes {
-            list_connected_probes(f)?;
-            return Ok(true);
-        }
-
-        if self.list_chips {
-            print_families(f)?;
-            return Ok(true);
-        }
-
-        Ok(false)
-    }
 }
 
 /// Builds a new flash loader for the given target and ELF.
