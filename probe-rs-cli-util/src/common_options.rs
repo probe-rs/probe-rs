@@ -270,16 +270,71 @@ pub struct CargoOptions {
     #[structopt(
         name = "PATH",
         long = "manifest-path",
-        parse(from_os_str),
         hidden = true
     )]
-    pub manifest_path: Option<PathBuf>,
+    pub manifest_path: Option<String>,
     #[structopt(long, hidden = true)]
     pub no_default_features: bool,
     #[structopt(long, hidden = true)]
     pub all_features: bool,
     #[structopt(long, hidden = true)]
     pub features: Vec<String>,
+}
+
+impl CargoOptions {
+    pub fn help_message(example_cmd: &str) -> String {
+        format!(r#"
+CARGO BUILD OPTIONS:
+
+    The following options are forwarded to 'cargo build':
+
+        --bin
+        --example
+    -p, --package
+        --release
+        --target
+        --manifest-path
+        --no-default-features
+        --all-features
+        --features
+
+    For example, if you run the command '{}',
+    this means that 'cargo build --release' will be called.
+"#, example_cmd)
+    }
+
+    pub fn to_cargo_arguments(&self) -> Vec<String> {
+        let mut args: Vec<String> = vec![];
+        macro_rules! maybe_push_str_opt {
+            ($field:expr, $name:expr) => {{
+                if let Some(value) = $field {
+                    args.push(format!("--{}", stringify!($name)));
+                    args.push(value.clone());
+                }
+            }};
+        }
+
+        maybe_push_str_opt!(&self.bin, bin);
+        maybe_push_str_opt!(&self.example, example);
+        maybe_push_str_opt!(&self.package, package);
+        if self.release {
+            args.push("--release".to_string());
+        }
+        maybe_push_str_opt!(&self.bin, bin);
+        maybe_push_str_opt!(&self.manifest_path, manifest-path);
+        if self.no_default_features {
+            args.push("--no-default-features".to_string());
+        }
+        if self.all_features {
+            args.push("--all-features".to_string());
+        }
+        if !self.features.is_empty() {
+            args.push("--features".to_string());
+            args.push(self.features.join(","));
+        }
+
+        args
+    }
 }
 
 #[derive(Debug, thiserror::Error)]
