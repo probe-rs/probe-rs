@@ -12,14 +12,21 @@ use probe_rs::{
     Error as ProbeRsError, Target,
 };
 
+use probe_rs_cli_util::common_options::OperationError;
 use probe_rs_cli_util::log;
 use probe_rs_cli_util::ArtifactError;
 
-use crate::CargoFlashError;
-
-pub(crate) fn render_diagnostics(error: CargoFlashError) {
+pub(crate) fn render_diagnostics(error: OperationError) {
     let (selected_error, hints) = match &error {
-        CargoFlashError::NoProbesFound => (
+        OperationError::InvalidAPIOrder => (
+            error.to_string(),
+            vec![],
+        ),
+        OperationError::IOError(_e) => (
+            error.to_string(),
+            vec![],
+        ),
+        OperationError::NoProbesFound => (
             error.to_string(),
             vec![
                 "If you are on Linux, you most likely need to install the udev rules for your probe.\nSee https://probe.rs/guide/2_probes/udev/ if you do not know how to install them.".into(),
@@ -27,20 +34,20 @@ pub(crate) fn render_diagnostics(error: CargoFlashError) {
                 "For a guide on how to set up your probes, see https://probe.rs/guide/2_probes/.".into(),
             ],
         ),
-        CargoFlashError::FailedToReadFamilies(_e) => (
+        OperationError::FailedToReadFamilies(_e) => (
             error.to_string(),
             vec![],
         ),
-        CargoFlashError::FailedToOpenElf { source, path } => (
+        OperationError::FailedToOpenElf { source, path } => (
             error.to_string(),
             match source.kind() {
                 std::io::ErrorKind::NotFound => vec![
-                    format!("Make sure the path '{}' is the correct location of your ELF binary.", path)
+                    format!("Make sure the path '{}' is the correct location of your ELF binary.", path.display())
                 ],
                 _ => vec![]
             },
         ),
-        CargoFlashError::FailedToLoadElfData(e) => match e {
+        OperationError::FailedToLoadElfData(e) => match e {
             FileDownloadError::NoLoadableSegments => (
                 e.to_string(),
                 vec![
@@ -67,28 +74,28 @@ pub(crate) fn render_diagnostics(error: CargoFlashError) {
                 ],
             ),
         },
-        CargoFlashError::FailedToOpenProbe(_e) => (
+        OperationError::FailedToOpenProbe(_e) => (
             error.to_string(),
             vec![
                 "This could be a permission issue. Check our guide on how to make all probes work properly on your system: https://probe.rs/guide/2_probes/.".into()
             ],
         ),
-        CargoFlashError::MultipleProbesFound { .. } => (
+        OperationError::MultipleProbesFound { .. } => (
             error.to_string(),
             vec![
                 "You can select a probe with the `--probe` argument. See `--help` for how to use it.".into()
             ],
         ),
-        CargoFlashError::FlashingFailed { source, target, target_spec, .. } => generate_flash_error_hints(source, target, target_spec),
-        CargoFlashError::FailedChipDescriptionParsing { .. } => (
+        OperationError::FlashingFailed { source, target, target_spec, .. } => generate_flash_error_hints(source, target, target_spec),
+        OperationError::FailedChipDescriptionParsing { .. } => (
             error.to_string(),
             vec![],
         ),
-        CargoFlashError::FailedToChangeWorkingDirectory { .. } => (
+        OperationError::FailedToChangeWorkingDirectory { .. } => (
             error.to_string(),
             vec![],
         ),
-        CargoFlashError::FailedToBuildExternalCargoProject { source, path } => match source {
+        OperationError::FailedToBuildExternalCargoProject { source, path } => match source {
             ArtifactError::NoArtifacts => (
                 source.to_string(),
                 vec![
@@ -106,7 +113,7 @@ pub(crate) fn render_diagnostics(error: CargoFlashError) {
                 source.to_string(),
                 vec![
                     "'cargo build' was not successful. Have a look at the error output above.".into(),
-                    format!("Make sure '{}' is indeed a cargo project with a Cargo.toml in it.", path),
+                    format!("Make sure '{}' is indeed a cargo project with a Cargo.toml in it.", path.display()),
                 ],
             ),
             _ => (
@@ -114,7 +121,7 @@ pub(crate) fn render_diagnostics(error: CargoFlashError) {
                 vec![],
             ),
         },
-        CargoFlashError::FailedToBuildCargoProject(e) => match e {
+        OperationError::FailedToBuildCargoProject(e) => match e {
             ArtifactError::NoArtifacts => (
                 error.to_string(),
                 vec![
@@ -140,7 +147,7 @@ pub(crate) fn render_diagnostics(error: CargoFlashError) {
                 vec![],
             ),
         },
-        CargoFlashError::ChipNotFound { source, .. } => match source {
+        OperationError::ChipNotFound { source, .. } => match source {
             RegistryError::ChipNotFound(_) => (
                 error.to_string(),
                 vec![
@@ -155,17 +162,17 @@ pub(crate) fn render_diagnostics(error: CargoFlashError) {
                 vec![],
             ),
         },
-        CargoFlashError::FailedToSelectProtocol { .. } => (
+        OperationError::FailedToSelectProtocol { .. } => (
             error.to_string(),
             vec![],
         ),
-        CargoFlashError::FailedToSelectProtocolSpeed { speed, .. } => (
+        OperationError::FailedToSelectProtocolSpeed { speed, .. } => (
             error.to_string(),
             vec![
                 format!("Try specifying a speed lower than {} kHz", speed)
             ],
         ),
-        CargoFlashError::AttachingFailed { source, connect_under_reset } => match source {
+        OperationError::AttachingFailed { source, connect_under_reset } => match source {
             ProbeRsError::ChipNotFound(RegistryError::ChipAutodetectFailed) => (
                 error.to_string(),
                 vec![
@@ -187,15 +194,15 @@ pub(crate) fn render_diagnostics(error: CargoFlashError) {
                 )
             },
         },
-        CargoFlashError::AttachingToCoreFailed(_e) =>  (
+        OperationError::AttachingToCoreFailed(_e) =>  (
             error.to_string(),
             vec![],
         ),
-        CargoFlashError::TargetResetFailed(_e) =>  (
+        OperationError::TargetResetFailed(_e) =>  (
             error.to_string(),
             vec![],
         ),
-        CargoFlashError::TargetResetHaltFailed(_e) => (
+        OperationError::TargetResetHaltFailed(_e) => (
             error.to_string(),
             vec![],
         ),
