@@ -21,7 +21,7 @@ use probe_rs::{
 use structopt::StructOpt;
 
 #[derive(Debug, StructOpt)]
-pub struct CommonFlashOptions {
+pub struct FlashOptions {
     #[structopt(short = "V", long = "version")]
     pub version: bool,
     #[structopt(name = "list-chips", long = "list-chips")]
@@ -404,7 +404,7 @@ impl ProbeOptions {
     }
 }
 
-impl CommonFlashOptions {
+impl FlashOptions {
     pub fn early_exit(self, f: impl Write) -> Result<bool, CargoFlashError> {
         if self.list_probes {
             list_connected_probes(f)?;
