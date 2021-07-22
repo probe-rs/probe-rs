@@ -196,8 +196,8 @@ impl ProbeOptions {
     }
 
     pub fn attach(&self) -> Result<Session, OperationError> {
-        let probe = unsafe { PROBE.take().unwrap() };
-        let target = unsafe { TARGET_SELECTOR.take().unwrap() };
+        let probe = unsafe { PROBE.take().ok_or(OperationError::InvalidAPIOrder)? };
+        let target = unsafe { TARGET_SELECTOR.take().ok_or(OperationError::InvalidAPIOrder)? };
         let session = if self.connect_under_reset {
             probe.attach_under_reset(target)
         } else {
@@ -236,7 +236,7 @@ impl ProbeOptions {
         session: &mut Session,
         elf_path: &Path,
     ) -> Result<FlashLoader, OperationError> {
-        if let TargetSelector::Specified(ref target) = unsafe { TARGET_SELECTOR.as_ref().unwrap() } {
+        if let TargetSelector::Specified(ref target) = unsafe { TARGET_SELECTOR.as_ref().ok_or(OperationError::InvalidAPIOrder)? } {
             Ok(build_flashloader(target, elf_path)?)
         } else {
             Ok(build_flashloader(session.target(), elf_path)?)
@@ -415,6 +415,8 @@ pub enum OperationError {
     TargetResetHaltFailed(#[source] probe_rs::Error),
     #[error("Failed to write to file")]
     IOError(#[source] std::io::Error),
+    #[error("probe-rs API was called in the wrong order.")]
+    InvalidAPIOrder,
 }
 
 impl From<std::io::Error> for OperationError {
