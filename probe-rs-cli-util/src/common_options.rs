@@ -133,7 +133,7 @@ pub struct CargoOptions {
 }
 
 #[derive(Debug, thiserror::Error)]
-pub enum CargoFlashError {
+pub enum OperationError {
     #[error("No connected probes were found.")]
     NoProbesFound,
     #[error("Failed to list the target descriptions.")]
@@ -212,9 +212,9 @@ pub enum CargoFlashError {
     IOError(#[source] std::io::Error),
 }
 
-impl From<std::io::Error> for CargoFlashError {
+impl From<std::io::Error> for OperationError {
     fn from(e: std::io::Error) -> Self {
-        CargoFlashError::IOError(e)
+        OperationError::IOError(e)
     }
 }
 
@@ -236,9 +236,9 @@ pub fn list_connected_probes(mut f: impl Write) -> Result<(), std::io::Error> {
 
 /// Print all the available families and their contained chips to the
 /// commandline.
-pub fn print_families(mut f: impl Write) -> Result<(), CargoFlashError> {
+pub fn print_families(mut f: impl Write) -> Result<(), OperationError> {
     writeln!(f, "Available chips:")?;
-    for family in probe_rs::config::families().map_err(CargoFlashError::FailedToReadFamilies)? {
+    for family in probe_rs::config::families().map_err(OperationError::FailedToReadFamilies)? {
         writeln!(f, "{}", &family.name)?;
         writeln!(f, "    Variants:")?;
         for variant in family.variants() {
@@ -251,10 +251,10 @@ pub fn print_families(mut f: impl Write) -> Result<(), CargoFlashError> {
 impl ProbeOptions {
     /// Add targets contained in file given by --chip-description-path
     /// to probe-rs registery.
-    pub fn try_load_chip_desc(&self) -> Result<(), CargoFlashError> {
+    pub fn try_load_chip_desc(&self) -> Result<(), OperationError> {
         if let Some(ref cdp) = self.chip_description_path {
             probe_rs::config::add_target_from_yaml(&Path::new(cdp)).map_err(|error| {
-                CargoFlashError::FailedChipDescriptionParsing {
+                OperationError::FailedChipDescriptionParsing {
                     source: error,
                     path: cdp.clone(),
                 }
@@ -264,7 +264,7 @@ impl ProbeOptions {
         }
     }
 
-    pub fn attach_to_probe(&self) -> Result<Probe, CargoFlashError> {
+    pub fn attach_to_probe(&self) -> Result<Probe, OperationError> {
         // Tries to open the debug probe from the given commandline
         // arguments. This ensures that there is only one probe
         // connected or if multiple probes are found, a single one is
@@ -278,20 +278,20 @@ impl ProbeOptions {
             // matching the selector if possible.
             match &self.probe_selector {
                 Some(selector) => {
-                    Probe::open(selector.clone()).map_err(CargoFlashError::FailedToOpenProbe)
+                    Probe::open(selector.clone()).map_err(OperationError::FailedToOpenProbe)
                 }
                 None => {
                     // Only automatically select a probe if there is
                     // only a single probe detected.
                     let list = Probe::list_all();
                     if list.len() > 1 {
-                        return Err(CargoFlashError::MultipleProbesFound { number: list.len() });
+                        return Err(OperationError::MultipleProbesFound { number: list.len() });
                     }
 
                     if let Some(info) = list.first() {
-                        Probe::open(info).map_err(CargoFlashError::FailedToOpenProbe)
+                        Probe::open(info).map_err(OperationError::FailedToOpenProbe)
                     } else {
-                        Err(CargoFlashError::NoProbesFound)
+                        Err(OperationError::NoProbesFound)
                     }
                 }
             }
@@ -299,14 +299,14 @@ impl ProbeOptions {
 
         // Select protocol and speed
         probe.select_protocol(self.protocol).map_err(|error| {
-            CargoFlashError::FailedToSelectProtocol {
+            OperationError::FailedToSelectProtocol {
                 source: error,
                 protocol: self.protocol,
             }
         })?;
         let _protocol_speed = if let Some(speed) = self.speed {
             let actual_speed = probe.set_speed(speed).map_err(|error| {
-                CargoFlashError::FailedToSelectProtocolSpeed {
+                OperationError::FailedToSelectProtocolSpeed {
                     source: error,
                     speed,
                 }
@@ -332,12 +332,12 @@ impl ProbeOptions {
         &self,
         _crate_root: &Path,
         elf_path: &Path,
-    ) -> Result<(Session, FlashLoader), CargoFlashError> {
+    ) -> Result<(Session, FlashLoader), OperationError> {
         // let _chip = self.resolve_chip(&crate_root);
 
         let (target_selector, flash_loader) = {
             let target = probe_rs::config::get_target_by_name(self.chip.as_ref().unwrap())
-                .map_err(|error| CargoFlashError::ChipNotFound {
+                .map_err(|error| OperationError::ChipNotFound {
                     source: error,
                     name: self.chip.as_ref().unwrap().clone(),
                 })?;
@@ -357,7 +357,7 @@ impl ProbeOptions {
         } else {
             probe.attach(target_selector)
         }
-        .map_err(|error| CargoFlashError::AttachingFailed {
+        .map_err(|error| OperationError::AttachingFailed {
             source: error,
             connect_under_reset: self.connect_under_reset,
         })?;
@@ -367,11 +367,11 @@ impl ProbeOptions {
 
     /// Attaches to target session as specified by [FlashOptions]
     /// parameters.
-    pub fn target_session(&self, work_dir: &Path) -> Result<Session, CargoFlashError> {
+    pub fn target_session(&self, work_dir: &Path) -> Result<Session, OperationError> {
         let target = match self.resolve_chip(&work_dir) {
             TargetSelector::Unspecified(desc) => {
                 TargetSelector::Specified(probe_rs::config::get_target_by_name(&desc).map_err(
-                    |error| CargoFlashError::ChipNotFound {
+                    |error| OperationError::ChipNotFound {
                         source: error,
                         name: desc,
                     },
@@ -386,7 +386,7 @@ impl ProbeOptions {
         } else {
             probe.attach(target)
         }
-        .map_err(|error| CargoFlashError::AttachingFailed {
+        .map_err(|error| OperationError::AttachingFailed {
             source: error,
             connect_under_reset: self.connect_under_reset,
         })
@@ -405,7 +405,7 @@ impl ProbeOptions {
 }
 
 impl FlashOptions {
-    pub fn early_exit(self, f: impl Write) -> Result<bool, CargoFlashError> {
+    pub fn early_exit(self, f: impl Write) -> Result<bool, OperationError> {
         if self.list_probes {
             list_connected_probes(f)?;
             return Ok(true);
@@ -422,12 +422,12 @@ impl FlashOptions {
 
 /// Builds a new flash loader for the given target and ELF.
 /// This will check the ELF for validity and check what pages have to be flashed etc.
-fn build_flashloader(target: &Target, path: &Path) -> Result<FlashLoader, CargoFlashError> {
+fn build_flashloader(target: &Target, path: &Path) -> Result<FlashLoader, OperationError> {
     // Create the flash loader
     let mut loader = FlashLoader::new(target.memory_map.to_vec(), target.source().clone());
 
     // Add data from the ELF.
-    let mut file = File::open(&path).map_err(|error| CargoFlashError::FailedToOpenElf {
+    let mut file = File::open(&path).map_err(|error| OperationError::FailedToOpenElf {
         source: error,
         path: format!("{}", path.display()),
     })?;
@@ -435,7 +435,7 @@ fn build_flashloader(target: &Target, path: &Path) -> Result<FlashLoader, CargoF
     // Try and load the ELF data.
     loader
         .load_elf_data(&mut file)
-        .map_err(CargoFlashError::FailedToLoadElfData)?;
+        .map_err(OperationError::FailedToLoadElfData)?;
 
     Ok(loader)
 }
