@@ -387,7 +387,7 @@ impl ProbeOptions {
 }
 
 impl FlashOptions {
-    pub fn early_exit(self, f: impl Write) -> Result<bool, OperationError> {
+    pub fn early_exit(&self, f: impl Write) -> Result<bool, OperationError> {
         if self.list_probes {
             list_connected_probes(f)?;
             return Ok(true);
