@@ -1,21 +1,10 @@
-#![allow(unused_imports)]
 use crate::{read_metadata, ArtifactError};
 
-use std::{
-    env,
-    fs::File,
-    io::{Error, Write},
-    path::{Path, PathBuf},
-    process,
-    sync::Arc,
-    time::Instant,
-};
+use std::{fs::File, io::Write, path::Path};
 
 use probe_rs::{
     config::{RegistryError, TargetSelector},
-    flashing::{
-        DownloadOptions, FileDownloadError, FlashError, FlashLoader, FlashProgress, ProgressEvent,
-    },
+    flashing::{FileDownloadError, FlashError, FlashLoader},
     DebugProbeError, DebugProbeSelector, FakeProbe, Probe, Session, Target, WireProtocol,
 };
 use structopt::StructOpt;
@@ -197,7 +186,11 @@ impl ProbeOptions {
 
     pub fn attach(&self) -> Result<Session, OperationError> {
         let probe = unsafe { PROBE.take().ok_or(OperationError::InvalidAPIOrder)? };
-        let target = unsafe { TARGET_SELECTOR.take().ok_or(OperationError::InvalidAPIOrder)? };
+        let target = unsafe {
+            TARGET_SELECTOR
+                .take()
+                .ok_or(OperationError::InvalidAPIOrder)?
+        };
         let session = if self.connect_under_reset {
             probe.attach_under_reset(target)
         } else {
@@ -236,7 +229,11 @@ impl ProbeOptions {
         session: &mut Session,
         elf_path: &Path,
     ) -> Result<FlashLoader, OperationError> {
-        if let TargetSelector::Specified(ref target) = unsafe { TARGET_SELECTOR.as_ref().ok_or(OperationError::InvalidAPIOrder)? } {
+        if let TargetSelector::Specified(ref target) = unsafe {
+            TARGET_SELECTOR
+                .as_ref()
+                .ok_or(OperationError::InvalidAPIOrder)?
+        } {
             Ok(build_flashloader(target, elf_path)?)
         } else {
             Ok(build_flashloader(session.target(), elf_path)?)
@@ -267,11 +264,7 @@ pub struct CargoOptions {
     pub release: bool,
     #[structopt(name = "target", long = "target", hidden = true)]
     pub target: Option<String>,
-    #[structopt(
-        name = "PATH",
-        long = "manifest-path",
-        hidden = true
-    )]
+    #[structopt(name = "PATH", long = "manifest-path", hidden = true)]
     pub manifest_path: Option<String>,
     #[structopt(long, hidden = true)]
     pub no_default_features: bool,
@@ -283,7 +276,8 @@ pub struct CargoOptions {
 
 impl CargoOptions {
     pub fn help_message(bin: &str) -> String {
-        format!(r#"
+        format!(
+            r#"
 CARGO BUILD OPTIONS:
 
     The following options are forwarded to 'cargo build':
@@ -300,7 +294,9 @@ CARGO BUILD OPTIONS:
 
     For example, if you run the command '{} --release',
     this means that 'cargo build --release' will be called.
-"#, bin)
+"#,
+            bin
+        )
     }
 
     pub fn to_cargo_arguments(&self) -> Vec<String> {
@@ -321,6 +317,7 @@ CARGO BUILD OPTIONS:
             args.push("--release".to_string());
         }
         maybe_push_str_opt!(&self.bin, bin);
+        #[rustfmt::skip]
         maybe_push_str_opt!(&self.manifest_path, manifest-path);
         if self.no_default_features {
             args.push("--no-default-features".to_string());

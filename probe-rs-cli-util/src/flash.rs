@@ -1,26 +1,16 @@
-#![allow(unused_imports)]
-use crate::{read_metadata, ArtifactError, logging, indicatif::{MultiProgress, ProgressBar, ProgressStyle}};
-use crate::common_options::{OperationError, FlashOptions};
-
-use std::{
-    env,
-    fs::File,
-    io::{Error, Write},
-    path::{Path, PathBuf},
-    process,
-    sync::Arc,
-    time::Instant,
+use crate::common_options::{FlashOptions, OperationError};
+use crate::{
+    indicatif::{MultiProgress, ProgressBar, ProgressStyle},
+    logging,
 };
 
-use probe_rs::{
-    config::{RegistryError, TargetSelector},
-    flashing::{
-        DownloadOptions, FileDownloadError, FlashError, FlashLoader, FlashProgress, ProgressEvent,
-    },
-    DebugProbeError, DebugProbeSelector, FakeProbe, Probe, Session, Target, WireProtocol,
-};
-use structopt::StructOpt;
+use std::{path::Path, sync::Arc, time::Instant};
+
 use colored::Colorize;
+use probe_rs::{
+    flashing::{DownloadOptions, FlashLoader, FlashProgress, ProgressEvent},
+    Session,
+};
 
 /// Performs the flash download with the given loader. Ensure that the loader has the data to load already stored.
 /// This function also manages the update and display of progress bars.
