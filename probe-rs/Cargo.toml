@@ -28,6 +28,7 @@ bitfield = "0.13.2"
 bitvec = "0.19.4"
 enum-primitive-derive = "0.2.1"
 gimli = { version = "0.24.0", default-features = false, features = ["endian-reader", "read", "std"] }
+hex = "0.4.3"
 hidapi = "1.2.0"
 ihex = "3.0.0"
 jaylink = "0.2.0"

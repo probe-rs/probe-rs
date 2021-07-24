@@ -3,6 +3,7 @@ pub(crate) mod cmsisdap;
 pub(crate) mod ftdi;
 pub(crate) mod jlink;
 pub(crate) mod stlink;
+pub(crate) mod ti_icdi;
 
 use crate::{
     architecture::arm::{ap::AccessPort, DapAccess},
@@ -204,6 +205,8 @@ impl Probe {
 
         list.extend(list_jlink_devices());
 
+        list.extend(ti_icdi::list_icdi_devices());
+
         list
     }
 
@@ -218,6 +221,11 @@ impl Probe {
         };
         #[cfg(feature = "ftdi")]
         match ftdi::FtdiProbe::new_from_selector(selector.clone()) {
+            Ok(link) => return Ok(Probe::from_specific_probe(link)),
+            Err(DebugProbeError::ProbeCouldNotBeCreated(ProbeCreationError::NotFound)) => {}
+            Err(e) => return Err(e),
+        };
+        match ti_icdi::IcdiProbe::new_from_selector(selector.clone()) {
             Ok(link) => return Ok(Probe::from_specific_probe(link)),
             Err(DebugProbeError::ProbeCouldNotBeCreated(ProbeCreationError::NotFound)) => {}
             Err(e) => return Err(e),
@@ -533,6 +541,7 @@ pub trait DebugProbe: Send + fmt::Debug {
 pub enum DebugProbeType {
     CmsisDap,
     Ftdi,
+    Icdi,
     StLink,
     JLink,
 }
