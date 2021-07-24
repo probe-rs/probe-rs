@@ -438,23 +438,28 @@ impl FlashLoader {
             })
             .collect::<Vec<_>>();
 
-        let defaults = algorithms
-            .iter()
-            .filter(|&fa| fa.default)
-            .collect::<Vec<_>>();
+        match algorithms.len() {
+            0 => Err(FlashError::NoFlashLoaderAlgorithmAttached {
+                name: target.name.clone(),
+            }),
+            1 => Ok(algorithms[0]),
+            _ => {
+                // filter for defaults
+                let defaults = algorithms
+                    .iter()
+                    .filter(|&fa| fa.default)
+                    .collect::<Vec<_>>();
 
-        match defaults.len() {
-            0 => {
-                if !algorithms.is_empty() {
-                    Err(FlashError::MultipleFlashLoaderAlgorithms)
-                } else {
-                    Err(FlashError::NoFlashLoaderAlgorithmAttached {
-                        name: target.name.clone(),
-                    })
+                match defaults.len() {
+                    0 => Err(FlashError::MultipleFlashLoaderAlgorithmsNoDefault {
+                        region: region.clone(),
+                    }),
+                    1 => Ok(defaults[0]),
+                    _ => Err(FlashError::MultipleDefaultFlashLoaderAlgorithms {
+                        region: region.clone(),
+                    }),
                 }
             }
-            1 => Ok(defaults[0]),
-            _ => Err(FlashError::MultipleFlashLoaderAlgorithms),
         }
     }
 }

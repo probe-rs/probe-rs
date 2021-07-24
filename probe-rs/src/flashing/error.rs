@@ -52,8 +52,10 @@ pub enum FlashError {
     #[error("Trying to write flash, but no suitable (default) flash loader algorithm is linked to the given target: {name} .")]
     NoFlashLoaderAlgorithmAttached { name: String },
 
-    #[error("Either more than one flash loader algorithim marked as default or multiple fitting algorithims but no default selected.")]
-    MultipleFlashLoaderAlgorithms,
+    #[error("Trying to write flash, but found more than one suitable flash loader algorithim marked as default for {region:?}.")]
+    MultipleDefaultFlashLoaderAlgorithms { region: NvmRegion },
+    #[error("Trying to write flash, but found more than one suitable flash algorithims but none marked as default for {region:?}.")]
+    MultipleFlashLoaderAlgorithmsNoDefault { region: NvmRegion },
 
     #[error("Verify failed.")]
     Verify,
