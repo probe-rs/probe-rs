@@ -293,12 +293,6 @@ impl DebugProbe for StLink<StLinkUsbDevice> {
     }
 }
 
-impl<'a> AsRef<dyn DebugProbe + 'a> for StLink<StLinkUsbDevice> {
-    fn as_ref(&self) -> &(dyn DebugProbe + 'a) {
-        self
-    }
-}
-
 impl<D: StLinkUsb> Drop for StLink<D> {
     fn drop(&mut self) {
         // We ignore the error cases as we can't do much about it anyways.
