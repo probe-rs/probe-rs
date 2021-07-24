@@ -3,7 +3,7 @@ use super::{
         valid_access_ports, AccessPort, ApAccess, ApClass, BaseaddrFormat, GenericAp, MemoryAp,
         BASE, BASE2, CSW, IDR,
     },
-    dp::{Abort, Ctrl, DebugPortError, DebugPortId, DebugPortVersion, DpAccess, Select, DPIDR},
+    dp::{Abort, Ctrl, DebugPortError, DebugPortVersion, DpAccess, Select, DPIDR},
     memory::{adi_v5_memory_interface::ADIMemoryInterface, Component},
     sequences::{ArmDebugSequence, DefaultArmSequence},
     ApAddress, DapAccess, DpAddress, PortType, RawDapAccess, SwoAccess, SwoConfig,
@@ -379,69 +379,6 @@ impl<'interface> ArmCommunicationInterface<Initialized> {
         }
     }
 
-    fn init_dp(&mut self, dp: DpAddress) -> Result<(), DebugProbeError> {
-        // Assume that we have DebugPort v1 Interface!
-        // Maybe change this in the future when other versions are released.
-
-        log::debug!("Initializing DP {:x?}", dp);
-
-        // Read the DP ID.
-        let dpidr: DPIDR = self.read_dp_register(dp)?;
-
-        // Check the version of debug port used
-        let debug_port_version = DebugPortVersion::from(dpidr.version());
-        log::debug!("Debug Port version: {:?}", debug_port_version);
-        // note(unwrap): we have inserted the state above, it must exist.
-        let state = self.state.dps.get_mut(&dp).unwrap();
-        state.debug_port_version = debug_port_version;
-
-        let dp_id: DebugPortId = dpidr.into();
-        log::debug!("DebugPort ID:  {:#x?}", dp_id);
-
-        // Clear all existing sticky errors.
-        let mut abort_reg = Abort(0);
-        abort_reg.set_orunerrclr(true);
-        abort_reg.set_wderrclr(true);
-        abort_reg.set_stkerrclr(true);
-        abort_reg.set_stkcmpclr(true);
-        self.write_dp_register(dp, abort_reg)?;
-
-        // Select the DPBANK[0].
-        // This is most likely not required but still good practice.
-        let mut select_reg = Select(0);
-        select_reg.set_dp_bank_sel(0);
-        self.write_dp_register(dp, select_reg)?; // select DBPANK 0
-
-        // Power up the system, such that we can actually work with it!
-        log::debug!("Requesting debug power");
-        let mut ctrl_reg = Ctrl::default();
-        ctrl_reg.set_csyspwrupreq(true);
-        ctrl_reg.set_cdbgpwrupreq(true);
-        ctrl_reg.set_orun_detect(self.state.use_overrun_detect);
-        self.write_dp_register(dp, ctrl_reg)?;
-
-        // Check the return value to see whether power up was ok.
-        let ctrl_reg: Ctrl = self.read_dp_register(dp)?;
-        if !(ctrl_reg.csyspwrupack() && ctrl_reg.cdbgpwrupack()) {
-            log::error!("Debug power request failed");
-            return Err(DapError::TargetPowerUpFailed.into());
-        }
-
-        /* determine the number and type of available APs */
-        log::trace!("Searching valid APs");
-
-        for ap in valid_access_ports(self, dp) {
-            let ap_state = ApInformation::read_from_target(self, ap)?;
-            log::debug!("AP {:x?}: {:?}", ap, ap_state);
-
-            // note(unwrap): we have inserted the state above, it must exist.
-            let state = self.state.dps.get_mut(&dp).unwrap();
-            state.ap_information.push(ap_state);
-        }
-
-        Ok(())
-    }
-
     fn select_dp(&mut self, dp: DpAddress) -> Result<(), DebugProbeError> {
         if self.state.current_dp == Some(dp) {
             return Ok(());
@@ -460,8 +397,13 @@ impl<'interface> ArmCommunicationInterface<Initialized> {
             let sequence = self.state.sequence.clone();
 
             self.state.dps.insert(dp, DpState::new());
-            // self.init_dp(dp)?;
             sequence.debug_port_start(self, dp)?;
+
+            // Make sure we always enable the overrun detect mode as we rely on it for good, stable communication.
+            // This is required as the default sequence (and most special implementations) does not do this.
+            let mut ctrl_reg: Ctrl = self.read_dp_register(dp)?;
+            ctrl_reg.set_orun_detect(self.state.use_overrun_detect);
+            self.write_dp_register(dp, ctrl_reg)?;
 
             /* determine the number and type of available APs */
             log::trace!("Searching valid APs");

@@ -6,7 +6,7 @@ use std::{
     time::{Duration, Instant},
 };
 
-use crate::{core::CoreRegister, DebugProbeError, Memory};
+use crate::{architecture::arm::DapError, core::CoreRegister, DebugProbeError, Memory};
 
 use super::{
     communication_interface::{DapProbe, Initialized, SwdSequence},
@@ -149,6 +149,12 @@ pub trait ArmDebugSequence: Send + Sync {
             ctrl.set_csyspwrupreq(true);
             ctrl.set_mask_lane(0b1111);
             interface.write_dp_register(dp, ctrl)?;
+
+            let ctrl_reg: Ctrl = interface.read_dp_register(dp)?;
+            if !(ctrl_reg.csyspwrupack() && ctrl_reg.cdbgpwrupack()) {
+                log::error!("Debug power request failed");
+                return Err(DapError::TargetPowerUpFailed.into());
+            }
 
             let mut abort = Abort(0);
             abort.set_orunerrclr(true);
