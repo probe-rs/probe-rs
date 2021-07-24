@@ -603,13 +603,6 @@ impl DebugProbe for JLink {
                 return Err((self, e));
             };
 
-            /*
-            match ArmCommunicationInterface::new(self, true) {
-                Ok(interface) => Ok(Box::new(interface)),
-                Err((probe, err)) => Err((DebugProbe::into_probe(probe), err)),
-            }
-            */
-
             let uninitialized_interface = ArmCommunicationInterface::new(self, true);
 
             Ok(Box::new(uninitialized_interface))
@@ -676,11 +669,6 @@ impl JTAGAccess for JLink {
 }
 
 impl DapProbe for JLink {}
-impl<'a> AsMut<dyn DebugProbe + 'a> for JLink {
-    fn as_mut(&mut self) -> &mut (dyn DebugProbe + 'a) {
-        self
-    }
-}
 
 impl SwoAccess for JLink {
     fn enable_swo(&mut self, config: &SwoConfig) -> Result<(), ProbeRsError> {

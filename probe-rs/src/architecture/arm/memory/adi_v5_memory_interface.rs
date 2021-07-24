@@ -591,19 +591,6 @@ where
     }
 }
 
-/*
-impl<AP> ArmProbe for ADIMemoryInterface<'_, AP>
-where
-    AP: CommunicationInterface + ApAccess + DpAccess,
-{
-    fn read_core_reg(&mut self, ap: MemoryAp, addr: CoreRegisterAddress) -> Result<u32, Error> {
-    AP: CommunicationInterface
-        + APAccess<MemoryAP, CSW>
-        + APAccess<MemoryAP, TAR>
-        + APAccess<MemoryAP, DRW>
-        + DPAccess,
-        */
-
 impl<AP> ArmProbe for ADIMemoryInterface<'_, AP>
 where
     AP: CommunicationInterface + ApAccess + DpAccess,
