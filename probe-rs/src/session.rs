@@ -180,49 +180,36 @@ impl Session {
                         sequence_handle.reset_hardware_deassert(&mut memory_interface)?;
                     }
 
-                    let (mut interface, target, _core) = {
-                        let cores = target
-                            .cores
-                            .iter()
-                            .enumerate()
-                            .map(|(id, core)| {
-                                (
-                                    SpecificCoreState::from_core_type(core.core_type),
-                                    Core::create_state(id),
-                                )
-                            })
-                            .collect();
+                    let cores = target
+                        .cores
+                        .iter()
+                        .enumerate()
+                        .map(|(id, core)| {
+                            (
+                                SpecificCoreState::from_core_type(core.core_type),
+                                Core::create_state(id),
+                            )
+                        })
+                        .collect();
 
-                        let mut session = Session {
-                            target,
-                            interface: ArchitectureInterface::Arm(interface),
-                            cores,
-                        };
-
-                        {
-                            // Wait for the core to be halted
-                            let mut core = session.core(0)?;
-                            core.wait_for_core_halted(Duration::from_millis(100))?;
-                        }
-
-                        match session.interface {
-                            ArchitectureInterface::Arm(interface) => {
-                                (interface, session.target, session.cores.remove(0))
-                            }
-                            ArchitectureInterface::Riscv(_) => unreachable!(),
-                        }
-                    };
-
-                    {
-                        let mut memory_interface = interface.memory_interface(default_memory_ap)?;
-                        // we need to halt the chip here
-                        sequence_handle.reset_catch_clear(&mut memory_interface)?;
-                    }
                     let mut session = Session {
                         target,
                         interface: ArchitectureInterface::Arm(interface),
                         cores,
                     };
+
+                    {
+                        // Wait for the core to be halted
+                        let mut core = session.core(0)?;
+                        core.wait_for_core_halted(Duration::from_millis(100))?;
+                    }
+
+                    {
+                        let interface = session.get_arm_interface()?;
+                        let mut memory_interface = interface.memory_interface(default_memory_ap)?;
+                        // we need to halt the chip here
+                        sequence_handle.reset_catch_clear(&mut memory_interface)?;
+                    }
 
                     {
                         let mut core = session.core(0)?;
@@ -465,8 +452,7 @@ impl Session {
 // This test ensures that [Session] is fully [Send] + [Sync].
 static_assertions::assert_impl_all!(Session: Send);
 
-/*
- // TODO tiwalun: Enable again, after rework of Session::new is done.
+// TODO tiwalun: Enable again, after rework of Session::new is done.
 impl Drop for Session {
     fn drop(&mut self) {
         let result = { 0..self.cores.len() }.try_for_each(|i| {
@@ -479,7 +465,6 @@ impl Drop for Session {
         }
     }
 }
-*/
 
 /// Determine the [Target] from a [TargetSelector].
 ///
