@@ -202,7 +202,6 @@ impl Session {
                         {
                             // Wait for the core to be halted
                             let mut core = session.core(0)?;
-
                             core.wait_for_core_halted(Duration::from_millis(100))?;
                         }
 
@@ -219,11 +218,16 @@ impl Session {
                         // we need to halt the chip here
                         sequence_handle.reset_catch_clear(&mut memory_interface)?;
                     }
-                    let session = Session {
+                    let mut session = Session {
                         target,
                         interface: ArchitectureInterface::Arm(interface),
                         cores,
                     };
+
+                    {
+                        let mut core = session.core(0)?;
+                        core.wait_for_core_halted(Duration::from_millis(100))?;
+                    }
 
                     session
                 } else {
