@@ -8,7 +8,7 @@ macro_rules! info_command {
         pub struct $name {}
 
         impl Request for $name {
-            const COMMAND_ID: CommandId = CommandId(0x00);
+            const COMMAND_ID: CommandId = CommandId::Info;
 
             type Response = $response_type;
 
@@ -46,7 +46,7 @@ info_command!(0xF0, CapabilitiesCommand, Capabilities);
 pub struct TestDomainTimeCommand {}
 
 impl Request for TestDomainTimeCommand {
-    const COMMAND_ID: CommandId = CommandId(0x00);
+    const COMMAND_ID: CommandId = CommandId::Info;
 
     type Response = u32;
 
@@ -56,7 +56,9 @@ impl Request for TestDomainTimeCommand {
     }
     fn from_bytes(&self, buffer: &[u8]) -> Result<Self::Response, SendError> {
         if buffer[0] == 0x08 {
-            let res = buffer.pread_with::<u32>(1, LE).unwrap();
+            let res = buffer
+                .pread_with::<u32>(1, LE)
+                .map_err(|_| SendError::NotEnoughData)?;
             Ok(res)
         } else {
             Err(SendError::UnexpectedAnswer)

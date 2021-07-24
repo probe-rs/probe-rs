@@ -9,7 +9,7 @@ pub struct SequenceRequest {
 }
 
 impl Request for SequenceRequest {
-    const COMMAND_ID: CommandId = CommandId(0x12);
+    const COMMAND_ID: CommandId = CommandId::SwjSequence;
 
     type Response = SequenceResponse;
 

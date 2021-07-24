@@ -4,11 +4,8 @@ pub mod swj;
 pub mod swo;
 pub mod transfer;
 
+use crate::probe::cmsisdap::commands::general::info::PacketSizeCommand;
 use crate::DebugProbeError;
-use crate::{
-    architecture::arm::DapError, probe::cmsisdap::commands::general::info::PacketSizeCommand,
-};
-use core::ops::Deref;
 use std::str::Utf8Error;
 use std::time::Duration;
 
@@ -31,10 +28,10 @@ pub enum CmsisDapError {
     SwoTraceStreamError,
     #[error("Requested SWO mode is not available on this probe")]
     SwoModeNotAvailable,
+    #[error("USB Error reading SWO data.")]
+    SwoReadError(#[source] rusb::Error),
     #[error("Could not determine a suitable packet size for this probe")]
     NoPacketSize,
-    #[error("An error with the DAP communication occured")]
-    Dap(#[from] DapError),
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -49,8 +46,8 @@ pub enum SendError {
     InvalidResponseStatus,
     #[error("Connecting to target failed, received: {0:x}")]
     ConnectResponseError(u8),
-    #[error("Received invalid data for {0:?}")]
-    InvalidDataFor(u8),
+    #[error("Command ID in response (:#02x) does not match sent command ID")]
+    CommandIdMismatch(u8),
     /// String in response is not valid UTF-8.
     ///
     /// Strings are required to be UTF-8 encoded by the
@@ -59,8 +56,6 @@ pub enum SendError {
     InvalidString(#[from] Utf8Error),
     #[error("Unexpected answer to command")]
     UnexpectedAnswer,
-    #[error("Failed to write word at data_offset {0}. This is a bug. Please report it.")]
-    WriteToOffsetBug(usize),
     #[error("Timeout in USB communication.")]
     Timeout,
 }
@@ -248,10 +243,7 @@ impl CmsisDapDevice {
                             buf.truncate(0);
                             Ok(buf)
                         }
-                        Err(e) => Err(CmsisDapError::Send {
-                            source: SendError::from(e),
-                            command_id: CommandId(0),
-                        }),
+                        Err(e) => Err(CmsisDapError::SwoReadError(e)),
                     }
                 }
                 None => Err(CmsisDapError::SwoModeNotAvailable),
@@ -276,15 +268,45 @@ impl Status {
     }
 }
 
+/// Command ID for CMSIS-DAP commands.
+///
+/// The command ID is always sent as the first byte for every command,
+/// and also is the first byte of every response.
 #[derive(Debug)]
-pub struct CommandId(u8);
-
-impl Deref for CommandId {
-    type Target = u8;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
+pub enum CommandId {
+    Info = 0x00,
+    HostStatus = 0x01,
+    Connect = 0x02,
+    Disconnect = 0x03,
+    WriteAbort = 0x08,
+    Delay = 0x09,
+    ResetTarget = 0x0A,
+    SwjPins = 0x10,
+    SwjClock = 0x11,
+    SwjSequence = 0x12,
+    SwdConfigure = 0x13,
+    SwdSequence = 0x1D,
+    SwoTransport = 0x17,
+    SwoMode = 0x18,
+    SwoBaudrate = 0x19,
+    SwoControl = 0x1A,
+    SwoStatus = 0x1B,
+    SwoExtendedStatus = 0x1E,
+    SwoData = 0x1C,
+    JtagSequence = 0x14,
+    JtagConfigure = 0x15,
+    JtagIdcode = 0x16,
+    TransferConfigure = 0x04,
+    Transfer = 0x05,
+    TransferBlock = 0x06,
+    TransferAbort = 0x07,
+    ExecuteCommands = 0x7F,
+    QueueCommands = 0x7E,
+    UartTransport = 0x1F,
+    UartConfigure = 0x20,
+    UartControl = 0x22,
+    UartStatus = 0x23,
+    UartTransfer = 0x21,
 }
 
 pub(crate) trait Request {
@@ -326,7 +348,7 @@ fn send_command_inner<Req: Request>(
     let mut buffer = vec![0; buffer_len];
 
     // Leave byte 0 as the HID report, and write the command and request to the buffer.
-    buffer[1] = *Req::COMMAND_ID;
+    buffer[1] = Req::COMMAND_ID as u8;
     let mut size = request.to_bytes(&mut buffer[2..])? + 2;
 
     // For HID devices we must write a full report every time,
@@ -350,10 +372,10 @@ fn send_command_inner<Req: Request>(
         return Err(SendError::NotEnoughData);
     }
 
-    if response_data[0] == *Req::COMMAND_ID {
+    if response_data[0] == Req::COMMAND_ID as u8 {
         request.from_bytes(&response_data[1..])
     } else {
-        Err(SendError::InvalidDataFor(*Req::COMMAND_ID))
+        Err(SendError::CommandIdMismatch(response_data[0]))
     }
 }
 

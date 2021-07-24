@@ -4,7 +4,7 @@ use super::super::{CommandId, Request, SendError, Status};
 pub struct ConfigureRequest;
 
 impl Request for ConfigureRequest {
-    const COMMAND_ID: CommandId = CommandId(0x13);
+    const COMMAND_ID: CommandId = CommandId::SwdConfigure;
 
     type Response = ConfigureResponse;
 

@@ -112,7 +112,7 @@ bitfield::bitfield! {
 }
 
 impl Request for SWJPinsRequest {
-    const COMMAND_ID: CommandId = CommandId(0x10);
+    const COMMAND_ID: CommandId = CommandId::SwjPins;
 
     type Response = SWJPinsResponse;
 
@@ -121,13 +121,13 @@ impl Request for SWJPinsRequest {
 
         buffer
             .pwrite_with(self.output.0, 0, LE)
-            .expect("This is a bug. Please report it.");
+            .expect("Buffer for CMSIS-DAP command is too small. This is a bug, please report it.");
         buffer
             .pwrite_with(self.select.0, 1, LE)
-            .expect("This is a bug. Please report it.");
+            .expect("Buffer for CMSIS-DAP command is too small. This is a bug, please report it.");
         buffer
             .pwrite_with(self.wait, 2, LE)
-            .expect("This is a bug. Please report it.");
+            .expect("Buffer for CMSIS-DAP command is too small. This is a bug, please report it.");
         Ok(6)
     }
 

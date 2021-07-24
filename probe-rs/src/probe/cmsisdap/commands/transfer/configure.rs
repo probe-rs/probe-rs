@@ -12,7 +12,7 @@ pub struct ConfigureRequest {
 }
 
 impl Request for ConfigureRequest {
-    const COMMAND_ID: CommandId = CommandId(0x04);
+    const COMMAND_ID: CommandId = CommandId::TransferConfigure;
 
     type Response = ConfigureResponse;
 
@@ -20,8 +20,12 @@ impl Request for ConfigureRequest {
         use scroll::{Pwrite, LE};
 
         buffer[0] = self.idle_cycles;
-        buffer.pwrite_with(self.wait_retry, 1, LE).unwrap();
-        buffer.pwrite_with(self.match_retry, 3, LE).unwrap();
+        buffer
+            .pwrite_with(self.wait_retry, 1, LE)
+            .expect("This is a bug. Please report it.");
+        buffer
+            .pwrite_with(self.match_retry, 3, LE)
+            .expect("This is a bug. Please report it.");
         Ok(5)
     }
 

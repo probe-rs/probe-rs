@@ -24,7 +24,7 @@ impl HostStatusRequest {
 }
 
 impl Request for HostStatusRequest {
-    const COMMAND_ID: CommandId = CommandId(0x01);
+    const COMMAND_ID: CommandId = CommandId::HostStatus;
 
     type Response = HostStatusResponse;
 

@@ -104,7 +104,7 @@ impl TransferRequest {
 }
 
 impl Request for TransferRequest {
-    const COMMAND_ID: CommandId = CommandId(0x05);
+    const COMMAND_ID: CommandId = CommandId::Transfer;
 
     type Response = TransferResponse;
 
@@ -142,11 +142,9 @@ impl Request for TransferRequest {
         let transfer_data = if buffer.len() >= 2 + 4 {
             buffer
                 .pread_with(2, LE)
-                .expect("Failed to read resposne for single transfer")
+                .map_err(|_| SendError::NotEnoughData)?
         } else {
-            // TODO: Proper return for error case
-            //log::warn!("Not enough data for response!");
-            0
+            return Err(SendError::NotEnoughData);
         };
 
         Ok(TransferResponse {
@@ -206,7 +204,7 @@ pub(crate) struct TransferBlockRequest {
 }
 
 impl Request for TransferBlockRequest {
-    const COMMAND_ID: CommandId = CommandId(0x06);
+    const COMMAND_ID: CommandId = CommandId::TransferBlock;
 
     type Response = TransferBlockResponse;
 
@@ -217,7 +215,7 @@ impl Request for TransferBlockRequest {
 
         buffer
             .pwrite_with(self.transfer_count, 1, LE)
-            .expect("Failed to build TransferBlockRequest");
+            .expect("Buffer for CMSIS-DAP command is too small. This is a bug, please report it.");
         size += 2;
 
         size += self.transfer_request.to_bytes(buffer, 3)?;
@@ -225,9 +223,9 @@ impl Request for TransferBlockRequest {
         let mut data_offset = 4;
 
         for word in &self.transfer_data {
-            buffer
-                .pwrite_with(word, data_offset, LE)
-                .expect("TransferBlockRequest: Failed to add data");
+            buffer.pwrite_with(word, data_offset, LE).expect(
+                "Buffer for CMSIS-DAP command is too small. This is a bug, please report it.",
+            );
             data_offset += 4;
             size += 4;
         }
@@ -238,17 +236,17 @@ impl Request for TransferBlockRequest {
     fn from_bytes(&self, buffer: &[u8]) -> Result<Self::Response, SendError> {
         let transfer_count = buffer
             .pread_with(0, LE)
-            .expect("Failed to read transfer count");
+            .map_err(|_| SendError::NotEnoughData)?;
         let transfer_response = buffer
             .pread_with(2, LE)
-            .expect("Failed to read transfer response");
+            .map_err(|_| SendError::NotEnoughData)?;
 
         let mut data = Vec::with_capacity(transfer_count as usize);
 
         let num_transfers = (buffer.len() - 3) / 4;
 
         log::debug!(
-            "Expected {} responses, got {} responses.",
+            "Expected {} responses, got {} responses with data..",
             transfer_count,
             num_transfers
         );
@@ -257,7 +255,7 @@ impl Request for TransferBlockRequest {
             data.push(
                 buffer
                     .pread_with(3 + data_offset * 4, LE)
-                    .expect("Failed to read transfer response data"),
+                    .map_err(|_| SendError::NotEnoughData)?,
             );
         }
 

@@ -13,7 +13,7 @@ pub enum TransportRequest {
 }
 
 impl Request for TransportRequest {
-    const COMMAND_ID: CommandId = CommandId(0x17);
+    const COMMAND_ID: CommandId = CommandId::SwoTransport;
 
     type Response = TransportResponse;
 
@@ -40,7 +40,7 @@ pub enum ModeRequest {
 }
 
 impl Request for ModeRequest {
-    const COMMAND_ID: CommandId = CommandId(0x18);
+    const COMMAND_ID: CommandId = CommandId::SwoMode;
 
     type Response = ModeResponse;
 
@@ -61,12 +61,15 @@ pub struct ModeResponse(pub(crate) Status);
 pub struct BaudrateRequest(pub(crate) u32);
 
 impl Request for BaudrateRequest {
-    const COMMAND_ID: CommandId = CommandId(0x19);
+    const COMMAND_ID: CommandId = CommandId::SwoBaudrate;
 
     type Response = u32;
 
     fn to_bytes(&self, buffer: &mut [u8]) -> Result<usize, SendError> {
-        assert!(buffer.len() >= 4, "This is a bug. Please report it.");
+        assert!(
+            buffer.len() >= 4,
+            "Buffer for CMSIS-DAP command is too small. This is a bug, please report it."
+        );
         buffer[0..4].copy_from_slice(&self.0.to_le_bytes());
         Ok(4)
     }
@@ -76,7 +79,9 @@ impl Request for BaudrateRequest {
             return Err(SendError::NotEnoughData);
         }
 
-        let baud: u32 = buffer.pread_with(0, LE).unwrap();
+        let baud: u32 = buffer
+            .pread_with(0, LE)
+            .map_err(|_| SendError::NotEnoughData)?;
 
         Ok(baud)
     }
@@ -90,7 +95,7 @@ pub enum ControlRequest {
 }
 
 impl Request for ControlRequest {
-    const COMMAND_ID: CommandId = CommandId(0x1a);
+    const COMMAND_ID: CommandId = CommandId::SwoControl;
 
     type Response = ControlResponse;
 
@@ -111,7 +116,7 @@ pub struct ControlResponse(pub(crate) Status);
 pub struct StatusRequest;
 
 impl Request for StatusRequest {
-    const COMMAND_ID: CommandId = CommandId(0x1b);
+    const COMMAND_ID: CommandId = CommandId::SwoStatus;
 
     type Response = StatusResponse;
 
@@ -124,7 +129,7 @@ impl Request for StatusRequest {
         let count = u32::from_le_bytes(
             buffer[1..5]
                 .try_into()
-                .expect("Failed to read status reponse"),
+                .map_err(|_| SendError::NotEnoughData)?,
         );
         Ok(StatusResponse { status, count })
     }
@@ -161,7 +166,7 @@ pub struct ExtendedStatusRequest {
 }
 
 impl Request for ExtendedStatusRequest {
-    const COMMAND_ID: CommandId = CommandId(0x1e);
+    const COMMAND_ID: CommandId = CommandId::SwoExtendedStatus;
 
     type Response = ExtendedStatusResponse;
 
@@ -217,12 +222,15 @@ pub struct DataRequest {
 }
 
 impl Request for DataRequest {
-    const COMMAND_ID: CommandId = CommandId(0x1c);
+    const COMMAND_ID: CommandId = CommandId::SwoData;
 
     type Response = DataResponse;
 
     fn to_bytes(&self, buffer: &mut [u8]) -> Result<usize, SendError> {
-        assert!(buffer.len() >= 2, "This is a bug. Please report it.");
+        assert!(
+            buffer.len() >= 2,
+            "Buffer for CMSIS-DAP command is too small. This is a bug, please report it."
+        );
         buffer[0..2].copy_from_slice(&self.max_count.to_le_bytes());
         Ok(2)
     }
@@ -232,7 +240,7 @@ impl Request for DataRequest {
         let count = u16::from_le_bytes(
             buffer[1..3]
                 .try_into()
-                .expect("This is a bug. Please report it."),
+                .map_err(|_| SendError::NotEnoughData)?,
         );
         let start = 3;
         let end = start + count as usize;

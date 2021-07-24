@@ -8,7 +8,7 @@ pub enum ConnectRequest {
 }
 
 impl Request for ConnectRequest {
-    const COMMAND_ID: CommandId = CommandId(0x02);
+    const COMMAND_ID: CommandId = CommandId::Connect;
 
     type Response = ConnectResponse;
 
