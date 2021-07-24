@@ -49,14 +49,17 @@ pub enum FlashError {
     // TODO: Warn at YAML parsing stage.
     // TODO: 1 Add information about flash (name, address)
     // TODO: 2 Add source of target definition (built-in, yaml)
-    #[error("Trying to write flash, but no suitable flash loader algorithm is linked to the given target information.")]
-    NoFlashLoaderAlgorithmAttached,
+    #[error("Trying to write flash, but no suitable (default) flash loader algorithm is linked to the given target: {name} .")]
+    NoFlashLoaderAlgorithmAttached { name: String },
+
+    #[error("Either more than one flash loader algorithim marked as default or multiple fitting algorithims but no default selected.")]
+    MultipleFlashLoaderAlgorithms,
 
     #[error("Verify failed.")]
     Verify,
 
     // TODO: 1 Add source of target definition
-    #[error("No RAM defined for chip.")]
+    #[error("No RAM defined for chip: {chip}.")]
     NoRamDefined { chip: String },
 
     // Flash algorithm in YAML is broken
