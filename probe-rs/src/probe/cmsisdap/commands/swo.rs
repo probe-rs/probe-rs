@@ -187,17 +187,17 @@ impl Request for ExtendedStatusRequest {
         let count = u32::from_le_bytes(
             buffer[1..5]
                 .try_into()
-                .expect("This is a bug. Please report it."),
+                .map_err(|_| SendError::NotEnoughData)?,
         );
         let index = u32::from_le_bytes(
             buffer[5..9]
                 .try_into()
-                .expect("This is a bug. Please report it."),
+                .map_err(|_| SendError::NotEnoughData)?,
         );
         let timestamp = u32::from_le_bytes(
             buffer[9..13]
                 .try_into()
-                .expect("This is a bug. Please report it."),
+                .map_err(|_| SendError::NotEnoughData)?,
         );
         Ok(ExtendedStatusResponse {
             status,
