@@ -1,5 +1,7 @@
 use ihex::Record;
-use probe_rs_target::RawFlashAlgorithm;
+use probe_rs_target::{
+    MemoryRange, MemoryRegion, NvmRegion, RawFlashAlgorithm, TargetDescriptionSource,
+};
 use std::collections::HashMap;
 use std::io::{Read, Seek, SeekFrom};
 use std::ops::Range;
@@ -11,10 +13,7 @@ use super::{
 };
 use crate::memory::MemoryInterface;
 use crate::session::Session;
-use crate::{
-    config::{MemoryRange, MemoryRegion, NvmRegion, TargetDescriptionSource},
-    Target,
-};
+use crate::Target;
 
 /// `FlashLoader` is a struct which manages the flashing of any chunks of data onto any sections of flash.
 ///
@@ -420,33 +419,47 @@ impl FlashLoader {
     }
 
     /// Try to find a flash algorithm for the given NvmRegion.
-    /// Errors if there's no algo for the region.
-    /// Errors if there's multiple algos for the region and none is marked as default.
+    /// Errors when:
+    /// - there's no algo for the region.
+    /// - there's multiple default algos for the region.
+    /// - there's multiple fitting algos but no default.
     pub(crate) fn get_flash_algorithm_for_region<'a>(
         region: &NvmRegion,
         target: &'a Target,
     ) -> Result<&'a RawFlashAlgorithm, FlashError> {
-        let algorithms = &target
+        let algorithms = target
             .flash_algorithms
             .iter()
-            .filter(|fa| {
+            // filter for algorithims that contiain adress range
+            .filter(|&fa| {
                 fa.flash_properties
                     .address_range
                     .contains_range(&region.range)
             })
             .collect::<Vec<_>>();
 
-        let raw_flash_algorithm = match algorithms.len() {
-            0 => {
-                return Err(FlashError::NoFlashLoaderAlgorithmAttached);
-            }
-            1 => algorithms[0],
-            _ => *algorithms
-                .iter()
-                .find(|a| a.default)
-                .ok_or(FlashError::NoFlashLoaderAlgorithmAttached)?,
-        };
+        match algorithms.len() {
+            0 => Err(FlashError::NoFlashLoaderAlgorithmAttached {
+                name: target.name.clone(),
+            }),
+            1 => Ok(algorithms[0]),
+            _ => {
+                // filter for defaults
+                let defaults = algorithms
+                    .iter()
+                    .filter(|&fa| fa.default)
+                    .collect::<Vec<_>>();
 
-        Ok(raw_flash_algorithm)
+                match defaults.len() {
+                    0 => Err(FlashError::MultipleFlashLoaderAlgorithmsNoDefault {
+                        region: region.clone(),
+                    }),
+                    1 => Ok(defaults[0]),
+                    _ => Err(FlashError::MultipleDefaultFlashLoaderAlgorithms {
+                        region: region.clone(),
+                    }),
+                }
+            }
+        }
     }
 }
