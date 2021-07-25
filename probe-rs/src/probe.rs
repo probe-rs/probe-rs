@@ -953,7 +953,27 @@ pub trait JTAGAccess: DebugProbe {
 
     /// Executes register writes scheduled by `schedule_write_register`
     /// If the probe doesn't support batching this will be emulated.
-    fn execute(&mut self) -> Result<Box<dyn CommandResults>, DebugProbeError>;
+    fn execute(&mut self) -> Result<Box<dyn CommandResults>, BatchExecutionError>;
+}
+
+pub struct BatchExecutionError {
+    pub error: DebugProbeError,
+    pub error_index: usize,
+    pub results: Box<dyn CommandResults>,
+}
+
+impl BatchExecutionError {
+    pub fn new(
+        error: DebugProbeError,
+        error_index: usize,
+        results: Box<dyn CommandResults>,
+    ) -> BatchExecutionError {
+        BatchExecutionError {
+            error,
+            error_index,
+            results,
+        }
+    }
 }
 
 /// A deferred result returned by scheduling a command
