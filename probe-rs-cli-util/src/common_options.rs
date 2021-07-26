@@ -1,4 +1,4 @@
-use crate::{read_metadata, ArtifactError};
+use crate::ArtifactError;
 
 use std::{fs::File, io::Write, path::Path};
 
@@ -230,17 +230,6 @@ impl ProbeOptions {
             Ok(build_flashloader(target, elf_path)?)
         } else {
             Ok(build_flashloader(session.target(), elf_path)?)
-        }
-    }
-
-    pub fn resolve_chip(&self, work_dir: &Path) -> TargetSelector {
-        let meta = read_metadata(&work_dir).ok();
-
-        // First use structopt, then manifest, then default to auto.
-        match (&self.chip, meta.map(|m| m.chip).flatten()) {
-            (Some(c), _) => c.into(),
-            (_, Some(c)) => c.into(),
-            _ => TargetSelector::Auto,
         }
     }
 }
