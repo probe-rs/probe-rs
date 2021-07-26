@@ -110,9 +110,6 @@ pub struct ProbeOptions {
     pub dry_run: bool,
 }
 
-static mut PROBE: Option<Probe> = None;
-static mut TARGET_SELECTOR: Option<TargetSelector> = None;
-
 impl ProbeOptions {
     /// Add targets contained in file given by --chip-description-path
     /// to probe-rs registery.
@@ -129,11 +126,25 @@ impl ProbeOptions {
         }
     }
 
-    pub fn attach_to_probe(&self) -> Result<&Probe, OperationError> {
-        // Tries to open the debug probe from the given commandline
-        // arguments. This ensures that there is only one probe
-        // connected or if multiple probes are found, a single one is
-        // specified via the commandline parameters.
+    pub fn get_target_selector(&self) -> Result<TargetSelector, OperationError> {
+        let target = if let Some(chip_name) = &self.chip {
+            let target = probe_rs::config::get_target_by_name(chip_name).map_err(|error| {
+                OperationError::ChipNotFound {
+                    source: error,
+                    name: chip_name.clone(),
+                }
+            })?;
+
+            TargetSelector::Specified(target)
+        } else {
+            TargetSelector::Auto
+        };
+
+        Ok(target)
+    }
+
+    /// Attaches to specified probe and configures it.
+    pub fn attach_probe(&self) -> Result<Probe, OperationError> {
         let mut probe = {
             if self.dry_run {
                 Probe::from_specific_probe(Box::new(FakeProbe::new()));
@@ -178,19 +189,14 @@ impl ProbeOptions {
             })?;
         }
 
-        unsafe {
-            PROBE = Some(probe);
-            Ok(PROBE.as_ref().unwrap())
-        }
+        Ok(probe)
     }
 
-    pub fn attach(&self) -> Result<Session, OperationError> {
-        let probe = unsafe { PROBE.take().ok_or(OperationError::InvalidAPIOrder)? };
-        let target = unsafe {
-            TARGET_SELECTOR
-                .take()
-                .ok_or(OperationError::InvalidAPIOrder)?
-        };
+    pub fn attach_session(
+        &self,
+        probe: Probe,
+        target: TargetSelector,
+    ) -> Result<Session, OperationError> {
         let session = if self.connect_under_reset {
             probe.attach_under_reset(target)
         } else {
@@ -204,36 +210,23 @@ impl ProbeOptions {
         Ok(session)
     }
 
-    pub fn get_target_selector(&self) -> Result<&TargetSelector, OperationError> {
-        let target = if let Some(chip_name) = &self.chip {
-            let target = probe_rs::config::get_target_by_name(chip_name).map_err(|error| {
-                OperationError::ChipNotFound {
-                    source: error,
-                    name: chip_name.clone(),
-                }
-            })?;
+    /// Convenience method that attaches to the specified probe, target,
+    /// and target session.
+    pub fn create_session(&self) -> Result<Session, OperationError> {
+        let target = self.get_target_selector()?;
+        let probe = self.attach_probe()?;
+        let session = self.attach_session(probe, target)?;
 
-            TargetSelector::Specified(target)
-        } else {
-            TargetSelector::Auto
-        };
-
-        unsafe {
-            TARGET_SELECTOR = Some(target);
-            Ok(TARGET_SELECTOR.as_ref().unwrap())
-        }
+        Ok(session)
     }
 
     pub fn build_flashloader(
         &self,
+        target: &Option<TargetSelector>,
         session: &mut Session,
         elf_path: &Path,
     ) -> Result<FlashLoader, OperationError> {
-        if let TargetSelector::Specified(ref target) = unsafe {
-            TARGET_SELECTOR
-                .as_ref()
-                .ok_or(OperationError::InvalidAPIOrder)?
-        } {
+        if let Some(TargetSelector::Specified(target)) = target {
             Ok(build_flashloader(target, elf_path)?)
         } else {
             Ok(build_flashloader(session.target(), elf_path)?)
