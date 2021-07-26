@@ -212,7 +212,7 @@ impl ProbeOptions {
 
     /// Convenience method that attaches to the specified probe, target,
     /// and target session.
-    pub fn create_session(&self) -> Result<Session, OperationError> {
+    pub fn simple_attach(&self) -> Result<Session, OperationError> {
         let target = self.get_target_selector()?;
         let probe = self.attach_probe()?;
         let session = self.attach_session(probe, target)?;
