@@ -1,87 +1,130 @@
-use super::super::{Category, Request, Response, SendError};
+use super::super::{CommandId, Request, SendError};
 
 use scroll::{Pread, LE};
 
-#[allow(unused)]
-#[derive(Copy, Clone, Debug)]
-pub enum Command {
-    VendorID = 0x01,
-    ProductID = 0x02,
-    SerialNumber = 0x03,
-    FirmwareVersion = 0x04,
-    TargetDeviceVendor = 0x05,
-    TargetDeviceName = 0x06,
-    Capabilities = 0xF0,
-    TestDomainTimerParameter = 0xF1,
-    SWOTraceBufferSize = 0xFD,
-    PacketCount = 0xFE,
-    PacketSize = 0xFF,
+macro_rules! info_command {
+    ($id:expr, $name:ident, $response_type:ty) => {
+        #[derive(Clone, Default, Debug)]
+        pub struct $name {}
+
+        impl Request for $name {
+            const COMMAND_ID: CommandId = CommandId::Info;
+
+            type Response = $response_type;
+
+            fn to_bytes(&self, buffer: &mut [u8]) -> Result<usize, SendError> {
+                buffer[0] = $id;
+                Ok(1)
+            }
+
+            fn from_bytes(&self, buffer: &[u8]) -> Result<Self::Response, SendError> {
+                ParseFromResponse::from_response(buffer)
+            }
+        }
+    };
 }
 
-impl Request for Command {
-    const CATEGORY: Category = Category(0x00);
+info_command!(0x01, VendorCommand, Option<String>);
 
-    fn to_bytes(&self, buffer: &mut [u8], offset: usize) -> Result<usize, SendError> {
-        buffer[offset] = *self as u8;
+info_command!(0x02, ProductIdCommand, Option<String>);
+
+info_command!(0x03, SerialNumberCommand, Option<String>);
+
+info_command!(0x04, FirmwareVersionCommand, Option<String>);
+
+info_command!(0x05, TargetDeviceVendorCommand, Option<String>);
+
+info_command!(0x06, TargetDeviceNameCommand, Option<String>);
+
+info_command!(0x07, TargetBoardVendorCommand, Option<String>);
+
+info_command!(0x08, TargetBoardNameCommand, Option<String>);
+
+info_command!(0xF0, CapabilitiesCommand, Capabilities);
+
+#[derive(Copy, Clone, Debug)]
+pub struct TestDomainTimeCommand {}
+
+impl Request for TestDomainTimeCommand {
+    const COMMAND_ID: CommandId = CommandId::Info;
+
+    type Response = u32;
+
+    fn to_bytes(&self, buffer: &mut [u8]) -> Result<usize, SendError> {
+        buffer[0] = 0xF1;
         Ok(1)
     }
-}
-
-#[derive(Clone, Default, Debug)]
-pub struct VendorID(pub(crate) String);
-
-impl Response for VendorID {
-    fn from_bytes(buffer: &[u8], offset: usize) -> Result<Self, SendError> {
-        string_from_bytes(buffer, offset, &VendorID)
+    fn from_bytes(&self, buffer: &[u8]) -> Result<Self::Response, SendError> {
+        if buffer[0] == 0x08 {
+            let res = buffer
+                .pread_with::<u32>(1, LE)
+                .map_err(|_| SendError::NotEnoughData)?;
+            Ok(res)
+        } else {
+            Err(SendError::UnexpectedAnswer)
+        }
     }
 }
 
-#[derive(Clone, Default, Debug)]
-pub struct ProductID(pub(crate) String);
+info_command!(0xFE, UartReceiveBufferSizeCommand, u32);
+info_command!(0xFC, UartTransmitBufferSizeCommand, u32);
+info_command!(0xFD, SWOTraceBufferSizeCommand, u32);
+info_command!(0xFE, PacketCountCommand, u8);
+info_command!(0xFF, PacketSizeCommand, u16);
 
-impl Response for ProductID {
-    fn from_bytes(buffer: &[u8], offset: usize) -> Result<Self, SendError> {
-        string_from_bytes(buffer, offset, &ProductID)
+trait ParseFromResponse: Sized {
+    fn from_response(buffer: &[u8]) -> Result<Self, SendError>;
+}
+
+impl ParseFromResponse for Option<String> {
+    /// Create a String out of the received buffer.
+    ///
+    /// The length of the buffer is read from the first byte of the buffer.
+    /// If the length is zero, no string is returned.
+    fn from_response(buffer: &[u8]) -> Result<Self, SendError> {
+        let string_len = buffer[0] as usize; // including the zero terminator
+
+        match string_len {
+            0 => Ok(None),
+            n => {
+                let res = std::str::from_utf8(&buffer[1..1 + n])?;
+                Ok(Some(res.to_owned()))
+            }
+        }
     }
 }
 
-#[derive(Clone, Default, Debug)]
-pub struct SerialNumber(pub(crate) String);
-
-impl Response for SerialNumber {
-    fn from_bytes(buffer: &[u8], offset: usize) -> Result<Self, SendError> {
-        string_from_bytes(buffer, offset, &SerialNumber)
+impl ParseFromResponse for u8 {
+    fn from_response(buffer: &[u8]) -> Result<Self, SendError> {
+        if buffer[0] != 1 {
+            Err(SendError::UnexpectedAnswer)
+        } else {
+            Ok(buffer.pread_with(1, LE).unwrap())
+        }
     }
 }
 
-#[derive(Clone, Default, Debug)]
-pub struct FirmwareVersion(pub(crate) String);
-
-impl Response for FirmwareVersion {
-    fn from_bytes(buffer: &[u8], offset: usize) -> Result<Self, SendError> {
-        string_from_bytes(buffer, offset, &FirmwareVersion)
+impl ParseFromResponse for u16 {
+    fn from_response(buffer: &[u8]) -> Result<Self, SendError> {
+        if buffer[0] != 2 {
+            Err(SendError::UnexpectedAnswer)
+        } else {
+            Ok(buffer.pread_with(1, LE).unwrap())
+        }
     }
 }
 
-#[derive(Clone, Default, Debug)]
-pub struct TargetDeviceVendor(pub(crate) String);
-
-impl Response for TargetDeviceVendor {
-    fn from_bytes(buffer: &[u8], offset: usize) -> Result<Self, SendError> {
-        string_from_bytes(buffer, offset, &TargetDeviceVendor)
+impl ParseFromResponse for u32 {
+    fn from_response(buffer: &[u8]) -> Result<Self, SendError> {
+        if buffer[0] != 4 {
+            Err(SendError::UnexpectedAnswer)
+        } else {
+            Ok(buffer.pread_with(1, LE).unwrap())
+        }
     }
 }
 
-#[derive(Clone, Default, Debug)]
-pub struct TargetDeviceName(pub(crate) String);
-
-impl Response for TargetDeviceName {
-    fn from_bytes(buffer: &[u8], offset: usize) -> Result<Self, SendError> {
-        string_from_bytes(buffer, offset, &TargetDeviceName)
-    }
-}
-
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, Default)]
 pub struct Capabilities {
     pub(crate) swd_implemented: bool,
     pub(crate) jtag_implemented: bool,
@@ -90,106 +133,34 @@ pub struct Capabilities {
     pub(crate) atomic_commands_implemented: bool,
     pub(crate) test_domain_timer_implemented: bool,
     pub(crate) swo_streaming_trace_implemented: bool,
+    pub(crate) uart_communication_port_implemented: bool,
+    pub(crate) uart_com_port_implemented: bool,
 }
 
-impl Response for Capabilities {
-    fn from_bytes(buffer: &[u8], offset: usize) -> Result<Self, SendError> {
+impl ParseFromResponse for Capabilities {
+    fn from_response(buffer: &[u8]) -> Result<Self, SendError> {
         // This response can contain two info bytes.
         // In the docs only the first byte is described, so for now we always will only parse that specific byte.
-        if buffer[offset] > 0 {
-            Ok(Capabilities {
-                swd_implemented: buffer[offset + 1] & 0x01 > 0,
-                jtag_implemented: buffer[offset + 1] & 0x02 > 0,
-                swo_uart_implemented: buffer[offset + 1] & 0x04 > 0,
-                swo_manchester_implemented: buffer[offset + 1] & 0x08 > 0,
-                atomic_commands_implemented: buffer[offset + 1] & 0x10 > 0,
-                test_domain_timer_implemented: buffer[offset + 1] & 0x20 > 0,
-                swo_streaming_trace_implemented: buffer[offset + 1] & 0x40 > 0,
-            })
+        if buffer[0] > 0 {
+            let mut capabilites = Capabilities {
+                swd_implemented: buffer[1] & 0x01 > 0,
+                jtag_implemented: buffer[1] & 0x02 > 0,
+                swo_uart_implemented: buffer[1] & 0x04 > 0,
+                swo_manchester_implemented: buffer[1] & 0x08 > 0,
+                atomic_commands_implemented: buffer[1] & 0x10 > 0,
+                test_domain_timer_implemented: buffer[1] & 0x20 > 0,
+                swo_streaming_trace_implemented: buffer[1] & 0x40 > 0,
+                uart_communication_port_implemented: buffer[1] & 0x80 > 0,
+                uart_com_port_implemented: false,
+            };
+
+            if buffer[0] >= 2 {
+                capabilites.uart_com_port_implemented = buffer[2] & (1 << 0) != 0
+            }
+
+            Ok(capabilites)
         } else {
             Err(SendError::UnexpectedAnswer)
         }
     }
-}
-
-#[derive(Copy, Clone, Debug)]
-pub struct TestDomainTime(pub(crate) u32);
-
-impl Response for TestDomainTime {
-    fn from_bytes(buffer: &[u8], offset: usize) -> Result<Self, SendError> {
-        if buffer[offset] == 0x08 {
-            let res = buffer
-                .pread_with::<u32>(offset + 1, LE)
-                .map_err(|_| SendError::Bug)?;
-            Ok(TestDomainTime(res))
-        } else {
-            Err(SendError::UnexpectedAnswer)
-        }
-    }
-}
-
-#[derive(Copy, Clone, Debug)]
-pub struct SWOTraceBufferSize(pub(crate) u32);
-
-impl Response for SWOTraceBufferSize {
-    fn from_bytes(buffer: &[u8], offset: usize) -> Result<Self, SendError> {
-        if buffer[offset] == 0x04 {
-            let res = buffer
-                .pread_with::<u32>(offset + 1, LE)
-                .map_err(|_| SendError::Bug)?;
-            Ok(SWOTraceBufferSize(res))
-        } else {
-            Err(SendError::UnexpectedAnswer)
-        }
-    }
-}
-
-#[derive(Copy, Clone, Debug)]
-pub struct PacketCount(pub(crate) u8);
-
-impl Response for PacketCount {
-    fn from_bytes(buffer: &[u8], offset: usize) -> Result<Self, SendError> {
-        if buffer[offset] == 0x01 {
-            let res = buffer
-                .pread_with::<u8>(offset + 1, LE)
-                .map_err(|_| SendError::Bug)?;
-            Ok(PacketCount(res))
-        } else {
-            Err(SendError::UnexpectedAnswer)
-        }
-    }
-}
-
-#[derive(Copy, Clone, Debug)]
-pub struct PacketSize(pub(crate) u16);
-
-impl Response for PacketSize {
-    fn from_bytes(buffer: &[u8], offset: usize) -> Result<Self, SendError> {
-        if buffer[offset] == 0x02 {
-            let res = buffer
-                .pread_with::<u16>(offset + 1, LE)
-                .map_err(|_| SendError::Bug)?;
-            Ok(PacketSize(res))
-        } else {
-            Err(SendError::UnexpectedAnswer)
-        }
-    }
-}
-
-/// Create a String out of the received buffer.
-///
-/// The length of the buffer is read from the buffer, at index offset.
-///
-fn string_from_bytes<R, F: Fn(String) -> R>(
-    buffer: &[u8],
-    offset: usize,
-    constructor: &F,
-) -> Result<R, SendError> {
-    let string_len = buffer[dbg!(offset)] as usize; // including the zero terminator
-
-    let string_start = offset + 1;
-    let string_end = string_start + string_len;
-
-    let res = std::str::from_utf8(&buffer[string_start..string_end]).map_err(|_| SendError::Bug)?;
-    Ok(constructor(res.to_owned()))
 }

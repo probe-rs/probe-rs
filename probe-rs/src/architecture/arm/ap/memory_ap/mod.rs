@@ -4,7 +4,7 @@
 pub(crate) mod mock;
 
 use super::{AccessPort, ApAccess, ApRegister, GenericAp, Register};
-use crate::DebugProbeError;
+use crate::{architecture::arm::ApAddress, DebugProbeError};
 use enum_primitive_derive::Primitive;
 use num_traits::{FromPrimitive, ToPrimitive};
 
@@ -19,10 +19,10 @@ impl MemoryAp {
     where
         A: ApAccess,
     {
-        let base_register: BASE = interface.read_ap_register(self.port_number())?;
+        let base_register: BASE = interface.read_ap_register(*self)?;
 
         let mut base_address = if BaseaddrFormat::ADIv5 == base_register.Format {
-            let base2: BASE2 = interface.read_ap_register(self.port_number())?;
+            let base2: BASE2 = interface.read_ap_register(*self)?;
 
             u64::from(base2.BASEADDR) << 32
         } else {
@@ -37,7 +37,7 @@ impl MemoryAp {
 impl From<GenericAp> for MemoryAp {
     fn from(other: GenericAp) -> Self {
         MemoryAp {
-            port_number: other.port_number(),
+            address: other.ap_address(),
         }
     }
 }

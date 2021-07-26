@@ -1,0 +1,97 @@
+---
+name: LPC55S28
+manufacturer: ~
+variants:
+  - name: LPC55S28JBD100
+    cores:
+      - name: main
+        type: M33
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537067520
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 0
+            end: 524288
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - lpc55xx_512
+  - name: LPC55S28JBD64
+    cores:
+      - name: main
+        type: M33
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537067520
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 0
+            end: 524288
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - lpc55xx_512
+  - name: LPC55S28JEV98
+    cores:
+      - name: main
+        type: M33
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 537067520
+          is_boot_memory: false
+          cores: [main]
+      - Nvm:
+          range:
+            start: 0
+            end: 524288
+          is_boot_memory: true
+          cores: [main]
+    flash_algorithms:
+      - lpc55xx_512
+flash_algorithms:
+  lpc55xx_512:
+    name: lpc55xx_512
+    description: LPC55xx IAP 512kB Flash
+    cores: [main]
+    default: true
+    instructions: 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
+    pc_init: 1
+    pc_uninit: 93
+    pc_program_page: 177
+    pc_erase_sector: 137
+    pc_erase_all: 97
+    data_section_offset: 1616
+    flash_properties:
+      address_range:
+        start: 0
+        end: 524288
+      page_size: 512
+      erased_byte_value: 255
+      program_page_timeout: 300
+      erase_sector_timeout: 3000
+      sectors:
+        - size: 32768
+          address: 0
