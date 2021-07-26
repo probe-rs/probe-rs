@@ -220,17 +220,35 @@ impl ProbeOptions {
         Ok(session)
     }
 
+    /// Builds a new flash loader for the given target and ELF. This
+    /// will check the ELF for validity and check what pages have to be
+    /// flashed etc.
     pub fn build_flashloader(
         &self,
         target: &Option<TargetSelector>,
         session: &mut Session,
         elf_path: &Path,
     ) -> Result<FlashLoader, OperationError> {
-        if let Some(TargetSelector::Specified(target)) = target {
-            Ok(build_flashloader(target, elf_path)?)
-        } else {
-            Ok(build_flashloader(session.target(), elf_path)?)
-        }
+        let target = match target {
+            Some(TargetSelector::Specified(target)) => target,
+            _ => session.target(),
+        };
+
+        // Create the flash loader
+        let mut loader = FlashLoader::new(target.memory_map.to_vec(), target.source().clone());
+
+        // Add data from the ELF.
+        let mut file = File::open(&elf_path).map_err(|error| OperationError::FailedToOpenElf {
+            source: error,
+            path: format!("{}", elf_path.display()),
+        })?;
+
+        // Try and load the ELF data.
+        loader
+            .load_elf_data(&mut file)
+            .map_err(OperationError::FailedToLoadElfData)?;
+
+        Ok(loader)
     }
 }
 
@@ -432,24 +450,4 @@ pub fn print_families(mut f: impl Write) -> Result<(), OperationError> {
         }
     }
     Ok(())
-}
-
-/// Builds a new flash loader for the given target and ELF.
-/// This will check the ELF for validity and check what pages have to be flashed etc.
-fn build_flashloader(target: &Target, path: &Path) -> Result<FlashLoader, OperationError> {
-    // Create the flash loader
-    let mut loader = FlashLoader::new(target.memory_map.to_vec(), target.source().clone());
-
-    // Add data from the ELF.
-    let mut file = File::open(&path).map_err(|error| OperationError::FailedToOpenElf {
-        source: error,
-        path: format!("{}", path.display()),
-    })?;
-
-    // Try and load the ELF data.
-    loader
-        .load_elf_data(&mut file)
-        .map_err(OperationError::FailedToLoadElfData)?;
-
-    Ok(loader)
 }
