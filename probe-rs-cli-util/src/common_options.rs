@@ -1,6 +1,6 @@
 use crate::ArtifactError;
 
-use std::{fs::File, io::Write, path::Path};
+use std::{fs::File, io::Write, path::Path, path::PathBuf};
 
 use probe_rs::{
     config::{RegistryError, TargetSelector},
@@ -54,13 +54,13 @@ pub struct FlashOptions {
         long = "elf",
         help = "The path to the ELF file to be flashed."
     )]
-    pub elf: Option<String>,
+    pub elf: Option<PathBuf>,
     #[structopt(
         name = "directory",
         long = "work-dir",
         help = "The work directory from which cargo-flash should operate from."
     )]
-    pub work_dir: Option<String>,
+    pub work_dir: Option<PathBuf>,
     #[structopt(flatten)]
     /// Arguments which are forwarded to 'cargo build'.
     pub cargo_options: CargoOptions,
@@ -90,7 +90,7 @@ pub struct ProbeOptions {
     #[structopt(name = "chip", long = "chip")]
     pub chip: Option<String>,
     #[structopt(name = "chip description file path", long = "chip-description-path")]
-    pub chip_description_path: Option<String>,
+    pub chip_description_path: Option<PathBuf>,
     #[structopt(name = "protocol", long = "protocol", default_value = "swd")]
     pub protocol: WireProtocol,
     #[structopt(
@@ -240,7 +240,7 @@ impl ProbeOptions {
         // Add data from the ELF.
         let mut file = File::open(&elf_path).map_err(|error| OperationError::FailedToOpenElf {
             source: error,
-            path: format!("{}", elf_path.display()),
+            path: elf_path.to_path_buf(),
         })?;
 
         // Try and load the ELF data.
@@ -265,7 +265,7 @@ pub struct CargoOptions {
     #[structopt(name = "target", long = "target", hidden = true)]
     pub target: Option<String>,
     #[structopt(name = "PATH", long = "manifest-path", hidden = true)]
-    pub manifest_path: Option<String>,
+    pub manifest_path: Option<PathBuf>,
     #[structopt(long, hidden = true)]
     pub no_default_features: bool,
     #[structopt(long, hidden = true)]
@@ -317,8 +317,10 @@ CARGO BUILD OPTIONS:
             args.push("--release".to_string());
         }
         maybe_push_str_opt!(&self.bin, bin);
-        #[rustfmt::skip]
-        maybe_push_str_opt!(&self.manifest_path, manifest-path);
+        if let Some(path) = &self.manifest_path {
+            args.push("--manifest-path".to_string());
+            args.push(path.display().to_string());
+        }
         if self.no_default_features {
             args.push("--no-default-features".to_string());
         }
@@ -344,7 +346,7 @@ pub enum OperationError {
     FailedToOpenElf {
         #[source]
         source: std::io::Error,
-        path: String,
+        path: PathBuf,
     },
     #[error("Failed to load the ELF data.")]
     FailedToLoadElfData(#[source] FileDownloadError),
@@ -358,25 +360,25 @@ pub enum OperationError {
         source: FlashError,
         target: Target,
         target_spec: Option<String>,
-        path: String,
+        path: PathBuf,
     },
     #[error("Failed to parse the chip description '{path}'.")]
     FailedChipDescriptionParsing {
         #[source]
         source: RegistryError,
-        path: String,
+        path: PathBuf,
     },
     #[error("Failed to change the working directory to '{path}'.")]
     FailedToChangeWorkingDirectory {
         #[source]
         source: std::io::Error,
-        path: String,
+        path: PathBuf,
     },
     #[error("Failed to build the cargo project at '{path}'.")]
     FailedToBuildExternalCargoProject {
         #[source]
         source: ArtifactError,
-        path: String,
+        path: PathBuf,
     },
     #[error("Failed to build the cargo project.")]
     FailedToBuildCargoProject(#[source] ArtifactError),

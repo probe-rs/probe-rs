@@ -148,7 +148,7 @@ pub fn run_flash_download(
                 source: error,
                 target: session.target().clone(),
                 target_spec: opt.probe_options.chip.clone(),
-                path: format!("{}", path.display()),
+                path: path.to_path_buf(),
             }
         })?;
 
@@ -160,7 +160,7 @@ pub fn run_flash_download(
                 source: error,
                 target: session.target().clone(),
                 target_spec: opt.probe_options.chip.clone(),
-                path: format!("{}", path.display()),
+                path: path.to_path_buf(),
             }
         })?;
     }
