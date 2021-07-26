@@ -2,7 +2,7 @@
 //! extend then functionality of cargo-flash.
 //!
 //! Example usage:
-//! ```
+//! ```text
 //! use structopt::StructOpt;
 //! use probe_rs_cli_util::common_options::FlashOptions;
 //!
@@ -324,7 +324,7 @@ pub struct CargoOptions {
 impl CargoOptions {
     /// Generates a suitable help string to append to your program's
     /// --help. Example usage:
-    /// ```
+    /// ```text
     /// let matches = FlashOptions::clap()
     ///     .bin_name("cargo flash")
     ///     .after_help(CargoOptions::help_message("cargo flash").as_str())
