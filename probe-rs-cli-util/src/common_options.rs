@@ -1,3 +1,36 @@
+//! Collection of `#[derive(StructOpt)] struct`s common to programs that
+//! extend then functionality of cargo-flash.
+//!
+//! Example usage:
+//! ```
+//! use structopt::StructOpt;
+//! use probe_rs_cli_util::common_options::FlashOptions;
+//!
+//! #[derive(StructOpt)]
+//! struct Opts {
+//!     #[structopt(long = "some-opt")]
+//!     opt: String,
+//!
+//!     #[structopt(flatten)]
+//!     flash_options: FlashOptions,
+//! }
+//!
+//! fn main() {
+//!     let opts = Opts::from_iter(std::env::args());
+//!
+//!     opts.flash_options.probe_options.maybe_load_chip_desc().unwrap();
+//!
+//!     // handle --list-{chips,probes}
+//!     if opts.flash_options.early_exit(std::io::stdout()).unwrap() {
+//!         return;
+//!     }
+//!
+//!     let target_session = opts.flash_options.simple_attach().unwarp();
+//!
+//!     // ...
+//! }
+//! ```
+
 use crate::ArtifactError;
 
 use std::{fs::File, io::Write, path::Path, path::PathBuf};
@@ -9,6 +42,7 @@ use probe_rs::{
 };
 use structopt::StructOpt;
 
+/// Common options when flashing a target device.
 #[derive(Debug, StructOpt)]
 pub struct FlashOptions {
     #[structopt(short = "V", long = "version")]
@@ -70,6 +104,12 @@ pub struct FlashOptions {
 }
 
 impl FlashOptions {
+    /// Whether calling program should exit prematurely. Effectively
+    /// handles --list-{probes,chips}.
+    ///
+    /// If `Ok(false)` is returned, calling program should continue executing.
+    ///
+    /// Note: [ProbeOptions::maybe_load_chip_desc] should be called before this function.
     pub fn early_exit(&self, f: impl Write) -> Result<bool, OperationError> {
         if self.list_probes {
             list_connected_probes(f)?;
@@ -85,6 +125,7 @@ impl FlashOptions {
     }
 }
 
+/// Common options and logic when interfacing with a [Probe].
 #[derive(StructOpt, Debug)]
 pub struct ProbeOptions {
     #[structopt(name = "chip", long = "chip")]
@@ -113,6 +154,8 @@ pub struct ProbeOptions {
 impl ProbeOptions {
     /// Add targets contained in file given by --chip-description-path
     /// to probe-rs registery.
+    ///
+    /// Note: should be called before [FlashOptions::early_exit] and any other functions in [ProbeOptions].
     pub fn maybe_load_chip_desc(&self) -> Result<(), OperationError> {
         if let Some(ref cdp) = self.chip_description_path {
             probe_rs::config::add_target_from_yaml(&Path::new(cdp)).map_err(|error| {
@@ -126,6 +169,7 @@ impl ProbeOptions {
         }
     }
 
+    /// Resolves a resultant target selector from passed [ProbeOptions].
     pub fn get_target_selector(&self) -> Result<TargetSelector, OperationError> {
         let target = if let Some(chip_name) = &self.chip {
             let target = probe_rs::config::get_target_by_name(chip_name).map_err(|error| {
@@ -192,6 +236,8 @@ impl ProbeOptions {
         Ok(probe)
     }
 
+    /// Attaches to target device session. Attaches under reset if
+    /// specified by [ProbeOptions::connect_under_reset].
     pub fn attach_session(
         &self,
         probe: Probe,
@@ -252,6 +298,7 @@ impl ProbeOptions {
     }
 }
 
+/// Common options used when building artifacts with cargo.
 #[derive(StructOpt, Debug)]
 pub struct CargoOptions {
     #[structopt(name = "binary", long = "bin", hidden = true)]
@@ -275,6 +322,15 @@ pub struct CargoOptions {
 }
 
 impl CargoOptions {
+    /// Generates a suitable help string to append to your program's
+    /// --help. Example usage:
+    /// ```
+    /// let matches = FlashOptions::clap()
+    ///     .bin_name("cargo flash")
+    ///     .after_help(CargoOptions::help_message("cargo flash").as_str())
+    ///     .get_matches_from(&args);
+    /// let opts = FlashOptions::from_clap(&matches);
+    /// ```
     pub fn help_message(bin: &str) -> String {
         format!(
             r#"
@@ -299,6 +355,9 @@ CARGO BUILD OPTIONS:
         )
     }
 
+    /// Generates list of arguments to cargo from a `CargoOptions`. For
+    /// example, if [CargoOptions::release] is set, resultant list will
+    /// contain a `"--release"`.
     pub fn to_cargo_arguments(&self) -> Vec<String> {
         let mut args: Vec<String> = vec![];
         macro_rules! maybe_push_str_opt {
