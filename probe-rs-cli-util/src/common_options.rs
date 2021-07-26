@@ -271,14 +271,10 @@ impl ProbeOptions {
     /// flashed etc.
     pub fn build_flashloader(
         &self,
-        target: &Option<TargetSelector>,
         session: &mut Session,
         elf_path: &Path,
     ) -> Result<FlashLoader, OperationError> {
-        let target = match target {
-            Some(TargetSelector::Specified(target)) => target,
-            _ => session.target(),
-        };
+        let target = session.target();
 
         // Create the flash loader
         let mut loader = FlashLoader::new(target.memory_map.to_vec(), target.source().clone());
