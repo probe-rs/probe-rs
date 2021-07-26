@@ -2,7 +2,7 @@ use anyhow::anyhow;
 
 use super::super::{ApAccess, Register};
 use super::{AddressIncrement, ApRegister, DataSize, CSW, DRW, TAR};
-use crate::architecture::arm::ap::AccessPort;
+use crate::architecture::arm::{ap::AccessPort, DpAddress};
 use crate::{
     architecture::arm::dp::{DebugPortError, DpAccess, DpRegister},
     CommunicationInterface, DebugProbeError,
@@ -226,12 +226,16 @@ impl ApAccess for MockMemoryAp {
 }
 
 impl DpAccess for MockMemoryAp {
-    fn read_dp_register<R: DpRegister>(&mut self) -> Result<R, DebugPortError> {
+    fn read_dp_register<R: DpRegister>(&mut self, _dp: DpAddress) -> Result<R, DebugPortError> {
         // Ignore for Tests
         Ok(0.into())
     }
 
-    fn write_dp_register<R: DpRegister>(&mut self, _register: R) -> Result<(), DebugPortError> {
+    fn write_dp_register<R: DpRegister>(
+        &mut self,
+        _dp: DpAddress,
+        _register: R,
+    ) -> Result<(), DebugPortError> {
         Ok(())
     }
 }

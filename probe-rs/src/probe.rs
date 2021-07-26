@@ -5,18 +5,16 @@ pub(crate) mod jlink;
 pub(crate) mod stlink;
 
 use crate::{
-    architecture::arm::{ap::AccessPort, DapAccess},
+    architecture::arm::memory::adi_v5_memory_interface::ADIMemoryInterface,
+    config::{RegistryError, TargetSelector},
+};
+use crate::{
+    architecture::arm::{ap::AccessPort, ApAddress, DapAccess, DpAddress},
     Session,
 };
 use crate::{
     architecture::arm::{ap::MemoryAp, MemoryApInformation},
     error::Error,
-};
-use crate::{
-    architecture::arm::{
-        dp::DebugPortVersion, memory::adi_v5_memory_interface::ADIMemoryInterface,
-    },
-    config::{RegistryError, TargetSelector},
 };
 use crate::{
     architecture::{
@@ -615,9 +613,6 @@ pub struct DebugProbeSelector {
     pub vendor_id: u16,
     pub product_id: u16,
     pub serial_number: Option<String>,
-
-    /// USB HID interface, necessary for composite devices
-    usb_hid_interface: Option<u8>,
 }
 
 impl TryFrom<&str> for DebugProbeSelector {
@@ -629,7 +624,6 @@ impl TryFrom<&str> for DebugProbeSelector {
                 vendor_id: u16::from_str_radix(split[0], 16)?,
                 product_id: u16::from_str_radix(split[1], 16)?,
                 serial_number: None,
-                usb_hid_interface: None,
             }
         } else {
             return Err(DebugProbeSelectorParseError::Format);
@@ -663,7 +657,6 @@ impl From<DebugProbeInfo> for DebugProbeSelector {
             vendor_id: selector.vendor_id,
             product_id: selector.product_id,
             serial_number: selector.serial_number,
-            usb_hid_interface: selector.hid_interface,
         }
     }
 }
@@ -674,7 +667,6 @@ impl From<&DebugProbeInfo> for DebugProbeSelector {
             vendor_id: selector.vendor_id,
             product_id: selector.product_id,
             serial_number: selector.serial_number.clone(),
-            usb_hid_interface: selector.hid_interface,
         }
     }
 }
@@ -779,6 +771,10 @@ impl DebugProbe for FakeProbe {
 }
 
 impl RawDapAccess for FakeProbe {
+    fn select_dp(&mut self, _dp: DpAddress) -> Result<(), DebugProbeError> {
+        Err(DebugProbeError::CommandNotSupportedByProbe)
+    }
+
     /// Reads the DAP register on the specified port and address
     fn raw_read_register(&mut self, _port: PortType, _addr: u8) -> Result<u32, DebugProbeError> {
         Err(DebugProbeError::CommandNotSupportedByProbe)
@@ -812,7 +808,7 @@ impl FakeArmInterface {
 impl ArmProbeInterface for FakeArmInterface {
     fn memory_interface(&mut self, access_port: MemoryAp) -> Result<Memory<'_>, Error> {
         let ap_information = MemoryApInformation {
-            port_number: access_port.port_number(),
+            address: access_port.ap_address(),
             only_32bit_data_size: false,
             debug_base_address: 0xf000_0000,
             supports_hnonsec: false,
@@ -824,18 +820,19 @@ impl ArmProbeInterface for FakeArmInterface {
     }
 
     fn ap_information(
-        &self,
+        &mut self,
         _access_port: crate::architecture::arm::ap::GenericAp,
-    ) -> Option<&crate::architecture::arm::ApInformation> {
+    ) -> Result<&crate::architecture::arm::ApInformation, Error> {
         todo!()
     }
 
-    fn num_access_ports(&self) -> usize {
-        1
+    fn num_access_ports(&mut self, _dp: DpAddress) -> Result<usize, Error> {
+        Ok(1)
     }
 
     fn read_from_rom_table(
         &mut self,
+        _dp: DpAddress,
     ) -> Result<Option<crate::architecture::arm::ArmChipInfo>, Error> {
         Ok(None)
     }
@@ -850,21 +847,26 @@ impl ArmProbeInterface for FakeArmInterface {
 }
 
 impl DapAccess for FakeArmInterface {
-    fn debug_port_version(&self) -> DebugPortVersion {
-        DebugPortVersion::DPv2
-    }
-
-    fn read_raw_dp_register(&mut self, _address: u8) -> Result<u32, DebugProbeError> {
+    fn read_raw_dp_register(
+        &mut self,
+        _dp: DpAddress,
+        _address: u8,
+    ) -> Result<u32, DebugProbeError> {
         todo!()
     }
 
-    fn write_raw_dp_register(&mut self, _address: u8, _value: u32) -> Result<(), DebugProbeError> {
+    fn write_raw_dp_register(
+        &mut self,
+        _dp: DpAddress,
+        _address: u8,
+        _value: u32,
+    ) -> Result<(), DebugProbeError> {
         todo!()
     }
 
     fn read_raw_ap_register(
         &mut self,
-        _port_number: u8,
+        _ap: ApAddress,
         _address: u8,
     ) -> Result<u32, DebugProbeError> {
         todo!()
@@ -872,7 +874,7 @@ impl DapAccess for FakeArmInterface {
 
     fn read_raw_ap_register_repeated(
         &mut self,
-        _port: u8,
+        _ap: ApAddress,
         _address: u8,
         _values: &mut [u32],
     ) -> Result<(), DebugProbeError> {
@@ -881,7 +883,7 @@ impl DapAccess for FakeArmInterface {
 
     fn write_raw_ap_register(
         &mut self,
-        _port: u8,
+        _ap: ApAddress,
         _address: u8,
         _value: u32,
     ) -> Result<(), DebugProbeError> {
@@ -890,7 +892,7 @@ impl DapAccess for FakeArmInterface {
 
     fn write_raw_ap_register_repeated(
         &mut self,
-        _port: u8,
+        _ap: ApAddress,
         _address: u8,
         _values: &[u32],
     ) -> Result<(), DebugProbeError> {
@@ -936,6 +938,43 @@ pub trait JTAGAccess: DebugProbe {
         data: &[u8],
         len: u32,
     ) -> Result<Vec<u8>, DebugProbeError>;
+
+    /// Schedules a register write to be executed later by calling `execute`
+    ///
+    /// Returns a DeferredCommandResult which can be used to get the result after `execute`.
+    /// If the probe doesn't support batching this will be emulated.
+    fn schedule_write_register(
+        &mut self,
+        address: u32,
+        data: &[u8],
+        len: u32,
+        transform: fn(Vec<u8>) -> Result<u32, DebugProbeError>,
+    ) -> Result<Box<dyn DeferredCommandResult>, DebugProbeError>;
+
+    /// Executes register writes scheduled by `schedule_write_register`
+    /// If the probe doesn't support batching this will be emulated.
+    fn execute(&mut self) -> Result<Box<dyn CommandResults>, DebugProbeError>;
+}
+
+/// A deferred result returned by scheduling a command
+/// The value can be retrieved after the batched commands are executed.
+pub trait DeferredCommandResult {
+    fn get(&self, command_results: &dyn CommandResults) -> CommandResult;
+}
+
+/// Contains all results of batched commands executed by `execute`
+pub trait CommandResults {
+    fn get(&self, index: usize) -> CommandResult;
+}
+
+/// Results generated by `JtagCommand`s
+#[derive(Debug, Clone)]
+pub enum CommandResult {
+    None,
+    U8(u8),
+    U16(u16),
+    U32(u32),
+    VecU8(Vec<u8>),
 }
 
 #[derive(PartialEq, Debug, Copy, Clone)]

@@ -1,0 +1,94 @@
+# TODO: Flash XIP has noalloc/nocache aliases, add them?
+# TODO: ROM at 0x00000000 - 0x00004000? probe-rs doesn't seem to have support for ROM regions
+
+name: RP2040
+variants:
+  - name: RP2040
+    cores:
+      - name: core0
+        type: M0
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0x01002927
+      - name: core1
+        type: M0
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0x11002927
+    memory_map:
+      - Ram: # Banks 0-3 striped
+          range:
+            start: 0x20000000
+            end: 0x20040000
+          is_boot_memory: false
+          cores: [core0, core1]
+      - Ram: # Bank 4
+          range:
+            start: 0x20040000
+            end: 0x20041000
+          is_boot_memory: false
+          cores: [core0, core1]
+      - Ram: # Bank 5
+          range:
+            start: 0x20041000
+            end: 0x20042000
+          is_boot_memory: false
+          cores: [core0, core1]
+      - Ram: # Bank 0 non-striped alias
+          range:
+            start: 0x21000000
+            end: 0x21010000
+          is_boot_memory: false
+          cores: [core0, core1]
+      - Ram: # Bank 1 non-striped alias
+          range:
+            start: 0x21010000
+            end: 0x21020000
+          is_boot_memory: false
+          cores: [core0, core1]
+      - Ram: # Bank 2 non-striped alias
+          range:
+            start: 0x21020000
+            end: 0x21030000
+          is_boot_memory: false
+          cores: [core0, core1]
+      - Ram: # Bank 3 non-striped alias
+          range:
+            start: 0x21030000
+            end: 0x21040000
+          is_boot_memory: false
+          cores: [core0, core1]
+      - Nvm: # Flash XIP
+          range:
+            start: 0x10000000
+            end: 0x11000000
+          is_boot_memory: true
+          cores: [core0, core1]
+    flash_algorithms:
+      - algo
+flash_algorithms:
+  algo:
+    name: algo
+    description: algo
+    cores: [core0]
+    default: true
+    instructions: 8LWFsB5MfEQgeAEoAdEA8Dv4ASAEkCBwFU4wRvcwAPCJ+AOUBEYTT7gcAPCD+AVGMEYA8H/4ApAPSADwe/gBkA5IAPB3+AZGOEYA8HP4B0agR6hHC0h4RDDAApkBYAGZBDDCwASYA5kIcAAgBbDwvVJFAABDWAAAUlAAAEZDAABeAQAA9gAAALC1CEx8RCB4ASgI0QZNfUQoaYBHaGmARwAgIHCwvQEgsL3ARtgAAAC2AAAABUh4RAB4ACgB0QEgcEcBSHBHwEbQcAAArgAAABC1Ckl5RAl4ASkM0Q8hCQdAGAdJeUSMaAEiEQMSBNgjoEcAIBC9ASAQvcBGkAAAAGgAAAAQtQtGCEl5RAl4ASkK0Q8hCQdAGAVJeUTMaBFGGkagRwAgEL0BIBC9WgAAADIAAACAshQhCYiJHkqIACoE0AkdgkL50QiIcEf+3tTUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAANTU1A==
+    pc_init: 1
+    pc_uninit: 137
+    pc_program_page: 261
+    pc_erase_sector: 209
+    pc_erase_all: 181
+    data_section_offset: 0
+    flash_properties:
+      address_range:
+        start: 0x10000000
+        end: 0x11000000
+      page_size: 0x1000
+      erased_byte_value: 0xFF
+      program_page_timeout: 1000
+      erase_sector_timeout: 3000
+      sectors:
+        - size: 0x1000
+          address: 0

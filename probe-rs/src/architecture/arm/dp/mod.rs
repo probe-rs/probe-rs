@@ -1,7 +1,7 @@
 #[macro_use]
 mod register_generation;
 
-use super::{DapAccess, Register};
+use super::{DapAccess, DpAddress, Register};
 use bitfield::bitfield;
 use jep106::JEP106Code;
 
@@ -26,37 +26,31 @@ impl From<DebugPortError> for DebugProbeError {
 }
 
 pub trait DpAccess {
-    fn read_dp_register<R: DpRegister>(&mut self) -> Result<R, DebugPortError>;
+    fn read_dp_register<R: DpRegister>(&mut self, dp: DpAddress) -> Result<R, DebugPortError>;
 
-    fn write_dp_register<R: DpRegister>(&mut self, register: R) -> Result<(), DebugPortError>;
+    fn write_dp_register<R: DpRegister>(
+        &mut self,
+        dp: DpAddress,
+        register: R,
+    ) -> Result<(), DebugPortError>;
 }
 
 impl<T: DapAccess> DpAccess for T {
-    fn read_dp_register<R: DpRegister>(&mut self) -> Result<R, DebugPortError> {
-        if R::VERSION > self.debug_port_version() {
-            return Err(DebugPortError::UnsupportedRegister {
-                register: R::NAME,
-                version: self.debug_port_version(),
-            });
-        }
-
+    fn read_dp_register<R: DpRegister>(&mut self, dp: DpAddress) -> Result<R, DebugPortError> {
         log::debug!("Reading DP register {}", R::NAME);
-        let result = self.read_raw_dp_register(R::ADDRESS)?;
+        let result = self.read_raw_dp_register(dp, R::ADDRESS)?;
         log::debug!("Read    DP register {}, value=0x{:08x}", R::NAME, result);
         Ok(result.into())
     }
 
-    fn write_dp_register<R: DpRegister>(&mut self, register: R) -> Result<(), DebugPortError> {
-        if R::VERSION > self.debug_port_version() {
-            return Err(DebugPortError::UnsupportedRegister {
-                register: R::NAME,
-                version: self.debug_port_version(),
-            });
-        }
-
+    fn write_dp_register<R: DpRegister>(
+        &mut self,
+        dp: DpAddress,
+        register: R,
+    ) -> Result<(), DebugPortError> {
         let value = register.into();
         log::debug!("Writing DP register {}, value=0x{:08x}", R::NAME, value);
-        self.write_raw_dp_register(R::ADDRESS, value)?;
+        self.write_raw_dp_register(dp, R::ADDRESS, value)?;
         Ok(())
     }
 }

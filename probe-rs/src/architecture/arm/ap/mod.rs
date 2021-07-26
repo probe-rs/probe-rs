@@ -12,7 +12,7 @@ pub use memory_ap::{
 };
 use probe_rs_target::Core;
 
-use super::{DapAccess, Register};
+use super::{ApAddress, DapAccess, DpAddress, Register};
 
 #[derive(Debug, thiserror::Error)]
 pub enum AccessPortError {
@@ -71,7 +71,7 @@ impl AccessPortError {
 pub trait ApRegister<PORT: AccessPort>: Register + Sized {}
 
 pub trait AccessPort {
-    fn port_number(&self) -> u8;
+    fn ap_address(&self) -> ApAddress;
 }
 
 pub trait ApAccess {
@@ -121,7 +121,7 @@ impl<T: DapAccess> ApAccess for T {
         R: ApRegister<PORT>,
     {
         log::debug!("Reading register {}", R::NAME);
-        let raw_value = self.read_raw_ap_register(port.into().port_number(), R::ADDRESS)?;
+        let raw_value = self.read_raw_ap_register(port.into().ap_address(), R::ADDRESS)?;
 
         log::debug!("Read register    {}, value=0x{:x?}", R::NAME, raw_value);
 
@@ -138,7 +138,7 @@ impl<T: DapAccess> ApAccess for T {
         R: ApRegister<PORT>,
     {
         log::debug!("Writing register {}, value={:x?}", R::NAME, register);
-        self.write_raw_ap_register(port.into().port_number(), R::ADDRESS, register.into())
+        self.write_raw_ap_register(port.into().ap_address(), R::ADDRESS, register.into())
     }
 
     fn write_ap_register_repeated<PORT, R>(
@@ -156,7 +156,7 @@ impl<T: DapAccess> ApAccess for T {
             R::NAME,
             values.len(),
         );
-        self.write_raw_ap_register_repeated(port.into().port_number(), R::ADDRESS, values)
+        self.write_raw_ap_register_repeated(port.into().ap_address(), R::ADDRESS, values)
     }
 
     fn read_ap_register_repeated<PORT, R>(
@@ -175,7 +175,7 @@ impl<T: DapAccess> ApAccess for T {
             values.len(),
         );
 
-        self.read_raw_ap_register_repeated(port.into().port_number(), R::ADDRESS, values)
+        self.read_raw_ap_register_repeated(port.into().ap_address(), R::ADDRESS, values)
     }
 }
 
@@ -195,27 +195,29 @@ where
 
 /// Return a Vec of all valid access ports found that the target connected to the debug_probe.
 /// Can fail silently under the hood testing an ap that doesnt exist and would require cleanup.
-pub(crate) fn valid_access_ports<AP>(debug_port: &mut AP) -> Vec<GenericAp>
+pub(crate) fn valid_access_ports<AP>(debug_port: &mut AP, dp: DpAddress) -> Vec<GenericAp>
 where
     AP: ApAccess,
 {
     (0..=255)
-        .map(GenericAp::new)
+        .map(|ap| GenericAp::new(ApAddress { dp, ap }))
         .take_while(|port| access_port_is_valid(debug_port, *port))
         .collect::<Vec<GenericAp>>()
 }
 
 /// Tries to find the first AP with the given idr value, returns `None` if there isn't any
-pub fn get_ap_by_idr<AP, P>(debug_port: &mut AP, f: P) -> Option<GenericAp>
+pub fn get_ap_by_idr<AP, P>(debug_port: &mut AP, dp: DpAddress, f: P) -> Option<GenericAp>
 where
     AP: ApAccess,
     P: Fn(IDR) -> bool,
 {
-    (0..=255).map(GenericAp::new).find(|ap| {
-        if let Ok(idr) = debug_port.read_ap_register(*ap) {
-            f(idr)
-        } else {
-            false
-        }
-    })
+    (0..=255)
+        .map(|ap| GenericAp::new(ApAddress { dp, ap }))
+        .find(|ap| {
+            if let Ok(idr) = debug_port.read_ap_register(*ap) {
+                f(idr)
+            } else {
+                false
+            }
+        })
 }

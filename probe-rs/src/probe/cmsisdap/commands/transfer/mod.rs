@@ -1,6 +1,6 @@
 pub mod configure;
 
-use super::{Category, Request, Response, SendError};
+use super::{CommandId, Request, SendError};
 use crate::architecture::arm::PortType;
 use scroll::{Pread, Pwrite, LE};
 
@@ -58,8 +58,8 @@ fn creating_inner_transfer_request() {
 }
 
 impl InnerTransferRequest {
-    fn to_bytes(&self, buffer: &mut [u8], offset: usize) -> Result<usize, SendError> {
-        buffer[offset] = (self.APnDP as u8)
+    fn to_bytes(&self, buffer: &mut [u8]) -> Result<usize, SendError> {
+        buffer[0] = (self.APnDP as u8)
             | (self.RnW as u8) << 1
             | (if self.A2 { 1 } else { 0 }) << 2
             | (if self.A3 { 1 } else { 0 }) << 3
@@ -68,7 +68,7 @@ impl InnerTransferRequest {
             | (if self.td_timestamp_request { 1 } else { 0 }) << 7;
         if let Some(data) = self.data {
             let data = data.to_le_bytes();
-            buffer[offset + 1..offset + 5].copy_from_slice(&data[..]);
+            buffer[1..5].copy_from_slice(&data[..]);
             Ok(5)
         } else {
             Ok(1)
@@ -104,22 +104,56 @@ impl TransferRequest {
 }
 
 impl Request for TransferRequest {
-    const CATEGORY: Category = Category(0x05);
+    const COMMAND_ID: CommandId = CommandId::Transfer;
 
-    fn to_bytes(&self, buffer: &mut [u8], offset: usize) -> Result<usize, SendError> {
+    type Response = TransferResponse;
+
+    fn to_bytes(&self, buffer: &mut [u8]) -> Result<usize, SendError> {
         let mut size = 0;
 
-        buffer[offset] = self.dap_index;
+        buffer[0] = self.dap_index;
         size += 1;
 
-        buffer[offset + 1] = self.transfer_count;
+        buffer[1] = self.transfer_count;
         size += 1;
 
         for transfer in self.transfers.iter() {
-            size += transfer.to_bytes(buffer, offset + size)?;
+            size += transfer.to_bytes(&mut buffer[size..])?;
         }
 
         Ok(size)
+    }
+
+    fn from_bytes(&self, buffer: &[u8]) -> Result<Self::Response, SendError> {
+        let transfer_count = buffer[0];
+
+        let transfer_response = InnerTransferResponse {
+            ack: match buffer[1] & 0x7 {
+                1 => Ack::Ok,
+                2 => Ack::Wait,
+                4 => Ack::Fault,
+                7 => Ack::NoAck,
+                _ => Ack::NoAck,
+            },
+            protocol_error: buffer[1] & 0x8 > 1,
+            value_missmatch: buffer[1] & 0x10 > 1,
+        };
+
+        let transfer_data = if buffer.len() >= 2 + 4 {
+            buffer
+                .pread_with(2, LE)
+                .map_err(|_| SendError::NotEnoughData)?
+        } else {
+            return Err(SendError::NotEnoughData);
+        };
+
+        Ok(TransferResponse {
+            transfer_count,
+            transfer_response,
+            // TODO: implement this properly.
+            td_timestamp: 0, // scroll::pread_with(buffer[offset + 2..offset + 2 + 4], LE),
+            transfer_data,
+        })
     }
 }
 
@@ -154,30 +188,6 @@ pub struct TransferResponse {
     pub transfer_data: u32,
 }
 
-impl Response for TransferResponse {
-    fn from_bytes(buffer: &[u8], offset: usize) -> Result<Self, SendError> {
-        Ok(TransferResponse {
-            transfer_count: buffer[offset],
-            transfer_response: InnerTransferResponse {
-                ack: match buffer[offset + 1] & 0x7 {
-                    1 => Ack::Ok,
-                    2 => Ack::Wait,
-                    4 => Ack::Fault,
-                    7 => Ack::NoAck,
-                    _ => Ack::NoAck,
-                },
-                protocol_error: buffer[offset + 1] & 0x8 > 1,
-                value_missmatch: buffer[offset + 1] & 0x10 > 1,
-            },
-            // TODO: implement this properly.
-            td_timestamp: 0, // scroll::pread_with(buffer[offset + 2..offset + 2 + 4], LE),
-            transfer_data: buffer
-                .pread_with(offset + 2, LE)
-                .map_err(|_| SendError::Bug)?,
-        })
-    }
-}
-
 #[derive(Debug)]
 pub(crate) struct TransferBlockRequest {
     /// Zero-based device index of the selected JTAG device. For SWD mode the
@@ -194,31 +204,66 @@ pub(crate) struct TransferBlockRequest {
 }
 
 impl Request for TransferBlockRequest {
-    const CATEGORY: Category = Category(0x06);
+    const COMMAND_ID: CommandId = CommandId::TransferBlock;
 
-    fn to_bytes(&self, buffer: &mut [u8], offset: usize) -> Result<usize, SendError> {
+    type Response = TransferBlockResponse;
+
+    fn to_bytes(&self, buffer: &mut [u8]) -> Result<usize, SendError> {
         let mut size = 0;
-        buffer[offset] = self.dap_index;
+        buffer[0] = self.dap_index;
         size += 1;
 
         buffer
-            .pwrite_with(self.transfer_count, offset + 1, LE)
-            .map_err(|_| SendError::Bug)?;
+            .pwrite_with(self.transfer_count, 1, LE)
+            .expect("Buffer for CMSIS-DAP command is too small. This is a bug, please report it.");
         size += 2;
 
-        size += self.transfer_request.to_bytes(buffer, offset + 3)?;
+        size += self.transfer_request.to_bytes(buffer, 3)?;
 
-        let mut data_offset = offset + 4;
+        let mut data_offset = 4;
 
         for word in &self.transfer_data {
-            buffer
-                .pwrite_with(word, data_offset, LE)
-                .map_err(|_| SendError::WriteToOffsetBug(data_offset))?;
+            buffer.pwrite_with(word, data_offset, LE).expect(
+                "Buffer for CMSIS-DAP command is too small. This is a bug, please report it.",
+            );
             data_offset += 4;
             size += 4;
         }
 
         Ok(size)
+    }
+
+    fn from_bytes(&self, buffer: &[u8]) -> Result<Self::Response, SendError> {
+        let transfer_count = buffer
+            .pread_with(0, LE)
+            .map_err(|_| SendError::NotEnoughData)?;
+        let transfer_response = buffer
+            .pread_with(2, LE)
+            .map_err(|_| SendError::NotEnoughData)?;
+
+        let mut data = Vec::with_capacity(transfer_count as usize);
+
+        let num_transfers = (buffer.len() - 3) / 4;
+
+        log::debug!(
+            "Expected {} responses, got {} responses with data..",
+            transfer_count,
+            num_transfers
+        );
+
+        for data_offset in 0..num_transfers {
+            data.push(
+                buffer
+                    .pread_with(3 + data_offset * 4, LE)
+                    .map_err(|_| SendError::NotEnoughData)?,
+            );
+        }
+
+        Ok(TransferBlockResponse {
+            transfer_count,
+            transfer_response,
+            transfer_data: data,
+        })
     }
 }
 
@@ -279,31 +324,4 @@ pub(crate) struct TransferBlockResponse {
     transfer_count: u16,
     pub transfer_response: u8,
     pub transfer_data: Vec<u32>,
-}
-
-impl Response for TransferBlockResponse {
-    fn from_bytes(buffer: &[u8], offset: usize) -> Result<Self, SendError> {
-        let transfer_count = buffer
-            .pread_with(offset, LE)
-            .expect("Failed to read transfer count");
-        let transfer_response = buffer
-            .pread_with(offset + 2, LE)
-            .expect("Failed to read transfer response");
-
-        let mut data = Vec::with_capacity(transfer_count as usize);
-
-        for data_offset in 0..(transfer_count as usize) {
-            data.push(
-                buffer
-                    .pread_with(offset + 3 + data_offset * 4, LE)
-                    .map_err(|_| SendError::Bug)?,
-            );
-        }
-
-        Ok(TransferBlockResponse {
-            transfer_count,
-            transfer_response,
-            transfer_data: data,
-        })
-    }
 }
