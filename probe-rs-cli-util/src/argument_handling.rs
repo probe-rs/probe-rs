@@ -56,18 +56,18 @@ where
 /// In real world applications this will always hold true because `structopt` which we have infront of this removal
 /// will always ensure that the arguments are valid and in correct order!
 fn remove_arguments_test() {
-    let arguments_to_remove: Vec<String> = vec![
-        "chip=".to_string(),
-        "chip-description-path=".to_string(),
-        "list-chips".to_string(),
-        "disable-progressbars".to_string(),
-        "protocol=".to_string(),
-        "probe-index=".to_string(),
-        "gdb".to_string(),
-        "no-download".to_string(),
-        "reset-halt".to_string(),
-        "gdb-connection-string=".to_string(),
-        "nrf-recover".to_string(),
+    let arguments_to_remove = [
+        "chip=",
+        "chip-description-path=",
+        "list-chips",
+        "disable-progressbars",
+        "protocol=",
+        "probe-index=",
+        "gdb",
+        "no-download",
+        "reset-halt",
+        "gdb-connection-string=",
+        "nrf-recover",
     ];
 
     let mut arguments = vec![
