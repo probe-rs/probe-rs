@@ -9,7 +9,7 @@
 ///     "bar=", // Can be "--bar=value" and "--bar value"
 /// ];
 /// ```
-pub fn remove_arguments(arguments_to_remove: &Vec<String>, arguments: &mut Vec<String>) {
+pub fn remove_arguments<T: AsRef<str>>(arguments_to_remove: &[T], arguments: &mut Vec<String>) {
     // We iterate all arguments that possibly have to be removed
     // and remove them if they occur to be in the input.
     for argument in arguments_to_remove.iter() {
