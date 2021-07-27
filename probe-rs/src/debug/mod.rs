@@ -1499,7 +1499,9 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                         if let Ok(Some(ranges))
                             = child_node.entry().attr(gimli::DW_AT_ranges) {
                                 match ranges.value() {
-                                    gimli::AttributeValue::RangeListsRef(range_lists_offset) => {
+                                    gimli::AttributeValue::RangeListsRef(raw_range_lists_offset) => {
+                                        let range_lists_offset = self.debug_info.dwarf.ranges_offset_from_raw(&self.unit, raw_range_lists_offset);
+
                                         if let Ok(mut ranges) = self
                                             .debug_info
                                             .dwarf
