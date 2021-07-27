@@ -958,6 +958,7 @@ pub trait JTAGAccess: DebugProbe {
 
 #[derive(thiserror::Error, Debug)]
 pub struct BatchExecutionError {
+    #[source]
     pub error: DebugProbeError,
     pub results: Box<dyn CommandResults>,
 }
