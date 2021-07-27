@@ -493,10 +493,10 @@ pub fn print_families(mut f: impl Write) -> Result<(), OperationError> {
     Ok(())
 }
 
-pub fn common_arguments() -> Vec<String> {
+pub fn common_arguments() -> Vec<&'static str> {
     FlashOptions::ARGUMENTS
         .iter()
-        .chain(ProbeOptions::ARGUMENTS.iter())
-        .map(|arg| arg.to_string())
+        .chain(ProbeOptions::ARGUMENTS)
+        .copied()
         .collect()
 }
