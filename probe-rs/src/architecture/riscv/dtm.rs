@@ -7,7 +7,7 @@ use bitfield::bitfield;
 
 use super::communication_interface::RiscvError;
 use crate::{
-    probe::{CommandResults, DeferredCommandResult, JTAGAccess},
+    probe::{BatchExecutionError, CommandResults, DeferredCommandResult, JTAGAccess},
     DebugProbeError,
 };
 
@@ -79,7 +79,7 @@ impl Dtm {
         Ok(())
     }
 
-    pub fn execute(&mut self) -> Result<Box<dyn CommandResults>, DebugProbeError> {
+    pub fn execute(&mut self) -> Result<Box<dyn CommandResults>, BatchExecutionError> {
         self.probe.execute()
     }
 

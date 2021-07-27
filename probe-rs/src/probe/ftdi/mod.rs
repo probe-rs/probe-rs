@@ -16,7 +16,7 @@ mod commands;
 
 use self::commands::{JtagCommand, WriteRegisterCommand};
 
-use super::{CommandResult, CommandResults, DeferredCommandResult};
+use super::{BatchExecutionError, CommandResult, CommandResults, DeferredCommandResult};
 
 #[derive(Debug)]
 struct JtagChainItem {
@@ -602,7 +602,7 @@ impl JTAGAccess for FtdiProbe {
         )))
     }
 
-    fn execute(&mut self) -> Result<Box<dyn CommandResults>, DebugProbeError> {
+    fn execute(&mut self) -> Result<Box<dyn CommandResults>, BatchExecutionError> {
         // this value was determined by experimenting and doesn't match e.g
         // the libftdi read/write chunk size - it is hopefully useful for every setup
         const CHUNK_SIZE: usize = 40;
@@ -623,10 +623,16 @@ impl JTAGAccess for FtdiProbe {
             // section 5.1
             out_buffer.push(0x87);
 
-            self.adapter
-                .device
-                .write_all(&out_buffer)
-                .map_err(|e| DebugProbeError::ProbeSpecific(Box::new(e)))?;
+            let write_res = self.adapter.device.write_all(&out_buffer);
+            match write_res {
+                Ok(_) => (),
+                Err(e) => {
+                    return Err(BatchExecutionError::new(
+                        DebugProbeError::ProbeSpecific(Box::new(e)),
+                        Box::new(FtdiCommandResults::new(results)),
+                    ));
+                }
+            }
 
             let timeout = Duration::from_millis(10);
             let mut result = Vec::new();
@@ -634,20 +640,32 @@ impl JTAGAccess for FtdiProbe {
             let t0 = std::time::Instant::now();
             while result.len() < size {
                 if t0.elapsed() > timeout {
-                    return Err(DebugProbeError::Timeout);
+                    return Err(BatchExecutionError::new(
+                        DebugProbeError::Timeout,
+                        Box::new(FtdiCommandResults::new(results)),
+                    ));
                 }
 
-                self.adapter
-                    .device
-                    .read_to_end(&mut result)
-                    .map_err(|e| DebugProbeError::ProbeSpecific(Box::new(e)))?;
+                let read_res = self.adapter.device.read_to_end(&mut result);
+                match read_res {
+                    Ok(_) => (),
+                    Err(e) => {
+                        return Err(BatchExecutionError::new(
+                            DebugProbeError::ProbeSpecific(Box::new(e)),
+                            Box::new(FtdiCommandResults::new(results)),
+                        ));
+                    }
+                }
             }
 
             if result.len() > size {
-                return Err(DebugProbeError::ProbeSpecific(Box::new(io::Error::new(
-                    io::ErrorKind::InvalidData,
-                    "Read more data than expected",
-                ))));
+                return Err(BatchExecutionError::new(
+                    DebugProbeError::ProbeSpecific(Box::new(io::Error::new(
+                        io::ErrorKind::InvalidData,
+                        "Read more data than expected",
+                    ))),
+                    Box::new(FtdiCommandResults::new(results)),
+                ));
             }
 
             let mut pos = 0;
@@ -669,12 +687,24 @@ impl JTAGAccess for FtdiProbe {
                                     CommandResult::VecU8(data) => data,
                                     _ => panic!("Internal error occured. Cannot have a transformer function for outputs other than Vec<u8>"),
                                 };
-                                results.push(CommandResult::U32(transformer(data)?));
+                                results.push(CommandResult::U32(transformer(data).map_err(
+                                    |e| {
+                                        BatchExecutionError::new(
+                                            e,
+                                            Box::new(FtdiCommandResults::new(results.clone())),
+                                        )
+                                    },
+                                )?));
                             }
                             None => results.push(data),
                         }
                     }
-                    Err(e) => return Err(e),
+                    Err(e) => {
+                        return Err(BatchExecutionError::new(
+                            e,
+                            Box::new(FtdiCommandResults::new(results)),
+                        ))
+                    }
                 }
 
                 pos += len;
@@ -704,6 +734,7 @@ impl DeferredCommandResult for FtdiDeferredCommandResult {
     }
 }
 
+#[derive(Debug)]
 struct FtdiCommandResults {
     results: Vec<CommandResult>,
 }
@@ -717,6 +748,10 @@ impl FtdiCommandResults {
 impl CommandResults for FtdiCommandResults {
     fn get(&self, index: usize) -> CommandResult {
         self.results[index].clone()
+    }
+
+    fn len(&self) -> usize {
+        self.results.len()
     }
 }
 

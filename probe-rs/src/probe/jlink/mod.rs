@@ -22,7 +22,7 @@ use crate::{
 
 use self::swd::{RawSwdIo, SwdSettings, SwdStatistics};
 
-use super::{CommandResult, CommandResults, DeferredCommandResult};
+use super::{BatchExecutionError, CommandResult, CommandResults, DeferredCommandResult};
 
 mod swd;
 
@@ -695,7 +695,7 @@ impl JTAGAccess for JLink {
         self.jtag_idle_cycles = idle_cycles;
     }
 
-    fn execute(&mut self) -> std::result::Result<Box<dyn CommandResults>, DebugProbeError> {
+    fn execute(&mut self) -> std::result::Result<Box<dyn CommandResults>, BatchExecutionError> {
         let mut results = Vec::<CommandResult>::new();
         let queued_commands = self.queued_commands.clone();
         self.queued_commands = vec![];
@@ -704,8 +704,20 @@ impl JTAGAccess for JLink {
             let cmd_res = self.write_register(cmd.address, &cmd.data[..], cmd.len);
 
             match cmd_res {
-                Ok(cmd_res) => results.push(CommandResult::U32((cmd.transform)(cmd_res)?)),
-                Err(err) => return Err(err),
+                Ok(cmd_res) => results.push(CommandResult::U32((cmd.transform)(cmd_res).map_err(
+                    |e| {
+                        BatchExecutionError::new(
+                            e,
+                            Box::new(JlinkCommandResults::new(results.clone())),
+                        )
+                    },
+                )?)),
+                Err(err) => {
+                    return Err(BatchExecutionError::new(
+                        err,
+                        Box::new(JlinkCommandResults::new(results)),
+                    ))
+                }
             };
         }
 
@@ -807,6 +819,7 @@ impl DeferredCommandResult for JlinkDeferredCommandResult {
     }
 }
 
+#[derive(Debug)]
 struct JlinkCommandResults {
     results: Vec<CommandResult>,
 }
@@ -820,6 +833,10 @@ impl JlinkCommandResults {
 impl CommandResults for JlinkCommandResults {
     fn get(&self, index: usize) -> CommandResult {
         self.results[index].clone()
+    }
+
+    fn len(&self) -> usize {
+        self.results.len()
     }
 }
 
