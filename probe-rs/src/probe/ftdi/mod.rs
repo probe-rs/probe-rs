@@ -629,7 +629,6 @@ impl JTAGAccess for FtdiProbe {
                 Err(e) => {
                     return Err(BatchExecutionError::new(
                         DebugProbeError::ProbeSpecific(Box::new(e)),
-                        results.len() + 1,
                         Box::new(FtdiCommandResults::new(results)),
                     ));
                 }
@@ -643,19 +642,16 @@ impl JTAGAccess for FtdiProbe {
                 if t0.elapsed() > timeout {
                     return Err(BatchExecutionError::new(
                         DebugProbeError::Timeout,
-                        results.len() + 1,
                         Box::new(FtdiCommandResults::new(results)),
                     ));
                 }
 
-                // TODO handle this like for the write to make it compile
                 let read_res = self.adapter.device.read_to_end(&mut result);
                 match read_res {
                     Ok(_) => (),
                     Err(e) => {
                         return Err(BatchExecutionError::new(
                             DebugProbeError::ProbeSpecific(Box::new(e)),
-                            results.len() + 1,
                             Box::new(FtdiCommandResults::new(results)),
                         ));
                     }
@@ -668,7 +664,6 @@ impl JTAGAccess for FtdiProbe {
                         io::ErrorKind::InvalidData,
                         "Read more data than expected",
                     ))),
-                    results.len() + 1,
                     Box::new(FtdiCommandResults::new(results)),
                 ));
             }
@@ -696,7 +691,6 @@ impl JTAGAccess for FtdiProbe {
                                     |e| {
                                         BatchExecutionError::new(
                                             e,
-                                            results.len() + 1,
                                             Box::new(FtdiCommandResults::new(results.clone())),
                                         )
                                     },
@@ -708,7 +702,6 @@ impl JTAGAccess for FtdiProbe {
                     Err(e) => {
                         return Err(BatchExecutionError::new(
                             e,
-                            results.len() + 1,
                             Box::new(FtdiCommandResults::new(results)),
                         ))
                     }

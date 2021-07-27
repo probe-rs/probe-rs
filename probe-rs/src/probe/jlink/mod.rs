@@ -708,7 +708,6 @@ impl JTAGAccess for JLink {
                     |e| {
                         BatchExecutionError::new(
                             e,
-                            results.len() + 1,
                             Box::new(JlinkCommandResults::new(results.clone())),
                         )
                     },
@@ -716,7 +715,6 @@ impl JTAGAccess for JLink {
                 Err(err) => {
                     return Err(BatchExecutionError::new(
                         err,
-                        results.len() + 1,
                         Box::new(JlinkCommandResults::new(results)),
                     ))
                 }

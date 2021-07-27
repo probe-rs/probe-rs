@@ -958,21 +958,12 @@ pub trait JTAGAccess: DebugProbe {
 
 pub struct BatchExecutionError {
     pub error: DebugProbeError,
-    pub error_index: usize,
     pub results: Box<dyn CommandResults>,
 }
 
 impl BatchExecutionError {
-    pub fn new(
-        error: DebugProbeError,
-        error_index: usize,
-        results: Box<dyn CommandResults>,
-    ) -> BatchExecutionError {
-        BatchExecutionError {
-            error,
-            error_index,
-            results,
-        }
+    pub fn new(error: DebugProbeError, results: Box<dyn CommandResults>) -> BatchExecutionError {
+        BatchExecutionError { error, results }
     }
 }
 
