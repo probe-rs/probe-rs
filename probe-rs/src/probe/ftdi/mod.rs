@@ -734,6 +734,7 @@ impl DeferredCommandResult for FtdiDeferredCommandResult {
     }
 }
 
+#[derive(Debug)]
 struct FtdiCommandResults {
     results: Vec<CommandResult>,
 }
@@ -747,6 +748,10 @@ impl FtdiCommandResults {
 impl CommandResults for FtdiCommandResults {
     fn get(&self, index: usize) -> CommandResult {
         self.results[index].clone()
+    }
+
+    fn len(&self) -> usize {
+        self.results.len()
     }
 }
 

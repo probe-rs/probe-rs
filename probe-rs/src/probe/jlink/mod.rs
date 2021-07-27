@@ -819,6 +819,7 @@ impl DeferredCommandResult for JlinkDeferredCommandResult {
     }
 }
 
+#[derive(Debug)]
 struct JlinkCommandResults {
     results: Vec<CommandResult>,
 }
@@ -832,6 +833,10 @@ impl JlinkCommandResults {
 impl CommandResults for JlinkCommandResults {
     fn get(&self, index: usize) -> CommandResult {
         self.results[index].clone()
+    }
+
+    fn len(&self) -> usize {
+        self.results.len()
     }
 }
 
