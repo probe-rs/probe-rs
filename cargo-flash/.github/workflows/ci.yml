@@ -30,12 +30,12 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
 
       - name: Install libftdi (windows)
-        uses: lukka/run-vcpkg@v5
+        uses: lukka/run-vcpkg@v7
         with:
           vcpkgArguments: "libftdi1:x64-windows"
-          # Version including bugfix for libusb (see https://github.com/microsoft/vcpkg/issues/12642)
-          vcpkgGitCommitId: "6ed0bc982bf9bdca25439d538f7f272786a7af4d"
+          vcpkgGitCommitId: "7dbc05515b44bf54d2a42b4da9d1e1f910868b86"
           vcpkgTriplet: x64-windows
+
         if: matrix.os == 'windows-latest'
 
       - name: Install stable toolchain
