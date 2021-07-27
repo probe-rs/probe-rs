@@ -104,6 +104,19 @@ pub struct FlashOptions {
 }
 
 impl FlashOptions {
+    pub const ARGUMENTS: &'static [&'static str] = &[
+        "version",
+        "list-chips",
+        "list-probes",
+        "disable-progressbars",
+        "reset-halt",
+        "log=",
+        "restore-unwritten",
+        "flash-layout=",
+        "elf=",
+        "work-dir=",
+    ];
+
     /// Whether calling program should exit prematurely. Effectively
     /// handles --list-{probes,chips}.
     ///
@@ -152,6 +165,16 @@ pub struct ProbeOptions {
 }
 
 impl ProbeOptions {
+    pub const ARGUMENTS: &'static [&'static str] = &[
+        "chip=",
+        "chip-description-path=",
+        "protocol=",
+        "probe=",
+        "connect-under-reset",
+        "speed=",
+        "dry-run",
+    ];
+
     /// Add targets contained in file given by --chip-description-path
     /// to probe-rs registery.
     ///
@@ -350,45 +373,6 @@ CARGO BUILD OPTIONS:
             bin
         )
     }
-
-    /// Generates list of arguments to cargo from a `CargoOptions`. For
-    /// example, if [CargoOptions::release] is set, resultant list will
-    /// contain a `"--release"`.
-    pub fn to_cargo_arguments(&self) -> Vec<String> {
-        let mut args: Vec<String> = vec![];
-        macro_rules! maybe_push_str_opt {
-            ($field:expr, $name:expr) => {{
-                if let Some(value) = $field {
-                    args.push(format!("--{}", stringify!($name)));
-                    args.push(value.clone());
-                }
-            }};
-        }
-
-        maybe_push_str_opt!(&self.bin, bin);
-        maybe_push_str_opt!(&self.example, example);
-        maybe_push_str_opt!(&self.package, package);
-        if self.release {
-            args.push("--release".to_string());
-        }
-        maybe_push_str_opt!(&self.bin, bin);
-        if let Some(path) = &self.manifest_path {
-            args.push("--manifest-path".to_string());
-            args.push(path.display().to_string());
-        }
-        if self.no_default_features {
-            args.push("--no-default-features".to_string());
-        }
-        if self.all_features {
-            args.push("--all-features".to_string());
-        }
-        if !self.features.is_empty() {
-            args.push("--features".to_string());
-            args.push(self.features.join(","));
-        }
-
-        args
-    }
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -507,4 +491,12 @@ pub fn print_families(mut f: impl Write) -> Result<(), OperationError> {
         }
     }
     Ok(())
+}
+
+pub fn common_arguments() -> Vec<String> {
+    FlashOptions::ARGUMENTS
+        .iter()
+        .chain(ProbeOptions::ARGUMENTS.iter())
+        .map(|arg| arg.to_string())
+        .collect()
 }
