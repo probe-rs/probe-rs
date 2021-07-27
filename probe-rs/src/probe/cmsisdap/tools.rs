@@ -66,7 +66,8 @@ fn get_cmsisdap_info(device: &Device<rusb::Context>) -> Option<DebugProbeInfo> {
         let config_descriptor = device.active_config_descriptor().ok()?;
 
         log::trace!(
-            "CMSIS-DAP device with {} interfaces",
+            "{}: CMSIS-DAP device with {} interfaces",
+            prod_str,
             config_descriptor.num_interfaces()
         );
 
@@ -76,12 +77,21 @@ fn get_cmsisdap_info(device: &Device<rusb::Context>) -> Option<DebugProbeInfo> {
             for descriptor in interface.descriptors() {
                 // Check if this is a HID interface
                 if descriptor.class_code() != LIBUSB_CLASS_HID {
+                    log::trace!("Interface {} is not HID, skipping", interface.number());
                     continue;
                 }
 
-                let interface_desc = handle
-                    .read_interface_string(language, &descriptor, timeout)
-                    .ok()?;
+                let interface_desc =
+                    match handle.read_interface_string(language, &descriptor, timeout) {
+                        Ok(desc) => desc,
+                        Err(_) => {
+                            log::trace!(
+                                "Could not read string for interface {}, skipping",
+                                interface.number()
+                            );
+                            continue;
+                        }
+                    };
 
                 log::trace!("  Interface {}: {}", interface.number(), interface_desc);
 
@@ -246,6 +256,15 @@ pub fn open_device_from_selector(
 
     log::trace!("Attempting to open device matching {}", selector);
 
+    // We need to use rusb to detect the proper HID interface to use
+    // if a probe has multiple HID interfaces. The hidapi lib unfortunately
+    // offers no method to get the interface description string directly,
+    // so we retrieve the device information using rusb and store it here.
+    //
+    // If rusb cannot be used, we will just use the first HID interface and
+    // try to open that.
+    let mut hid_device_info: Option<DebugProbeInfo> = None;
+
     // Try using rusb to open a v2 device. This might fail if
     // the device does not support v2 operation or due to driver
     // or permission issues with opening bulk devices.
@@ -286,12 +305,16 @@ pub fn open_device_from_selector(
             // multiple open handles are not allowed on Windows.
             drop(handle);
 
-            if device_matches(d_desc, &selector, sn_str) && get_cmsisdap_info(&device).is_some() {
-                // If the VID, PID, and potentially SN all match,
-                // and the device is a valid CMSIS-DAP probe,
-                // attempt to open the device in v2 mode.
-                if let Some(device) = open_v2_device(device) {
-                    return Ok(device);
+            if device_matches(d_desc, &selector, sn_str) {
+                hid_device_info = get_cmsisdap_info(&device);
+
+                if hid_device_info.is_some() {
+                    // If the VID, PID, and potentially SN all match,
+                    // and the device is a valid CMSIS-DAP probe,
+                    // attempt to open the device in v2 mode.
+                    if let Some(device) = open_v2_device(device) {
+                        return Ok(device);
+                    }
                 }
             }
         }
@@ -327,7 +350,9 @@ pub fn open_device_from_selector(
                 device_match &= Some(sn.as_ref()) == info.serial_number();
             }
 
-            if let Some(hid_interface) = selector.usb_hid_interface {
+            if let Some(hid_interface) =
+                hid_device_info.as_ref().and_then(|info| info.hid_interface)
+            {
                 device_match &= info.interface_number() == hid_interface as i32;
             }
 
