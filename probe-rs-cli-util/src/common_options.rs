@@ -2,7 +2,7 @@
 //! extend then functionality of cargo-flash.
 //!
 //! Example usage:
-//! ```text
+//! ```no_run
 //! use structopt::StructOpt;
 //! use probe_rs_cli_util::common_options::FlashOptions;
 //!
@@ -25,7 +25,7 @@
 //!         return;
 //!     }
 //!
-//!     let target_session = opts.flash_options.simple_attach().unwarp();
+//!     let target_session = opts.flash_options.probe_options.simple_attach().unwrap();
 //!
 //!     // ...
 //! }
@@ -343,11 +343,14 @@ pub struct CargoOptions {
 impl CargoOptions {
     /// Generates a suitable help string to append to your program's
     /// --help. Example usage:
-    /// ```text
+    /// ```no_run
+    /// use probe_rs_cli_util::common_options::{FlashOptions, CargoOptions};
+    /// use probe_rs_cli_util::structopt::StructOpt;
+    ///
     /// let matches = FlashOptions::clap()
     ///     .bin_name("cargo flash")
     ///     .after_help(CargoOptions::help_message("cargo flash").as_str())
-    ///     .get_matches_from(&args);
+    ///     .get_matches_from(std::env::args());
     /// let opts = FlashOptions::from_clap(&matches);
     /// ```
     pub fn help_message(bin: &str) -> String {
