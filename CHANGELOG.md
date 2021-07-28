@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Added LPC552x and LPC55S2x targets. (#742)
 - Added initial multicore support. (#565)
+- probe-rs-cli-util: added common option structures and logic pertaining to probes and target attachment from cargo-flash. (#723)
 - Added SWDv2 multidrop support for multi-DP chips. (#720)
 - Added RP2040 target (Raspberry Pi Pico). (#720)
 
