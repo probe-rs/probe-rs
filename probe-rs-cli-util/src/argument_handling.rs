@@ -11,7 +11,7 @@
 /// ```
 pub fn remove_arguments<T>(arguments_to_remove: &[T], arguments: &mut Vec<String>)
 where
-    T: AsRef<str> + std::fmt::Display,
+    T: AsRef<str>,
 {
     // We iterate all arguments that possibly have to be removed
     // and remove them if they occur to be in the input.
@@ -21,16 +21,16 @@ where
         // that the arg can be used as `--arg value` as well as `--arg=value`.
         // In the prior case we need to remove two arguments. So remember this.
         let (remove_two, clean_argument) =
-            if let Some(stripped) = argument.to_string().strip_suffix('=') {
+            if let Some(stripped) = argument.as_ref().strip_suffix('=') {
                 (true, format!("--{}", stripped))
             } else {
-                (false, format!("--{}", argument))
+                (false, format!("--{}", argument.as_ref()))
             };
 
         // Iterate all args in the input and if we find one that matches, we remove it.
         if let Some(index) = arguments
             .iter()
-            .position(|x| x.starts_with(&format!("--{}", argument)))
+            .position(|x| x.starts_with(&format!("--{}", argument.as_ref())))
         {
             // We remove the argument we found.
             arguments.remove(index);
