@@ -4,7 +4,6 @@ use crate::debugger::CoreData;
 use crate::DebuggerError;
 use anyhow::{anyhow, Result};
 use dap_types::*;
-use log::error;
 use parse_int::parse;
 use probe_rs::{
     debug::{ColumnType, VariableKind},
@@ -1390,14 +1389,14 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
         match self.output.write_all(response_header.as_bytes()) {
             Ok(_) => {}
             Err(error) => {
-                error!("send_data - header: {:?}", error);
+                log::error!("send_data - header: {:?}", error);
                 return false;
             }
         }
         match self.output.write_all(response_body) {
             Ok(_) => {}
             Err(error) => {
-                error!("send_data - body: {:?}", error);
+                log::error!("send_data - body: {:?}", error);
                 self.output.flush().ok();
                 return false;
             }

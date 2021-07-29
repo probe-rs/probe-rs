@@ -608,13 +608,11 @@ impl Debugger {
                                                 .halt(Duration::from_millis(100))
                                             {
                                                 Ok(_) => {
-                                                    unhalt_me = {
-                                                        debug_adapter.last_known_status =
-                                                            CoreStatus::Halted(
-                                                                probe_rs::HaltReason::Request,
-                                                            );
-                                                        true
-                                                    }
+                                                    debug_adapter.last_known_status =
+                                                        CoreStatus::Halted(
+                                                            probe_rs::HaltReason::Request,
+                                                        );
+                                                    unhalt_me = true;
                                                 }
                                                 Err(error) => {
                                                     debug_adapter.send_response::<()>(

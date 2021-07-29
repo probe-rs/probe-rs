@@ -134,7 +134,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed incorrect array size calculation  (#683)
 - STLink: Removed unnecessary SELECT bank switching  (#692)
 - STLink: chunk writes in `write_8` to avoid hitting limit (#697)
-- Fix a bug where `probe-rs-debugger` does not set breakpoints when the target is in *sleep* mode (#703)
+- Partial fix for a bug where `probe-rs-debugger` does not set breakpoints when the target is in *sleep* mode (#703)
 
 ## [0.10.1]
 
