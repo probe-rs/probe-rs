@@ -18,14 +18,14 @@ ftdi = ["probe-rs/ftdi"]
 sentry = ["probe-rs-cli-util/sentry"]
 
 [dependencies]
-structopt = "0.3.20"
-env_logger = "0.8.4"
+structopt = "0.3.22"
+env_logger = "0.9.0"
 lazy_static = "1.4.0"
 colored = "2.0.0"
 probe-rs = { version = "0.11.0", git = "https://github.com/probe-rs/probe-rs" }
 probe-rs-cli-util = { version = "0.11.0", git = "https://github.com/probe-rs/probe-rs", default-features = false, features=["anyhow"] }
-git-version = "0.3.4"
-anyhow = "1.0.41"
+git-version = "0.3.5"
+anyhow = "1.0.42"
 bytesize = "1.0.1"
-thiserror = "1.0.25"
+thiserror = "1.0.26"
 dunce = "1.0.2"
