@@ -142,8 +142,8 @@ pub struct ProbeOptions {
     pub chip: Option<String>,
     #[structopt(name = "chip description file path", long = "chip-description-path")]
     pub chip_description_path: Option<PathBuf>,
-    #[structopt(name = "protocol", long = "protocol", default_value = "swd")]
-    pub protocol: WireProtocol,
+    #[structopt(name = "protocol", long = "protocol")]
+    pub protocol: Option<WireProtocol>,
     #[structopt(
         long = "probe",
         help = "Use this flag to select a specific probe in the list.\n\
@@ -237,13 +237,16 @@ impl ProbeOptions {
             }
         }?;
 
-        // Select protocol and speed
-        probe.select_protocol(self.protocol).map_err(|error| {
-            OperationError::FailedToSelectProtocol {
-                source: error,
-                protocol: self.protocol,
-            }
-        })?;
+        if let Some(protocol) = self.protocol {
+            // Select protocol and speed
+            probe.select_protocol(protocol).map_err(|error| {
+                OperationError::FailedToSelectProtocol {
+                    source: error,
+                    protocol,
+                }
+            })?;
+        }
+
         if let Some(speed) = self.speed {
             let _actual_speed = probe.set_speed(speed).map_err(|error| {
                 OperationError::FailedToSelectProtocolSpeed {
