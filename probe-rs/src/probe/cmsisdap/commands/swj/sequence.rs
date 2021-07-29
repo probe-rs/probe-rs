@@ -1,6 +1,6 @@
 /// Implementation of the DAP_SWJ_SEQUENCE command
 ///
-use super::super::{Category, CmsisDapError, Request, Response, SendError, Status};
+use super::super::{CmsisDapError, CommandId, Request, SendError, Status};
 
 #[derive(Clone, Copy, Debug)]
 pub struct SequenceRequest {
@@ -9,10 +9,12 @@ pub struct SequenceRequest {
 }
 
 impl Request for SequenceRequest {
-    const CATEGORY: Category = Category(0x12);
+    const COMMAND_ID: CommandId = CommandId::SwjSequence;
 
-    fn to_bytes(&self, buffer: &mut [u8], offset: usize) -> Result<usize, SendError> {
-        buffer[offset] = self.bit_count;
+    type Response = SequenceResponse;
+
+    fn to_bytes(&self, buffer: &mut [u8]) -> Result<usize, SendError> {
+        buffer[0] = self.bit_count;
 
         // calculate transfer len in bytes
         // A bit_count of zero means that we want to transmit 256 bits
@@ -26,11 +28,14 @@ impl Request for SequenceRequest {
             transfer_len_bytes += 1;
         }
 
-        buffer[(offset + 1)..(offset + 1 + transfer_len_bytes)]
-            .copy_from_slice(&self.data[..transfer_len_bytes]);
+        buffer[1..(1 + transfer_len_bytes)].copy_from_slice(&self.data[..transfer_len_bytes]);
 
         // bit_count + data
         Ok(1 + transfer_len_bytes)
+    }
+
+    fn from_bytes(&self, buffer: &[u8]) -> Result<Self::Response, SendError> {
+        Ok(SequenceResponse(Status::from_byte(buffer[0])?))
     }
 }
 
@@ -58,9 +63,3 @@ impl SequenceRequest {
 
 #[derive(Debug)]
 pub struct SequenceResponse(pub(crate) Status);
-
-impl Response for SequenceResponse {
-    fn from_bytes(buffer: &[u8], offset: usize) -> Result<Self, SendError> {
-        Ok(SequenceResponse(Status::from_byte(buffer[offset])?))
-    }
-}

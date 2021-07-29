@@ -1,4 +1,4 @@
-use super::{Chip, CoreType, MemoryRegion, RawFlashAlgorithm, TargetDescriptionSource};
+use super::{Chip, Core, CoreType, MemoryRegion, RawFlashAlgorithm, TargetDescriptionSource};
 use crate::{core::Architecture, flashing::FlashLoader};
 
 /// This describes a complete target with a fixed chip model and variant.
@@ -6,10 +6,10 @@ use crate::{core::Architecture, flashing::FlashLoader};
 pub struct Target {
     /// The name of the target.
     pub name: String,
+    /// The cores of the target.
+    pub cores: Vec<Core>,
     /// The name of the flash algorithm.
     pub flash_algorithms: Vec<RawFlashAlgorithm>,
-    /// The core type.
-    pub core_type: CoreType,
     /// The memory map of the target.
     pub memory_map: Vec<MemoryRegion>,
 
@@ -38,29 +38,43 @@ impl Target {
     /// Create a new target
     pub fn new(
         chip: &Chip,
+        cores: Vec<Core>,
         flash_algorithms: Vec<RawFlashAlgorithm>,
-        core_type: CoreType,
         source: TargetDescriptionSource,
     ) -> Target {
         Target {
             name: chip.name.clone(),
+            cores,
             flash_algorithms,
-            core_type,
             memory_map: chip.memory_map.clone(),
             source,
         }
     }
 
-    /// Get the architectre of the target
+    /// Get the architecture of the target
     pub fn architecture(&self) -> Architecture {
-        match &self.core_type {
-            CoreType::M0 => Architecture::Arm,
-            CoreType::M3 => Architecture::Arm,
-            CoreType::M33 => Architecture::Arm,
-            CoreType::M4 => Architecture::Arm,
-            CoreType::M7 => Architecture::Arm,
-            CoreType::Riscv => Architecture::Riscv,
+        fn get_architecture_from_core(core_type: CoreType) -> Architecture {
+            match core_type {
+                CoreType::M0 => Architecture::Arm,
+                CoreType::M3 => Architecture::Arm,
+                CoreType::M33 => Architecture::Arm,
+                CoreType::M4 => Architecture::Arm,
+                CoreType::M7 => Architecture::Arm,
+                CoreType::Riscv => Architecture::Riscv,
+            }
         }
+
+        let target_arch = get_architecture_from_core(self.cores[0].core_type);
+
+        assert!(
+            self.cores
+                .iter()
+                .map(|core| get_architecture_from_core(core.core_type))
+                .all(|core_arch| core_arch == target_arch),
+            "Not all cores of the target are of the same architecture. Probe-rs doesn't support this (yet). If you see this, it is a bug. Please file an issue."
+        );
+
+        target_arch
     }
 
     /// Source description of this target.
@@ -77,6 +91,21 @@ impl Target {
     /// Gets a [RawFlashAlgorithm] by name.
     pub(crate) fn flash_algorithm_by_name(&self, name: &str) -> Option<&RawFlashAlgorithm> {
         self.flash_algorithms.iter().find(|a| a.name == name)
+    }
+
+    /// Gets the core index from the core name
+    pub(crate) fn core_index_by_name(&self, name: &str) -> Option<usize> {
+        self.cores.iter().position(|c| c.name == name)
+    }
+
+    /// Gets the first found [MemoryRegion] that contains the given address
+    pub(crate) fn get_memory_region_by_address(&self, address: u32) -> Option<&MemoryRegion> {
+        self.memory_map.iter().find(|region| match region {
+            MemoryRegion::Ram(rr) if rr.range.contains(&address) => true,
+            MemoryRegion::Generic(gr) if gr.range.contains(&address) => true,
+            MemoryRegion::Nvm(nr) if nr.range.contains(&address) => true,
+            _ => false,
+        })
     }
 }
 

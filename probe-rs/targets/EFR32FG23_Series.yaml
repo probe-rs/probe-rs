@@ -2,149 +2,240 @@
 name: EFR32FG23 Series
 variants:
   - name: EFR32FG23A010F256
+    cores:
+      - name: main
+        type: M33
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 0x20000000
             end: 0x20008000
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 0x8000000
             end: 0x8040000
           is_boot_memory: true
+          cores: [main]
     flash_algorithms:
       - geckos2c3
   - name: EFR32FG23A010F512
+    cores:
+      - name: main
+        type: M33
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 0x20000000
             end: 0x20010000
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 0x8000000
             end: 0x8080000
           is_boot_memory: true
+          cores: [main]
     flash_algorithms:
       - geckos2c3
   - name: EFR32FG23A011F512
+    cores:
+      - name: main
+        type: M33
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 0x20000000
             end: 0x20010000
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 0x8000000
             end: 0x8080000
           is_boot_memory: true
+          cores: [main]
     flash_algorithms:
       - geckos2c3
   - name: EFR32FG23A020F256
+    cores:
+      - name: main
+        type: M33
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 0x20000000
             end: 0x20008000
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 0x8000000
             end: 0x8040000
           is_boot_memory: true
+          cores: [main]
     flash_algorithms:
       - geckos2c3
   - name: EFR32FG23A020F512
+    cores:
+      - name: main
+        type: M33
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 0x20000000
             end: 0x20010000
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 0x8000000
             end: 0x8080000
           is_boot_memory: true
+          cores: [main]
     flash_algorithms:
       - geckos2c3
   - name: EFR32FG23A021F512
+    cores:
+      - name: main
+        type: M33
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 0x20000000
             end: 0x20010000
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 0x8000000
             end: 0x8080000
           is_boot_memory: true
+          cores: [main]
     flash_algorithms:
       - geckos2c3
   - name: EFR32FG23B010F256
+    cores:
+      - name: main
+        type: M33
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 0x20000000
             end: 0x20008000
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 0x8000000
             end: 0x8040000
           is_boot_memory: true
+          cores: [main]
     flash_algorithms:
       - geckos2c3
   - name: EFR32FG23B010F512
+    cores:
+      - name: main
+        type: M33
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 0x20000000
             end: 0x20010000
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 0x8000000
             end: 0x8080000
           is_boot_memory: true
+          cores: [main]
     flash_algorithms:
       - geckos2c3
   - name: EFR32FG23B020F256
+    cores:
+      - name: main
+        type: M33
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 0x20000000
             end: 0x20008000
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 0x8000000
             end: 0x8040000
           is_boot_memory: true
+          cores: [main]
     flash_algorithms:
       - geckos2c3
   - name: EFR32FG23B020F512
+    cores:
+      - name: main
+        type: M33
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 0x20000000
             end: 0x20010000
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 0x8000000
             end: 0x8080000
           is_boot_memory: true
+          cores: [main]
     flash_algorithms:
       - geckos2c3
 flash_algorithms:
   geckos2c3:
     name: geckos2c3
     description: EFM32/EFR32 Gecko S2C3
+    cores: [main]
     default: true
     instructions: DUgBaAH0fBGx9bAfBNkLSQpoQvSAMgpgCUlB9nEyCmAAIkpggGgHSQHqgCEGSgAgSfgCEHBHAL8EgOAPaIAAQDwAA0AA/P8DBAAAAAVJQfZxMAhgBEgBIgJgACIAIApgcEcAvzwAA0AMIANAsLUJTQAkWfgFAIRCJL8AILC9IEYA8Ar4ACgE9QBUHL8BILC97+cAvwQAAAAPSQJGCMoBMwPRACkB8QQB+NGTsbC1C0wBJQtJJWBIYAIgCGABIAAhAPBe+E/0gFEAKGVQGL8BILC9ACBwRwC/BOD//wwQA0AQAANALenwTQVGyBySRiJKIk8g8AMEASAQYC7gBfUAUIhDoOsFC2keXEWh6wAAb+oEATi/o0bQRohCfWCIvwFGTh3Y+AAAAC64YArQCCAIIQjxBAgA8CT4ACgG8QQG8NAW4AQgOGABIAAhASYA8Bj4eLnaRF1EpOsLBEH2/3EALMzRT/SAUAEhA0oAJhFQAOABJjBGvejwjQwQA0AQAANAcLUQTg1KDkwzHQngBUCNQgS/ACBwvQE0BL9v8AIAcL0VaR1C8tAQaDVCIPABAW/wAQAIv0/w/zARYHC9DAADQIBpZ/8CAAEAAAAAAAAAAAA=
     pc_init: 1
@@ -164,4 +255,3 @@ flash_algorithms:
       sectors:
         - size: 8192
           address: 0
-core: M33

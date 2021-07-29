@@ -1,4 +1,6 @@
 pub mod argument_handling;
+pub mod common_options;
+pub mod flash;
 pub mod logging;
 
 use cargo_toml::Manifest;
@@ -14,6 +16,7 @@ use std::{
 // Re-export crates to avoid version conflicts in the dependent crates.
 pub use indicatif;
 pub use log;
+pub use structopt;
 
 #[derive(Debug, Error)]
 pub enum ArtifactError {

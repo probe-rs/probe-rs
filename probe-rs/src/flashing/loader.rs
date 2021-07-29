@@ -1,5 +1,7 @@
 use ihex::Record;
-use probe_rs_target::RawFlashAlgorithm;
+use probe_rs_target::{
+    MemoryRange, MemoryRegion, NvmRegion, RawFlashAlgorithm, TargetDescriptionSource,
+};
 use std::collections::HashMap;
 use std::io::{Read, Seek, SeekFrom};
 use std::ops::Range;
@@ -11,10 +13,7 @@ use super::{
 };
 use crate::memory::MemoryInterface;
 use crate::session::Session;
-use crate::{
-    config::{MemoryRange, MemoryRegion, NvmRegion, TargetDescriptionSource},
-    Target,
-};
+use crate::Target;
 
 /// `FlashLoader` is a struct which manages the flashing of any chunks of data onto any sections of flash.
 ///
@@ -231,7 +230,7 @@ impl FlashLoader {
             log::warn!("Memory map of flash loader does not match memory map of target!");
         }
 
-        let mut algos: HashMap<String, Vec<NvmRegion>> = HashMap::new();
+        let mut algos: HashMap<(String, String), Vec<NvmRegion>> = HashMap::new();
 
         // Commit NVM first
 
@@ -261,7 +260,16 @@ impl FlashLoader {
 
                 let algo = Self::get_flash_algorithm_for_region(region, session.target())?;
 
-                let entry = algos.entry(algo.name.clone()).or_default();
+                let entry = algos
+                    .entry((
+                        algo.name.clone(),
+                        region
+                            .cores
+                            .first()
+                            .ok_or(FlashError::NoNvmCoreAccess(region.clone()))?
+                            .clone(),
+                    ))
+                    .or_default();
                 entry.push(region.clone());
 
                 log::debug!("     -- using algorithm: {}", algo.name);
@@ -281,14 +289,20 @@ impl FlashLoader {
         }
 
         // Iterate all flash algorithms we need to use.
-        for (algo_name, regions) in algos {
+        for ((algo_name, core_name), regions) in algos {
             log::debug!("Flashing ranges for algo: {}", algo_name);
 
             // This can't fail, algo_name comes from the target.
             let algo = session.target().flash_algorithm_by_name(&algo_name);
             let algo = algo.unwrap().clone();
 
-            let mut flasher = Flasher::new(session, &algo)?;
+            let core = session
+                .target()
+                .cores
+                .iter()
+                .position(|c| c.name == core_name)
+                .unwrap();
+            let mut flasher = Flasher::new(session, core, &algo)?;
 
             let mut do_chip_erase = options.do_chip_erase;
 
@@ -326,8 +340,6 @@ impl FlashLoader {
 
         log::debug!("committing RAM!");
 
-        let mut core = session.core(0).map_err(FlashError::Core)?;
-
         // Commit RAM last, because NVM flashing overwrites RAM
         for region in &self.memory_map {
             if let MemoryRegion::Ram(region) = region {
@@ -337,6 +349,18 @@ impl FlashLoader {
                     region.range.end,
                     region.range.end - region.range.start
                 );
+
+                let region_core_index = session
+                    .target()
+                    .core_index_by_name(
+                        region
+                            .cores
+                            .first()
+                            .ok_or(FlashError::NoRamCoreAccess(region.clone()))?,
+                    )
+                    .unwrap();
+                // Attach to memory and core.
+                let mut core = session.core(region_core_index).map_err(FlashError::Core)?;
 
                 let mut some = false;
                 for (address, data) in self.builder.data_in_range(&region.range) {
@@ -367,6 +391,20 @@ impl FlashLoader {
                     data.len()
                 );
 
+                let associated_region = session
+                    .target()
+                    .get_memory_region_by_address(address)
+                    .unwrap();
+                let core_name = match associated_region {
+                    MemoryRegion::Ram(r) => &r.cores,
+                    MemoryRegion::Generic(r) => &r.cores,
+                    MemoryRegion::Nvm(r) => &r.cores,
+                }
+                .first()
+                .unwrap();
+                let core_index = session.target().core_index_by_name(core_name).unwrap();
+                let mut core = session.core(core_index).map_err(FlashError::Core)?;
+
                 let mut written_data = vec![0; data.len()];
                 core.read(address, &mut written_data)
                     .map_err(FlashError::Core)?;
@@ -381,33 +419,47 @@ impl FlashLoader {
     }
 
     /// Try to find a flash algorithm for the given NvmRegion.
-    /// Errors if there's no algo for the region.
-    /// Errors if there's multiple algos for the region and none is marked as default.
+    /// Errors when:
+    /// - there's no algo for the region.
+    /// - there's multiple default algos for the region.
+    /// - there's multiple fitting algos but no default.
     pub(crate) fn get_flash_algorithm_for_region<'a>(
         region: &NvmRegion,
         target: &'a Target,
     ) -> Result<&'a RawFlashAlgorithm, FlashError> {
-        let algorithms = &target
+        let algorithms = target
             .flash_algorithms
             .iter()
-            .filter(|fa| {
+            // filter for algorithims that contiain adress range
+            .filter(|&fa| {
                 fa.flash_properties
                     .address_range
                     .contains_range(&region.range)
             })
             .collect::<Vec<_>>();
 
-        let raw_flash_algorithm = match algorithms.len() {
-            0 => {
-                return Err(FlashError::NoFlashLoaderAlgorithmAttached);
-            }
-            1 => algorithms[0],
-            _ => *algorithms
-                .iter()
-                .find(|a| a.default)
-                .ok_or(FlashError::NoFlashLoaderAlgorithmAttached)?,
-        };
+        match algorithms.len() {
+            0 => Err(FlashError::NoFlashLoaderAlgorithmAttached {
+                name: target.name.clone(),
+            }),
+            1 => Ok(algorithms[0]),
+            _ => {
+                // filter for defaults
+                let defaults = algorithms
+                    .iter()
+                    .filter(|&fa| fa.default)
+                    .collect::<Vec<_>>();
 
-        Ok(raw_flash_algorithm)
+                match defaults.len() {
+                    0 => Err(FlashError::MultipleFlashLoaderAlgorithmsNoDefault {
+                        region: region.clone(),
+                    }),
+                    1 => Ok(defaults[0]),
+                    _ => Err(FlashError::MultipleDefaultFlashLoaderAlgorithms {
+                        region: region.clone(),
+                    }),
+                }
+            }
+        }
     }
 }

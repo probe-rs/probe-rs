@@ -1,4 +1,6 @@
-use super::{Category, Request, Response, SendError, Status};
+use scroll::{Pread, LE};
+
+use super::{CommandId, Request, SendError, Status};
 use std::convert::TryInto;
 
 #[repr(u8)]
@@ -11,22 +13,22 @@ pub enum TransportRequest {
 }
 
 impl Request for TransportRequest {
-    const CATEGORY: Category = Category(0x17);
+    const COMMAND_ID: CommandId = CommandId::SwoTransport;
 
-    fn to_bytes(&self, buffer: &mut [u8], offset: usize) -> Result<usize, SendError> {
-        buffer[offset] = *self as u8;
+    type Response = TransportResponse;
+
+    fn to_bytes(&self, buffer: &mut [u8]) -> Result<usize, SendError> {
+        buffer[0] = *self as u8;
         Ok(1)
+    }
+
+    fn from_bytes(&self, buffer: &[u8]) -> Result<Self::Response, SendError> {
+        Ok(TransportResponse(Status::from_byte(buffer[0])?))
     }
 }
 
 #[derive(Debug)]
 pub struct TransportResponse(pub(crate) Status);
-
-impl Response for TransportResponse {
-    fn from_bytes(buffer: &[u8], offset: usize) -> Result<Self, SendError> {
-        Ok(TransportResponse(Status::from_byte(buffer[offset])?))
-    }
-}
 
 #[repr(u8)]
 #[allow(unused)]
@@ -38,55 +40,50 @@ pub enum ModeRequest {
 }
 
 impl Request for ModeRequest {
-    const CATEGORY: Category = Category(0x18);
+    const COMMAND_ID: CommandId = CommandId::SwoMode;
 
-    fn to_bytes(&self, buffer: &mut [u8], offset: usize) -> Result<usize, SendError> {
-        buffer[offset] = *self as u8;
+    type Response = ModeResponse;
+
+    fn to_bytes(&self, buffer: &mut [u8]) -> Result<usize, SendError> {
+        buffer[0] = *self as u8;
         Ok(1)
+    }
+
+    fn from_bytes(&self, buffer: &[u8]) -> Result<Self::Response, SendError> {
+        Ok(ModeResponse(Status::from_byte(buffer[0])?))
     }
 }
 
 #[derive(Debug)]
 pub struct ModeResponse(pub(crate) Status);
 
-impl Response for ModeResponse {
-    fn from_bytes(buffer: &[u8], offset: usize) -> Result<Self, SendError> {
-        Ok(ModeResponse(Status::from_byte(buffer[offset])?))
-    }
-}
-
 #[derive(Copy, Clone, Debug)]
 pub struct BaudrateRequest(pub(crate) u32);
 
 impl Request for BaudrateRequest {
-    const CATEGORY: Category = Category(0x19);
+    const COMMAND_ID: CommandId = CommandId::SwoBaudrate;
 
-    fn to_bytes(&self, buffer: &mut [u8], offset: usize) -> Result<usize, SendError> {
+    type Response = u32;
+
+    fn to_bytes(&self, buffer: &mut [u8]) -> Result<usize, SendError> {
         assert!(
-            buffer.len() >= offset + 4,
-            "This is a bug. Please report it."
+            buffer.len() >= 4,
+            "Buffer for CMSIS-DAP command is too small. This is a bug, please report it."
         );
-        buffer[offset..offset + 4].copy_from_slice(&self.0.to_le_bytes());
+        buffer[0..4].copy_from_slice(&self.0.to_le_bytes());
         Ok(4)
     }
-}
 
-#[derive(Copy, Clone, Debug)]
-pub struct BaudrateResponse(pub(crate) u32);
-
-impl Response for BaudrateResponse {
-    fn from_bytes(buffer: &[u8], offset: usize) -> Result<Self, SendError> {
-        if buffer.len() - offset < 4 {
+    fn from_bytes(&self, buffer: &[u8]) -> Result<Self::Response, SendError> {
+        if buffer.len() < 4 {
             return Err(SendError::NotEnoughData);
         }
 
-        let baud = u32::from_le_bytes(
-            buffer[offset..offset + 4]
-                .try_into()
-                .expect("This is a bug. Please report it."),
-        );
+        let baud: u32 = buffer
+            .pread_with(0, LE)
+            .map_err(|_| SendError::NotEnoughData)?;
 
-        Ok(BaudrateResponse(baud))
+        Ok(baud)
     }
 }
 
@@ -98,31 +95,43 @@ pub enum ControlRequest {
 }
 
 impl Request for ControlRequest {
-    const CATEGORY: Category = Category(0x1a);
+    const COMMAND_ID: CommandId = CommandId::SwoControl;
 
-    fn to_bytes(&self, buffer: &mut [u8], offset: usize) -> Result<usize, SendError> {
-        buffer[offset] = *self as u8;
+    type Response = ControlResponse;
+
+    fn to_bytes(&self, buffer: &mut [u8]) -> Result<usize, SendError> {
+        buffer[0] = *self as u8;
         Ok(1)
+    }
+
+    fn from_bytes(&self, buffer: &[u8]) -> Result<Self::Response, SendError> {
+        Ok(ControlResponse(Status::from_byte(buffer[0])?))
     }
 }
 
 #[derive(Debug)]
 pub struct ControlResponse(pub(crate) Status);
 
-impl Response for ControlResponse {
-    fn from_bytes(buffer: &[u8], offset: usize) -> Result<Self, SendError> {
-        Ok(ControlResponse(Status::from_byte(buffer[offset])?))
-    }
-}
-
 #[derive(Debug)]
 pub struct StatusRequest;
 
 impl Request for StatusRequest {
-    const CATEGORY: Category = Category(0x1b);
+    const COMMAND_ID: CommandId = CommandId::SwoStatus;
 
-    fn to_bytes(&self, _buffer: &mut [u8], _offset: usize) -> Result<usize, SendError> {
+    type Response = StatusResponse;
+
+    fn to_bytes(&self, _buffer: &mut [u8]) -> Result<usize, SendError> {
         Ok(0)
+    }
+
+    fn from_bytes(&self, buffer: &[u8]) -> Result<Self::Response, SendError> {
+        let status = TraceStatus::from(buffer[0]);
+        let count = u32::from_le_bytes(
+            buffer[1..5]
+                .try_into()
+                .map_err(|_| SendError::NotEnoughData)?,
+        );
+        Ok(StatusResponse { status, count })
     }
 }
 
@@ -149,18 +158,6 @@ pub struct StatusResponse {
     pub(crate) count: u32,
 }
 
-impl Response for StatusResponse {
-    fn from_bytes(buffer: &[u8], offset: usize) -> Result<Self, SendError> {
-        let status = TraceStatus::from(buffer[offset]);
-        let count = u32::from_le_bytes(
-            buffer[offset + 1..offset + 5]
-                .try_into()
-                .map_err(|_| SendError::Bug)?,
-        );
-        Ok(StatusResponse { status, count })
-    }
-}
-
 #[derive(Debug)]
 pub struct ExtendedStatusRequest {
     pub(crate) request_status: bool,
@@ -169,46 +166,38 @@ pub struct ExtendedStatusRequest {
 }
 
 impl Request for ExtendedStatusRequest {
-    const CATEGORY: Category = Category(0x1e);
+    const COMMAND_ID: CommandId = CommandId::SwoExtendedStatus;
 
-    fn to_bytes(&self, buffer: &mut [u8], offset: usize) -> Result<usize, SendError> {
+    type Response = ExtendedStatusResponse;
+
+    fn to_bytes(&self, buffer: &mut [u8]) -> Result<usize, SendError> {
         let control = (self.request_status as u8)
             | ((self.request_count as u8) << 1)
             | ((self.request_index_timestamp as u8) << 2);
-        buffer[offset] = control;
+        buffer[0] = control;
         Ok(1)
     }
-}
 
-#[derive(Debug)]
-pub struct ExtendedStatusResponse {
-    pub(crate) status: TraceStatus,
-    pub(crate) count: u32,
-    pub(crate) index: u32,
-    pub(crate) timestamp: u32,
-}
-
-impl Response for ExtendedStatusResponse {
-    fn from_bytes(buffer: &[u8], offset: usize) -> Result<Self, SendError> {
-        if buffer.len() - offset < 13 {
+    fn from_bytes(&self, buffer: &[u8]) -> Result<Self::Response, SendError> {
+        if buffer.len() < 13 {
             return Err(SendError::NotEnoughData);
         }
 
-        let status = TraceStatus::from(buffer[offset]);
+        let status = TraceStatus::from(buffer[0]);
         let count = u32::from_le_bytes(
-            buffer[offset + 1..offset + 5]
+            buffer[1..5]
                 .try_into()
-                .expect("This is a bug. Please report it."),
+                .map_err(|_| SendError::NotEnoughData)?,
         );
         let index = u32::from_le_bytes(
-            buffer[offset + 5..offset + 9]
+            buffer[5..9]
                 .try_into()
-                .expect("This is a bug. Please report it."),
+                .map_err(|_| SendError::NotEnoughData)?,
         );
         let timestamp = u32::from_le_bytes(
-            buffer[offset + 9..offset + 13]
+            buffer[9..13]
                 .try_into()
-                .expect("This is a bug. Please report it."),
+                .map_err(|_| SendError::NotEnoughData)?,
         );
         Ok(ExtendedStatusResponse {
             status,
@@ -220,38 +209,40 @@ impl Response for ExtendedStatusResponse {
 }
 
 #[derive(Debug)]
+pub struct ExtendedStatusResponse {
+    pub(crate) status: TraceStatus,
+    pub(crate) count: u32,
+    pub(crate) index: u32,
+    pub(crate) timestamp: u32,
+}
+
+#[derive(Debug)]
 pub struct DataRequest {
     pub(crate) max_count: u16,
 }
 
 impl Request for DataRequest {
-    const CATEGORY: Category = Category(0x1c);
+    const COMMAND_ID: CommandId = CommandId::SwoData;
 
-    fn to_bytes(&self, buffer: &mut [u8], offset: usize) -> Result<usize, SendError> {
+    type Response = DataResponse;
+
+    fn to_bytes(&self, buffer: &mut [u8]) -> Result<usize, SendError> {
         assert!(
-            buffer.len() >= offset + 2,
-            "This is a bug. Please report it."
+            buffer.len() >= 2,
+            "Buffer for CMSIS-DAP command is too small. This is a bug, please report it."
         );
-        buffer[offset..offset + 2].copy_from_slice(&self.max_count.to_le_bytes());
+        buffer[0..2].copy_from_slice(&self.max_count.to_le_bytes());
         Ok(2)
     }
-}
 
-#[derive(Debug)]
-pub struct DataResponse {
-    pub(crate) status: TraceStatus,
-    pub(crate) data: Vec<u8>,
-}
-
-impl Response for DataResponse {
-    fn from_bytes(buffer: &[u8], offset: usize) -> Result<Self, SendError> {
-        let status = TraceStatus::from(buffer[offset]);
+    fn from_bytes(&self, buffer: &[u8]) -> Result<Self::Response, SendError> {
+        let status = TraceStatus::from(buffer[0]);
         let count = u16::from_le_bytes(
-            buffer[offset + 1..offset + 3]
+            buffer[1..3]
                 .try_into()
-                .expect("This is a bug. Please report it."),
+                .map_err(|_| SendError::NotEnoughData)?,
         );
-        let start = offset + 3;
+        let start = 3;
         let end = start + count as usize;
         if end > buffer.len() {
             return Err(SendError::NotEnoughData);
@@ -262,4 +253,10 @@ impl Response for DataResponse {
             data: buffer[start..end].to_vec(),
         })
     }
+}
+
+#[derive(Debug)]
+pub struct DataResponse {
+    pub(crate) status: TraceStatus,
+    pub(crate) data: Vec<u8>,
 }

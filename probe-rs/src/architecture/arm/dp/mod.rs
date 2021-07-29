@@ -1,7 +1,7 @@
 #[macro_use]
 mod register_generation;
 
-use super::Register;
+use super::{DapAccess, DpAddress, Register};
 use bitfield::bitfield;
 use jep106::JEP106Code;
 
@@ -25,69 +25,37 @@ impl From<DebugPortError> for DebugProbeError {
     }
 }
 
-/// An interface to write arbitrary Debug Port registers freely in a type-unsafe manner identifying them by bank number and register address.
-/// For a type-safe interface see the [DpAccess] trait.
-pub trait RawDpAccess {
-    /// Reads a Debug Port register on the Chip.
-    fn read_raw_dp_register(&mut self, bank: DpBankSel, address: u8)
-        -> Result<u32, DebugPortError>;
-
-    /// Writes a Debug Port register on the Chip.
-    fn write_raw_dp_register(
-        &mut self,
-        bank: DpBankSel,
-        address: u8,
-        value: u32,
-    ) -> Result<(), DebugPortError>;
-
-    /// Returns the version of the Debug Port implementation.
-    fn debug_port_version(&self) -> DebugPortVersion;
-}
-
 pub trait DpAccess {
-    fn read_dp_register<R: DpRegister>(&mut self) -> Result<R, DebugPortError>;
+    fn read_dp_register<R: DpRegister>(&mut self, dp: DpAddress) -> Result<R, DebugPortError>;
 
-    fn write_dp_register<R: DpRegister>(&mut self, register: R) -> Result<(), DebugPortError>;
+    fn write_dp_register<R: DpRegister>(
+        &mut self,
+        dp: DpAddress,
+        register: R,
+    ) -> Result<(), DebugPortError>;
 }
 
-impl<T: RawDpAccess> DpAccess for T {
-    fn read_dp_register<R: DpRegister>(&mut self) -> Result<R, DebugPortError> {
-        if R::VERSION > self.debug_port_version() {
-            return Err(DebugPortError::UnsupportedRegister {
-                register: R::NAME,
-                version: self.debug_port_version(),
-            });
-        }
-
+impl<T: DapAccess> DpAccess for T {
+    fn read_dp_register<R: DpRegister>(&mut self, dp: DpAddress) -> Result<R, DebugPortError> {
         log::debug!("Reading DP register {}", R::NAME);
-        let result = self.read_raw_dp_register(R::DP_BANK, R::ADDRESS)?;
+        let result = self.read_raw_dp_register(dp, R::ADDRESS)?;
         log::debug!("Read    DP register {}, value=0x{:08x}", R::NAME, result);
         Ok(result.into())
     }
 
-    fn write_dp_register<R: DpRegister>(&mut self, register: R) -> Result<(), DebugPortError> {
-        if R::VERSION > self.debug_port_version() {
-            return Err(DebugPortError::UnsupportedRegister {
-                register: R::NAME,
-                version: self.debug_port_version(),
-            });
-        }
-
+    fn write_dp_register<R: DpRegister>(
+        &mut self,
+        dp: DpAddress,
+        register: R,
+    ) -> Result<(), DebugPortError> {
         let value = register.into();
         log::debug!("Writing DP register {}, value=0x{:08x}", R::NAME, value);
-        self.write_raw_dp_register(R::DP_BANK, R::ADDRESS, value)?;
+        self.write_raw_dp_register(dp, R::ADDRESS, value)?;
         Ok(())
     }
 }
 
-#[derive(Debug, PartialEq, Copy, Clone)]
-pub enum DpBankSel {
-    DontCare,
-    Bank(u8),
-}
-
 pub trait DpRegister: Register {
-    const DP_BANK: DpBankSel;
     const VERSION: DebugPortVersion;
 }
 
@@ -121,7 +89,6 @@ impl From<Abort> for u32 {
 }
 
 impl DpRegister for Abort {
-    const DP_BANK: DpBankSel = DpBankSel::DontCare;
     const VERSION: DebugPortVersion = DebugPortVersion::DPv1;
 }
 
@@ -170,12 +137,11 @@ impl From<Ctrl> for u32 {
 }
 
 impl DpRegister for Ctrl {
-    const DP_BANK: DpBankSel = DpBankSel::Bank(0);
     const VERSION: DebugPortVersion = DebugPortVersion::DPv1;
 }
 
 impl Register for Ctrl {
-    const ADDRESS: u8 = 0x4;
+    const ADDRESS: u8 = 0x04;
     const NAME: &'static str = "CTRL/STAT";
 }
 
@@ -201,7 +167,6 @@ impl From<Select> for u32 {
 }
 
 impl DpRegister for Select {
-    const DP_BANK: DpBankSel = DpBankSel::DontCare;
     const VERSION: DebugPortVersion = DebugPortVersion::DPv1;
 }
 
@@ -236,7 +201,6 @@ impl From<DPIDR> for u32 {
 }
 
 impl DpRegister for DPIDR {
-    const DP_BANK: DpBankSel = DpBankSel::DontCare;
     const VERSION: DebugPortVersion = DebugPortVersion::DPv1;
 }
 
@@ -267,12 +231,11 @@ impl From<TARGETID> for u32 {
 }
 
 impl DpRegister for TARGETID {
-    const DP_BANK: DpBankSel = DpBankSel::Bank(2);
     const VERSION: DebugPortVersion = DebugPortVersion::DPv2;
 }
 
 impl Register for TARGETID {
-    const ADDRESS: u8 = 0x4;
+    const ADDRESS: u8 = 0x24;
     const NAME: &'static str = "TARGETID";
 }
 
@@ -319,7 +282,6 @@ impl From<RdBuff> for u32 {
 }
 
 impl DpRegister for RdBuff {
-    const DP_BANK: DpBankSel = DpBankSel::DontCare;
     const VERSION: DebugPortVersion = DebugPortVersion::DPv1;
 }
 

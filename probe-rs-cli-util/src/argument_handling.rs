@@ -9,7 +9,10 @@
 ///     "bar=", // Can be "--bar=value" and "--bar value"
 /// ];
 /// ```
-pub fn remove_arguments(arguments_to_remove: &[&'static str], arguments: &mut Vec<String>) {
+pub fn remove_arguments<T>(arguments_to_remove: &[T], arguments: &mut Vec<String>)
+where
+    T: AsRef<str>,
+{
     // We iterate all arguments that possibly have to be removed
     // and remove them if they occur to be in the input.
     for argument in arguments_to_remove.iter() {
@@ -17,16 +20,17 @@ pub fn remove_arguments(arguments_to_remove: &[&'static str], arguments: &mut Ve
         // If the original arg contained an equal sign we take this as a hint
         // that the arg can be used as `--arg value` as well as `--arg=value`.
         // In the prior case we need to remove two arguments. So remember this.
-        let (remove_two, clean_argument) = if let Some(stripped) = argument.strip_suffix('=') {
-            (true, format!("--{}", stripped))
-        } else {
-            (false, format!("--{}", argument))
-        };
+        let (remove_two, clean_argument) =
+            if let Some(stripped) = argument.as_ref().strip_suffix('=') {
+                (true, format!("--{}", stripped))
+            } else {
+                (false, format!("--{}", argument.as_ref()))
+            };
 
         // Iterate all args in the input and if we find one that matches, we remove it.
         if let Some(index) = arguments
             .iter()
-            .position(|x| x.starts_with(&format!("--{}", argument)))
+            .position(|x| x.starts_with(&format!("--{}", argument.as_ref())))
         {
             // We remove the argument we found.
             arguments.remove(index);

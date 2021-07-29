@@ -1,7 +1,13 @@
 # Smoke Testing Tool
 
 
+## Quick testing with a single chip
 
+To test a single board quickly, the chip and probe can be specified directly on the command line:
+
+```console
+cargo run -- --chip nrf51822_xxAB --probe 0d28:0204
+```
 
 ## Multiple boards
 

@@ -2,1342 +2,2150 @@
 name: STM32F3 Series
 variants:
   - name: STM32F301C6Tx
+    cores:
+      - name: main
+        type: M4
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 536870912
             end: 536883200
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 134217728
             end: 134250496
           is_boot_memory: true
+          cores: [main]
     flash_algorithms:
       - stm32f3xx_256
       - stm32f3xx_opt
   - name: STM32F301C8Tx
+    cores:
+      - name: main
+        type: M4
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 536870912
             end: 536887296
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 134217728
             end: 134283264
           is_boot_memory: true
+          cores: [main]
     flash_algorithms:
       - stm32f3xx_256
       - stm32f3xx_opt
   - name: STM32F301C8Yx
+    cores:
+      - name: main
+        type: M4
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 536870912
             end: 536887296
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 134217728
             end: 134283264
           is_boot_memory: true
+          cores: [main]
     flash_algorithms:
       - stm32f3xx_256
       - stm32f3xx_opt
   - name: STM32F301K6Ux
+    cores:
+      - name: main
+        type: M4
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 536870912
             end: 536883200
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 134217728
             end: 134250496
           is_boot_memory: true
+          cores: [main]
     flash_algorithms:
       - stm32f3xx_256
       - stm32f3xx_opt
   - name: STM32F301K8Tx
+    cores:
+      - name: main
+        type: M4
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 536870912
             end: 536887296
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 134217728
             end: 134283264
           is_boot_memory: true
+          cores: [main]
     flash_algorithms:
       - stm32f3xx_256
       - stm32f3xx_opt
   - name: STM32F301K8Ux
+    cores:
+      - name: main
+        type: M4
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 536870912
             end: 536887296
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 134217728
             end: 134283264
           is_boot_memory: true
+          cores: [main]
     flash_algorithms:
       - stm32f3xx_256
       - stm32f3xx_opt
   - name: STM32F301R6Tx
+    cores:
+      - name: main
+        type: M4
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 536870912
             end: 536883200
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 134217728
             end: 134250496
           is_boot_memory: true
+          cores: [main]
     flash_algorithms:
       - stm32f3xx_256
       - stm32f3xx_opt
   - name: STM32F301R8Tx
+    cores:
+      - name: main
+        type: M4
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 536870912
             end: 536887296
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 134217728
             end: 134283264
           is_boot_memory: true
+          cores: [main]
     flash_algorithms:
       - stm32f3xx_256
       - stm32f3xx_opt
   - name: STM32F302C6Tx
+    cores:
+      - name: main
+        type: M4
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 536870912
             end: 536883200
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 134217728
             end: 134250496
           is_boot_memory: true
+          cores: [main]
     flash_algorithms:
       - stm32f3xx_256
       - stm32f3xx_opt
   - name: STM32F302C8Tx
+    cores:
+      - name: main
+        type: M4
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 536870912
             end: 536887296
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 134217728
             end: 134283264
           is_boot_memory: true
+          cores: [main]
     flash_algorithms:
       - stm32f3xx_256
       - stm32f3xx_opt
   - name: STM32F302C8Yx
+    cores:
+      - name: main
+        type: M4
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 536870912
             end: 536887296
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 134217728
             end: 134283264
           is_boot_memory: true
+          cores: [main]
     flash_algorithms:
       - stm32f3xx_256
       - stm32f3xx_opt
   - name: STM32F302CBTx
+    cores:
+      - name: main
+        type: M4
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 536870912
             end: 536895488
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 134217728
             end: 134348800
           is_boot_memory: true
+          cores: [main]
     flash_algorithms:
       - stm32f3xx_256
       - stm32f3xx_opt
   - name: STM32F302CCTx
+    cores:
+      - name: main
+        type: M4
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 536870912
             end: 536903680
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 134217728
             end: 134479872
           is_boot_memory: true
+          cores: [main]
     flash_algorithms:
       - stm32f3xx_256
       - stm32f3xx_opt
   - name: STM32F302K6Ux
+    cores:
+      - name: main
+        type: M4
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 536870912
             end: 536883200
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 134217728
             end: 134250496
           is_boot_memory: true
+          cores: [main]
     flash_algorithms:
       - stm32f3xx_256
       - stm32f3xx_opt
   - name: STM32F302K8Ux
+    cores:
+      - name: main
+        type: M4
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 536870912
             end: 536887296
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 134217728
             end: 134283264
           is_boot_memory: true
+          cores: [main]
     flash_algorithms:
       - stm32f3xx_256
       - stm32f3xx_opt
   - name: STM32F302R6Tx
+    cores:
+      - name: main
+        type: M4
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 536870912
             end: 536883200
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 134217728
             end: 134250496
           is_boot_memory: true
+          cores: [main]
     flash_algorithms:
       - stm32f3xx_256
       - stm32f3xx_opt
   - name: STM32F302R8Tx
+    cores:
+      - name: main
+        type: M4
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 536870912
             end: 536887296
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 134217728
             end: 134283264
           is_boot_memory: true
+          cores: [main]
     flash_algorithms:
       - stm32f3xx_256
       - stm32f3xx_opt
   - name: STM32F302RBTx
+    cores:
+      - name: main
+        type: M4
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 536870912
             end: 536895488
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 134217728
             end: 134348800
           is_boot_memory: true
+          cores: [main]
     flash_algorithms:
       - stm32f3xx_256
       - stm32f3xx_opt
   - name: STM32F302RCTx
+    cores:
+      - name: main
+        type: M4
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 536870912
             end: 536903680
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 134217728
             end: 134479872
           is_boot_memory: true
+          cores: [main]
     flash_algorithms:
       - stm32f3xx_256
       - stm32f3xx_opt
   - name: STM32F302RDTx
+    cores:
+      - name: main
+        type: M4
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 536870912
             end: 536936448
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 134217728
             end: 134610944
           is_boot_memory: true
+          cores: [main]
     flash_algorithms:
       - stm32f3xx_512
       - stm32f3xx_opt
   - name: STM32F302RETx
+    cores:
+      - name: main
+        type: M4
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 536870912
             end: 536936448
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 134217728
             end: 134742016
           is_boot_memory: true
+          cores: [main]
     flash_algorithms:
       - stm32f3xx_512
       - stm32f3xx_opt
   - name: STM32F302VBTx
+    cores:
+      - name: main
+        type: M4
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 536870912
             end: 536895488
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 134217728
             end: 134348800
           is_boot_memory: true
+          cores: [main]
     flash_algorithms:
       - stm32f3xx_256
       - stm32f3xx_opt
   - name: STM32F302VCTx
+    cores:
+      - name: main
+        type: M4
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 536870912
             end: 536903680
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 134217728
             end: 134479872
           is_boot_memory: true
+          cores: [main]
     flash_algorithms:
       - stm32f3xx_256
       - stm32f3xx_opt
   - name: STM32F302VCYx
+    cores:
+      - name: main
+        type: M4
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 536870912
             end: 536903680
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 134217728
             end: 134479872
           is_boot_memory: true
+          cores: [main]
     flash_algorithms:
       - stm32f3xx_256
       - stm32f3xx_opt
   - name: STM32F302VDHx
+    cores:
+      - name: main
+        type: M4
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 536870912
             end: 536936448
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 134217728
             end: 134610944
           is_boot_memory: true
+          cores: [main]
     flash_algorithms:
       - stm32f3xx_512
       - stm32f3xx_opt
   - name: STM32F302VDTx
+    cores:
+      - name: main
+        type: M4
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 536870912
             end: 536936448
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 134217728
             end: 134610944
           is_boot_memory: true
+          cores: [main]
     flash_algorithms:
       - stm32f3xx_512
       - stm32f3xx_opt
   - name: STM32F302VEHx
+    cores:
+      - name: main
+        type: M4
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 536870912
             end: 536936448
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 134217728
             end: 134742016
           is_boot_memory: true
+          cores: [main]
     flash_algorithms:
       - stm32f3xx_512
       - stm32f3xx_opt
   - name: STM32F302VETx
+    cores:
+      - name: main
+        type: M4
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 536870912
             end: 536936448
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 134217728
             end: 134742016
           is_boot_memory: true
+          cores: [main]
     flash_algorithms:
       - stm32f3xx_512
       - stm32f3xx_opt
   - name: STM32F302ZDTx
+    cores:
+      - name: main
+        type: M4
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 536870912
             end: 536936448
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 134217728
             end: 134610944
           is_boot_memory: true
+          cores: [main]
     flash_algorithms:
       - stm32f3xx_512
       - stm32f3xx_opt
   - name: STM32F302ZETx
+    cores:
+      - name: main
+        type: M4
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 536870912
             end: 536936448
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 134217728
             end: 134742016
           is_boot_memory: true
+          cores: [main]
     flash_algorithms:
       - stm32f3xx_512
       - stm32f3xx_opt
   - name: STM32F303C6Tx
+    cores:
+      - name: main
+        type: M4
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 536870912
             end: 536883200
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 134217728
             end: 134250496
           is_boot_memory: true
+          cores: [main]
     flash_algorithms:
       - stm32f3xx_256
       - stm32f3xx_opt
   - name: STM32F303C8Tx
+    cores:
+      - name: main
+        type: M4
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 536870912
             end: 536883200
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 134217728
             end: 134283264
           is_boot_memory: true
+          cores: [main]
     flash_algorithms:
       - stm32f3xx_256
       - stm32f3xx_opt
   - name: STM32F303CBTx
+    cores:
+      - name: main
+        type: M4
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 268435456
             end: 268443648
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 134217728
             end: 134348800
           is_boot_memory: true
+          cores: [main]
     flash_algorithms:
       - stm32f3xx_256
       - stm32f3xx_opt
   - name: STM32F303CCTx
+    cores:
+      - name: main
+        type: M4
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 536870912
             end: 536920064
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 134217728
             end: 134479872
           is_boot_memory: true
+          cores: [main]
     flash_algorithms:
       - stm32f3xx_256
       - stm32f3xx_opt
   - name: STM32F303K6Tx
+    cores:
+      - name: main
+        type: M4
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 536870912
             end: 536883200
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 134217728
             end: 134250496
           is_boot_memory: true
+          cores: [main]
     flash_algorithms:
       - stm32f3xx_256
       - stm32f3xx_opt
   - name: STM32F303K6Ux
+    cores:
+      - name: main
+        type: M4
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 536870912
             end: 536883200
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 134217728
             end: 134250496
           is_boot_memory: true
+          cores: [main]
     flash_algorithms:
       - stm32f3xx_256
       - stm32f3xx_opt
   - name: STM32F303K8Tx
+    cores:
+      - name: main
+        type: M4
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 536870912
             end: 536883200
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 134217728
             end: 134283264
           is_boot_memory: true
+          cores: [main]
     flash_algorithms:
       - stm32f3xx_256
       - stm32f3xx_opt
   - name: STM32F303K8Ux
+    cores:
+      - name: main
+        type: M4
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 536870912
             end: 536883200
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 134217728
             end: 134283264
           is_boot_memory: true
+          cores: [main]
     flash_algorithms:
       - stm32f3xx_256
       - stm32f3xx_opt
   - name: STM32F303R6Tx
+    cores:
+      - name: main
+        type: M4
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 536870912
             end: 536883200
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 134217728
             end: 134250496
           is_boot_memory: true
+          cores: [main]
     flash_algorithms:
       - stm32f3xx_256
       - stm32f3xx_opt
   - name: STM32F303R8Tx
+    cores:
+      - name: main
+        type: M4
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 536870912
             end: 536883200
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 134217728
             end: 134283264
           is_boot_memory: true
+          cores: [main]
     flash_algorithms:
       - stm32f3xx_256
       - stm32f3xx_opt
   - name: STM32F303RBTx
+    cores:
+      - name: main
+        type: M4
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 268435456
             end: 268443648
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 134217728
             end: 134348800
           is_boot_memory: true
+          cores: [main]
     flash_algorithms:
       - stm32f3xx_256
       - stm32f3xx_opt
   - name: STM32F303RCTx
+    cores:
+      - name: main
+        type: M4
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 268435456
             end: 268443648
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 134217728
             end: 134479872
           is_boot_memory: true
+          cores: [main]
     flash_algorithms:
       - stm32f3xx_256
       - stm32f3xx_opt
   - name: STM32F303RDTx
+    cores:
+      - name: main
+        type: M4
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 536870912
             end: 536936448
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 134217728
             end: 134610944
           is_boot_memory: true
+          cores: [main]
     flash_algorithms:
       - stm32f3xx_512
       - stm32f3xx_opt
   - name: STM32F303RETx
+    cores:
+      - name: main
+        type: M4
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 536870912
             end: 536936448
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 134217728
             end: 134742016
           is_boot_memory: true
+          cores: [main]
     flash_algorithms:
       - stm32f3xx_512
       - stm32f3xx_opt
   - name: STM32F303VBTx
+    cores:
+      - name: main
+        type: M4
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 268435456
             end: 268443648
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 134217728
             end: 134348800
           is_boot_memory: true
+          cores: [main]
     flash_algorithms:
       - stm32f3xx_256
       - stm32f3xx_opt
   - name: STM32F303VCTx
+    cores:
+      - name: main
+        type: M4
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 268435456
             end: 268443648
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 134217728
             end: 134479872
           is_boot_memory: true
+          cores: [main]
     flash_algorithms:
       - stm32f3xx_256
       - stm32f3xx_opt
   - name: STM32F303VCYx
+    cores:
+      - name: main
+        type: M4
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 536870912
             end: 536920064
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 134217728
             end: 134479872
           is_boot_memory: true
+          cores: [main]
     flash_algorithms:
       - stm32f3xx_256
       - stm32f3xx_opt
   - name: STM32F303VDHx
+    cores:
+      - name: main
+        type: M4
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 536870912
             end: 536936448
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 134217728
             end: 134610944
           is_boot_memory: true
+          cores: [main]
     flash_algorithms:
       - stm32f3xx_512
       - stm32f3xx_opt
   - name: STM32F303VDTx
+    cores:
+      - name: main
+        type: M4
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 536870912
             end: 536936448
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 134217728
             end: 134610944
           is_boot_memory: true
+          cores: [main]
     flash_algorithms:
       - stm32f3xx_512
       - stm32f3xx_opt
   - name: STM32F303VEHx
+    cores:
+      - name: main
+        type: M4
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 536870912
             end: 536936448
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 134217728
             end: 134742016
           is_boot_memory: true
+          cores: [main]
     flash_algorithms:
       - stm32f3xx_512
       - stm32f3xx_opt
   - name: STM32F303VETx
+    cores:
+      - name: main
+        type: M4
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 536870912
             end: 536936448
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 134217728
             end: 134742016
           is_boot_memory: true
+          cores: [main]
     flash_algorithms:
       - stm32f3xx_512
       - stm32f3xx_opt
   - name: STM32F303VEYx
+    cores:
+      - name: main
+        type: M4
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 536870912
             end: 536936448
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 134217728
             end: 134742016
           is_boot_memory: true
+          cores: [main]
     flash_algorithms:
       - stm32f3xx_512
       - stm32f3xx_opt
   - name: STM32F303ZDTx
+    cores:
+      - name: main
+        type: M4
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 536870912
             end: 536936448
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 134217728
             end: 134610944
           is_boot_memory: true
+          cores: [main]
     flash_algorithms:
       - stm32f3xx_512
       - stm32f3xx_opt
   - name: STM32F303ZETx
+    cores:
+      - name: main
+        type: M4
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 536870912
             end: 536936448
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 134217728
             end: 134742016
           is_boot_memory: true
+          cores: [main]
     flash_algorithms:
       - stm32f3xx_512
       - stm32f3xx_opt
   - name: STM32F318C8Tx
+    cores:
+      - name: main
+        type: M4
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 536870912
             end: 536887296
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 134217728
             end: 134283264
           is_boot_memory: true
+          cores: [main]
     flash_algorithms:
       - stm32f3xx_256
       - stm32f3xx_opt
   - name: STM32F318C8Yx
+    cores:
+      - name: main
+        type: M4
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 536870912
             end: 536887296
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 134217728
             end: 134283264
           is_boot_memory: true
+          cores: [main]
     flash_algorithms:
       - stm32f3xx_256
       - stm32f3xx_opt
   - name: STM32F318K8Ux
+    cores:
+      - name: main
+        type: M4
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 536870912
             end: 536887296
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 134217728
             end: 134283264
           is_boot_memory: true
+          cores: [main]
     flash_algorithms:
       - stm32f3xx_256
       - stm32f3xx_opt
   - name: STM32F328C8Tx
+    cores:
+      - name: main
+        type: M4
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 536870912
             end: 536887296
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 134217728
             end: 134283264
           is_boot_memory: true
+          cores: [main]
     flash_algorithms:
       - stm32f3xx_256
       - stm32f3xx_opt
   - name: STM32F334C4Tx
+    cores:
+      - name: main
+        type: M4
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 536870912
             end: 536887296
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 134217728
             end: 134234112
           is_boot_memory: true
+          cores: [main]
     flash_algorithms:
       - stm32f3xx_256
       - stm32f3xx_opt
   - name: STM32F334C6Tx
+    cores:
+      - name: main
+        type: M4
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 536870912
             end: 536887296
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 134217728
             end: 134250496
           is_boot_memory: true
+          cores: [main]
     flash_algorithms:
       - stm32f3xx_256
       - stm32f3xx_opt
   - name: STM32F334C8Tx
+    cores:
+      - name: main
+        type: M4
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 536870912
             end: 536887296
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 134217728
             end: 134283264
           is_boot_memory: true
+          cores: [main]
     flash_algorithms:
       - stm32f3xx_256
       - stm32f3xx_opt
   - name: STM32F334C8Yx
+    cores:
+      - name: main
+        type: M4
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 536870912
             end: 536887296
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 134217728
             end: 134283264
           is_boot_memory: true
+          cores: [main]
     flash_algorithms:
       - stm32f3xx_256
       - stm32f3xx_opt
   - name: STM32F334K4Tx
+    cores:
+      - name: main
+        type: M4
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Nvm:
           range:
             start: 134217728
             end: 134234112
           is_boot_memory: true
+          cores: [main]
     flash_algorithms:
       - stm32f3xx_256
       - stm32f3xx_opt
   - name: STM32F334K4Ux
+    cores:
+      - name: main
+        type: M4
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Nvm:
           range:
             start: 134217728
             end: 134234112
           is_boot_memory: true
+          cores: [main]
     flash_algorithms:
       - stm32f3xx_256
       - stm32f3xx_opt
   - name: STM32F334K6Tx
+    cores:
+      - name: main
+        type: M4
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 536870912
             end: 536887296
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 134217728
             end: 134250496
           is_boot_memory: true
+          cores: [main]
     flash_algorithms:
       - stm32f3xx_256
       - stm32f3xx_opt
   - name: STM32F334K6Ux
+    cores:
+      - name: main
+        type: M4
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 536870912
             end: 536887296
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 134217728
             end: 134250496
           is_boot_memory: true
+          cores: [main]
     flash_algorithms:
       - stm32f3xx_256
       - stm32f3xx_opt
   - name: STM32F334K8Tx
+    cores:
+      - name: main
+        type: M4
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 536870912
             end: 536887296
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 134217728
             end: 134283264
           is_boot_memory: true
+          cores: [main]
     flash_algorithms:
       - stm32f3xx_256
       - stm32f3xx_opt
   - name: STM32F334K8Ux
+    cores:
+      - name: main
+        type: M4
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 536870912
             end: 536887296
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 134217728
             end: 134283264
           is_boot_memory: true
+          cores: [main]
     flash_algorithms:
       - stm32f3xx_256
       - stm32f3xx_opt
   - name: STM32F334R6Tx
+    cores:
+      - name: main
+        type: M4
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 536870912
             end: 536887296
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 134217728
             end: 134250496
           is_boot_memory: true
+          cores: [main]
     flash_algorithms:
       - stm32f3xx_256
       - stm32f3xx_opt
   - name: STM32F334R8Tx
+    cores:
+      - name: main
+        type: M4
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 536870912
             end: 536887296
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 134217728
             end: 134283264
           is_boot_memory: true
+          cores: [main]
     flash_algorithms:
       - stm32f3xx_256
       - stm32f3xx_opt
   - name: STM32F358CCTx
+    cores:
+      - name: main
+        type: M4
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 536870912
             end: 536911872
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 134217728
             end: 134479872
           is_boot_memory: true
+          cores: [main]
     flash_algorithms:
       - stm32f3xx_256
       - stm32f3xx_opt
   - name: STM32F358RCTx
+    cores:
+      - name: main
+        type: M4
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 536870912
             end: 536911872
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 134217728
             end: 134479872
           is_boot_memory: true
+          cores: [main]
     flash_algorithms:
       - stm32f3xx_256
       - stm32f3xx_opt
   - name: STM32F358VCTx
+    cores:
+      - name: main
+        type: M4
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 536870912
             end: 536911872
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 134217728
             end: 134479872
           is_boot_memory: true
+          cores: [main]
     flash_algorithms:
       - stm32f3xx_256
       - stm32f3xx_opt
   - name: STM32F373C8Tx
+    cores:
+      - name: main
+        type: M4
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 536870912
             end: 536887296
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 134217728
             end: 134283264
           is_boot_memory: true
+          cores: [main]
     flash_algorithms:
       - stm32f3xx_256
       - stm32f3xx_opt
   - name: STM32F373CBTx
+    cores:
+      - name: main
+        type: M4
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 536870912
             end: 536895488
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 134217728
             end: 134348800
           is_boot_memory: true
+          cores: [main]
     flash_algorithms:
       - stm32f3xx_256
       - stm32f3xx_opt
   - name: STM32F373CCTx
+    cores:
+      - name: main
+        type: M4
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 536870912
             end: 536903680
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 134217728
             end: 134479872
           is_boot_memory: true
+          cores: [main]
     flash_algorithms:
       - stm32f3xx_256
       - stm32f3xx_opt
   - name: STM32F373R8Tx
+    cores:
+      - name: main
+        type: M4
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 536870912
             end: 536887296
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 134217728
             end: 134283264
           is_boot_memory: true
+          cores: [main]
     flash_algorithms:
       - stm32f3xx_256
       - stm32f3xx_opt
   - name: STM32F373RBTx
+    cores:
+      - name: main
+        type: M4
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 536870912
             end: 536895488
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 134217728
             end: 134348800
           is_boot_memory: true
+          cores: [main]
     flash_algorithms:
       - stm32f3xx_256
       - stm32f3xx_opt
   - name: STM32F373RCTx
+    cores:
+      - name: main
+        type: M4
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 536870912
             end: 536903680
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 134217728
             end: 134479872
           is_boot_memory: true
+          cores: [main]
     flash_algorithms:
       - stm32f3xx_256
       - stm32f3xx_opt
   - name: STM32F373V8Hx
+    cores:
+      - name: main
+        type: M4
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 536870912
             end: 536887296
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 134217728
             end: 134283264
           is_boot_memory: true
+          cores: [main]
     flash_algorithms:
       - stm32f3xx_256
       - stm32f3xx_opt
   - name: STM32F373V8Tx
+    cores:
+      - name: main
+        type: M4
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 536870912
             end: 536887296
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 134217728
             end: 134283264
           is_boot_memory: true
+          cores: [main]
     flash_algorithms:
       - stm32f3xx_256
       - stm32f3xx_opt
   - name: STM32F373VBHx
+    cores:
+      - name: main
+        type: M4
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 536870912
             end: 536895488
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 134217728
             end: 134348800
           is_boot_memory: true
+          cores: [main]
     flash_algorithms:
       - stm32f3xx_256
       - stm32f3xx_opt
   - name: STM32F373VBTx
+    cores:
+      - name: main
+        type: M4
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 536870912
             end: 536895488
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 134217728
             end: 134348800
           is_boot_memory: true
+          cores: [main]
     flash_algorithms:
       - stm32f3xx_256
       - stm32f3xx_opt
   - name: STM32F373VCHx
+    cores:
+      - name: main
+        type: M4
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 536870912
             end: 536903680
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 134217728
             end: 134479872
           is_boot_memory: true
+          cores: [main]
     flash_algorithms:
       - stm32f3xx_256
       - stm32f3xx_opt
   - name: STM32F373VCTx
+    cores:
+      - name: main
+        type: M4
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 536870912
             end: 536903680
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 134217728
             end: 134479872
           is_boot_memory: true
+          cores: [main]
     flash_algorithms:
       - stm32f3xx_256
       - stm32f3xx_opt
   - name: STM32F378CCTx
+    cores:
+      - name: main
+        type: M4
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 536870912
             end: 536903680
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 134217728
             end: 134479872
           is_boot_memory: true
+          cores: [main]
     flash_algorithms:
       - stm32f3xx_256
       - stm32f3xx_opt
   - name: STM32F378RCTx
+    cores:
+      - name: main
+        type: M4
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 536870912
             end: 536903680
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 134217728
             end: 134479872
           is_boot_memory: true
+          cores: [main]
     flash_algorithms:
       - stm32f3xx_256
       - stm32f3xx_opt
   - name: STM32F378RCYx
+    cores:
+      - name: main
+        type: M4
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 536870912
             end: 536903680
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 134217728
             end: 134479872
           is_boot_memory: true
+          cores: [main]
     flash_algorithms:
       - stm32f3xx_256
       - stm32f3xx_opt
   - name: STM32F378VCTx
+    cores:
+      - name: main
+        type: M4
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 536870912
             end: 536903680
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 134217728
             end: 134479872
           is_boot_memory: true
+          cores: [main]
     flash_algorithms:
       - stm32f3xx_256
       - stm32f3xx_opt
   - name: STM32F398VETx
+    cores:
+      - name: main
+        type: M4
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 536870912
             end: 536936448
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 134217728
             end: 134742016
           is_boot_memory: true
+          cores: [main]
     flash_algorithms:
       - stm32f3xx_512
       - stm32f3xx_opt
@@ -1345,6 +2153,7 @@ flash_algorithms:
   stm32f3xx_256:
     name: stm32f3xx_256
     description: STM32F3xx Flash
+    cores: [main]
     default: true
     instructions: N0g2SUFgN0lBYAAhAWDBaBQiEUPBYMBpwAUG1DNIMkkBYAYhQWAySYFgACBwRyxIAWmAIhFDAWEAIHBHELUoSAFpBCQhQwFhAWlAIhFDAWEoSSZKAOARYMNo2wf70QFpoUMBYQAgEL0QtR1JCmkCJCJDCmFIYQhpQCIQQwhhHUgaSgDgEGDLaNsH+9EIaaBDCGEAIBC9cLVJHEkISQAUJg9NASMW4CxpHEMsYRSIBIDsaOQH/NEsaWQIZAAsYexoNEIE0OhoMEPoYAEgcL2AHJIciR4AKebRACBwvSMBZ0UAIAJAq4nvzVVVAAAAMABA/w8AAKqqAAAAAAAA
     pc_init: 1
@@ -1367,6 +2176,7 @@ flash_algorithms:
   stm32f3xx_512:
     name: stm32f3xx_512
     description: STM32F3xx 512KB Flash
+    cores: [main]
     default: true
     instructions: N0g2SUFgN0lBYAAhAWDBaBQiEUPBYMBpwAUG1DNIMkkBYAYhQWAySYFgACBwRyxIAWmAIhFDAWEAIHBHELUoSAFpBCQhQwFhAWlAIhFDAWEoSSZKAOARYMNo2wf70QFpoUMBYQAgEL0QtR1JCmkCJCJDCmFIYQhpQCIQQwhhHUgaSgDgEGDLaNsH+9EIaaBDCGEAIBC9cLVJHEkISQAUJg9NASMW4CxpHEMsYRSIBIDsaOQH/NEsaWQIZAAsYexoNEIE0OhoMEPoYAEgcL2AHIkekhwAKebRACBwvSMBZ0UAIAJAq4nvzVVVAAAAMABA/w8AAKqqAAAAAAAA
     pc_init: 1
@@ -1389,6 +2199,7 @@ flash_algorithms:
   stm32f3xx_opt:
     name: stm32f3xx_opt
     description: STM32F3xx Flash Options
+    cores: [main]
     default: false
     instructions: S0hKSkJgS0lBYIJggWAAIQFgwWgUIhFDwWDAacAFBtRGSEVJAWAGIUFgRUmBYAAgcEc/SAFpQhWRQwFhAWmAIhFDAWEAIHBHcLU5SMFoFCMZQ8FgAWkgJCFDAWEBaUAiEUMBYTdJNUoA4BFgxWjtB/vRBWmlQwVhBWkQJCVDBWEtTTFOVTU1gADgEWDFaO0H+9EBaaFDAWHBaBlCBNDBaBlDwWABIHC9ACBwvRC1IEgBaSAkIUMBYQFpQCIRQwFhIEkeSgDgEWDDaNsH+9EBaaFDAWEAIBC9ASBwR/C1SRxJCEkAEk0QJhZLGuAsaTRDLGEUiASAEUwA4CNg72j/B/vRLGm0Qyxh7GgUJzxCBdDpaBQgAUPpYAEg8L2AHJIciR4AKeLRACDwvQAAIwFnRQAgAkCrie/NVVUAAAAwAED/DwAAqqoAAAD4/x8AAAAA
     pc_init: 1
@@ -1408,4 +2219,3 @@ flash_algorithms:
       sectors:
         - size: 16
           address: 0
-core: M4

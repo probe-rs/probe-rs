@@ -10,12 +10,7 @@ updates:
       interval: daily
     open-pull-requests-limit: 10
   - package-ecosystem: cargo
-    directory: "/probe-rs-target"
-    schedule:
-      interval: daily
-    open-pull-requests-limit: 10
-  - package-ecosystem: cargo
-    directory: "/probe-rs"
+    directory: "/debugger"
     schedule:
       interval: daily
     open-pull-requests-limit: 10
@@ -24,7 +19,26 @@ updates:
     schedule:
       interval: daily
   - package-ecosystem: cargo
+    directory: "/probe-rs"
+    schedule:
+      interval: daily
+    open-pull-requests-limit: 10
+  - package-ecosystem: cargo
     directory: "/probe-rs-cli-util"
+    schedule:
+      interval: daily
+  - package-ecosystem: cargo
+    directory: "/probe-rs-target"
+    schedule:
+      interval: daily
+    open-pull-requests-limit: 10
+  - package-ecosystem: cargo
+    directory: "/smoke-tester"
+    schedule:
+      interval: daily
+    open-pull-requests-limit: 10
+  - package-ecosystem: cargo
+    directory: "/xtask"
     schedule:
       interval: daily
     open-pull-requests-limit: 10

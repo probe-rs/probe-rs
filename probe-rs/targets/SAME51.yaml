@@ -2,105 +2,169 @@
 name: SAME51
 variants:
   - name: ATSAME51G18A
+    cores:
+      - name: main
+        type: M4
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 536870912
             end: 537001984
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 0
             end: 262144
           is_boot_memory: true
+          cores: [main]
     flash_algorithms: []
   - name: ATSAME51G19A
+    cores:
+      - name: main
+        type: M4
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 536870912
             end: 537067520
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 0
             end: 524288
           is_boot_memory: true
+          cores: [main]
     flash_algorithms: []
   - name: ATSAME51J18A
+    cores:
+      - name: main
+        type: M4
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 536870912
             end: 537001984
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 0
             end: 262144
           is_boot_memory: true
+          cores: [main]
     flash_algorithms:
       - atsame51_256
   - name: ATSAME51J19A
+    cores:
+      - name: main
+        type: M4
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 536870912
             end: 537067520
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 0
             end: 524288
           is_boot_memory: true
+          cores: [main]
     flash_algorithms:
       - atsame51_512
   - name: ATSAME51J20A
+    cores:
+      - name: main
+        type: M4
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 536870912
             end: 537133056
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 0
             end: 1048576
           is_boot_memory: true
+          cores: [main]
     flash_algorithms:
       - atsame51_1024
   - name: ATSAME51N19A
+    cores:
+      - name: main
+        type: M4
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 536870912
             end: 537067520
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 0
             end: 524288
           is_boot_memory: true
+          cores: [main]
     flash_algorithms:
       - atsame51_512
   - name: ATSAME51N20A
+    cores:
+      - name: main
+        type: M4
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
     memory_map:
       - Ram:
           range:
             start: 536870912
             end: 537133056
           is_boot_memory: false
+          cores: [main]
       - Nvm:
           range:
             start: 0
             end: 1048576
           is_boot_memory: true
+          cores: [main]
     flash_algorithms:
       - atsame51_1024
 flash_algorithms:
   atsame51_256:
     name: atsame51_256
     description: ATSAME51 256kB Flash
+    cores: [main]
     default: true
     instructions: ASGJB4prUgcB1SFKCmDPIiBJEgIKgE4iCoIfSUlECGAAIHBHACBwRxpJSGEbSoqASorSB/zQSGEYSBE4iIBIisAH/NAIik4hCEAA0AEgcEcwtRJLD0zbHKOAY4rbB/zQyRyJCANGiQAC4CDKCR8gwwAp+tFgYQlIDziggGCKwAf80CCKTiEIQADQASAwvQAAIgABAABAAEEEAAAAEqUAAAAAAAAAAAAA
     pc_init: 1
@@ -123,6 +187,7 @@ flash_algorithms:
   atsame51_512:
     name: atsame51_512
     description: ATSAME51 512kB Flash
+    cores: [main]
     default: true
     instructions: ASGJB4prUgcB1SFKCmDPIiBJEgIKgE4iCoIfSUlECGAAIHBHACBwRxpJSGEbSoqASorSB/zQSGEYSBE4iIBIisAH/NAIik4hCEAA0AEgcEcwtRJLD0zbHKOAY4rbB/zQyRyJCANGiQAC4CDKCR8gwwAp+tFgYQlIDziggGCKwAf80CCKTiEIQADQASAwvQAAIgABAABAAEEEAAAAEqUAAAAAAAAAAAAA
     pc_init: 1
@@ -145,6 +210,7 @@ flash_algorithms:
   atsame51_1024:
     name: atsame51_1024
     description: ATSAME51 1024kB Flash
+    cores: [main]
     default: true
     instructions: ASGJB4prUgcB1SFKCmDPIiBJEgIKgE4iCoIfSUlECGAAIHBHACBwRxpJSGEbSoqASorSB/zQSGEYSBE4iIBIisAH/NAIik4hCEAA0AEgcEcwtRJLD0zbHKOAY4rbB/zQyRyJCANGiQAC4CDKCR8gwwAp+tFgYQlIDziggGCKwAf80CCKTiEIQADQASAwvQAAIgABAABAAEEEAAAAEqUAAAAAAAAAAAAA
     pc_init: 1
@@ -164,4 +230,3 @@ flash_algorithms:
       sectors:
         - size: 8192
           address: 0
-core: M4

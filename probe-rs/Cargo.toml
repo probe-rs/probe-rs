@@ -27,15 +27,15 @@ bincode = "1.3.2"
 bitfield = "0.13.2"
 bitvec = "0.19.4"
 enum-primitive-derive = "0.2.1"
-gimli = { version = "0.24.0", default-features = false, features = ["endian-reader", "read", "std"] }
-hidapi = "1.2.0"
+gimli = { version = "0.25.0", default-features = false, features = ["endian-reader", "read", "std"] }
+hidapi = { version = "1.2.0", default-features = false, features = ["linux-static-hidraw"] }
 ihex = "3.0.0"
 jaylink = "0.2.0"
 jep106 = "0.2.4"
 once_cell = "1.7.2"
 log = "0.4.8"
 num-traits = "0.2.11"
-object = { version = "0.25.0", default-features = false, features = ["elf", "read_core", "std"] }
+object = { version = "0.26.0", default-features = false, features = ["elf", "read_core", "std"] }
 rusb = "0.8.0"
 scroll = "0.10.1"
 serde = { version = "1.0.104", features = ["derive"] }

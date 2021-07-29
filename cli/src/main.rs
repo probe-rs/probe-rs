@@ -135,6 +135,9 @@ struct SharedOptions {
     #[structopt(short, long)]
     chip: Option<String>,
 
+    #[structopt(long, default_value = "0")]
+    core: usize,
+
     /// Protocol to use for target connection
     #[structopt(short, long)]
     protocol: Option<WireProtocol>,
@@ -194,7 +197,7 @@ fn dump_memory(shared_options: &SharedOptions, loc: u32, words: u32) -> Result<(
 
         // let loc = 220 * 1024;
 
-        let mut core = session.core(0)?;
+        let mut core = session.core(shared_options.core)?;
 
         core.read_32(loc, &mut data.as_mut_slice())?;
         // Stop timer.
@@ -233,7 +236,7 @@ fn erase(shared_options: &SharedOptions) -> Result<()> {
 
 fn reset_target_of_device(shared_options: &SharedOptions, _assert: Option<bool>) -> Result<()> {
     with_device(shared_options, |mut session| {
-        session.core(0)?.reset()?;
+        session.core(shared_options.core)?.reset()?;
 
         Ok(())
     })
@@ -251,7 +254,7 @@ fn trace_u32_on_target(shared_options: &SharedOptions, loc: u32) -> Result<()> {
     let start = Instant::now();
 
     with_device(shared_options, |mut session| {
-        let mut core = session.core(0)?;
+        let mut core = session.core(shared_options.core)?;
 
         loop {
             // Prepare read.
@@ -298,7 +301,7 @@ fn debug(shared_options: &SharedOptions, exe: Option<PathBuf>) -> Result<()> {
 
         let cli = debugger::DebugCli::new();
 
-        let core = session.core(0)?;
+        let core = session.core(shared_options.core)?;
 
         let mut cli_data = debugger::CliData {
             core,
