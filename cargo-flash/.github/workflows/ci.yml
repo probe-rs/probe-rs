@@ -63,8 +63,6 @@ jobs:
         run: |
           sudo apt update
           sudo apt install -y libusb-1.0-0-dev libftdi1-dev libudev-dev
-        # Only install on Ubuntu
-        if: (matrix.os == 'ubuntu-latest') || (matrix.os == 'ubuntu-20.04')
 
       - name: Install stable toolchain
         uses: actions-rs/toolchain@v1.0.7
