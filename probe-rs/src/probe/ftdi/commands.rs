@@ -86,8 +86,11 @@ impl TargetTransferCommand {
 
         let drbits = params.drpre + len + params.drpost;
         let request = {
-            let data = BitSlice::<Lsb0, u8>::from_slice(&data).ok_or_else(|| {
-                io::Error::new(io::ErrorKind::InvalidData, "could not create bitslice")
+            let data = BitSlice::<Lsb0, u8>::from_slice(&data).or_else(|_| {
+                Err(io::Error::new(
+                    io::ErrorKind::InvalidData,
+                    "could not create bitslice",
+                ))
             })?;
             let mut data = BitVec::<Lsb0, u8>::from_bitslice(&data);
             data.truncate(len);
