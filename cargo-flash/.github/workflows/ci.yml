@@ -24,10 +24,12 @@ jobs:
       - name: Checkout sources
         uses: actions/checkout@v2.3.4
 
-      - name: Install libusb
-        run: sudo apt install -y libusb-1.0-0-dev libftdi1-dev
+      - name: Install libusb, libudev, and libftdi (linux)
+        run: |
+          sudo apt update
+          sudo apt install -y libusb-1.0-0-dev libftdi1-dev libudev-dev
         # Only install on Ubuntu
-        if: matrix.os == 'ubuntu-latest'
+        if: (matrix.os == 'ubuntu-latest') || (matrix.os == 'ubuntu-20.04')
 
       - name: Install libftdi (windows)
         uses: lukka/run-vcpkg@v5
@@ -57,8 +59,12 @@ jobs:
       - name: Checkout sources
         uses: actions/checkout@v2.3.4
 
-      - name: Install libusb
-        run: sudo apt install -y libusb-1.0-0-dev libftdi1-dev
+      - name: Install libusb, libudev, and libftdi (linux)
+        run: |
+          sudo apt update
+          sudo apt install -y libusb-1.0-0-dev libftdi1-dev libudev-dev
+        # Only install on Ubuntu
+        if: (matrix.os == 'ubuntu-latest') || (matrix.os == 'ubuntu-20.04')
 
       - name: Install stable toolchain
         uses: actions-rs/toolchain@v1.0.7
@@ -101,8 +107,10 @@ jobs:
       - name: Checkout sources
         uses: actions/checkout@v2.3.4
 
-      - name: Install libusb
-        run: sudo apt install -y libusb-1.0-0-dev libftdi1-dev
+      - name: Install libusb, libudev, and libftdi (linux)
+        run: |
+          sudo apt update
+          sudo apt install -y libusb-1.0-0-dev libftdi1-dev libudev-dev
 
       - name: Install stable toolchain
         uses: actions-rs/toolchain@v1.0.7
