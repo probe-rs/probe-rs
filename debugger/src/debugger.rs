@@ -5,6 +5,7 @@ use crate::debug_adapter::*;
 use crate::DebuggerError;
 use anyhow::{anyhow, Result};
 use capstone::{arch::arm::ArchMode, prelude::*, Capstone, Endian};
+use log::info;
 use probe_rs::debug::DebugInfo;
 use probe_rs::flashing::{download_file, download_file_with_options, DownloadOptions, Format};
 use probe_rs::{config::TargetSelector, ProbeCreationError};
@@ -487,10 +488,8 @@ impl Debugger {
                 - If the `new_status` is an Err, then the probe is no longer available, and we  end the debugging session
                 - If the `new_status` is different from the `LAST_KNOWN_STATUS`, then we have to tell the DAP-Client by way of an `Event`
                 - If the `new_status` is `Running`, then we have to poll on a regular basis, until the Probe stops for good reasons like breakpoints, or bad reasons like panics. Then tell the DAP-Client.
-                - TODO: Figure out CPU/Comms overhead costs to determine optimal polling intervals
                 */
-                let last_known_status = debug_adapter.last_known_status;
-                match last_known_status {
+                match debug_adapter.last_known_status {
                     CoreStatus::Unknown => true,
                     _other => {
                         let mut core_data = match attach_core(session_data, &self.debugger_options)
@@ -512,9 +511,11 @@ impl Debugger {
                             }
                         };
 
-                        if new_status == last_known_status {
-                            thread::sleep(Duration::from_millis(50)); //small delay to reduce fast looping costs
+                        if new_status == debug_adapter.last_known_status {
+                            thread::sleep(Duration::from_millis(50)); //small delay to reduce fast looping costs. Do not change this, else RTT polling will be negatively impacted / delayed.
                             return true;
+                        } else {
+                            debug_adapter.last_known_status = new_status;
                         };
 
                         match new_status {
@@ -560,7 +561,6 @@ impl Debugger {
                                 return false;
                             }
                         };
-                        debug_adapter.last_known_status = new_status;
                         true
                     }
                 }
@@ -607,7 +607,15 @@ impl Debugger {
                                                 .target_core
                                                 .halt(Duration::from_millis(100))
                                             {
-                                                Ok(_) => unhalt_me = true,
+                                                Ok(_) => {
+                                                    unhalt_me = {
+                                                        debug_adapter.last_known_status =
+                                                            CoreStatus::Halted(
+                                                                probe_rs::HaltReason::Request,
+                                                            );
+                                                        true
+                                                    }
+                                                }
                                                 Err(error) => {
                                                     debug_adapter.send_response::<()>(
                                                         &request,
@@ -1016,6 +1024,12 @@ impl Debugger {
                 if debug_adapter.adapter_type == DebugAdapterType::DapClient {
                     debug_adapter
                         .send_event("terminated", Some(TerminatedEventBody { restart: None }));
+                    // Now send the exited event to make sure the client knows we are done
+                    debug_adapter.send_event("exited", Some(ExitedEventBody { exit_code: 0 }));
+                    // Keep the process alive for a bit, so that VSCode doesn't complain about broken pipes.
+                    for _loop_count in 0..10 {
+                        thread::sleep(Duration::from_millis(50));
+                    }
                 }
                 break;
             }
@@ -1149,7 +1163,7 @@ pub fn debug(debugger_options: DebuggerOptions, dap: bool) {
         debugger.debug_session(adapter);
     } else {
         //TODO: Implement the case where the server needs to keep running after the client has disconnected.
-        println!("Starting {:?} as a DAP Protocol server", &program_name);
+        info!("Starting {:?} as a DAP Protocol server", &program_name);
         match &debugger.debugger_options.port.clone() {
             Some(port) => {
                 let addr = format!("{}:{:?}", Ipv4Addr::LOCALHOST.to_string(), port)
@@ -1161,20 +1175,20 @@ pub fn debug(debugger_options: DebuggerOptions, dap: bool) {
                 let listener = match TcpListener::bind(addr) {
                     Ok(listener) => listener,
                     Err(error) => {
-                        println!("{:?}", error);
+                        info!("{:?}", error);
                         return;
                     }
                 };
 
-                println!("Listening for requests on :{}", addr);
+                info!("Listening for requests on :{}", addr);
 
                 let (socket, addr) = listener.accept().unwrap();
                 match socket.set_nonblocking(true) {
                     Ok(_) => {
-                        println!("..Starting session from   :{}", addr);
+                        info!("..Starting session from   :{}", addr);
                     }
                     Err(_) => {
-                        println!(
+                        info!(
                             "ERROR: Failed to negotiate non-blocking socket with request from :{}",
                             addr
                         );
@@ -1187,10 +1201,10 @@ pub fn debug(debugger_options: DebuggerOptions, dap: bool) {
                 let adapter = DebugAdapter::new(reader, writer, DebugAdapterType::DapClient);
                 //TODO: When running in server mode, we want to stay open for new sessions. Implement intelligent restart in debug_session.
                 debugger.debug_session(adapter);
-                println!("....Closing session from  :{}", addr);
+                info!("....Closing session from  :{}", addr);
             }
             None => {
-                println!(
+                info!(
                     "Debugger started in directory {}",
                     &current_dir().unwrap().display()
                 );

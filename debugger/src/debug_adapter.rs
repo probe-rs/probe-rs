@@ -4,6 +4,7 @@ use crate::debugger::CoreData;
 use crate::DebuggerError;
 use anyhow::{anyhow, Result};
 use dap_types::*;
+use log::error;
 use parse_int::parse;
 use probe_rs::{
     debug::{ColumnType, VariableKind},
@@ -1285,7 +1286,6 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
             match self.input.read_line(&mut buff) {
                 Ok(_len) => {}
                 Err(error) => {
-                    println!("Error {}", error);
                     //There is no data available, so do something else (like check Probe status) or try again
                     return Err(DebuggerError::NonBlockingReadError {
                         os_error_number: error.raw_os_error().unwrap_or(0),
@@ -1387,21 +1387,20 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
 
         let response_header = format!("Content-Length: {}\r\n\r\n", response_body.len());
 
-        match self.output.write(response_header.as_bytes()) {
-            Ok(write_size) => {
-                if write_size != response_header.len() {
-                    return false;
-                }
+        match self.output.write_all(response_header.as_bytes()) {
+            Ok(_) => {}
+            Err(error) => {
+                error!("send_data - header: {:?}", error);
+                return false;
             }
-            Err(_) => return false,
         }
-        match self.output.write(response_body) {
-            Ok(write_size) => {
-                if write_size != response_body.len() {
-                    return false;
-                }
+        match self.output.write_all(response_body) {
+            Ok(_) => {}
+            Err(error) => {
+                error!("send_data - body: {:?}", error);
+                self.output.flush().ok();
+                return false;
             }
-            Err(_) => return false,
         }
 
         self.output.flush().ok();
