@@ -29,7 +29,7 @@ pub fn list_cmsisdap_devices() -> Vec<DebugProbeInfo> {
 
     if let Ok(api) = hidapi::HidApi::new() {
         for device in api.device_list() {
-            if let Some(info) = get_cmsisdap_hid_info(&device) {
+            if let Some(info) = get_cmsisdap_hid_info(device) {
                 if !probes
                     .iter()
                     .any(|p| p.vendor_id == info.vendor_id && p.product_id == info.product_id)

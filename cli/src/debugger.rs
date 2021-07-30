@@ -337,7 +337,7 @@ impl DebugCli {
         command: &Command,
         args: &[&str],
     ) -> Result<CliState, CliError> {
-        match (command.function)(cli_data, &args) {
+        match (command.function)(cli_data, args) {
             Err(CliError::MissingArgument) => {
                 println!("Error: Missing argument\n\n{}", command.help_text);
                 Ok(CliState::Continue)

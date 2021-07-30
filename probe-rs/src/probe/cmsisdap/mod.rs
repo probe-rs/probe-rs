@@ -186,10 +186,10 @@ impl CmsisDap {
                 .iter()
                 .map(|command| match *command {
                     BatchCommand::Read(port, addr) => {
-                        InnerTransferRequest::new(port.into(), RW::R, addr as u8, None)
+                        InnerTransferRequest::new(port, RW::R, addr as u8, None)
                     }
                     BatchCommand::Write(port, addr, data) => {
-                        InnerTransferRequest::new(port.into(), RW::W, addr as u8, Some(data))
+                        InnerTransferRequest::new(port, RW::W, addr as u8, Some(data))
                     }
                 })
                 .collect();
@@ -423,11 +423,11 @@ impl DebugProbe for CmsisDap {
 
         let protocol = if let Some(protocol) = self.protocol {
             match protocol {
-                WireProtocol::Swd => ConnectRequest::UseSWD,
-                WireProtocol::Jtag => ConnectRequest::UseJTAG,
+                WireProtocol::Swd => ConnectRequest::Swd,
+                WireProtocol::Jtag => ConnectRequest::Jtag,
             }
         } else {
-            ConnectRequest::UseDefaultPort
+            ConnectRequest::DefaultPort
         };
 
         let _result = commands::send_command(&mut self.device, protocol)
@@ -648,11 +648,8 @@ impl RawDapAccess for CmsisDap {
         let data_chunk_len = max_packet_size_words as usize;
 
         for (i, chunk) in values.chunks(data_chunk_len).enumerate() {
-            let request = TransferBlockRequest::write_request(
-                register_address as u8,
-                port.into(),
-                Vec::from(chunk),
-            );
+            let request =
+                TransferBlockRequest::write_request(register_address as u8, port, Vec::from(chunk));
 
             debug!("Transfer block: chunk={}, len={} bytes", i, chunk.len() * 4);
 
@@ -692,7 +689,7 @@ impl RawDapAccess for CmsisDap {
         for (i, chunk) in values.chunks_mut(data_chunk_len).enumerate() {
             let request = TransferBlockRequest::read_request(
                 register_address as u8,
-                port.into(),
+                port,
                 chunk.len() as u16,
             );
 

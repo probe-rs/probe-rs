@@ -75,7 +75,7 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
             }
             Err(error) => {
                 return self.send_response::<()>(
-                    &request,
+                    request,
                     Err(DebuggerError::Other(anyhow!(
                         "Could not read core status. {:?}",
                         error
@@ -97,7 +97,7 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
                     ))),
                 ),
                 Err(error) => self
-                    .send_response::<()>(&request, Err(DebuggerError::Other(anyhow!("{}", error)))),
+                    .send_response::<()>(request, Err(DebuggerError::Other(anyhow!("{}", error)))),
             }
         } else {
             self.send_response(request, Ok(Some(status.short_long_status().1.to_string())))
@@ -128,7 +128,7 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
 
                 true
             }
-            Err(error) => self.send_response::<()>(&request, Err(error)),
+            Err(error) => self.send_response::<()>(request, Err(error)),
         }
 
         //TODO: This is from original probe_rs_cli 'halt' function ... disasm code at memory location
@@ -163,12 +163,12 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
                 Ok(arguments) => arguments,
                 Err(error) => return self.send_response::<()>(request, Err(error)),
             },
-            DebugAdapterType::DapClient => match get_arguments(&request) {
+            DebugAdapterType::DapClient => match get_arguments(request) {
                 Ok(arguments) => arguments,
-                Err(error) => return self.send_response::<()>(&request, Err(error)),
+                Err(error) => return self.send_response::<()>(request, Err(error)),
             },
         };
-        let address: u32 = parse(&arguments.memory_reference.as_ref()).unwrap();
+        let address: u32 = parse(arguments.memory_reference.as_ref()).unwrap();
         let num_words = arguments.count as usize;
         let mut buff = vec![0u32; num_words];
         if num_words > 1 {
@@ -183,10 +183,10 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
                     format!("0x{:08x} = 0x{:08x}\n", address + (offset * 4) as u32, word).as_str(),
                 );
             }
-            self.send_response::<String>(&request, Ok(Some(response)))
+            self.send_response::<String>(request, Ok(Some(response)))
         } else {
             self.send_response::<()>(
-                &request,
+                request,
                 Err(DebuggerError::Other(anyhow!(
                     "Could not read any data at address 0x{:08x}",
                     address
@@ -319,7 +319,7 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
             Ok(_) => {}
             Err(error) => {
                 return self
-                    .send_response::<()>(&request, Err(DebuggerError::Other(anyhow!("{}", error))))
+                    .send_response::<()>(request, Err(DebuggerError::Other(anyhow!("{}", error))))
             }
         }
         if self.halt_after_reset || self.adapter_type == DebugAdapterType::DapClient
@@ -400,7 +400,7 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
                     if self.halt_after_reset
                         || core_status == CoreStatus::Halted(HaltReason::Breakpoint)
                     {
-                        self.send_response::<()>(&request, Ok(None));
+                        self.send_response::<()>(request, Ok(None));
                         let event_body = Some(StoppedEventBody {
                             reason: core_status.short_long_status().0.to_owned(),
                             description: Some(core_status.short_long_status().1.to_string()),
@@ -412,15 +412,15 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
                         });
                         self.send_event("stopped", event_body)
                     } else {
-                        self.r#continue(core_data, &request)
+                        self.r#continue(core_data, request)
                     }
                 } else {
-                    self.send_response::<()>(&request, Ok(None))
+                    self.send_response::<()>(request, Ok(None))
                 }
             }
             Err(error) => {
                 self.send_response::<()>(
-                    &request,
+                    request,
                     Err(DebuggerError::Other(anyhow!(
                         "Could not read core status to synchronize the client and the probe. {:?}",
                         error
@@ -431,11 +431,11 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
         }
     }
     pub(crate) fn disconnect(&mut self, _core_data: &mut CoreData, request: &Request) -> bool {
-        let arguments: DisconnectArguments = match get_arguments(&request) {
+        let arguments: DisconnectArguments = match get_arguments(request) {
             Ok(arguments) => arguments,
             Err(error) => return self.send_response::<()>(request, Err(error)),
         };
-        self.send_response::<()>(&request, Ok(None));
+        self.send_response::<()>(request, Ok(None));
         let terminate_debugee = arguments.terminate_debuggee.unwrap_or(false);
         let restart = arguments.restart.unwrap_or(false);
 
@@ -446,11 +446,11 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
         }
     }
     pub(crate) fn terminate(&mut self, _core_data: &mut CoreData, request: &Request) -> bool {
-        let arguments: TerminateArguments = match get_arguments(&request) {
+        let arguments: TerminateArguments = match get_arguments(request) {
             Ok(arguments) => arguments,
             Err(error) => return self.send_response::<()>(request, Err(error)),
         };
-        self.send_response::<()>(&request, Ok(None));
+        self.send_response::<()>(request, Ok(None));
 
         arguments.restart.unwrap_or(false)
     }
@@ -466,14 +466,14 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
         self.scope_map.clear();
         self.variable_map.clear();
         self.variable_map_key_seq = -1;
-        self.send_response(&request, Ok(Some(ThreadsResponseBody { threads })))
+        self.send_response(request, Ok(Some(ThreadsResponseBody { threads })))
     }
     pub(crate) fn set_breakpoints(&mut self, core_data: &mut CoreData, request: &Request) -> bool {
-        let args: SetBreakpointsArguments = match get_arguments(&request) {
+        let args: SetBreakpointsArguments = match get_arguments(request) {
             Ok(arguments) => arguments,
             Err(error) => {
                 return self.send_response::<()>(
-                    &request,
+                    request,
                     Err(DebuggerError::Other(anyhow!(
                         "Could not read arguments : {}",
                         error
@@ -491,7 +491,7 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
             Ok(_) => {}
             Err(error) => {
                 return self.send_response::<()>(
-                    &request,
+                    request,
                     Err(DebuggerError::Other(anyhow!(
                         "Failed to clear existing breakpoints before setting new ones : {}",
                         error
@@ -564,7 +564,7 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
         let breakpoint_body = SetBreakpointsResponseBody {
             breakpoints: created_breakpoints,
         };
-        self.send_response(&request, Ok(Some(breakpoint_body)))
+        self.send_response(request, Ok(Some(breakpoint_body)))
     }
 
     pub(crate) fn stack_trace(&mut self, core_data: &mut CoreData, request: &Request) -> bool {
@@ -572,7 +572,7 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
             Ok(status) => {
                 if !status.is_halted() {
                     return self.send_response::<()>(
-                        &request,
+                        request,
                         Err(DebuggerError::Other(anyhow!(
                             "Core must be halted before requesting a stack trace"
                         ))),
@@ -600,11 +600,11 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
                 start_frame: None,
                 thread_id: core_data.target_core.id() as i64,
             },
-            DebugAdapterType::DapClient => match get_arguments(&request) {
+            DebugAdapterType::DapClient => match get_arguments(request) {
                 Ok(arguments) => arguments,
                 Err(error) => {
                     return self.send_response::<()>(
-                        &request,
+                        request,
                         Err(DebuggerError::Other(anyhow!(
                             "Could not read arguments : {}",
                             error
@@ -642,7 +642,7 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
                     for frame in current_stackframes {
                         body.push_str(format!("{}\n", frame).as_str());
                     }
-                    self.send_response(&request, Ok(Some(body)))
+                    self.send_response(request, Ok(Some(body)))
                 }
                 DebugAdapterType::DapClient => {
                     let mut frame_list: Vec<StackFrame> = current_stackframes
@@ -845,13 +845,13 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
                         stack_frames: frame_list,
                         total_frames: Some(frame_len as i64),
                     };
-                    self.send_response(&request, Ok(Some(body)))
+                    self.send_response(request, Ok(Some(body)))
                 }
             }
         } else {
             // No debug information, so we cannot send stack trace information
             self.send_response::<()>(
-                &request,
+                request,
                 Err(DebuggerError::Other(anyhow!("No debug information found!"))),
             )
         }
@@ -861,20 +861,20 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
     /// - static scope  : Variables with `static` modifier
     /// - registers     : Currently supports core registers 0-15
     pub(crate) fn scopes(&mut self, _core_data: &mut CoreData, request: &Request) -> bool {
-        let arguments: ScopesArguments = match get_arguments(&request) {
+        let arguments: ScopesArguments = match get_arguments(request) {
             Ok(arguments) => arguments,
             Err(error) => return self.send_response::<()>(request, Err(error)),
         };
 
         match self.scope_map.clone().get(&(arguments.frame_id)) {
             Some(dap_scopes) => self.send_response(
-                &request,
+                request,
                 Ok(Some(ScopesResponseBody {
                     scopes: dap_scopes.clone(),
                 })),
             ),
             None => self.send_response::<()>(
-                &request,
+                request,
                 Err(DebuggerError::Other(anyhow!(
                     "No variable information available"
                 ))),
@@ -882,7 +882,7 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
         }
     }
     pub(crate) fn source(&mut self, _core_data: &mut CoreData, request: &Request) -> bool {
-        let arguments: SourceArguments = match get_arguments(&request) {
+        let arguments: SourceArguments = match get_arguments(request) {
             Ok(arguments) => arguments,
             Err(error) => return self.send_response::<()>(request, Err(error)),
         };
@@ -915,15 +915,15 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
             );
         };
 
-        self.send_response(&request, result)
+        self.send_response(request, result)
     }
     pub(crate) fn variables(&mut self, _core_data: &mut CoreData, request: &Request) -> bool {
-        let arguments: VariablesArguments = match get_arguments(&request) {
+        let arguments: VariablesArguments = match get_arguments(request) {
             Ok(arguments) => arguments,
             Err(error) => return self.send_response::<()>(request, Err(error)),
         };
         return self.send_response(
-            &request,
+            request,
             match self
                 .variable_map
                 .clone()
@@ -967,12 +967,12 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
                     .unwrap_or(CoreStatus::Unknown);
                 match self.adapter_type {
                     DebugAdapterType::CommandLine => self.send_response(
-                        &request,
+                        request,
                         Ok(Some(self.last_known_status.short_long_status().1)),
                     ),
                     DebugAdapterType::DapClient => {
                         self.send_response(
-                            &request,
+                            request,
                             Ok(Some(ContinueResponseBody {
                                 all_threads_continued: if self.last_known_status
                                     == CoreStatus::Running
@@ -1013,7 +1013,7 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
             }
             Err(error) => {
                 self.last_known_status = CoreStatus::Halted(HaltReason::Unknown);
-                self.send_response::<()>(&request, Err(DebuggerError::Other(anyhow!("{}", error))))
+                self.send_response::<()>(request, Err(DebuggerError::Other(anyhow!("{}", error))))
             }
         }
     }
@@ -1028,12 +1028,12 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
                 let new_status = match core_data.target_core.status() {
                     Ok(new_status) => new_status,
                     Err(error) => {
-                        self.send_response::<()>(&request, Err(DebuggerError::ProbeRs(error)));
+                        self.send_response::<()>(request, Err(DebuggerError::ProbeRs(error)));
                         return false;
                     }
                 };
                 self.last_known_status = new_status;
-                self.send_response::<()>(&request, Ok(None));
+                self.send_response::<()>(request, Ok(None));
                 let event_body = Some(StoppedEventBody {
                     reason: "step".to_owned(),
                     description: Some(format!(
@@ -1050,7 +1050,7 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
                 self.send_event("stopped", event_body)
             }
             Err(error) => {
-                self.send_response::<()>(&request, Err(DebuggerError::Other(anyhow!("{}", error))))
+                self.send_response::<()>(request, Err(DebuggerError::Other(anyhow!("{}", error))))
             }
         }
     }

@@ -26,7 +26,7 @@ pub fn erase_all(session: &mut Session) -> Result<(), FlashError> {
             let core_name = region
                 .cores
                 .first()
-                .ok_or(FlashError::NoNvmCoreAccess(region.clone()))?;
+                .ok_or_else(|| FlashError::NoNvmCoreAccess(region.clone()))?;
 
             let entry = algos
                 .entry((algo.name.clone(), core_name.clone()))

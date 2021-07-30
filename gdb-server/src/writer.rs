@@ -21,11 +21,11 @@ pub async fn writer(
     'ack: loop {
         log::debug!("Reading");
         let n = stream.read(&mut tmp_buf).await?;
-        log::debug!("Done Reading ({})", String::from_utf8_lossy(&buffer));
+        log::debug!("Done Reading ({})", String::from_utf8_lossy(buffer));
         if n > 0 {
             buffer.extend(&tmp_buf[0..n]);
             // glob.extend(&tmp_buf[0..n]);
-            log::info!("Current buf {}", String::from_utf8_lossy(&buffer));
+            log::info!("Current buf {}", String::from_utf8_lossy(buffer));
         }
 
         for (i, byte) in buffer.iter().enumerate() {

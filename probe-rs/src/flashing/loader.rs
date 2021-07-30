@@ -266,7 +266,7 @@ impl FlashLoader {
                         region
                             .cores
                             .first()
-                            .ok_or(FlashError::NoNvmCoreAccess(region.clone()))?
+                            .ok_or_else(|| FlashError::NoNvmCoreAccess(region.clone()))?
                             .clone(),
                     ))
                     .or_default();
@@ -356,7 +356,7 @@ impl FlashLoader {
                         region
                             .cores
                             .first()
-                            .ok_or(FlashError::NoRamCoreAccess(region.clone()))?,
+                            .ok_or_else(|| FlashError::NoRamCoreAccess(region.clone()))?,
                     )
                     .unwrap();
                 // Attach to memory and core.
