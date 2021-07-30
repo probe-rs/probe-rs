@@ -207,7 +207,7 @@ impl CmsisDapDevice {
                 }) => (),
 
                 // Raise other errors.
-                Err(e) => return Err(e.into()),
+                Err(e) => return Err(e),
             }
         }
 

@@ -76,7 +76,7 @@ impl<'session> Flasher<'session> {
             })
             .find(|ram| {
                 // The RAM must be accessible from the core we're going to run the algo on.
-                ram.cores.contains(&core_name)
+                ram.cores.contains(core_name)
             })
             .ok_or(FlashError::NoRamDefined {
                 chip: session.target().name.clone(),

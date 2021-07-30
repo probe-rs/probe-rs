@@ -87,15 +87,15 @@ impl RegisterFile {
     }
 
     pub fn program_counter(&self) -> &RegisterDescription {
-        &self.program_counter
+        self.program_counter
     }
 
     pub fn stack_pointer(&self) -> &RegisterDescription {
-        &self.stack_pointer
+        self.stack_pointer
     }
 
     pub fn return_address(&self) -> &RegisterDescription {
-        &self.return_address
+        self.return_address
     }
 
     pub fn argument_register(&self, index: usize) -> &RegisterDescription {
@@ -502,7 +502,7 @@ impl<'probe> CoreList<'probe> {
 impl<'probe> std::ops::Deref for CoreList<'probe> {
     type Target = [CoreType];
     fn deref(&self) -> &Self::Target {
-        &self.0
+        self.0
     }
 }
 

@@ -2,9 +2,9 @@ use super::super::{CommandId, Request, SendError};
 
 #[derive(Clone, Copy, Debug)]
 pub enum ConnectRequest {
-    UseDefaultPort = 0x00,
-    UseSWD = 0x01,
-    UseJTAG = 0x02,
+    DefaultPort = 0x00,
+    Swd = 0x01,
+    Jtag = 0x02,
 }
 
 impl Request for ConnectRequest {

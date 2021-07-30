@@ -73,7 +73,7 @@ pub(super) fn read_serial_number<T: rusb::UsbContext>(
         .get(0)
         .cloned()
         .ok_or(rusb::Error::BadDescriptor)?;
-    let sn = handle.read_serial_number_string(language, &descriptor, timeout);
+    let sn = handle.read_serial_number_string(language, descriptor, timeout);
     sn.map(|s| {
         if s.len() < 24 {
             // Some STLink (especially V2) have their serial number stored as a 12 bytes binary string
