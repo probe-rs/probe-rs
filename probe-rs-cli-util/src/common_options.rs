@@ -96,6 +96,9 @@ pub struct FlashOptions {
     )]
     pub work_dir: Option<PathBuf>,
     #[structopt(flatten)]
+    /// Arguments which are forwarded to 'cargo build'.
+    pub cargo_options: CargoOptions,
+    #[structopt(flatten)]
     /// Argument relating to probe/chip selection/configuration.
     pub probe_options: ProbeOptions,
 }
@@ -317,21 +320,45 @@ impl ProbeOptions {
     }
 }
 
-/// Generates a suitable help string to append to your program's
-/// --help. Example usage:
-/// ```no_run
-/// use probe_rs_cli_util::common_options::{FlashOptions, cargo_help_message};
-/// use probe_rs_cli_util::structopt::StructOpt;
-///
-/// let matches = FlashOptions::clap()
-///     .bin_name("cargo flash")
-///     .after_help(cargo_help_message("cargo flash").as_str())
-///     .get_matches_from(std::env::args());
-/// let opts = FlashOptions::from_clap(&matches);
-/// ```
-pub fn cargo_help_message(bin: &str) -> String {
-    format!(
-        r#"
+/// Common options used when building artifacts with cargo.
+#[derive(StructOpt, Debug)]
+pub struct CargoOptions {
+    #[structopt(name = "binary", long = "bin", hidden = true)]
+    pub bin: Option<String>,
+    #[structopt(name = "example", long = "example", hidden = true)]
+    pub example: Option<String>,
+    #[structopt(name = "package", short = "p", long = "package", hidden = true)]
+    pub package: Option<String>,
+    #[structopt(name = "release", long = "release", hidden = true)]
+    pub release: bool,
+    #[structopt(name = "target", long = "target", hidden = true)]
+    pub target: Option<String>,
+    #[structopt(name = "PATH", long = "manifest-path", hidden = true)]
+    pub manifest_path: Option<PathBuf>,
+    #[structopt(long, hidden = true)]
+    pub no_default_features: bool,
+    #[structopt(long, hidden = true)]
+    pub all_features: bool,
+    #[structopt(long, hidden = true)]
+    pub features: Vec<String>,
+}
+
+impl CargoOptions {
+    /// Generates a suitable help string to append to your program's
+    /// --help. Example usage:
+    /// ```no_run
+    /// use probe_rs_cli_util::common_options::{FlashOptions, CargoOptions};
+    /// use probe_rs_cli_util::structopt::StructOpt;
+    ///
+    /// let matches = FlashOptions::clap()
+    ///     .bin_name("cargo flash")
+    ///     .after_help(CargoOptions::help_message("cargo flash").as_str())
+    ///     .get_matches_from(std::env::args());
+    /// let opts = FlashOptions::from_clap(&matches);
+    /// ```
+    pub fn help_message(bin: &str) -> String {
+        format!(
+            r#"
 CARGO BUILD OPTIONS:
 
     The following options are forwarded to 'cargo build':
@@ -349,8 +376,9 @@ CARGO BUILD OPTIONS:
     For example, if you run the command '{} --release',
     this means that 'cargo build --release' will be called.
 "#,
-        bin
-    )
+            bin
+        )
+    }
 }
 
 #[derive(Debug, thiserror::Error)]
