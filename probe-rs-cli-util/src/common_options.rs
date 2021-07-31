@@ -341,6 +341,11 @@ pub struct CargoOptions {
     pub all_features: bool,
     #[structopt(long, hidden = true)]
     pub features: Vec<String>,
+    #[structopt(hidden = true)]
+    /// Escape hatch: all args passed after a sentinel `--` end up here,
+    /// unprocessed. Used to pass arguments to cargo not declared in
+    /// [CargoOptions].
+    pub trailing_opts: Vec<String>,
 }
 
 impl CargoOptions {
@@ -373,11 +378,58 @@ CARGO BUILD OPTIONS:
         --all-features
         --features
 
-    For example, if you run the command '{} --release',
-    this means that 'cargo build --release' will be called.
+    Additionally, all options passed after a sentinel '--'
+    are also forwarded.
+
+    For example, if you run the command '{} --release -- \
+    --some-cargo-flag', this means that 'cargo build \
+    --release --some-cargo-flag' will be called.
 "#,
             bin
         )
+    }
+
+    /// Generates list of arguments to cargo from a `CargoOptions`. For
+    /// example, if [CargoOptions::release] is set, resultant list will
+    /// contain a `"--release"`.
+    pub fn to_cargo_options(&self) -> Vec<String> {
+        // Handle known options
+        let mut args: Vec<String> = vec![];
+        macro_rules! maybe_push_str_opt {
+            ($field:expr, $name:expr) => {{
+                if let Some(value) = $field {
+                    args.push(format!("--{}", stringify!($name)));
+                    args.push(value.clone());
+                }
+            }};
+        }
+
+        maybe_push_str_opt!(&self.bin, bin);
+        maybe_push_str_opt!(&self.example, example);
+        maybe_push_str_opt!(&self.package, package);
+        if self.release {
+            args.push("--release".to_string());
+        }
+        maybe_push_str_opt!(&self.bin, bin);
+        if let Some(path) = &self.manifest_path {
+            args.push("--manifest-path".to_string());
+            args.push(path.display().to_string());
+        }
+        if self.no_default_features {
+            args.push("--no-default-features".to_string());
+        }
+        if self.all_features {
+            args.push("--all-features".to_string());
+        }
+        if !self.features.is_empty() {
+            args.push("--features".to_string());
+            args.push(self.features.join(","));
+        }
+
+        // handle unknown options (passed after sentinel '--')
+        args.append(&mut self.trailing_opts.clone());
+
+        args
     }
 }
 
