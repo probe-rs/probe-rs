@@ -8,7 +8,7 @@ license = "MIT OR Apache-2.0"
 name = "probe-run"
 readme = "README.md"
 repository = "https://github.com/knurling-rs/probe-run"
-version = "0.2.4"
+version = "0.2.5"
 
 [dependencies]
 addr2line = "0.15"

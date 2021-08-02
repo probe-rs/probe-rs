@@ -6,20 +6,34 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/) and this p
 
 ## [Unreleased]
 
-(no changes)
+- [#]
+
+## [v0.2.5] - 2021-08-02
+
+- [#244] Fix clippy warnings
+- [#240] Link Knurling User Survey in `README`
+- [#235] Update to `probe-rs` `0.11`
+- [#234] Feature-gate windows tests
+- [#233] Some clarifications and corrections
+
+[#244]: https://github.com/knurling-rs/probe-run/pull/244
+[#240]: https://github.com/knurling-rs/probe-run/pull/240
+[#235]: https://github.com/knurling-rs/probe-run/pull/235
+[#234]: https://github.com/knurling-rs/probe-run/pull/234
+[#233]: https://github.com/knurling-rs/probe-run/pull/233
 
 ## [v0.2.4] - 2021-06-17
 
-[#212] make `unwind::target()` infallible
-[#216] Fix `EXC_RETURN` detection on thumbv8
-[#218] add first, user-triggered snapshot tests
-[#219] add more explicit hint if elf path doesn't lead to an existing file
-[#221] Obtain git-version from macro, instead of custom build-script
-[#222] refactor the huge "main" function into smaller functions + modules
-[#224] target_info: print ram region again
-[#225] `cli::tests`: rstest-ify tests for `fn extract_git_hash`
-[#226] `CI`: Run tests and clippy
-[#228] Remove unused file `utils.rs`
+- [#212] make `unwind::target()` infallible
+- [#216] Fix `EXC_RETURN` detection on thumbv8
+- [#218] add first, user-triggered snapshot tests
+- [#219] add more explicit hint if elf path doesn't lead to an existing file
+- [#221] Obtain git-version from macro, instead of custom build-script
+- [#222] refactor the huge "main" function into smaller functions + modules
+- [#224] target_info: print ram region again
+- [#225] `cli::tests`: rstest-ify tests for `fn extract_git_hash`
+- [#226] `CI`: Run tests and clippy
+- [#228] Remove unused file `utils.rs`
 
 [#212]: https://github.com/knurling-rs/probe-run/pull/212
 [#216]: https://github.com/knurling-rs/probe-run/pull/216
@@ -289,7 +303,8 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/) and this p
 
 Initial release
 
-[Unreleased]: https://github.com/knurling-rs/probe-run/compare/v0.2.4...main
+[Unreleased]: https://github.com/knurling-rs/probe-run/compare/v0.2.5...main
+[v0.2.4]: https://github.com/knurling-rs/probe-run/compare/v0.2.4...v0.2.5
 [v0.2.3]: https://github.com/knurling-rs/probe-run/compare/v0.2.3...v0.2.4
 [v0.2.3]: https://github.com/knurling-rs/probe-run/compare/v0.2.2...v0.2.3
 [v0.2.2]: https://github.com/knurling-rs/probe-run/compare/v0.2.1...v0.2.2
