@@ -25,7 +25,7 @@ impl<'p> Path<'p> {
         let mut components = path.components();
 
         let mut rustup_prefix = PathBuf::new();
-        while let Some(component) = components.next() {
+        for component in &mut components {
             rustup_prefix.push(component);
 
             if let Component::Normal(component) = component {
@@ -39,7 +39,7 @@ impl<'p> Path<'p> {
             Toolchain::from_str(super::get_component_normal(components.next()?)?.to_str()?);
 
         let mut rust_std_prefix = PathBuf::new();
-        while let Some(component) = components.next() {
+        for component in &mut components {
             rust_std_prefix.push(component);
 
             if let Component::Normal(component) = component {
