@@ -18,7 +18,7 @@ impl<'p> Path<'p> {
         let mut components = path.components();
 
         let mut registry_prefix = PathBuf::new();
-        while let Some(component) = components.next() {
+        for component in &mut components {
             registry_prefix.push(component.as_os_str());
 
             if let Component::Normal(component) = component {

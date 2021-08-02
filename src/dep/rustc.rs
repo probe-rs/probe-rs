@@ -19,7 +19,7 @@ impl<'p> Path<'p> {
         let mut components = path.components();
 
         let mut rustc_prefix = PathBuf::new();
-        while let Some(component) = components.next() {
+        for component in &mut components {
             rustc_prefix.push(component);
 
             if let Component::Normal(component) = component {

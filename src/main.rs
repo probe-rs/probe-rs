@@ -97,7 +97,7 @@ fn run_target_program(elf_path: &Path, chip_name: &str, opts: &cli::Opts) -> any
 
     let outcome = backtrace::print(
         &mut core,
-        &elf,
+        elf,
         &target_info.active_ram_region,
         &backtrace_settings,
     )?;
@@ -242,7 +242,7 @@ fn decode_and_print_defmt_logs(
     opts: &cli::Opts,
 ) -> Result<(), anyhow::Error> {
     loop {
-        match table.decode(&buffer) {
+        match table.decode(buffer) {
             Ok((frame, consumed)) => {
                 // NOTE(`[]` indexing) all indices in `table` have already been verified to exist in
                 // the `locations` map

@@ -37,7 +37,7 @@ pub(crate) fn print(
         || contains_exception;
 
     if print_backtrace && settings.max_backtrace_len > 0 {
-        pp::backtrace(&frames, &settings);
+        pp::backtrace(&frames, settings);
 
         if unwind.corrupted {
             log::warn!("call stack was corrupted; unwinding could not be completed");
