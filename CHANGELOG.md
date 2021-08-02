@@ -29,6 +29,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fix connecting to EDBG and similar probes on MacOS (#681, #721)
 - Fixed incorrect flash range in `fe310` causing flashing to fail (#732).
 - Multiple default algorithims would silently select the first, now errors intead (#744).
+- Fixed STM32WL targets getting a HardFault when flashing binaries larger than 64K (#762).
 
 ## [0.11.0]
 
