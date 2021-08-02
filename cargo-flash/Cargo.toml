@@ -26,6 +26,6 @@ probe-rs = { version = "0.11.0", git = "https://github.com/probe-rs/probe-rs" }
 probe-rs-cli-util = { version = "0.11.0", git = "https://github.com/probe-rs/probe-rs", default-features = false, features=["anyhow"] }
 git-version = "0.3.5"
 anyhow = "1.0.42"
-bytesize = "1.0.1"
+bytesize = "1.1.0"
 thiserror = "1.0.26"
 dunce = "1.0.2"
