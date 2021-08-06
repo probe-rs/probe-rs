@@ -141,13 +141,22 @@ impl RttActiveChannel {
             })
             .or_else(|| full_config.clone().channel_name)
             .unwrap_or_else(|| "Unnamed RTT channel".to_string());
+        let buffer_size: usize = up_channel
+            .as_ref()
+            .and_then(|up| Some(up.buffer_size()))
+            .or_else(|| {
+                down_channel
+                    .as_ref()
+                    .and_then(|down| Some(down.buffer_size()))
+            })
+            .unwrap_or_else(|| 1024); // This should never be the case ... 
         Self {
             up_channel,
             down_channel,
             channel_name: name,
             data_format: full_config.data_format,
             input_data: String::new(),
-            rtt_buffer: RttBuffer([0u8; 1024]),
+            rtt_buffer: RttBuffer::new(buffer_size),
             show_timestamps: full_config.show_timestamps,
         }
     }
@@ -199,8 +208,18 @@ impl RttActiveChannel {
     }
 }
 
-struct RttBuffer([u8; 1024]); // TODO: RttBuffer is hardcoded at 1024.
-
+struct RttBuffer(Vec<u8>);
+impl RttBuffer {
+    /// Initialize the buffer and ensure it has enough capacity to match the size of the RTT channel on the target at the time of instantiation. Doing this now prevents later performance impact if the buffer capacity has to be grown dynamically.
+    pub fn new(mut buffer_size: usize) -> RttBuffer {
+        let mut rtt_buffer = vec![0u8; 1];
+        while buffer_size > 0 {
+            buffer_size -= 1;
+            rtt_buffer.push(0u8);
+        };
+        RttBuffer{0: rtt_buffer}
+    }
+}
 impl fmt::Debug for RttBuffer {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.0.fmt(f)

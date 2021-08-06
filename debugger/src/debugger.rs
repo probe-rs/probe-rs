@@ -1251,7 +1251,7 @@ pub fn debug(debugger_options: DebuggerOptions, dap: bool) {
 
 
                 log::info!("Listening for requests on :{}", addr);
-                println!("probe-rs-debugger Ready");                
+                println!("probe-rs-debugger Listening for requests on port {}", addr.port());                
                 let (socket, addr) = listener.accept().unwrap();
 
                 match socket.set_nonblocking(true) {
