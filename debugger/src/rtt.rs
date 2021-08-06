@@ -51,19 +51,17 @@ pub struct Packet {
 }
 impl fmt::Display for Packet {
     /// This will write a formatted string for display to the RTT client.
-    /// The timestamp is ONLY included if it is selected as an option, and will behave differently for Strings versus Binary. 
-    /// - For `DataFormat::String`, each newline character is replaced with a timestamp
-    /// - for `DataFormat::BinaryLE`, each `Packet` is pre-pended with a timestamp
+    /// The timestamp is ONLY included if it is selected as an option, and will print for every `Packet` that is read from the RTT buffer. 
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         // First write the optional timestamp to the Formatter
         match self.data_format {
-            DataFormat::String => { /// Optionally replace all newline characters with a timestamp
+            DataFormat::String => { 
                 if let Some(timestamp) = self.timestamp {
                     write!(f, "{} :", timestamp)?;
                 }
                 write!(f, "{}", String::from_utf8_lossy(&self.bytes).to_string())
             }
-            DataFormat::BinaryLE => { /// Optionally put a timestamp before every packet read
+            DataFormat::BinaryLE => { 
                 if let Some(timestamp) = self.timestamp {
                     write!(f, "{} :", timestamp)?;
                 }
