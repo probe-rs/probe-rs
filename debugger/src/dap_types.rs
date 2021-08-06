@@ -9,9 +9,14 @@ use std::convert::TryFrom;
 schemafy!(root: debugserver_types "src/debugProtocol.json");
 
 #[derive(Clone, PartialEq, Debug, Deserialize, Serialize)]
-pub struct RttEventBody {
-    pub channel: usize,
-    pub format: crate::rtt::channel::DataFormat,
+pub struct RttChannelEventBody {
+    pub channel_number: usize,
+    pub channel_name: String,
+    pub data_format: crate::rtt::DataFormat,
+}
+#[derive(Clone, PartialEq, Debug, Deserialize, Serialize)]
+pub struct RttDataEventBody {
+    pub channel_number: usize,
     #[doc = " RTT output"]
     pub data: String,
 }

@@ -1,8 +1,8 @@
-use crate::dap_types;
 use crate::debugger::ConsoleLog;
 use crate::debugger::CoreData;
-use crate::rtt::channel::Packet;
+use crate::rtt::Packet;
 use crate::DebuggerError;
+use crate::{dap_types, rtt::DataFormat};
 use anyhow::{anyhow, Result};
 use dap_types::*;
 use parse_int::parse;
@@ -1185,7 +1185,7 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
                                             //This is the SUCCESS request for new requests from the client
                                             match self.console_log_level {
                                                 ConsoleLog::Error => {}
-                                                ConsoleLog::Info => {
+                                                ConsoleLog::Info | ConsoleLog::Warn => {
                                                     self.log_to_console(format!(
                                                         "\nReceived DAP Request sequence #{} : {}",
                                                         request.seq, request.command
@@ -1257,7 +1257,6 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
                             os_error_number: _,
                             original_error,
                         } => {
-                            // println!("temporary error ... retry: {}", os_error_number);
                             if original_error.kind() == std::io::ErrorKind::WouldBlock {
                                 //non-blocking read is waiting for incoming data that is not ready yet.
                                 //This is not a real error, so use this opportunity to check on probe status and notify the debug client if required.
@@ -1299,7 +1298,7 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
             let mut header = String::new();
 
             match self.input.read_line(&mut header) {
-                Ok(_len) => {}
+                Ok(_data_length) => {}
                 Err(error) => {
                     //There is no data available, so do something else (like check Probe status) or try again
                     return Err(DebuggerError::NonBlockingReadError {
@@ -1312,7 +1311,7 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
             // we should read an empty line here
             let mut buff = String::new();
             match self.input.read_line(&mut buff) {
-                Ok(_len) => {}
+                Ok(_data_length) => {}
                 Err(error) => {
                     println!("Error {}", error);
                     //There is no data available, so do something else (like check Probe status) or try again
@@ -1323,14 +1322,14 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
                 }
             }
 
-            let len = get_content_len(&header).ok_or_else(|| {
+            let data_length = get_content_len(&header).ok_or_else(|| {
                 DebuggerError::Other(anyhow!(
                     "Failed to read content length from header '{}'",
                     header
                 ))
             })?;
 
-            let mut content = vec![0u8; len];
+            let mut content = vec![0u8; data_length];
             let bytes_read = match self.input.read(&mut content) {
                 Ok(len) => len,
                 Err(error) => {
@@ -1343,12 +1342,12 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
             };
             // println!("content: {:?}", str::from_utf8(&content));
 
-            if bytes_read == len {
+            if bytes_read == data_length {
                 Ok(content)
             } else {
                 Err(DebuggerError::Other(anyhow!(
                     "Failed to read the expected {} bytes from incoming data",
-                    len
+                    data_length
                 )))
             }
         }
@@ -1401,7 +1400,7 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
             } else {
                 match self.console_log_level {
                     ConsoleLog::Error => {}
-                    ConsoleLog::Info => {
+                    ConsoleLog::Info | ConsoleLog::Warn => {
                         self.log_to_console(format!(
                             "   Sent DAP Response sequence #{} : {}",
                             resp.seq, resp.command
@@ -1475,7 +1474,7 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
                 //This would result in an endless loop
                 match self.console_log_level {
                     ConsoleLog::Error => {}
-                    ConsoleLog::Info => {
+                    ConsoleLog::Info | ConsoleLog::Warn => {
                         self.log_to_console(format!("\nTriggered DAP Event: {}", new_event.event));
                     }
                     ConsoleLog::Debug => {
@@ -1507,7 +1506,7 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
                 }
                 other => match self.console_log_level {
                     ConsoleLog::Error => {}
-                    ConsoleLog::Info => {
+                    ConsoleLog::Info | ConsoleLog::Warn => {
                         self.log_to_console(format!("Triggered Event: {}", other));
                     }
                     ConsoleLog::Debug => {
@@ -1568,12 +1567,36 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
         }
     }
 
-    /// Send a custom "probe-rs-rtt" event to the MS DAP Client
-    pub fn rtt_output(&mut self, channel: usize, data_packet: Packet) -> bool {
+    /// Send a custom "probe-rs-rtt-channel-config" event to the MS DAP Client, to create a window for a specific RTT channel
+    pub fn rtt_window(
+        &mut self,
+        channel_number: usize,
+        channel_name: String,
+        data_format: DataFormat,
+    ) -> bool {
         if self.adapter_type == DebugAdapterType::DapClient {
-            let event_body = match serde_json::to_value(RttEventBody {
-                channel,
-                format: data_packet.data_format,
+            let event_body = match serde_json::to_value(RttChannelEventBody {
+                channel_number,
+                channel_name,
+                data_format,
+            }) {
+                Ok(event_body) => event_body,
+                Err(_) => {
+                    return false;
+                }
+            };
+            self.send_event("probe-rs-rtt-channel-config", Some(event_body))
+        } else {
+            //DebugAdapterType::CommandLine
+            true
+        }
+    }
+
+    /// Send a custom "probe-rs-rtt-data" event to the MS DAP Client, to
+    pub fn rtt_output(&mut self, channel_number: usize, data_packet: Packet) -> bool {
+        if self.adapter_type == DebugAdapterType::DapClient {
+            let event_body = match serde_json::to_value(RttDataEventBody {
+                channel_number,
                 data: format!("{}", data_packet),
             }) {
                 Ok(event_body) => event_body,
@@ -1581,10 +1604,10 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
                     return false;
                 }
             };
-            self.send_event("probe-rs-rtt", Some(event_body))
+            self.send_event("probe-rs-rtt-data", Some(event_body))
         } else {
             //DebugAdapterType::CommandLine
-            println!("RTT Channel {}: {}", channel, data_packet);
+            println!("RTT Channel {}: {}", channel_number, data_packet);
             true
         }
     }

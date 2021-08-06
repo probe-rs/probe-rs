@@ -1,10 +1,7 @@
-use probe_rs::{config::MemoryRegion, MemoryInterface, Session};
+use crate::Error;
+use probe_rs::{config::MemoryRegion, Core, MemoryInterface};
 use scroll::{Pread, LE};
 use std::cmp::min;
-use std::io;
-use std::sync::{Arc, Mutex};
-
-use crate::Error;
 
 /// Trait for channel information shared between up and down channels.
 pub trait RttChannel {
@@ -21,7 +18,6 @@ pub trait RttChannel {
 
 #[derive(Debug)]
 pub(crate) struct Channel {
-    session: Arc<Mutex<Session>>,
     number: usize,
     ptr: u32,
     name: Option<String>,
@@ -55,7 +51,7 @@ impl Channel {
     const O_FLAGS: usize = 20;
 
     pub(crate) fn from(
-        session: &Arc<Mutex<Session>>,
+        core: &mut Core,
         number: usize,
         memory_map: &[MemoryRegion],
         ptr: u32,
@@ -72,11 +68,10 @@ impl Channel {
         let name = if name_ptr == 0 {
             None
         } else {
-            read_c_string(&mut session.lock().unwrap(), memory_map, name_ptr)?
+            read_c_string(core, memory_map, name_ptr)?
         };
 
         Ok(Some(Channel {
-            session: Arc::clone(session),
             number,
             ptr,
             name,
@@ -93,13 +88,9 @@ impl Channel {
         self.size as usize
     }
 
-    fn read_pointers(&self, dir: &'static str) -> Result<(u32, u32), Error> {
+    fn read_pointers(&self, core: &mut Core, dir: &'static str) -> Result<(u32, u32), Error> {
         let mut block = [0u32; 2];
-        self.session
-            .lock()
-            .unwrap()
-            .core(0)?
-            .read_32(self.ptr + Self::O_WRITE as u32, block.as_mut())?;
+        core.read_32(self.ptr + Self::O_WRITE as u32, block.as_mut())?;
 
         let write: u32 = block[0];
         let read: u32 = block[1];
@@ -151,9 +142,7 @@ impl UpChannel {
     /// Reads the current channel mode from the target and returns its.
     ///
     /// See [`ChannelMode`] for more information on what the modes mean.
-    pub fn mode(&self) -> Result<ChannelMode, Error> {
-        let mut lock = self.0.session.lock().unwrap();
-        let mut core = lock.core(0)?;
+    pub fn mode(&self, core: &mut Core) -> Result<ChannelMode, Error> {
         let flags = core.read_word_32(self.0.ptr + Channel::O_FLAGS as u32)?;
 
         match flags & 0x3 {
@@ -169,10 +158,7 @@ impl UpChannel {
     /// Changes the channel mode on the target to the specified mode.
     ///
     /// See [`ChannelMode`] for more information on what the modes mean.
-    pub fn set_mode(&self, mode: ChannelMode) -> Result<(), Error> {
-        let mut lock = self.0.session.lock().unwrap();
-        let mut core = lock.core(0)?;
-
+    pub fn set_mode(&self, core: &mut Core, mode: ChannelMode) -> Result<(), Error> {
         let flags = core.read_word_32(self.0.ptr + Channel::O_FLAGS as u32)?;
 
         let new_flags = (flags & !3) | (mode as u32);
@@ -181,8 +167,8 @@ impl UpChannel {
         Ok(())
     }
 
-    fn read_core(&self, mut buf: &mut [u8]) -> Result<(u32, usize), Error> {
-        let (write, mut read) = self.0.read_pointers("up")?;
+    fn read_core(&self, core: &mut Core, mut buf: &mut [u8]) -> Result<(u32, usize), Error> {
+        let (write, mut read) = self.0.read_pointers(core, "up")?;
 
         let mut total = 0;
 
@@ -193,8 +179,6 @@ impl UpChannel {
                 break;
             }
 
-            let mut lock = self.0.session.lock().unwrap();
-            let mut core = lock.core(0)?;
             core.read_8(self.0.buffer_ptr + read, &mut buf[..count])?;
 
             total += count;
@@ -216,13 +200,11 @@ impl UpChannel {
     ///
     /// This method will not block waiting for data in the target buffer, and may read less bytes
     /// than would fit in `buf`.
-    pub fn read(&self, buf: &mut [u8]) -> Result<usize, Error> {
-        let (read, total) = self.read_core(buf)?;
+    pub fn read(&self, core: &mut Core, buf: &mut [u8]) -> Result<usize, Error> {
+        let (read, total) = self.read_core(core, buf)?;
 
         if total > 0 {
             // Write read pointer back to target if something was read
-            let mut lock = self.0.session.lock().unwrap();
-            let mut core = lock.core(0)?;
             core.write_word_32(self.0.ptr + Channel::O_READ as u32, read)?;
         }
 
@@ -234,8 +216,8 @@ impl UpChannel {
     ///
     /// The difference from [`read`](UpChannel::read) is that this does not discard the data in the
     /// buffer.
-    pub fn peek(&self, buf: &mut [u8]) -> Result<usize, Error> {
-        Ok(self.read_core(buf)?.1)
+    pub fn peek(&self, core: &mut Core, buf: &mut [u8]) -> Result<usize, Error> {
+        Ok(self.read_core(core, buf)?.1)
     }
 
     /// Calculates amount of contiguous data available for reading
@@ -262,11 +244,12 @@ impl RttChannel for UpChannel {
     }
 }
 
-impl io::Read for UpChannel {
-    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
-        UpChannel::read(self, buf).map_err(|e| io::Error::new(io::ErrorKind::Other, e))
-    }
-}
+//TODO: REMOVE
+// impl io::Read for UpChannel {
+//     fn read(&mut self, core: &mut Core, buf: &mut [u8]) -> io::Result<usize> {
+//         UpChannel::read(self, core, buf).map_err(|e| io::Error::new(io::ErrorKind::Other, e))
+//     }
+// }
 
 /// RTT down (host to target) channel.
 #[derive(Debug)]
@@ -293,8 +276,8 @@ impl DownChannel {
     ///
     /// This method will not block waiting for space to become available in the channel buffer, and
     /// may not write all of `buf`.
-    pub fn write(&self, mut buf: &[u8]) -> Result<usize, Error> {
-        let (mut write, read) = self.0.read_pointers("down")?;
+    pub fn write(&self, core: &mut Core, mut buf: &[u8]) -> Result<usize, Error> {
+        let (mut write, read) = self.0.read_pointers(core, "down")?;
 
         if self.writable_contiguous(write, read) == 0 {
             // Buffer is full - do nothing.
@@ -310,8 +293,6 @@ impl DownChannel {
                 break;
             }
 
-            let mut lock = self.0.session.lock().unwrap();
-            let mut core = lock.core(0)?;
             core.write_8(self.0.buffer_ptr + write, &buf[..count])?;
 
             total += count;
@@ -326,9 +307,6 @@ impl DownChannel {
         }
 
         // Write write pointer back to target
-
-        let mut lock = self.0.session.lock().unwrap();
-        let mut core = lock.core(0)?;
         core.write_word_32(self.0.ptr + Channel::O_WRITE as u32, write)?;
 
         Ok(total)
@@ -360,19 +338,20 @@ impl RttChannel for DownChannel {
     }
 }
 
-impl io::Write for DownChannel {
-    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        DownChannel::write(self, buf).map_err(|e| io::Error::new(io::ErrorKind::Other, e))
-    }
+//TODO: REMOVE
+// impl io::Write for DownChannel {
+//     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+//         DownChannel::write(self, buf).map_err(|e| io::Error::new(io::ErrorKind::Other, e))
+//     }
 
-    fn flush(&mut self) -> io::Result<()> {
-        Ok(())
-    }
-}
+//     fn flush(&mut self) -> io::Result<()> {
+//         Ok(())
+//     }
+// }
 
 /// Reads a null-terminated string from target memory. Lossy UTF-8 decoding is used.
 fn read_c_string(
-    session: &mut Session,
+    core: &mut Core,
     memory_map: &[MemoryRegion],
     ptr: u32,
 ) -> Result<Option<String>, Error> {
@@ -394,7 +373,7 @@ fn read_c_string(
 
     // Read up to 128 bytes not going past the end of the region
     let mut bytes = vec![0u8; min(128, (range.end - ptr) as usize)];
-    session.core(0)?.read_8(ptr, bytes.as_mut())?;
+    core.read_8(ptr, bytes.as_mut())?;
 
     // If the bytes read contain a null, return the preceding part as a string, otherwise None.
     Ok(bytes

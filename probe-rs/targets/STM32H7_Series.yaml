@@ -976,7 +976,6 @@ variants:
           cores: [main]
     flash_algorithms:
       - stm32h7x_2048
-      - stm32h7x_2048
   - name: STM32H747AGIx
     cores:
       - name: main
