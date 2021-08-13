@@ -8,10 +8,18 @@ mod pp;
 mod symbolicate;
 mod unwind;
 
+// change as follows:
+// --force-backtrace is removed
+// --backtrace-len is renamed to --backtrace-limit
+// --backtrace is added
+
+// Additionally,
+// --backtrace flag is optional and defaults to auto
+// --backtrace-limit flag is optional and defaults to 50 (+)
+// --backtrace-limit=0 is accepted and means "no limit"
 pub(crate) struct Settings<'p> {
     pub(crate) current_dir: &'p Path,
     pub(crate) max_backtrace_len: u32,
-    pub(crate) force_backtrace: bool,
     pub(crate) shorten_paths: bool,
 }
 
@@ -31,12 +39,7 @@ pub(crate) fn print(
         .iter()
         .any(|raw_frame| raw_frame.is_exception());
 
-    let print_backtrace = settings.force_backtrace
-        || unwind.outcome == Outcome::StackOverflow
-        || unwind.corrupted
-        || contains_exception;
-
-    if print_backtrace && settings.max_backtrace_len > 0 {
+    if settings.max_backtrace_len > 0 {
         pp::backtrace(&frames, settings);
 
         if unwind.corrupted {

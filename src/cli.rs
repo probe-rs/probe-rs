@@ -55,10 +55,6 @@ pub(crate) struct Opts {
     #[structopt(short = "V", long)]
     version: bool,
 
-    /// Print a backtrace even if the program ran successfully
-    #[structopt(long)]
-    pub(crate) force_backtrace: bool,
-
     /// Configure the number of lines to print before a backtrace gets cut off
     #[structopt(long, default_value = "50")]
     pub(crate) max_backtrace_len: u32,
