@@ -8,10 +8,9 @@
 
 > Runs embedded programs just like native ones
 
-`probe-run` is a custom Cargo runner that transparently runs Rust firmware on a
-remote device.
+`probe-run` is a custom Cargo runner that transparently runs Rust firmware on an embedded device.
 
-`probe-run` is powered by [`probe-rs`] and thus supports as many devices and probes as
+`probe-run` is powered by [`probe-rs`] and thus supports all the devices and probes supported by
 `probe-rs` does.
 
 [`probe-rs`]: https://probe.rs/
