@@ -71,8 +71,7 @@ mod tests {
         let home = dirs::home_dir().unwrap();
         let home = home.to_str().unwrap();
 
-        let cratesio = PathBuf::new()
-            .join(home)
+        let cratesio = PathBuf::from(home)
             .join(".cargo")
             .join("registry")
             .join("src")
@@ -85,8 +84,7 @@ mod tests {
             Path::Cratesio(_)
         ));
 
-        let rustc = PathBuf::new()
-            .join(home)
+        let rustc = PathBuf::from(home)
             .join("rustc")
             .join("9bc8c42bb2f19e745a63f3445f1ac248fb015e53")
             .join("library")
@@ -98,8 +96,7 @@ mod tests {
             Path::Rustc(_)
         ));
 
-        let rust_std = PathBuf::new()
-            .join(home)
+        let rust_std = PathBuf::from(home)
             .join(".rustup")
             .join("toolchains")
             .join("stable-x86_64-unknown-linux-gnu")
@@ -117,7 +114,7 @@ mod tests {
             Path::RustStd(_)
         ));
 
-        let local = PathBuf::new().join("src").join("lib.rs");
+        let local = PathBuf::from("src").join("lib.rs");
         assert!(matches!(
             Path::from_std_path(local.as_path()),
             Path::Verbatim(_)

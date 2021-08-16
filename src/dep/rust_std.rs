@@ -91,8 +91,7 @@ mod tests {
         let home = dirs::home_dir().unwrap();
         let home = home.to_str().unwrap();
 
-        let input = PathBuf::new()
-            .join(home)
+        let input = PathBuf::from(home)
             .join(".rustup")
             .join("toolchains")
             .join("stable-x86_64-unknown-linux-gnu")
@@ -106,7 +105,7 @@ mod tests {
             .join("sync")
             .join("atomic.rs");
 
-        let path = Path::from_std_path(input.as_path()).unwrap();
+        let path = Path::from_std_path(&input).unwrap();
 
         let src_path = PathBuf::from("src").join("sync").join("atomic.rs");
 
@@ -120,7 +119,7 @@ mod tests {
             rust_repo_path: rust_repo::Path::One52(rust_repo::One52Path {
                 library: "library",
                 crate_name: "core",
-                path: src_path.as_path(),
+                path: &src_path,
             }),
         };
 

@@ -70,8 +70,7 @@ mod tests {
         let home = dirs::home_dir().unwrap();
         let home = home.to_str().unwrap();
 
-        let input = PathBuf::new()
-            .join(home)
+        let input = PathBuf::from(home)
             .join("rustc")
             .join("9bc8c42bb2f19e745a63f3445f1ac248fb015e53")
             .join("library")
@@ -79,8 +78,7 @@ mod tests {
             .join("src")
             .join("panicking.rs");
 
-        let rustc_prefix = PathBuf::new()
-            .join(home)
+        let rustc_prefix = PathBuf::from(home)
             .join("rustc")
             .join("9bc8c42bb2f19e745a63f3445f1ac248fb015e53");
 

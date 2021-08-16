@@ -97,7 +97,7 @@ mod tests {
         let expected = Path {
             registry_prefix,
             crate_name_version: "cortex-m-rt-0.6.13",
-            path: &PathBuf::new().join("src").join("lib.rs"),
+            path: &PathBuf::from("src").join("lib.rs"),
         };
 
         assert_eq!(expected, path);

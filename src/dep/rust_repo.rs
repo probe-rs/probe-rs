@@ -95,7 +95,7 @@ mod tests {
             .join("sync")
             .join("atomic.rs");
 
-        let rust_repo_path = Path::from_std_path(path.as_path());
+        let rust_repo_path = Path::from_std_path(&path);
         let expected = Path::One52(One52Path {
             library: "library",
             crate_name: "core",
