@@ -39,7 +39,12 @@ pub(crate) fn print(
         .iter()
         .any(|raw_frame| raw_frame.is_exception());
 
-    if settings.max_backtrace_len > 0 {
+        let print_backtrace =
+        unwind.outcome == Outcome::StackOverflow
+        || unwind.corrupted
+        || contains_exception;
+
+    if print_backtrace && settings.max_backtrace_len > 0 {
         pp::backtrace(&frames, settings);
 
         if unwind.corrupted {
