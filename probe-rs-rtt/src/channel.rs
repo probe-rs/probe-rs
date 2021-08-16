@@ -173,7 +173,7 @@ impl UpChannel {
         let mut total = 0;
 
         // Read while buffer contains data and output buffer has space (maximum of two iterations)
-        while buf.len() > 0 {
+        while !buf.is_empty() {
             let count = min(self.readable_contiguous(write, read), buf.len());
             if count == 0 {
                 break;
@@ -287,7 +287,7 @@ impl DownChannel {
         let mut total = 0;
 
         // Write while buffer has space for data and output contains data (maximum of two iterations)
-        while buf.len() > 0 {
+        while !buf.is_empty() {
             let count = min(self.writable_contiguous(write, read), buf.len());
             if count == 0 {
                 break;

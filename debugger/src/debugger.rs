@@ -18,7 +18,7 @@ use probe_rs_rtt::{Rtt, ScanRegion};
 use serde::Deserialize;
 use std::{
     env::{current_dir, set_current_dir},
-    fs::{self, File},
+    fs::File,
     io,
     io::{Read, Write},
     net::{Ipv4Addr, TcpListener, ToSocketAddrs},
@@ -83,11 +83,11 @@ impl std::str::FromStr for ConsoleLog {
 pub struct DebuggerOptions {
     /// Path to the requested working directory for the debugger
     #[structopt(long, parse(from_os_str), conflicts_with("dap"))]
-    cwd: Option<PathBuf>,
+    pub(crate) cwd: Option<PathBuf>,
 
     /// Binary to debug as a path. Relative to `cwd`, or fully qualified.
     #[structopt(long, parse(from_os_str), conflicts_with("dap"))]
-    program_binary: Option<PathBuf>,
+    pub(crate) program_binary: Option<PathBuf>,
 
     /// The number associated with the debug probe to use. Use 'list' command to see available probes
     #[structopt(
@@ -524,11 +524,11 @@ impl Debugger {
 
                         // Use every opportunity to poll the RTT channels for data
                         let mut received_rtt_data = false;
-                        if let Some(ref mut rtt_app) = self.target_rtt {
-                            let data_packet = rtt_app.poll_rtt(&mut core_data.target_core);
-                            if !data_packet.is_empty() {
+                        if let Some(ref mut rtt_active_target) = self.target_rtt {
+                            let channel_data_stream = rtt_active_target.poll_rtt(&mut core_data.target_core);
+                            if !channel_data_stream.is_empty() {
                                 received_rtt_data = true;
-                                for (rtt_channel, rtt_data) in data_packet {
+                                for (rtt_channel, rtt_data) in channel_data_stream {
                                     debug_adapter.rtt_output(
                                         rtt_channel.parse::<usize>().unwrap_or(0),
                                         rtt_data,
@@ -550,7 +550,9 @@ impl Debugger {
                         };
 
                         // Only sleep (nap for a short duration) IF the probe's status hasn't changed AND there was no RTT data in the last poll. Otherwise loop again to keep things flowing as fast as possible. The justification is that any client side CPU used to keep polling is a small price to pay for maximum throughput of debug requests and RTT from the probe.
-                        if new_status == last_known_status && !received_rtt_data {
+                        if received_rtt_data && new_status == last_known_status {
+                            return true;
+                        } else if new_status == last_known_status {
                             thread::sleep(Duration::from_millis(50)); //small delay to reduce fast looping costs
                             return true;
                         };
@@ -1041,35 +1043,6 @@ pub fn attach_to_rtt(
     memory_map: &[MemoryRegion],
     debugger_options: &DebuggerOptions,
 ) -> Result<crate::rtt::RttActiveTarget, anyhow::Error> {
-    let defmt_enable = debugger_options
-        .rtt
-        .channels
-        .iter()
-        .any(|elem| elem.data_format == DataFormat::Defmt);
-    let _defmt_state = if defmt_enable {
-        // TODO: Clean the unwraps.
-        let elf = fs::read(debugger_options.program_binary.clone().unwrap()).unwrap();
-        let table = defmt_decoder::Table::parse(&elf)?;
-
-        let locs = {
-            let table = table.as_ref().unwrap();
-            let locs = table.get_locations(&elf)?;
-
-            if !table.is_empty() && locs.is_empty() {
-                log::warn!("Insufficient DWARF info; compile your program with `debug = 2` to enable location info.");
-                None
-            } else if table.indices().all(|idx| locs.contains_key(&(idx as u64))) {
-                Some(locs)
-            } else {
-                log::warn!("Location info is incomplete; it will be omitted from the output.");
-                None
-            }
-        };
-        Some((table.unwrap(), locs))
-    } else {
-        None
-    };
-
     let t = std::time::Instant::now();
     let mut error = None;
 
@@ -1094,7 +1067,7 @@ pub fn attach_to_rtt(
         match Rtt::attach_region(core, memory_map, &rtt_header_address) {
             Ok(rtt) => {
                 log::info!("RTT initialized.");
-                let app = RttActiveTarget::new(rtt, &debugger_options.rtt)?;
+                let app = RttActiveTarget::new(rtt, debugger_options)?;
                 return Ok(app);
             }
             Err(err) => {
@@ -1249,29 +1222,36 @@ pub fn debug(debugger_options: DebuggerOptions, dap: bool) {
                     }
                 };
 
-
                 log::info!("Listening for requests on :{}", addr);
-                println!("probe-rs-debugger Listening for requests on port {}", addr.port());                
-                let (socket, addr) = listener.accept().unwrap();
+                println!(
+                    "probe-rs-debugger Listening for requests on port {}",
+                    addr.port()
+                );
 
-                match socket.set_nonblocking(true) {
-                    Ok(_) => {
-                        log::info!("..Starting session from   :{}", addr);
+                listener.set_nonblocking(false).ok();
+                match listener.accept() {
+                    Ok((socket, addr)) => {
+                        match socket.set_nonblocking(true) {
+                            Ok(_) => {
+                                log::info!("..Starting session from   :{}", addr);
+                            }
+                            Err(_) => {
+                                log::error!(
+                                    "ERROR: Failed to negotiate non-blocking socket with request from :{}",
+                                    addr
+                                );
+                            }
+                        }
+
+                        let reader = socket.try_clone().unwrap();
+                        let writer = socket;
+
+                        let adapter = DebugAdapter::new(reader, writer, DebugAdapterType::DapClient);
+                        //TODO: When running in server mode, we want to stay open for new sessions. Implement intelligent restart in debug_session.
+                        debugger.debug_session(adapter);                        
                     }
-                    Err(_) => {
-                        log::error!(
-                            "ERROR: Failed to negotiate non-blocking socket with request from :{}",
-                            addr
-                        );
-                    }
+                    Err(error) => {log::error!("probe-rs-debugger failed to establish a socket connection. Reason: {:?}", error)}
                 }
-
-                let reader = socket.try_clone().unwrap();
-                let writer = socket;
-
-                let adapter = DebugAdapter::new(reader, writer, DebugAdapterType::DapClient);
-                //TODO: When running in server mode, we want to stay open for new sessions. Implement intelligent restart in debug_session.
-                debugger.debug_session(adapter);
                 log::info!("....Closing session from  :{}", addr);
             }
             None => {

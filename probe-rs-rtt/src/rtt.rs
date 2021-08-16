@@ -206,11 +206,11 @@ impl Rtt {
             }
         }
 
-        if instances.len() == 0 {
+        if instances.is_empty() {
             return Err(Error::ControlBlockNotFound);
         }
 
-        if instances.len() > 1 {
+        if !instances.is_empty() {
             return Err(Error::MultipleControlBlocksFound(
                 instances.into_iter().map(|i| i.ptr).collect(),
             ));

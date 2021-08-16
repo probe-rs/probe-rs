@@ -1113,7 +1113,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                 RequiresMemory { address, size, .. } => {
                     let mut buff = vec![0u8; size as usize];
                     core.read_8(address as u32, &mut buff)
-                        .expect("Failed to read memory");
+                        .map_err(|error| DebugError::Probe(error))?;
                     match size {
                         1 => evaluation.resume_with_memory(gimli::Value::U8(buff[0]))?,
                         2 => {

@@ -1,6 +1,5 @@
 use crate::debugger::ConsoleLog;
 use crate::debugger::CoreData;
-use crate::rtt::Packet;
 use crate::DebuggerError;
 use crate::{dap_types, rtt::DataFormat};
 use anyhow::{anyhow, Result};
@@ -108,7 +107,7 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
     pub(crate) fn pause(&mut self, core_data: &mut CoreData, request: &Request) -> bool {
         // let args: PauseArguments = get_arguments(&request)?;
 
-        match core_data.target_core.halt(Duration::from_millis(100)) {
+        match core_data.target_core.halt(Duration::from_millis(500)) {
             Ok(cpu_info) => {
                 let event_body = Some(StoppedEventBody {
                     reason: "pause".to_owned(),
@@ -320,7 +319,7 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
         // true
     }
     pub(crate) fn restart(&mut self, core_data: &mut CoreData, request: &Request) -> bool {
-        match core_data.target_core.halt(Duration::from_millis(100)) {
+        match core_data.target_core.halt(Duration::from_millis(500)) {
             Ok(_) => {}
             Err(error) => {
                 return self
@@ -332,7 +331,7 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
         {
             match core_data
                 .target_core
-                .reset_and_halt(Duration::from_millis(100))
+                .reset_and_halt(Duration::from_millis(500))
             {
                 Ok(_) => {
                     match self.adapter_type {
@@ -1593,11 +1592,11 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
     }
 
     /// Send a custom "probe-rs-rtt-data" event to the MS DAP Client, to
-    pub fn rtt_output(&mut self, channel_number: usize, data_packet: Packet) -> bool {
+    pub fn rtt_output(&mut self, channel_number: usize, rtt_data: String) -> bool {
         if self.adapter_type == DebugAdapterType::DapClient {
             let event_body = match serde_json::to_value(RttDataEventBody {
                 channel_number,
-                data: format!("{}", data_packet),
+                data: format!("{}", rtt_data),
             }) {
                 Ok(event_body) => event_body,
                 Err(_) => {
@@ -1607,7 +1606,7 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
             self.send_event("probe-rs-rtt-data", Some(event_body))
         } else {
             //DebugAdapterType::CommandLine
-            println!("RTT Channel {}: {}", channel_number, data_packet);
+            println!("RTT Channel {}: {}", channel_number, rtt_data);
             true
         }
     }
