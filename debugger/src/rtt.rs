@@ -120,13 +120,11 @@ impl RttActiveChannel {
             .unwrap_or(1024); // This should never be the case ...
         let defmt_enabled: bool = up_channel
             .as_ref()
-            .map(|up| {
-                up.name() == Some("defmt")
-            })
+            .map(|up| up.name() == Some("defmt"))
             .or_else(|| {
-                down_channel.as_ref().map(|down| {
-                    down.name() == Some("defmt")
-                })
+                down_channel
+                    .as_ref()
+                    .map(|down| down.name() == Some("defmt"))
             })
             .unwrap_or(false); // This should never be the case ...
         let data_format: DataFormat = if defmt_enabled {

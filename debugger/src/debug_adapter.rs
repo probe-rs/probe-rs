@@ -130,7 +130,9 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
 
                 true
             }
-            Err(error) => self.send_response::<()>(&request, Err(error)),
+            Err(error) => {
+                self.send_response::<()>(&request, Err(DebuggerError::Other(anyhow!("{}", error))))
+            }
         }
 
         //TODO: This is from original probe_rs_cli 'halt' function ... disasm code at memory location

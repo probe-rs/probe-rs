@@ -550,9 +550,9 @@ impl Debugger {
                         };
 
                         // Only sleep (nap for a short duration) IF the probe's status hasn't changed AND there was no RTT data in the last poll. Otherwise loop again to keep things flowing as fast as possible. The justification is that any client side CPU used to keep polling is a small price to pay for maximum throughput of debug requests and RTT from the probe.
-                        if received_rtt_data && new_status == last_known_status {
+                        if received_rtt_data && new_status == debug_adapter.last_known_status {
                             return true;
-                        } else if new_status == last_known_status {
+                        } else if new_status == debug_adapter.last_known_status {
                             thread::sleep(Duration::from_millis(50)); //small delay to reduce fast looping costs
                             return true;
                         } else {
@@ -626,14 +626,14 @@ impl Debugger {
                 match valid_command {
                     Some(valid_command) => {
                         //First, attach to the core
-                        let mut core_data = match attach_core(session_data, &self.debugger_options)
-                        {
-                            Ok(core_data) => core_data,
-                            Err(error) => {
-                                debug_adapter.send_response::<()>(&request, Err(error));
-                                return false;
-                            }
-                        };
+                        let mut core_data =
+                            match attach_core(&mut session_data.session, &self.debugger_options) {
+                                Ok(core_data) => core_data,
+                                Err(error) => {
+                                    debug_adapter.send_response::<()>(&request, Err(error));
+                                    return false;
+                                }
+                            };
                         // For some operations, we need to make sure the core isn't sleeping, by calling `Core::halt()`
                         // When we do this, we need to flag it (`unhalt_me = true`), and later call `Core::run()` again.
                         // NOTE: the target will exit sleep mode as a result of this command.
@@ -1023,9 +1023,6 @@ impl Debugger {
             // First, attach to the core
             let mut core_data = match attach_core(&mut session_data.session, &self.debugger_options)
             {
-                Ok(core_data) => core_data,
-            // First, attach to the core
-            let mut core_data = match attach_core(&mut session_data, &self.debugger_options) {
                 Ok(mut core_data) => {
                     // Immediately after attaching, halt the core, so that we can finish initalization without bumping into user code.
                     // Depending on supplied `debugger_options`, the core will be restarted at the end of initialization in the `configuration_done` request.
