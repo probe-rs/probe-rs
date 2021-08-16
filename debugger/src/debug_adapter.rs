@@ -130,9 +130,7 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
 
                 true
             }
-            Err(error) => {
-                self.send_response::<()>(&request, Err(DebuggerError::Other(anyhow!("{}", error))))
-            }
+            Err(error) => self.send_response::<()>(&request, Err(error)),
         }
 
         //TODO: This is from original probe_rs_cli 'halt' function ... disasm code at memory location
@@ -968,7 +966,6 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
     }
 
     pub(crate) fn r#continue(&mut self, core_data: &mut CoreData, request: &Request) -> bool {
-        // let args: ContinueArguments = get_arguments(&request)?;
         match core_data.target_core.run() {
             Ok(_) => {
                 self.last_known_status = core_data
@@ -1312,7 +1309,6 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
             match self.input.read_line(&mut buff) {
                 Ok(_data_length) => {}
                 Err(error) => {
-                    println!("Error {}", error);
                     //There is no data available, so do something else (like check Probe status) or try again
                     return Err(DebuggerError::NonBlockingReadError {
                         os_error_number: error.raw_os_error().unwrap_or(0),
@@ -1428,21 +1424,20 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
 
         let response_header = format!("Content-Length: {}\r\n\r\n", response_body.len());
 
-        match self.output.write(response_header.as_bytes()) {
-            Ok(write_size) => {
-                if write_size != response_header.len() {
-                    return false;
-                }
+        match self.output.write_all(response_header.as_bytes()) {
+            Ok(_) => {}
+            Err(error) => {
+                log::error!("send_data - header: {:?}", error);
+                return false;
             }
-            Err(_) => return false,
         }
-        match self.output.write(response_body) {
-            Ok(write_size) => {
-                if write_size != response_body.len() {
-                    return false;
-                }
+        match self.output.write_all(response_body) {
+            Ok(_) => {}
+            Err(error) => {
+                log::error!("send_data - body: {:?}", error);
+                self.output.flush().ok();
+                return false;
             }
-            Err(_) => return false,
         }
 
         self.output.flush().ok();
@@ -1477,7 +1472,7 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
                         self.log_to_console(format!("\nTriggered DAP Event: {}", new_event.event));
                     }
                     ConsoleLog::Debug => {
-                        self.log_to_console(format!("\nTriggered DAP Event: {:#?}", new_event));
+                        self.log_to_console(format!("INFO: Triggered DAP Event: {:#?}", new_event));
                     }
                 }
             }
@@ -1613,6 +1608,17 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
 }
 
 // SECTION: Some helper functions
+
+/// Provides halt functionality that is re-used elsewhere, in context of multiple DAP Requests
+pub(crate) fn halt_core(
+    target_core: &mut probe_rs::Core,
+) -> Result<probe_rs::CoreInformation, DebuggerError> {
+    match target_core.halt(Duration::from_millis(100)) {
+        Ok(cpu_info) => Ok(cpu_info),
+        Err(error) => Err(DebuggerError::Other(anyhow!("{}", error))),
+    }
+}
+
 pub fn get_arguments<T: DeserializeOwned>(req: &Request) -> Result<T, crate::DebuggerError> {
     let value = req
         .arguments
