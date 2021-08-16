@@ -55,7 +55,7 @@ pub enum FileDownloadError {
     /// An error with the actual flashing procedure has occured.
     ///
     /// This is mostly an error in the communication with the target inflicted by a bad hardware connection or a probe-rs bug.
-    #[error(transparent)]
+    #[error("Error while flashing")]
     Flash(#[from] FlashError),
     /// Reading and decoding the IHEX file has failed due to the given error.
     #[error("Could not read ihex format")]

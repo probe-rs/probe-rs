@@ -559,7 +559,6 @@ impl Debugger {
                             debug_adapter.last_known_status = new_status;
                         };
 
-                        // TODO: Remove ... println!("process_next_request: last_known_status={:?}\tnew_status={:?}\treceived_rtt_data{:?}", last_known_status, new_status, received_rtt_data);
                         match new_status {
                             CoreStatus::Running | CoreStatus::Sleeping => {
                                 let event_body = Some(ContinuedEventBody {
