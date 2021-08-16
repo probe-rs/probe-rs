@@ -30,6 +30,7 @@ signal-hook = "0.3"
 structopt = "0.3"
 
 [dev-dependencies]
+dirs = "3.0"
 insta = "1.7"
 os_pipe = "0.9"
 pretty_assertions = "0.7"
