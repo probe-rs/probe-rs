@@ -69,7 +69,6 @@ impl<'p> Path<'p> {
     }
 }
 
-// #[cfg(all(test, unix, windows))]
 #[cfg(test)]
 mod tests {
     use super::*;
