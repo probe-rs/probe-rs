@@ -1,0 +1,28 @@
+---
+source: tests/test.rs
+expression: run_result.output
+
+---
+(HOST) INFO  flashing program (5.88 KiB)
+(HOST) INFO  success!
+────────────────────────────────────────────────────────────────────────────────
+ INFO  hello
+ INFO  hello
+ INFO  hello
+ INFO  hello
+────────────────────────────────────────────────────────────────────────────────
+stack backtrace:
+   0: <nrf_hal_common::timer::Timer<T,U> as embedded_hal::timer::CountDown>::wait
+        at [nrf-hal-common-0.12.0]/src/timer.rs:268:9
+   1: nrf_hal_common::timer::Timer<T,U>::delay
+        at [nrf-hal-common-0.12.0]/src/timer.rs:147:22
+   2: hello_loop::__cortex_m_rt_main
+        at /Users/lottesteenbrink/ferrous/my-app/src/bin/hello_loop.rs:19:13
+   3: main
+        at /Users/lottesteenbrink/ferrous/my-app/src/bin/hello_loop.rs:13:1
+   4: ResetTrampoline
+        at [cortex-m-rt-0.6.14]/src/lib.rs:547:26
+   5: Reset
+        at [cortex-m-rt-0.6.14]/src/lib.rs:550:13
+(HOST) INFO  device halted by user
+

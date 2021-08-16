@@ -30,7 +30,7 @@ use probe_rs::{
 use probe_rs_rtt::{Rtt, ScanRegion, UpChannel};
 use signal_hook::consts::signal;
 
-use crate::{canary::Canary, elf::Elf, target_info::TargetInfo};
+use crate::{backtrace::Outcome, canary::Canary, elf::Elf, target_info::TargetInfo};
 
 const SIGABRT: i32 = 134;
 const TIMEOUT: Duration = Duration::from_secs(1);
@@ -116,12 +116,18 @@ fn run_target_program(elf_path: &Path, chip_name: &str, opts: &cli::Opts) -> any
         shorten_paths: opts.shorten_paths,
     };
 
-    let outcome = backtrace::print(
+    let mut outcome = backtrace::print(
         &mut core,
         elf,
         &target_info.active_ram_region,
         &mut backtrace_settings,
     )?;
+
+    // if general outcome was OK but the user ctrl-c'ed, that overrides our outcome
+    // (TODO refactor this to be less bumpy)
+    if halted_due_to_signal && outcome == Outcome::Ok {
+        outcome = Outcome::CtrlC
+    }
 
     core.reset_and_halt(TIMEOUT)?;
 
@@ -242,6 +248,7 @@ fn extract_and_print_logs(
     signal_hook::low_level::unregister(sig_id);
     signal_hook::flag::register_conditional_default(signal::SIGINT, exit.clone())?;
 
+    // TODO refactor: a printing fucntion shouldn't stop the MC as a side effect
     // Ctrl-C was pressed; stop the microcontroller.
     if exit.load(Ordering::Relaxed) {
         let mut sess = sess.lock().unwrap();
