@@ -102,7 +102,9 @@ mod tests {
 
         assert_eq!(expected, path);
 
-        let expected_str = PathBuf::from("[cortex-m-rt-0.6.13]").join("src").join("lib.rs");
+        let expected_str = PathBuf::from("[cortex-m-rt-0.6.13]")
+            .join("src")
+            .join("lib.rs");
         let formatted_str = path.format_short();
 
         assert_eq!(expected_str.to_string_lossy(), formatted_str);
