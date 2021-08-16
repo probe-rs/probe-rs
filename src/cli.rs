@@ -57,7 +57,7 @@ pub(crate) struct Opts {
 
     /// Configure the number of lines to print before a backtrace gets cut off
     #[structopt(long, default_value = "50")]
-    pub(crate) max_backtrace_len: u32,
+    pub(crate) backtrace_limit: u32,
 
     /// Whether to shorten paths (e.g. to crates.io dependencies) in backtraces and defmt logs
     #[structopt(long)]

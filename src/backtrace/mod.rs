@@ -19,7 +19,7 @@ mod unwind;
 // --backtrace-limit=0 is accepted and means "no limit"
 pub(crate) struct Settings<'p> {
     pub(crate) current_dir: &'p Path,
-    pub(crate) max_backtrace_len: u32,
+    pub(crate) backtrace_limit: u32,
     pub(crate) shorten_paths: bool,
 }
 
@@ -39,12 +39,12 @@ pub(crate) fn print(
         .iter()
         .any(|raw_frame| raw_frame.is_exception());
 
-        let print_backtrace =
+    let print_backtrace =
         unwind.outcome == Outcome::StackOverflow
         || unwind.corrupted
         || contains_exception;
 
-    if print_backtrace && settings.max_backtrace_len > 0 {
+    if print_backtrace && settings.backtrace_limit > 0 {
         pp::backtrace(&frames, settings);
 
         if unwind.corrupted {

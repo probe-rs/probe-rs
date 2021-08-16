@@ -273,7 +273,7 @@ For easier copy-paste-ability, here's an example how to try out your local `prob
 
 ```console
 $ cd probe-run/
-$ PROBE_RUN_IGNORE_VERSION=1 cargo run -- --chip nRF52840_xxAA --max-backtrace-len=10 hello
+$ PROBE_RUN_IGNORE_VERSION=1 cargo run -- --chip nRF52840_xxAA --backtrace-limit=10 hello
   ˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆ                                   ˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆˆ ˆˆˆˆˆ
   environment variables                                        extra flags             binary to be
   (optional)                                                   (optional)              flashed & run

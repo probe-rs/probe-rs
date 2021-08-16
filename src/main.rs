@@ -90,7 +90,7 @@ fn run_target_program(elf_path: &Path, chip_name: &str, opts: &cli::Opts) -> any
         .unwrap_or(false);
     let backtrace_settings = backtrace::Settings {
         current_dir,
-        max_backtrace_len: opts.max_backtrace_len,
+        backtrace_limit: opts.backtrace_limit,
         shorten_paths: opts.shorten_paths,
     };
 
