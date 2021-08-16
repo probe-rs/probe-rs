@@ -72,7 +72,7 @@ mod tests {
 
         let input = PathBuf::new()
             .join(home)
-            .join("rustc")  // important part
+            .join("rustc")
             .join("9bc8c42bb2f19e745a63f3445f1ac248fb015e53")
             .join("library")
             .join("core")
@@ -81,7 +81,7 @@ mod tests {
 
         let rustc_prefix = PathBuf::new()
             .join(home)
-            .join("rustc")  // important part
+            .join("rustc")
             .join("9bc8c42bb2f19e745a63f3445f1ac248fb015e53");
 
         let path = Path::from_std_path(&input).unwrap();
