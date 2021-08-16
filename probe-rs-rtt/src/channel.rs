@@ -244,13 +244,6 @@ impl RttChannel for UpChannel {
     }
 }
 
-//TODO: REMOVE
-// impl io::Read for UpChannel {
-//     fn read(&mut self, core: &mut Core, buf: &mut [u8]) -> io::Result<usize> {
-//         UpChannel::read(self, core, buf).map_err(|e| io::Error::new(io::ErrorKind::Other, e))
-//     }
-// }
-
 /// RTT down (host to target) channel.
 #[derive(Debug)]
 pub struct DownChannel(pub(crate) Channel);
@@ -337,17 +330,6 @@ impl RttChannel for DownChannel {
         self.0.buffer_size()
     }
 }
-
-//TODO: REMOVE
-// impl io::Write for DownChannel {
-//     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-//         DownChannel::write(self, buf).map_err(|e| io::Error::new(io::ErrorKind::Other, e))
-//     }
-
-//     fn flush(&mut self) -> io::Result<()> {
-//         Ok(())
-//     }
-// }
 
 /// Reads a null-terminated string from target memory. Lossy UTF-8 decoding is used.
 fn read_c_string(

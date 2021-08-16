@@ -21,6 +21,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Support batching of FTDI commands and use it for RISCV (#717)
 - Include the chip string for `NoRamDefined` in its error message
 - Improved handling of errors in CMSIS-DAP commands (#745).
+- Implemented RTT (String, BinaryLE, and Defmt) in `probe-rs-debugger`
+- `probe-rs-debugger` will use VSCode Client `launch.json` configuration to set RUST_LOG levels and send output to the VSCode Debug Console
 
 ### Fixed
 - Detect proper USB HID interface to use for CMSIS-DAP v1 probes. Without this, CMSIS-DAP probes with multiple HID interfaces, e.g. MCUlink, were not working properly on MacOS (#722).
