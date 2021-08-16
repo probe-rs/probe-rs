@@ -69,15 +69,17 @@ impl<'p> Path<'p> {
     }
 }
 
-#[cfg(all(test, unix))]
+// #[cfg(all(test, unix, windows))]
+#[cfg(test)]
 mod tests {
     use super::*;
 
+    #[cfg(unix)]
     #[test]
     fn end_to_end() {
         let input = StdPath::new(
-        "/home/user/.cargo/registry/src/github.com-1ecc6299db9ec823/cortex-m-rt-0.6.13/src/lib.rs",
-    );
+            "/home/user/.cargo/registry/src/github.com-1ecc6299db9ec823/cortex-m-rt-0.6.13/src/lib.rs",
+        );
 
         let path = Path::from_std_path(input).unwrap();
         let expected = Path {
@@ -91,6 +93,33 @@ mod tests {
         assert_eq!(expected, path);
 
         let expected_str = "[cortex-m-rt-0.6.13]/src/lib.rs";
+        let formatted_str = path.format_short();
+
+        assert_eq!(expected_str, formatted_str);
+    }
+
+    #[cfg(not(unix))]
+    #[test]
+    fn end_to_end_windows() {
+        let home = dirs::home_dir().unwrap();
+        let home = home.to_str().unwrap();
+
+        let input = format!("{}/.cargo/registry/src/github.com-1ecc6299db9ec823/cortex-m-rt-0.6.13/src/lib.rs", home);
+        let input = StdPath::new(&input);
+
+        let registry_prefix = format!("{}/.cargo/registry/src/github.com-1ecc6299db9ec823/", home);
+
+        let path = Path::from_std_path(input).unwrap();
+        dbg!(&path);
+        let expected = Path {
+            registry_prefix: PathBuf::from(&registry_prefix),
+            crate_name_version: "cortex-m-rt-0.6.13",
+            path: StdPath::new("src/lib.rs"),
+        };
+
+        assert_eq!(expected, path);
+
+        let expected_str = "[cortex-m-rt-0.6.13]\\src/lib.rs";
         let formatted_str = path.format_short();
 
         assert_eq!(expected_str, formatted_str);
