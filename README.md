@@ -201,17 +201,38 @@ $ cargo run --bin hello --force-backtrace
 
 ## Troubleshooting
 
-### `probe-run --list-probes` says "No devices were found."
+### "Error: no probe was found."
 
-Apart from a faulty connection between your computer and the target device, this could be caused by several things:
+First, check your data cable:
+
+- make sure that it is connected to the right port on your development board
+- make sure that you are using a **data** cable– some cables are built for charging only! When in doubt, try using a different cable.
+
+If this doesn't resolve the issue, try the following:
 
 #### [Linux only] udev rules haven't been set
 
-In order for `probe-run` to find the device you'd like to run your code on, your system needs permission to access the device as a non-root user.
+Check if your device shows up in `lsusb`:
+
+```console
+$ lsusb
+Bus 001 Device 008: ID 1366:1015 SEGGER J-Link
+# if your device shows up like this ^^^^^^^^, skip to the next troubleshooting section
+```
+
+**If it doesn't show up**, you need to give your system permission to access the device as a non-root user so that `probe-run` can find your device.
 
 In order to grant these permissions, you'll need to add a new set of udev rules.
 
 To learn how to do this for the nRF52840 Development Kit, check out the [installation instructions](https://embedded-trainings.ferrous-systems.com/installation.html?highlight=udev#linux-only-usb) in our embedded training materials.
+
+afterwards, your device should show up in `probe-run --list-probes` similar to this:
+
+```console
+$ probe-run --list-probes
+The following devices were found:
+[0]: J-Link (J-Link) (VID: 1366, PID: 1015, Serial: <redacted>, JLink)
+```
 
 #### No external or on-board debugger present
 
