@@ -525,7 +525,8 @@ impl Debugger {
                         // Use every opportunity to poll the RTT channels for data
                         let mut received_rtt_data = false;
                         if let Some(ref mut rtt_active_target) = self.target_rtt {
-                            let channel_data_stream = rtt_active_target.poll_rtt(&mut core_data.target_core);
+                            let channel_data_stream =
+                                rtt_active_target.poll_rtt(&mut core_data.target_core);
                             if !channel_data_stream.is_empty() {
                                 received_rtt_data = true;
                                 for (rtt_channel, rtt_data) in channel_data_stream {
@@ -1246,11 +1247,14 @@ pub fn debug(debugger_options: DebuggerOptions, dap: bool) {
                         let reader = socket.try_clone().unwrap();
                         let writer = socket;
 
-                        let adapter = DebugAdapter::new(reader, writer, DebugAdapterType::DapClient);
+                        let adapter =
+                            DebugAdapter::new(reader, writer, DebugAdapterType::DapClient);
                         //TODO: When running in server mode, we want to stay open for new sessions. Implement intelligent restart in debug_session.
-                        debugger.debug_session(adapter);                        
+                        debugger.debug_session(adapter);
                     }
-                    Err(error) => {log::error!("probe-rs-debugger failed to establish a socket connection. Reason: {:?}", error)}
+                    Err(error) => {
+                        log::error!("probe-rs-debugger failed to establish a socket connection. Reason: {:?}", error)
+                    }
                 }
                 log::info!("....Closing session from  :{}", addr);
             }

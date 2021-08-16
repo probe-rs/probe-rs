@@ -1596,7 +1596,7 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
         if self.adapter_type == DebugAdapterType::DapClient {
             let event_body = match serde_json::to_value(RttDataEventBody {
                 channel_number,
-                data: format!("{}", rtt_data),
+                data: rtt_data,
             }) {
                 Ok(event_body) => event_body,
                 Err(_) => {

@@ -7,10 +7,11 @@ use probe_rs_rtt::{DownChannel, UpChannel};
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::{
-    fmt, fs,
+    fmt,
+    fmt::Write,
+    fs,
     io::{Read, Seek},
     str::FromStr,
-    fmt::Write,
 };
 use structopt::StructOpt;
 
@@ -115,26 +116,24 @@ impl RttActiveChannel {
         let buffer_size: usize = up_channel
             .as_ref()
             .map(|up| up.buffer_size())
-            .or_else(|| {
-                down_channel
-                    .as_ref()
-                    .map(|down| down.buffer_size())
-            })
+            .or_else(|| down_channel.as_ref().map(|down| down.buffer_size()))
             .unwrap_or(1024); // This should never be the case ...
         let defmt_enabled: bool = up_channel
             .as_ref()
-            .map(|up| if up.name() == Some("defmt") {true} else {false})
+            .map(|up| {
+                up.name() == Some("defmt")
+            })
             .or_else(|| {
-                down_channel
-                    .as_ref()
-                    .map(|down| if down.name() == Some("defmt") {true} else {false})
+                down_channel.as_ref().map(|down| {
+                    down.name() == Some("defmt")
+                })
             })
             .unwrap_or(false); // This should never be the case ...
         let data_format: DataFormat = if defmt_enabled {
-                DataFormat::Defmt
-            } else {
-                full_config.clone().data_format
-            };
+            DataFormat::Defmt
+        } else {
+            full_config.data_format
+        };
         Self {
             up_channel,
             down_channel,
@@ -152,15 +151,18 @@ impl RttActiveChannel {
     }
 
     /// Polls the RTT target for new data on the specified channel.
-    /// Processes all the new data into the channel `rtt_buffer` and returns the number of bytes that was read 
+    /// Processes all the new data into the channel `rtt_buffer` and returns the number of bytes that was read
     pub fn poll_rtt(&mut self, core: &mut Core) -> Option<usize> {
         // TODO: Proper error handling.
         if let Some(channel) = self.up_channel.as_mut() {
             match channel.read(core, self.rtt_buffer.0.as_mut()) {
                 Ok(count) => {
-                    if count.is_zero() {None}
-                    else {Some(count)}
-                },
+                    if count.is_zero() {
+                        None
+                    } else {
+                        Some(count)
+                    }
+                }
                 Err(err) => {
                     log::error!("\nError reading from RTT: {}", err);
                     None
@@ -204,11 +206,7 @@ impl RttActiveTarget {
                 .clone()
                 .into_iter()
                 .find(|channel| channel.channel_number == Some(number));
-            active_channels.push(RttActiveChannel::new(
-                Some(channel), 
-                None, 
-                channel_config, 
-            ));
+            active_channels.push(RttActiveChannel::new(Some(channel), None, channel_config));
         }
 
         for channel in down_channels {
@@ -219,11 +217,7 @@ impl RttActiveTarget {
                 .clone()
                 .into_iter()
                 .find(|channel| channel.channel_number == Some(number));
-            active_channels.push(RttActiveChannel::new(
-                None, 
-                Some(channel), 
-                channel_config, 
-            ));
+            active_channels.push(RttActiveChannel::new(None, Some(channel), channel_config));
         }
 
         // It doesn't make sense to pretend RTT is active, if there are no active channels
@@ -237,8 +231,13 @@ impl RttActiveTarget {
             .iter()
             .any(|elem| elem.data_format == DataFormat::Defmt);
         let defmt_state = if defmt_enabled {
-            let elf = fs::read(debugger_options.program_binary.clone().unwrap())// We can safely unwrap() program_binary here, because it is validated to exist at startup of the debugger
-                .map_err(|err| anyhow!("Error reading program binary while initalizing RTT: {}", err))?;
+            let elf = fs::read(debugger_options.program_binary.clone().unwrap()) // We can safely unwrap() program_binary here, because it is validated to exist at startup of the debugger
+                .map_err(|err| {
+                    anyhow!(
+                        "Error reading program binary while initalizing RTT: {}",
+                        err
+                    )
+                })?;
             if let Some(table) = defmt_decoder::Table::parse(&elf)? {
                 let locs = {
                     let locs = table.get_locations(&elf)?;
@@ -249,7 +248,9 @@ impl RttActiveTarget {
                     } else if table.indices().all(|idx| locs.contains_key(&(idx as u64))) {
                         Some(locs)
                     } else {
-                        log::warn!("Location info is incomplete; it will be omitted from the output.");
+                        log::warn!(
+                            "Location info is incomplete; it will be omitted from the output."
+                        );
                         None
                     }
                 };
@@ -258,7 +259,7 @@ impl RttActiveTarget {
                 log::warn!("No `Table` definition in DWARF info; compile your program with `debug = 2` to enable location info.");
                 None
             }
-        } else { 
+        } else {
             None
         };
 
@@ -288,7 +289,7 @@ impl RttActiveTarget {
 
     /// Polls the RTT target for new data on all channels.
     pub fn poll_rtt(&mut self, core: &mut Core) -> HashMap<String, String> {
-        let defmt_state = self.defmt_state.as_ref(); 
+        let defmt_state = self.defmt_state.as_ref();
         self.active_channels
             .iter_mut()
             .filter_map(|active_channel| {
@@ -307,7 +308,7 @@ impl RttActiveTarget {
                                                 write!(formatted_data, "{} :", Local::now())
                                                     .map_or_else(|err| log::error!("Failed to format RTT data - {:?}", err), |r|r);
                                             }
-                                            write!(formatted_data, "{}\n", line).map_or_else(|err| log::error!("Failed to format RTT data - {:?}", err), |r|r);
+                                            writeln!(formatted_data, "{}", line).map_or_else(|err| log::error!("Failed to format RTT data - {:?}", err), |r|r);
                                         }
                                     }
                                     DataFormat::BinaryLE => {
@@ -329,7 +330,7 @@ impl RttActiveTarget {
                                                     // verified to exist in the `locs` map.
                                                     let loc = locs.as_ref().map(|locs| &locs[&frame.index()]);
 
-                                                    write!(formatted_data, "{}\n", frame.display(false)).map_or_else(|err| log::error!("Failed to format RTT data - {:?}", err), |r|r);
+                                                    writeln!(formatted_data, "{}", frame.display(false)).map_or_else(|err| log::error!("Failed to format RTT data - {:?}", err), |r|r);
                                                     if let Some(loc) = loc {
                                                         let relpath = if let Ok(relpath) =
                                                             loc.file.strip_prefix(&std::env::current_dir().unwrap())
@@ -339,8 +340,8 @@ impl RttActiveTarget {
                                                             // not relative; use full path
                                                             &loc.file
                                                         };
-                                                        write!(formatted_data,
-                                                            "└─ {}:{}\n",
+                                                        writeln!(formatted_data,
+                                                            "└─ {}:{}",
                                                             relpath.display(),
                                                             loc.line
                                                         ).map_or_else(|err| log::error!("Failed to format RTT data - {:?}", err), |r|r);
@@ -358,14 +359,13 @@ impl RttActiveTarget {
                                         }
                                     }
                                 };
-                                formatted_data 
-                            }   
+                                formatted_data
+                            }
                         )
                     })
             })
             .collect::<HashMap<_, _>>()
     }
-
 
     // pub fn push_rtt(&mut self) {
     //     self.tabs[self.current_tab].push_rtt();
