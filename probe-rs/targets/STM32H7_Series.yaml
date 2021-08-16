@@ -760,7 +760,6 @@ variants:
           cores: [main]
     flash_algorithms:
       - stm32h7x_2048
-      - stm32h7x_2048
   - name: STM32H745BITx
     cores:
       - name: main
@@ -783,7 +782,6 @@ variants:
           is_boot_memory: true
           cores: [main]
     flash_algorithms:
-      - stm32h7x_2048
       - stm32h7x_2048
   - name: STM32H745IGKx
     cores:
@@ -808,7 +806,6 @@ variants:
           cores: [main]
     flash_algorithms:
       - stm32h7x_2048
-      - stm32h7x_2048
   - name: STM32H745IGTx
     cores:
       - name: main
@@ -831,7 +828,6 @@ variants:
           is_boot_memory: true
           cores: [main]
     flash_algorithms:
-      - stm32h7x_2048
       - stm32h7x_2048
   - name: STM32H745IIKx
     cores:
@@ -856,7 +852,6 @@ variants:
           cores: [main]
     flash_algorithms:
       - stm32h7x_2048
-      - stm32h7x_2048
   - name: STM32H745IITx
     cores:
       - name: main
@@ -879,7 +874,6 @@ variants:
           is_boot_memory: true
           cores: [main]
     flash_algorithms:
-      - stm32h7x_2048
       - stm32h7x_2048
   - name: STM32H745XGHx
     cores:
@@ -904,7 +898,6 @@ variants:
           cores: [main]
     flash_algorithms:
       - stm32h7x_2048
-      - stm32h7x_2048
   - name: STM32H745XIHx
     cores:
       - name: main
@@ -927,7 +920,6 @@ variants:
           is_boot_memory: true
           cores: [main]
     flash_algorithms:
-      - stm32h7x_2048
       - stm32h7x_2048
   - name: STM32H745ZGTx
     cores:
@@ -952,7 +944,6 @@ variants:
           cores: [main]
     flash_algorithms:
       - stm32h7x_2048
-      - stm32h7x_2048
   - name: STM32H745ZITx
     cores:
       - name: main
@@ -975,7 +966,6 @@ variants:
           is_boot_memory: true
           cores: [main]
     flash_algorithms:
-      - stm32h7x_2048
       - stm32h7x_2048
   - name: STM32H747AGIx
     cores:
@@ -1000,7 +990,6 @@ variants:
           cores: [main]
     flash_algorithms:
       - stm32h7x_2048
-      - stm32h7x_2048
   - name: STM32H747AIIx
     cores:
       - name: main
@@ -1023,7 +1012,6 @@ variants:
           is_boot_memory: true
           cores: [main]
     flash_algorithms:
-      - stm32h7x_2048
       - stm32h7x_2048
   - name: STM32H747BGTx
     cores:
@@ -1048,7 +1036,6 @@ variants:
           cores: [main]
     flash_algorithms:
       - stm32h7x_2048
-      - stm32h7x_2048
   - name: STM32H747BITx
     cores:
       - name: main
@@ -1071,7 +1058,6 @@ variants:
           is_boot_memory: true
           cores: [main]
     flash_algorithms:
-      - stm32h7x_2048
       - stm32h7x_2048
   - name: STM32H747IGTx
     cores:
@@ -1096,7 +1082,6 @@ variants:
           cores: [main]
     flash_algorithms:
       - stm32h7x_2048
-      - stm32h7x_2048
   - name: STM32H747IITx
     cores:
       - name: main
@@ -1119,7 +1104,6 @@ variants:
           is_boot_memory: true
           cores: [main]
     flash_algorithms:
-      - stm32h7x_2048
       - stm32h7x_2048
   - name: STM32H747XGHx
     cores:
@@ -1144,7 +1128,6 @@ variants:
           cores: [main]
     flash_algorithms:
       - stm32h7x_2048
-      - stm32h7x_2048
   - name: STM32H747XIHx
     cores:
       - name: main
@@ -1168,7 +1151,6 @@ variants:
           cores: [main]
     flash_algorithms:
       - stm32h7x_2048
-      - stm32h7x_2048
   - name: STM32H747ZIYx
     cores:
       - name: main
@@ -1191,7 +1173,6 @@ variants:
           is_boot_memory: true
           cores: [main]
     flash_algorithms:
-      - stm32h7x_2048
       - stm32h7x_2048
   - name: STM32H750IBKx
     cores:
@@ -1515,7 +1496,6 @@ variants:
           cores: [main]
     flash_algorithms:
       - stm32h7x_2048
-      - stm32h7x_2048
   - name: STM32H755IIKx
     cores:
       - name: main
@@ -1538,7 +1518,6 @@ variants:
           is_boot_memory: true
           cores: [main]
     flash_algorithms:
-      - stm32h7x_2048
       - stm32h7x_2048
   - name: STM32H755IITx
     cores:
@@ -1563,7 +1542,6 @@ variants:
           cores: [main]
     flash_algorithms:
       - stm32h7x_2048
-      - stm32h7x_2048
   - name: STM32H755XIHx
     cores:
       - name: main
@@ -1586,7 +1564,6 @@ variants:
           is_boot_memory: true
           cores: [main]
     flash_algorithms:
-      - stm32h7x_2048
       - stm32h7x_2048
   - name: STM32H755ZITx
     cores:
@@ -1611,7 +1588,6 @@ variants:
           cores: [main]
     flash_algorithms:
       - stm32h7x_2048
-      - stm32h7x_2048
   - name: STM32H757AIIx
     cores:
       - name: main
@@ -1634,7 +1610,6 @@ variants:
           is_boot_memory: true
           cores: [main]
     flash_algorithms:
-      - stm32h7x_2048
       - stm32h7x_2048
   - name: STM32H757BITx
     cores:
@@ -1659,7 +1634,6 @@ variants:
           cores: [main]
     flash_algorithms:
       - stm32h7x_2048
-      - stm32h7x_2048
   - name: STM32H757IITx
     cores:
       - name: main
@@ -1682,7 +1656,6 @@ variants:
           is_boot_memory: true
           cores: [main]
     flash_algorithms:
-      - stm32h7x_2048
       - stm32h7x_2048
   - name: STM32H757XIHx
     cores:
@@ -1707,7 +1680,6 @@ variants:
           cores: [main]
     flash_algorithms:
       - stm32h7x_2048
-      - stm32h7x_2048
   - name: STM32H757ZIYx
     cores:
       - name: main
@@ -1730,7 +1702,6 @@ variants:
           is_boot_memory: true
           cores: [main]
     flash_algorithms:
-      - stm32h7x_2048
       - stm32h7x_2048
   - name: STM32H7A3AGIxQ
     cores:
