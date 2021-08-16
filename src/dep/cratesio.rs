@@ -104,22 +104,31 @@ mod tests {
         let home = dirs::home_dir().unwrap();
         let home = home.to_str().unwrap();
 
-        let input = format!("{}/.cargo/registry/src/github.com-1ecc6299db9ec823/cortex-m-rt-0.6.13/src/lib.rs", home);
-        let input = StdPath::new(&input);
+        let input = PathBuf::from(home)
+            .join(".cargo")
+            .join("registry")
+            .join("src")
+            .join("github.com-1ecc6299db9ec823")
+            .join("cortex-m-rt-0.6.13")
+            .join("src")
+            .join("lib.rs");
+        let path = Path::from_std_path(&input).unwrap();
 
-        let registry_prefix = format!("{}/.cargo/registry/src/github.com-1ecc6299db9ec823/", home);
+        let registry_prefix = PathBuf::from(home)
+            .join(".cargo")
+            .join("registry")
+            .join("src")
+            .join("github.com-1ecc6299db9ec823");
 
-        let path = Path::from_std_path(input).unwrap();
-        dbg!(&path);
         let expected = Path {
-            registry_prefix: PathBuf::from(&registry_prefix),
+            registry_prefix,
             crate_name_version: "cortex-m-rt-0.6.13",
-            path: StdPath::new("src/lib.rs"),
+            path: &PathBuf::new().join("src").join("lib.rs"),
         };
 
         assert_eq!(expected, path);
 
-        let expected_str = "[cortex-m-rt-0.6.13]\\src/lib.rs";
+        let expected_str = "[cortex-m-rt-0.6.13]\\src\\lib.rs";
         let formatted_str = path.format_short();
 
         assert_eq!(expected_str, formatted_str);
