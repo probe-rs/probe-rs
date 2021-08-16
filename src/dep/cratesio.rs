@@ -74,33 +74,8 @@ impl<'p> Path<'p> {
 mod tests {
     use super::*;
 
-    #[cfg(unix)]
     #[test]
     fn end_to_end() {
-        let input = StdPath::new(
-            "/home/user/.cargo/registry/src/github.com-1ecc6299db9ec823/cortex-m-rt-0.6.13/src/lib.rs",
-        );
-
-        let path = Path::from_std_path(input).unwrap();
-        let expected = Path {
-            registry_prefix: PathBuf::from(
-                "/home/user/.cargo/registry/src/github.com-1ecc6299db9ec823/",
-            ),
-            crate_name_version: "cortex-m-rt-0.6.13",
-            path: StdPath::new("src/lib.rs"),
-        };
-
-        assert_eq!(expected, path);
-
-        let expected_str = "[cortex-m-rt-0.6.13]/src/lib.rs";
-        let formatted_str = path.format_short();
-
-        assert_eq!(expected_str, formatted_str);
-    }
-
-    #[cfg(not(unix))]
-    #[test]
-    fn end_to_end_windows() {
         let home = dirs::home_dir().unwrap();
         let home = home.to_str().unwrap();
 
@@ -128,9 +103,9 @@ mod tests {
 
         assert_eq!(expected, path);
 
-        let expected_str = "[cortex-m-rt-0.6.13]\\src\\lib.rs";
+        let expected_str = PathBuf::from("[cortex-m-rt-0.6.13]").join("src").join("lib.rs");
         let formatted_str = path.format_short();
 
-        assert_eq!(expected_str, formatted_str);
+        assert_eq!(expected_str.to_string_lossy(), formatted_str);
     }
 }
