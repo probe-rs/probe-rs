@@ -11,7 +11,6 @@ use nom::{
     bytes::complete::{tag, take},
     character::complete::{char, hex_digit1},
     combinator::value,
-    map, named,
     number::complete::hex_u32,
     IResult,
 };
@@ -156,9 +155,13 @@ pub fn parse_packet(input: &[u8]) -> Result<Packet> {
     }
 }
 
-named!(extended_mode<&[u8], Packet>, map!(char('!'), |_| Packet::EnableExtendedMode));
+fn extended_mode(input: &[u8]) -> IResult<&[u8], Packet> {
+    value(Packet::EnableExtendedMode, char('!'))(input)
+}
 
-named!(halt_reason<&[u8], Packet>, map!(char('?'), |_| Packet::HaltReason));
+fn halt_reason(input: &[u8]) -> IResult<&[u8], Packet> {
+    value(Packet::HaltReason, char('?'))(input)
+}
 
 fn continue_packet(input: &[u8]) -> IResult<&[u8], Packet> {
     let (input, _) = char('c')(input)?;

@@ -359,8 +359,11 @@ impl JtagAdapter {
 
         let drbits = params.drpre + len_bits + params.drpost;
         let request = if let Some(data_slice) = data {
-            let data = BitSlice::<Lsb0, u8>::from_slice(data_slice).ok_or_else(|| {
-                io::Error::new(io::ErrorKind::InvalidData, "could not create bitslice")
+            let data = BitSlice::<Lsb0, u8>::from_slice(data_slice).or_else(|_| {
+                Err(io::Error::new(
+                    io::ErrorKind::InvalidData,
+                    "could not create bitslice",
+                ))
             })?;
             let mut data = BitVec::<Lsb0, u8>::from_bitslice(&data);
             data.truncate(len_bits);

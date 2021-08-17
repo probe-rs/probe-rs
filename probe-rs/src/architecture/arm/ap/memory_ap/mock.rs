@@ -87,7 +87,7 @@ impl ApAccess for MockMemoryAp {
                             1,
                         )
                     }
-                    _ => Err(anyhow!("MockMemoryAp: unknown width"))?,
+                    _ => return Err(anyhow!("MockMemoryAp: unknown width").into()),
                 };
 
                 self.store.insert(DRW::ADDRESS, new_drw);
@@ -106,7 +106,7 @@ impl ApAccess for MockMemoryAp {
             }
             CSW::ADDRESS => Ok(R::from(self.store[&R::ADDRESS])),
             TAR::ADDRESS => Ok(R::from(self.store[&R::ADDRESS])),
-            _ => Err(anyhow!("MockMemoryAp: unknown register"))?,
+            _ => Err(anyhow!("MockMemoryAp: unknown register").into()),
         }
     }
 
@@ -165,7 +165,7 @@ impl ApAccess for MockMemoryAp {
                         self.memory[address as usize] = value as u8;
                         Ok(1)
                     }
-                    _ => Err(anyhow!("MockMemoryAp: unknown width"))?,
+                    _ => return Err(anyhow!("MockMemoryAp: unknown width").into()),
                 }
                 .map(|offset| match csw.AddrInc {
                     AddressIncrement::Single => {
@@ -185,7 +185,7 @@ impl ApAccess for MockMemoryAp {
                 self.store.insert(TAR::ADDRESS, value);
                 Ok(())
             }
-            _ => Err(anyhow!("MockMemoryAp: unknown register"))?,
+            _ => Err(anyhow!("MockMemoryAp: unknown register").into()),
         }
     }
 

@@ -19,7 +19,7 @@ fn main() {
     let mut families: Vec<ChipFamily> = Vec::new();
 
     let mut files = vec![];
-    visit_dirs(&Path::new("targets"), &mut files).unwrap();
+    visit_dirs(Path::new("targets"), &mut files).unwrap();
     for file in files {
         let string = read_to_string(&file).expect(
             "Algorithm definition file could not be read. This is a bug. Please report it.",

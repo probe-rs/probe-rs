@@ -360,7 +360,7 @@ impl<'interface> ArmCommunicationInterface {
 
         if let Err(e) = self.probe.select_dp(dp) {
             self.state.current_dp = None;
-            Err(e)?;
+            return Err(e);
         }
 
         self.state.current_dp = Some(dp);

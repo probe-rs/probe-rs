@@ -753,7 +753,7 @@ impl DebugInfo {
         core: &'core mut Core<'probe>,
         address: u64,
     ) -> StackFrameIterator<'_, 'probe, 'core> {
-        StackFrameIterator::new(&self, core, address)
+        StackFrameIterator::new(self, core, address)
     }
 
     /// Find the program counter where a breakpoint should be set,
@@ -784,15 +784,15 @@ impl DebugInfo {
                 let header = line_program.header();
 
                 for file_name in header.file_names() {
-                    let combined_path = self.get_path(&unit, &header, file_name);
+                    let combined_path = self.get_path(&unit, header, file_name);
 
                     if combined_path.map(|p| p == path).unwrap_or(false) {
                         let mut rows = line_program.clone().rows();
 
                         while let Some((header, row)) = rows.next_row()? {
                             let row_path = row
-                                .file(&header)
-                                .and_then(|file_entry| self.get_path(&unit, &header, file_entry));
+                                .file(header)
+                                .and_then(|file_entry| self.get_path(&unit, header, file_entry));
 
                             if row_path.map(|p| p != path).unwrap_or(true) {
                                 continue;
@@ -1010,7 +1010,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                 let mut ranges = self
                     .debug_info
                     .dwarf
-                    .die_ranges(&self.unit, &current)
+                    .die_ranges(&self.unit, current)
                     .unwrap();
 
                 while let Ok(Some(ranges)) = ranges.next() {
@@ -1022,7 +1022,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                         if find_inlined {
                             log::debug!(
                                 "Found DIE, now checking for inlined functions: name={:?}",
-                                die.function_name(&self)
+                                die.function_name(self)
                             );
 
                             return self
@@ -1032,7 +1032,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                     Some(FunctionDie::new(current.clone()))
                                 });
                         } else {
-                            log::debug!("Found DIE: name={:?}", die.function_name(&self));
+                            log::debug!("Found DIE: name={:?}", die.function_name(self));
 
                             return Some(die);
                         }
@@ -1061,7 +1061,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                 let mut ranges = self
                     .debug_info
                     .dwarf
-                    .die_ranges(&self.unit, &current)
+                    .die_ranges(&self.unit, current)
                     .unwrap();
 
                 while let Ok(Some(ranges)) = ranges.next() {
@@ -1193,14 +1193,14 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                     //The child_variable.location is calculated higher up by invoking self.extract_location.
                 }
                 gimli::DW_AT_name => {
-                    child_variable.name = extract_name(&self.debug_info, attr.value());
+                    child_variable.name = extract_name(self.debug_info, attr.value());
                 }
                 gimli::DW_AT_decl_file => {
-                    child_variable.file = extract_file(&self.debug_info, &self.unit, attr.value())
+                    child_variable.file = extract_file(self.debug_info, &self.unit, attr.value())
                         .unwrap_or_else(|| "<undefined>".to_string());
                 }
                 gimli::DW_AT_decl_line => {
-                    child_variable.line = extract_line(&self.debug_info, attr.value()).unwrap_or(0);
+                    child_variable.line = extract_line(self.debug_info, attr.value()).unwrap_or(0);
                 }
                 gimli::DW_AT_decl_column => {}     //Unused
                 gimli::DW_AT_containing_type => {} //TODO: Resolve Traits
