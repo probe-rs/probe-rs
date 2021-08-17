@@ -89,7 +89,7 @@ mod tests {
             rust_repo_path: rust_repo::Path::One52(rust_repo::One52Path {
                 library: "library",
                 crate_name: "core",
-                path: expected_path.as_path(),
+                path: &expected_path,
             }),
         };
 

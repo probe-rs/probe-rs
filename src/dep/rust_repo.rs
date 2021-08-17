@@ -88,8 +88,7 @@ mod tests {
 
     #[test]
     fn v1_52_path() {
-        let path = PathBuf::new()
-            .join("library")
+        let path = PathBuf::from("library")
             .join("core")
             .join("src")
             .join("sync")
@@ -104,8 +103,7 @@ mod tests {
 
         assert_eq!(expected, rust_repo_path);
 
-        let expected_str = PathBuf::new()
-            .join("library")
+        let expected_str = PathBuf::from("library")
             .join("core")
             .join("src")
             .join("sync")
