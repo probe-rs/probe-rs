@@ -1189,7 +1189,7 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
                                                         request.seq, request.command
                                                     ));
                                                 }
-                                                ConsoleLog::Debug => {
+                                                ConsoleLog::Debug | ConsoleLog::Trace => {
                                                     self.log_to_console(format!(
                                                         "\nReceived DAP Request: {:#?}",
                                                         request
@@ -1403,7 +1403,7 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
                             resp.seq, resp.command
                         ));
                     }
-                    ConsoleLog::Debug => {
+                    ConsoleLog::Debug | ConsoleLog::Trace => {
                         self.log_to_console(format!("\nSent DAP Response: {:#?}", resp));
                     }
                 }
@@ -1473,7 +1473,7 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
                     ConsoleLog::Info | ConsoleLog::Warn => {
                         self.log_to_console(format!("\nTriggered DAP Event: {}", new_event.event));
                     }
-                    ConsoleLog::Debug => {
+                    ConsoleLog::Debug | ConsoleLog::Trace => {
                         self.log_to_console(format!("INFO: Triggered DAP Event: {:#?}", new_event));
                     }
                 }
@@ -1505,7 +1505,7 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
                     ConsoleLog::Info | ConsoleLog::Warn => {
                         self.log_to_console(format!("Triggered Event: {}", other));
                     }
-                    ConsoleLog::Debug => {
+                    ConsoleLog::Debug | ConsoleLog::Trace => {
                         self.log_to_console(format!(
                             "Triggered Event: {:#?}",
                             serde_json::to_value(event_body).unwrap_or_default()

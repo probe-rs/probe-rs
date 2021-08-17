@@ -53,7 +53,7 @@ impl Default for DataFormat {
 #[derive(StructOpt, Debug, Clone, Deserialize, Default)]
 pub struct RttConfig {
     #[structopt(skip)]
-    #[serde(rename = "rtt_enabled")]
+    #[serde(default, rename = "rtt_enabled")]
     pub enabled: bool,
     /// Connection timeout in ms.
     #[structopt(skip)]

@@ -60,6 +60,7 @@ pub enum ConsoleLog {
     Warn,
     Info,
     Debug,
+    Trace,
 }
 
 impl std::str::FromStr for ConsoleLog {
@@ -71,8 +72,9 @@ impl std::str::FromStr for ConsoleLog {
             "warn" => Ok(ConsoleLog::Error),
             "info" => Ok(ConsoleLog::Info),
             "debug" => Ok(ConsoleLog::Debug),
+            "trace" => Ok(ConsoleLog::Trace),
             _ => Err(format!(
-                "'{}' is not a valid console log level. Choose from [error, info, debug].",
+                "'{}' is not a valid console log level. Choose from [error, warn, info, debug, or trace].",
                 s
             )),
         }
