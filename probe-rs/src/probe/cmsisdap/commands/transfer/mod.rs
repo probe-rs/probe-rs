@@ -4,7 +4,7 @@ use super::{CommandId, Request, SendError};
 use crate::architecture::arm::PortType;
 use scroll::{Pread, Pwrite, LE};
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum RW {
     R = 1,
     W = 0,
@@ -252,12 +252,16 @@ impl Request for TransferBlockRequest {
             num_transfers
         );
 
-        for data_offset in 0..num_transfers {
-            data.push(
-                buffer
-                    .pread_with(3 + data_offset * 4, LE)
-                    .map_err(|_| SendError::NotEnoughData)?,
-            );
+        // if it's a read, process the read data.
+        // If it's a write, there's no interesting data in the response.
+        if self.transfer_request.r_n_w == RW::R {
+            for data_offset in 0..transfer_count as usize {
+                data.push(
+                    buffer
+                        .pread_with(3 + data_offset * 4, LE)
+                        .map_err(|_| SendError::NotEnoughData)?,
+                );
+            }
         }
 
         Ok(TransferBlockResponse {
