@@ -28,7 +28,7 @@ pub(crate) fn print(
     core: &mut Core,
     elf: &Elf,
     active_ram_region: &Option<RamRegion>,
-    settings: &Settings,
+    settings: &mut Settings<'_>,
 ) -> anyhow::Result<Outcome> {
     let unwind = unwind::target(core, elf, active_ram_region);
 
@@ -44,6 +44,10 @@ pub(crate) fn print(
         || unwind.corrupted
         || contains_exception;
 
+    if settings.backtrace_limit == 0 {
+        let frames_number = &frames.len();
+        settings.backtrace_limit = *frames_number as u32;
+    }
     if print_backtrace && settings.backtrace_limit > 0 {
         pp::backtrace(&frames, settings);
 
