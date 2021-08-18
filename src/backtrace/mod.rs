@@ -17,8 +17,26 @@ mod unwind;
 // --backtrace flag is optional and defaults to auto
 // --backtrace-limit flag is optional and defaults to 50 (+)
 // --backtrace-limit=0 is accepted and means "no limit"
+
+#[derive(PartialEq, Eq)]
+pub(crate) enum BacktraceOptions {
+    Auto, Never, Always
+}
+
+impl From<&String> for BacktraceOptions {
+    fn from(item: &String) -> Self {
+        match item.as_str() {
+            "auto" | "Auto" => BacktraceOptions::Auto,
+            "never" | "Never" => BacktraceOptions::Never,
+            "always" | "Always" => BacktraceOptions::Always,
+            _ => panic!("options for `--backtrace` are `auto`, `never`, `always`.")
+        }
+    }
+}
+
 pub(crate) struct Settings<'p> {
     pub(crate) current_dir: &'p Path,
+    pub(crate) backtrace: BacktraceOptions,
     pub(crate) backtrace_limit: u32,
     pub(crate) shorten_paths: bool,
 }
@@ -39,8 +57,8 @@ pub(crate) fn print(
         .iter()
         .any(|raw_frame| raw_frame.is_exception());
 
-    let print_backtrace =
-        unwind.outcome == Outcome::StackOverflow
+    let print_backtrace = settings.backtrace == BacktraceOptions::Always
+        || unwind.outcome == Outcome::StackOverflow
         || unwind.corrupted
         || contains_exception;
 

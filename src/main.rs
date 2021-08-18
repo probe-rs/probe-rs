@@ -91,6 +91,8 @@ fn run_target_program(elf_path: &Path, chip_name: &str, opts: &cli::Opts) -> any
     let mut backtrace_settings = backtrace::Settings {
         current_dir,
         backtrace_limit: opts.backtrace_limit,
+        // backtrace: opts.backtrace || canary_touched || halted_due_to_signal, // ??
+        backtrace: (&opts.backtrace).into(), // ??
         shorten_paths: opts.shorten_paths,
     };
 
