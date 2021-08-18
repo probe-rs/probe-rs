@@ -1,6 +1,7 @@
 use std::path::Path;
 
 use probe_rs::{config::RamRegion, Core};
+use signal_hook::consts::signal;
 
 use crate::elf::Elf;
 
@@ -118,7 +119,8 @@ impl From<Outcome> for i32 {
     fn from(outcome: Outcome) -> i32 {
         match outcome {
             Outcome::HardFault | Outcome::StackOverflow => crate::SIGABRT,
-            Outcome::Ok | Outcome::CtrlC => 0,
+            Outcome::CtrlC => signal::SIGINT,
+            Outcome::Ok => 0,
         }
     }
 }
