@@ -32,7 +32,6 @@ use signal_hook::consts::signal;
 
 use crate::{backtrace::Outcome, canary::Canary, elf::Elf, target_info::TargetInfo};
 
-const SIGABRT: i32 = 134;
 const TIMEOUT: Duration = Duration::from_secs(1);
 
 fn main() -> anyhow::Result<()> {

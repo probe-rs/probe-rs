@@ -118,7 +118,7 @@ impl Outcome {
 impl From<Outcome> for i32 {
     fn from(outcome: Outcome) -> i32 {
         match outcome {
-            Outcome::HardFault | Outcome::StackOverflow => crate::SIGABRT,
+            Outcome::HardFault | Outcome::StackOverflow => signal::SIGABRT,
             Outcome::CtrlC => signal::SIGINT,
             Outcome::Ok => 0,
         }
