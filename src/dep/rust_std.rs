@@ -80,21 +80,37 @@ impl<'p> Path<'p> {
     }
 }
 
-#[cfg(all(test, unix))]
+#[cfg(test)]
 mod tests {
-    use std::path::Path as StdPath;
-
     use pretty_assertions::assert_eq;
 
     use super::*;
 
     #[test]
     fn end_to_end() {
-        let input = StdPath::new("/home/user/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/sync/atomic.rs");
+        let home = dirs::home_dir().unwrap();
+        let home = home.to_str().unwrap();
 
-        let path = Path::from_std_path(input).unwrap();
+        let input = PathBuf::from(home)
+            .join(".rustup")
+            .join("toolchains")
+            .join("stable-x86_64-unknown-linux-gnu")
+            .join("lib")
+            .join("rustlib")
+            .join("src")
+            .join("rust")
+            .join("library")
+            .join("core")
+            .join("src")
+            .join("sync")
+            .join("atomic.rs");
+
+        let path = Path::from_std_path(&input).unwrap();
+
+        let src_path = PathBuf::from("src").join("sync").join("atomic.rs");
+
         let expected = Path {
-            rustup_prefix: PathBuf::from("/home/user/.rustup/toolchains"),
+            rustup_prefix: PathBuf::from(home).join(".rustup").join("toolchains"),
             toolchain: Toolchain::One52(toolchain::One52 {
                 channel: toolchain::Channel::Stable,
                 host: "x86_64-unknown-linux-gnu",
@@ -103,15 +119,20 @@ mod tests {
             rust_repo_path: rust_repo::Path::One52(rust_repo::One52Path {
                 library: "library",
                 crate_name: "core",
-                path: StdPath::new("src/sync/atomic.rs"),
+                path: &src_path,
             }),
         };
 
         assert_eq!(expected, path);
 
-        let expected_str = "[stable]/library/core/src/sync/atomic.rs";
+        let expected = PathBuf::from("[stable]")
+            .join("library")
+            .join("core")
+            .join("src")
+            .join("sync")
+            .join("atomic.rs");
         let formatted_str = path.format_short();
 
-        assert_eq!(expected_str, formatted_str);
+        assert_eq!(expected.to_string_lossy(), formatted_str);
     }
 }

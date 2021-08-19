@@ -61,31 +61,47 @@ impl<'p> Path<'p> {
     }
 }
 
-#[cfg(all(test, unix))]
+#[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
     fn end_to_end() {
-        let input = StdPath::new(
-            "/rustc/9bc8c42bb2f19e745a63f3445f1ac248fb015e53/library/core/src/panicking.rs",
-        );
+        let home = dirs::home_dir().unwrap();
+        let home = home.to_str().unwrap();
 
-        let path = Path::from_std_path(input).unwrap();
+        let input = PathBuf::from(home)
+            .join("rustc")
+            .join("9bc8c42bb2f19e745a63f3445f1ac248fb015e53")
+            .join("library")
+            .join("core")
+            .join("src")
+            .join("panicking.rs");
+
+        let rustc_prefix = PathBuf::from(home)
+            .join("rustc")
+            .join("9bc8c42bb2f19e745a63f3445f1ac248fb015e53");
+
+        let path = Path::from_std_path(&input).unwrap();
+        let expected_path = PathBuf::from("src").join("panicking.rs");
         let expected = Path {
-            rustc_prefix: PathBuf::from("/rustc/9bc8c42bb2f19e745a63f3445f1ac248fb015e53"),
+            rustc_prefix,
             rust_repo_path: rust_repo::Path::One52(rust_repo::One52Path {
                 library: "library",
                 crate_name: "core",
-                path: StdPath::new("src/panicking.rs"),
+                path: &expected_path,
             }),
         };
 
         assert_eq!(expected, path);
 
-        let expected_str = "[rust]/library/core/src/panicking.rs";
+        let expected = PathBuf::from("[rust]")
+            .join("library")
+            .join("core")
+            .join("src")
+            .join("panicking.rs");
         let formatted_str = path.format_short();
 
-        assert_eq!(expected_str, formatted_str);
+        assert_eq!(expected.to_string_lossy(), formatted_str);
     }
 }

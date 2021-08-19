@@ -80,15 +80,21 @@ impl<'p> One52Path<'p> {
     }
 }
 
-#[cfg(all(test, unix))]
+#[cfg(test)]
 mod tests {
+    use std::path::PathBuf;
+
     use super::*;
 
     #[test]
     fn v1_52_path() {
-        let path = StdPath::new("library/core/src/sync/atomic.rs");
+        let path = PathBuf::from("library")
+            .join("core")
+            .join("src")
+            .join("sync")
+            .join("atomic.rs");
 
-        let rust_repo_path = Path::from_std_path(path);
+        let rust_repo_path = Path::from_std_path(&path);
         let expected = Path::One52(One52Path {
             library: "library",
             crate_name: "core",
@@ -97,10 +103,14 @@ mod tests {
 
         assert_eq!(expected, rust_repo_path);
 
-        let expected_str = "library/core/src/sync/atomic.rs";
+        let expected = PathBuf::from("library")
+            .join("core")
+            .join("src")
+            .join("sync")
+            .join("atomic.rs");
         let formatted_str = rust_repo_path.format();
 
-        assert_eq!(expected_str, formatted_str);
+        assert_eq!(expected.to_string_lossy(), formatted_str);
     }
 
     #[test]
