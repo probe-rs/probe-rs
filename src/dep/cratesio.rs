@@ -88,25 +88,23 @@ mod tests {
             .join("lib.rs");
         let path = Path::from_std_path(&input).unwrap();
 
-        let registry_prefix = PathBuf::from(home)
-            .join(".cargo")
-            .join("registry")
-            .join("src")
-            .join("github.com-1ecc6299db9ec823");
-
         let expected = Path {
-            registry_prefix,
+            registry_prefix: PathBuf::from(home)
+                .join(".cargo")
+                .join("registry")
+                .join("src")
+                .join("github.com-1ecc6299db9ec823"),
             crate_name_version: "cortex-m-rt-0.6.13",
             path: &PathBuf::from("src").join("lib.rs"),
         };
 
         assert_eq!(expected, path);
 
-        let expected_str = PathBuf::from("[cortex-m-rt-0.6.13]")
+        let expected = PathBuf::from("[cortex-m-rt-0.6.13]")
             .join("src")
             .join("lib.rs");
         let formatted_str = path.format_short();
 
-        assert_eq!(expected_str.to_string_lossy(), formatted_str);
+        assert_eq!(expected.to_string_lossy(), formatted_str);
     }
 }

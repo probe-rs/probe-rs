@@ -79,10 +79,7 @@ mod tests {
             .join("cortex-m-rt-0.6.13")
             .join("src")
             .join("lib.rs");
-        assert!(matches!(
-            Path::from_std_path(cratesio.as_path()),
-            Path::Cratesio(_)
-        ));
+        assert!(matches!(Path::from_std_path(&cratesio), Path::Cratesio(_)));
 
         let rustc = PathBuf::from(home)
             .join("rustc")
@@ -91,10 +88,7 @@ mod tests {
             .join("core")
             .join("src")
             .join("panicking.rs");
-        assert!(matches!(
-            Path::from_std_path(rustc.as_path()),
-            Path::Rustc(_)
-        ));
+        assert!(matches!(Path::from_std_path(&rustc), Path::Rustc(_)));
 
         let rust_std = PathBuf::from(home)
             .join(".rustup")
@@ -109,15 +103,9 @@ mod tests {
             .join("src")
             .join("sync")
             .join("atomic.rs");
-        assert!(matches!(
-            Path::from_std_path(rust_std.as_path()),
-            Path::RustStd(_)
-        ));
+        assert!(matches!(Path::from_std_path(&rust_std), Path::RustStd(_)));
 
         let local = PathBuf::from("src").join("lib.rs");
-        assert!(matches!(
-            Path::from_std_path(local.as_path()),
-            Path::Verbatim(_)
-        ));
+        assert!(matches!(Path::from_std_path(&local), Path::Verbatim(_)));
     }
 }

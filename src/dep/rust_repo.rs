@@ -103,14 +103,14 @@ mod tests {
 
         assert_eq!(expected, rust_repo_path);
 
-        let expected_str = PathBuf::from("library")
+        let expected = PathBuf::from("library")
             .join("core")
             .join("src")
             .join("sync")
             .join("atomic.rs");
         let formatted_str = rust_repo_path.format();
 
-        assert_eq!(expected_str.to_string_lossy(), formatted_str);
+        assert_eq!(expected.to_string_lossy(), formatted_str);
     }
 
     #[test]

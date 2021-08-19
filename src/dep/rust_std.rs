@@ -125,7 +125,7 @@ mod tests {
 
         assert_eq!(expected, path);
 
-        let expected_str = PathBuf::from("[stable]")
+        let expected = PathBuf::from("[stable]")
             .join("library")
             .join("core")
             .join("src")
@@ -133,6 +133,6 @@ mod tests {
             .join("atomic.rs");
         let formatted_str = path.format_short();
 
-        assert_eq!(expected_str.to_string_lossy(), formatted_str);
+        assert_eq!(expected.to_string_lossy(), formatted_str);
     }
 }

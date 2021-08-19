@@ -95,13 +95,13 @@ mod tests {
 
         assert_eq!(expected, path);
 
-        let expected_str = PathBuf::from("[rust]")
+        let expected = PathBuf::from("[rust]")
             .join("library")
             .join("core")
             .join("src")
             .join("panicking.rs");
         let formatted_str = path.format_short();
 
-        assert_eq!(expected_str.to_string_lossy(), formatted_str);
+        assert_eq!(expected.to_string_lossy(), formatted_str);
     }
 }
