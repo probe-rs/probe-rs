@@ -5,7 +5,7 @@ use crate::{
         dp::{Abort, Ctrl, RdBuff, DPIDR},
         DapError, DpAddress, PortType, RawDapAccess, Register,
     },
-    DebugProbeError,
+    DebugProbe, DebugProbeError,
 };
 
 use super::{bits_to_byte, JLink};
@@ -717,7 +717,7 @@ impl RawSwdIo for JLink {
     }
 }
 
-impl<Probe: RawSwdIo + 'static> RawDapAccess for Probe {
+impl<Probe: DebugProbe + RawSwdIo + 'static> RawDapAccess for Probe {
     fn select_dp(&mut self, dp: DpAddress) -> Result<(), DebugProbeError> {
         match dp {
             DpAddress::Default => Ok(()), // nop
@@ -1091,6 +1091,36 @@ impl<Probe: RawSwdIo + 'static> RawDapAccess for Probe {
 
         Ok(())
     }
+
+    fn swj_pins(
+        &mut self,
+        _pin_out: u32,
+        _pin_select: u32,
+        _pin_wait: u32,
+    ) -> Result<u32, DebugProbeError> {
+        todo!()
+    }
+
+    fn into_probe(self: Box<Self>) -> Box<dyn DebugProbe> {
+        self
+    }
+
+    fn swj_sequence(&mut self, bit_len: u8, mut bits: u64) -> Result<(), DebugProbeError> {
+        let mut io_sequence = IoSequence::new();
+
+        for _ in 0..bit_len {
+            io_sequence.add_output(bits & 1 == 1);
+
+            bits >>= 1;
+        }
+
+        self.swd_io(
+            io_sequence.direction_bits().to_owned(),
+            io_sequence.io_bits().to_owned(),
+        )?;
+
+        Ok(())
+    }
 }
 
 #[cfg(test)]
@@ -1098,7 +1128,10 @@ mod test {
 
     use std::iter;
 
-    use crate::architecture::arm::{PortType, RawDapAccess};
+    use crate::{
+        architecture::arm::{PortType, RawDapAccess},
+        DebugProbe,
+    };
 
     use super::{RawSwdIo, SwdSettings, SwdStatistics};
 
@@ -1112,6 +1145,7 @@ mod test {
         NoAck,
     }
 
+    #[derive(Debug)]
     struct MockJaylink {
         direction_input: Option<Vec<bool>>,
         io_input: Option<Vec<bool>>,
@@ -1274,6 +1308,62 @@ mod test {
 
         fn swd_statistics(&mut self) -> &mut SwdStatistics {
             &mut self.swd_statistics
+        }
+    }
+
+    /// This is just a blanket impl that will crash if used (only relevant in tests,
+    /// so no problem as we do not use it) to fulfill the marker requirement.
+    impl DebugProbe for MockJaylink {
+        fn new_from_selector(
+            _selector: impl Into<crate::DebugProbeSelector>,
+        ) -> Result<Box<Self>, crate::DebugProbeError>
+        where
+            Self: Sized,
+        {
+            todo!()
+        }
+
+        fn get_name(&self) -> &str {
+            todo!()
+        }
+
+        fn speed(&self) -> u32 {
+            todo!()
+        }
+
+        fn set_speed(&mut self, _speed_khz: u32) -> Result<u32, crate::DebugProbeError> {
+            todo!()
+        }
+
+        fn attach(&mut self) -> Result<(), crate::DebugProbeError> {
+            todo!()
+        }
+
+        fn detach(&mut self) -> Result<(), crate::DebugProbeError> {
+            todo!()
+        }
+
+        fn target_reset(&mut self) -> Result<(), crate::DebugProbeError> {
+            todo!()
+        }
+
+        fn target_reset_assert(&mut self) -> Result<(), crate::DebugProbeError> {
+            todo!()
+        }
+
+        fn target_reset_deassert(&mut self) -> Result<(), crate::DebugProbeError> {
+            todo!()
+        }
+
+        fn select_protocol(
+            &mut self,
+            _protocol: crate::WireProtocol,
+        ) -> Result<(), crate::DebugProbeError> {
+            todo!()
+        }
+
+        fn into_probe(self: Box<Self>) -> Box<dyn DebugProbe> {
+            todo!()
         }
     }
 

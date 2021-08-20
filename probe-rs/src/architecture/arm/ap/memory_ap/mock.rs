@@ -37,6 +37,17 @@ impl CommunicationInterface for MockMemoryAp {
     fn flush(&mut self) -> Result<(), DebugProbeError> {
         Ok(())
     }
+
+    fn get_arm_communication_interface(
+        &mut self,
+    ) -> Result<
+        &mut crate::architecture::arm::ArmCommunicationInterface<
+            crate::architecture::arm::communication_interface::Initialized,
+        >,
+        crate::Error,
+    > {
+        todo!()
+    }
 }
 
 impl ApAccess for MockMemoryAp {

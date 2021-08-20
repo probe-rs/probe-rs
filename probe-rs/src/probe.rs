@@ -1,30 +1,19 @@
 pub(crate) mod cmsisdap;
+pub(crate) mod fake_probe;
 #[cfg(feature = "ftdi")]
 pub(crate) mod ftdi;
 pub(crate) mod jlink;
 pub(crate) mod stlink;
 
+use crate::architecture::{
+    arm::{communication_interface::DapProbe, PortType, SwoAccess},
+    riscv::communication_interface::RiscvCommunicationInterface,
+};
+use crate::error::Error;
+use crate::Session;
 use crate::{
-    architecture::arm::memory::adi_v5_memory_interface::ADIMemoryInterface,
+    architecture::arm::communication_interface::UninitializedArmProbe,
     config::{RegistryError, TargetSelector},
-};
-use crate::{
-    architecture::arm::{ap::AccessPort, ApAddress, DapAccess, DpAddress},
-    Session,
-};
-use crate::{
-    architecture::arm::{ap::MemoryAp, MemoryApInformation},
-    error::Error,
-};
-use crate::{
-    architecture::{
-        arm::{
-            ap::memory_ap::mock::MockMemoryAp, communication_interface::ArmProbeInterface,
-            PortType, RawDapAccess, SwoAccess,
-        },
-        riscv::communication_interface::RiscvCommunicationInterface,
-    },
-    Memory,
 };
 use jlink::list_jlink_devices;
 use std::{convert::TryFrom, fmt};
@@ -119,10 +108,12 @@ pub enum DebugProbeError {
     TargetNotFound,
     #[error("Some functionality was not implemented yet: {0}")]
     NotImplemented(&'static str),
+    #[error("This debug sequence is not supported on the used probe: {0}")]
+    DebugSequenceNotSupported(&'static str),
     #[error("Error in previous batched command")]
     BatchError(BatchCommand),
-    #[error("Command not supported by probe")]
-    CommandNotSupportedByProbe,
+    #[error("Command not supported by probe: {0}")]
+    CommandNotSupportedByProbe(&'static str),
     #[error("Unable to set hardware breakpoint, all available breakpoint units are in use.")]
     BreakpointUnitsExceeded,
     #[error(transparent)]
@@ -236,59 +227,6 @@ impl Probe {
         ))
     }
 
-    // /// Tries to mass erase a locked nRF52 chip, this process may timeout, if it does, the chip
-    // /// might be unlocked or not, it is advised to try again if flashing fails
-    // pub fn nrf_recover(&mut self) -> Result<(), DebugProbeError> {
-    //     let ctrl_port = match get_ap_by_idr(self, |idr| idr == CTRL_AP_IDR) {
-    //         Some(port) => CtrlAP::from(port),
-    //         None => {
-    //             return Err(DebugProbeError::AccessPortError(
-    //                 AccessPortError::CtrlAPNotFound,
-    //             ));
-    //         }
-    //     };
-    //     log::info!("Starting mass erase...");
-    //     let mut erase_reg = ERASEALL::from(1);
-    //     let status_reg = ERASEALLSTATUS::from(0);
-    //     let mut reset_reg = RESET::from(1);
-
-    //     // Reset first
-    //     self.write_ap_register(ctrl_port, reset_reg)?;
-    //     reset_reg.RESET = false;
-    //     self.write_ap_register(ctrl_port, reset_reg)?;
-
-    //     self.write_ap_register(ctrl_port, erase_reg)?;
-
-    //     // Prepare timeout
-    //     let now = Instant::now();
-    //     let status = self.read_ap_register(ctrl_port, status_reg)?;
-    //     log::info!("Erase status: {:?}", status.ERASEALLSTATUS);
-    //     let timeout = loop {
-    //         let status = self.read_ap_register(ctrl_port, status_reg)?;
-    //         if !status.ERASEALLSTATUS {
-    //             break false;
-    //         }
-    //         if now.elapsed().as_secs() >= UNLOCK_TIMEOUT {
-    //             break true;
-    //         }
-    //     };
-    //     reset_reg.RESET = true;
-    //     self.write_ap_register(ctrl_port, reset_reg)?;
-    //     reset_reg.RESET = false;
-    //     self.write_ap_register(ctrl_port, reset_reg)?;
-    //     erase_reg.ERASEALL = false;
-    //     self.write_ap_register(ctrl_port, erase_reg)?;
-    //     if timeout {
-    //         log::error!(
-    //             "    {} Mass erase process timeout, the chip might still be locked.",
-    //             "Error".red().bold()
-    //         );
-    //     } else {
-    //         log::info!("Mass erase completed, chip unlocked");
-    //     }
-    //     Ok(())
-    // }
-
     /// Get human readable name for the probe
     pub fn get_name(&self) -> String {
         self.inner.get_name().to_string()
@@ -300,10 +238,9 @@ impl Probe {
     ///
     /// If this doesn't work, you might want to try `attach_under_reset`
     pub fn attach(mut self, target: impl Into<TargetSelector>) -> Result<Session, Error> {
-        self.inner.attach()?;
         self.attached = true;
 
-        Session::new(self, target, AttachMethod::Normal)
+        Session::new(self, target.into(), AttachMethod::Normal)
     }
 
     pub fn attach_to_unspecified(&mut self) -> Result<(), Error> {
@@ -321,15 +258,14 @@ impl Probe {
         mut self,
         target: impl Into<TargetSelector>,
     ) -> Result<Session, Error> {
-        log::debug!("Asserting reset");
-        self.inner.target_reset_assert()?;
-
-        self.inner.attach()?;
-
         self.attached = true;
 
         // The session will de-assert reset after connecting to the debug interface.
-        Session::new(self, target, AttachMethod::UnderReset)
+        Session::new(self, target.into(), AttachMethod::UnderReset)
+    }
+
+    pub(crate) fn inner_attach(&mut self) -> Result<(), DebugProbeError> {
+        self.inner.attach()
     }
 
     /// Selects the transport protocol to be used by the debug probe.
@@ -351,6 +287,11 @@ impl Probe {
     /// Resets the target device.
     pub fn target_reset(&mut self) -> Result<(), DebugProbeError> {
         self.inner.target_reset()
+    }
+
+    pub(crate) fn target_reset_assert(&mut self) -> Result<(), DebugProbeError> {
+        log::debug!("Asserting target reset");
+        self.inner.target_reset_assert()
     }
 
     pub fn target_reset_deassert(&mut self) -> Result<(), DebugProbeError> {
@@ -384,7 +325,7 @@ impl Probe {
     /// If an error occurs while trying to connect, the probe is returned.
     pub fn try_into_arm_interface<'probe>(
         self,
-    ) -> Result<Box<dyn ArmProbeInterface + 'probe>, (Self, DebugProbeError)> {
+    ) -> Result<Box<dyn UninitializedArmProbe + 'probe>, (Self, DebugProbeError)> {
         if !self.attached {
             Err((self, DebugProbeError::NotAttached))
         } else {
@@ -423,6 +364,10 @@ impl Probe {
 
     pub fn get_swo_interface_mut(&mut self) -> Option<&mut dyn SwoAccess> {
         self.inner.get_swo_interface_mut()
+    }
+
+    pub fn try_as_dap_probe(&mut self) -> Option<&mut dyn DapProbe> {
+        self.inner.try_as_dap_probe()
     }
 }
 
@@ -487,7 +432,8 @@ pub trait DebugProbe: Send + fmt::Debug {
     /// probe actually supports this, call [DebugProbe::has_arm_interface] first.
     fn try_get_arm_interface<'probe>(
         self: Box<Self>,
-    ) -> Result<Box<dyn ArmProbeInterface + 'probe>, (Box<dyn DebugProbe>, DebugProbeError)> {
+    ) -> Result<Box<dyn UninitializedArmProbe + 'probe>, (Box<dyn DebugProbe>, DebugProbeError)>
+    {
         Err((
             self.into_probe(),
             DebugProbeError::InterfaceNotAvailable("ARM"),
@@ -519,6 +465,10 @@ pub trait DebugProbe: Send + fmt::Debug {
     }
 
     fn into_probe(self: Box<Self>) -> Box<dyn DebugProbe>;
+
+    fn try_as_dap_probe(&mut self) -> Option<&mut dyn DapProbe> {
+        None
+    }
 
     /// Reads the target voltage in Volts, if possible. Returns `Ok(None)`
     /// if the probe doesn’t support reading the target voltage.
@@ -678,239 +628,6 @@ impl fmt::Display for DebugProbeSelector {
             write!(f, ":{}", sn)?;
         }
         Ok(())
-    }
-}
-
-#[derive(Debug)]
-pub struct FakeProbe {
-    protocol: WireProtocol,
-    speed: u32,
-}
-
-impl FakeProbe {
-    pub fn new() -> Self {
-        FakeProbe {
-            protocol: WireProtocol::Swd,
-            speed: 1000,
-        }
-    }
-}
-
-impl Default for FakeProbe {
-    fn default() -> Self {
-        FakeProbe::new()
-    }
-}
-
-impl DebugProbe for FakeProbe {
-    fn new_from_selector(
-        _selector: impl Into<DebugProbeSelector>,
-    ) -> Result<Box<Self>, DebugProbeError>
-    where
-        Self: Sized,
-    {
-        Ok(Box::new(FakeProbe::new()))
-    }
-
-    /// Get human readable name for the probe
-    fn get_name(&self) -> &str {
-        "Mock probe for testing"
-    }
-
-    fn speed(&self) -> u32 {
-        self.speed
-    }
-
-    fn set_speed(&mut self, speed_khz: u32) -> Result<u32, DebugProbeError> {
-        self.speed = speed_khz;
-
-        Ok(speed_khz)
-    }
-
-    fn attach(&mut self) -> Result<(), DebugProbeError> {
-        Ok(())
-    }
-
-    fn select_protocol(&mut self, protocol: WireProtocol) -> Result<(), DebugProbeError> {
-        self.protocol = protocol;
-
-        Ok(())
-    }
-
-    /// Leave debug mode
-    fn detach(&mut self) -> Result<(), DebugProbeError> {
-        Ok(())
-    }
-
-    /// Resets the target device.
-    fn target_reset(&mut self) -> Result<(), DebugProbeError> {
-        Err(DebugProbeError::CommandNotSupportedByProbe)
-    }
-
-    fn target_reset_assert(&mut self) -> Result<(), DebugProbeError> {
-        unimplemented!()
-    }
-
-    fn target_reset_deassert(&mut self) -> Result<(), DebugProbeError> {
-        unimplemented!()
-    }
-
-    fn into_probe(self: Box<Self>) -> Box<dyn DebugProbe> {
-        self
-    }
-
-    fn has_arm_interface(&self) -> bool {
-        true
-    }
-
-    fn try_get_arm_interface<'probe>(
-        self: Box<Self>,
-    ) -> Result<Box<dyn ArmProbeInterface + 'probe>, (Box<dyn DebugProbe>, DebugProbeError)> {
-        Ok(Box::new(FakeArmInterface::new(self)))
-    }
-}
-
-impl RawDapAccess for FakeProbe {
-    fn select_dp(&mut self, _dp: DpAddress) -> Result<(), DebugProbeError> {
-        Err(DebugProbeError::CommandNotSupportedByProbe)
-    }
-
-    /// Reads the DAP register on the specified port and address
-    fn raw_read_register(&mut self, _port: PortType, _addr: u8) -> Result<u32, DebugProbeError> {
-        Err(DebugProbeError::CommandNotSupportedByProbe)
-    }
-
-    /// Writes a value to the DAP register on the specified port and address
-    fn raw_write_register(
-        &mut self,
-        _port: PortType,
-        _addr: u8,
-        _value: u32,
-    ) -> Result<(), DebugProbeError> {
-        Err(DebugProbeError::CommandNotSupportedByProbe)
-    }
-}
-
-#[derive(Debug)]
-struct FakeArmInterface {
-    probe: Box<FakeProbe>,
-
-    memory_ap: MockMemoryAp,
-}
-
-impl FakeArmInterface {
-    fn new(probe: Box<FakeProbe>) -> Self {
-        let memory_ap = MockMemoryAp::with_pattern();
-        FakeArmInterface { probe, memory_ap }
-    }
-}
-
-impl ArmProbeInterface for FakeArmInterface {
-    fn memory_interface(&mut self, access_port: MemoryAp) -> Result<Memory<'_>, Error> {
-        let ap_information = MemoryApInformation {
-            address: access_port.ap_address(),
-            only_32bit_data_size: false,
-            debug_base_address: 0xf000_0000,
-            supports_hnonsec: false,
-        };
-
-        let memory = ADIMemoryInterface::new(&mut self.memory_ap, &ap_information)?;
-
-        Ok(Memory::new(memory, access_port))
-    }
-
-    fn ap_information(
-        &mut self,
-        _access_port: crate::architecture::arm::ap::GenericAp,
-    ) -> Result<&crate::architecture::arm::ApInformation, Error> {
-        todo!()
-    }
-
-    fn num_access_ports(&mut self, _dp: DpAddress) -> Result<usize, Error> {
-        Ok(1)
-    }
-
-    fn read_from_rom_table(
-        &mut self,
-        _dp: DpAddress,
-    ) -> Result<Option<crate::architecture::arm::ArmChipInfo>, Error> {
-        Ok(None)
-    }
-
-    fn close(self: Box<Self>) -> Probe {
-        Probe::from_attached_probe(self.probe)
-    }
-
-    fn target_reset_deassert(&mut self) -> Result<(), Error> {
-        todo!()
-    }
-}
-
-impl DapAccess for FakeArmInterface {
-    fn read_raw_dp_register(
-        &mut self,
-        _dp: DpAddress,
-        _address: u8,
-    ) -> Result<u32, DebugProbeError> {
-        todo!()
-    }
-
-    fn write_raw_dp_register(
-        &mut self,
-        _dp: DpAddress,
-        _address: u8,
-        _value: u32,
-    ) -> Result<(), DebugProbeError> {
-        todo!()
-    }
-
-    fn read_raw_ap_register(
-        &mut self,
-        _ap: ApAddress,
-        _address: u8,
-    ) -> Result<u32, DebugProbeError> {
-        todo!()
-    }
-
-    fn read_raw_ap_register_repeated(
-        &mut self,
-        _ap: ApAddress,
-        _address: u8,
-        _values: &mut [u32],
-    ) -> Result<(), DebugProbeError> {
-        todo!()
-    }
-
-    fn write_raw_ap_register(
-        &mut self,
-        _ap: ApAddress,
-        _address: u8,
-        _value: u32,
-    ) -> Result<(), DebugProbeError> {
-        todo!()
-    }
-
-    fn write_raw_ap_register_repeated(
-        &mut self,
-        _ap: ApAddress,
-        _address: u8,
-        _values: &[u32],
-    ) -> Result<(), DebugProbeError> {
-        todo!()
-    }
-}
-
-impl SwoAccess for FakeArmInterface {
-    fn enable_swo(&mut self, _config: &crate::architecture::arm::SwoConfig) -> Result<(), Error> {
-        unimplemented!()
-    }
-
-    fn disable_swo(&mut self) -> Result<(), Error> {
-        unimplemented!()
-    }
-
-    fn read_swo_timeout(&mut self, _timeout: std::time::Duration) -> Result<Vec<u8>, Error> {
-        unimplemented!()
     }
 }
 

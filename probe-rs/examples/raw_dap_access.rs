@@ -1,6 +1,6 @@
 use anyhow::Result;
 use probe_rs::{
-    architecture::arm::{ApAddress, DpAddress},
+    architecture::arm::{sequences::DefaultArmSequence, ApAddress, DpAddress},
     Probe,
 };
 
@@ -14,7 +14,9 @@ fn main() -> Result<()> {
     let mut probe = probes[0].open()?;
 
     probe.attach_to_unspecified()?;
-    let mut iface = probe.try_into_arm_interface().unwrap();
+    let iface = probe.try_into_arm_interface().unwrap();
+
+    let mut iface = iface.initialize(DefaultArmSequence::new())?;
 
     // This is an example on how to do a "recover" operation (erase+unlock a locked chip)
     // on an nRF52840 target.

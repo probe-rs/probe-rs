@@ -4,6 +4,7 @@ use probe_rs::{
             ap::{GenericAp, MemoryAp},
             m0::Demcr,
             memory::Component,
+            sequences::DefaultArmSequence,
             ApAddress, ApInformation, ArmProbeInterface, DpAddress, MemoryApInformation,
         },
         riscv::communication_interface::RiscvCommunicationInterface,
@@ -55,7 +56,11 @@ fn try_show_info(mut probe: Probe, protocol: WireProtocol) -> (Probe, Result<()>
 
     if probe.has_arm_interface() {
         match probe.try_into_arm_interface() {
-            Ok(mut interface) => {
+            Ok(interface) => {
+                let mut interface = interface
+                    .initialize(DefaultArmSequence::new())
+                    .expect("This should not be an unwrap...");
+
                 if let Err(e) = show_arm_info(&mut interface) {
                     // Log error?
                     log::warn!("Error showing ARM chip information: {}", e);

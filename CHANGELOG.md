@@ -23,6 +23,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Improved handling of errors in CMSIS-DAP commands (#745).
 - Bumped dependencies `bitvec 0.19.4`to `bitvec 0.22`, `nom 6.0.0` to `nom 7.0.0-alpha1`. (#756)
 
+- `DebugProbeError::CommandNotSupportedByProbe` now holds a name string of the unsupported command.
+
 ### Fixed
 - Detect proper USB HID interface to use for CMSIS-DAP v1 probes. Without this, CMSIS-DAP probes with multiple HID interfaces, e.g. MCUlink, were not working properly on MacOS (#722).
 - When reading from a HID device, check number of bytes returned to detect USB HID timeouts.

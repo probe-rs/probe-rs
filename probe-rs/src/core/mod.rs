@@ -1,12 +1,14 @@
 pub(crate) mod communication_interface;
 
 pub use communication_interface::CommunicationInterface;
+use probe_rs_target::CoreType;
 
 use crate::architecture::{
     arm::core::CortexState, riscv::communication_interface::RiscvCommunicationInterface,
 };
-use crate::config::CoreType;
-use crate::{error, Error, Memory, MemoryInterface};
+use crate::error;
+use crate::Target;
+use crate::{Error, Memory, MemoryInterface};
 use anyhow::{anyhow, Result};
 use std::time::Duration;
 
@@ -227,6 +229,10 @@ impl CoreState {
     pub fn new(id: usize) -> Self {
         Self { id }
     }
+
+    pub fn id(&self) -> usize {
+        self.id
+    }
 }
 
 #[derive(Debug)]
@@ -262,24 +268,39 @@ impl SpecificCoreState {
         }
     }
 
-    pub(crate) fn attach_arm<'probe>(
+    pub(crate) fn attach_arm<'probe, 'target: 'probe>(
         &'probe mut self,
         state: &'probe mut CoreState,
         memory: Memory<'probe>,
+        target: &'target Target,
     ) -> Result<Core<'probe>, Error> {
+        let debug_sequence = match &target.debug_sequence {
+            crate::config::DebugSequence::Arm(sequence) => sequence.clone(),
+            crate::config::DebugSequence::Riscv => {
+                return Err(Error::UnableToOpenProbe(
+                    "Core architecture and Probe mismatch.",
+                ))
+            }
+        };
+
         Ok(match self {
             // TODO: Change this once the new archtecture structure for ARM hits.
             // Cortex-M3, M4 and M7 use the Armv7[E]-M architecture and are
             // identical for our purposes.
             SpecificCoreState::M3(s) | SpecificCoreState::M4(s) | SpecificCoreState::M7(s) => {
-                Core::new(crate::architecture::arm::m4::M4::new(memory, s)?, state)
+                Core::new(
+                    crate::architecture::arm::m4::M4::new(memory, s, debug_sequence)?,
+                    state,
+                )
             }
-            SpecificCoreState::M33(s) => {
-                Core::new(crate::architecture::arm::m33::M33::new(memory, s)?, state)
-            }
-            SpecificCoreState::M0(s) => {
-                Core::new(crate::architecture::arm::m0::M0::new(memory, s)?, state)
-            }
+            SpecificCoreState::M33(s) => Core::new(
+                crate::architecture::arm::m33::M33::new(memory, s, debug_sequence)?,
+                state,
+            ),
+            SpecificCoreState::M0(s) => Core::new(
+                crate::architecture::arm::m0::M0::new(memory, s, debug_sequence)?,
+                state,
+            ),
             _ => {
                 return Err(Error::UnableToOpenProbe(
                     "Core architecture and Probe mismatch.",

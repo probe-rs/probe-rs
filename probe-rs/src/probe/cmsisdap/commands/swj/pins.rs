@@ -1,4 +1,5 @@
 use super::super::{CommandId, Request, SendError};
+use crate::architecture::arm::Pins;
 
 pub struct SWJPinsRequest {
     /// A mask of the values the different pins selected in the selection mask will be set to.
@@ -7,6 +8,16 @@ pub struct SWJPinsRequest {
     pub(crate) select: Pins,
     /// A timeout to wait for until the pin state is read back.
     pub(crate) wait: u32,
+}
+
+impl SWJPinsRequest {
+    pub fn from_raw_values(pin_out: u8, pin_select: u8, pin_wait: u32) -> Self {
+        Self {
+            output: Pins(pin_out),
+            select: Pins(pin_select),
+            wait: pin_wait,
+        }
+    }
 }
 
 #[derive(Debug, Default)]
@@ -97,18 +108,6 @@ impl SWJPinsRequestBuilder {
             wait: self.timeout,
         }
     }
-}
-
-bitfield::bitfield! {
-    #[derive(Copy, Clone)]
-    pub struct Pins(u8);
-    impl Debug;
-    pub nreset, set_nreset: 7;
-    pub ntrst, set_ntrst: 5;
-    pub tdo, set_tdo: 3;
-    pub tdi, set_tdi: 2;
-    pub swdio_tms, set_swdio_tms: 1;
-    pub swclk_tck, set_swclk_tck: 0;
 }
 
 impl Request for SWJPinsRequest {

@@ -7,6 +7,21 @@
         {
             "type": "lldb",
             "request": "launch",
+            "name": "Launch smoke tester",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--package=smoke_tester"
+                ]
+            },
+            "program": "${cargo:program}",
+            "args": [
+                "--dut-definitions=../dut-definitions/"
+            ]
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
             "name": "CLI probe-rs-debugger", //Use this to test the CLI version
             "cargo": {
                 "args": [
@@ -33,7 +48,7 @@
                 "swd",
                 "--connect-under-reset",
                 "--flashing-enabled",
-                "--reset-after-flashing"                ,
+                "--reset-after-flashing",
                 "--halt-after-reset",
                 "--console-log-level",
                 "Info"
