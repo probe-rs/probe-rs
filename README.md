@@ -217,8 +217,9 @@ Check if your device shows up in `lsusb`:
 ```console
 $ lsusb
 Bus 001 Device 008: ID 1366:1015 SEGGER J-Link
-# if your device shows up like this ^^^^^^^^, skip to the next troubleshooting section
 ```
+
+If your device shows up like in the example, skip to the next troubleshooting section
 
 **If it doesn't show up**, you need to give your system permission to access the device as a non-root user so that `probe-run` can find your device.
 
