@@ -174,7 +174,7 @@ impl RttActiveChannel {
         if let Some(down_channel) = self.down_channel.as_mut() {
             self.input_data += "\n";
             down_channel
-                .write(core, &self.input_data.as_bytes())
+                .write(core, self.input_data.as_bytes())
                 .unwrap();
             self.input_data.clear();
         }
@@ -269,7 +269,7 @@ impl RttActiveTarget {
     pub fn get_rtt_symbol<T: Read + Seek>(file: &mut T) -> Option<u64> {
         let mut buffer = Vec::new();
         if file.read_to_end(&mut buffer).is_ok() {
-            if let Ok(binary) = goblin::elf::Elf::parse(&buffer.as_slice()) {
+            if let Ok(binary) = goblin::elf::Elf::parse(buffer.as_slice()) {
                 for sym in &binary.syms {
                     if let Some(name) = binary.strtab.get_at(sym.st_name) {
                         if name == "_SEGGER_RTT" {

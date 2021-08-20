@@ -131,7 +131,7 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
                 true
             }
             Err(error) => {
-                self.send_response::<()>(&request, Err(DebuggerError::Other(anyhow!("{}", error))))
+                self.send_response::<()>(request, Err(DebuggerError::Other(anyhow!("{}", error))))
             }
         }
 
