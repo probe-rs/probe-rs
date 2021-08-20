@@ -1,4 +1,4 @@
-use super::super::{Category, Request, Response, SendError};
+use super::super::{CommandId, Request, SendError};
 use crate::architecture::arm::Pins;
 
 pub struct SWJPinsRequest {
@@ -111,27 +111,27 @@ impl SWJPinsRequestBuilder {
 }
 
 impl Request for SWJPinsRequest {
-    const CATEGORY: Category = Category(0x10);
+    const COMMAND_ID: CommandId = CommandId::SwjPins;
 
-    fn to_bytes(&self, buffer: &mut [u8], offset: usize) -> Result<usize, SendError> {
+    type Response = SWJPinsResponse;
+
+    fn to_bytes(&self, buffer: &mut [u8]) -> Result<usize, SendError> {
         use scroll::{Pwrite, LE};
 
         buffer
-            .pwrite_with(self.output.0, offset, LE)
-            .expect("This is a bug. Please report it.");
+            .pwrite_with(self.output.0, 0, LE)
+            .expect("Buffer for CMSIS-DAP command is too small. This is a bug, please report it.");
         buffer
-            .pwrite_with(self.select.0, offset + 1, LE)
-            .expect("This is a bug. Please report it.");
+            .pwrite_with(self.select.0, 1, LE)
+            .expect("Buffer for CMSIS-DAP command is too small. This is a bug, please report it.");
         buffer
-            .pwrite_with(self.wait, offset + 2, LE)
-            .expect("This is a bug. Please report it.");
+            .pwrite_with(self.wait, 2, LE)
+            .expect("Buffer for CMSIS-DAP command is too small. This is a bug, please report it.");
         Ok(6)
     }
-}
 
-impl Response for Pins {
-    fn from_bytes(buffer: &[u8], offset: usize) -> Result<Self, SendError> {
-        Ok(Pins(buffer[offset]))
+    fn from_bytes(&self, buffer: &[u8]) -> Result<Self::Response, SendError> {
+        Ok(Pins(buffer[0]))
     }
 }
 

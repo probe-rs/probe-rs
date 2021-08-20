@@ -4,19 +4,20 @@ pub mod swj;
 pub mod swo;
 pub mod transfer;
 
-use crate::architecture::arm::DapError;
+use crate::probe::cmsisdap::commands::general::info::PacketSizeCommand;
 use crate::DebugProbeError;
-use core::ops::Deref;
+use std::str::Utf8Error;
 use std::time::Duration;
 
 use log::log_enabled;
 
-use general::info::{Command, PacketSize};
-
 #[derive(Debug, thiserror::Error)]
 pub enum CmsisDapError {
-    #[error(transparent)]
-    Send(#[from] SendError),
+    #[error("Error handling CMSIS-DAP command {command_id:?}")]
+    Send {
+        command_id: CommandId,
+        source: SendError,
+    },
     #[error("CMSIS-DAP responded with an error")]
     ErrorResponse,
     #[error("Too much data provided for SWJ Sequence command")]
@@ -27,10 +28,10 @@ pub enum CmsisDapError {
     SwoTraceStreamError,
     #[error("Requested SWO mode is not available on this probe")]
     SwoModeNotAvailable,
+    #[error("USB Error reading SWO data.")]
+    SwoReadError(#[source] rusb::Error),
     #[error("Could not determine a suitable packet size for this probe")]
     NoPacketSize,
-    #[error("An error with the DAP communication occured")]
-    Dap(#[from] DapError),
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -42,19 +43,21 @@ pub enum SendError {
     #[error("Not enough data in response from probe")]
     NotEnoughData,
     #[error("Status can only be 0x00 or 0xFF")]
-    NonZeroOrFF,
+    InvalidResponseStatus,
     #[error("Connecting to target failed, received: {0:x}")]
     ConnectResponseError(u8),
-    #[error("Received invalid data for {0:?}")]
-    InvalidDataFor(u8),
+    #[error("Command ID in response (:#02x) does not match sent command ID")]
+    CommandIdMismatch(u8),
+    /// String in response is not valid UTF-8.
+    ///
+    /// Strings are required to be UTF-8 encoded by the
+    /// CMSIS-DAP specification.
+    #[error("String in response is not valid UTF-8.")]
+    InvalidString(#[from] Utf8Error),
     #[error("Unexpected answer to command")]
     UnexpectedAnswer,
-    #[error("Failed to write word at data_offset {0}. This is a bug. Please report it.")]
-    WriteToOffsetBug(usize),
     #[error("Timeout in USB communication.")]
     Timeout,
-    #[error("This is a bug. Please report it.")]
-    Bug,
 }
 
 impl From<rusb::Error> for SendError {
@@ -190,18 +193,21 @@ impl CmsisDapDevice {
     pub(super) fn find_packet_size(&mut self) -> Result<usize, CmsisDapError> {
         for repeat in 0..16 {
             log::debug!("Attempt {} to find packet size", repeat + 1);
-            match send_command(self, Command::PacketSize) {
-                Ok(PacketSize(size)) => {
+            match send_command(self, PacketSizeCommand {}) {
+                Ok(size) => {
                     log::debug!("Success: packet size is {}", size);
                     self.set_packet_size(size as usize);
                     return Ok(size as usize);
                 }
 
                 // Ignore timeouts and retry.
-                Err(SendError::Timeout) => (),
+                Err(CmsisDapError::Send {
+                    source: SendError::Timeout,
+                    ..
+                }) => (),
 
                 // Raise other errors.
-                Err(e) => return Err(e.into()),
+                Err(e) => return Err(e),
             }
         }
 
@@ -237,7 +243,7 @@ impl CmsisDapDevice {
                             buf.truncate(0);
                             Ok(buf)
                         }
-                        Err(e) => Err(SendError::from(e).into()),
+                        Err(e) => Err(CmsisDapError::SwoReadError(e)),
                     }
                 }
                 None => Err(CmsisDapError::SwoModeNotAvailable),
@@ -257,37 +263,78 @@ impl Status {
         match value {
             0x00 => Ok(Status::DAPOk),
             0xFF => Ok(Status::DAPError),
-            _ => Err(SendError::NonZeroOrFF),
+            _ => Err(SendError::InvalidResponseStatus),
         }
     }
 }
 
-pub(crate) struct Category(u8);
-
-impl Deref for Category {
-    type Target = u8;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
+/// Command ID for CMSIS-DAP commands.
+///
+/// The command ID is always sent as the first byte for every command,
+/// and also is the first byte of every response.
+#[derive(Debug)]
+pub enum CommandId {
+    Info = 0x00,
+    HostStatus = 0x01,
+    Connect = 0x02,
+    Disconnect = 0x03,
+    WriteAbort = 0x08,
+    Delay = 0x09,
+    ResetTarget = 0x0A,
+    SwjPins = 0x10,
+    SwjClock = 0x11,
+    SwjSequence = 0x12,
+    SwdConfigure = 0x13,
+    SwdSequence = 0x1D,
+    SwoTransport = 0x17,
+    SwoMode = 0x18,
+    SwoBaudrate = 0x19,
+    SwoControl = 0x1A,
+    SwoStatus = 0x1B,
+    SwoExtendedStatus = 0x1E,
+    SwoData = 0x1C,
+    JtagSequence = 0x14,
+    JtagConfigure = 0x15,
+    JtagIdcode = 0x16,
+    TransferConfigure = 0x04,
+    Transfer = 0x05,
+    TransferBlock = 0x06,
+    TransferAbort = 0x07,
+    ExecuteCommands = 0x7F,
+    QueueCommands = 0x7E,
+    UartTransport = 0x1F,
+    UartConfigure = 0x20,
+    UartControl = 0x22,
+    UartStatus = 0x23,
+    UartTransfer = 0x21,
 }
 
 pub(crate) trait Request {
-    const CATEGORY: Category;
+    const COMMAND_ID: CommandId;
+
+    type Response;
 
     /// Convert the request to bytes, which can be sent to the probe.
     /// Returns the amount of bytes written to the buffer.
-    fn to_bytes(&self, buffer: &mut [u8], offset: usize) -> Result<usize, SendError>;
+    fn to_bytes(&self, buffer: &mut [u8]) -> Result<usize, SendError>;
+
+    fn from_bytes(&self, buffer: &[u8]) -> Result<Self::Response, SendError>;
 }
 
-pub(crate) trait Response: Sized {
-    fn from_bytes(buffer: &[u8], offset: usize) -> Result<Self, SendError>;
-}
-
-pub(crate) fn send_command<Req: Request, Res: Response>(
+pub(crate) fn send_command<Req: Request>(
     device: &mut CmsisDapDevice,
     request: Req,
-) -> Result<Res, SendError> {
+) -> Result<Req::Response, CmsisDapError> {
+    send_command_inner(device, request).map_err(|e| CmsisDapError::Send {
+        command_id: Req::COMMAND_ID,
+        source: e,
+    })
+}
+
+fn send_command_inner<Req: Request>(
+    device: &mut CmsisDapDevice,
+    request: Req,
+) -> Result<Req::Response, SendError> {
     // Size the buffer for the maximum packet size.
     // On v1, we always send this full-sized report, while
     // on v2 we can truncate to just the required data.
@@ -301,8 +348,8 @@ pub(crate) fn send_command<Req: Request, Res: Response>(
     let mut buffer = vec![0; buffer_len];
 
     // Leave byte 0 as the HID report, and write the command and request to the buffer.
-    buffer[1] = *Req::CATEGORY;
-    let mut size = request.to_bytes(&mut buffer, 2)? + 2;
+    buffer[1] = Req::COMMAND_ID as u8;
+    let mut size = request.to_bytes(&mut buffer[2..])? + 2;
 
     // For HID devices we must write a full report every time,
     // so set the transfer size to the report size, plus one
@@ -325,10 +372,10 @@ pub(crate) fn send_command<Req: Request, Res: Response>(
         return Err(SendError::NotEnoughData);
     }
 
-    if response_data[0] == *Req::CATEGORY {
-        Res::from_bytes(response_data, 1)
+    if response_data[0] == Req::COMMAND_ID as u8 {
+        request.from_bytes(&response_data[1..])
     } else {
-        Err(SendError::InvalidDataFor(*Req::CATEGORY))
+        Err(SendError::CommandIdMismatch(response_data[0]))
     }
 }
 

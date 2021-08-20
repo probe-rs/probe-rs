@@ -756,7 +756,7 @@ impl<D: StLinkUsb> StLink<D> {
             self.select_ap(port as u8)?;
         }
 
-        let port = u16::from(port).to_le_bytes();
+        let port = port.to_le_bytes();
 
         let cmd = &[
             commands::JTAG_COMMAND,
@@ -782,7 +782,7 @@ impl<D: StLinkUsb> StLink<D> {
             self.select_ap(port as u8)?;
         }
 
-        let port = u16::from(port).to_le_bytes();
+        let port = port.to_le_bytes();
         let bytes = value.to_le_bytes();
 
         let cmd = &[
@@ -957,7 +957,7 @@ impl<D: StLinkUsb> StLink<D> {
                 lenbytes[1],
                 apsel,
             ],
-            &data,
+            data,
             &mut [],
             TIMEOUT,
         )?;
@@ -1221,7 +1221,7 @@ impl StlinkArmDebug {
 impl DapAccess for StlinkArmDebug {
     fn read_raw_dp_register(&mut self, dp: DpAddress, address: u8) -> Result<u32, DebugProbeError> {
         if dp != DpAddress::Default {
-            Err(StlinkError::MultidropNotSupported)?;
+            return Err(StlinkError::MultidropNotSupported.into());
         }
         let result = self.probe.read_register(DP_PORT, address)?;
         Ok(result)
@@ -1234,7 +1234,7 @@ impl DapAccess for StlinkArmDebug {
         value: u32,
     ) -> Result<(), DebugProbeError> {
         if dp != DpAddress::Default {
-            Err(StlinkError::MultidropNotSupported)?;
+            return Err(StlinkError::MultidropNotSupported.into());
         }
 
         self.probe.write_register(DP_PORT, address, value)?;
@@ -1243,7 +1243,7 @@ impl DapAccess for StlinkArmDebug {
 
     fn read_raw_ap_register(&mut self, ap: ApAddress, address: u8) -> Result<u32, DebugProbeError> {
         if ap.dp != DpAddress::Default {
-            Err(StlinkError::MultidropNotSupported)?;
+            return Err(StlinkError::MultidropNotSupported.into());
         }
 
         self.probe.read_register(ap.ap as u16, address)
@@ -1256,7 +1256,7 @@ impl DapAccess for StlinkArmDebug {
         value: u32,
     ) -> Result<(), DebugProbeError> {
         if ap.dp != DpAddress::Default {
-            Err(StlinkError::MultidropNotSupported)?;
+            return Err(StlinkError::MultidropNotSupported.into());
         }
 
         self.probe.write_register(ap.ap as u16, address, value)
@@ -1277,7 +1277,7 @@ impl<'probe> ArmProbeInterface for StlinkArmDebug {
     {
         let addr = access_port.ap_address();
         if addr.dp != DpAddress::Default {
-            Err(DebugProbeError::from(StlinkError::MultidropNotSupported))?;
+            return Err(DebugProbeError::from(StlinkError::MultidropNotSupported).into());
         }
 
         match self.ap_information.get(addr.ap as usize) {
@@ -1291,7 +1291,7 @@ impl<'probe> ArmProbeInterface for StlinkArmDebug {
         dp: DpAddress,
     ) -> Result<Option<crate::architecture::arm::ArmChipInfo>, ProbeRsError> {
         if dp != DpAddress::Default {
-            Err(DebugProbeError::from(StlinkError::MultidropNotSupported))?;
+            return Err(DebugProbeError::from(StlinkError::MultidropNotSupported).into());
         }
 
         for access_port in valid_access_ports(self, dp) {
@@ -1328,7 +1328,7 @@ impl<'probe> ArmProbeInterface for StlinkArmDebug {
 
     fn num_access_ports(&mut self, dp: DpAddress) -> Result<usize, ProbeRsError> {
         if dp != DpAddress::Default {
-            Err(DebugProbeError::from(StlinkError::MultidropNotSupported))?;
+            return Err(DebugProbeError::from(StlinkError::MultidropNotSupported).into());
         }
 
         Ok(self.ap_information.len())

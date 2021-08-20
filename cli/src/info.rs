@@ -1,5 +1,3 @@
-use crate::{common::open_probe, SharedOptions};
-
 use probe_rs::{
     architecture::{
         arm::{
@@ -15,11 +13,12 @@ use probe_rs::{
 };
 
 use anyhow::Result;
+use probe_rs_cli_util::common_options::ProbeOptions;
 
-pub(crate) fn show_info_of_device(shared_options: &SharedOptions) -> Result<()> {
-    let mut probe = open_probe(shared_options.n)?;
+pub(crate) fn show_info_of_device(common: &ProbeOptions) -> Result<()> {
+    let mut probe = common.attach_probe()?;
 
-    let protocols = if let Some(protocol) = shared_options.protocol {
+    let protocols = if let Some(protocol) = common.protocol {
         vec![protocol]
     } else {
         vec![WireProtocol::Jtag, WireProtocol::Swd]

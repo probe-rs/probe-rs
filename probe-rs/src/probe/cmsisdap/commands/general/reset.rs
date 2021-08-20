@@ -1,13 +1,22 @@
-use super::super::{Category, Request, Response, SendError, Status};
+use super::super::{CommandId, Request, SendError, Status};
 
 #[derive(Debug)]
 pub struct ResetRequest;
 
 impl Request for ResetRequest {
-    const CATEGORY: Category = Category(0x0A);
+    const COMMAND_ID: CommandId = CommandId::ResetTarget;
 
-    fn to_bytes(&self, _buffer: &mut [u8], _offset: usize) -> Result<usize, SendError> {
+    type Response = ResetResponse;
+
+    fn to_bytes(&self, _buffer: &mut [u8]) -> Result<usize, SendError> {
         Ok(0)
+    }
+
+    fn from_bytes(&self, buffer: &[u8]) -> Result<Self::Response, SendError> {
+        Ok(ResetResponse {
+            status: Status::from_byte(buffer[0])?,
+            execute: Execute::from_byte(buffer[1])?,
+        })
     }
 }
 
@@ -32,13 +41,4 @@ impl Execute {
 pub(crate) struct ResetResponse {
     pub status: Status,
     pub execute: Execute,
-}
-
-impl Response for ResetResponse {
-    fn from_bytes(buffer: &[u8], offset: usize) -> Result<Self, SendError> {
-        Ok(ResetResponse {
-            status: Status::from_byte(buffer[offset])?,
-            execute: Execute::from_byte(buffer[offset + 1])?,
-        })
-    }
 }

@@ -36,7 +36,7 @@ pub async fn worker(
             potential_packet = input_stream.next().fuse() => {
                 if let Some(packet) = potential_packet {
                     log::warn!("WORKING {}", String::from_utf8_lossy(&packet.data));
-                    if handler(&session, &output_stream, &mut awaits_halt, packet).await? {
+                    if handler(session, &output_stream, &mut awaits_halt, packet).await? {
                         break;
                     }
                 } else {

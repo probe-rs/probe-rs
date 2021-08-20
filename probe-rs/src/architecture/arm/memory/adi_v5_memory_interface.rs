@@ -576,7 +576,7 @@ where
 
         // Copy input data into buffer at the correct location
         let start = (address - aligned.start) as usize;
-        buf8[start..start + data.len()].copy_from_slice(&data);
+        buf8[start..start + data.len()].copy_from_slice(data);
 
         // Convert buffer to 32-bit words
         let mut buf32 = vec![0u32; aligned.len() / 4];

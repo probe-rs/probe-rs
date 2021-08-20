@@ -5,6 +5,7 @@ use crate::debug_adapter::*;
 use crate::DebuggerError;
 use anyhow::{anyhow, Result};
 use capstone::{arch::arm::ArchMode, prelude::*, Capstone, Endian};
+use log::info;
 use probe_rs::debug::DebugInfo;
 use probe_rs::flashing::{download_file, download_file_with_options, DownloadOptions, Format};
 use probe_rs::{config::TargetSelector, ProbeCreationError};
@@ -487,10 +488,8 @@ impl Debugger {
                 - If the `new_status` is an Err, then the probe is no longer available, and we  end the debugging session
                 - If the `new_status` is different from the `LAST_KNOWN_STATUS`, then we have to tell the DAP-Client by way of an `Event`
                 - If the `new_status` is `Running`, then we have to poll on a regular basis, until the Probe stops for good reasons like breakpoints, or bad reasons like panics. Then tell the DAP-Client.
-                - TODO: Figure out CPU/Comms overhead costs to determine optimal polling intervals
                 */
-                let last_known_status = debug_adapter.last_known_status;
-                match last_known_status {
+                match debug_adapter.last_known_status {
                     CoreStatus::Unknown => true,
                     _other => {
                         let mut core_data = match attach_core(session_data, &self.debugger_options)
@@ -512,9 +511,11 @@ impl Debugger {
                             }
                         };
 
-                        if new_status == last_known_status {
-                            thread::sleep(Duration::from_millis(50)); //small delay to reduce fast looping costs
+                        if new_status == debug_adapter.last_known_status {
+                            thread::sleep(Duration::from_millis(50)); //small delay to reduce fast looping costs. Do not change this, else RTT polling will be negatively impacted / delayed.
                             return true;
+                        } else {
+                            debug_adapter.last_known_status = new_status;
                         };
 
                         match new_status {
@@ -560,7 +561,6 @@ impl Debugger {
                                 return false;
                             }
                         };
-                        debug_adapter.last_known_status = new_status;
                         true
                     }
                 }
@@ -592,7 +592,52 @@ impl Debugger {
                                 return false;
                             }
                         };
+                        // For some operations, we need to make sure the core isn't sleeping, by calling `Core::halt()`
+                        // When we do this, we need to flag it (`unhalt_me = true`), and later call `Core::run()` again.
+                        // NOTE: the target will exit sleep mode as a result of this command.
+                        let mut unhalt_me = false;
                         match valid_command.function_name {
+                            "set_breakpoint" | "set_breakpoints" | "clear_breakpoint"
+                            | "stack_trace" | "threads" | "scopes" | "variables"
+                            | "read_memory" | "write" | "source" => {
+                                match core_data.target_core.status() {
+                                    Ok(current_status) => {
+                                        if current_status == CoreStatus::Sleeping {
+                                            match core_data
+                                                .target_core
+                                                .halt(Duration::from_millis(100))
+                                            {
+                                                Ok(_) => {
+                                                    debug_adapter.last_known_status =
+                                                        CoreStatus::Halted(
+                                                            probe_rs::HaltReason::Request,
+                                                        );
+                                                    unhalt_me = true;
+                                                }
+                                                Err(error) => {
+                                                    debug_adapter.send_response::<()>(
+                                                        &request,
+                                                        Err(DebuggerError::Other(anyhow!(
+                                                            "{}", error
+                                                        ))),
+                                                    );
+                                                    return false;
+                                                }
+                                            }
+                                        }
+                                    }
+                                    Err(error) => {
+                                        debug_adapter.send_response::<()>(
+                                            &request,
+                                            Err(DebuggerError::ProbeRs(error)),
+                                        );
+                                        return false;
+                                    }
+                                }
+                            }
+                            _ => {}
+                        }
+                        let command_status = match valid_command.function_name {
                             "status" => debug_adapter.status(&mut core_data, &request),
                             "next" => debug_adapter.next(&mut core_data, &request),
                             "pause" => debug_adapter.pause(&mut core_data, &request),
@@ -632,20 +677,33 @@ impl Debugger {
                                 );
                                 true
                             }
+                        };
+                        if unhalt_me {
+                            match core_data.target_core.run() {
+                                Ok(_) => {}
+                                Err(error) => {
+                                    debug_adapter.send_response::<()>(
+                                        &request,
+                                        Err(DebuggerError::Other(anyhow!("{}", error))),
+                                    );
+                                    return false;
+                                }
+                            }
                         }
+                        command_status
                     }
                     None => {
                         //Unimplemented command
                         if debug_adapter.adapter_type == DebugAdapterType::DapClient {
                             debug_adapter.log_to_console(format!(
-                                "Received unsupported request '{}'\n",
+                                "ERROR: Received unsupported request '{}'\n",
                                 command_lookup
                             ));
                             debug_adapter
                                     .send_response::<()>(
                                         &request,
                                         Err(DebuggerError::Other(anyhow!(
-                                        "Received request '{}', which is not supported or not implemented yet",
+                                        "ERROR: Received request '{}', which is not supported or not implemented yet",
                                         command_lookup
                                     )
                                         )),
@@ -751,8 +809,8 @@ impl Debugger {
                 supports_restart_request: Some(false), // It is better (and cheap enough) to let the client kill and restart the debugadapter, than to try a in-process reset.
                 supports_terminate_request: Some(true),
                 // supports_value_formatting_options: Some(true),
-                //supports_function_breakpoints: Some(true),
-                //TODO: Use DEMCR register to implement exception breakpoints
+                // supports_function_breakpoints: Some(true),
+                // TODO: Use DEMCR register to implement exception breakpoints
                 // supports_exception_options: Some(true),
                 // supports_exception_filter_options: Some (true),
                 ..Default::default()
@@ -881,7 +939,7 @@ impl Debugger {
             if self.debugger_options.flashing_enabled {
                 let path_to_elf = self.debugger_options.program_binary.clone().unwrap();
                 debug_adapter.log_to_console(format!(
-                    "FLASHING: Starting write of {:?} to device memory",
+                    "INFO: FLASHING: Starting write of {:?} to device memory",
                     &path_to_elf
                 ));
 
@@ -900,7 +958,7 @@ impl Debugger {
                 ) {
                     Ok(_) => {
                         debug_adapter.log_to_console(format!(
-                            "FLASHING: Completed write of {:?} to device memory",
+                            "INFO: FLASHING: Completed write of {:?} to device memory",
                             &self.debugger_options.program_binary.clone().unwrap()
                         ));
                     }
@@ -917,9 +975,20 @@ impl Debugger {
 
         //This is the first attach to the requested core. If this one works, all subsequent ones will be no-op requests for a Core reference. Do NOT hold onto this reference for the duration of the session ... that is why this code is in a block of its own.
         {
-            //First, attach to the core
+            // First, attach to the core
             let mut core_data = match attach_core(&mut session_data, &self.debugger_options) {
-                Ok(core_data) => core_data,
+                Ok(mut core_data) => {
+                    // Immediately after attaching, halt the core, so that we can finish initalization without bumping into user code.
+                    // Depending on supplied `debugger_options`, the core will be restarted at the end of initialization in the `configuration_done` request.
+                    match halt_core(&mut core_data.target_core) {
+                        Ok(_) => {}
+                        Err(error) => {
+                            debug_adapter.send_response::<()>(&custom_request, Err(error));
+                            return;
+                        }
+                    }
+                    core_data
+                }
                 Err(error) => {
                     debug_adapter.send_response::<()>(&custom_request, Err(error));
                     return;
@@ -953,6 +1022,12 @@ impl Debugger {
                 if debug_adapter.adapter_type == DebugAdapterType::DapClient {
                     debug_adapter
                         .send_event("terminated", Some(TerminatedEventBody { restart: None }));
+                    // Now send the exited event to make sure the client knows we are done
+                    debug_adapter.send_event("exited", Some(ExitedEventBody { exit_code: 0 }));
+                    // Keep the process alive for a bit, so that VSCode doesn't complain about broken pipes.
+                    for _loop_count in 0..10 {
+                        thread::sleep(Duration::from_millis(50));
+                    }
                 }
                 break;
             }
@@ -1086,7 +1161,7 @@ pub fn debug(debugger_options: DebuggerOptions, dap: bool) {
         debugger.debug_session(adapter);
     } else {
         //TODO: Implement the case where the server needs to keep running after the client has disconnected.
-        println!("Starting {:?} as a DAP Protocol server", &program_name);
+        info!("Starting {:?} as a DAP Protocol server", &program_name);
         match &debugger.debugger_options.port.clone() {
             Some(port) => {
                 let addr = format!("{}:{:?}", Ipv4Addr::LOCALHOST.to_string(), port)
@@ -1098,20 +1173,20 @@ pub fn debug(debugger_options: DebuggerOptions, dap: bool) {
                 let listener = match TcpListener::bind(addr) {
                     Ok(listener) => listener,
                     Err(error) => {
-                        println!("{:?}", error);
+                        info!("{:?}", error);
                         return;
                     }
                 };
 
-                println!("Listening for requests on :{}", addr);
+                info!("Listening for requests on :{}", addr);
 
                 let (socket, addr) = listener.accept().unwrap();
                 match socket.set_nonblocking(true) {
                     Ok(_) => {
-                        println!("..Starting session from   :{}", addr);
+                        info!("..Starting session from   :{}", addr);
                     }
                     Err(_) => {
-                        println!(
+                        info!(
                             "ERROR: Failed to negotiate non-blocking socket with request from :{}",
                             addr
                         );
@@ -1124,10 +1199,10 @@ pub fn debug(debugger_options: DebuggerOptions, dap: bool) {
                 let adapter = DebugAdapter::new(reader, writer, DebugAdapterType::DapClient);
                 //TODO: When running in server mode, we want to stay open for new sessions. Implement intelligent restart in debug_session.
                 debugger.debug_session(adapter);
-                println!("....Closing session from  :{}", addr);
+                info!("....Closing session from  :{}", addr);
             }
             None => {
-                println!(
+                info!(
                     "Debugger started in directory {}",
                     &current_dir().unwrap().display()
                 );

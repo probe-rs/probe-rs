@@ -133,7 +133,7 @@ impl FlashLayout {
     }
 
     pub fn visualize(&self) -> FlashVisualizer {
-        FlashVisualizer::new(&self)
+        FlashVisualizer::new(self)
     }
 }
 

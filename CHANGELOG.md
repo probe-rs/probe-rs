@@ -7,7 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Added LPC552x and LPC55S2x targets. (#742)
 - Added initial multicore support. (#565)
+- probe-rs-cli-util: added common option structures and logic pertaining to probes and target attachment from cargo-flash. (#723)
 - Added SWDv2 multidrop support for multi-DP chips. (#720)
 - Added RP2040 target (Raspberry Pi Pico). (#720)
 
@@ -16,6 +18,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - Enabled the generation of global timestamps for ARM targets on `Session::setup_swv`.
 - Changed to `hidraw` for HID access on Linux. This should allow access to HID-based probes without udev rules (#737).
+- Support batching of FTDI commands and use it for RISCV (#717)
+- Include the chip string for `NoRamDefined` in its error message
+- Improved handling of errors in CMSIS-DAP commands (#745).
+- Bumped dependencies `bitvec 0.19.4`to `bitvec 0.22`, `nom 6.0.0` to `nom 7.0.0-alpha1`. (#756)
 
 - `DebugProbeError::CommandNotSupportedByProbe` now holds a name string of the unsupported command.
 
@@ -24,6 +30,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - When reading from a HID device, check number of bytes returned to detect USB HID timeouts.
 - Fix connecting to EDBG and similar probes on MacOS (#681, #721)
 - Fixed incorrect flash range in `fe310` causing flashing to fail (#732).
+- Multiple default algorithims would silently select the first, now errors intead (#744).
+- Fixed STM32WL targets getting a HardFault when flashing binaries larger than 64K (#762).
 
 ## [0.11.0]
 
@@ -134,6 +142,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed incorrect array size calculation  (#683)
 - STLink: Removed unnecessary SELECT bank switching  (#692)
 - STLink: chunk writes in `write_8` to avoid hitting limit (#697)
+- Partial fix for a bug where `probe-rs-debugger` does not set breakpoints when the target is in *sleep* mode (#703)
 
 ## [0.10.1]
 

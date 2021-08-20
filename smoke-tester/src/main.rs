@@ -63,9 +63,9 @@ fn main() -> Result<()> {
         let chip = matches.value_of("chip").unwrap(); // If dut-definitions is not present, chip must be present
 
         if let Some(probe) = matches.value_of("probe") {
-            vec![DutDefinition::new(&chip, &probe)?]
+            vec![DutDefinition::new(chip, probe)?]
         } else {
-            vec![DutDefinition::autodetect_probe(&chip)?]
+            vec![DutDefinition::autodetect_probe(chip)?]
         }
     };
 
