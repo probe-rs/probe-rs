@@ -111,6 +111,16 @@ pub trait ArmDebugSequence: Send + Sync {
         interface: &mut ArmCommunicationInterface<Initialized>,
         dp: DpAddress,
     ) -> Result<(), crate::DebugProbeError> {
+        // Clear all errors.
+        // CMSIS says this is only necessary to do inside the `if powered_down`, but
+        // without it here, nRF52840 faults in the next access.
+        let mut abort = Abort(0);
+        abort.set_orunerrclr(true);
+        abort.set_wderrclr(true);
+        abort.set_stkerrclr(true);
+        abort.set_stkcmpclr(true);
+        interface.write_dp_register(dp, abort)?;
+
         interface.write_dp_register(dp, Select(0))?;
 
         //let powered_down = interface.read_dp_register::<Select>::()
@@ -156,12 +166,8 @@ pub trait ArmDebugSequence: Send + Sync {
                 return Err(DapError::TargetPowerUpFailed.into());
             }
 
-            let mut abort = Abort(0);
-            abort.set_orunerrclr(true);
-            abort.set_wderrclr(true);
-            abort.set_stkerrclr(true);
-            abort.set_stkcmpclr(true);
-            interface.write_dp_register(dp, abort)?;
+            // According to CMSIS docs, here's where we would clear errors
+            // in ABORT, but we do that above instead.
         }
 
         Ok(())
