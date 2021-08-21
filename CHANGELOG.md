@@ -16,7 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Target Support
 
 ### Changed
-- Enabled the generation of global timestamps for ARM targets on `Session::setup_swv`.
+- Enabled the generation of global timestamps and exception traces for ARM targets on `Session::setup_swv`.
 - Changed to `hidraw` for HID access on Linux. This should allow access to HID-based probes without udev rules (#737).
 - Support batching of FTDI commands and use it for RISCV (#717)
 - Include the chip string for `NoRamDefined` in its error message
