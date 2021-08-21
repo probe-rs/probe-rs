@@ -110,7 +110,7 @@ enum Cli {
         #[structopt(flatten)]
         common: ProbeOptions,
 
-        /// Format of the file to be downloaded to the flash
+        /// Format of the file to be downloaded to the flash. Possible values are case-insensitive.
         #[structopt(
             possible_values = &DownloadFileType::variants(),
             case_insensitive = true,
