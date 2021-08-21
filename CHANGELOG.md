@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - probe-rs-cli-util: added common option structures and logic pertaining to probes and target attachment from cargo-flash. (#723)
 - Added SWDv2 multidrop support for multi-DP chips. (#720)
 - Added RP2040 target (Raspberry Pi Pico). (#720)
+- Added The possibility to use `--connect-under-reset` for the `probe-rs-cli info` command. (#775)
 
 ### Target Support
 
