@@ -14,7 +14,7 @@ use super::{
     ArmCommunicationInterface, DpAddress, Pins, PortType, Register,
 };
 
-pub struct DefaultArmSequence(());
+pub struct DefaultArmSequence(pub(crate) ());
 
 impl DefaultArmSequence {
     pub fn new() -> Arc<dyn ArmDebugSequence> {
