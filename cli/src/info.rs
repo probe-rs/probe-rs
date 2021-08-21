@@ -25,7 +25,7 @@ pub(crate) fn show_info_of_device(common: &ProbeOptions) -> Result<()> {
     };
 
     for protocol in protocols {
-        let (new_probe, result) = try_show_info(probe, protocol);
+        let (new_probe, result) = try_show_info(probe, protocol, common.connect_under_reset);
 
         probe = new_probe;
 
@@ -43,12 +43,22 @@ pub(crate) fn show_info_of_device(common: &ProbeOptions) -> Result<()> {
     Ok(())
 }
 
-fn try_show_info(mut probe: Probe, protocol: WireProtocol) -> (Probe, Result<()>) {
+fn try_show_info(
+    mut probe: Probe,
+    protocol: WireProtocol,
+    connect_under_reset: bool,
+) -> (Probe, Result<()>) {
     if let Err(e) = probe.select_protocol(protocol) {
         return (probe, Err(e.into()));
     }
 
-    if let Err(e) = probe.attach_to_unspecified() {
+    let attach_result = if connect_under_reset {
+        probe.attach_to_unspecified_under_reset()
+    } else {
+        probe.attach_to_unspecified()
+    };
+
+    if let Err(e) = attach_result {
         return (probe, Err(e.into()));
     }
 

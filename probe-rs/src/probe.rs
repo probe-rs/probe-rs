@@ -6,7 +6,11 @@ pub(crate) mod jlink;
 pub(crate) mod stlink;
 
 use crate::architecture::{
-    arm::{communication_interface::DapProbe, PortType, SwoAccess},
+    arm::{
+        communication_interface::DapProbe,
+        sequences::{ArmDebugSequence, DefaultArmSequence},
+        PortType, SwoAccess,
+    },
     riscv::communication_interface::RiscvCommunicationInterface,
 };
 use crate::error::Error;
@@ -246,6 +250,22 @@ impl Probe {
     pub fn attach_to_unspecified(&mut self) -> Result<(), Error> {
         self.inner.attach()?;
         self.attached = true;
+        Ok(())
+    }
+
+    pub fn attach_to_unspecified_under_reset(&mut self) -> Result<(), Error> {
+        if let Some(dap_probe) = self.try_as_dap_probe() {
+            DefaultArmSequence(()).reset_hardware_assert(dap_probe)?;
+        } else {
+            log::info!(
+                "Custom reset sequences are not supported on {}.",
+                self.get_name()
+            );
+            log::info!("Falling back to standard probe reset.");
+            self.target_reset_assert()?;
+        }
+
+        self.inner_attach()?;
         Ok(())
     }
 
