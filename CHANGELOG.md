@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added The possibility to use `--connect-under-reset` for the `probe-rs-cli info` command. (#775)
 - Added support for flashing `bin` format binaries with the `probe-rs-cli download` command. (#774)
 - Improved number parsing on all the `probe-rs-cli` commands. They now all accept normal (`01234`), hex (`0x1234`), octal (`0o1234`) and binary (`0b1`) formats. (#774)
+- Added progress bars to the probe-rs-cli download command. (#776)
 
 ### Target Support
 
