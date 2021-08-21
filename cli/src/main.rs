@@ -6,22 +6,25 @@ use debugger::CliState;
 
 use probe_rs::{
     debug::DebugInfo,
-    flashing::{download_file, erase_all, BinOptions, Format},
+    flashing::{erase_all, BinOptions, FileDownloadError, Format},
     MemoryInterface, Probe,
 };
 
-use probe_rs_cli_util::common_options::ProbeOptions;
+use probe_rs_cli_util::{
+    common_options::{FlashOptions, ProbeOptions},
+    flash::run_flash_download,
+};
 
 use capstone::{arch::arm::ArchMode, prelude::*, Capstone, Endian};
 use clap::arg_enum;
 use rustyline::Editor;
 use structopt::StructOpt;
 
-use anyhow::{anyhow, Result};
+use anyhow::{anyhow, Context, Result};
 
-use std::num::ParseIntError;
-use std::path::PathBuf;
 use std::time::Instant;
+use std::{fs::File, path::PathBuf};
+use std::{num::ParseIntError, path::Path};
 
 #[derive(StructOpt)]
 #[structopt(
@@ -162,7 +165,7 @@ fn main() -> Result<()> {
             base_address,
             skip_bytes,
             path,
-        } => download_program_fast(&common, format.into(base_address, skip_bytes), &path),
+        } => download_program_fast(common, format.into(base_address, skip_bytes), &path),
         Cli::Erase { common } => erase(&common),
         Cli::Trace {
             shared,
@@ -223,10 +226,40 @@ fn dump_memory(
     Ok(())
 }
 
-fn download_program_fast(common: &ProbeOptions, format: Format, path: &str) -> Result<()> {
+fn download_program_fast(common: ProbeOptions, format: Format, path: &str) -> Result<()> {
     let mut session = common.simple_attach()?;
 
-    download_file(&mut session, &path, format)?;
+    let mut file = match File::open(path) {
+        Ok(file) => file,
+        Err(e) => return Err(FileDownloadError::IO(e)).context("Failed to open binary file."),
+    };
+
+    let mut loader = session.target().flash_loader();
+
+    match format {
+        Format::Bin(options) => loader.load_bin_data(&mut file, options),
+        Format::Elf => loader.load_elf_data(&mut file),
+        Format::Hex => loader.load_hex_data(&mut file),
+    }?;
+
+    run_flash_download(
+        &mut session,
+        Path::new(path),
+        &FlashOptions {
+            version: false,
+            list_chips: false,
+            list_probes: false,
+            disable_progressbars: false,
+            reset_halt: false,
+            log: None,
+            restore_unwritten: false,
+            flash_layout_output_path: None,
+            elf: None,
+            work_dir: None,
+            probe_options: common,
+        },
+        loader,
+    )?;
 
     Ok(())
 }
