@@ -6,7 +6,7 @@ use debugger::CliState;
 
 use probe_rs::{
     debug::DebugInfo,
-    flashing::{download_file, erase_all, Format},
+    flashing::{download_file, erase_all, BinOptions, Format},
     MemoryInterface, Probe,
 };
 
@@ -32,14 +32,19 @@ arg_enum! {
     enum DownloadFileType {
         Elf,
         Hex,
+        Bin,
     }
 }
 
-impl From<DownloadFileType> for Format {
-    fn from(this: DownloadFileType) -> Format {
-        match this {
+impl DownloadFileType {
+    fn into(self, base_address: Option<u32>, skip: Option<u32>) -> Format {
+        match self {
             DownloadFileType::Elf => Format::Elf,
             DownloadFileType::Hex => Format::Hex,
+            DownloadFileType::Bin => Format::Bin(BinOptions {
+                base_address,
+                skip: skip.unwrap_or(0),
+            }),
         }
     }
 }
@@ -114,6 +119,13 @@ enum Cli {
         )]
         format: DownloadFileType,
 
+        /// The address in memory where the binary will be put at. This is only considered when `bin` is selected as the format.
+        #[structopt(long)]
+        base_address: Option<u32>,
+        /// The number of bytes to skip at the start of the binary file. This is only considered when `bin` is selected as the format.
+        #[structopt(long)]
+        skip_bytes: Option<u32>,
+
         /// The path to the file to be downloaded to the flash
         path: String,
     },
@@ -172,8 +184,10 @@ fn main() -> Result<()> {
         Cli::Download {
             common,
             format,
+            base_address,
+            skip_bytes,
             path,
-        } => download_program_fast(&common, format.into(), &path),
+        } => download_program_fast(&common, format.into(base_address, skip_bytes), &path),
         Cli::Erase { common } => erase(&common),
         Cli::Trace {
             shared,

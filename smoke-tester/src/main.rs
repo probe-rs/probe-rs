@@ -114,7 +114,7 @@ fn main() -> Result<()> {
                 Ok(())
             })?;
 
-            tracker.run_test(|tracker| {
+            tracker.run_test(|_tracker| {
                 test_stepping(&mut core, &memory_regions)?;
                 Ok(())
             })?;
