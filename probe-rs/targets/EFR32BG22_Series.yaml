@@ -4,7 +4,7 @@ variants:
   - name: EFR32BG22C112F352
     cores:
       - name: main
-        type: M33
+        type: armv8m
         core_access_options:
           Arm:
             ap: 0
@@ -27,7 +27,7 @@ variants:
   - name: EFR32BG22C222F352
     cores:
       - name: main
-        type: M33
+        type: armv8m
         core_access_options:
           Arm:
             ap: 0
@@ -50,7 +50,7 @@ variants:
   - name: EFR32BG22C224F512
     cores:
       - name: main
-        type: M33
+        type: armv8m
         core_access_options:
           Arm:
             ap: 0

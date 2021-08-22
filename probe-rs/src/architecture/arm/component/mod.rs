@@ -3,7 +3,7 @@ mod itm;
 mod tpiu;
 
 use super::memory::romtable::{Component, PeripheralType, RomTableError};
-use crate::architecture::arm::core::m0::Demcr;
+use crate::architecture::arm::core::armv6m::Demcr;
 use crate::architecture::arm::{SwoConfig, SwoMode};
 use crate::{Core, CoreRegister, Error, MemoryInterface};
 pub use dwt::Dwt;

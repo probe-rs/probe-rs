@@ -46,14 +46,14 @@ impl<R> From<TryLockError<R>> for RegistryError {
 fn add_generic_targets(vec: &mut Vec<ChipFamily>) {
     vec.extend_from_slice(&[
         ChipFamily {
-            name: "Generic Cortex-M0".to_owned(),
+            name: "Generic ARMv6-M".to_owned(),
             manufacturer: None,
             variants: vec![Chip {
-                name: "cortex-m0".to_owned(),
+                name: "armv6m".to_owned(),
                 part: None,
                 cores: vec![Core {
                     name: "core".to_owned(),
-                    core_type: CoreType::M0,
+                    core_type: CoreType::Armv6m,
                     core_access_options: CoreAccessOptions::Arm(ArmCoreAccessOptions {
                         ap: 0,
                         psel: 0,
@@ -66,14 +66,14 @@ fn add_generic_targets(vec: &mut Vec<ChipFamily>) {
             source: TargetDescriptionSource::Generic,
         },
         ChipFamily {
-            name: "Generic Cortex-M4".to_owned(),
+            name: "Generic ARMv7-M".to_owned(),
             manufacturer: None,
             variants: vec![Chip {
-                name: "cortex-m4".to_owned(),
+                name: "armv7m".to_owned(),
                 part: None,
                 cores: vec![Core {
                     name: "core".to_owned(),
-                    core_type: CoreType::M4,
+                    core_type: CoreType::Armv7m,
                     core_access_options: CoreAccessOptions::Arm(ArmCoreAccessOptions {
                         ap: 0,
                         psel: 0,
@@ -86,14 +86,14 @@ fn add_generic_targets(vec: &mut Vec<ChipFamily>) {
             source: TargetDescriptionSource::Generic,
         },
         ChipFamily {
-            name: "Generic Cortex-M3".to_owned(),
+            name: "Generic ARMv8-M".to_owned(),
             manufacturer: None,
             variants: vec![Chip {
-                name: "cortex-m3".to_owned(),
+                name: "armv8m".to_owned(),
                 part: None,
                 cores: vec![Core {
                     name: "core".to_owned(),
-                    core_type: CoreType::M3,
+                    core_type: CoreType::Armv8m,
                     core_access_options: CoreAccessOptions::Arm(ArmCoreAccessOptions {
                         ap: 0,
                         psel: 0,
@@ -106,47 +106,7 @@ fn add_generic_targets(vec: &mut Vec<ChipFamily>) {
             source: TargetDescriptionSource::Generic,
         },
         ChipFamily {
-            name: "Generic Cortex-M33".to_owned(),
-            manufacturer: None,
-            variants: vec![Chip {
-                name: "cortex-m33".to_owned(),
-                part: None,
-                cores: vec![Core {
-                    name: "core".to_owned(),
-                    core_type: CoreType::M33,
-                    core_access_options: CoreAccessOptions::Arm(ArmCoreAccessOptions {
-                        ap: 0,
-                        psel: 0,
-                    }),
-                }],
-                memory_map: vec![],
-                flash_algorithms: vec![],
-            }],
-            flash_algorithms: vec![],
-            source: TargetDescriptionSource::Generic,
-        },
-        ChipFamily {
-            name: "Generic Cortex-M7".to_owned(),
-            manufacturer: None,
-            variants: vec![Chip {
-                name: "cortex-m7".to_owned(),
-                part: None,
-                cores: vec![Core {
-                    name: "core".to_owned(),
-                    core_type: CoreType::M7,
-                    core_access_options: CoreAccessOptions::Arm(ArmCoreAccessOptions {
-                        ap: 0,
-                        psel: 0,
-                    }),
-                }],
-                memory_map: vec![],
-                flash_algorithms: vec![],
-            }],
-            flash_algorithms: vec![],
-            source: TargetDescriptionSource::Generic,
-        },
-        ChipFamily {
-            name: "Generic Riscv".to_owned(),
+            name: "Generic RISC-V".to_owned(),
             manufacturer: None,
             variants: vec![Chip {
                 name: "riscv".to_owned(),

@@ -5,7 +5,7 @@ variants:
   - name: STM32WLE5J8Ix
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -28,7 +28,7 @@ variants:
   - name: STM32WLE5JBIx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -51,7 +51,7 @@ variants:
   - name: STM32WLE5JCIx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0

@@ -4,7 +4,7 @@ variants:
   - name: ATSAM4E16C
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -27,7 +27,7 @@ variants:
   - name: ATSAM4E16E
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -50,7 +50,7 @@ variants:
   - name: ATSAM4E8C
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -73,7 +73,7 @@ variants:
   - name: ATSAM4E8E
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -96,7 +96,7 @@ variants:
   - name: ATSAM4LC2A
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -119,7 +119,7 @@ variants:
   - name: ATSAM4LC2B
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -142,7 +142,7 @@ variants:
   - name: ATSAM4LC2C
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -165,7 +165,7 @@ variants:
   - name: ATSAM4LC4A
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -188,7 +188,7 @@ variants:
   - name: ATSAM4LC4B
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -211,7 +211,7 @@ variants:
   - name: ATSAM4LC4C
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -234,7 +234,7 @@ variants:
   - name: ATSAM4LC8A
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -257,7 +257,7 @@ variants:
   - name: ATSAM4LC8B
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -280,7 +280,7 @@ variants:
   - name: ATSAM4LC8C
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -303,7 +303,7 @@ variants:
   - name: ATSAM4LS2A
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -326,7 +326,7 @@ variants:
   - name: ATSAM4LS2B
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -349,7 +349,7 @@ variants:
   - name: ATSAM4LS2C
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -372,7 +372,7 @@ variants:
   - name: ATSAM4LS4A
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -395,7 +395,7 @@ variants:
   - name: ATSAM4LS4B
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -418,7 +418,7 @@ variants:
   - name: ATSAM4LS4C
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -441,7 +441,7 @@ variants:
   - name: ATSAM4LS8A
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -464,7 +464,7 @@ variants:
   - name: ATSAM4LS8B
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -487,7 +487,7 @@ variants:
   - name: ATSAM4LS8C
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -510,7 +510,7 @@ variants:
   - name: ATSAM4N16B
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -533,7 +533,7 @@ variants:
   - name: ATSAM4N16C
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -556,7 +556,7 @@ variants:
   - name: ATSAM4N8A
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -579,7 +579,7 @@ variants:
   - name: ATSAM4N8B
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -602,7 +602,7 @@ variants:
   - name: ATSAM4N8C
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -625,7 +625,7 @@ variants:
   - name: ATSAM4S16B
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -649,7 +649,7 @@ variants:
   - name: ATSAM4S16C
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -673,7 +673,7 @@ variants:
   - name: ATSAM4S2A
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -697,7 +697,7 @@ variants:
   - name: ATSAM4S2B
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -721,7 +721,7 @@ variants:
   - name: ATSAM4S2C
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -745,7 +745,7 @@ variants:
   - name: ATSAM4S4A
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -769,7 +769,7 @@ variants:
   - name: ATSAM4S4B
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -793,7 +793,7 @@ variants:
   - name: ATSAM4S4C
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -817,7 +817,7 @@ variants:
   - name: ATSAM4S8B
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -841,7 +841,7 @@ variants:
   - name: ATSAM4S8C
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -865,7 +865,7 @@ variants:
   - name: ATSAM4SA16B
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -889,7 +889,7 @@ variants:
   - name: ATSAM4SA16C
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -913,7 +913,7 @@ variants:
   - name: ATSAM4SD16B
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -937,7 +937,7 @@ variants:
   - name: ATSAM4SD16C
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -961,7 +961,7 @@ variants:
   - name: ATSAM4SD32B
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -985,7 +985,7 @@ variants:
   - name: ATSAM4SD32C
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -1009,7 +1009,7 @@ variants:
   - name: ATSAM4SP32A
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0

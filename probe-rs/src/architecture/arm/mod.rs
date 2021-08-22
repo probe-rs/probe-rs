@@ -14,9 +14,9 @@ pub use communication_interface::{
 pub use swo::{SwoAccess, SwoConfig, SwoMode};
 pub use traits::*;
 
-pub use self::core::m0;
-pub use self::core::m33;
-pub use self::core::m4;
-pub use self::core::CortexDump;
+pub use self::core::armv6m;
+pub use self::core::armv7m;
+pub use self::core::armv8m;
+pub use self::core::Dump;
 
 pub use communication_interface::ArmProbeInterface;

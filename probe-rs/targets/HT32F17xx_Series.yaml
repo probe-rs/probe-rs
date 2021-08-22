@@ -4,7 +4,7 @@ variants:
   - name: HT32F1755
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -28,7 +28,7 @@ variants:
   - name: HT32F1755_100LQFP
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -52,7 +52,7 @@ variants:
   - name: HT32F1755_48LQFP
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -76,7 +76,7 @@ variants:
   - name: HT32F1755_48QFN
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -100,7 +100,7 @@ variants:
   - name: HT32F1755_64LQFP
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -124,7 +124,7 @@ variants:
   - name: HT32F1765
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -148,7 +148,7 @@ variants:
   - name: HT32F1765_100LQFP
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -172,7 +172,7 @@ variants:
   - name: HT32F1765_48LQFP
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -196,7 +196,7 @@ variants:
   - name: HT32F1765_48QFN
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -220,7 +220,7 @@ variants:
   - name: HT32F1765_64LQFP
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -244,7 +244,7 @@ variants:
   - name: HT32F2755
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -268,7 +268,7 @@ variants:
   - name: HT32F2755_100LQFP
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -292,7 +292,7 @@ variants:
   - name: HT32F2755_48LQFP
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -316,7 +316,7 @@ variants:
   - name: HT32F2755_48QFN
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -340,7 +340,7 @@ variants:
   - name: HT32F2755_64LQFP
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0

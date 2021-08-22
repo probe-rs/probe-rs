@@ -5,20 +5,20 @@ use crate::{
 
 use bitfield::bitfield;
 
-pub mod m0;
-pub mod m33;
-pub mod m4;
+pub mod armv6m;
+pub mod armv7m;
+pub mod armv8m;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct CortexDump {
+pub struct Dump {
     pub regs: [u32; 16],
     stack_addr: u32,
     stack: Vec<u8>,
 }
 
-impl CortexDump {
-    pub fn new(stack_addr: u32, stack: Vec<u8>) -> CortexDump {
-        CortexDump {
+impl Dump {
+    pub fn new(stack_addr: u32, stack: Vec<u8>) -> Dump {
+        Dump {
             regs: [0u32; 16],
             stack_addr,
             stack,
@@ -255,7 +255,7 @@ impl CoreRegister for Dfsr {
 }
 
 #[derive(Debug)]
-pub struct CortexState {
+pub struct State {
     initialized: bool,
 
     hw_breakpoints_enabled: bool,
@@ -263,7 +263,7 @@ pub struct CortexState {
     current_state: CoreStatus,
 }
 
-impl CortexState {
+impl State {
     pub(crate) fn new() -> Self {
         Self {
             initialized: false,

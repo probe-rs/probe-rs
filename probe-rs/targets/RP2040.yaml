@@ -6,13 +6,13 @@ variants:
   - name: RP2040
     cores:
       - name: core0
-        type: M0
+        type: armv6m
         core_access_options:
           Arm:
             ap: 0
             psel: 0x01002927
       - name: core1
-        type: M0
+        type: armv6m
         core_access_options:
           Arm:
             ap: 0

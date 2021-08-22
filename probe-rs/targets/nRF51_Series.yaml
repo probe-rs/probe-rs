@@ -7,7 +7,7 @@ variants:
   - name: nRF51422_xxAA
     cores:
       - name: main
-        type: M0
+        type: armv6m
         core_access_options:
           Arm:
             ap: 0
@@ -32,7 +32,7 @@ variants:
   - name: nRF51422_xxAB
     cores:
       - name: main
-        type: M0
+        type: armv6m
         core_access_options:
           Arm:
             ap: 0
@@ -57,7 +57,7 @@ variants:
   - name: nRF51422_xxAC
     cores:
       - name: main
-        type: M0
+        type: armv6m
         core_access_options:
           Arm:
             ap: 0
@@ -82,7 +82,7 @@ variants:
   - name: nRF51801_xxAB
     cores:
       - name: main
-        type: M0
+        type: armv6m
         core_access_options:
           Arm:
             ap: 0
@@ -107,7 +107,7 @@ variants:
   - name: nRF51802_xxAA
     cores:
       - name: main
-        type: M0
+        type: armv6m
         core_access_options:
           Arm:
             ap: 0
@@ -132,7 +132,7 @@ variants:
   - name: nRF51822_xxAA
     cores:
       - name: main
-        type: M0
+        type: armv6m
         core_access_options:
           Arm:
             ap: 0
@@ -157,7 +157,7 @@ variants:
   - name: nRF51822_xxAB
     cores:
       - name: main
-        type: M0
+        type: armv6m
         core_access_options:
           Arm:
             ap: 0
@@ -182,7 +182,7 @@ variants:
   - name: nRF51822_xxAC
     cores:
       - name: main
-        type: M0
+        type: armv6m
         core_access_options:
           Arm:
             ap: 0
@@ -207,7 +207,7 @@ variants:
   - name: nRF51824_xxAA
     cores:
       - name: main
-        type: M0
+        type: armv6m
         core_access_options:
           Arm:
             ap: 0

@@ -4,7 +4,7 @@ variants:
   - name: STM32F100C4
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -28,7 +28,7 @@ variants:
   - name: STM32F100C6
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -52,7 +52,7 @@ variants:
   - name: STM32F100C8
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -76,7 +76,7 @@ variants:
   - name: STM32F100CB
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -100,7 +100,7 @@ variants:
   - name: STM32F100R4
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -124,7 +124,7 @@ variants:
   - name: STM32F100R6
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -148,7 +148,7 @@ variants:
   - name: STM32F100R8
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -172,7 +172,7 @@ variants:
   - name: STM32F100RB
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -196,7 +196,7 @@ variants:
   - name: STM32F100RC
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -220,7 +220,7 @@ variants:
   - name: STM32F100RD
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -244,7 +244,7 @@ variants:
   - name: STM32F100RE
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -268,7 +268,7 @@ variants:
   - name: STM32F100V8
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -292,7 +292,7 @@ variants:
   - name: STM32F100VB
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -316,7 +316,7 @@ variants:
   - name: STM32F100VC
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -340,7 +340,7 @@ variants:
   - name: STM32F100VD
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -364,7 +364,7 @@ variants:
   - name: STM32F100VE
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -388,7 +388,7 @@ variants:
   - name: STM32F100ZC
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -412,7 +412,7 @@ variants:
   - name: STM32F100ZD
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -436,7 +436,7 @@ variants:
   - name: STM32F100ZE
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -460,7 +460,7 @@ variants:
   - name: STM32F101C4
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -484,7 +484,7 @@ variants:
   - name: STM32F101C6
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -508,7 +508,7 @@ variants:
   - name: STM32F101C8
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -532,7 +532,7 @@ variants:
   - name: STM32F101CB
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -556,7 +556,7 @@ variants:
   - name: STM32F101R4
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -580,7 +580,7 @@ variants:
   - name: STM32F101R6
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -604,7 +604,7 @@ variants:
   - name: STM32F101R8
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -628,7 +628,7 @@ variants:
   - name: STM32F101RB
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -652,7 +652,7 @@ variants:
   - name: STM32F101RC
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -676,7 +676,7 @@ variants:
   - name: STM32F101RD
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -700,7 +700,7 @@ variants:
   - name: STM32F101RE
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -724,7 +724,7 @@ variants:
   - name: STM32F101RF
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -748,7 +748,7 @@ variants:
   - name: STM32F101RG
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -772,7 +772,7 @@ variants:
   - name: STM32F101T4
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -796,7 +796,7 @@ variants:
   - name: STM32F101T6
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -820,7 +820,7 @@ variants:
   - name: STM32F101T8
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -844,7 +844,7 @@ variants:
   - name: STM32F101TB
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -868,7 +868,7 @@ variants:
   - name: STM32F101V8
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -892,7 +892,7 @@ variants:
   - name: STM32F101VB
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -916,7 +916,7 @@ variants:
   - name: STM32F101VC
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -940,7 +940,7 @@ variants:
   - name: STM32F101VD
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -964,7 +964,7 @@ variants:
   - name: STM32F101VE
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -988,7 +988,7 @@ variants:
   - name: STM32F101VF
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -1012,7 +1012,7 @@ variants:
   - name: STM32F101VG
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -1036,7 +1036,7 @@ variants:
   - name: STM32F101ZC
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -1060,7 +1060,7 @@ variants:
   - name: STM32F101ZD
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -1084,7 +1084,7 @@ variants:
   - name: STM32F101ZE
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -1108,7 +1108,7 @@ variants:
   - name: STM32F101ZF
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -1132,7 +1132,7 @@ variants:
   - name: STM32F101ZG
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -1156,7 +1156,7 @@ variants:
   - name: STM32F102C4
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -1180,7 +1180,7 @@ variants:
   - name: STM32F102C6
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -1204,7 +1204,7 @@ variants:
   - name: STM32F102C8
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -1228,7 +1228,7 @@ variants:
   - name: STM32F102CB
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -1252,7 +1252,7 @@ variants:
   - name: STM32F102R4
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -1276,7 +1276,7 @@ variants:
   - name: STM32F102R6
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -1300,7 +1300,7 @@ variants:
   - name: STM32F102R8
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -1324,7 +1324,7 @@ variants:
   - name: STM32F102RB
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -1348,7 +1348,7 @@ variants:
   - name: STM32F103C4
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -1372,7 +1372,7 @@ variants:
   - name: STM32F103C6
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -1396,7 +1396,7 @@ variants:
   - name: STM32F103C8
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -1420,7 +1420,7 @@ variants:
   - name: STM32F103CB
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -1444,7 +1444,7 @@ variants:
   - name: STM32F103R4
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -1468,7 +1468,7 @@ variants:
   - name: STM32F103R6
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -1492,7 +1492,7 @@ variants:
   - name: STM32F103R8
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -1516,7 +1516,7 @@ variants:
   - name: STM32F103RB
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -1540,7 +1540,7 @@ variants:
   - name: STM32F103RC
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -1564,7 +1564,7 @@ variants:
   - name: STM32F103RD
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -1588,7 +1588,7 @@ variants:
   - name: STM32F103RE
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -1612,7 +1612,7 @@ variants:
   - name: STM32F103RF
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -1636,7 +1636,7 @@ variants:
   - name: STM32F103RG
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -1660,7 +1660,7 @@ variants:
   - name: STM32F103T4
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -1684,7 +1684,7 @@ variants:
   - name: STM32F103T6
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -1708,7 +1708,7 @@ variants:
   - name: STM32F103T8
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -1732,7 +1732,7 @@ variants:
   - name: STM32F103TB
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -1756,7 +1756,7 @@ variants:
   - name: STM32F103V8
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -1780,7 +1780,7 @@ variants:
   - name: STM32F103VB
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -1804,7 +1804,7 @@ variants:
   - name: STM32F103VC
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -1828,7 +1828,7 @@ variants:
   - name: STM32F103VD
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -1852,7 +1852,7 @@ variants:
   - name: STM32F103VE
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -1876,7 +1876,7 @@ variants:
   - name: STM32F103VF
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -1900,7 +1900,7 @@ variants:
   - name: STM32F103VG
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -1924,7 +1924,7 @@ variants:
   - name: STM32F103ZC
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -1948,7 +1948,7 @@ variants:
   - name: STM32F103ZD
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -1972,7 +1972,7 @@ variants:
   - name: STM32F103ZE
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -1996,7 +1996,7 @@ variants:
   - name: STM32F103ZF
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -2020,7 +2020,7 @@ variants:
   - name: STM32F103ZG
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -2044,7 +2044,7 @@ variants:
   - name: STM32F105R8
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -2068,7 +2068,7 @@ variants:
   - name: STM32F105RB
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -2092,7 +2092,7 @@ variants:
   - name: STM32F105RC
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -2116,7 +2116,7 @@ variants:
   - name: STM32F105V8
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -2140,7 +2140,7 @@ variants:
   - name: STM32F105VB
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -2164,7 +2164,7 @@ variants:
   - name: STM32F105VC
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -2188,7 +2188,7 @@ variants:
   - name: STM32F107RB
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -2212,7 +2212,7 @@ variants:
   - name: STM32F107RC
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -2236,7 +2236,7 @@ variants:
   - name: STM32F107VB
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -2260,7 +2260,7 @@ variants:
   - name: STM32F107VC
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0

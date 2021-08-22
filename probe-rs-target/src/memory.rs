@@ -12,6 +12,15 @@ pub struct NvmRegion {
     pub cores: Vec<String>,
 }
 
+impl NvmRegion {
+    /// Returns the necessary information about the NVM.
+    pub fn nvm_info(&self) -> NvmInfo {
+        NvmInfo {
+            rom_start: self.range.start,
+        }
+    }
+}
+
 /// Represents a region in RAM.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct RamRegion {
@@ -68,6 +77,12 @@ pub struct PageInfo {
     pub base_address: u32,
     /// Size of the page
     pub size: u32,
+}
+
+/// Holds information about the entire flash.
+#[derive(Debug, Copy, Clone)]
+pub struct NvmInfo {
+    pub rom_start: u32,
 }
 
 /// Enables the user to do range intersection testing.

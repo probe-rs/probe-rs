@@ -179,7 +179,7 @@ pub trait ArmDebugSequence: Send + Sync {
     /// [ARM SVD Debug Description]: http://www.keil.com/pack/doc/cmsis/Pack/html/debug_description.html#debugCoreStart
     #[doc(alias = "DebugCoreStart")]
     fn debug_core_start(&self, core: &mut Memory) -> Result<(), crate::Error> {
-        use crate::architecture::arm::core::m4::Dhcsr;
+        use crate::architecture::arm::core::armv7m::Dhcsr;
 
         let current_dhcsr = Dhcsr(core.read_word_32(Dhcsr::ADDRESS)?);
 
@@ -206,7 +206,7 @@ pub trait ArmDebugSequence: Send + Sync {
     /// [ARM SVD Debug Description]: http://www.keil.com/pack/doc/cmsis/Pack/html/debug_description.html#resetCatchSet
     #[doc(alias = "ResetCatchSet")]
     fn reset_catch_set(&self, core: &mut Memory) -> Result<(), crate::Error> {
-        use crate::architecture::arm::core::m4::{Demcr, Dhcsr};
+        use crate::architecture::arm::core::armv7m::{Demcr, Dhcsr};
 
         // Request halt after reset
         let mut demcr = Demcr(core.read_word_32(Demcr::ADDRESS)?);
@@ -227,7 +227,7 @@ pub trait ArmDebugSequence: Send + Sync {
     /// [ARM SVD Debug Description]: http://www.keil.com/pack/doc/cmsis/Pack/html/debug_description.html#resetCatchClear
     #[doc(alias = "ResetCatchClear")]
     fn reset_catch_clear(&self, core: &mut Memory) -> Result<(), crate::Error> {
-        use crate::architecture::arm::core::m4::Demcr;
+        use crate::architecture::arm::core::armv7m::Demcr;
 
         // Clear reset catch bit
         let mut demcr = Demcr(core.read_word_32(Demcr::ADDRESS)?);
@@ -244,7 +244,7 @@ pub trait ArmDebugSequence: Send + Sync {
     /// [ARM SVD Debug Description]: http://www.keil.com/pack/doc/cmsis/Pack/html/debug_description.html#resetSystem
     #[doc(alias = "ResetSystem")]
     fn reset_system(&self, interface: &mut Memory) -> Result<(), crate::Error> {
-        use crate::architecture::arm::core::m4::{Aircr, Dhcsr};
+        use crate::architecture::arm::core::armv7m::{Aircr, Dhcsr};
 
         let mut aircr = Aircr(0);
         aircr.vectkey();

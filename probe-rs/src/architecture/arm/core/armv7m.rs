@@ -6,7 +6,7 @@ use crate::error::Error;
 use crate::memory::Memory;
 use crate::DebugProbeError;
 
-use super::{register, CortexState, Dfsr, ARM_REGISTER_FILE};
+use super::{register, Dfsr, State, ARM_REGISTER_FILE};
 use crate::{
     core::{Architecture, CoreStatus, HaltReason},
     MemoryInterface,
@@ -326,18 +326,18 @@ impl FpRev2CompX {
 pub const MSP: CoreRegisterAddress = CoreRegisterAddress(0b000_1001);
 pub const PSP: CoreRegisterAddress = CoreRegisterAddress(0b000_1010);
 
-pub struct M4<'probe> {
+pub struct Armv7m<'probe> {
     memory: Memory<'probe>,
 
-    state: &'probe mut CortexState,
+    state: &'probe mut State,
 
     sequence: Arc<dyn ArmDebugSequence>,
 }
 
-impl<'probe> M4<'probe> {
+impl<'probe> Armv7m<'probe> {
     pub(crate) fn new(
         mut memory: Memory<'probe>,
-        state: &'probe mut CortexState,
+        state: &'probe mut State,
         sequence: Arc<dyn ArmDebugSequence>,
     ) -> Result<Self, Error> {
         if !state.initialized() {
@@ -376,7 +376,7 @@ impl<'probe> M4<'probe> {
     }
 }
 
-impl<'probe> CoreInterface for M4<'probe> {
+impl<'probe> CoreInterface for Armv7m<'probe> {
     fn wait_for_core_halted(&mut self, timeout: Duration) -> Result<(), Error> {
         // Wait until halted state is active again.
         let start = Instant::now();
@@ -698,7 +698,7 @@ impl<'probe> CoreInterface for M4<'probe> {
     }
 }
 
-impl<'probe> MemoryInterface for M4<'probe> {
+impl<'probe> MemoryInterface for Armv7m<'probe> {
     fn read_word_32(&mut self, address: u32) -> Result<u32, Error> {
         self.memory.read_word_32(address)
     }
