@@ -36,7 +36,7 @@ impl From<&String> for BacktraceOptions {
 
 pub(crate) struct Settings<'p> {
     pub(crate) current_dir: &'p Path,
-    pub(crate) backtrace: BacktraceOptions,
+    pub(crate) backtrace: bool,
     pub(crate) backtrace_limit: u32,
     pub(crate) shorten_paths: bool,
 }
@@ -57,7 +57,7 @@ pub(crate) fn print(
         .iter()
         .any(|raw_frame| raw_frame.is_exception());
 
-    let print_backtrace = settings.backtrace == BacktraceOptions::Always
+    let print_backtrace = settings.backtrace
         || unwind.outcome == Outcome::StackOverflow
         || unwind.corrupted
         || contains_exception;
@@ -66,6 +66,7 @@ pub(crate) fn print(
         let frames_number = &frames.len();
         settings.backtrace_limit = *frames_number as u32;
     }
+
     if print_backtrace && settings.backtrace_limit > 0 {
         pp::backtrace(&frames, settings);
 

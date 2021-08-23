@@ -75,6 +75,18 @@ fn successful_run_has_no_backtrace() {
     insta::assert_snapshot!(run_result.output);
 }
 
+
+#[test]
+// this test should not be run by default, as it requires the target hardware to be present
+#[ignore]
+fn successful_run_can_enforce_backtrace() {
+    let run_result =
+        run_and_truncate("--chip nRF52840_xxAA tests/test_elfs/hello --backtrace=always");
+
+    assert_eq!(true, run_result.exit_status.success());
+    insta::assert_snapshot!(run_result.output);
+}
+
 #[test]
 // this test should not be run by default, as it requires the target hardware to be present
 #[ignore]

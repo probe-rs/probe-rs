@@ -29,7 +29,7 @@ use probe_rs::{
 use probe_rs_rtt::{Rtt, ScanRegion, UpChannel};
 use signal_hook::consts::signal;
 
-use crate::{canary::Canary, elf::Elf, target_info::TargetInfo};
+use crate::{backtrace::BacktraceOptions, canary::Canary, elf::Elf, target_info::TargetInfo};
 
 const SIGABRT: i32 = 134;
 const TIMEOUT: Duration = Duration::from_secs(1);
@@ -71,6 +71,8 @@ fn run_target_program(elf_path: &Path, chip_name: &str, opts: &cli::Opts) -> any
         log::info!("success!");
     }
 
+    let user_backtrace_options = BacktraceOptions::from(&opts.backtrace);
+
     let canary = Canary::install(&mut sess, &target_info, elf)?;
     start_program(&mut sess, elf)?;
 
@@ -88,11 +90,21 @@ fn run_target_program(elf_path: &Path, chip_name: &str, opts: &cli::Opts) -> any
         .map(|canary| canary.touched(&mut core, elf))
         .transpose()?
         .unwrap_or(false);
+
+// match statement
+    let backtrace = if user_backtrace_options == BacktraceOptions::Never {
+        false
+    } else if user_backtrace_options == BacktraceOptions::Always {
+        true
+    } else {
+        canary_touched || halted_due_to_signal 
+    };
+                        
+
     let mut backtrace_settings = backtrace::Settings {
         current_dir,
         backtrace_limit: opts.backtrace_limit,
-        // backtrace: opts.backtrace || canary_touched || halted_due_to_signal, // ??
-        backtrace: (&opts.backtrace).into(), // ??
+        backtrace,
         shorten_paths: opts.shorten_paths,
     };
 

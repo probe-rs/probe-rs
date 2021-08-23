@@ -14,7 +14,7 @@ const EXIT_SUCCESS: i32 = 0;
 /// A Cargo runner for microcontrollers.
 #[derive(StructOpt)]
 #[structopt(name = "probe-run", setting = AppSettings::TrailingVarArg)]
-pub(crate) struct Opts{
+pub(crate) struct Opts {
     /// List supported chips and exit.
     #[structopt(long)]
     list_chips: bool,
@@ -55,9 +55,8 @@ pub(crate) struct Opts{
     #[structopt(short = "V", long)]
     version: bool,
 
-    // nicht sicher, was genau es tun soll
+    /// Disable or enable backtrace (auto in case of panic or stack overflow).
     #[structopt(long, default_value = "auto")]
-    // pub(crate) backtrace: Vec<u8>,
     pub(crate) backtrace: String,
 
     /// Configure the number of lines to print before a backtrace gets cut off
