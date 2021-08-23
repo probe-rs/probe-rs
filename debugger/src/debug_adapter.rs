@@ -293,7 +293,7 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
 
         // core_data.target_core.read_8(stack_bot, &mut stack[..])?;
 
-        // let mut dump = CortexDump::new(stack_bot, stack);
+        // let mut dump = Dump::new(stack_bot, stack);
 
         // for i in 0..12 {
         //     dump.regs[i as usize] = core_data

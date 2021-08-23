@@ -2,7 +2,7 @@ use crate::common::CliError;
 
 use capstone::Capstone;
 use num_traits::Num;
-use probe_rs::architecture::arm::CortexDump;
+use probe_rs::architecture::arm::Dump;
 use probe_rs::debug::DebugInfo;
 use probe_rs::{Core, CoreRegisterAddress, MemoryInterface};
 
@@ -319,7 +319,7 @@ impl DebugCli {
 
                 cli_data.core.read_8(stack_bot, &mut stack[..])?;
 
-                let mut dump = CortexDump::new(stack_bot, stack);
+                let mut dump = Dump::new(stack_bot, stack);
 
                 for i in 0..12 {
                     dump.regs[i as usize] =

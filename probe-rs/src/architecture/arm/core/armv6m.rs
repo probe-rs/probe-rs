@@ -1,4 +1,4 @@
-use super::{CortexState, Dfsr, ARM_REGISTER_FILE};
+use super::{Dfsr, State, ARM_REGISTER_FILE};
 
 use crate::architecture::arm::sequences::ArmDebugSequence;
 use crate::core::{RegisterDescription, RegisterFile, RegisterKind};
@@ -277,18 +277,18 @@ const XPSR: RegisterDescription = RegisterDescription {
     address: CoreRegisterAddress(0b1_0000),
 };
 
-pub struct M0<'probe> {
+pub struct Armv6m<'probe> {
     memory: Memory<'probe>,
 
-    state: &'probe mut CortexState,
+    state: &'probe mut State,
 
     sequence: Arc<dyn ArmDebugSequence>,
 }
 
-impl<'probe> M0<'probe> {
+impl<'probe> Armv6m<'probe> {
     pub(crate) fn new(
         mut memory: Memory<'probe>,
-        state: &'probe mut CortexState,
+        state: &'probe mut State,
         sequence: Arc<dyn ArmDebugSequence>,
     ) -> Result<Self, Error> {
         if !state.initialized() {
@@ -327,7 +327,7 @@ impl<'probe> M0<'probe> {
     }
 }
 
-impl<'probe> CoreInterface for M0<'probe> {
+impl<'probe> CoreInterface for Armv6m<'probe> {
     fn wait_for_core_halted(&mut self, timeout: Duration) -> Result<(), Error> {
         // Wait until halted state is active again.
         let start = Instant::now();
@@ -621,7 +621,7 @@ impl<'probe> CoreInterface for M0<'probe> {
     }
 }
 
-impl<'probe> MemoryInterface for M0<'probe> {
+impl<'probe> MemoryInterface for Armv6m<'probe> {
     fn read_word_32(&mut self, address: u32) -> Result<u32, Error> {
         self.memory.read_word_32(address)
     }

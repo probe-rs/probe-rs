@@ -4,7 +4,7 @@ variants:
   - name: HT32F61352
     cores:
       - name: main
-        type: M0
+        type: armv6m
         core_access_options:
           Arm:
             ap: 0
@@ -28,7 +28,7 @@ variants:
   - name: HT32F61352_48LQFN
     cores:
       - name: main
-        type: M0
+        type: armv6m
         core_access_options:
           Arm:
             ap: 0
@@ -52,7 +52,7 @@ variants:
   - name: HT32F61352_64LQFP
     cores:
       - name: main
-        type: M0
+        type: armv6m
         core_access_options:
           Arm:
             ap: 0

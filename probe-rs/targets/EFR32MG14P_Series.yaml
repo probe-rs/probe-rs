@@ -4,7 +4,7 @@ variants:
   - name: EFR32MG14P632F256
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -27,7 +27,7 @@ variants:
   - name: EFR32MG14P632F256
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -50,7 +50,7 @@ variants:
   - name: EFR32MG14P731F256
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -73,7 +73,7 @@ variants:
   - name: EFR32MG14P732F256
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -96,7 +96,7 @@ variants:
   - name: EFR32MG14P732F256
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -119,7 +119,7 @@ variants:
   - name: EFR32MG14P732F256
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -142,7 +142,7 @@ variants:
   - name: EFR32MG14P732F256
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -165,7 +165,7 @@ variants:
   - name: EFR32MG14P733F256
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -188,7 +188,7 @@ variants:
   - name: EFR32MG14P733F256
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0

@@ -7,7 +7,7 @@ variants:
   - name: STM32WB30CEUx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -30,7 +30,7 @@ variants:
   - name: STM32WB35CCUx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -53,7 +53,7 @@ variants:
   - name: STM32WB35CEUx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -76,7 +76,7 @@ variants:
   - name: STM32WB50CGUx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -100,7 +100,7 @@ variants:
     part: 0x495
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -124,7 +124,7 @@ variants:
     part: 0x495
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -148,7 +148,7 @@ variants:
     part: 0x495
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -172,7 +172,7 @@ variants:
     part: 0x495
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -196,7 +196,7 @@ variants:
     part: 0x495
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -220,7 +220,7 @@ variants:
     part: 0x495
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -243,7 +243,7 @@ variants:
   - name: STM32WB55VCQx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -267,7 +267,7 @@ variants:
     part: 0x495
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -290,7 +290,7 @@ variants:
   - name: STM32WB55VEQx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -314,7 +314,7 @@ variants:
     part: 0x495
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -337,7 +337,7 @@ variants:
   - name: STM32WB55VGQx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -361,7 +361,7 @@ variants:
     part: 0x495
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0

@@ -95,7 +95,7 @@ impl ArmDebugSequence for LPC55S69 {
     }
 
     fn reset_catch_set(&self, interface: &mut crate::Memory) -> Result<(), crate::Error> {
-        use crate::architecture::arm::core::m4::{Demcr, Dhcsr};
+        use crate::architecture::arm::core::armv7m::{Demcr, Dhcsr};
 
         let mut reset_vector = 0xffff_ffff;
         let mut demcr = Demcr(interface.read_word_32(Demcr::ADDRESS)?);
@@ -169,7 +169,7 @@ impl ArmDebugSequence for LPC55S69 {
     }
 
     fn reset_catch_clear(&self, interface: &mut crate::Memory) -> Result<(), crate::Error> {
-        use crate::architecture::arm::core::m4::Demcr;
+        use crate::architecture::arm::core::armv7m::Demcr;
 
         interface.write_word_32(0xE000_2008, 0x0)?;
         interface.write_word_32(0xE000_2000, 0x2)?;
@@ -182,7 +182,7 @@ impl ArmDebugSequence for LPC55S69 {
     }
 
     fn reset_system(&self, interface: &mut crate::Memory) -> Result<(), crate::Error> {
-        use crate::architecture::arm::core::m4::Aircr;
+        use crate::architecture::arm::core::armv7m::Aircr;
 
         let mut aircr = Aircr(0);
         aircr.vectkey();
@@ -206,7 +206,7 @@ impl ArmDebugSequence for LPC55S69 {
 }
 
 fn wait_for_stop_after_reset(memory: &mut crate::Memory) -> Result<(), crate::Error> {
-    use crate::architecture::arm::core::m4::Dhcsr;
+    use crate::architecture::arm::core::armv7m::Dhcsr;
     log::info!("Wait for stop after reset");
 
     thread::sleep(Duration::from_millis(10));

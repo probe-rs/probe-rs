@@ -15,25 +15,25 @@ use anyhow::Result;
 
 use bitfield::bitfield;
 
-use super::{CortexState, Dfsr, ARM_REGISTER_FILE};
+use super::{Dfsr, State, ARM_REGISTER_FILE};
 use std::sync::Arc;
 use std::{
     mem::size_of,
     time::{Duration, Instant},
 };
 
-pub struct M33<'probe> {
+pub struct Armv8m<'probe> {
     memory: Memory<'probe>,
 
-    state: &'probe mut CortexState,
+    state: &'probe mut State,
 
     sequence: Arc<dyn ArmDebugSequence>,
 }
 
-impl<'probe> M33<'probe> {
+impl<'probe> Armv8m<'probe> {
     pub(crate) fn new(
         mut memory: Memory<'probe>,
-        state: &'probe mut CortexState,
+        state: &'probe mut State,
         sequence: Arc<dyn ArmDebugSequence>,
     ) -> Result<Self, Error> {
         if !state.initialized() {
@@ -74,7 +74,7 @@ impl<'probe> M33<'probe> {
     }
 }
 
-impl<'probe> CoreInterface for M33<'probe> {
+impl<'probe> CoreInterface for Armv8m<'probe> {
     fn wait_for_core_halted(&mut self, timeout: Duration) -> Result<(), Error> {
         // Wait until halted state is active again.
         let start = Instant::now();
@@ -360,7 +360,7 @@ impl<'probe> CoreInterface for M33<'probe> {
     }
 }
 
-impl<'probe> MemoryInterface for M33<'probe> {
+impl<'probe> MemoryInterface for Armv8m<'probe> {
     fn read_word_32(&mut self, address: u32) -> Result<u32, Error> {
         self.memory.read_word_32(address)
     }

@@ -4,7 +4,7 @@ use probe_rs::{
     architecture::{
         arm::{
             ap::{GenericAp, MemoryAp},
-            m0::Demcr,
+            armv6m::Demcr,
             memory::Component,
             sequences::DefaultArmSequence,
             ApAddress, ApInformation, ArmProbeInterface, DpAddress, MemoryApInformation,

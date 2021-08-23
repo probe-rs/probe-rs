@@ -4,7 +4,7 @@ variants:
   - name: GD32VF103CBT6
     cores:
       - name: main
-        type: Riscv
+        type: riscv
         core_access_options:
           Riscv: {}
     memory_map:

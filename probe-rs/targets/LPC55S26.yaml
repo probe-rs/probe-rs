@@ -5,7 +5,7 @@ variants:
   - name: LPC55S26JBD100
     cores:
       - name: main
-        type: M33
+        type: armv8m
         core_access_options:
           Arm:
             ap: 0
@@ -28,7 +28,7 @@ variants:
   - name: LPC55S26JBD64
     cores:
       - name: main
-        type: M33
+        type: armv8m
         core_access_options:
           Arm:
             ap: 0
@@ -51,7 +51,7 @@ variants:
   - name: LPC55S26JEV98
     cores:
       - name: main
-        type: M33
+        type: armv8m
         core_access_options:
           Arm:
             ap: 0
