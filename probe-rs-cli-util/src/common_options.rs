@@ -104,19 +104,6 @@ pub struct FlashOptions {
 }
 
 impl FlashOptions {
-    pub const ARGUMENTS: &'static [&'static str] = &[
-        "version",
-        "list-chips",
-        "list-probes",
-        "disable-progressbars",
-        "reset-halt",
-        "log=",
-        "restore-unwritten",
-        "flash-layout=",
-        "elf=",
-        "work-dir=",
-    ];
-
     /// Whether calling program should exit prematurely. Effectively
     /// handles --list-{probes,chips}.
     ///
@@ -165,16 +152,6 @@ pub struct ProbeOptions {
 }
 
 impl ProbeOptions {
-    pub const ARGUMENTS: &'static [&'static str] = &[
-        "chip=",
-        "chip-description-path=",
-        "protocol=",
-        "probe=",
-        "connect-under-reset",
-        "speed=",
-        "dry-run",
-    ];
-
     /// Add targets contained in file given by --chip-description-path
     /// to probe-rs registery.
     ///
@@ -549,14 +526,6 @@ pub fn print_families(mut f: impl Write) -> Result<(), OperationError> {
         }
     }
     Ok(())
-}
-
-pub fn common_arguments() -> Vec<&'static str> {
-    FlashOptions::ARGUMENTS
-        .iter()
-        .chain(ProbeOptions::ARGUMENTS)
-        .copied()
-        .collect()
 }
 
 #[cfg(test)]
