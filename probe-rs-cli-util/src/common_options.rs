@@ -410,7 +410,7 @@ CARGO BUILD OPTIONS:
         if self.release {
             args.push("--release".to_string());
         }
-        maybe_push_str_opt!(&self.bin, bin);
+        maybe_push_str_opt!(&self.target, target);
         if let Some(path) = &self.manifest_path {
             args.push("--manifest-path".to_string());
             args.push(path.display().to_string());
@@ -557,4 +557,46 @@ pub fn common_arguments() -> Vec<&'static str> {
         .chain(ProbeOptions::ARGUMENTS)
         .copied()
         .collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn to_cargo_options() {
+        assert_eq!(
+            CargoOptions {
+                bin: Some("foobar".into()),
+                example: Some("foobar".into()),
+                package: Some("foobar".into()),
+                release: true,
+                target: Some("foobar".into()),
+                manifest_path: Some("/tmp/Cargo.toml".into()),
+                no_default_features: true,
+                all_features: true,
+                features: vec!["feat1".into(), "feat2".into()],
+                trailing_opts: vec!["--some-cargo-option".into()],
+            }
+            .to_cargo_options(),
+            [
+                "--bin",
+                "foobar",
+                "--example",
+                "foobar",
+                "--package",
+                "foobar",
+                "--release",
+                "--target",
+                "foobar",
+                "--manifest-path",
+                "/tmp/Cargo.toml",
+                "--no-default-features",
+                "--all-features",
+                "--features",
+                "feat1,feat2",
+                "--some-cargo-option",
+            ]
+        );
+    }
 }
