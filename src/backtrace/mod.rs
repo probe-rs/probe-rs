@@ -8,16 +8,6 @@ mod pp;
 mod symbolicate;
 mod unwind;
 
-// change as follows:
-// --force-backtrace is removed
-// --backtrace-len is renamed to --backtrace-limit
-// --backtrace is added
-
-// Additionally,
-// --backtrace flag is optional and defaults to auto
-// --backtrace-limit flag is optional and defaults to 50 (+)
-// --backtrace-limit=0 is accepted and means "no limit"
-
 #[derive(PartialEq, Eq)]
 pub(crate) enum BacktraceOptions {
     Auto, Never, Always
@@ -36,7 +26,8 @@ impl From<&String> for BacktraceOptions {
 
 pub(crate) struct Settings<'p> {
     pub(crate) current_dir: &'p Path,
-    pub(crate) backtrace: bool,
+    pub(crate) backtrace: BacktraceOptions,
+    pub(crate) panic_present: bool,
     pub(crate) backtrace_limit: u32,
     pub(crate) shorten_paths: bool,
 }
@@ -57,10 +48,18 @@ pub(crate) fn print(
         .iter()
         .any(|raw_frame| raw_frame.is_exception());
 
-    let print_backtrace = settings.backtrace
-        || unwind.outcome == Outcome::StackOverflow
-        || unwind.corrupted
-        || contains_exception;
+    let print_backtrace= match settings.backtrace {
+        BacktraceOptions::Never => false,
+        BacktraceOptions::Always => true,
+        BacktraceOptions::Auto => if settings.panic_present
+            || unwind.outcome == Outcome::StackOverflow
+            || unwind.corrupted
+            || contains_exception {
+                true
+            } else {
+                false
+            }
+    };
 
     if settings.backtrace_limit == 0 {
         let frames_number = &frames.len();
