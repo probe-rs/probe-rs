@@ -133,7 +133,8 @@ fn unsuccessful_run_can_suppress_backtrace() {
 // this test should not be run by default, as it requires the target hardware to be present
 #[ignore]
 fn stack_overflow_can_suppress_backtrace() {
-    let run_result = run_and_truncate("--chip nRF52840_xxAA tests/test_elfs/overflow --backtrace=never");
+    let run_result =
+        run_and_truncate("--chip nRF52840_xxAA tests/test_elfs/overflow --backtrace=never");
 
     assert_eq!(false, run_result.exit_status.success());
     insta::assert_snapshot!(run_result.output);
