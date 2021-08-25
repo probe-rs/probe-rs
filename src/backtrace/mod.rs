@@ -48,17 +48,13 @@ pub(crate) fn print(
         .iter()
         .any(|raw_frame| raw_frame.is_exception());
 
-    let print_backtrace= match settings.backtrace {
+    let print_backtrace = match settings.backtrace {
         BacktraceOptions::Never => false,
         BacktraceOptions::Always => true,
-        BacktraceOptions::Auto => if settings.panic_present
+        BacktraceOptions::Auto => settings.panic_present
             || unwind.outcome == Outcome::StackOverflow
             || unwind.corrupted
-            || contains_exception {
-                true
-            } else {
-                false
-            }
+            || contains_exception
     };
 
     if settings.backtrace_limit == 0 {
