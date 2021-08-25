@@ -4,6 +4,7 @@ use jaylink::{Capability, Interface, JayLink, SpeedConfig, SwoMode};
 
 use std::convert::{TryFrom, TryInto};
 use std::iter;
+use std::time::{Duration, Instant};
 
 use crate::{
     architecture::{
@@ -512,9 +513,16 @@ impl DebugProbe for JLink {
 
                 log::debug!("Response to reset: {:?}", response);
 
-                // try to read the idcode
-                let idcode_bytes = self.read_dr(32)?;
-                let idcode = u32::from_le_bytes((&idcode_bytes[..]).try_into().unwrap());
+                // try to read the idcode until we have some non-zero bytes
+                let start = Instant::now();
+                let idcode = loop {
+                    let idcode_bytes = self.read_dr(32)?;
+                    if idcode_bytes.iter().any(|&x| x != 0)
+                        || Instant::now().duration_since(start) > Duration::from_secs(1)
+                    {
+                        break u32::from_le_bytes((&idcode_bytes[..]).try_into().unwrap());
+                    }
+                };
 
                 log::info!("JTAG IDCODE: {:#010x}", idcode);
             }
