@@ -264,7 +264,7 @@ impl FlashBuilder {
         region: &NvmRegion,
         flash_algorithm: &FlashAlgorithm,
         include_empty_pages: bool,
-    ) -> Result<FlashLayout, FlashError> {
+    ) -> FlashLayout {
         let mut sectors: Vec<FlashSector> = Vec::new();
         let mut pages: Vec<FlashPage> = Vec::new();
         let mut fills: Vec<FlashFill> = Vec::new();
@@ -355,12 +355,12 @@ impl FlashBuilder {
         }
 
         // Return the finished flash layout.
-        Ok(FlashLayout {
+        FlashLayout {
             sectors,
             pages,
             fills,
             data_blocks,
-        })
+        }
     }
 }
 
@@ -425,9 +425,7 @@ mod tests {
         let (region, flash_algorithm) = assemble_demo_flash1();
         let mut flash_builder = FlashBuilder::new();
         flash_builder.add_data(0, &[42]).unwrap();
-        let flash_layout = flash_builder
-            .build_sectors_and_pages(&region, &flash_algorithm, true)
-            .unwrap();
+        let flash_layout = flash_builder.build_sectors_and_pages(&region, &flash_algorithm, true);
 
         let erased_byte_value = flash_algorithm.flash_properties.erased_byte_value;
 
@@ -495,9 +493,7 @@ mod tests {
         let (region, flash_algorithm) = assemble_demo_flash1();
         let mut flash_builder = FlashBuilder::new();
         flash_builder.add_data(0, &[42; 1024]).unwrap();
-        let flash_layout = flash_builder
-            .build_sectors_and_pages(&region, &flash_algorithm, true)
-            .unwrap();
+        let flash_layout = flash_builder.build_sectors_and_pages(&region, &flash_algorithm, true);
 
         let erased_byte_value = flash_algorithm.flash_properties.erased_byte_value;
 
@@ -556,9 +552,7 @@ mod tests {
         let (region, flash_algorithm) = assemble_demo_flash1();
         let mut flash_builder = FlashBuilder::new();
         flash_builder.add_data(0, &[42; 1025]).unwrap();
-        let flash_layout = flash_builder
-            .build_sectors_and_pages(&region, &flash_algorithm, true)
-            .unwrap();
+        let flash_layout = flash_builder.build_sectors_and_pages(&region, &flash_algorithm, true);
 
         let erased_byte_value = flash_algorithm.flash_properties.erased_byte_value;
 
@@ -621,9 +615,7 @@ mod tests {
         let (region, flash_algorithm) = assemble_demo_flash1();
         let mut flash_builder = FlashBuilder::new();
         flash_builder.add_data(0, &[42; 1025]).unwrap();
-        let flash_layout = flash_builder
-            .build_sectors_and_pages(&region, &flash_algorithm, false)
-            .unwrap();
+        let flash_layout = flash_builder.build_sectors_and_pages(&region, &flash_algorithm, false);
 
         let erased_byte_value = flash_algorithm.flash_properties.erased_byte_value;
 
@@ -666,9 +658,7 @@ mod tests {
         let (region, flash_algorithm) = assemble_demo_flash1();
         let mut flash_builder = FlashBuilder::new();
         flash_builder.add_data(42, &[42; 1024]).unwrap();
-        let flash_layout = flash_builder
-            .build_sectors_and_pages(&region, &flash_algorithm, true)
-            .unwrap();
+        let flash_layout = flash_builder.build_sectors_and_pages(&region, &flash_algorithm, true);
 
         let erased_byte_value = flash_algorithm.flash_properties.erased_byte_value;
 
@@ -744,9 +734,7 @@ mod tests {
         let (region, flash_algorithm) = assemble_demo_flash1();
         let mut flash_builder = FlashBuilder::new();
         flash_builder.add_data(0, &[42; 5024]).unwrap();
-        let flash_layout = flash_builder
-            .build_sectors_and_pages(&region, &flash_algorithm, true)
-            .unwrap();
+        let flash_layout = flash_builder.build_sectors_and_pages(&region, &flash_algorithm, true);
 
         let erased_byte_value = flash_algorithm.flash_properties.erased_byte_value;
 
@@ -839,9 +827,7 @@ mod tests {
         let mut flash_builder = FlashBuilder::new();
         flash_builder.add_data(0, &[42; 5024]).unwrap();
         flash_builder.add_data(7860, &[42; 5024]).unwrap();
-        let flash_layout = flash_builder
-            .build_sectors_and_pages(&region, &flash_algorithm, true)
-            .unwrap();
+        let flash_layout = flash_builder.build_sectors_and_pages(&region, &flash_algorithm, true);
 
         let erased_byte_value = flash_algorithm.flash_properties.erased_byte_value;
 
@@ -1012,9 +998,7 @@ mod tests {
         let mut flash_builder = FlashBuilder::new();
         flash_builder.add_data(0, &[42; 5024]).unwrap();
         flash_builder.add_data(7860, &[42; 5024]).unwrap();
-        let flash_layout = flash_builder
-            .build_sectors_and_pages(&region, &flash_algorithm, true)
-            .unwrap();
+        let flash_layout = flash_builder.build_sectors_and_pages(&region, &flash_algorithm, true);
 
         let erased_byte_value = flash_algorithm.flash_properties.erased_byte_value;
 

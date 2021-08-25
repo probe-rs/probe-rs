@@ -6,10 +6,10 @@ use std::collections::HashMap;
 use std::io::{Read, Seek, SeekFrom};
 use std::ops::Range;
 
-use super::builder::FlashBuilder;
+use super::builder::{FlashBuilder, FlashLayout};
 use super::{
-    extract_from_elf, BinOptions, DownloadOptions, FileDownloadError, FlashError, FlashProgress,
-    Flasher,
+    extract_from_elf, BinOptions, DownloadOptions, FileDownloadError, FlashAlgorithm, FlashError,
+    FlashProgress, Flasher,
 };
 use crate::memory::MemoryInterface;
 use crate::session::Session;
@@ -461,5 +461,20 @@ impl FlashLoader {
                 }
             }
         }
+    }
+
+    /// Composes the flash layout how it will be programmed onto the device once the programming process is run.
+    /// This can be used for analytics in advance and testing.
+    pub fn flash_layout(
+        &self,
+        region: &NvmRegion,
+        flash_algorithm: &FlashAlgorithm,
+        restore_unwritten_bytes: bool,
+    ) -> FlashLayout {
+        let flash_layout =
+            self.builder
+                .build_sectors_and_pages(region, flash_algorithm, restore_unwritten_bytes);
+
+        flash_layout
     }
 }

@@ -241,7 +241,7 @@ impl<'session> Flasher<'session> {
             region,
             &self.flash_algorithm,
             restore_unwritten_bytes,
-        )?;
+        );
 
         progress.initialized(flash_layout.clone());
 
