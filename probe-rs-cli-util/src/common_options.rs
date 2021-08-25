@@ -298,7 +298,7 @@ impl ProbeOptions {
 }
 
 /// Common options used when building artifacts with cargo.
-#[derive(StructOpt, Debug)]
+#[derive(StructOpt, Debug, Default)]
 pub struct CargoOptions {
     #[structopt(name = "binary", long = "bin", hidden = true)]
     pub bin: Option<String>,
