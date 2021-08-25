@@ -75,7 +75,6 @@ fn successful_run_has_no_backtrace() {
     insta::assert_snapshot!(run_result.output);
 }
 
-
 #[test]
 // this test should not be run by default, as it requires the target hardware to be present
 #[ignore]

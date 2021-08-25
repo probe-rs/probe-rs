@@ -10,7 +10,9 @@ mod unwind;
 
 #[derive(PartialEq, Eq)]
 pub(crate) enum BacktraceOptions {
-    Auto, Never, Always
+    Auto,
+    Never,
+    Always,
 }
 
 impl From<&String> for BacktraceOptions {
@@ -19,7 +21,7 @@ impl From<&String> for BacktraceOptions {
             "auto" | "Auto" => BacktraceOptions::Auto,
             "never" | "Never" => BacktraceOptions::Never,
             "always" | "Always" => BacktraceOptions::Always,
-            _ => panic!("options for `--backtrace` are `auto`, `never`, `always`.")
+            _ => panic!("options for `--backtrace` are `auto`, `never`, `always`."),
         }
     }
 }
@@ -51,10 +53,12 @@ pub(crate) fn print(
     let print_backtrace = match settings.backtrace {
         BacktraceOptions::Never => false,
         BacktraceOptions::Always => true,
-        BacktraceOptions::Auto => settings.panic_present
-            || unwind.outcome == Outcome::StackOverflow
-            || unwind.corrupted
-            || contains_exception
+        BacktraceOptions::Auto => {
+            settings.panic_present
+                || unwind.outcome == Outcome::StackOverflow
+                || unwind.corrupted
+                || contains_exception
+        }
     };
 
     if settings.backtrace_limit == 0 {
