@@ -1,13 +1,15 @@
 [workspace]
 members = [
-    "probe-rs",
-    "probe-rs-target",
-    "probe-rs-cli-util",
     "cli",
     "debugger",
     "gdb-server",
-    "xtask",
+    "probe-rs",
+    "probe-rs-target",
+    "probe-rs-cli-util",
+    "rtt",
+    "rtthost",
     "smoke-tester",
+    "xtask",
 ]
 
 [profile.release]
