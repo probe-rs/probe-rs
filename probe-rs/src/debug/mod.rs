@@ -827,7 +827,7 @@ impl DebugInfo {
                 });
 
                 for loc in &locations {
-                    debug!("col={:?}, addr={}", loc.1, loc.0);
+                    debug!("col={:?}, addr=0x{:08x}", loc.1, loc.0);
                 }
 
                 match column {
