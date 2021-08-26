@@ -192,13 +192,34 @@ $ echo $?
 
 ⚠️ **NOTE** when you run your application with `probe-run`, the `HardFault` handler (default or user-defined) will *NOT* be executed.
 
-### Forcing backtraces
+### Backtrace options
+#### --backtrace
 
-If you'd like to see a backtrace at the end of successful program runs as well, you can enable this by setting the `--force-backtrace` flag:
+The `--backtrace` flag is optional and can get passed the following values:
+
+* `--backtrace=always`   - forced backtrace (if you'd like to see a backtrace at the end of successful program run)
+* `--backtrace=never`    - suppresed backtrace
+* `--backtrace=auto`     - default, shows a backtrace if the program panics or the stack overflows
+
+Run it like this (example for a forced backtrace):
 
 ``` console
-$ cargo run --bin hello --force-backtrace
+$ cargo run --bin hello --backtrace=always
 ```
+
+#### --backtrace-limit
+
+The `--backtrace-limit` flag is optional and defaults to 50. It is possible to set any number.
+
+`--backtrace-limit=0` is accepted and means "no limit".
+
+To show a shortened backtrace showing 5 frames, run:
+
+``` console
+$ cargo run --bin panic --backtrace-limit=5
+```
+
+Note: if `--backtrace=never` is set, setting `--backtrace-limit` has no effect.
 
 ## Troubleshooting
 
