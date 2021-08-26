@@ -26,7 +26,7 @@ bitfield! {
     pub s_sleep, _: 18;
     pub s_halt, _: 17;
     pub s_regrdy, _: 16;
-    pub c_maskings, set_c_maskints: 3;
+    pub c_maskints, set_c_maskints: 3;
     pub c_step, set_c_step: 2;
     pub c_halt, set_c_halt: 1;
     pub c_debugen, set_c_debugen: 0;
