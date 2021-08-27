@@ -10,12 +10,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added LPC552x and LPC55S2x targets. (#742)
 - Added initial multicore support. (#565)
 - probe-rs-cli-util: added common option structures and logic pertaining to probes and target attachment from cargo-flash. (#723)
+- probe-rs-cli-util: escape hatch via `--` for extra cargo options not declared by `common_options::CargoOptions`.
 - Added SWDv2 multidrop support for multi-DP chips. (#720)
 - Added RP2040 target (Raspberry Pi Pico). (#720)
 - Added The possibility to use `--connect-under-reset` for the `probe-rs-cli info` command. (#775)
 - Added support for flashing `bin` format binaries with the `probe-rs-cli download` command. (#774)
 - Improved number parsing on all the `probe-rs-cli` commands. They now all accept normal (`01234`), hex (`0x1234`), octal (`0o1234`) and binary (`0b1`) formats. (#774)
 - Added progress bars to the probe-rs-cli download command. (#776)
+
+### Removed
+
+- probe-rs-cli-util: unused module `argument_handling`. (#760)
 
 ### Target Support
 
