@@ -59,8 +59,8 @@ fn run_target_program(elf_path: &Path, chip_name: &str, opts: &cli::Opts) -> any
         probe.attach_under_reset(probe_target)?
     } else {
         let probe_attach = probe.attach(probe_target);
-        if let Err(probe_rs::Error::Probe(ProbeSpecific(ref e))) = probe_attach {
-            if format!("{}", e).contains("JtagNoDeviceConnected") {
+        if let Err(probe_rs::Error::Probe(ProbeSpecific(e))) = &probe_attach {
+            if e.to_string().contains("JtagNoDeviceConnected") {
                 eprintln!("Info: Jtag cannot find a connected device.");
                 eprintln!("Help:");
                 eprintln!("    Try using probe-run with option `--connect-under-reset`");
