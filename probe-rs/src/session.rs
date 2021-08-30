@@ -230,6 +230,8 @@ impl Session {
             Architecture::Riscv => {
                 // TODO: Handle attach under reset
 
+                probe.inner_attach()?;
+
                 let interface = probe
                     .try_into_riscv_interface()
                     .map_err(|(_probe, err)| err)?;
