@@ -36,7 +36,7 @@ impl<T: RttChannel> Channels<T> {
 
     /// Gets and iterator over the channels on the list, sorted by number.
     pub fn drain(&mut self) -> Drain<T> {
-        let map = mem::replace(&mut self.0, BTreeMap::new());
+        let map = mem::take(&mut self.0);
 
         Drain(map.into_iter())
     }

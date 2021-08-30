@@ -18,9 +18,12 @@
 //! // First obtain a probe-rs session (see probe-rs documentation for details)
 //! let probe = Probe::list_all()[0].open()?;
 //! let mut session = probe.attach("somechip")?;
+//! let memory_map = session.target().memory_map.clone();
+//! // Select a core.
+//! let mut core = session.core(0)?;
 //!
 //! // Attach to RTT
-//! let mut rtt = Rtt::attach(Arc::new(Mutex::new(session)))?;
+//! let mut rtt = Rtt::attach(&mut core, &memory_map)?;
 //!
 //! // Read from a channel
 //! if let Some(input) = rtt.up_channels().take(0) {

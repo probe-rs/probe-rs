@@ -22,6 +22,28 @@
         {
             "type": "lldb",
             "request": "launch",
+            "name": "rtt-host", //Use this to manually test the rtthost
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=rtthost",
+                    "--package=rtthost"
+                ],
+                "filter": {
+                    "name": "rtthost",
+                    "kind": "bin"
+                }
+            },
+            "args": [
+                "--list",
+                "--chip",
+                "STM32H745ZITx",
+            ],
+            "cwd": "${workspaceFolder}/rtthost"
+        },        
+        {
+            "type": "lldb",
+            "request": "launch",
             "name": "CLI probe-rs-debugger", //Use this to test the CLI version
             "cargo": {
                 "args": [
