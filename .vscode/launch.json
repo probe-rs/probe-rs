@@ -35,9 +35,11 @@
                 }
             },
             "args": [
-                "--list",
                 "--chip",
                 "STM32H745ZITx",
+                "--scan-region",
+                "0x20000038",
+                "--list"
             ],
             "cwd": "${workspaceFolder}/rtthost"
         },        
