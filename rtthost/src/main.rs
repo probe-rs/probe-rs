@@ -2,9 +2,7 @@ use probe_rs::{config::TargetSelector, DebugProbeInfo, Probe};
 use probe_rs_rtt::{Channels, Rtt, RttChannel, ScanRegion};
 use std::io::prelude::*;
 use std::io::{stdin, stdout};
-use std::sync::{
-    mpsc::{channel, Receiver},
-};
+use std::sync::mpsc::{channel, Receiver};
 use std::thread;
 use structopt::StructOpt;
 
