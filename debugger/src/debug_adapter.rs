@@ -577,7 +577,7 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
     }
 
     pub(crate) fn stack_trace(&mut self, core_data: &mut CoreData, request: &Request) -> bool {
-        let _statuss = match core_data.target_core.status() {
+        let _status = match core_data.target_core.status() {
             Ok(status) => {
                 if !status.is_halted() {
                     return self.send_response::<()>(
@@ -681,8 +681,6 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
 
                                         path
                                     });
-
-                                //TODO: Consider implementing RTIC's expanded source access. Might also do a general macro expansion if that makes sense.
                                 Some(Source {
                                     name: source_location.file.clone(),
                                     path: path.map(|p| p.to_string_lossy().to_string()),

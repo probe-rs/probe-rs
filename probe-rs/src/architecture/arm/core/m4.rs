@@ -400,7 +400,9 @@ impl<'probe> CoreInterface for M4<'probe> {
         let dhcsr = Dhcsr(self.memory.read_word_32(Dhcsr::ADDRESS)?);
 
         if dhcsr.s_lockup() {
-            log::warn!("The core is in locked up status as a result of an unrecoverable exception");
+            log::error!(
+                "The core is in locked up status as a result of an unrecoverable exception"
+            );
 
             self.state.current_state = CoreStatus::LockedUp;
 

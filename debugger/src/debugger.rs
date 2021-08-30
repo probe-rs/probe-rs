@@ -512,7 +512,12 @@ impl Debugger {
                 - If the `new_status` is `Running`, then we have to poll on a regular basis, until the Probe stops for good reasons like breakpoints, or bad reasons like panics. Then tell the DAP-Client.
                 */
                 match debug_adapter.last_known_status {
-                    CoreStatus::Unknown => true,
+                    CoreStatus::Unknown => true, // Don't do anything until we know VSCode's startup sequence is complete, and changes this to either Halted or Running.
+                    CoreStatus::Halted(_) => {
+                        // No need to poll the target if we know it is halted and waiting for us to do something.
+                        thread::sleep(Duration::from_millis(50)); //small delay to reduce fast looping costs on the client
+                        true
+                    }
                     _other => {
                         let mut core_data =
                             match attach_core(&mut session_data.session, &self.debugger_options) {
@@ -582,16 +587,17 @@ impl Debugger {
                                 debug_adapter.send_event("stopped", event_body);
                             }
                             CoreStatus::LockedUp => {
-                                let event_body = Some(StoppedEventBody {
-                                    reason: new_status.short_long_status().0.to_owned(),
-                                    description: Some(new_status.short_long_status().1.to_owned()),
-                                    thread_id: Some(core_data.target_core.id() as i64),
-                                    preserve_focus_hint: Some(false),
-                                    text: None,
-                                    all_threads_stopped: Some(true),
-                                    hit_breakpoint_ids: None,
-                                });
-                                debug_adapter.send_event("stopped", event_body);
+                                debug_adapter.send_response::<()>(
+                                    &request,
+                                    Err(DebuggerError::Other(anyhow!(new_status
+                                        .short_long_status()
+                                        .1
+                                        .to_owned()))),
+                                );
+                                debug_adapter.show_message(
+                                    "error".to_string(),
+                                    new_status.short_long_status().1.to_owned(),
+                                );
                                 return false;
                             }
                             CoreStatus::Unknown => {
@@ -723,7 +729,7 @@ impl Debugger {
                         };
                         if unhalt_me {
                             match core_data.target_core.run() {
-                                Ok(_) => {}
+                                Ok(_) => debug_adapter.last_known_status = CoreStatus::Running,
                                 Err(error) => {
                                     debug_adapter.send_response::<()>(
                                         &request,
