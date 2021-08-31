@@ -54,7 +54,10 @@ impl fmt::Debug for ArchitectureInterface {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             ArchitectureInterface::Arm(..) => f.write_str("ArchitectureInterface::Arm(..)"),
-            ArchitectureInterface::Riscv(iface) => write!(f, "ArchitectureInterface({:?})", iface),
+            ArchitectureInterface::Riscv(iface) => f
+                .debug_tuple("ArchitectureInterface::Riscv")
+                .field(iface)
+                .finish(),
         }
     }
 }
