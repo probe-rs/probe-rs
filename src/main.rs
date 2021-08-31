@@ -60,6 +60,8 @@ fn run_target_program(elf_path: &Path, chip_name: &str, opts: &cli::Opts) -> any
     } else {
         let probe_attach = probe.attach(probe_target);
         if let Err(probe_rs::Error::Probe(ProbeSpecific(e))) = &probe_attach {
+            // FIXME Using `to_string().contains(...)` is a workaround as the concrete type
+            // of `e` is not public and therefore does not allow downcasting.
             if e.to_string().contains("JtagNoDeviceConnected") {
                 eprintln!("Info: Jtag cannot find a connected device.");
                 eprintln!("Help:");
