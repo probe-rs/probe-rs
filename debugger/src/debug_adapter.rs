@@ -1378,9 +1378,32 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
                 resp.success = true;
                 resp.body = body_value;
             }
-            Err(e) => {
+            Err(debugger_error) => {
                 resp.success = false;
-                resp.message = Some(e.to_string());
+                resp.message = {
+                    let mut response_message = debugger_error.to_string();
+                    let mut offset_iterations = 0;
+                    let mut child_error: Option<&dyn std::error::Error> =
+                        std::error::Error::source(&debugger_error);
+                    while let Some(source_error) = child_error {
+                        offset_iterations += 1;
+                        response_message = format!(
+                            "{}\n{:?}",
+                            response_message,
+                            <dyn std::error::Error>::to_string(source_error)
+                        );
+                        for _offset_counter in 0..offset_iterations {
+                            response_message = format!("{}\t", response_message);
+                        }
+                        response_message = format!(
+                            "{}{:?}",
+                            response_message,
+                            <dyn std::error::Error>::to_string(source_error)
+                        );
+                        child_error = std::error::Error::source(source_error);
+                    }
+                    Some(response_message)
+                };
             }
         };
         if self.adapter_type == DebugAdapterType::DapClient {
