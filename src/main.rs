@@ -63,11 +63,13 @@ fn run_target_program(elf_path: &Path, chip_name: &str, opts: &cli::Opts) -> any
             if e.to_string().contains("JtagNoDeviceConnected") {
                 eprintln!("Info: Jtag cannot find a connected device.");
                 eprintln!("Help:");
-                eprintln!("    Try using probe-run with option `--connect-under-reset`");
-                eprintln!("    Or if using cargo:");
+                eprintln!("    Check that the debugger is connected to the chip, if so");
+                eprintln!("    try using probe-run with option `--connect-under-reset`");
+                eprintln!("    or, if using cargo:");
                 eprintln!("        cargo run -- --connect-under-reset");
-                eprintln!("    This error comes from the program currently in the chip and");
-                eprintln!("    using `--connect-under-reset` is only a workaround.\n");
+                eprintln!("    If using this flag fixed your issue, this error might");
+                eprintln!("    come from the program currently in the chip and using");
+                eprintln!("    `--connect-under-reset` is only a workaround.\n");
             }
         }
         probe_attach?
