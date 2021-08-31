@@ -68,14 +68,32 @@ pub fn read_metadata(work_dir: &Path) -> Result<Metadata, ArtifactError> {
     })
 }
 
-/// Run `cargo build` and return the path to the generated binary artifact.
+/// Represents compiled code that the compiler emitted during compilation.
+pub struct Artifact {
+    path: PathBuf,
+    fresh: bool,
+}
+
+impl Artifact {
+    /// Get the path of this output from the compiler.
+    pub fn path(&self) -> &Path {
+        &self.path
+    }
+
+    /// If `true`, then the artifact was unchanged during compilation.
+    pub fn fresh(&self) -> bool {
+        self.fresh
+    }
+}
+
+/// Run `cargo build` and return the generated binary artifact.
 ///
 /// `args` will be passed to cargo build, and `--message-format json` will be
 /// added to the list of arguments.
 ///
 /// The output of `cargo build` is parsed to detect the path to the generated binary artifact.
 /// If either no artifact, or more than a single artifact are created, an error is returned.
-pub fn build_artifact(work_dir: &Path, args: &[String]) -> Result<PathBuf, ArtifactError> {
+pub fn build_artifact(work_dir: &Path, args: &[String]) -> Result<Artifact, ArtifactError> {
     let work_dir = dunce::canonicalize(work_dir).map_err(|e| ArtifactError::Canonicalize {
         source: e,
         work_dir: format!("{}", work_dir.display()),
@@ -141,7 +159,10 @@ pub fn build_artifact(work_dir: &Path, args: &[String]) -> Result<PathBuf, Artif
 
     if let Some(artifact) = target_artifact {
         // Unwrap is safe, we only store artifacts with an executable.
-        Ok(PathBuf::from(artifact.executable.unwrap().as_path()))
+        Ok(Artifact {
+            path: PathBuf::from(artifact.executable.unwrap().as_path()),
+            fresh: artifact.fresh,
+        })
     } else {
         // We did not find a binary, so we should return an error.
         Err(ArtifactError::NoArtifacts)
