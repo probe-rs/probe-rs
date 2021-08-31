@@ -68,22 +68,25 @@ pub fn read_metadata(work_dir: &Path) -> Result<Metadata, ArtifactError> {
     })
 }
 
+/// Represents compiled code that the compiler emitted during compilation.
 pub struct Artifact {
     path: PathBuf,
     fresh: bool,
 }
 
 impl Artifact {
+    /// Get the path of this output from the compiler.
     pub fn path(&self) -> &Path {
         &self.path
     }
 
+    /// If `true`, then the artifact was unchanged during compilation.
     pub fn fresh(&self) -> bool {
         self.fresh
     }
 }
 
-/// Run `cargo build` and return the path to the generated binary artifact.
+/// Run `cargo build` and return the generated binary artifact.
 ///
 /// `args` will be passed to cargo build, and `--message-format json` will be
 /// added to the list of arguments.
