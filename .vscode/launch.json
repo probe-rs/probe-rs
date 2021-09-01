@@ -22,66 +22,6 @@
         {
             "type": "lldb",
             "request": "launch",
-            "name": "rtt-host", //Use this to manually test the rtthost
-            "cargo": {
-                "args": [
-                    "build",
-                    "--bin=rtthost",
-                    "--package=rtthost"
-                ],
-                "filter": {
-                    "name": "rtthost",
-                    "kind": "bin"
-                }
-            },
-            "args": [
-                "--chip",
-                "STM32H745ZITx",
-                "--scan-region",
-                "0x20000038",
-                "--list"
-            ],
-            "cwd": "${workspaceFolder}/rtthost"
-        },        
-        {
-            "type": "lldb",
-            "request": "launch",
-            "name": "CLI probe-rs-debugger", //Use this to test the CLI version
-            "cargo": {
-                "args": [
-                    "build",
-                    "--bin=probe-rs-debugger",
-                    "--package=probe-rs-debugger"
-                ],
-                "filter": {
-                    "name": "probe-rs-debugger",
-                    "kind": "bin"
-                }
-            },
-            "args": [
-                "debug",
-                "--chip",
-                "STM32H745ZITx",
-                "--speed",
-                "24000",
-                // "--probe",
-                // "PID:VID",
-                "--program-binary",
-                "debug_example/target/thumbv7em-none-eabihf/debug/debugging_variables",
-                "--protocol",
-                "swd",
-                "--connect-under-reset",
-                "--flashing-enabled",
-                "--reset-after-flashing",
-                "--halt-after-reset",
-                "--console-log-level",
-                "Info"
-            ],
-            "cwd": "${workspaceFolder}/debugger"
-        },
-        {
-            "type": "lldb",
-            "request": "launch",
             "name": "DAP-STDIO probe-rs-debugger", //Use this to test the dap server, in 'launch' mode
             "cargo": {
                 "args": [

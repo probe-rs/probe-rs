@@ -19,6 +19,7 @@ pub trait RttChannel {
 #[derive(Debug)]
 pub(crate) struct Channel {
     number: usize,
+    core_id: usize,
     ptr: u32,
     name: Option<String>,
     buffer_ptr: u32,
@@ -73,11 +74,21 @@ impl Channel {
 
         Ok(Some(Channel {
             number,
+            core_id: core.id(),
             ptr,
             name,
             buffer_ptr,
             size: mem.pread_with(Self::O_SIZE, LE).unwrap(),
         }))
+    }
+
+    /// Validate that the Core id of a request is the same as the Core id against which the Channel was created.
+    pub(crate) fn validate_core_id(&self, core: &mut Core) -> Result<(), Error> {
+        if core.id() == self.core_id {
+            Ok(())
+        } else {
+            Err(Error::IncorrectCoreSpecified(self.core_id, core.id()))
+        }
     }
 
     pub fn name(&self) -> Option<&str> {
@@ -89,6 +100,7 @@ impl Channel {
     }
 
     fn read_pointers(&self, core: &mut Core, dir: &'static str) -> Result<(u32, u32), Error> {
+        self.validate_core_id(core)?;
         let mut block = [0u32; 2];
         core.read_32(self.ptr + Self::O_WRITE as u32, block.as_mut())?;
 
@@ -143,6 +155,8 @@ impl UpChannel {
     ///
     /// See [`ChannelMode`] for more information on what the modes mean.
     pub fn mode(&self, core: &mut Core) -> Result<ChannelMode, Error> {
+        self.0.validate_core_id(core)?;
+
         let flags = core.read_word_32(self.0.ptr + Channel::O_FLAGS as u32)?;
 
         match flags & 0x3 {
@@ -159,6 +173,7 @@ impl UpChannel {
     ///
     /// See [`ChannelMode`] for more information on what the modes mean.
     pub fn set_mode(&self, core: &mut Core, mode: ChannelMode) -> Result<(), Error> {
+        self.0.validate_core_id(core)?;
         let flags = core.read_word_32(self.0.ptr + Channel::O_FLAGS as u32)?;
 
         let new_flags = (flags & !3) | (mode as u32);
@@ -168,6 +183,7 @@ impl UpChannel {
     }
 
     fn read_core(&self, core: &mut Core, mut buf: &mut [u8]) -> Result<(u32, usize), Error> {
+        self.0.validate_core_id(core)?;
         let (write, mut read) = self.0.read_pointers(core, "up")?;
 
         let mut total = 0;
@@ -201,6 +217,7 @@ impl UpChannel {
     /// This method will not block waiting for data in the target buffer, and may read less bytes
     /// than would fit in `buf`.
     pub fn read(&self, core: &mut Core, buf: &mut [u8]) -> Result<usize, Error> {
+        self.0.validate_core_id(core)?;
         let (read, total) = self.read_core(core, buf)?;
 
         if total > 0 {
@@ -217,6 +234,7 @@ impl UpChannel {
     /// The difference from [`read`](UpChannel::read) is that this does not discard the data in the
     /// buffer.
     pub fn peek(&self, core: &mut Core, buf: &mut [u8]) -> Result<usize, Error> {
+        self.0.validate_core_id(core)?;
         Ok(self.read_core(core, buf)?.1)
     }
 
@@ -270,6 +288,7 @@ impl DownChannel {
     /// This method will not block waiting for space to become available in the channel buffer, and
     /// may not write all of `buf`.
     pub fn write(&self, core: &mut Core, mut buf: &[u8]) -> Result<usize, Error> {
+        self.0.validate_core_id(core)?;
         let (mut write, read) = self.0.read_pointers(core, "down")?;
 
         if self.writable_contiguous(write, read) == 0 {

@@ -71,6 +71,10 @@ pub enum Error {
     #[error("Control block corrupted: {0}")]
     ControlBlockCorrupted(String),
 
+    /// Attempted an RTT read/write operation against a Core number that is different from the Core number against which RTT was initialized
+    #[error("Incorrect Core number specified for this operation. Expected {0}, and found {1}")]
+    IncorrectCoreSpecified(usize, usize),
+
     /// Wraps errors propagated up from probe-rs.
     #[error("Error communicating with probe: {0}")]
     Probe(#[from] probe_rs::Error),
