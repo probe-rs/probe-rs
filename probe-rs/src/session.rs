@@ -18,27 +18,27 @@ use crate::{
 };
 use crate::{AttachMethod, Core, CoreType, Error, Probe};
 use anyhow::anyhow;
-use std::time::Duration;
+use std::{fmt, time::Duration};
 
 /// The `Session` struct represents an active debug session.
 ///
-/// ## Creating a session  
+/// ## Creating a session
 /// The session can be created by calling the [Session::auto_attach()] function,
-/// which tries to automatically select a probe, and then connect to the target.  
+/// which tries to automatically select a probe, and then connect to the target.
 ///
 /// For more control, the [Probe::attach()] and [Probe::attach_under_reset()]
-/// methods can be used to open a `Session` from a specific [Probe].  
+/// methods can be used to open a `Session` from a specific [Probe].
 ///
-/// # Usage  
-/// The Session is the common handle that gives a user exclusive access to an active probe.  
-/// You can create and share a session between threads to enable multiple stakeholders (e.g. GDB and RTT) to access the target taking turns, by using  `Arc<Mutex<Session>>.`  
+/// # Usage
+/// The Session is the common handle that gives a user exclusive access to an active probe.
+/// You can create and share a session between threads to enable multiple stakeholders (e.g. GDB and RTT) to access the target taking turns, by using  `Arc<Mutex<Session>>.`
 ///
-/// If you do so, make sure that both threads sleep in between tasks such that other stakeholders may take their turn.  
+/// If you do so, make sure that both threads sleep in between tasks such that other stakeholders may take their turn.
 ///
 /// To get access to a single [Core] from the `Session`, the [Session::core()] method can be used.
 /// Please see the [Session::core()] method for more usage guidelines.
 ///
-
+#[derive(Debug)]
 pub struct Session {
     target: Target,
     interface: ArchitectureInterface,
@@ -48,6 +48,18 @@ pub struct Session {
 enum ArchitectureInterface {
     Arm(Box<dyn ArmProbeInterface + 'static>),
     Riscv(Box<RiscvCommunicationInterface>),
+}
+
+impl fmt::Debug for ArchitectureInterface {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            ArchitectureInterface::Arm(..) => f.write_str("ArchitectureInterface::Arm(..)"),
+            ArchitectureInterface::Riscv(iface) => f
+                .debug_tuple("ArchitectureInterface::Riscv")
+                .field(iface)
+                .finish(),
+        }
+    }
 }
 
 impl From<ArchitectureInterface> for Architecture {
@@ -229,6 +241,8 @@ impl Session {
             }
             Architecture::Riscv => {
                 // TODO: Handle attach under reset
+
+                probe.inner_attach()?;
 
                 let interface = probe
                     .try_into_riscv_interface()

@@ -11,7 +11,7 @@ use probe_rs::{
 };
 
 use probe_rs_cli_util::{
-    common_options::{FlashOptions, ProbeOptions},
+    common_options::{CargoOptions, FlashOptions, ProbeOptions},
     flash::run_flash_download,
 };
 
@@ -256,6 +256,7 @@ fn download_program_fast(common: ProbeOptions, format: Format, path: &str) -> Re
             flash_layout_output_path: None,
             elf: None,
             work_dir: None,
+            cargo_options: CargoOptions::default(),
             probe_options: common,
         },
         loader,

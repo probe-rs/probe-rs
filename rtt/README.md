@@ -1,6 +1,6 @@
 # probe-rs-rtt
 
-[![crates.io](https://meritbadge.herokuapp.com/probe-rs-rtt)](https://crates.io/crates/probe-rs-rtt) [![documentation](https://docs.rs/probe-rs-rtt/badge.svg)](https://docs.rs/probe-rs-rtt)
+[![crates.io](https://img.shields.io/crates/v/probe-rs-rtt)](https://crates.io/crates/probe-rs-rtt) [![documentation](https://docs.rs/probe-rs-rtt/badge.svg)](https://docs.rs/probe-rs-rtt)
 
 Host side implementation of the RTT (Real-Time Transfer) I/O protocol over probe-rs.
 
