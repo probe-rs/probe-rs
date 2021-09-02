@@ -34,7 +34,7 @@ pub use probe_rs_target::{
 pub use registry::{
     add_target_from_yaml, families, get_target_by_name, search_chips, RegistryError,
 };
-pub use target::{Target, TargetParseError, TargetSelector};
+pub use target::{DebugSequence, Target, TargetParseError, TargetSelector};
 
 // Crate-internal API
 pub(crate) use chip_info::ChipInfo;

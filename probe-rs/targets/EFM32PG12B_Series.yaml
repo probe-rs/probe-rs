@@ -4,7 +4,7 @@ variants:
   - name: EFM32PG12B500F1024
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0

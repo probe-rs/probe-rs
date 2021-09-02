@@ -1,3 +1,4 @@
+use crate::architecture::arm::sequences::ArmDebugSequence;
 use crate::core::{
     CoreInformation, CoreInterface, CoreRegister, CoreRegisterAddress, RegisterFile,
 };
@@ -5,7 +6,7 @@ use crate::error::Error;
 use crate::memory::Memory;
 use crate::DebugProbeError;
 
-use super::{register, reset_catch_clear, reset_catch_set, CortexState, Dfsr, ARM_REGISTER_FILE};
+use super::{register, Dfsr, State, ARM_REGISTER_FILE};
 use crate::{
     core::{Architecture, CoreStatus, HaltReason},
     MemoryInterface,
@@ -14,6 +15,7 @@ use anyhow::{anyhow, Result};
 
 use bitfield::bitfield;
 use std::mem::size_of;
+use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 bitfield! {
@@ -324,17 +326,20 @@ impl FpRev2CompX {
 pub const MSP: CoreRegisterAddress = CoreRegisterAddress(0b000_1001);
 pub const PSP: CoreRegisterAddress = CoreRegisterAddress(0b000_1010);
 
-pub struct M4<'probe> {
+pub struct Armv7m<'probe> {
     memory: Memory<'probe>,
 
-    state: &'probe mut CortexState,
+    state: &'probe mut State,
+
+    sequence: Arc<dyn ArmDebugSequence>,
 }
 
-impl<'probe> M4<'probe> {
+impl<'probe> Armv7m<'probe> {
     pub(crate) fn new(
         mut memory: Memory<'probe>,
-        state: &'probe mut CortexState,
-    ) -> Result<M4<'probe>, Error> {
+        state: &'probe mut State,
+        sequence: Arc<dyn ArmDebugSequence>,
+    ) -> Result<Self, Error> {
         if !state.initialized() {
             // determine current state
             let dhcsr = Dhcsr(memory.read_word_32(Dhcsr::ADDRESS)?);
@@ -363,11 +368,15 @@ impl<'probe> M4<'probe> {
             state.initialize();
         }
 
-        Ok(Self { memory, state })
+        Ok(Self {
+            memory,
+            state,
+            sequence,
+        })
     }
 }
 
-impl<'probe> CoreInterface for M4<'probe> {
+impl<'probe> CoreInterface for Armv7m<'probe> {
     fn wait_for_core_halted(&mut self, timeout: Duration) -> Result<(), Error> {
         // Wait until halted state is active again.
         let start = Instant::now();
@@ -567,24 +576,15 @@ impl<'probe> CoreInterface for M4<'probe> {
     }
 
     fn reset(&mut self) -> Result<(), Error> {
-        // Set THE AIRCR.SYSRESETREQ control bit to 1 to request a reset. (ARM V6 ARM, B1.5.16)
-        let mut value = Aircr(0);
-        value.vectkey();
-        value.set_sysresetreq(true);
-
-        self.memory.write_word_32(Aircr::ADDRESS, value.into())?;
-
-        Ok(())
+        self.sequence.reset_system(&mut self.memory)
     }
 
-    fn reset_and_halt(&mut self, timeout: Duration) -> Result<CoreInformation, Error> {
+    fn reset_and_halt(&mut self, _timeout: Duration) -> Result<CoreInformation, Error> {
         // Set the vc_corereset bit in the DEMCR register.
         // This will halt the core after reset.
-        reset_catch_set(self)?;
 
-        self.reset()?;
-
-        self.wait_for_core_halted(timeout)?;
+        self.sequence.reset_catch_set(&mut self.memory)?;
+        self.sequence.reset_system(&mut self.memory)?;
 
         // Update core status
         let _ = self.status()?;
@@ -595,7 +595,7 @@ impl<'probe> CoreInterface for M4<'probe> {
             self.write_core_reg(register::XPSR.address, xpsr_value | XPSR_THUMB)?;
         }
 
-        reset_catch_clear(self)?;
+        self.sequence.reset_catch_clear(&mut self.memory)?;
 
         // try to read the program counter
         let pc_value = self.read_core_reg(register::PC.address)?;
@@ -613,7 +613,9 @@ impl<'probe> CoreInterface for M4<'probe> {
             Ok(reg.num_code())
         } else {
             log::warn!("This chip uses FPBU revision {}, which is not yet supported. HW breakpoints are not available.", reg.rev());
-            Err(Error::Probe(DebugProbeError::CommandNotSupportedByProbe))
+            Err(Error::Probe(DebugProbeError::CommandNotSupportedByProbe(
+                "get_available_breakpoint_units",
+            )))
         }
     }
 
@@ -717,7 +719,7 @@ impl<'probe> CoreInterface for M4<'probe> {
     }
 }
 
-impl<'probe> MemoryInterface for M4<'probe> {
+impl<'probe> MemoryInterface for Armv7m<'probe> {
     fn read_word_32(&mut self, address: u32) -> Result<u32, Error> {
         self.memory.read_word_32(address)
     }

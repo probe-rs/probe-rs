@@ -1,9 +1,22 @@
-use crate::DebugProbeError;
+use crate::{DebugProbe, DebugProbeError};
 
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub enum PortType {
     DebugPort,
     AccessPort,
+}
+
+bitfield::bitfield! {
+    /// A struct to describe the default CMSIS-DAP pins that one can toggle from the host.
+    #[derive(Copy, Clone)]
+    pub struct Pins(u8);
+    impl Debug;
+    pub nreset, set_nreset: 7;
+    pub ntrst, set_ntrst: 5;
+    pub tdo, set_tdo: 3;
+    pub tdi, set_tdi: 2;
+    pub swdio_tms, set_swdio_tms: 1;
+    pub swclk_tck, set_swclk_tck: 0;
 }
 
 /// Debug port address.
@@ -94,6 +107,31 @@ pub trait RawDapAccess {
     fn raw_flush(&mut self) -> Result<(), DebugProbeError> {
         Ok(())
     }
+
+    /// Send a specific output sequence over JTAG or SWD.
+    ///
+    /// This can only be used for output, and should be used to generate
+    /// the initial reset sequence, for example.
+    fn swj_sequence(&mut self, bit_len: u8, bits: u64) -> Result<(), DebugProbeError>;
+
+    /// Set the state of debugger output pins directly.
+    ///
+    /// The bits have the following meaning:
+    ///
+    /// Bit 0: SWCLK/TCK
+    /// Bit 1: SWDIO/TMS
+    /// Bit 2: TDI
+    /// Bit 3: TDO
+    /// Bit 5: nTRST
+    /// Bit 7: nRESET
+    fn swj_pins(
+        &mut self,
+        pin_out: u32,
+        pin_select: u32,
+        pin_wait: u32,
+    ) -> Result<u32, DebugProbeError>;
+
+    fn into_probe(self: Box<Self>) -> Box<dyn DebugProbe>;
 }
 
 /// High-level DAP register access.

@@ -4,7 +4,7 @@ variants:
   - name: EFR32BG21A010F1024
     cores:
       - name: main
-        type: M33
+        type: armv8m
         core_access_options:
           Arm:
             ap: 0
@@ -27,7 +27,7 @@ variants:
   - name: EFR32BG21A010F512
     cores:
       - name: main
-        type: M33
+        type: armv8m
         core_access_options:
           Arm:
             ap: 0
@@ -50,7 +50,7 @@ variants:
   - name: EFR32BG21A010F768
     cores:
       - name: main
-        type: M33
+        type: armv8m
         core_access_options:
           Arm:
             ap: 0
@@ -73,7 +73,7 @@ variants:
   - name: EFR32BG21A020F1024
     cores:
       - name: main
-        type: M33
+        type: armv8m
         core_access_options:
           Arm:
             ap: 0
@@ -96,7 +96,7 @@ variants:
   - name: EFR32BG21A020F512
     cores:
       - name: main
-        type: M33
+        type: armv8m
         core_access_options:
           Arm:
             ap: 0
@@ -119,7 +119,7 @@ variants:
   - name: EFR32BG21A020F768
     cores:
       - name: main
-        type: M33
+        type: armv8m
         core_access_options:
           Arm:
             ap: 0
@@ -142,7 +142,7 @@ variants:
   - name: EFR32BG21B010F1024
     cores:
       - name: main
-        type: M33
+        type: armv8m
         core_access_options:
           Arm:
             ap: 0
@@ -165,7 +165,7 @@ variants:
   - name: EFR32BG21B010F512
     cores:
       - name: main
-        type: M33
+        type: armv8m
         core_access_options:
           Arm:
             ap: 0
@@ -188,7 +188,7 @@ variants:
   - name: EFR32BG21B010F768
     cores:
       - name: main
-        type: M33
+        type: armv8m
         core_access_options:
           Arm:
             ap: 0
@@ -211,7 +211,7 @@ variants:
   - name: EFR32BG21B020F1024
     cores:
       - name: main
-        type: M33
+        type: armv8m
         core_access_options:
           Arm:
             ap: 0
@@ -234,7 +234,7 @@ variants:
   - name: EFR32BG21B020F512
     cores:
       - name: main
-        type: M33
+        type: armv8m
         core_access_options:
           Arm:
             ap: 0
@@ -257,7 +257,7 @@ variants:
   - name: EFR32BG21B020F768
     cores:
       - name: main
-        type: M33
+        type: armv8m
         core_access_options:
           Arm:
             ap: 0

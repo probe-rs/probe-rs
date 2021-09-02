@@ -2,11 +2,12 @@ use object::{
     elf::FileHeader32, elf::PT_LOAD, read::elf::FileHeader, read::elf::ProgramHeader, Endianness,
     Object, ObjectSection,
 };
+use probe_rs_target::MemoryRange;
 
 use std::{fs::File, path::Path, str::FromStr};
 
 use super::*;
-use crate::{config::MemoryRange, session::Session};
+use crate::session::Session;
 
 /// Extended options for flashing a binary file.
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]

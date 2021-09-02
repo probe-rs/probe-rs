@@ -1,76 +1,24 @@
 use crate::{
     core::{CoreRegister, CoreRegisterAddress, RegisterDescription, RegisterFile, RegisterKind},
-    CoreStatus, Error, HaltReason, MemoryInterface,
+    CoreStatus, HaltReason,
 };
 
 use bitfield::bitfield;
 
-pub mod m0;
-pub mod m33;
-pub mod m4;
-
-/// Enable debugging on an ARM core. This is based on the
-/// `DebugCoreStart` function from the [ARM SVD Debug Description].
-///
-/// [ARM SVD Debug Description]: http://www.keil.com/pack/doc/cmsis/Pack/html/debug_description.html#debugCoreStart
-pub(crate) fn debug_core_start(core: &mut impl MemoryInterface) -> Result<(), Error> {
-    use crate::architecture::arm::core::m4::Dhcsr;
-
-    let mut dhcsr = Dhcsr(0);
-    dhcsr.set_c_debugen(true);
-    dhcsr.enable_write();
-
-    core.write_word_32(Dhcsr::ADDRESS, dhcsr.into())?;
-
-    Ok(())
-}
-
-/// Setup the core to stop after reset. After this, the core will halt when it comes
-/// out of reset. This is based on the `ResetCatchSet` function from
-/// the [ARM SVD Debug Description].
-///
-/// [ARM SVD Debug Description]: http://www.keil.com/pack/doc/cmsis/Pack/html/debug_description.html#resetCatchSet
-pub(crate) fn reset_catch_set(core: &mut impl MemoryInterface) -> Result<(), Error> {
-    use crate::architecture::arm::core::m4::{Demcr, Dhcsr};
-
-    // Request halt after reset
-    let mut demcr = Demcr(core.read_word_32(Demcr::ADDRESS)?);
-    demcr.set_vc_corereset(true);
-
-    core.write_word_32(Demcr::ADDRESS, demcr.into())?;
-
-    // Clear the status bits by reading from DHCSR
-    let _ = core.read_word_32(Dhcsr::ADDRESS)?;
-
-    Ok(())
-}
-
-/// Undo the settings of the `reset_catch_set` function.
-/// This is based on the `ResetCatchSet` function from
-/// the [ARM SVD Debug Description].
-///
-/// [ARM SVD Debug Description]: http://www.keil.com/pack/doc/cmsis/Pack/html/debug_description.html#resetCatchClear
-pub(crate) fn reset_catch_clear(core: &mut impl MemoryInterface) -> Result<(), Error> {
-    use crate::architecture::arm::core::m4::Demcr;
-
-    // Clear reset catch bit
-    let mut demcr = Demcr(core.read_word_32(Demcr::ADDRESS)?);
-    demcr.set_vc_corereset(false);
-
-    core.write_word_32(Demcr::ADDRESS, demcr.into())?;
-    Ok(())
-}
+pub mod armv6m;
+pub mod armv7m;
+pub mod armv8m;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct CortexDump {
+pub struct Dump {
     pub regs: [u32; 16],
     stack_addr: u32,
     stack: Vec<u8>,
 }
 
-impl CortexDump {
-    pub fn new(stack_addr: u32, stack: Vec<u8>) -> CortexDump {
-        CortexDump {
+impl Dump {
+    pub fn new(stack_addr: u32, stack: Vec<u8>) -> Dump {
+        Dump {
             regs: [0u32; 16],
             stack_addr,
             stack,
@@ -307,7 +255,7 @@ impl CoreRegister for Dfsr {
 }
 
 #[derive(Debug)]
-pub struct CortexState {
+pub struct State {
     initialized: bool,
 
     hw_breakpoints_enabled: bool,
@@ -315,7 +263,7 @@ pub struct CortexState {
     current_state: CoreStatus,
 }
 
-impl CortexState {
+impl State {
     pub(crate) fn new() -> Self {
         Self {
             initialized: false,

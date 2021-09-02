@@ -1,5 +1,11 @@
 use super::{Chip, Core, CoreType, MemoryRegion, RawFlashAlgorithm, TargetDescriptionSource};
+
+use crate::architecture::arm::sequences::nxp::LPC55S69;
+use crate::architecture::arm::sequences::ArmDebugSequence;
 use crate::{core::Architecture, flashing::FlashLoader};
+use std::sync::Arc;
+
+use crate::architecture::arm::sequences::DefaultArmSequence;
 
 /// This describes a complete target with a fixed chip model and variant.
 #[derive(Clone)]
@@ -15,6 +21,9 @@ pub struct Target {
 
     /// Source of the target description. Used for diagnostics.
     pub(crate) source: TargetDescriptionSource,
+
+    /// Debug sequences for the given target.
+    pub debug_sequence: DebugSequence,
 }
 
 impl std::fmt::Debug for Target {
@@ -34,6 +43,19 @@ impl std::fmt::Debug for Target {
 /// An error occured while parsing the target description.
 pub type TargetParseError = serde_yaml::Error;
 
+trait CoreArchitecture {
+    fn architecture(&self) -> Architecture;
+}
+
+impl CoreArchitecture for CoreType {
+    fn architecture(&self) -> Architecture {
+        match self {
+            CoreType::Riscv => Architecture::Riscv,
+            _ => Architecture::Arm,
+        }
+    }
+}
+
 impl Target {
     /// Create a new target
     pub fn new(
@@ -42,34 +64,35 @@ impl Target {
         flash_algorithms: Vec<RawFlashAlgorithm>,
         source: TargetDescriptionSource,
     ) -> Target {
+        // TODO: Figure out how to handle this if cores can have different architectures.
+        let mut debug_sequence = match cores[0].core_type.architecture() {
+            Architecture::Arm => DebugSequence::Arm(DefaultArmSequence::new()),
+            Architecture::Riscv => DebugSequence::Riscv,
+        };
+
+        if chip.name.starts_with("LPC55S69") {
+            log::warn!("Using custom sequence for LPC55S69");
+            debug_sequence = DebugSequence::Arm(LPC55S69::new());
+        }
+
         Target {
             name: chip.name.clone(),
             cores,
             flash_algorithms,
-            memory_map: chip.memory_map.clone(),
             source,
+            memory_map: chip.memory_map.clone(),
+            debug_sequence,
         }
     }
 
     /// Get the architecture of the target
     pub fn architecture(&self) -> Architecture {
-        fn get_architecture_from_core(core_type: CoreType) -> Architecture {
-            match core_type {
-                CoreType::M0 => Architecture::Arm,
-                CoreType::M3 => Architecture::Arm,
-                CoreType::M33 => Architecture::Arm,
-                CoreType::M4 => Architecture::Arm,
-                CoreType::M7 => Architecture::Arm,
-                CoreType::Riscv => Architecture::Riscv,
-            }
-        }
-
-        let target_arch = get_architecture_from_core(self.cores[0].core_type);
+        let target_arch = self.cores[0].core_type.architecture();
 
         assert!(
             self.cores
                 .iter()
-                .map(|core| get_architecture_from_core(core.core_type))
+                .map(|core| core.core_type.architecture())
                 .all(|core_arch| core_arch == target_arch),
             "Not all cores of the target are of the same architecture. Probe-rs doesn't support this (yet). If you see this, it is a bug. Please file an issue."
         );
@@ -152,4 +175,16 @@ impl From<Target> for TargetSelector {
     fn from(target: Target) -> Self {
         TargetSelector::Specified(target)
     }
+}
+
+/// This is the type to denote a general debug sequence.  
+/// It can differentiate between ARM and RISC-V for now.  
+/// Currently, only the ARM variant does something sensible;  
+/// RISC-V will be ignored when encountered.
+#[derive(Clone)]
+pub enum DebugSequence {
+    /// An ARM debug sequence.
+    Arm(Arc<dyn ArmDebugSequence>),
+    /// A RISC-V debug sequence.
+    Riscv,
 }

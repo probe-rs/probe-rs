@@ -4,7 +4,7 @@ variants:
   - name: LPC54605J256BD100
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -28,7 +28,7 @@ variants:
   - name: LPC54605J256ET100
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -52,7 +52,7 @@ variants:
   - name: LPC54605J256ET180
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -76,7 +76,7 @@ variants:
   - name: LPC54605J512BD100
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -100,7 +100,7 @@ variants:
   - name: LPC54605J512ET100
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -124,7 +124,7 @@ variants:
   - name: LPC54605J512ET180
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -148,7 +148,7 @@ variants:
   - name: LPC54606J256BD100
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -172,7 +172,7 @@ variants:
   - name: LPC54606J256ET100
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -196,7 +196,7 @@ variants:
   - name: LPC54606J256ET180
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -220,7 +220,7 @@ variants:
   - name: LPC54606J512BD100
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -244,7 +244,7 @@ variants:
   - name: LPC54606J512BD208
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -268,7 +268,7 @@ variants:
   - name: LPC54606J512ET100
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -292,7 +292,7 @@ variants:
   - name: LPC54607J256BD208
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -316,7 +316,7 @@ variants:
   - name: LPC54607J256ET180
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -340,7 +340,7 @@ variants:
   - name: LPC54607J512ET180
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -364,7 +364,7 @@ variants:
   - name: LPC54608J512BD208
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -388,7 +388,7 @@ variants:
   - name: LPC54608J512ET180
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -412,7 +412,7 @@ variants:
   - name: LPC54616J256ET180
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -436,7 +436,7 @@ variants:
   - name: LPC54616J512BD100
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -460,7 +460,7 @@ variants:
   - name: LPC54616J512BD208
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -484,7 +484,7 @@ variants:
   - name: LPC54616J512ET100
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -508,7 +508,7 @@ variants:
   - name: LPC54618J512BD208
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -532,7 +532,7 @@ variants:
   - name: LPC54618J512ET180
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -556,7 +556,7 @@ variants:
   - name: LPC54628J512ET180
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0

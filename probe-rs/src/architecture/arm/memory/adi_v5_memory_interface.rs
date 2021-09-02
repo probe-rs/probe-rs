@@ -1,7 +1,10 @@
 use super::super::ap::{
     AccessPortError, AddressIncrement, ApAccess, ApRegister, DataSize, MemoryAp, CSW, DRW, TAR,
 };
-use crate::architecture::arm::{dp::DpAccess, MemoryApInformation};
+use crate::architecture::arm::ArmCommunicationInterface;
+use crate::architecture::arm::{
+    communication_interface::Initialized, dp::DpAccess, MemoryApInformation,
+};
 use crate::{CommunicationInterface, CoreRegister, CoreRegisterAddress, DebugProbeError, Error};
 use scroll::{Pread, Pwrite, LE};
 use std::convert::TryInto;
@@ -28,6 +31,10 @@ pub trait ArmProbe {
     fn write_32(&mut self, ap: MemoryAp, address: u32, data: &[u32]) -> Result<(), Error>;
 
     fn flush(&mut self) -> Result<(), Error>;
+
+    fn get_arm_communication_interface(
+        &mut self,
+    ) -> Result<&mut ArmCommunicationInterface<Initialized>, Error>;
 }
 
 /// A struct to give access to a targets memory using a certain DAP.
@@ -668,6 +675,12 @@ where
 
         Ok(())
     }
+
+    fn get_arm_communication_interface(
+        &mut self,
+    ) -> Result<&mut ArmCommunicationInterface<Initialized>, Error> {
+        CommunicationInterface::get_arm_communication_interface(self.interface)
+    }
 }
 
 bitfield! {
@@ -801,9 +814,10 @@ mod tests {
             let ap_information = MemoryApInformation {
                 address: DUMMY_AP.ap_address(),
                 only_32bit_data_size: false,
-                debug_base_address: 0xf000_0000,
                 supports_hnonsec: false,
+                debug_base_address: 0xf000_0000,
             };
+
             Self::new(mock, &ap_information).unwrap()
         }
 

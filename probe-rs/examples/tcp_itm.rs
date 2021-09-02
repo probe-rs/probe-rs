@@ -1,7 +1,7 @@
 use probe_rs::architecture::arm::swo::SwoConfig;
 use probe_rs::Error;
 
-use itm_decode::{Decoder, TracePacket};
+use itm_decode::{Decoder, DecoderOptions, TracePacket};
 
 use serde::{Deserialize, Serialize};
 use std::net::{SocketAddr, TcpListener, TcpStream};
@@ -32,7 +32,7 @@ fn main() -> Result<(), Error> {
 
     let mut timestamp: f64 = 0.0;
 
-    let mut decoder = Decoder::new();
+    let mut decoder = Decoder::new(DecoderOptions::default());
 
     let mut stimuli = vec![String::new(); 32];
 
@@ -41,7 +41,7 @@ fn main() -> Result<(), Error> {
     loop {
         let bytes = session.read_swo()?;
 
-        decoder.push(bytes);
+        decoder.push(&bytes);
         while let Ok(Some(packet)) = decoder.pull() {
             match packet {
                 TracePacket::LocalTimestamp1 { ts, data_relation } => {

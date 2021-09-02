@@ -96,24 +96,14 @@ pub struct FlashOptions {
     )]
     pub work_dir: Option<PathBuf>,
     #[structopt(flatten)]
+    /// Arguments which are forwarded to 'cargo build'.
+    pub cargo_options: CargoOptions,
+    #[structopt(flatten)]
     /// Argument relating to probe/chip selection/configuration.
     pub probe_options: ProbeOptions,
 }
 
 impl FlashOptions {
-    pub const ARGUMENTS: &'static [&'static str] = &[
-        "version",
-        "list-chips",
-        "list-probes",
-        "disable-progressbars",
-        "reset-halt",
-        "log=",
-        "restore-unwritten",
-        "flash-layout=",
-        "elf=",
-        "work-dir=",
-    ];
-
     /// Whether calling program should exit prematurely. Effectively
     /// handles --list-{probes,chips}.
     ///
@@ -162,16 +152,6 @@ pub struct ProbeOptions {
 }
 
 impl ProbeOptions {
-    pub const ARGUMENTS: &'static [&'static str] = &[
-        "chip=",
-        "chip-description-path=",
-        "protocol=",
-        "probe=",
-        "connect-under-reset",
-        "speed=",
-        "dry-run",
-    ];
-
     /// Add targets contained in file given by --chip-description-path
     /// to probe-rs registery.
     ///
@@ -317,21 +297,50 @@ impl ProbeOptions {
     }
 }
 
-/// Generates a suitable help string to append to your program's
-/// --help. Example usage:
-/// ```no_run
-/// use probe_rs_cli_util::common_options::{FlashOptions, cargo_help_message};
-/// use probe_rs_cli_util::structopt::StructOpt;
-///
-/// let matches = FlashOptions::clap()
-///     .bin_name("cargo flash")
-///     .after_help(cargo_help_message("cargo flash").as_str())
-///     .get_matches_from(std::env::args());
-/// let opts = FlashOptions::from_clap(&matches);
-/// ```
-pub fn cargo_help_message(bin: &str) -> String {
-    format!(
-        r#"
+/// Common options used when building artifacts with cargo.
+#[derive(StructOpt, Debug, Default)]
+pub struct CargoOptions {
+    #[structopt(name = "binary", long = "bin", hidden = true)]
+    pub bin: Option<String>,
+    #[structopt(name = "example", long = "example", hidden = true)]
+    pub example: Option<String>,
+    #[structopt(name = "package", short = "p", long = "package", hidden = true)]
+    pub package: Option<String>,
+    #[structopt(name = "release", long = "release", hidden = true)]
+    pub release: bool,
+    #[structopt(name = "target", long = "target", hidden = true)]
+    pub target: Option<String>,
+    #[structopt(name = "PATH", long = "manifest-path", hidden = true)]
+    pub manifest_path: Option<PathBuf>,
+    #[structopt(long, hidden = true)]
+    pub no_default_features: bool,
+    #[structopt(long, hidden = true)]
+    pub all_features: bool,
+    #[structopt(long, hidden = true)]
+    pub features: Vec<String>,
+    #[structopt(hidden = true)]
+    /// Escape hatch: all args passed after a sentinel `--` end up here,
+    /// unprocessed. Used to pass arguments to cargo not declared in
+    /// [CargoOptions].
+    pub trailing_opts: Vec<String>,
+}
+
+impl CargoOptions {
+    /// Generates a suitable help string to append to your program's
+    /// --help. Example usage:
+    /// ```no_run
+    /// use probe_rs_cli_util::common_options::{FlashOptions, CargoOptions};
+    /// use probe_rs_cli_util::structopt::StructOpt;
+    ///
+    /// let matches = FlashOptions::clap()
+    ///     .bin_name("cargo flash")
+    ///     .after_help(CargoOptions::help_message("cargo flash").as_str())
+    ///     .get_matches_from(std::env::args());
+    /// let opts = FlashOptions::from_clap(&matches);
+    /// ```
+    pub fn help_message(bin: &str) -> String {
+        format!(
+            r#"
 CARGO BUILD OPTIONS:
 
     The following options are forwarded to 'cargo build':
@@ -346,11 +355,59 @@ CARGO BUILD OPTIONS:
         --all-features
         --features
 
-    For example, if you run the command '{} --release',
-    this means that 'cargo build --release' will be called.
+    Additionally, all options passed after a sentinel '--'
+    are also forwarded.
+
+    For example, if you run the command '{} --release -- \
+    --some-cargo-flag', this means that 'cargo build \
+    --release --some-cargo-flag' will be called.
 "#,
-        bin
-    )
+            bin
+        )
+    }
+
+    /// Generates list of arguments to cargo from a `CargoOptions`. For
+    /// example, if [CargoOptions::release] is set, resultant list will
+    /// contain a `"--release"`.
+    pub fn to_cargo_options(&self) -> Vec<String> {
+        // Handle known options
+        let mut args: Vec<String> = vec![];
+        macro_rules! maybe_push_str_opt {
+            ($field:expr, $name:expr) => {{
+                if let Some(value) = $field {
+                    args.push(format!("--{}", stringify!($name)));
+                    args.push(value.clone());
+                }
+            }};
+        }
+
+        maybe_push_str_opt!(&self.bin, bin);
+        maybe_push_str_opt!(&self.example, example);
+        maybe_push_str_opt!(&self.package, package);
+        if self.release {
+            args.push("--release".to_string());
+        }
+        maybe_push_str_opt!(&self.target, target);
+        if let Some(path) = &self.manifest_path {
+            args.push("--manifest-path".to_string());
+            args.push(path.display().to_string());
+        }
+        if self.no_default_features {
+            args.push("--no-default-features".to_string());
+        }
+        if self.all_features {
+            args.push("--all-features".to_string());
+        }
+        if !self.features.is_empty() {
+            args.push("--features".to_string());
+            args.push(self.features.join(","));
+        }
+
+        // handle unknown options (passed after sentinel '--')
+        args.append(&mut self.trailing_opts.clone());
+
+        args
+    }
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -471,10 +528,44 @@ pub fn print_families(mut f: impl Write) -> Result<(), OperationError> {
     Ok(())
 }
 
-pub fn common_arguments() -> Vec<&'static str> {
-    FlashOptions::ARGUMENTS
-        .iter()
-        .chain(ProbeOptions::ARGUMENTS)
-        .copied()
-        .collect()
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn to_cargo_options() {
+        assert_eq!(
+            CargoOptions {
+                bin: Some("foobar".into()),
+                example: Some("foobar".into()),
+                package: Some("foobar".into()),
+                release: true,
+                target: Some("foobar".into()),
+                manifest_path: Some("/tmp/Cargo.toml".into()),
+                no_default_features: true,
+                all_features: true,
+                features: vec!["feat1".into(), "feat2".into()],
+                trailing_opts: vec!["--some-cargo-option".into()],
+            }
+            .to_cargo_options(),
+            [
+                "--bin",
+                "foobar",
+                "--example",
+                "foobar",
+                "--package",
+                "foobar",
+                "--release",
+                "--target",
+                "foobar",
+                "--manifest-path",
+                "/tmp/Cargo.toml",
+                "--no-default-features",
+                "--all-features",
+                "--features",
+                "feat1,feat2",
+                "--some-cargo-option",
+            ]
+        );
+    }
 }

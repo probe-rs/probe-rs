@@ -4,7 +4,7 @@ variants:
   - name: HT32F12345
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -28,7 +28,7 @@ variants:
   - name: HT32F12345_46QFN
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -52,7 +52,7 @@ variants:
   - name: HT32F12345_48LQFP
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -76,7 +76,7 @@ variants:
   - name: HT32F12345_64LQFP
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -100,7 +100,7 @@ variants:
   - name: HT32F12364
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -124,7 +124,7 @@ variants:
   - name: HT32F12364_46QFN
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -148,7 +148,7 @@ variants:
   - name: HT32F12364_48LQFP
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -172,7 +172,7 @@ variants:
   - name: HT32F12364_64LQFP
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -196,7 +196,7 @@ variants:
   - name: HT32F12365
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -220,7 +220,7 @@ variants:
   - name: HT32F12365_100LQFP
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -244,7 +244,7 @@ variants:
   - name: HT32F12365_46QFN
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -268,7 +268,7 @@ variants:
   - name: HT32F12365_48LQFP
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -292,7 +292,7 @@ variants:
   - name: HT32F12365_64LQFP
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -316,7 +316,7 @@ variants:
   - name: HT32F12366
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -340,7 +340,7 @@ variants:
   - name: HT32F12366_100LQFP
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -364,7 +364,7 @@ variants:
   - name: HT32F12366_46QFN
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -388,7 +388,7 @@ variants:
   - name: HT32F12366_48LQFP
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -412,7 +412,7 @@ variants:
   - name: HT32F12366_64LQFP
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -436,7 +436,7 @@ variants:
   - name: HT32F22366
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -460,7 +460,7 @@ variants:
   - name: HT32F22366_100LQFP
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -484,7 +484,7 @@ variants:
   - name: HT32F22366_46QFN
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -508,7 +508,7 @@ variants:
   - name: HT32F22366_48LQFP
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -532,7 +532,7 @@ variants:
   - name: HT32F22366_64LQFP
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0

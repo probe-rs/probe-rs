@@ -4,7 +4,7 @@ variants:
   - name: EFR32FG14V132F256
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0

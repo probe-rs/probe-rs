@@ -1,7 +1,14 @@
-use crate::error;
 use crate::{
-    architecture::arm::{ap::MemoryAp, memory::adi_v5_memory_interface::ArmProbe},
+    architecture::arm::{
+        ap::{AccessPort, MemoryAp},
+        memory::adi_v5_memory_interface::ArmProbe,
+        ApAddress,
+    },
     CoreRegisterAddress,
+};
+use crate::{
+    architecture::arm::{communication_interface::Initialized, ArmCommunicationInterface},
+    error,
 };
 
 use anyhow::anyhow;
@@ -197,5 +204,15 @@ impl<'probe> Memory<'probe> {
         value: u32,
     ) -> Result<(), error::Error> {
         self.inner.write_core_reg(self.ap_sel, addr, value)
+    }
+
+    pub fn get_arm_interface(
+        &mut self,
+    ) -> Result<&mut ArmCommunicationInterface<Initialized>, error::Error> {
+        self.inner.get_arm_communication_interface()
+    }
+
+    pub fn get_ap(&mut self) -> ApAddress {
+        self.ap_sel.ap_address()
     }
 }

@@ -4,7 +4,7 @@ variants:
   - name: EFR32FG23A010F256
     cores:
       - name: main
-        type: M33
+        type: armv8m
         core_access_options:
           Arm:
             ap: 0
@@ -27,7 +27,7 @@ variants:
   - name: EFR32FG23A010F512
     cores:
       - name: main
-        type: M33
+        type: armv8m
         core_access_options:
           Arm:
             ap: 0
@@ -50,7 +50,7 @@ variants:
   - name: EFR32FG23A011F512
     cores:
       - name: main
-        type: M33
+        type: armv8m
         core_access_options:
           Arm:
             ap: 0
@@ -73,7 +73,7 @@ variants:
   - name: EFR32FG23A020F256
     cores:
       - name: main
-        type: M33
+        type: armv8m
         core_access_options:
           Arm:
             ap: 0
@@ -96,7 +96,7 @@ variants:
   - name: EFR32FG23A020F512
     cores:
       - name: main
-        type: M33
+        type: armv8m
         core_access_options:
           Arm:
             ap: 0
@@ -119,7 +119,7 @@ variants:
   - name: EFR32FG23A021F512
     cores:
       - name: main
-        type: M33
+        type: armv8m
         core_access_options:
           Arm:
             ap: 0
@@ -142,7 +142,7 @@ variants:
   - name: EFR32FG23B010F256
     cores:
       - name: main
-        type: M33
+        type: armv8m
         core_access_options:
           Arm:
             ap: 0
@@ -165,7 +165,7 @@ variants:
   - name: EFR32FG23B010F512
     cores:
       - name: main
-        type: M33
+        type: armv8m
         core_access_options:
           Arm:
             ap: 0
@@ -188,7 +188,7 @@ variants:
   - name: EFR32FG23B020F256
     cores:
       - name: main
-        type: M33
+        type: armv8m
         core_access_options:
           Arm:
             ap: 0
@@ -211,7 +211,7 @@ variants:
   - name: EFR32FG23B020F512
     cores:
       - name: main
-        type: M33
+        type: armv8m
         core_access_options:
           Arm:
             ap: 0

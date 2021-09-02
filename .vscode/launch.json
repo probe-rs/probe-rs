@@ -7,38 +7,17 @@
         {
             "type": "lldb",
             "request": "launch",
-            "name": "CLI probe-rs-debugger", //Use this to test the CLI version
+            "name": "Launch smoke tester",
             "cargo": {
                 "args": [
                     "build",
-                    "--bin=probe-rs-debugger",
-                    "--package=probe-rs-debugger"
-                ],
-                "filter": {
-                    "name": "probe-rs-debugger",
-                    "kind": "bin"
-                }
+                    "--package=smoke_tester"
+                ]
             },
+            "program": "${cargo:program}",
             "args": [
-                "debug",
-                "--chip",
-                "STM32H745ZITx",
-                "--speed",
-                "24000",
-                // "--probe",
-                // "PID:VID",
-                "--program-binary",
-                "../../vscode/debug_example/target/thumbv7em-none-eabihf/debug/debugging_variables", //if you have the probe-rs/vscode repo cloned next to probe-rs
-                "--protocol",
-                "swd",
-                "--connect-under-reset",
-                "--flashing-enabled",
-                "--reset-after-flashing"                ,
-                "--halt-after-reset",
-                "--console-log-level",
-                "Info"
-            ],
-            "cwd": "${workspaceFolder}/debugger"
+                "--dut-definitions=../dut-definitions/"
+            ]
         },
         {
             "type": "lldb",

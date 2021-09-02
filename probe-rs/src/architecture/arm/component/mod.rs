@@ -3,10 +3,9 @@ mod itm;
 mod tpiu;
 
 use super::memory::romtable::{Component, PeripheralType, RomTableError};
-use crate::architecture::arm::core::m0::Demcr;
+use crate::architecture::arm::core::armv6m::Demcr;
 use crate::architecture::arm::{SwoConfig, SwoMode};
-use crate::core::CoreRegister;
-use crate::{Core, Error, MemoryInterface};
+use crate::{Core, CoreRegister, Error, MemoryInterface};
 pub use dwt::Dwt;
 pub use itm::Itm;
 pub use tpiu::Tpiu;
@@ -92,6 +91,7 @@ pub fn setup_swv(
     // Configure DWT
     let mut dwt = Dwt::new(core, find_component(components, PeripheralType::Dwt)?);
     dwt.enable()?;
+    dwt.enable_exception_trace()?;
 
     core.flush()
 }

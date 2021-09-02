@@ -2,8 +2,9 @@ use probe_rs::{
     architecture::{
         arm::{
             ap::{GenericAp, MemoryAp},
-            m0::Demcr,
+            armv6m::Demcr,
             memory::Component,
+            sequences::DefaultArmSequence,
             ApAddress, ApInformation, ArmProbeInterface, DpAddress, MemoryApInformation,
         },
         riscv::communication_interface::RiscvCommunicationInterface,
@@ -24,7 +25,7 @@ pub(crate) fn show_info_of_device(common: &ProbeOptions) -> Result<()> {
     };
 
     for protocol in protocols {
-        let (new_probe, result) = try_show_info(probe, protocol);
+        let (new_probe, result) = try_show_info(probe, protocol, common.connect_under_reset);
 
         probe = new_probe;
 
@@ -42,12 +43,22 @@ pub(crate) fn show_info_of_device(common: &ProbeOptions) -> Result<()> {
     Ok(())
 }
 
-fn try_show_info(mut probe: Probe, protocol: WireProtocol) -> (Probe, Result<()>) {
+fn try_show_info(
+    mut probe: Probe,
+    protocol: WireProtocol,
+    connect_under_reset: bool,
+) -> (Probe, Result<()>) {
     if let Err(e) = probe.select_protocol(protocol) {
         return (probe, Err(e.into()));
     }
 
-    if let Err(e) = probe.attach_to_unspecified() {
+    let attach_result = if connect_under_reset {
+        probe.attach_to_unspecified_under_reset()
+    } else {
+        probe.attach_to_unspecified()
+    };
+
+    if let Err(e) = attach_result {
         return (probe, Err(e.into()));
     }
 
@@ -55,7 +66,11 @@ fn try_show_info(mut probe: Probe, protocol: WireProtocol) -> (Probe, Result<()>
 
     if probe.has_arm_interface() {
         match probe.try_into_arm_interface() {
-            Ok(mut interface) => {
+            Ok(interface) => {
+                let mut interface = interface
+                    .initialize(DefaultArmSequence::new())
+                    .expect("This should not be an unwrap...");
+
                 if let Err(e) = show_arm_info(&mut interface) {
                     // Log error?
                     log::warn!("Error showing ARM chip information: {}", e);

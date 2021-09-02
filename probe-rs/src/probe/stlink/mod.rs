@@ -7,16 +7,21 @@ use super::{DebugProbe, DebugProbeError, ProbeCreationError, WireProtocol};
 use crate::{
     architecture::arm::{
         ap::{valid_access_ports, AccessPort, ApAccess, ApClass, MemoryAp, IDR},
-        communication_interface::ArmProbeInterface,
+        communication_interface::{
+            ArmProbeInterface, Initialized, Register, SwdSequence, UninitializedArmProbe,
+        },
+        dp::DPIDR,
         memory::{adi_v5_memory_interface::ArmProbe, Component},
-        ApAddress, ApInformation, ArmChipInfo, DapAccess, DpAddress, SwoAccess, SwoConfig, SwoMode,
+        sequences::ArmDebugSequence,
+        ApAddress, ApInformation, ArmChipInfo, DapAccess, DpAddress, Pins, SwoAccess, SwoConfig,
+        SwoMode,
     },
     DebugProbeSelector, Error as ProbeRsError, Memory, Probe,
 };
 use anyhow::anyhow;
 use constants::{commands, JTagFrequencyToDivider, Mode, Status, SwdFrequencyToDelayCount};
 use scroll::{Pread, Pwrite, BE, LE};
-use std::{cmp::Ordering, convert::TryInto, time::Duration};
+use std::{cmp::Ordering, convert::TryInto, sync::Arc, time::Duration};
 use usb_interface::TIMEOUT;
 
 /// Maximum length of 32 bit reads in bytes.
@@ -265,11 +270,9 @@ impl DebugProbe for StLink<StLinkUsbDevice> {
 
     fn try_get_arm_interface<'probe>(
         self: Box<Self>,
-    ) -> Result<Box<dyn ArmProbeInterface + 'probe>, (Box<dyn DebugProbe>, DebugProbeError)> {
-        match StlinkArmDebug::new(self) {
-            Ok(interface) => Ok(Box::new(interface)),
-            Err((probe, err)) => Err((probe.into_probe(), err)),
-        }
+    ) -> Result<Box<dyn UninitializedArmProbe + 'probe>, (Box<dyn DebugProbe>, DebugProbeError)>
+    {
+        Ok(Box::new(UninitializedStLink { probe: self }))
     }
 
     fn get_target_voltage(&mut self) -> Result<Option<f32>, DebugProbeError> {
@@ -297,6 +300,40 @@ impl<D: StLinkUsb> Drop for StLink<D> {
             let _ = self.disable_swo();
         }
         let _ = self.enter_idle();
+    }
+}
+
+impl StLink<StLinkUsbDevice> {
+    fn swj_pins(
+        &mut self,
+        pin_out: u32,
+        pin_select: u32,
+        pin_wait: u32,
+    ) -> Result<u32, ProbeRsError> {
+        let mut nreset = Pins(0);
+        nreset.set_nreset(true);
+        let nreset_mask = !(nreset.0 as u32);
+
+        // If only the reset pin is selected we perform the reset.
+        // If something else is selected return an error as this is not supported on ST-Links.
+        if pin_select & nreset_mask != 0 {
+            if Pins(pin_out as u8).nreset() {
+                self.target_reset_assert()?;
+            } else {
+                self.target_reset_deassert()?;
+            }
+
+            // Normally this would be the timeout we pass to the probe to settle the pins.
+            // The J-Link is not capable of this, so we just wait for this time on the host
+            // and assume it has settled until then.
+            std::thread::sleep(Duration::from_micros(pin_wait as u64));
+
+            // We signal that we cannot read the pin state.
+            Ok(0xFFFF_FFFF)
+        } else {
+            // This is not supported for ST-Links, unfortunately.
+            Err(DebugProbeError::CommandNotSupportedByProbe("swj_pins").into())
+        }
     }
 }
 
@@ -492,7 +529,9 @@ impl<D: StLinkUsb> StLink<D> {
         frequency_khz: u32,
     ) -> Result<(), DebugProbeError> {
         if self.hw_version != 3 {
-            return Err(DebugProbeError::CommandNotSupportedByProbe);
+            return Err(DebugProbeError::CommandNotSupportedByProbe(
+                "set_communication_frequency",
+            ));
         }
 
         let cmd_proto = match protocol {
@@ -513,7 +552,9 @@ impl<D: StLinkUsb> StLink<D> {
         protocol: WireProtocol,
     ) -> Result<(Vec<u32>, u32), DebugProbeError> {
         if self.hw_version != 3 {
-            return Err(DebugProbeError::CommandNotSupportedByProbe);
+            return Err(DebugProbeError::CommandNotSupportedByProbe(
+                "get_communication_frequencies",
+            ));
         }
 
         let cmd_proto = match protocol {
@@ -572,7 +613,7 @@ impl<D: StLinkUsb> StLink<D> {
     fn open_ap(&mut self, apsel: u8) -> Result<(), DebugProbeError> {
         // Ensure this command is actually supported
         if self.hw_version < 3 && self.jtag_version < Self::MIN_JTAG_VERSION_MULTI_AP {
-            return Err(DebugProbeError::CommandNotSupportedByProbe);
+            return Err(DebugProbeError::CommandNotSupportedByProbe("open_ap"));
         }
 
         let mut buf = [0; 2];
@@ -592,7 +633,7 @@ impl<D: StLinkUsb> StLink<D> {
     fn _close_ap(&mut self, apsel: u8) -> Result<(), DebugProbeError> {
         // Ensure this command is actually supported
         if self.hw_version < 3 && self.jtag_version < Self::MIN_JTAG_VERSION_MULTI_AP {
-            return Err(DebugProbeError::CommandNotSupportedByProbe);
+            return Err(DebugProbeError::CommandNotSupportedByProbe("close_ap"));
         }
 
         let mut buf = [0; 2];
@@ -1101,6 +1142,47 @@ impl From<StlinkError> for ProbeCreationError {
     }
 }
 
+struct UninitializedStLink {
+    probe: Box<StLink<StLinkUsbDevice>>,
+}
+
+impl UninitializedArmProbe for UninitializedStLink {
+    // Todo: Is this possible with an uninitialized ST Link?
+    fn read_dpidr(&mut self) -> Result<u32, ProbeRsError> {
+        let result = self
+            .probe
+            .read_register(DP_PORT, DPIDR::ADDRESS)
+            .map_err(|e| ProbeRsError::Other(e.into()))?;
+
+        Ok(result.into())
+    }
+
+    fn initialize(
+        self: Box<Self>,
+        _sequence: Arc<dyn ArmDebugSequence>,
+    ) -> Result<Box<dyn ArmProbeInterface>, ProbeRsError> {
+        let interface = StlinkArmDebug::new(self.probe).map_err(|(_s, e)| ProbeRsError::from(e))?;
+
+        Ok(Box::new(interface))
+    }
+}
+
+impl SwdSequence for UninitializedStLink {
+    fn swj_sequence(&mut self, _bit_len: u8, _bits: u64) -> Result<(), ProbeRsError> {
+        // This is not supported for ST-Links, unfortunately.
+        Err(DebugProbeError::CommandNotSupportedByProbe("swj_sequence").into())
+    }
+
+    fn swj_pins(
+        &mut self,
+        pin_out: u32,
+        pin_select: u32,
+        pin_wait: u32,
+    ) -> Result<u32, ProbeRsError> {
+        self.probe.swj_pins(pin_out, pin_select, pin_wait)
+    }
+}
+
 #[derive(Debug)]
 struct StlinkArmDebug {
     probe: Box<StLink<StLinkUsbDevice>>,
@@ -1252,14 +1334,24 @@ impl<'probe> ArmProbeInterface for StlinkArmDebug {
         Ok(self.ap_information.len())
     }
 
-    fn target_reset_deassert(&mut self) -> Result<(), ProbeRsError> {
-        self.probe.target_reset_deassert()?;
-
-        Ok(())
-    }
-
     fn close(self: Box<Self>) -> Probe {
         Probe::from_attached_probe(self.probe)
+    }
+}
+
+impl SwdSequence for StlinkArmDebug {
+    fn swj_sequence(&mut self, _bit_len: u8, _bits: u64) -> Result<(), ProbeRsError> {
+        // This is not supported for ST-Links, unfortunately.
+        Err(DebugProbeError::CommandNotSupportedByProbe("swj_seqeunce").into())
+    }
+
+    fn swj_pins(
+        &mut self,
+        pin_out: u32,
+        pin_select: u32,
+        pin_wait: u32,
+    ) -> Result<u32, ProbeRsError> {
+        self.probe.swj_pins(pin_out, pin_select, pin_wait)
     }
 }
 
@@ -1460,6 +1552,15 @@ impl ArmProbe for StLinkMemoryInterface<'_> {
         self.probe.probe.write_core_reg(addr.0 as u32, value)?;
 
         Ok(())
+    }
+
+    fn get_arm_communication_interface(
+        &mut self,
+    ) -> Result<&mut crate::architecture::arm::ArmCommunicationInterface<Initialized>, ProbeRsError>
+    {
+        Err(ProbeRsError::Probe(DebugProbeError::NotImplemented(
+            "ST-Links do not support raw SWD access.",
+        )))
     }
 }
 

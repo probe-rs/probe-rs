@@ -6,43 +6,25 @@ use debugger::CliState;
 
 use probe_rs::{
     debug::DebugInfo,
-    flashing::{download_file, erase_all, Format},
+    flashing::{erase_all, BinOptions, FileDownloadError, Format},
     MemoryInterface, Probe,
 };
 
-use probe_rs_cli_util::common_options::ProbeOptions;
+use probe_rs_cli_util::{
+    common_options::{CargoOptions, FlashOptions, ProbeOptions},
+    flash::run_flash_download,
+};
 
 use capstone::{arch::arm::ArchMode, prelude::*, Capstone, Endian};
 use clap::arg_enum;
 use rustyline::Editor;
 use structopt::StructOpt;
 
-use anyhow::{anyhow, Result};
+use anyhow::{anyhow, Context, Result};
 
-use std::num::ParseIntError;
-use std::path::PathBuf;
 use std::time::Instant;
-
-fn parse_hex(src: &str) -> Result<u32, ParseIntError> {
-    u32::from_str_radix(src, 16)
-}
-
-arg_enum! {
-    #[derive(Debug, Clone, Copy)]
-    enum DownloadFileType {
-        Elf,
-        Hex,
-    }
-}
-
-impl From<DownloadFileType> for Format {
-    fn from(this: DownloadFileType) -> Format {
-        match this {
-            DownloadFileType::Elf => Format::Elf,
-            DownloadFileType::Hex => Format::Hex,
-        }
-    }
-}
+use std::{fs::File, path::PathBuf};
+use std::{num::ParseIntError, path::Path};
 
 #[derive(StructOpt)]
 #[structopt(
@@ -93,10 +75,11 @@ enum Cli {
         #[structopt(flatten)]
         common: ProbeOptions,
 
-        /// The address of the memory to dump from the target (in hexadecimal without 0x prefix)
-        #[structopt(parse(try_from_str = parse_hex))]
+        /// The address of the memory to dump from the target.
+        #[structopt(parse(try_from_str = parse_u32))]
         loc: u32,
-        /// The amount of memory (in words) to dump
+        /// The amount of memory (in words) to dump.
+        #[structopt(parse(try_from_str = parse_u32))]
         words: u32,
     },
     /// Download memory to attached target
@@ -105,7 +88,7 @@ enum Cli {
         #[structopt(flatten)]
         common: ProbeOptions,
 
-        /// Format of the file to be downloaded to the flash
+        /// Format of the file to be downloaded to the flash. Possible values are case-insensitive.
         #[structopt(
             possible_values = &DownloadFileType::variants(),
             case_insensitive = true,
@@ -113,6 +96,13 @@ enum Cli {
             long
         )]
         format: DownloadFileType,
+
+        /// The address in memory where the binary will be put at. This is only considered when `bin` is selected as the format.
+        #[structopt(long, parse(try_from_str = parse_u32))]
+        base_address: Option<u32>,
+        /// The number of bytes to skip at the start of the binary file. This is only considered when `bin` is selected as the format.
+        #[structopt(long, parse(try_from_str = parse_u32))]
+        skip_bytes: Option<u32>,
 
         /// The path to the file to be downloaded to the flash
         path: String,
@@ -131,8 +121,8 @@ enum Cli {
         #[structopt(flatten)]
         common: ProbeOptions,
 
-        /// The address of the memory to dump from the target (in hexadecimal without 0x prefix)
-        #[structopt(parse(try_from_str = parse_hex))]
+        /// The address of the memory to dump from the target.
+        #[structopt(parse(try_from_str = parse_u32))]
         loc: u32,
     },
 }
@@ -172,8 +162,10 @@ fn main() -> Result<()> {
         Cli::Download {
             common,
             format,
+            base_address,
+            skip_bytes,
             path,
-        } => download_program_fast(&common, format.into(), &path),
+        } => download_program_fast(common, format.into(base_address, skip_bytes), &path),
         Cli::Erase { common } => erase(&common),
         Cli::Trace {
             shared,
@@ -234,10 +226,41 @@ fn dump_memory(
     Ok(())
 }
 
-fn download_program_fast(common: &ProbeOptions, format: Format, path: &str) -> Result<()> {
+fn download_program_fast(common: ProbeOptions, format: Format, path: &str) -> Result<()> {
     let mut session = common.simple_attach()?;
 
-    download_file(&mut session, &path, format)?;
+    let mut file = match File::open(path) {
+        Ok(file) => file,
+        Err(e) => return Err(FileDownloadError::IO(e)).context("Failed to open binary file."),
+    };
+
+    let mut loader = session.target().flash_loader();
+
+    match format {
+        Format::Bin(options) => loader.load_bin_data(&mut file, options),
+        Format::Elf => loader.load_elf_data(&mut file),
+        Format::Hex => loader.load_hex_data(&mut file),
+    }?;
+
+    run_flash_download(
+        &mut session,
+        Path::new(path),
+        &FlashOptions {
+            version: false,
+            list_chips: false,
+            list_probes: false,
+            disable_progressbars: false,
+            reset_halt: false,
+            log: None,
+            restore_unwritten: false,
+            flash_layout_output_path: None,
+            elf: None,
+            work_dir: None,
+            cargo_options: CargoOptions::default(),
+            probe_options: common,
+        },
+        loader,
+    )?;
 
     Ok(())
 }
@@ -366,4 +389,30 @@ fn debug(shared_options: &CoreOptions, common: &ProbeOptions, exe: Option<PathBu
     }
 
     Ok(())
+}
+
+arg_enum! {
+    #[derive(Debug, Clone, Copy)]
+    enum DownloadFileType {
+        Elf,
+        Hex,
+        Bin,
+    }
+}
+
+impl DownloadFileType {
+    fn into(self, base_address: Option<u32>, skip: Option<u32>) -> Format {
+        match self {
+            DownloadFileType::Elf => Format::Elf,
+            DownloadFileType::Hex => Format::Hex,
+            DownloadFileType::Bin => Format::Bin(BinOptions {
+                base_address,
+                skip: skip.unwrap_or(0),
+            }),
+        }
+    }
+}
+
+fn parse_u32(input: &str) -> Result<u32, ParseIntError> {
+    parse_int::parse(input)
 }

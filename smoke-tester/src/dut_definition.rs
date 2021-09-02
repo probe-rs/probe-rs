@@ -23,6 +23,9 @@ struct RawDutDefinition {
     probe_selector: String,
 
     flash_test_binary: Option<String>,
+
+    #[serde(default)]
+    reset_connected: bool,
 }
 
 impl RawDutDefinition {
@@ -36,11 +39,13 @@ impl RawDutDefinition {
     }
 }
 
+#[derive(Clone)]
 pub enum DefinitionSource {
     File(PathBuf),
     Cli,
 }
 
+#[derive(Clone)]
 pub struct DutDefinition {
     pub chip: Target,
 
@@ -57,6 +62,10 @@ pub struct DutDefinition {
 
     /// Source of the DUT definition.
     pub source: DefinitionSource,
+
+    /// Indicates if the probe can control the reset pin of the
+    /// DUT.
+    pub reset_connected: bool,
 }
 
 impl DutDefinition {
@@ -70,6 +79,7 @@ impl DutDefinition {
             probe_selector: Some(selector),
             flash_test_binary: None,
             source: DefinitionSource::Cli,
+            reset_connected: false,
         })
     }
 
@@ -81,6 +91,7 @@ impl DutDefinition {
             probe_selector: None,
             flash_test_binary: None,
             source: DefinitionSource::Cli,
+            reset_connected: false,
         })
     }
 
@@ -186,6 +197,7 @@ impl DutDefinition {
             probe_selector,
             flash_test_binary,
             source: DefinitionSource::File(source_file.to_owned()),
+            reset_connected: raw_definition.reset_connected,
         })
     }
 }

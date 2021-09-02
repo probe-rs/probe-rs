@@ -24,17 +24,16 @@ pub enum TargetDescriptionSource {
 
 /// Type of a supported core
 #[derive(Debug, Copy, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum CoreType {
-    /// ARM Cortex M0
-    M0,
-    /// ARM Cortex M3
-    M3,
-    /// ARM Cortex M4
-    M4,
-    /// ARM Cortex M33
-    M33,
-    /// ARM Cortex M7
-    M7,
+    /// ARMv6-M: Cortex M0, M0+, M1
+    Armv6m,
+    /// ARMv7-M: Cortex M3
+    Armv7m,
+    /// ARMv7e-M: Cortex M4, M7
+    Armv7em,
+    /// ARMv8-M: Cortex M23, M33
+    Armv8m,
     /// RISC-V
     Riscv,
 }

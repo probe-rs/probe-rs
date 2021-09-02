@@ -4,7 +4,7 @@ variants:
   - name: LPC802M001JDH16
     cores:
       - name: main
-        type: M0
+        type: armv6m
         core_access_options:
           Arm:
             ap: 0
@@ -27,7 +27,7 @@ variants:
   - name: LPC802M001JDH20
     cores:
       - name: main
-        type: M0
+        type: armv6m
         core_access_options:
           Arm:
             ap: 0
@@ -50,7 +50,7 @@ variants:
   - name: LPC802M001JHI33
     cores:
       - name: main
-        type: M0
+        type: armv6m
         core_access_options:
           Arm:
             ap: 0
@@ -73,7 +73,7 @@ variants:
   - name: LPC802M011JDH20
     cores:
       - name: main
-        type: M0
+        type: armv6m
         core_access_options:
           Arm:
             ap: 0
@@ -96,7 +96,7 @@ variants:
   - name: LPC804M101JDH20
     cores:
       - name: main
-        type: M0
+        type: armv6m
         core_access_options:
           Arm:
             ap: 0
@@ -119,7 +119,7 @@ variants:
   - name: LPC804M101JDH24
     cores:
       - name: main
-        type: M0
+        type: armv6m
         core_access_options:
           Arm:
             ap: 0
@@ -142,7 +142,7 @@ variants:
   - name: LPC804M101JHI33
     cores:
       - name: main
-        type: M0
+        type: armv6m
         core_access_options:
           Arm:
             ap: 0
@@ -165,7 +165,7 @@ variants:
   - name: LPC804M111JDH24
     cores:
       - name: main
-        type: M0
+        type: armv6m
         core_access_options:
           Arm:
             ap: 0
@@ -188,7 +188,7 @@ variants:
   - name: LPC810M021FN8
     cores:
       - name: main
-        type: M0
+        type: armv6m
         core_access_options:
           Arm:
             ap: 0
@@ -211,7 +211,7 @@ variants:
   - name: LPC811M001JDH16
     cores:
       - name: main
-        type: M0
+        type: armv6m
         core_access_options:
           Arm:
             ap: 0
@@ -234,7 +234,7 @@ variants:
   - name: LPC812M101JD20
     cores:
       - name: main
-        type: M0
+        type: armv6m
         core_access_options:
           Arm:
             ap: 0
@@ -257,7 +257,7 @@ variants:
   - name: LPC812M101JDH16
     cores:
       - name: main
-        type: M0
+        type: armv6m
         core_access_options:
           Arm:
             ap: 0
@@ -280,7 +280,7 @@ variants:
   - name: LPC812M101JDH20
     cores:
       - name: main
-        type: M0
+        type: armv6m
         core_access_options:
           Arm:
             ap: 0
@@ -303,7 +303,7 @@ variants:
   - name: LPC812M101JTB16
     cores:
       - name: main
-        type: M0
+        type: armv6m
         core_access_options:
           Arm:
             ap: 0
@@ -326,7 +326,7 @@ variants:
   - name: LPC822M101JDH20
     cores:
       - name: main
-        type: M0
+        type: armv6m
         core_access_options:
           Arm:
             ap: 0
@@ -349,7 +349,7 @@ variants:
   - name: LPC822M101JHI33
     cores:
       - name: main
-        type: M0
+        type: armv6m
         core_access_options:
           Arm:
             ap: 0
@@ -372,7 +372,7 @@ variants:
   - name: LPC824M201JDH20
     cores:
       - name: main
-        type: M0
+        type: armv6m
         core_access_options:
           Arm:
             ap: 0
@@ -395,7 +395,7 @@ variants:
   - name: LPC824M201JHI33
     cores:
       - name: main
-        type: M0
+        type: armv6m
         core_access_options:
           Arm:
             ap: 0
@@ -418,7 +418,7 @@ variants:
   - name: LPC832M101FDH20
     cores:
       - name: main
-        type: M0
+        type: armv6m
         core_access_options:
           Arm:
             ap: 0
@@ -441,7 +441,7 @@ variants:
   - name: LPC834M101FHI33
     cores:
       - name: main
-        type: M0
+        type: armv6m
         core_access_options:
           Arm:
             ap: 0
@@ -464,7 +464,7 @@ variants:
   - name: LPC844M201JBD48
     cores:
       - name: main
-        type: M0
+        type: armv6m
         core_access_options:
           Arm:
             ap: 0
@@ -487,7 +487,7 @@ variants:
   - name: LPC844M201JBD64
     cores:
       - name: main
-        type: M0
+        type: armv6m
         core_access_options:
           Arm:
             ap: 0
@@ -510,7 +510,7 @@ variants:
   - name: LPC844M201JHI33
     cores:
       - name: main
-        type: M0
+        type: armv6m
         core_access_options:
           Arm:
             ap: 0
@@ -533,7 +533,7 @@ variants:
   - name: LPC844M201JHI48
     cores:
       - name: main
-        type: M0
+        type: armv6m
         core_access_options:
           Arm:
             ap: 0
@@ -556,7 +556,7 @@ variants:
   - name: LPC845M301JBD48
     cores:
       - name: main
-        type: M0
+        type: armv6m
         core_access_options:
           Arm:
             ap: 0
@@ -579,7 +579,7 @@ variants:
   - name: LPC845M301JBD64
     cores:
       - name: main
-        type: M0
+        type: armv6m
         core_access_options:
           Arm:
             ap: 0
@@ -602,7 +602,7 @@ variants:
   - name: LPC845M301JHI33
     cores:
       - name: main
-        type: M0
+        type: armv6m
         core_access_options:
           Arm:
             ap: 0
@@ -625,7 +625,7 @@ variants:
   - name: LPC845M301JHI48
     cores:
       - name: main
-        type: M0
+        type: armv6m
         core_access_options:
           Arm:
             ap: 0
@@ -648,7 +648,7 @@ variants:
   - name: LPC8N04FHI24
     cores:
       - name: main
-        type: M0
+        type: armv6m
         core_access_options:
           Arm:
             ap: 0

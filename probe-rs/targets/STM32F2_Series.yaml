@@ -4,7 +4,7 @@ variants:
   - name: STM32F205RBTx
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -29,7 +29,7 @@ variants:
   - name: STM32F205RCTx
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -54,7 +54,7 @@ variants:
   - name: STM32F205RETx
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -79,7 +79,7 @@ variants:
   - name: STM32F205REYx
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -104,7 +104,7 @@ variants:
   - name: STM32F205RFTx
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -129,7 +129,7 @@ variants:
   - name: STM32F205RGTx
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -154,7 +154,7 @@ variants:
   - name: STM32F205RGYx
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -179,7 +179,7 @@ variants:
   - name: STM32F205VBTx
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -204,7 +204,7 @@ variants:
   - name: STM32F205VCTx
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -229,7 +229,7 @@ variants:
   - name: STM32F205VETx
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -254,7 +254,7 @@ variants:
   - name: STM32F205VFTx
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -279,7 +279,7 @@ variants:
   - name: STM32F205VGTx
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -304,7 +304,7 @@ variants:
   - name: STM32F205ZCTx
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -329,7 +329,7 @@ variants:
   - name: STM32F205ZETx
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -354,7 +354,7 @@ variants:
   - name: STM32F205ZFTx
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -379,7 +379,7 @@ variants:
   - name: STM32F205ZGTx
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -404,7 +404,7 @@ variants:
   - name: STM32F207ICHx
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -429,7 +429,7 @@ variants:
   - name: STM32F207ICTx
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -454,7 +454,7 @@ variants:
   - name: STM32F207IEHx
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -479,7 +479,7 @@ variants:
   - name: STM32F207IETx
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -504,7 +504,7 @@ variants:
   - name: STM32F207IFHx
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -529,7 +529,7 @@ variants:
   - name: STM32F207IFTx
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -554,7 +554,7 @@ variants:
   - name: STM32F207IGHx
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -579,7 +579,7 @@ variants:
   - name: STM32F207IGTx
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -604,7 +604,7 @@ variants:
   - name: STM32F207VCTx
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -629,7 +629,7 @@ variants:
   - name: STM32F207VETx
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -654,7 +654,7 @@ variants:
   - name: STM32F207VFTx
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -679,7 +679,7 @@ variants:
   - name: STM32F207VGTx
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -704,7 +704,7 @@ variants:
   - name: STM32F207ZCTx
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -729,7 +729,7 @@ variants:
   - name: STM32F207ZETx
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -754,7 +754,7 @@ variants:
   - name: STM32F207ZFTx
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -779,7 +779,7 @@ variants:
   - name: STM32F207ZGTx
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -804,7 +804,7 @@ variants:
   - name: STM32F215RETx
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -829,7 +829,7 @@ variants:
   - name: STM32F215RGTx
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -854,7 +854,7 @@ variants:
   - name: STM32F215VETx
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -879,7 +879,7 @@ variants:
   - name: STM32F215VGTx
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -904,7 +904,7 @@ variants:
   - name: STM32F215ZETx
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -929,7 +929,7 @@ variants:
   - name: STM32F215ZGTx
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -954,7 +954,7 @@ variants:
   - name: STM32F217IEHx
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -979,7 +979,7 @@ variants:
   - name: STM32F217IETx
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -1004,7 +1004,7 @@ variants:
   - name: STM32F217IGHx
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -1029,7 +1029,7 @@ variants:
   - name: STM32F217IGTx
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -1054,7 +1054,7 @@ variants:
   - name: STM32F217VETx
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -1079,7 +1079,7 @@ variants:
   - name: STM32F217VGTx
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -1104,7 +1104,7 @@ variants:
   - name: STM32F217ZETx
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -1129,7 +1129,7 @@ variants:
   - name: STM32F217ZGTx
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0

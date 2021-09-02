@@ -4,7 +4,7 @@ variants:
   - name: EFR32FG13P231F512
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -27,7 +27,7 @@ variants:
   - name: EFR32FG13P232F512
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -50,7 +50,7 @@ variants:
   - name: EFR32FG13P233F512
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0

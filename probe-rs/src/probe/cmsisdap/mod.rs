@@ -3,10 +3,11 @@ pub mod tools;
 
 use crate::{
     architecture::arm::{
-        communication_interface::{ArmProbeInterface, DapProbe},
+        communication_interface::DapProbe,
+        communication_interface::UninitializedArmProbe,
         dp::{Abort, Ctrl},
         swo::poll_interval_from_buf_size,
-        ArmCommunicationInterface, DapError, DpAddress, PortType, RawDapAccess, Register,
+        ArmCommunicationInterface, DapError, DpAddress, Pins, PortType, RawDapAccess, Register,
         SwoAccess, SwoConfig, SwoMode,
     },
     probe::{
@@ -30,7 +31,7 @@ use commands::{
     swd,
     swj::{
         clock::{SWJClockRequest, SWJClockResponse},
-        pins::{SWJPinsRequestBuilder, SWJPinsResponse},
+        pins::{SWJPinsRequest, SWJPinsRequestBuilder, SWJPinsResponse},
         sequence::{SequenceRequest, SequenceResponse},
     },
     swo,
@@ -449,29 +450,6 @@ impl DebugProbe for CmsisDap {
 
         self.configure_swd(swd::configure::ConfigureRequest {})?;
 
-        // SWJ-DP defaults to JTAG operation on powerup reset
-        // Switching from JTAG to SWD operation
-
-        // ~50 SWCLKTCK
-        self.send_swj_sequences(SequenceRequest::new(&[
-            0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-        ])?)?;
-
-        // 16-bit JTAG-to-SWD select sequence
-        self.send_swj_sequences(SequenceRequest::new(&[0x9e, 0xe7])?)?;
-
-        // ~50 SWCLKTCK
-        self.send_swj_sequences(SequenceRequest::new(&[
-            0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-        ])?)?;
-
-        // returning to low state? 2 idle cycles?
-        self.send_swj_sequences(SequenceRequest::new(&[0x00])?)?;
-
-        // On selecting SWD operation, the SWD interface returns to its reset state.
-
-        debug!("Successfully changed to SWD.");
-
         // Tell the probe we are connected so it can turn on an LED.
         let _: Result<HostStatusResponse, _> =
             commands::send_command(&mut self.device, HostStatusRequest::connected(true));
@@ -551,11 +529,9 @@ impl DebugProbe for CmsisDap {
 
     fn try_get_arm_interface<'probe>(
         self: Box<Self>,
-    ) -> Result<Box<dyn ArmProbeInterface + 'probe>, (Box<dyn DebugProbe>, DebugProbeError)> {
-        match ArmCommunicationInterface::new(self, false) {
-            Ok(interface) => Ok(Box::new(interface)),
-            Err((probe, error)) => Err((probe.into_probe(), error)),
-        }
+    ) -> Result<Box<dyn UninitializedArmProbe + 'probe>, (Box<dyn DebugProbe>, DebugProbeError)>
+    {
+        Ok(Box::new(ArmCommunicationInterface::new(self, false)))
     }
 
     fn has_arm_interface(&self) -> bool {
@@ -564,6 +540,10 @@ impl DebugProbe for CmsisDap {
 
     fn into_probe(self: Box<Self>) -> Box<dyn DebugProbe> {
         self
+    }
+
+    fn try_as_dap_probe(&mut self) -> Option<&mut dyn DapProbe> {
+        Some(self)
     }
 }
 
@@ -577,11 +557,14 @@ impl RawDapAccess for CmsisDap {
                     self.process_batch()?;
 
                     // dormant-to-swd + line reset
-                    self.send_swj_sequences(SequenceRequest::new(&[
-                        0xff, 0x92, 0xf3, 0x09, 0x62, 0x95, 0x2d, 0x85, 0x86, 0xe9, 0xaf, 0xdd,
-                        0xe3, 0xa2, 0x0e, 0xbc, 0x19, 0xa0, 0xf1, 0xff, 0xff, 0xff, 0xff, 0xff,
-                        0xff, 0xff, 0xff, 0x00,
-                    ])?)?;
+                    self.send_swj_sequences(SequenceRequest::new(
+                        &[
+                            0xff, 0x92, 0xf3, 0x09, 0x62, 0x95, 0x2d, 0x85, 0x86, 0xe9, 0xaf, 0xdd,
+                            0xe3, 0xa2, 0x0e, 0xbc, 0x19, 0xa0, 0xf1, 0xff, 0xff, 0xff, 0xff, 0xff,
+                            0xff, 0xff, 0xff, 0x00,
+                        ],
+                        28 * 8,
+                    )?)?;
 
                     // TARGETSEL write.
                     // The TARGETSEL write is not ACKed by design. We can't use a normal register write
@@ -589,7 +572,7 @@ impl RawDapAccess for CmsisDap {
                     let parity = targetsel.count_ones() % 2;
                     let data = &((parity as u64) << 45 | (targetsel as u64) << 13 | 0x1f99)
                         .to_le_bytes()[..6];
-                    self.send_swj_sequences(SequenceRequest::new(data)?)?;
+                    self.send_swj_sequences(SequenceRequest::new(data, 6 * 8)?)?;
 
                     // "A write to the TARGETSEL register must always be followed by a read of the DPIDR register or a line reset. If the
                     // response to the DPIDR read is incorrect, or there is no response, the host must start the sequence again."
@@ -711,6 +694,31 @@ impl RawDapAccess for CmsisDap {
     fn raw_flush(&mut self) -> Result<(), DebugProbeError> {
         self.process_batch()?;
         Ok(())
+    }
+
+    fn into_probe(self: Box<Self>) -> Box<dyn DebugProbe> {
+        self
+    }
+
+    fn swj_sequence(&mut self, bit_len: u8, bits: u64) -> Result<(), DebugProbeError> {
+        let data = bits.to_le_bytes();
+
+        self.send_swj_sequences(SequenceRequest::new(&data, bit_len)?)?;
+
+        Ok(())
+    }
+
+    fn swj_pins(
+        &mut self,
+        pin_out: u32,
+        pin_select: u32,
+        pin_wait: u32,
+    ) -> Result<u32, DebugProbeError> {
+        let request = SWJPinsRequest::from_raw_values(pin_out as u8, pin_select as u8, pin_wait);
+
+        let Pins(response) = commands::send_command(&mut self.device, request)?;
+
+        Ok(response as u32)
     }
 }
 

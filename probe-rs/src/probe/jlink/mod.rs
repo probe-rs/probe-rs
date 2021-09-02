@@ -4,13 +4,14 @@ use jaylink::{Capability, Interface, JayLink, SpeedConfig, SwoMode};
 
 use std::convert::{TryFrom, TryInto};
 use std::iter;
+use std::time::{Duration, Instant};
 
+use crate::architecture::arm::RawDapAccess;
 use crate::{
     architecture::{
         arm::{
-            communication_interface::{ArmProbeInterface, DapProbe},
-            swo::SwoConfig,
-            ArmCommunicationInterface, SwoAccess,
+            communication_interface::DapProbe, communication_interface::UninitializedArmProbe,
+            swo::SwoConfig, ArmCommunicationInterface, SwoAccess,
         },
         riscv::communication_interface::RiscvCommunicationInterface,
     },
@@ -20,7 +21,7 @@ use crate::{
     DebugProbeSelector, Error as ProbeRsError,
 };
 
-use self::swd::{RawSwdIo, SwdSettings, SwdStatistics};
+use self::swd::{SwdSettings, SwdStatistics};
 
 use super::{BatchExecutionError, CommandResult, CommandResults, DeferredCommandResult};
 
@@ -517,41 +518,21 @@ impl DebugProbe for JLink {
 
                 log::debug!("Response to reset: {:?}", response);
 
-                // try to read the idcode
-                let idcode_bytes = self.read_dr(32)?;
-                let idcode = u32::from_le_bytes((&idcode_bytes[..]).try_into().unwrap());
+                // try to read the idcode until we have some non-zero bytes
+                let start = Instant::now();
+                let idcode = loop {
+                    let idcode_bytes = self.read_dr(32)?;
+                    if idcode_bytes.iter().any(|&x| x != 0)
+                        || Instant::now().duration_since(start) > Duration::from_secs(1)
+                    {
+                        break u32::from_le_bytes((&idcode_bytes[..]).try_into().unwrap());
+                    }
+                };
 
                 log::info!("JTAG IDCODE: {:#010x}", idcode);
             }
             WireProtocol::Swd => {
-                // Construct the JTAG to SWD sequence.
-                let jtag_to_swd_sequence = [
-                    false, true, true, true, true, false, false, true, true, true, true, false,
-                    false, true, true, true,
-                ];
-
-                // Construct the entire init sequence.
-                let swd_io_sequence =
-                    // Send the reset sequence (> 50 0-bits).
-                    iter::repeat(true).take(64)
-                    // Send the JTAG to SWD sequence.
-                    .chain(jtag_to_swd_sequence.iter().copied());
-
-                // Construct the direction sequence for reset sequence.
-                let direction =
-                    // Send the reset sequence (> 50 0-bits).
-                    iter::repeat(true).take(64)
-                    // Send the JTAG to SWD sequence.
-                    .chain(iter::repeat(true).take(16));
-
-                // Send the init sequence.
-                // We don't actually care about the response here.
-                // A read on the DPIDR will finalize the init procedure and tell us if it worked.
-                self.handle.swd_io(direction, swd_io_sequence)?;
-
-                // Perform a line reset
-                self.swd_line_reset()?;
-                log::debug!("Sucessfully switched to SWD");
+                // Attaching is handled in sequence
 
                 // We are ready to debug.
             }
@@ -590,7 +571,7 @@ impl DebugProbe for JLink {
             }
         } else {
             Err((
-                self.into_probe(),
+                RawDapAccess::into_probe(self),
                 DebugProbeError::InterfaceNotAvailable("JTAG"),
             ))
         }
@@ -616,9 +597,14 @@ impl DebugProbe for JLink {
         self
     }
 
+    fn try_as_dap_probe(&mut self) -> Option<&mut dyn DapProbe> {
+        Some(self)
+    }
+
     fn try_get_arm_interface<'probe>(
         mut self: Box<Self>,
-    ) -> Result<Box<dyn ArmProbeInterface + 'probe>, (Box<dyn DebugProbe>, DebugProbeError)> {
+    ) -> Result<Box<dyn UninitializedArmProbe + 'probe>, (Box<dyn DebugProbe>, DebugProbeError)>
+    {
         if self.supported_protocols.contains(&WireProtocol::Swd) {
             if let Some(WireProtocol::Jtag) = self.protocol {
                 log::warn!("Debugging ARM chips over JTAG is not yet implemented for JLink.");
@@ -630,10 +616,9 @@ impl DebugProbe for JLink {
                 return Err((self, e));
             };
 
-            match ArmCommunicationInterface::new(self, true) {
-                Ok(interface) => Ok(Box::new(interface)),
-                Err((probe, err)) => Err((probe.into_probe(), err)),
-            }
+            let uninitialized_interface = ArmCommunicationInterface::new(self, true);
+
+            Ok(Box::new(uninitialized_interface))
         } else {
             Err((self, DebugProbeError::InterfaceNotAvailable("SWD/ARM")))
         }

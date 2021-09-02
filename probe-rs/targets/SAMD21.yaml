@@ -4,7 +4,7 @@ variants:
   - name: ATSAMD21E15A
     cores:
       - name: main
-        type: M0
+        type: armv6m
         core_access_options:
           Arm:
             ap: 0
@@ -27,7 +27,7 @@ variants:
   - name: ATSAMD21E15B
     cores:
       - name: main
-        type: M0
+        type: armv6m
         core_access_options:
           Arm:
             ap: 0
@@ -50,7 +50,7 @@ variants:
   - name: ATSAMD21E15BU
     cores:
       - name: main
-        type: M0
+        type: armv6m
         core_access_options:
           Arm:
             ap: 0
@@ -74,7 +74,7 @@ variants:
   - name: ATSAMD21E15CU
     cores:
       - name: main
-        type: M0
+        type: armv6m
         core_access_options:
           Arm:
             ap: 0
@@ -98,7 +98,7 @@ variants:
   - name: ATSAMD21E15L
     cores:
       - name: main
-        type: M0
+        type: armv6m
         core_access_options:
           Arm:
             ap: 0
@@ -122,7 +122,7 @@ variants:
   - name: ATSAMD21E16A
     cores:
       - name: main
-        type: M0
+        type: armv6m
         core_access_options:
           Arm:
             ap: 0
@@ -146,7 +146,7 @@ variants:
   - name: ATSAMD21E16B
     cores:
       - name: main
-        type: M0
+        type: armv6m
         core_access_options:
           Arm:
             ap: 0
@@ -170,7 +170,7 @@ variants:
   - name: ATSAMD21E16BU
     cores:
       - name: main
-        type: M0
+        type: armv6m
         core_access_options:
           Arm:
             ap: 0
@@ -194,7 +194,7 @@ variants:
   - name: ATSAMD21E16CU
     cores:
       - name: main
-        type: M0
+        type: armv6m
         core_access_options:
           Arm:
             ap: 0
@@ -218,7 +218,7 @@ variants:
   - name: ATSAMD21E16L
     cores:
       - name: main
-        type: M0
+        type: armv6m
         core_access_options:
           Arm:
             ap: 0
@@ -242,7 +242,7 @@ variants:
   - name: ATSAMD21E17A
     cores:
       - name: main
-        type: M0
+        type: armv6m
         core_access_options:
           Arm:
             ap: 0
@@ -265,7 +265,7 @@ variants:
   - name: ATSAMD21E17D
     cores:
       - name: main
-        type: M0
+        type: armv6m
         core_access_options:
           Arm:
             ap: 0
@@ -289,7 +289,7 @@ variants:
   - name: ATSAMD21E17DU
     cores:
       - name: main
-        type: M0
+        type: armv6m
         core_access_options:
           Arm:
             ap: 0
@@ -313,7 +313,7 @@ variants:
   - name: ATSAMD21E17L
     cores:
       - name: main
-        type: M0
+        type: armv6m
         core_access_options:
           Arm:
             ap: 0
@@ -337,7 +337,7 @@ variants:
   - name: ATSAMD21E18A
     cores:
       - name: main
-        type: M0
+        type: armv6m
         core_access_options:
           Arm:
             ap: 0
@@ -360,7 +360,7 @@ variants:
   - name: ATSAMD21G15A
     cores:
       - name: main
-        type: M0
+        type: armv6m
         core_access_options:
           Arm:
             ap: 0
@@ -383,7 +383,7 @@ variants:
   - name: ATSAMD21G15B
     cores:
       - name: main
-        type: M0
+        type: armv6m
         core_access_options:
           Arm:
             ap: 0
@@ -407,7 +407,7 @@ variants:
   - name: ATSAMD21G15L
     cores:
       - name: main
-        type: M0
+        type: armv6m
         core_access_options:
           Arm:
             ap: 0
@@ -431,7 +431,7 @@ variants:
   - name: ATSAMD21G16A
     cores:
       - name: main
-        type: M0
+        type: armv6m
         core_access_options:
           Arm:
             ap: 0
@@ -454,7 +454,7 @@ variants:
   - name: ATSAMD21G16B
     cores:
       - name: main
-        type: M0
+        type: armv6m
         core_access_options:
           Arm:
             ap: 0
@@ -478,7 +478,7 @@ variants:
   - name: ATSAMD21G16L
     cores:
       - name: main
-        type: M0
+        type: armv6m
         core_access_options:
           Arm:
             ap: 0
@@ -502,7 +502,7 @@ variants:
   - name: ATSAMD21G17A
     cores:
       - name: main
-        type: M0
+        type: armv6m
         core_access_options:
           Arm:
             ap: 0
@@ -525,7 +525,7 @@ variants:
   - name: ATSAMD21G17AU
     cores:
       - name: main
-        type: M0
+        type: armv6m
         core_access_options:
           Arm:
             ap: 0
@@ -548,7 +548,7 @@ variants:
   - name: ATSAMD21G17D
     cores:
       - name: main
-        type: M0
+        type: armv6m
         core_access_options:
           Arm:
             ap: 0
@@ -572,7 +572,7 @@ variants:
   - name: ATSAMD21G17L
     cores:
       - name: main
-        type: M0
+        type: armv6m
         core_access_options:
           Arm:
             ap: 0
@@ -596,7 +596,7 @@ variants:
   - name: ATSAMD21G18A
     cores:
       - name: main
-        type: M0
+        type: armv6m
         core_access_options:
           Arm:
             ap: 0
@@ -619,7 +619,7 @@ variants:
   - name: ATSAMD21G18AU
     cores:
       - name: main
-        type: M0
+        type: armv6m
         core_access_options:
           Arm:
             ap: 0
@@ -642,7 +642,7 @@ variants:
   - name: ATSAMD21J15A
     cores:
       - name: main
-        type: M0
+        type: armv6m
         core_access_options:
           Arm:
             ap: 0
@@ -665,7 +665,7 @@ variants:
   - name: ATSAMD21J15B
     cores:
       - name: main
-        type: M0
+        type: armv6m
         core_access_options:
           Arm:
             ap: 0
@@ -689,7 +689,7 @@ variants:
   - name: ATSAMD21J16A
     cores:
       - name: main
-        type: M0
+        type: armv6m
         core_access_options:
           Arm:
             ap: 0
@@ -712,7 +712,7 @@ variants:
   - name: ATSAMD21J16B
     cores:
       - name: main
-        type: M0
+        type: armv6m
         core_access_options:
           Arm:
             ap: 0
@@ -736,7 +736,7 @@ variants:
   - name: ATSAMD21J17A
     cores:
       - name: main
-        type: M0
+        type: armv6m
         core_access_options:
           Arm:
             ap: 0
@@ -759,7 +759,7 @@ variants:
   - name: ATSAMD21J17D
     cores:
       - name: main
-        type: M0
+        type: armv6m
         core_access_options:
           Arm:
             ap: 0
@@ -783,7 +783,7 @@ variants:
   - name: ATSAMD21J18A
     cores:
       - name: main
-        type: M0
+        type: armv6m
         core_access_options:
           Arm:
             ap: 0

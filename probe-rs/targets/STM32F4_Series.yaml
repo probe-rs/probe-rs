@@ -4,7 +4,7 @@ variants:
   - name: STM32F401CBUx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -29,7 +29,7 @@ variants:
   - name: STM32F401CBYx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -54,7 +54,7 @@ variants:
   - name: STM32F401CCUx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -79,7 +79,7 @@ variants:
   - name: STM32F401CCYx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -104,7 +104,7 @@ variants:
   - name: STM32F401CDUx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -129,7 +129,7 @@ variants:
   - name: STM32F401CDYx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -154,7 +154,7 @@ variants:
   - name: STM32F401CEUx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -179,7 +179,7 @@ variants:
   - name: STM32F401CEYx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -204,7 +204,7 @@ variants:
   - name: STM32F401RBTx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -229,7 +229,7 @@ variants:
   - name: STM32F401RCTx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -254,7 +254,7 @@ variants:
   - name: STM32F401RDTx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -279,7 +279,7 @@ variants:
   - name: STM32F401RETx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -304,7 +304,7 @@ variants:
   - name: STM32F401VBHx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -329,7 +329,7 @@ variants:
   - name: STM32F401VBTx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -354,7 +354,7 @@ variants:
   - name: STM32F401VCHx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -379,7 +379,7 @@ variants:
   - name: STM32F401VCTx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -404,7 +404,7 @@ variants:
   - name: STM32F401VDHx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -429,7 +429,7 @@ variants:
   - name: STM32F401VDTx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -454,7 +454,7 @@ variants:
   - name: STM32F401VEHx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -479,7 +479,7 @@ variants:
   - name: STM32F401VETx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -504,7 +504,7 @@ variants:
   - name: STM32F405OEYx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -529,7 +529,7 @@ variants:
   - name: STM32F405OGYx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -554,7 +554,7 @@ variants:
   - name: STM32F405RGTx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -579,7 +579,7 @@ variants:
   - name: STM32F405VGTx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -604,7 +604,7 @@ variants:
   - name: STM32F405ZGTx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -629,7 +629,7 @@ variants:
   - name: STM32F407IEHx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -654,7 +654,7 @@ variants:
   - name: STM32F407IETx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -679,7 +679,7 @@ variants:
   - name: STM32F407IGHx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -704,7 +704,7 @@ variants:
   - name: STM32F407IGTx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -729,7 +729,7 @@ variants:
   - name: STM32F407VETx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -754,7 +754,7 @@ variants:
   - name: STM32F407VGTx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -779,7 +779,7 @@ variants:
   - name: STM32F407ZETx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -804,7 +804,7 @@ variants:
   - name: STM32F407ZGTx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -829,7 +829,7 @@ variants:
   - name: STM32F410C8Tx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -853,7 +853,7 @@ variants:
   - name: STM32F410C8Ux
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -877,7 +877,7 @@ variants:
   - name: STM32F410CBTx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -901,7 +901,7 @@ variants:
   - name: STM32F410CBUx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -925,7 +925,7 @@ variants:
   - name: STM32F410R8Ix
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -949,7 +949,7 @@ variants:
   - name: STM32F410R8Tx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -973,7 +973,7 @@ variants:
   - name: STM32F410RBIx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -997,7 +997,7 @@ variants:
   - name: STM32F410RBTx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -1021,7 +1021,7 @@ variants:
   - name: STM32F410T8Yx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -1045,7 +1045,7 @@ variants:
   - name: STM32F410TBYx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -1069,7 +1069,7 @@ variants:
   - name: STM32F411CCUx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -1094,7 +1094,7 @@ variants:
   - name: STM32F411CCYx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -1119,7 +1119,7 @@ variants:
   - name: STM32F411CEUx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -1144,7 +1144,7 @@ variants:
   - name: STM32F411CEYx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -1169,7 +1169,7 @@ variants:
   - name: STM32F411RCTx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -1194,7 +1194,7 @@ variants:
   - name: STM32F411RETx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -1219,7 +1219,7 @@ variants:
   - name: STM32F411VCHx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -1244,7 +1244,7 @@ variants:
   - name: STM32F411VCTx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -1269,7 +1269,7 @@ variants:
   - name: STM32F411VEHx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -1294,7 +1294,7 @@ variants:
   - name: STM32F411VETx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -1319,7 +1319,7 @@ variants:
   - name: STM32F412CEUx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -1344,7 +1344,7 @@ variants:
   - name: STM32F412CGUx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -1369,7 +1369,7 @@ variants:
   - name: STM32F412RETx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -1394,7 +1394,7 @@ variants:
   - name: STM32F412REYx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -1419,7 +1419,7 @@ variants:
   - name: STM32F412RGTx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -1444,7 +1444,7 @@ variants:
   - name: STM32F412RGYx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -1469,7 +1469,7 @@ variants:
   - name: STM32F412VEHx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -1494,7 +1494,7 @@ variants:
   - name: STM32F412VETx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -1519,7 +1519,7 @@ variants:
   - name: STM32F412VGHx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -1544,7 +1544,7 @@ variants:
   - name: STM32F412VGTx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -1569,7 +1569,7 @@ variants:
   - name: STM32F412ZEJx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -1594,7 +1594,7 @@ variants:
   - name: STM32F412ZETx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -1619,7 +1619,7 @@ variants:
   - name: STM32F412ZGJx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -1644,7 +1644,7 @@ variants:
   - name: STM32F412ZGTx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -1669,7 +1669,7 @@ variants:
   - name: STM32F413CGUx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -1693,7 +1693,7 @@ variants:
   - name: STM32F413CHUx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -1717,7 +1717,7 @@ variants:
   - name: STM32F413MGYx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -1741,7 +1741,7 @@ variants:
   - name: STM32F413MHYx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -1765,7 +1765,7 @@ variants:
   - name: STM32F413RGTx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -1789,7 +1789,7 @@ variants:
   - name: STM32F413RHTx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -1813,7 +1813,7 @@ variants:
   - name: STM32F413VGHx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -1837,7 +1837,7 @@ variants:
   - name: STM32F413VGTx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -1861,7 +1861,7 @@ variants:
   - name: STM32F413VHHx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -1885,7 +1885,7 @@ variants:
   - name: STM32F413VHTx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -1909,7 +1909,7 @@ variants:
   - name: STM32F413ZGJx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -1933,7 +1933,7 @@ variants:
   - name: STM32F413ZGTx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -1957,7 +1957,7 @@ variants:
   - name: STM32F413ZHJx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -1981,7 +1981,7 @@ variants:
   - name: STM32F413ZHTx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -2005,7 +2005,7 @@ variants:
   - name: STM32F415OGYx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -2030,7 +2030,7 @@ variants:
   - name: STM32F415RGTx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -2055,7 +2055,7 @@ variants:
   - name: STM32F415VGTx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -2080,7 +2080,7 @@ variants:
   - name: STM32F415ZGTx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -2105,7 +2105,7 @@ variants:
   - name: STM32F417IEHx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -2130,7 +2130,7 @@ variants:
   - name: STM32F417IETx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -2155,7 +2155,7 @@ variants:
   - name: STM32F417IGHx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -2180,7 +2180,7 @@ variants:
   - name: STM32F417IGTx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -2205,7 +2205,7 @@ variants:
   - name: STM32F417VETx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -2230,7 +2230,7 @@ variants:
   - name: STM32F417VGTx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -2255,7 +2255,7 @@ variants:
   - name: STM32F417ZETx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -2280,7 +2280,7 @@ variants:
   - name: STM32F417ZGTx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -2305,7 +2305,7 @@ variants:
   - name: STM32F423CHUx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -2329,7 +2329,7 @@ variants:
   - name: STM32F423MHYx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -2353,7 +2353,7 @@ variants:
   - name: STM32F423RHTx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -2377,7 +2377,7 @@ variants:
   - name: STM32F423VHHx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -2401,7 +2401,7 @@ variants:
   - name: STM32F423VHTx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -2425,7 +2425,7 @@ variants:
   - name: STM32F423ZHJx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -2449,7 +2449,7 @@ variants:
   - name: STM32F423ZHTx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -2473,7 +2473,7 @@ variants:
   - name: STM32F427AGHx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -2499,7 +2499,7 @@ variants:
   - name: STM32F427AIHx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -2524,7 +2524,7 @@ variants:
   - name: STM32F427IGHx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -2550,7 +2550,7 @@ variants:
   - name: STM32F427IGTx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -2576,7 +2576,7 @@ variants:
   - name: STM32F427IIHx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -2601,7 +2601,7 @@ variants:
   - name: STM32F427IITx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -2626,7 +2626,7 @@ variants:
   - name: STM32F427VGTx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -2652,7 +2652,7 @@ variants:
   - name: STM32F427VITx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -2677,7 +2677,7 @@ variants:
   - name: STM32F427ZGTx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -2703,7 +2703,7 @@ variants:
   - name: STM32F427ZITx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -2728,7 +2728,7 @@ variants:
   - name: STM32F429AGHx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -2754,7 +2754,7 @@ variants:
   - name: STM32F429AIHx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -2779,7 +2779,7 @@ variants:
   - name: STM32F429BETx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -2804,7 +2804,7 @@ variants:
   - name: STM32F429BGTx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -2830,7 +2830,7 @@ variants:
   - name: STM32F429BITx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -2855,7 +2855,7 @@ variants:
   - name: STM32F429IEHx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -2880,7 +2880,7 @@ variants:
   - name: STM32F429IETx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -2905,7 +2905,7 @@ variants:
   - name: STM32F429IGHx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -2931,7 +2931,7 @@ variants:
   - name: STM32F429IGTx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -2957,7 +2957,7 @@ variants:
   - name: STM32F429IIHx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -2982,7 +2982,7 @@ variants:
   - name: STM32F429IITx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -3007,7 +3007,7 @@ variants:
   - name: STM32F429NEHx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -3032,7 +3032,7 @@ variants:
   - name: STM32F429NGHx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -3058,7 +3058,7 @@ variants:
   - name: STM32F429NIHx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -3083,7 +3083,7 @@ variants:
   - name: STM32F429VETx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -3108,7 +3108,7 @@ variants:
   - name: STM32F429VGTx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -3134,7 +3134,7 @@ variants:
   - name: STM32F429VITx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -3159,7 +3159,7 @@ variants:
   - name: STM32F429ZETx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -3184,7 +3184,7 @@ variants:
   - name: STM32F429ZGTx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -3210,7 +3210,7 @@ variants:
   - name: STM32F429ZITx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -3235,7 +3235,7 @@ variants:
   - name: STM32F429ZIYx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -3260,7 +3260,7 @@ variants:
   - name: STM32F437AIHx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -3285,7 +3285,7 @@ variants:
   - name: STM32F437IGHx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -3311,7 +3311,7 @@ variants:
   - name: STM32F437IGTx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -3337,7 +3337,7 @@ variants:
   - name: STM32F437IIHx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -3362,7 +3362,7 @@ variants:
   - name: STM32F437IITx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -3387,7 +3387,7 @@ variants:
   - name: STM32F437VGTx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -3413,7 +3413,7 @@ variants:
   - name: STM32F437VITx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -3438,7 +3438,7 @@ variants:
   - name: STM32F437ZGTx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -3464,7 +3464,7 @@ variants:
   - name: STM32F437ZITx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -3489,7 +3489,7 @@ variants:
   - name: STM32F439AIHx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -3514,7 +3514,7 @@ variants:
   - name: STM32F439BGTx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -3540,7 +3540,7 @@ variants:
   - name: STM32F439BITx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -3565,7 +3565,7 @@ variants:
   - name: STM32F439IGHx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -3591,7 +3591,7 @@ variants:
   - name: STM32F439IGTx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -3617,7 +3617,7 @@ variants:
   - name: STM32F439IIHx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -3642,7 +3642,7 @@ variants:
   - name: STM32F439IITx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -3667,7 +3667,7 @@ variants:
   - name: STM32F439NGHx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -3693,7 +3693,7 @@ variants:
   - name: STM32F439NIHx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -3718,7 +3718,7 @@ variants:
   - name: STM32F439VGTx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -3744,7 +3744,7 @@ variants:
   - name: STM32F439VITx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -3769,7 +3769,7 @@ variants:
   - name: STM32F439ZGTx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -3795,7 +3795,7 @@ variants:
   - name: STM32F439ZITx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -3820,7 +3820,7 @@ variants:
   - name: STM32F439ZIYx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -3845,7 +3845,7 @@ variants:
   - name: STM32F446MCYx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -3870,7 +3870,7 @@ variants:
   - name: STM32F446MEYx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -3895,7 +3895,7 @@ variants:
   - name: STM32F446RCTx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -3920,7 +3920,7 @@ variants:
   - name: STM32F446RETx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -3945,7 +3945,7 @@ variants:
   - name: STM32F446VCTx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -3970,7 +3970,7 @@ variants:
   - name: STM32F446VETx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -3995,7 +3995,7 @@ variants:
   - name: STM32F446ZCHx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -4020,7 +4020,7 @@ variants:
   - name: STM32F446ZCTx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -4045,7 +4045,7 @@ variants:
   - name: STM32F446ZEHx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -4070,7 +4070,7 @@ variants:
   - name: STM32F446ZEJx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -4095,7 +4095,7 @@ variants:
   - name: STM32F446ZETx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -4120,7 +4120,7 @@ variants:
   - name: STM32F469AEHx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -4145,7 +4145,7 @@ variants:
   - name: STM32F469AEYx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -4170,7 +4170,7 @@ variants:
   - name: STM32F469AGHx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -4196,7 +4196,7 @@ variants:
   - name: STM32F469AGYx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -4222,7 +4222,7 @@ variants:
   - name: STM32F469AIHx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -4247,7 +4247,7 @@ variants:
   - name: STM32F469AIYx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -4272,7 +4272,7 @@ variants:
   - name: STM32F469BETx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -4297,7 +4297,7 @@ variants:
   - name: STM32F469BGTx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -4323,7 +4323,7 @@ variants:
   - name: STM32F469BITx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -4348,7 +4348,7 @@ variants:
   - name: STM32F469IEHx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -4373,7 +4373,7 @@ variants:
   - name: STM32F469IETx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -4398,7 +4398,7 @@ variants:
   - name: STM32F469IGHx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -4424,7 +4424,7 @@ variants:
   - name: STM32F469IGTx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -4450,7 +4450,7 @@ variants:
   - name: STM32F469IIHx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -4475,7 +4475,7 @@ variants:
   - name: STM32F469IITx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -4500,7 +4500,7 @@ variants:
   - name: STM32F469NEHx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -4525,7 +4525,7 @@ variants:
   - name: STM32F469NGHx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -4551,7 +4551,7 @@ variants:
   - name: STM32F469NIHx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -4576,7 +4576,7 @@ variants:
   - name: STM32F469VETx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -4601,7 +4601,7 @@ variants:
   - name: STM32F469VGTx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -4627,7 +4627,7 @@ variants:
   - name: STM32F469VITx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -4652,7 +4652,7 @@ variants:
   - name: STM32F469ZETx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -4677,7 +4677,7 @@ variants:
   - name: STM32F469ZGTx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -4703,7 +4703,7 @@ variants:
   - name: STM32F469ZITx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -4728,7 +4728,7 @@ variants:
   - name: STM32F479AGHx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -4754,7 +4754,7 @@ variants:
   - name: STM32F479AGYx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -4780,7 +4780,7 @@ variants:
   - name: STM32F479AIHx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -4805,7 +4805,7 @@ variants:
   - name: STM32F479AIYx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -4830,7 +4830,7 @@ variants:
   - name: STM32F479BGTx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -4856,7 +4856,7 @@ variants:
   - name: STM32F479BITx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -4881,7 +4881,7 @@ variants:
   - name: STM32F479IGHx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -4907,7 +4907,7 @@ variants:
   - name: STM32F479IGTx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -4933,7 +4933,7 @@ variants:
   - name: STM32F479IIHx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -4958,7 +4958,7 @@ variants:
   - name: STM32F479IITx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -4983,7 +4983,7 @@ variants:
   - name: STM32F479NGHx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -5009,7 +5009,7 @@ variants:
   - name: STM32F479NIHx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -5034,7 +5034,7 @@ variants:
   - name: STM32F479VGTx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -5060,7 +5060,7 @@ variants:
   - name: STM32F479VITx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -5085,7 +5085,7 @@ variants:
   - name: STM32F479ZGTx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0
@@ -5111,7 +5111,7 @@ variants:
   - name: STM32F479ZITx
     cores:
       - name: main
-        type: M4
+        type: armv7em
         core_access_options:
           Arm:
             ap: 0

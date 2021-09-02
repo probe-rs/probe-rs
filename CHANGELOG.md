@@ -10,19 +10,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added LPC552x and LPC55S2x targets. (#742)
 - Added initial multicore support. (#565)
 - probe-rs-cli-util: added common option structures and logic pertaining to probes and target attachment from cargo-flash. (#723)
+- probe-rs-cli-util: escape hatch via `--` for extra cargo options not declared by `common_options::CargoOptions`.
 - Added SWDv2 multidrop support for multi-DP chips. (#720)
 - Added RP2040 target (Raspberry Pi Pico). (#720)
+- Added The possibility to use `--connect-under-reset` for the `probe-rs-cli info` command. (#775)
+- Added support for flashing `bin` format binaries with the `probe-rs-cli download` command. (#774)
+- Improved number parsing on all the `probe-rs-cli` commands. They now all accept normal (`01234`), hex (`0x1234`), octal (`0o1234`) and binary (`0b1`) formats. (#774)
+- Added progress bars to the probe-rs-cli download command. (#776)
+
+### Removed
+
+- probe-rs-cli-util: unused module `argument_handling`. (#760)
 
 ### Target Support
 
 ### Changed
-- Enabled the generation of global timestamps for ARM targets on `Session::setup_swv`.
+- Enabled the generation of global timestamps and exception traces for ARM targets on `Session::setup_swv`.
 - Changed to `hidraw` for HID access on Linux. This should allow access to HID-based probes without udev rules (#737).
 - Support batching of FTDI commands and use it for RISCV (#717)
 - Include the chip string for `NoRamDefined` in its error message
 - Improved handling of errors in CMSIS-DAP commands (#745).
 - Implemented RTT (String, BinaryLE, and Defmt) in `probe-rs-debugger`
 - `probe-rs-debugger` will use VSCode Client `launch.json` configuration to set RUST_LOG levels and send output to the VSCode Debug Console
+- Bumped dependencies `bitvec 0.19.4`to `bitvec 0.22`, `nom 6.0.0` to `nom 7.0.0-alpha1`. (#756)
+- `DebugProbeError::CommandNotSupportedByProbe` now holds a name string of the unsupported command.
+- Target YAMLs: Renamed `core.type` values from `M0, M4, etc` to `armv6m`, `armv7m`, `armv8m`.
+- Breaking API: Modify `probe-rs-rtt` interfaces to use `probe_rs::Core` rather than `Arc<Mutex<probe_rs::Session>>`.
+- An opaque object is returned to represent a compiled artifact. This allows extra information to be provided
+  in future without a breaking change (#795).
+- Information on whether a rebuild was necessary is included in the artefact (nothing changed if
+ `fresh == true`) (#795).
+- `Debug` was reimplemented on `Session` (#795).
 
 ### Fixed
 - Detect proper USB HID interface to use for CMSIS-DAP v1 probes. Without this, CMSIS-DAP probes with multiple HID interfaces, e.g. MCUlink, were not working properly on MacOS (#722).
@@ -112,7 +130,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `probe_rs::flashing::DownloadOptions` is now marked `non_exhaustive`, to make it easier to add additional flags in the future.
 - Replace `lazy_static` with `once_cell::sync::Lazy` (#685).
 - Use new `SendError` instead of `anyhow::Error` in `cmsisdap` module (#687).
-  
+
 ### Fixed
 
 - Fixed `M33` breakpoints (#543).

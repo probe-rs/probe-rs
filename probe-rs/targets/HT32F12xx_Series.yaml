@@ -4,7 +4,7 @@ variants:
   - name: HT32F1251
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -28,7 +28,7 @@ variants:
   - name: HT32F1251B
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -52,7 +52,7 @@ variants:
   - name: HT32F1252
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0
@@ -76,7 +76,7 @@ variants:
   - name: HT32F1253
     cores:
       - name: main
-        type: M3
+        type: armv7m
         core_access_options:
           Arm:
             ap: 0

@@ -4,7 +4,7 @@ variants:
   - name: HF5032
     cores:
       - name: main
-        type: M0
+        type: armv6m
         core_access_options:
           Arm:
             ap: 0
@@ -28,7 +28,7 @@ variants:
   - name: HF5032L_48LQFP
     cores:
       - name: main
-        type: M0
+        type: armv6m
         core_access_options:
           Arm:
             ap: 0
@@ -52,7 +52,7 @@ variants:
   - name: HF5032Q_33QFN
     cores:
       - name: main
-        type: M0
+        type: armv6m
         core_access_options:
           Arm:
             ap: 0
@@ -76,7 +76,7 @@ variants:
   - name: HF5032S_28SSOP
     cores:
       - name: main
-        type: M0
+        type: armv6m
         core_access_options:
           Arm:
             ap: 0
