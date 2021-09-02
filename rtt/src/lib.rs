@@ -78,4 +78,8 @@ pub enum Error {
     /// Wraps errors propagated up from probe-rs.
     #[error("Error communicating with probe: {0}")]
     Probe(#[from] probe_rs::Error),
+
+    /// Wraps errors propagated up from scroll.
+    #[error(transparent)]
+    Scroll(#[from] scroll::Error),
 }
