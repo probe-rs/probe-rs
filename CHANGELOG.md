@@ -33,6 +33,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Bumped dependencies `bitvec 0.19.4`to `bitvec 0.22`, `nom 6.0.0` to `nom 7.0.0-alpha1`. (#756)
 - `DebugProbeError::CommandNotSupportedByProbe` now holds a name string of the unsupported command.
 - Target YAMLs: Renamed `core.type` values from `M0, M4, etc` to `armv6m`, `armv7m`, `armv8m`.
+- Breaking API: Modify `probe-rs-rtt` interfaces to use `probe_rs::Core` rather than `Arc<Mutex<probe_rs::Session>>`.
 - An opaque object is returned to represent a compiled artifact. This allows extra information to be provided
   in future without a breaking change (#795).
 - Information on whether a rebuild was necessary is included in the artefact (nothing changed if

@@ -2,10 +2,7 @@ use probe_rs::{config::TargetSelector, DebugProbeInfo, Probe};
 use probe_rs_rtt::{Channels, Rtt, RttChannel, ScanRegion};
 use std::io::prelude::*;
 use std::io::{stdin, stdout};
-use std::sync::{
-    mpsc::{channel, Receiver},
-    Arc, Mutex,
-};
+use std::sync::mpsc::{channel, Receiver};
 use std::thread;
 use structopt::StructOpt;
 
@@ -143,7 +140,7 @@ fn run() -> i32 {
         .map(|t| TargetSelector::Unspecified(t))
         .unwrap_or(TargetSelector::Auto);
 
-    let session = match probe.attach(target_selector) {
+    let mut session = match probe.attach(target_selector) {
         Ok(session) => session,
         Err(err) => {
             eprintln!("Error creating debug session: {}", err);
@@ -158,9 +155,19 @@ fn run() -> i32 {
         }
     };
 
+    let memory_map = session.target().memory_map.clone();
+
+    let mut core = match session.core(0) {
+        Ok(core) => core,
+        Err(err) => {
+            eprintln!("Error attaching to core # 0 {}", err);
+            return 1;
+        }
+    };
+
     eprintln!("Attaching to RTT...");
 
-    let mut rtt = match Rtt::attach_region(Arc::new(Mutex::new(session)), &opts.scan_region) {
+    let mut rtt = match Rtt::attach_region(&mut core, &memory_map, &opts.scan_region) {
         Ok(rtt) => rtt,
         Err(err) => {
             eprintln!("Error attaching to RTT: {}", err);
@@ -213,7 +220,7 @@ fn run() -> i32 {
 
     loop {
         if let Some(up_channel) = up_channel.as_ref() {
-            let count = match up_channel.read(up_buf.as_mut()) {
+            let count = match up_channel.read(&mut core, up_buf.as_mut()) {
                 Ok(count) => count,
                 Err(err) => {
                     eprintln!("\nError reading from RTT: {}", err);
@@ -238,7 +245,7 @@ fn run() -> i32 {
             }
 
             if !down_buf.is_empty() {
-                let count = match down_channel.write(down_buf.as_mut()) {
+                let count = match down_channel.write(&mut core, down_buf.as_mut()) {
                     Ok(count) => count,
                     Err(err) => {
                         eprintln!("\nError writing to RTT: {}", err);

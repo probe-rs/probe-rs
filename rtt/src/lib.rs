@@ -18,21 +18,24 @@
 //! // First obtain a probe-rs session (see probe-rs documentation for details)
 //! let probe = Probe::list_all()[0].open()?;
 //! let mut session = probe.attach("somechip")?;
+//! let memory_map = session.target().memory_map.clone();
+//! // Select a core.
+//! let mut core = session.core(0)?;
 //!
 //! // Attach to RTT
-//! let mut rtt = Rtt::attach(Arc::new(Mutex::new(session)))?;
+//! let mut rtt = Rtt::attach(&mut core, &memory_map)?;
 //!
 //! // Read from a channel
 //! if let Some(input) = rtt.up_channels().take(0) {
 //!     let mut buf = [0u8; 1024];
-//!     let count = input.read(&mut buf[..])?;
+//!     let count = input.read(&mut core, &mut buf[..])?;
 //!
 //!     println!("Read data: {:?}", &buf[..count]);
 //! }
 //!
 //! // Write to a channel
 //! if let Some(output) = rtt.down_channels().take(0) {
-//!     output.write(b"Hello, computer!\n")?;
+//!     output.write(&mut core, b"Hello, computer!\n")?;
 //! }
 //!
 //! # Ok::<(), Box<dyn std::error::Error>>(())
@@ -67,6 +70,10 @@ pub enum Error {
     /// The control block has been corrupted. The data contains a detailed error.
     #[error("Control block corrupted: {0}")]
     ControlBlockCorrupted(String),
+
+    /// Attempted an RTT read/write operation against a Core number that is different from the Core number against which RTT was initialized
+    #[error("Incorrect Core number specified for this operation. Expected {0}, and found {1}")]
+    IncorrectCoreSpecified(usize, usize),
 
     /// Wraps errors propagated up from probe-rs.
     #[error("Error communicating with probe: {0}")]

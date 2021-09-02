@@ -1,12 +1,10 @@
-use probe_rs::{config::MemoryRegion, MemoryInterface, Session};
+use crate::channel::*;
+use crate::{Channels, Error};
+use probe_rs::{config::MemoryRegion, Core, MemoryInterface};
 use scroll::{Pread, LE};
 use std::borrow::Cow;
 use std::collections::BTreeMap;
 use std::ops::Range;
-use std::sync::{Arc, Mutex};
-
-use crate::channel::*;
-use crate::{Channels, Error};
 
 /// The RTT interface.
 ///
@@ -44,7 +42,7 @@ impl Rtt {
     const O_CHANNEL_ARRAYS: usize = 24;
 
     fn from(
-        session: Arc<Mutex<Session>>,
+        core: &mut Core,
         memory_map: &[MemoryRegion],
         // Pointer from which to scan
         ptr: u32,
@@ -56,8 +54,6 @@ impl Rtt {
             None => {
                 // If memory wasn't passed in, read the minimum header size
                 let mut mem = vec![0u8; Self::MIN_SIZE];
-                let mut lock = session.lock().unwrap();
-                let mut core = lock.core(0)?;
                 core.read_8(ptr, &mut mem)?;
                 Cow::Owned(mem)
             }
@@ -92,8 +88,6 @@ impl Rtt {
         if let Cow::Owned(mem) = &mut mem {
             // If memory wasn't passed in, read the rest of the control block
             mem.resize(cb_len, 0);
-            let mut lock = session.lock().unwrap();
-            let mut core = lock.core(0)?;
             core.read_8(
                 ptr + Self::MIN_SIZE as u32,
                 &mut mem[Self::MIN_SIZE..cb_len],
@@ -113,7 +107,7 @@ impl Rtt {
             let offset = Self::O_CHANNEL_ARRAYS + i * Channel::SIZE;
 
             if let Some(chan) =
-                Channel::from(&session, i, memory_map, ptr + offset as u32, &mem[offset..])?
+                Channel::from(core, i, memory_map, ptr + offset as u32, &mem[offset..])?
             {
                 up_channels.insert(i, UpChannel(chan));
             } else {
@@ -126,7 +120,7 @@ impl Rtt {
                 Self::O_CHANNEL_ARRAYS + (max_up_channels * Channel::SIZE) + i * Channel::SIZE;
 
             if let Some(chan) =
-                Channel::from(&session, i, memory_map, ptr + offset as u32, &mem[offset..])?
+                Channel::from(core, i, memory_map, ptr + offset as u32, &mem[offset..])?
             {
                 down_channels.insert(i, DownChannel(chan));
             } else {
@@ -144,25 +138,25 @@ impl Rtt {
     /// Attempts to detect an RTT control block anywhere in the target RAM and returns an instance
     /// if a valid control block was found.
     ///
-    /// `core` can be e.g. an owned `Core` or a shared `Rc<Core>`. The session is only borrowed
-    /// temporarily during detection.
-    pub fn attach(session: Arc<Mutex<Session>>) -> Result<Rtt, Error> {
-        Self::attach_region(session, &Default::default())
+    /// `core` can be e.g. an owned `Core` or a shared `Rc<Core>`.
+    pub fn attach(core: &mut Core, memory_map: &[MemoryRegion]) -> Result<Rtt, Error> {
+        Self::attach_region(core, memory_map, &Default::default())
     }
 
     /// Attempts to detect an RTT control block in the specified RAM region(s) and returns an
     /// instance if a valid control block was found.
     ///
-    /// `core` can be e.g. an owned `Core` or a shared `Rc<Core>`. The session is only borrowed
-    /// temporarily during detection.
-    pub fn attach_region(session: Arc<Mutex<Session>>, region: &ScanRegion) -> Result<Rtt, Error> {
-        let memory_map: &[MemoryRegion] = &session.lock().unwrap().target().memory_map.to_vec();
-
+    /// `core` can be e.g. an owned `Core` or a shared `Rc<Core>`.
+    pub fn attach_region(
+        core: &mut Core,
+        memory_map: &[MemoryRegion],
+        region: &ScanRegion,
+    ) -> Result<Rtt, Error> {
         let ranges: Vec<Range<u32>> = match region {
             ScanRegion::Exact(addr) => {
                 log::debug!("Scanning at exact address: 0x{:X}", addr);
 
-                return Rtt::from(session, memory_map, *addr, None)?
+                return Rtt::from(core, memory_map, *addr, None)?
                     .ok_or(Error::ControlBlockNotFound);
             }
             ScanRegion::Ram => {
@@ -193,14 +187,12 @@ impl Rtt {
 
             mem.resize(range.len(), 0);
             {
-                let mut lock = session.lock().unwrap();
-                let mut core = lock.core(0)?;
                 core.read_8(range.start, mem.as_mut())?;
             }
 
             for offset in 0..(mem.len() - Self::MIN_SIZE) {
                 if let Some(rtt) = Rtt::from(
-                    session.clone(),
+                    core,
                     memory_map,
                     range.start + offset as u32,
                     Some(&mem[offset..]),
@@ -214,11 +206,11 @@ impl Rtt {
             }
         }
 
-        if instances.len() == 0 {
+        if instances.is_empty() {
             return Err(Error::ControlBlockNotFound);
         }
 
-        if instances.len() > 1 {
+        if !instances.is_empty() {
             return Err(Error::MultipleControlBlocksFound(
                 instances.into_iter().map(|i| i.ptr).collect(),
             ));
