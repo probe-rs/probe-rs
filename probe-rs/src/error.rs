@@ -3,8 +3,7 @@ use crate::{architecture::arm::ap::AccessPortError, config::RegistryError};
 
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
-    // #[error("An error with the usage of the probe occured")] //This obfuscates the underlying (meaninful) error, for example "Unable to set hardware breakpoint, all available breakpoint units are in use." is lost because of this override.
-    #[error(transparent)]
+    #[error("An error with the usage of the probe occured")]
     Probe(#[from] DebugProbeError),
     #[error("A core architecture specific error occured")]
     ArchitectureSpecific(#[from] Box<dyn std::error::Error + Send + Sync>),
