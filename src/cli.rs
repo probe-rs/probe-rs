@@ -55,13 +55,13 @@ pub(crate) struct Opts {
     #[structopt(short = "V", long)]
     version: bool,
 
-    /// Print a backtrace even if the program ran successfully
-    #[structopt(long)]
-    pub(crate) force_backtrace: bool,
+    /// Disable or enable backtrace (auto in case of panic or stack overflow).
+    #[structopt(long, default_value = "auto")]
+    pub(crate) backtrace: String,
 
     /// Configure the number of lines to print before a backtrace gets cut off
     #[structopt(long, default_value = "50")]
-    pub(crate) max_backtrace_len: u32,
+    pub(crate) backtrace_limit: u32,
 
     /// Whether to shorten paths (e.g. to crates.io dependencies) in backtraces and defmt logs
     #[structopt(long)]

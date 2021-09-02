@@ -46,12 +46,12 @@ rustflags = [
 Write your test that captures `probe-run`s output for your test ELF and check the result with `insta::assert_snapshot!(run_output);`
 
 ### 3. cargo insta review
-When you run `cargo test -- -ignored` for the first time after you've added your new test, it will fail.
+When you run `cargo test -- --ignored` for the first time after you've added your new test, it will fail.
 This first run creates a snapshot which you can then store as a "known good"
 
 run
 ```console
-$ cargo install insta
+$ cargo install cargo-insta
 $ cargo insta review
 ```
 

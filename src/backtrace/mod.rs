@@ -8,10 +8,29 @@ mod pp;
 mod symbolicate;
 mod unwind;
 
+#[derive(PartialEq, Eq)]
+pub(crate) enum BacktraceOptions {
+    Auto,
+    Never,
+    Always,
+}
+
+impl From<&String> for BacktraceOptions {
+    fn from(item: &String) -> Self {
+        match item.as_str() {
+            "auto" | "Auto" => BacktraceOptions::Auto,
+            "never" | "Never" => BacktraceOptions::Never,
+            "always" | "Always" => BacktraceOptions::Always,
+            _ => panic!("options for `--backtrace` are `auto`, `never`, `always`."),
+        }
+    }
+}
+
 pub(crate) struct Settings<'p> {
     pub(crate) current_dir: &'p Path,
-    pub(crate) max_backtrace_len: u32,
-    pub(crate) force_backtrace: bool,
+    pub(crate) backtrace: BacktraceOptions,
+    pub(crate) panic_present: bool,
+    pub(crate) backtrace_limit: u32,
     pub(crate) shorten_paths: bool,
 }
 
@@ -20,7 +39,7 @@ pub(crate) fn print(
     core: &mut Core,
     elf: &Elf,
     active_ram_region: &Option<RamRegion>,
-    settings: &Settings,
+    settings: &mut Settings<'_>,
 ) -> anyhow::Result<Outcome> {
     let unwind = unwind::target(core, elf, active_ram_region);
 
@@ -31,12 +50,24 @@ pub(crate) fn print(
         .iter()
         .any(|raw_frame| raw_frame.is_exception());
 
-    let print_backtrace = settings.force_backtrace
-        || unwind.outcome == Outcome::StackOverflow
-        || unwind.corrupted
-        || contains_exception;
+    let print_backtrace = match settings.backtrace {
+        BacktraceOptions::Never => false,
+        BacktraceOptions::Always => true,
+        BacktraceOptions::Auto => {
+            settings.panic_present
+                || unwind.outcome == Outcome::StackOverflow
+                || unwind.corrupted
+                || contains_exception
+        }
+    };
 
-    if print_backtrace && settings.max_backtrace_len > 0 {
+    // `0` disables the limit and we want to show _all_ frames
+    if settings.backtrace_limit == 0 {
+        let frames_number = &frames.len();
+        settings.backtrace_limit = *frames_number as u32;
+    }
+
+    if print_backtrace && settings.backtrace_limit > 0 {
         pp::backtrace(&frames, settings);
 
         if unwind.corrupted {

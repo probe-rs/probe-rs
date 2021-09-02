@@ -105,10 +105,14 @@ fn run_target_program(elf_path: &Path, chip_name: &str, opts: &cli::Opts) -> any
         .map(|canary| canary.touched(&mut core, elf))
         .transpose()?
         .unwrap_or(false);
-    let backtrace_settings = backtrace::Settings {
+
+    let panic_present = canary_touched || halted_due_to_signal;
+
+    let mut backtrace_settings = backtrace::Settings {
         current_dir,
-        max_backtrace_len: opts.max_backtrace_len,
-        force_backtrace: opts.force_backtrace || canary_touched || halted_due_to_signal,
+        backtrace_limit: opts.backtrace_limit,
+        backtrace: (&opts.backtrace).into(),
+        panic_present,
         shorten_paths: opts.shorten_paths,
     };
 
@@ -116,7 +120,7 @@ fn run_target_program(elf_path: &Path, chip_name: &str, opts: &cli::Opts) -> any
         &mut core,
         elf,
         &target_info.active_ram_region,
-        &backtrace_settings,
+        &mut backtrace_settings,
     )?;
 
     core.reset_and_halt(TIMEOUT)?;

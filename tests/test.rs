@@ -80,7 +80,7 @@ fn successful_run_has_no_backtrace() {
 #[ignore]
 fn successful_run_can_enforce_backtrace() {
     let run_result =
-        run_and_truncate("--chip nRF52840_xxAA tests/test_elfs/hello --force-backtrace");
+        run_and_truncate("--chip nRF52840_xxAA tests/test_elfs/hello --backtrace=always");
 
     assert_eq!(true, run_result.exit_status.success());
     insta::assert_snapshot!(run_result.output);
@@ -112,6 +112,28 @@ fn panic_is_reported_as_such() {
 fn panic_verbose() {
     // record current verbose backtrace to catch deviations
     let run_result = run_and_truncate("--chip nRF52840_xxAA tests/test_elfs/panic --verbose");
+
+    assert_eq!(false, run_result.exit_status.success());
+    insta::assert_snapshot!(run_result.output);
+}
+
+#[test]
+// this test should not be run by default, as it requires the target hardware to be present
+#[ignore]
+fn unsuccessful_run_can_suppress_backtrace() {
+    let run_result =
+        run_and_truncate("--chip nRF52840_xxAA tests/test_elfs/panic --backtrace=never");
+
+    assert_eq!(false, run_result.exit_status.success());
+    insta::assert_snapshot!(run_result.output);
+}
+
+#[test]
+// this test should not be run by default, as it requires the target hardware to be present
+#[ignore]
+fn stack_overflow_can_suppress_backtrace() {
+    let run_result =
+        run_and_truncate("--chip nRF52840_xxAA tests/test_elfs/overflow --backtrace=never");
 
     assert_eq!(false, run_result.exit_status.success());
     insta::assert_snapshot!(run_result.output);
