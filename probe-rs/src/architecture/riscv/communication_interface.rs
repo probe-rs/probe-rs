@@ -10,7 +10,7 @@ use super::{
 };
 use crate::{
     architecture::riscv::*,
-    probe::{BatchExecutionError, CommandResult},
+    probe::CommandResult,
 };
 use crate::{
     probe::{CommandResults, DeferredCommandResult},
@@ -618,7 +618,7 @@ impl<'probe> RiscvCommunicationInterface {
 
         let result = self.execute();
 
-        let result = result.map_err(|e| e.error)?;
+        let result = result?;
         for (out_index, idx) in read_results.iter().enumerate() {
             data[out_index] = match idx.get(&*result) {
                 CommandResult::U32(data) => V::from_register_value(data),
@@ -788,7 +788,7 @@ impl<'probe> RiscvCommunicationInterface {
         // Check that the write was succesful
         let ok_index = self.schedule_read_dm_register::<Sbcs>()?;
 
-        let result = self.execute().map_err(|e| e.error)?;
+        let result = self.execute()?;
 
         // Check that the write was succesful
         let sbcs = match ok_index.get(&*result) {
@@ -1241,7 +1241,7 @@ impl<'probe> RiscvCommunicationInterface {
         Probe::from_attached_probe(self.dtm.probe.into_probe())
     }
 
-    pub(super) fn execute(&mut self) -> Result<Box<dyn CommandResults>, BatchExecutionError> {
+    pub(super) fn execute(&mut self) -> Result<Box<dyn CommandResults>, DebugProbeError> {
         self.dtm.execute()
     }
 

@@ -19,7 +19,7 @@ mod commands;
 
 use self::commands::{JtagCommand, WriteRegisterCommand};
 
-use super::{BatchExecutionError, CommandResult, CommandResults, DeferredCommandResult};
+use super::{BatchExecutionError, CommandResult, CommandResults, DeferredCommandResult, JTAGBatching};
 
 #[derive(Debug)]
 struct JtagChainItem {
@@ -579,6 +579,13 @@ impl JTAGAccess for FtdiProbe {
         log::debug!("write_register result: {:?})", r);
         Ok(r)
     }
+
+    fn batch_support(&mut self) -> Option<&mut dyn JTAGBatching> {
+        Some(self)
+    }
+}
+
+impl JTAGBatching for FtdiProbe {
 
     fn schedule_write_register(
         &mut self,

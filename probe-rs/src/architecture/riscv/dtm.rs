@@ -7,7 +7,10 @@ use bitfield::bitfield;
 
 use super::communication_interface::RiscvError;
 use crate::{
-    probe::{BatchExecutionError, CommandResults, DeferredCommandResult, JTAGAccess},
+    probe::{
+        BasicCommandResults, BasicDeferredCommandResult, CommandResult, CommandResults,
+        DeferredCommandResult, JTAGAccess, JtagWriteCommand,
+    },
     DebugProbeError,
 };
 
@@ -21,6 +24,8 @@ use crate::{
 #[derive(Debug)]
 pub struct Dtm {
     pub probe: Box<dyn JTAGAccess>,
+
+    queued_commands: Vec<JtagWriteCommand>,
 
     /// Number of address bits in the DMI register
     abits: u32,
@@ -50,7 +55,11 @@ impl Dtm {
         // Setup the number of idle cycles between JTAG accesses
         probe.set_idle_cycles(idle_cycles as u8);
 
-        Ok(Self { probe, abits })
+        Ok(Self {
+            probe,
+            abits,
+            queued_commands: Vec::new(),
+        })
     }
 
     pub fn target_reset_deassert(&mut self) -> Result<(), DebugProbeError> {
@@ -79,8 +88,65 @@ impl Dtm {
         Ok(())
     }
 
-    pub fn execute(&mut self) -> Result<Box<dyn CommandResults>, BatchExecutionError> {
-        self.probe.execute()
+    pub fn execute(&mut self) -> Result<Box<dyn CommandResults>, DebugProbeError> {
+        let cmds = self.queued_commands.clone();
+        self.queued_commands = Vec::new();
+
+        if let Some(batcher) = self.probe.batch_support() {
+            // prepare probe for batch write
+            for cmd in &cmds {
+                batcher.schedule_write_register(cmd.address, &cmd.data, cmd.len, cmd.transform)?;
+            }
+            match batcher.execute() {
+                Ok(r) => Ok(r),
+                Err(e) => match e.error {
+                    DebugProbeError::ArchitectureSpecific(ref ae) => {
+                        match ae.downcast_ref::<RiscvError>() {
+                            Some(RiscvError::DmiTransfer(
+                                DmiOperationStatus::RequestInProgress,
+                            )) => {
+                                self.reset().map_err(|e| DebugProbeError::ArchitectureSpecific(Box::new(e)))?;
+
+                                let remaining = cmds.len() - e.results.len();
+                                todo!() // now how do we resume where we left off from????
+                            }
+                            _ => Err(e.error)?,
+                        }
+                    }
+                    _ => Err(e.error)?,
+                },
+            }
+        } else {
+            let mut results = Vec::new();
+            // fall back to sequential writes
+            for cmd in cmds {
+                'inner: loop {
+                    let data = self.probe.write_register(cmd.address, &cmd.data, cmd.len)?;
+                    match (cmd.transform)(data) {
+                        Ok(r) => {
+                            results.push(CommandResult::U32(r));
+                            break 'inner
+                        },
+                        Err(e) => match e {
+                            DebugProbeError::ArchitectureSpecific(ref ae) => {
+                                match ae.downcast_ref::<RiscvError>() {
+                                    Some(RiscvError::DmiTransfer(
+                                        DmiOperationStatus::RequestInProgress,
+                                    )) => {
+                                        self.reset().map_err(|e| DebugProbeError::ArchitectureSpecific(Box::new(e)))?;
+                                        // TODO check timeout?
+                                    }
+                                    _ => Err(e)?,
+                                }
+                            }
+                            _ => Err(e)?,
+                        },
+                    }
+                }
+            }
+
+            Ok(Box::new(BasicCommandResults::new(results)))
+        }
     }
 
     pub fn schedule_dmi_register_access(
@@ -97,8 +163,10 @@ impl Dtm {
 
         let bit_size = self.abits + DMI_ADDRESS_BIT_OFFSET;
 
-        self.probe
-            .schedule_write_register(DMI_ADDRESS, &bytes, bit_size, |response_bytes| {
+        self.queued_commands.push(JtagWriteCommand {
+            address: DMI_ADDRESS,
+            data: bytes.to_vec(),
+            transform: |response_bytes| {
                 let response_value: u128 =
                     response_bytes.iter().enumerate().fold(0, |acc, elem| {
                         let (byte_offset, value) = elem;
@@ -109,17 +177,18 @@ impl Dtm {
                 let op = (response_value & DMI_OP_MASK) as u8;
 
                 if op != 0 {
-                    return Err(DebugProbeError::ProbeSpecific(Box::new(
-                        std::io::Error::new(
-                            std::io::ErrorKind::Other,
-                            format!("Operation Status = {:?}", DmiOperationStatus::parse(op)),
-                        ),
-                    )));
+                    return Err(DebugProbeError::ArchitectureSpecific(Box::new(RiscvError::DmiTransfer(DmiOperationStatus::parse(op).expect("INVALID DMI OP status")))));
                 }
 
                 let value = (response_value >> 2) as u32;
                 Ok(value)
-            })
+            },
+            len: bit_size,
+        });
+
+        Ok(Box::new(BasicDeferredCommandResult::new(
+            self.queued_commands.len() - 1,
+        )))
     }
 
     /// Perform an access to the dmi register of the JTAG Transport module.

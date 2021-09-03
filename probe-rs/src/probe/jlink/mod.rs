@@ -23,8 +23,6 @@ use crate::{
 
 use self::swd::{SwdSettings, SwdStatistics};
 
-use super::{BatchExecutionError, CommandResult, CommandResults, DeferredCommandResult};
-
 mod swd;
 
 const SWO_BUFFER_SIZE: u16 = 128;
@@ -50,8 +48,6 @@ pub(crate) struct JLink {
 
     swd_statistics: SwdStatistics,
     swd_settings: SwdSettings,
-
-    queued_commands: Vec<WriteCommand>,
 }
 
 impl JLink {
@@ -398,7 +394,6 @@ impl DebugProbe for JLink {
             speed_khz: 0,
             swd_settings: SwdSettings::default(),
             swd_statistics: SwdStatistics::default(),
-            queued_commands: vec![],
         }))
     }
 
@@ -679,57 +674,6 @@ impl JTAGAccess for JLink {
     fn set_idle_cycles(&mut self, idle_cycles: u8) {
         self.jtag_idle_cycles = idle_cycles;
     }
-
-    fn execute(&mut self) -> std::result::Result<Box<dyn CommandResults>, BatchExecutionError> {
-        let mut results = Vec::<CommandResult>::new();
-        let queued_commands = self.queued_commands.clone();
-        self.queued_commands = vec![];
-
-        for cmd in queued_commands.iter() {
-            let cmd_res = self.write_register(cmd.address, &cmd.data[..], cmd.len);
-
-            match cmd_res {
-                Ok(cmd_res) => results.push(CommandResult::U32((cmd.transform)(cmd_res).map_err(
-                    |e| {
-                        BatchExecutionError::new(
-                            e,
-                            Box::new(JlinkCommandResults::new(results.clone())),
-                        )
-                    },
-                )?)),
-                Err(err) => {
-                    return Err(BatchExecutionError::new(
-                        err,
-                        Box::new(JlinkCommandResults::new(results)),
-                    ))
-                }
-            };
-        }
-
-        Ok(Box::new(JlinkCommandResults::new(results)))
-    }
-
-    fn schedule_write_register(
-        &mut self,
-        address: u32,
-        data: &[u8],
-        len: u32,
-        transform: fn(Vec<u8>) -> Result<u32, DebugProbeError>,
-    ) -> Result<Box<dyn DeferredCommandResult>, DebugProbeError> {
-        let mut data_vec = Vec::new();
-        data_vec.extend_from_slice(data);
-
-        self.queued_commands.push(WriteCommand {
-            address,
-            data: data_vec,
-            len,
-            transform,
-        });
-
-        Ok(Box::new(JlinkDeferredCommandResult::new(
-            self.queued_commands.len() - 1,
-        )))
-    }
 }
 
 impl DapProbe for JLink {}
@@ -777,51 +721,6 @@ impl SwoAccess for JLink {
             }
         }
         Ok(bytes)
-    }
-}
-
-#[derive(Debug, Clone)]
-struct WriteCommand {
-    address: u32,
-    data: Vec<u8>,
-    len: u32,
-    transform: fn(Vec<u8>) -> Result<u32, DebugProbeError>,
-}
-
-struct JlinkDeferredCommandResult {
-    index: usize,
-}
-
-impl JlinkDeferredCommandResult {
-    fn new(index: usize) -> JlinkDeferredCommandResult {
-        JlinkDeferredCommandResult { index }
-    }
-}
-
-impl DeferredCommandResult for JlinkDeferredCommandResult {
-    fn get(&self, command_results: &dyn CommandResults) -> CommandResult {
-        command_results.get(self.index)
-    }
-}
-
-#[derive(Debug)]
-struct JlinkCommandResults {
-    results: Vec<CommandResult>,
-}
-
-impl JlinkCommandResults {
-    fn new(results: Vec<CommandResult>) -> JlinkCommandResults {
-        JlinkCommandResults { results }
-    }
-}
-
-impl CommandResults for JlinkCommandResults {
-    fn get(&self, index: usize) -> CommandResult {
-        self.results[index].clone()
-    }
-
-    fn len(&self) -> usize {
-        self.results.len()
     }
 }
 
