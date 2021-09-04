@@ -75,6 +75,42 @@ impl InnerTransferRequest {
         }
     }
 }
+/// Response to an InnerTransferRequest.
+#[allow(non_snake_case)]
+#[derive(Clone, Debug)]
+pub struct InnerTransferResponse {
+    /// Test Domain Timestamp. Will be `Some` if `td_timestamp_request` was set on the request.
+    pub td_timestamp: Option<u32>,
+    /// Response data. Will be `Some` if the request was a read.
+    pub data: Option<u32>,
+}
+
+impl InnerTransferResponse {
+    fn from_bytes(req: &InnerTransferRequest, buffer: &[u8]) -> Result<(Self, usize), SendError> {
+        let mut resp = Self {
+            td_timestamp: None,
+            data: None,
+        };
+
+        let mut offset = 0;
+        if req.td_timestamp_request {
+            if buffer.len() < offset + 4 {
+                return Err(SendError::NotEnoughData);
+            }
+            resp.td_timestamp = Some(buffer.pread_with(offset, LE).unwrap());
+            offset += 4;
+        }
+        if req.RnW == RW::R {
+            if buffer.len() < offset + 4 {
+                return Err(SendError::NotEnoughData);
+            }
+            resp.data = Some(buffer.pread_with(offset, LE).unwrap());
+            offset += 4;
+        }
+
+        Ok((resp, offset))
+    }
+}
 
 /// Read/write single and multiple registers.
 ///
@@ -124,10 +160,10 @@ impl Request for TransferRequest {
         Ok(size)
     }
 
-    fn from_bytes(&self, buffer: &[u8]) -> Result<Self::Response, SendError> {
+    fn from_bytes(&self, mut buffer: &[u8]) -> Result<Self::Response, SendError> {
         let transfer_count = buffer[0];
 
-        let transfer_response = InnerTransferResponse {
+        let last_transfer_response = LastTransferResponse {
             ack: match buffer[1] & 0x7 {
                 1 => Ack::Ok,
                 2 => Ack::Wait,
@@ -139,20 +175,19 @@ impl Request for TransferRequest {
             value_missmatch: buffer[1] & 0x10 > 1,
         };
 
-        let transfer_data = if buffer.len() >= 2 + 4 {
-            buffer
-                .pread_with(2, LE)
-                .map_err(|_| SendError::NotEnoughData)?
-        } else {
-            return Err(SendError::NotEnoughData);
-        };
+        buffer = &buffer[2..];
+        let mut transfers = Vec::new();
+        for i in 0..transfer_count as usize {
+            let req = &self.transfers[i];
+            let (resp, len) = InnerTransferResponse::from_bytes(req, buffer)?;
+            transfers.push(resp);
+            buffer = &buffer[len..];
+        }
 
         Ok(TransferResponse {
             transfer_count,
-            transfer_response,
-            // TODO: implement this properly.
-            td_timestamp: 0, // scroll::pread_with(buffer[offset + 2..offset + 2 + 4], LE),
-            transfer_data,
+            last_transfer_response,
+            transfers,
         })
     }
 }
@@ -169,7 +204,7 @@ pub enum Ack {
 }
 
 #[derive(Debug)]
-pub struct InnerTransferResponse {
+pub struct LastTransferResponse {
     pub ack: Ack,
     pub protocol_error: bool,
     pub value_missmatch: bool,
@@ -180,13 +215,10 @@ pub struct TransferResponse {
     /// Number of transfers: 1 .. 255 that are executed.
     pub transfer_count: u8,
     /// Contains information about last response from target Device.
-    pub transfer_response: InnerTransferResponse,
-    /// Current Test Domain Timer value is added before each Transfer Data word when Transfer Request - bit 7: TD_TimeStamp request is set.
-    pub td_timestamp: u32,
-    /// register value or match value in the order of the Transfer Request.
-    ///- for Read Register transfer request: the register value of the CoreSight register.
-    ///- no data is sent for other operations.
-    pub transfer_data: u32,
+    pub last_transfer_response: LastTransferResponse,
+    /// Responses to each requested transfer in `TransferRequest`. May be shorter than
+    /// `TransferRequest::transfers` in case of communication failure.
+    pub transfers: Vec<InnerTransferResponse>,
 }
 
 #[derive(Debug)]

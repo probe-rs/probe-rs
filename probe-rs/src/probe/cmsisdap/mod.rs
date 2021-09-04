@@ -169,11 +169,14 @@ impl CmsisDap {
 
     /// Immediately send whatever is in our batch if it is not empty.
     ///
+    /// If the last transfer was a read, result is Some with the read value.
+    /// Otherwise, the result is None.
+    ///
     /// This will ensure any pending writes are processed and errors from them
     /// raised if necessary.
-    fn process_batch(&mut self) -> Result<u32, DebugProbeError> {
+    fn process_batch(&mut self) -> Result<Option<u32>, DebugProbeError> {
         if self.batch.is_empty() {
-            return Ok(0);
+            return Ok(None);
         }
 
         let mut batch = std::mem::take(&mut self.batch);
@@ -205,13 +208,13 @@ impl CmsisDap {
 
             debug!("{:?} of batch of {} items suceeded", count, batch.len());
 
-            if response.transfer_response.protocol_error {
+            if response.last_transfer_response.protocol_error {
                 return Err(DapError::SwdProtocol.into());
             } else {
-                match response.transfer_response.ack {
+                match response.last_transfer_response.ack {
                     Ack::Ok => {
                         log::trace!("Transfer status: ACK");
-                        return Ok(response.transfer_data);
+                        return Ok(response.transfers[response.transfers.len() - 1].data);
                     }
                     Ack::NoAck => {
                         log::trace!("Transfer status: NACK");
@@ -266,7 +269,7 @@ impl CmsisDap {
     /// and return the read value. If the BatchCommand is a write, the write is
     /// executed immediately if the batch is full, otherwise it is queued for
     /// later execution.
-    fn batch_add(&mut self, command: BatchCommand) -> Result<u32, DebugProbeError> {
+    fn batch_add(&mut self, command: BatchCommand) -> Result<Option<u32>, DebugProbeError> {
         debug!("Adding command to batch: {}", command);
 
         self.batch.push(command);
@@ -278,7 +281,7 @@ impl CmsisDap {
         match command {
             BatchCommand::Read(_, _) => self.process_batch(),
             _ if self.batch.len() == max_writes => self.process_batch(),
-            _ => Ok(0),
+            _ => Ok(None),
         }
     }
 
@@ -594,7 +597,11 @@ impl RawDapAccess for CmsisDap {
 
     /// Reads the DAP register on the specified port and address.
     fn raw_read_register(&mut self, port: PortType, addr: u8) -> Result<u32, DebugProbeError> {
-        self.batch_add(BatchCommand::Read(port, addr as u16))
+        let res = self.batch_add(BatchCommand::Read(port, addr as u16))?;
+
+        // NOTE(unwrap): batch_add will always return Some if the last command is a read
+        // and running the batch was successful.
+        Ok(res.unwrap())
     }
 
     /// Writes a value to the DAP register on the specified port and address.
