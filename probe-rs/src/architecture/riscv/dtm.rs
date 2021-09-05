@@ -93,29 +93,36 @@ impl Dtm {
         self.queued_commands = Vec::new();
 
         if let Some(batcher) = self.probe.batch_support() {
-            // prepare probe for batch write
-            for cmd in &cmds {
-                batcher.schedule_write_register(cmd.address, &cmd.data, cmd.len, cmd.transform)?;
-            }
-            match batcher.execute() {
-                Ok(r) => Ok(r),
-                Err(e) => match e.error {
-                    DebugProbeError::ArchitectureSpecific(ref ae) => {
-                        match ae.downcast_ref::<RiscvError>() {
-                            Some(RiscvError::DmiTransfer(
-                                DmiOperationStatus::RequestInProgress,
-                            )) => {
-                                self.reset().map_err(|e| DebugProbeError::ArchitectureSpecific(Box::new(e)))?;
+                // prepare probe for batch write
+                batcher.clear_schedule();
+                for cmd in &cmds {
+                    batcher.schedule_write_register(cmd.address, &cmd.data, cmd.len, cmd.transform)?;
+                }
+                match batcher.execute() {
+                    Ok(r) => return Ok(r),
+                    Err(e) => match e.error {
+                        DebugProbeError::ArchitectureSpecific(ref ae) => {
+                            match ae.downcast_ref::<RiscvError>() {
+                                Some(RiscvError::DmiTransfer(
+                                    DmiOperationStatus::RequestInProgress,
+                                )) => {
+                                    self.reset().map_err(|e| {
+                                        DebugProbeError::ArchitectureSpecific(Box::new(e))
+                                    })?;
 
-                                let remaining = cmds.len() - e.results.len();
-                                todo!() // now how do we resume where we left off from????
+                                    // queue up the remaining commands when we retry
+                                    self.queued_commands.extend_from_slice(&cmds[e.results.len()..]);
+
+                                    // TODO increase idle cycles
+
+                                    self.execute()
+                                }
+                                _ => Err(e.error)?,
                             }
-                            _ => Err(e.error)?,
                         }
-                    }
-                    _ => Err(e.error)?,
-                },
-            }
+                        _ => Err(e.error)?,
+                    },
+                }
         } else {
             let mut results = Vec::new();
             // fall back to sequential writes
@@ -125,16 +132,19 @@ impl Dtm {
                     match (cmd.transform)(data) {
                         Ok(r) => {
                             results.push(CommandResult::U32(r));
-                            break 'inner
-                        },
+                            break 'inner;
+                        }
                         Err(e) => match e {
                             DebugProbeError::ArchitectureSpecific(ref ae) => {
                                 match ae.downcast_ref::<RiscvError>() {
                                     Some(RiscvError::DmiTransfer(
                                         DmiOperationStatus::RequestInProgress,
                                     )) => {
-                                        self.reset().map_err(|e| DebugProbeError::ArchitectureSpecific(Box::new(e)))?;
-                                        // TODO check timeout?
+                                        self.reset().map_err(|e| {
+                                            DebugProbeError::ArchitectureSpecific(Box::new(e))
+                                        })?;
+
+                                        // TODO increase idle cycles
                                     }
                                     _ => Err(e)?,
                                 }
@@ -177,7 +187,11 @@ impl Dtm {
                 let op = (response_value & DMI_OP_MASK) as u8;
 
                 if op != 0 {
-                    return Err(DebugProbeError::ArchitectureSpecific(Box::new(RiscvError::DmiTransfer(DmiOperationStatus::parse(op).expect("INVALID DMI OP status")))));
+                    return Err(DebugProbeError::ArchitectureSpecific(Box::new(
+                        RiscvError::DmiTransfer(
+                            DmiOperationStatus::parse(op).expect("INVALID DMI OP status"),
+                        ),
+                    )));
                 }
 
                 let value = (response_value >> 2) as u32;
@@ -245,6 +259,7 @@ impl Dtm {
                 Err(DmiOperationStatus::RequestInProgress) => {
                     // Operation still in progress, reset dmi status and try again.
                     self.reset()?;
+                    // TODO increase idle cycles
                 }
                 Err(e) => return Err(RiscvError::DmiTransfer(e)),
             }

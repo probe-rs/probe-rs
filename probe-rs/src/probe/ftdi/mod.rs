@@ -727,6 +727,10 @@ impl JTAGBatching for FtdiProbe {
         self.queued_commands = vec![];
         Ok(Box::new(FtdiCommandResults::new(results)))
     }
+
+    fn clear_schedule(&mut self) {
+        self.queued_commands.clear();
+    }
 }
 
 struct FtdiDeferredCommandResult {

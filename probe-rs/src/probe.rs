@@ -695,6 +695,9 @@ pub trait JTAGBatching: JTAGAccess {
         transform: fn(Vec<u8>) -> Result<u32, DebugProbeError>,
     ) -> Result<Box<dyn DeferredCommandResult>, DebugProbeError>;
 
+    /// Clear any scheduled commands.
+    fn clear_schedule(&mut self);
+
     /// Executes register writes scheduled by `schedule_write_register`
     /// If the probe doesn't support batching this will be emulated.
     fn execute(&mut self) -> Result<Box<dyn CommandResults>, BatchExecutionError>;
