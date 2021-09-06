@@ -52,37 +52,52 @@ impl Canary {
         core.reset_and_halt(TIMEOUT)?;
 
         // Decide if and where to place the stack canary.
-        if let Some(highest_static_var_address) = target_info.highest_static_var_address {
-            // standard = static variables are at a lower address; stack (grows down) is at a higher address
-            let standard_memory_layout =
-                highest_static_var_address < elf.vector_table.initial_stack_pointer;
 
-            if !elf.program_uses_heap() && standard_memory_layout {
-                let stack_available =
-                    elf.vector_table.initial_stack_pointer - highest_static_var_address - 1;
-
-                // We consider >90% stack usage a potential stack overflow, but don't go beyond 1 kb since
-                // filling a lot of RAM is slow (and 1 kb should be "good enough" for what we're doing).
-                let size = 1024.min(stack_available / 10) as usize;
-
-                log::debug!(
-                    "{} bytes of stack available ({:#010X} ..= {:#010X}), using {} byte canary to detect overflows",
-                    stack_available,
-                    highest_static_var_address + 1,
-                    elf.vector_table.initial_stack_pointer,
-                    size,
-                );
-
-                // Canary starts right after `highest_ram_addr_in_use`.
-                let address = highest_static_var_address + 1;
-                let canary = vec![CANARY_VALUE; size];
-                core.write_8(address, &canary)?;
-
-                return Ok(Some(Canary { address, size }));
+        let highest_static_var_address = match target_info.highest_static_var_address {
+            Some(addr) => addr,
+            None => {
+                log::debug!("not placing stack canary (no static variables)");
+                return Ok(None);
             }
+        };
+
+        // standard = static variables are at a lower address; stack (grows down) is at a higher address
+        let standard_memory_layout =
+            highest_static_var_address < elf.vector_table.initial_stack_pointer;
+
+        if !standard_memory_layout {
+            log::debug!("highest static addr: {:08x}", highest_static_var_address);
+            log::debug!("initial SP: {:08x}", elf.vector_table.initial_stack_pointer);
+            log::debug!("non-standard layout (flip-link in use?), not placing canary");
+            return Ok(None);
         }
 
-        Ok(None)
+        if elf.program_uses_heap() {
+            log::debug!("heap in use, not placing canary");
+            return Ok(None);
+        }
+
+        let stack_available =
+            elf.vector_table.initial_stack_pointer - highest_static_var_address - 1;
+
+        // We consider >90% stack usage a potential stack overflow, but don't go beyond 1 kb since
+        // filling a lot of RAM is slow (and 1 kb should be "good enough" for what we're doing).
+        let size = 1024.min(stack_available / 10) as usize;
+
+        log::debug!(
+            "{} bytes of stack available ({:#010X} ..= {:#010X}), using {} byte canary to detect overflows",
+            stack_available,
+            highest_static_var_address + 1,
+            elf.vector_table.initial_stack_pointer,
+            size,
+        );
+
+        // Canary starts right after `highest_ram_addr_in_use`.
+        let address = highest_static_var_address + 1;
+        let canary = vec![CANARY_VALUE; size];
+        core.write_8(address, &canary)?;
+
+        Ok(Some(Canary { address, size }))
     }
 
     pub(crate) fn touched(self, core: &mut probe_rs::Core, elf: &Elf) -> anyhow::Result<bool> {
