@@ -88,7 +88,7 @@ fn run_target_program(elf_path: &Path, chip_name: &str, opts: &cli::Opts) -> any
         log::info!("success!");
     }
 
-    let canary = Canary::install(&mut sess, &target_info, elf)?;
+    let canary = Canary::install(&mut sess, &target_info, elf, opts.measure_stack)?;
     start_program(&mut sess, elf)?;
 
     let sess = Arc::new(Mutex::new(sess));
