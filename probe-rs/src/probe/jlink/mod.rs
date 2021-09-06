@@ -674,6 +674,10 @@ impl JTAGAccess for JLink {
     fn set_idle_cycles(&mut self, idle_cycles: u8) {
         self.jtag_idle_cycles = idle_cycles;
     }
+
+    fn get_idle_cycles(&self) -> u8 {
+        self.jtag_idle_cycles
+    }
 }
 
 impl DapProbe for JLink {}

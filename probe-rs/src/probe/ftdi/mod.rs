@@ -580,8 +580,13 @@ impl JTAGAccess for FtdiProbe {
         Ok(r)
     }
 
+    #[inline(always)]
     fn batch_support(&mut self) -> Option<&mut dyn JTAGBatching> {
         Some(self)
+    }
+
+    fn get_idle_cycles(&self) -> u8 {
+        self.idle_cycles
     }
 }
 

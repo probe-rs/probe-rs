@@ -664,6 +664,9 @@ pub trait JTAGAccess: DebugProbe {
     /// This function configures the number of idle cycles which are inserted after each access.
     fn set_idle_cycles(&mut self, idle_cycles: u8);
 
+    /// Return the currently configured idle cycles.
+    fn get_idle_cycles(&self) -> u8;
+
     /// Write to a JTAG register
     ///
     /// This function will perform a write to the IR register, if necessary,

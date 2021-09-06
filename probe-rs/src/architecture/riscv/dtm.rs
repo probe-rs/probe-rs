@@ -113,7 +113,7 @@ impl Dtm {
                                     // queue up the remaining commands when we retry
                                     self.queued_commands.extend_from_slice(&cmds[e.results.len()..]);
 
-                                    // TODO increase idle cycles
+                                    self.probe.set_idle_cycles(self.probe.get_idle_cycles() + 1);
 
                                     self.execute()
                                 }
@@ -144,7 +144,7 @@ impl Dtm {
                                             DebugProbeError::ArchitectureSpecific(Box::new(e))
                                         })?;
 
-                                        // TODO increase idle cycles
+                                        self.probe.set_idle_cycles(self.probe.get_idle_cycles() + 1);
                                     }
                                     _ => Err(e)?,
                                 }
@@ -259,7 +259,7 @@ impl Dtm {
                 Err(DmiOperationStatus::RequestInProgress) => {
                     // Operation still in progress, reset dmi status and try again.
                     self.reset()?;
-                    // TODO increase idle cycles
+                    self.probe.set_idle_cycles(self.probe.get_idle_cycles() + 1);
                 }
                 Err(e) => return Err(RiscvError::DmiTransfer(e)),
             }
