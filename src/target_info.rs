@@ -83,9 +83,7 @@ fn extract_stack_range(
         }
 
         let lowest_address: u32 = section.address().try_into().expect("expected 32-bit ELF");
-        let highest_address = (lowest_address + size - 1)
-            .try_into()
-            .expect("expected 32-bit ELF");
+        let highest_address = lowest_address + size - 1;
         let section_range = lowest_address..=highest_address;
         let name = section.name().unwrap_or("<unknown>");
 
