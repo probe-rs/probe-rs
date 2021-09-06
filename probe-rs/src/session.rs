@@ -150,7 +150,7 @@ impl Session {
 
                 let sequence_handle = match &target.debug_sequence {
                     DebugSequence::Arm(sequence) => sequence.clone(),
-                    DebugSequence::Riscv => {
+                    DebugSequence::Riscv(_) => {
                         panic!("Mismatch between architecture and sequence type!")
                     }
                 };
@@ -242,6 +242,13 @@ impl Session {
             Architecture::Riscv => {
                 // TODO: Handle attach under reset
 
+                let sequence_handle = match &target.debug_sequence {
+                    DebugSequence::Riscv(sequence) => sequence.clone(),
+                    DebugSequence::Arm(_) => {
+                        panic!("Mismatch between architecture and sequence type!")
+                    }
+                };
+
                 probe.inner_attach()?;
 
                 let interface = probe
@@ -260,6 +267,8 @@ impl Session {
 
                     core.halt(Duration::from_millis(100))?;
                 }
+
+                sequence_handle.on_connect(session.get_riscv_interface()?)?;
 
                 session
             }
@@ -327,6 +336,15 @@ impl Session {
         let interface = match &mut self.interface {
             ArchitectureInterface::Arm(state) => state,
             _ => return Err(Error::ArchitectureRequired(&["ARMv7", "ARMv8"])),
+        };
+
+        Ok(interface)
+    }
+
+    fn get_riscv_interface(&mut self) -> Result<&mut Box<RiscvCommunicationInterface>, Error> {
+        let interface = match &mut self.interface {
+            ArchitectureInterface::Riscv(interface) => interface,
+            _ => return Err(Error::ArchitectureRequired(&["Riscv"])),
         };
 
         Ok(interface)
