@@ -61,7 +61,7 @@ pub(crate) fn backtrace(frames: &[Frame], settings: &Settings) {
 
                 if frame_index >= settings.backtrace_limit {
                     log::warn!(
-                        "maximum backtrace length of {} reached; cutting off the rest.const ",
+                        "maximum backtrace length of {} reached; cutting off the rest.",
                         settings.backtrace_limit
                     );
                     log::warn!("note: re-run with `--max-backtrace-len=<your maximum>` to extend this limit");

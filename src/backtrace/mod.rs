@@ -1,6 +1,7 @@
 use std::path::Path;
 
 use probe_rs::{config::RamRegion, Core};
+use signal_hook::consts::signal;
 
 use crate::elf::Elf;
 
@@ -91,6 +92,7 @@ pub(crate) enum Outcome {
     HardFault,
     Ok,
     StackOverflow,
+    CtrlC, // control-c was pressed
 }
 
 impl Outcome {
@@ -105,6 +107,9 @@ impl Outcome {
             Outcome::Ok => {
                 log::info!("device halted without error");
             }
+            Outcome::CtrlC => {
+                log::info!("device halted by user");
+            }
         }
     }
 }
@@ -113,7 +118,8 @@ impl Outcome {
 impl From<Outcome> for i32 {
     fn from(outcome: Outcome) -> i32 {
         match outcome {
-            Outcome::HardFault | Outcome::StackOverflow => crate::SIGABRT,
+            Outcome::HardFault | Outcome::StackOverflow => signal::SIGABRT,
+            Outcome::CtrlC => signal::SIGINT,
             Outcome::Ok => 0,
         }
     }

@@ -1,0 +1,21 @@
+---
+source: tests/test.rs
+expression: run_result.output
+
+---
+(HOST) INFO  flashing program (0.70 KiB)
+(HOST) INFO  success!
+RTT logs not available; blocking until the device halts..
+────────────────────────────────────────────────────────────────────────────────
+────────────────────────────────────────────────────────────────────────────────
+stack backtrace:
+   0: __nop
+        at ./asm/lib.rs:50:14
+   1: main
+        at /Users/lottesteenbrink/ferrous/my-app/src/bin/silent_loop.rs:8:1
+   2: ResetTrampoline
+        at [cortex-m-rt-0.6.14]/src/lib.rs:547:26
+   3: Reset
+        at [cortex-m-rt-0.6.14]/src/lib.rs:550:13
+(HOST) INFO  device halted by user
+
