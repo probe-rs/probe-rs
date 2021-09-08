@@ -164,8 +164,8 @@ fn set_rtt_to_blocking(
     core.wait_for_core_halted(Duration::from_secs(5))?;
 
     const OFFSET: u32 = 44;
-    const FLAG: u32 = 2; // BLOCK_IF_FULL
-    core.write_word_32(rtt_buffer_address + OFFSET, FLAG)?;
+    const BLOCK_IF_FULL: u32 = 2;
+    core.write_word_32(rtt_buffer_address + OFFSET, BLOCK_IF_FULL)?;
     core.clear_hw_breakpoint(main_fn_address)?;
 
     Ok(())
