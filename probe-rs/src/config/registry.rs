@@ -175,7 +175,10 @@ impl Registry {
                                 "Found chip {} which matches given partial name {}. Consider specifying its full name.",
                                 variant.name,
                                 name,
-                            )
+                            );
+                            if selected_family_and_chip.is_some() {
+                                continue;
+                            }
                         }
                         selected_family_and_chip = Some((family, variant));
                     }
