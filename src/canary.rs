@@ -1,3 +1,5 @@
+use std::time::Instant;
+
 use crate::TIMEOUT;
 use crate::{Elf, TargetInfo};
 use probe_rs::{MemoryInterface, Session};
@@ -87,9 +89,9 @@ impl Canary {
             size,
         );
 
+        let size_kb = size as f64 / 1024.0;
         if measure_stack {
             // Painting 100KB or more takes a few seconds, so provide user feedback.
-            let size_kb = size as f64 / 1024.0;
             log::info!(
                 "painting {:.2} KiB of RAM for stack usage estimation",
                 size_kb
@@ -97,7 +99,14 @@ impl Canary {
         }
         let address = *stack_info.range.start();
         let canary = vec![CANARY_VALUE; size];
+        let start = Instant::now();
         core.write_8(address, &canary)?;
+        let seconds = start.elapsed().as_secs_f64();
+        log::trace!(
+            "setting up canary took {:.3}s ({:.2} KiB/s)",
+            seconds,
+            size_kb / seconds
+        );
 
         Ok(Some(Canary {
             address,
@@ -109,15 +118,22 @@ impl Canary {
     }
 
     pub(crate) fn touched(self, core: &mut probe_rs::Core, elf: &Elf) -> anyhow::Result<bool> {
+        let size_kb = self.size as f64 / 1024.0;
         if self.measure_stack {
-            let size_kb = self.size as f64 / 1024.0;
             log::info!(
                 "reading {:.2} KiB of RAM for stack usage estimation",
                 size_kb,
             );
         }
         let mut canary = vec![0; self.size];
+        let start = Instant::now();
         core.read_8(self.address, &mut canary)?;
+        let seconds = start.elapsed().as_secs_f64();
+        log::trace!(
+            "reading canary took {:.3}s ({:.2} KiB/s)",
+            seconds,
+            size_kb / seconds
+        );
 
         let min_stack_usage = match canary.iter().position(|b| *b != CANARY_VALUE) {
             Some(pos) => {
