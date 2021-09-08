@@ -339,24 +339,28 @@ mod tests {
     #[test]
     fn try_fetch1() {
         let registry = Registry::from_builtin_families();
-        assert!(registry.get_target_by_name("nrf51").is_ok());
+        // ambiguous: partially matches STM32G081KBUx and STM32G081KBUxN
+        assert!(registry.get_target_by_name("STM32G081KBU").is_err());
     }
 
     #[test]
     fn try_fetch2() {
         let registry = Registry::from_builtin_families();
-        assert!(registry.get_target_by_name("nrf5182").is_ok());
+        // ok: matches both STM32G081KBUx and STM32G081KBUxN, but the first one is an exact match
+        assert!(registry.get_target_by_name("stm32G081KBUx").is_ok());
     }
 
     #[test]
     fn try_fetch3() {
         let registry = Registry::from_builtin_families();
-        assert!(registry.get_target_by_name("nrF51822_x").is_ok());
+        // ok: unique substring match
+        assert!(registry.get_target_by_name("STM32G081RBI").is_ok());
     }
 
     #[test]
     fn try_fetch4() {
         let registry = Registry::from_builtin_families();
+        // ok: unique exact match
         assert!(registry.get_target_by_name("nrf51822_Xxaa").is_ok());
     }
 }
