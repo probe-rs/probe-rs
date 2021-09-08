@@ -54,7 +54,7 @@ impl Canary {
 
         // Decide if and where to place the stack canary.
 
-        let stack_range = match &target_info.stack_range {
+        let stack_info = match &target_info.stack_info {
             Some(range) => range,
             None => {
                 log::debug!("couldn't find valid stack range, not placing stack canary");
@@ -67,7 +67,7 @@ impl Canary {
             return Ok(None);
         }
 
-        let stack_available = stack_range.end() - stack_range.start() - 1;
+        let stack_available = stack_info.range.end() - stack_info.range.start() - 1;
 
         let size = if measure_stack {
             // When measuring stack consumption, we have to color the whole stack.
@@ -82,8 +82,8 @@ impl Canary {
         log::debug!(
             "{} bytes of stack available ({:#010X} ..= {:#010X}), using {} byte canary",
             stack_available,
-            stack_range.start(),
-            stack_range.end(),
+            stack_info.range.start(),
+            stack_info.range.end(),
             size,
         );
 
@@ -95,7 +95,7 @@ impl Canary {
                 size_kb
             );
         }
-        let address = *stack_range.start();
+        let address = *stack_info.range.start();
         let canary = vec![CANARY_VALUE; size];
         core.write_8(address, &canary)?;
 
@@ -103,7 +103,7 @@ impl Canary {
             address,
             size,
             stack_available,
-            data_below_stack: target_info.data_below_stack,
+            data_below_stack: stack_info.data_below_stack,
             measure_stack,
         }))
     }

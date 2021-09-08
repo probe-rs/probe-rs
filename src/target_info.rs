@@ -8,8 +8,12 @@ pub(crate) struct TargetInfo {
     pub(crate) probe_target: probe_rs::Target,
     /// RAM region that contains the call stack
     pub(crate) active_ram_region: Option<RamRegion>,
+    pub(crate) stack_info: Option<StackInfo>,
+}
+
+pub(crate) struct StackInfo {
     /// Valid values of the stack pointer (that don't collide with other data).
-    pub(crate) stack_range: Option<RangeInclusive<u32>>,
+    pub(crate) range: RangeInclusive<u32>,
     pub(crate) data_below_stack: bool,
 }
 
@@ -18,22 +22,16 @@ impl TargetInfo {
         let probe_target = probe_rs::config::get_target_by_name(chip)?;
         let active_ram_region =
             extract_active_ram_region(&probe_target, elf.vector_table.initial_stack_pointer);
-        let stack_range = extract_stack_range(
+        let stack_info = extract_stack_info(
             elf,
             active_ram_region.as_ref(),
             elf.vector_table.initial_stack_pointer,
         );
 
-        let data_below_stack = match (&active_ram_region, &stack_range) {
-            (Some(ram), Some(stack)) => *stack.start() > ram.range.start,
-            _ => false,
-        };
-
         Ok(Self {
             probe_target,
             active_ram_region,
-            stack_range,
-            data_below_stack,
+            stack_info,
         })
     }
 }
@@ -66,11 +64,11 @@ fn extract_active_ram_region(
         .cloned()
 }
 
-fn extract_stack_range(
+fn extract_stack_info(
     elf: &object::read::File,
     active_ram_region: Option<&RamRegion>,
     initial_stack_pointer: u32,
-) -> Option<RangeInclusive<u32>> {
+) -> Option<StackInfo> {
     let active_ram_region = active_ram_region?;
 
     // SP points one past the end of the stack.
@@ -113,5 +111,8 @@ fn extract_stack_range(
         stack_range.start(),
         stack_range.end(),
     );
-    Some(stack_range)
+    Some(StackInfo {
+        data_below_stack: *stack_range.start() > active_ram_region.range.start,
+        range: stack_range,
+    })
 }
