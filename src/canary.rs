@@ -89,7 +89,11 @@ impl Canary {
 
         if measure_stack {
             // Painting 100KB or more takes a few seconds, so provide user feedback.
-            log::info!("painting {} bytes of RAM for stack usage estimation", size);
+            let size_kb = size as f64 / 1024.0;
+            log::info!(
+                "painting {:.2} KiB of RAM for stack usage estimation",
+                size_kb
+            );
         }
         let address = *stack_range.start();
         let canary = vec![CANARY_VALUE; size];
@@ -106,9 +110,10 @@ impl Canary {
 
     pub(crate) fn touched(self, core: &mut probe_rs::Core, elf: &Elf) -> anyhow::Result<bool> {
         if self.measure_stack {
+            let size_kb = self.size as f64 / 1024.0;
             log::info!(
-                "reading {} bytes of RAM for stack usage estimation",
-                self.size
+                "reading {:.2} KiB of RAM for stack usage estimation",
+                size_kb,
             );
         }
         let mut canary = vec![0; self.size];
@@ -126,10 +131,14 @@ impl Canary {
 
         if self.measure_stack {
             let min_stack_usage = min_stack_usage.unwrap_or(0);
+            let used_kb = min_stack_usage as f64 / 1024.0;
+            let avail_kb = self.stack_available as f64 / 1024.0;
+            let pct = used_kb / avail_kb * 100.0;
             log::info!(
-                "program has used at least {}/{} bytes of stack space",
-                min_stack_usage,
-                self.stack_available,
+                "program has used at least {:.2}/{:.2} KiB ({:.1}%) of stack space",
+                used_kb,
+                avail_kb,
+                pct,
             );
 
             // Don't test for stack overflows if we're measuring stack usage.
@@ -137,10 +146,14 @@ impl Canary {
         } else {
             match min_stack_usage {
                 Some(min_stack_usage) => {
+                    let used_kb = min_stack_usage as f64 / 1024.0;
+                    let avail_kb = self.stack_available as f64 / 1024.0;
+                    let pct = used_kb / avail_kb * 100.0;
                     log::warn!(
-                        "program has used at least {}/{} bytes of stack space",
-                        min_stack_usage,
-                        self.stack_available,
+                        "program has used at least {:.2}/{:.2} KiB ({:.1}%) of stack space",
+                        used_kb,
+                        avail_kb,
+                        pct,
                     );
 
                     if self.data_below_stack {
