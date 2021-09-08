@@ -41,10 +41,10 @@ fn main() -> anyhow::Result<()> {
 
 fn run_target_program(elf_path: &Path, chip_name: &str, opts: &cli::Opts) -> anyhow::Result<i32> {
     if !elf_path.exists() {
-        return Err(anyhow!(
+        bail!(
             "can't find ELF file at `{}`; are you sure you got the right path?",
             elf_path.display()
-        ));
+        );
     }
 
     let elf_bytes = fs::read(elf_path)?;
