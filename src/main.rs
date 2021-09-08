@@ -159,13 +159,25 @@ fn set_rtt_to_blocking(
     main_fn_address: u32,
     rtt_buffer_address: u32,
 ) -> anyhow::Result<()> {
+    // set and wait for a hardware breakpoint at the beginning of `fn main()`
     core.set_hw_breakpoint(main_fn_address)?;
     core.run()?;
     core.wait_for_core_halted(Duration::from_secs(5))?;
 
+    // calculate address of rtt control block
     const OFFSET: u32 = 44;
+    let rtt_buffer_address = rtt_buffer_address + OFFSET;
+
+    // read control block
+    let rtt_control_block = &mut [0];
+    core.read_32(rtt_buffer_address, rtt_control_block)?;
+    // modify it to blocking
     const BLOCK_IF_FULL: u32 = 2;
-    core.write_word_32(rtt_buffer_address + OFFSET, BLOCK_IF_FULL)?;
+    let b = rtt_control_block[0] | BLOCK_IF_FULL;
+    // write it back
+    core.write_word_32(rtt_buffer_address, b)?;
+
+    // clear the breakpoint we set before
     core.clear_hw_breakpoint(main_fn_address)?;
 
     Ok(())
