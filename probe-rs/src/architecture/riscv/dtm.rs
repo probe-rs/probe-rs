@@ -93,36 +93,37 @@ impl Dtm {
         self.queued_commands = Vec::new();
 
         if let Some(batcher) = self.probe.batch_support() {
-                // prepare probe for batch write
-                batcher.clear_schedule();
-                for cmd in &cmds {
-                    batcher.schedule_write_register(cmd.address, &cmd.data, cmd.len, cmd.transform)?;
-                }
-                match batcher.execute() {
-                    Ok(r) => return Ok(r),
-                    Err(e) => match e.error {
-                        DebugProbeError::ArchitectureSpecific(ref ae) => {
-                            match ae.downcast_ref::<RiscvError>() {
-                                Some(RiscvError::DmiTransfer(
-                                    DmiOperationStatus::RequestInProgress,
-                                )) => {
-                                    self.reset().map_err(|e| {
-                                        DebugProbeError::ArchitectureSpecific(Box::new(e))
-                                    })?;
+            // prepare probe for batch write
+            batcher.clear_schedule();
+            for cmd in &cmds {
+                batcher.schedule_write_register(cmd.address, &cmd.data, cmd.len, cmd.transform)?;
+            }
+            match batcher.execute() {
+                Ok(r) => return Ok(r),
+                Err(e) => match e.error {
+                    DebugProbeError::ArchitectureSpecific(ref ae) => {
+                        match ae.downcast_ref::<RiscvError>() {
+                            Some(RiscvError::DmiTransfer(
+                                DmiOperationStatus::RequestInProgress,
+                            )) => {
+                                self.reset().map_err(|e| {
+                                    DebugProbeError::ArchitectureSpecific(Box::new(e))
+                                })?;
 
-                                    // queue up the remaining commands when we retry
-                                    self.queued_commands.extend_from_slice(&cmds[e.results.len()..]);
+                                // queue up the remaining commands when we retry
+                                self.queued_commands
+                                    .extend_from_slice(&cmds[e.results.len()..]);
 
-                                    self.probe.set_idle_cycles(self.probe.get_idle_cycles() + 1);
+                                self.probe.set_idle_cycles(self.probe.get_idle_cycles() + 1);
 
-                                    self.execute()
-                                }
-                                _ => Err(e.error)?,
+                                self.execute()
                             }
+                            _ => Err(e.error)?,
                         }
-                        _ => Err(e.error)?,
-                    },
-                }
+                    }
+                    _ => Err(e.error)?,
+                },
+            }
         } else {
             let mut results = Vec::new();
             // fall back to sequential writes
@@ -144,7 +145,8 @@ impl Dtm {
                                             DebugProbeError::ArchitectureSpecific(Box::new(e))
                                         })?;
 
-                                        self.probe.set_idle_cycles(self.probe.get_idle_cycles() + 1);
+                                        self.probe
+                                            .set_idle_cycles(self.probe.get_idle_cycles() + 1);
                                     }
                                     _ => Err(e)?,
                                 }

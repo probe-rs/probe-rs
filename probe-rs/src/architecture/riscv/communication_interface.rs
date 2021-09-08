@@ -8,10 +8,7 @@ use super::{
     dtm::{DmiOperation, DmiOperationStatus, Dtm},
     register, Dmcontrol, Dmstatus,
 };
-use crate::{
-    architecture::riscv::*,
-    probe::CommandResult,
-};
+use crate::{architecture::riscv::*, probe::CommandResult};
 use crate::{
     probe::{CommandResults, DeferredCommandResult},
     DebugProbeError,

@@ -714,7 +714,6 @@ pub struct JtagWriteCommand {
     pub transform: fn(Vec<u8>) -> Result<u32, DebugProbeError>,
 }
 
-
 #[derive(thiserror::Error, Debug)]
 pub struct BatchExecutionError {
     #[source]
