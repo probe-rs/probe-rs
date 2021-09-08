@@ -21,6 +21,7 @@ pub(crate) mod assembly;
 mod dtm;
 
 pub mod communication_interface;
+pub mod sequences;
 
 pub struct Riscv32<'probe> {
     interface: &'probe mut RiscvCommunicationInterface,
