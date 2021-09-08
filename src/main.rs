@@ -164,17 +164,17 @@ fn set_rtt_to_blocking(
     core.run()?;
     core.wait_for_core_halted(Duration::from_secs(5))?;
 
-    // calculate address of rtt control block
+    // calculate address of up-channel-flags inside the rtt control block
     const OFFSET: u32 = 44;
     let rtt_buffer_address = rtt_buffer_address + OFFSET;
 
-    // read control block
+    // read flags
     let rtt_control_block = &mut [0];
     core.read_32(rtt_buffer_address, rtt_control_block)?;
-    // modify it to blocking
+    // modify flags to blocking
     const BLOCK_IF_FULL: u32 = 2;
     let b = rtt_control_block[0] | BLOCK_IF_FULL;
-    // write it back
+    // write flags back
     core.write_word_32(rtt_buffer_address, b)?;
 
     // clear the breakpoint we set before
