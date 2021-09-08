@@ -1,4 +1,3 @@
----
 name: EFR32FG22 Series
 variants:
   - name: EFR32FG22C121F256
@@ -7,21 +6,23 @@ variants:
         type: armv8m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
             start: 0x20000000
             end: 0x20008000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 0
+            start: 0x0
             end: 0x40000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - geckos2
   - name: EFR32FG22C121F512
@@ -30,44 +31,46 @@ variants:
         type: armv8m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
             start: 0x20000000
             end: 0x20008000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 0
+            start: 0x0
             end: 0x80000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - geckos2
 flash_algorithms:
-  geckos2:
-    name: geckos2
+  - name: geckos2
     description: EFM32/EFR32 Gecko S2
-    cores: [main]
+    cores:
+      - main
     default: true
     instructions: DUgBaAH0fBGx9bAfBNELSQpoQvQAMgpgCUlB9nEyCmAAIkpggGgHSQHqgCEGSgAgSfgCEHBHAL8EgOAPaIAAQDwAA0AA/P8DBAAAAAVJQfZxMAhgBEgBIgJgACIAIApgcEcAvzwAA0AMIANAsLUJTQAkWfgFAIRCJL8AILC9IEYA8Ar4ACgE9QBUHL8BILC97+cAvwQAAAAPSQJGCMoBMwPRACkB8QQB+NGTsbC1C0wBJQtJJWBIYAIgCGABIAAhAPBe+E/0gFEAKGVQGL8BILC9ACBwRwC/BOD//wwQA0AQAANALenwTQVGyBySRiJKIk8g8AMEASAQYC7gBfUAUIhDoOsFC2keXEWh6wAAb+oEATi/o0bQRohCfWCIvwFGTh3Y+AAAAC64YArQCCAIIQjxBAgA8CT4ACgG8QQG8NAW4AQgOGABIAAhASYA8Bj4eLnaRF1EpOsLBEH2/3EALMzRT/SAUAEhA0oAJhFQAOABJjBGvejwjQwQA0AQAANAcLUQTg1KDkwzHQngBUCNQgS/ACBwvQE0BL9v8AIAcL0VaR1C8tAQaDVCIPABAW/wAQAIv0/w/zARYHC9DAADQIBpZ/8CAAEAAAAAAAAAAAA=
-    pc_init: 1
-    pc_uninit: 77
-    pc_program_page: 229
-    pc_erase_sector: 153
-    pc_erase_all: 109
-    data_section_offset: 456
+    pc_init: 0x1
+    pc_uninit: 0x4d
+    pc_program_page: 0xe5
+    pc_erase_sector: 0x99
+    pc_erase_all: 0x6d
+    data_section_offset: 0x1c8
     flash_properties:
       address_range:
-        start: 0
+        start: 0x0
         end: 0x100000
-      page_size: 12288
-      erased_byte_value: 255
-      program_page_timeout: 260
-      erase_sector_timeout: 200
+      page_size: 0x3000
+      erased_byte_value: 0xff
+      program_page_timeout: 0x104
+      erase_sector_timeout: 0xc8
       sectors:
-        - size: 8192
-          address: 0
+        - size: 0x2000
+          address: 0x0

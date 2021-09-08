@@ -1,4 +1,3 @@
----
 name: LPC546xx Series
 variants:
   - name: LPC54605J256BD100
@@ -7,21 +6,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536969216
+            start: 0x20000000
+            end: 0x20018000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 0
-            end: 262144
+            start: 0x0
+            end: 0x40000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - lpc5460x_256
       - lpc5460x_mt25ql128
@@ -31,21 +32,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536969216
+            start: 0x20000000
+            end: 0x20018000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 0
-            end: 262144
+            start: 0x0
+            end: 0x40000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - lpc5460x_256
       - lpc5460x_mt25ql128
@@ -55,21 +58,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536969216
+            start: 0x20000000
+            end: 0x20018000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 0
-            end: 262144
+            start: 0x0
+            end: 0x40000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - lpc5460x_256
       - lpc5460x_mt25ql128
@@ -79,21 +84,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537034752
+            start: 0x20000000
+            end: 0x20028000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 0
-            end: 524288
+            start: 0x0
+            end: 0x80000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - lpc5460x_512
       - lpc5460x_mt25ql128
@@ -103,21 +110,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537034752
+            start: 0x20000000
+            end: 0x20028000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 0
-            end: 524288
+            start: 0x0
+            end: 0x80000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - lpc5460x_512
       - lpc5460x_mt25ql128
@@ -127,21 +136,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537034752
+            start: 0x20000000
+            end: 0x20028000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 0
-            end: 524288
+            start: 0x0
+            end: 0x80000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - lpc5460x_512
       - lpc5460x_mt25ql128
@@ -151,21 +162,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536969216
+            start: 0x20000000
+            end: 0x20018000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 0
-            end: 262144
+            start: 0x0
+            end: 0x40000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - lpc5460x_256
       - lpc5460x_mt25ql128
@@ -175,21 +188,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536969216
+            start: 0x20000000
+            end: 0x20018000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 0
-            end: 262144
+            start: 0x0
+            end: 0x40000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - lpc5460x_256
       - lpc5460x_mt25ql128
@@ -199,21 +214,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536969216
+            start: 0x20000000
+            end: 0x20018000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 0
-            end: 262144
+            start: 0x0
+            end: 0x40000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - lpc5460x_256
       - lpc5460x_mt25ql128
@@ -223,21 +240,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537034752
+            start: 0x20000000
+            end: 0x20028000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 0
-            end: 524288
+            start: 0x0
+            end: 0x80000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - lpc5460x_512
       - lpc5460x_mt25ql128
@@ -247,21 +266,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537034752
+            start: 0x20000000
+            end: 0x20028000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 0
-            end: 524288
+            start: 0x0
+            end: 0x80000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - lpc5460x_512
       - lpc5460x_mt25ql128
@@ -271,21 +292,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537034752
+            start: 0x20000000
+            end: 0x20028000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 0
-            end: 524288
+            start: 0x0
+            end: 0x80000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - lpc5460x_512
       - lpc5460x_mt25ql128
@@ -295,21 +318,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536969216
+            start: 0x20000000
+            end: 0x20018000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 0
-            end: 262144
+            start: 0x0
+            end: 0x40000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - lpc5460x_256
       - lpc5460x_mt25ql128
@@ -319,21 +344,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536969216
+            start: 0x20000000
+            end: 0x20018000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 0
-            end: 262144
+            start: 0x0
+            end: 0x40000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - lpc5460x_256
       - lpc5460x_mt25ql128
@@ -343,21 +370,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537034752
+            start: 0x20000000
+            end: 0x20028000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 0
-            end: 524288
+            start: 0x0
+            end: 0x80000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - lpc5460x_512
       - lpc5460x_mt25ql128
@@ -367,21 +396,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537034752
+            start: 0x20000000
+            end: 0x20028000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 0
-            end: 524288
+            start: 0x0
+            end: 0x80000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - lpc5460x_512
       - lpc5460x_mt25ql128
@@ -391,21 +422,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537034752
+            start: 0x20000000
+            end: 0x20028000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 0
-            end: 524288
+            start: 0x0
+            end: 0x80000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - lpc5460x_512
       - lpc5460x_mt25ql128
@@ -415,21 +448,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536969216
+            start: 0x20000000
+            end: 0x20018000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 0
-            end: 262144
+            start: 0x0
+            end: 0x40000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - lpc5460x_256
       - lpc5461x_mt25ql128
@@ -439,21 +474,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537034752
+            start: 0x20000000
+            end: 0x20028000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 0
-            end: 524288
+            start: 0x0
+            end: 0x80000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - lpc5460x_512
       - lpc5461x_mt25ql128
@@ -463,21 +500,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537034752
+            start: 0x20000000
+            end: 0x20028000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 0
-            end: 524288
+            start: 0x0
+            end: 0x80000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - lpc5460x_512
       - lpc5461x_mt25ql128
@@ -487,21 +526,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537034752
+            start: 0x20000000
+            end: 0x20028000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 0
-            end: 524288
+            start: 0x0
+            end: 0x80000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - lpc5460x_512
       - lpc5461x_mt25ql128
@@ -511,21 +552,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537034752
+            start: 0x20000000
+            end: 0x20028000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 0
-            end: 524288
+            start: 0x0
+            end: 0x80000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - lpc5460x_512
       - lpc5461x_mt25ql128
@@ -535,21 +578,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537034752
+            start: 0x20000000
+            end: 0x20028000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 0
-            end: 524288
+            start: 0x0
+            end: 0x80000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - lpc5460x_512
       - lpc5461x_mt25ql128
@@ -559,137 +604,139 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537034752
+            start: 0x20000000
+            end: 0x20028000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 0
-            end: 524288
+            start: 0x0
+            end: 0x80000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - lpc5460x_512
       - lpc5462x_w25q128jvfm
 flash_algorithms:
-  lpc5460x_256:
-    name: lpc5460x_256
+  - name: lpc5460x_256
     description: LPC5460x IAP 256kB Flash
-    cores: [main]
+    cores:
+      - main
     default: true
     instructions: wAtwR0dJRkhJRAhgRkkAIAhgSGBFSQhgAiBBBwhwACBwRwAgcEf4tUFMMiBMRCFGACUHJmHEFDE9SD5PSEQMPACRuEdgaQAoDdE0IGHENUhIRABoIGA2SAw8SEQAmbhHYGkAKADQASD4vfi1ME3ECzIgTUQRxSlGDDEtSC1OLGAPRkhECD2wR2hpACgO0TQgEcUkSCxgSEQAaGhgJEg5RkhECD2wR2hpACgA0AEg+L34tRRGBgAO0QPMYmhAGCFoiRhAGKFoQBjhaEAYIWlAGEBCYGEIPBZN8AtNRDIhaGApYKhgKUYUMRJPKEYAkbhHaGkAKBHRMyCsYEHFASCAAmhgCEhIRABoqGAJSAg9SEQAmbhHaGkAKADQASD4vQAA4C4AAAQAAACAAgBAgAMAQAgAAAAFAgADAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-    pc_init: 5
-    pc_uninit: 35
-    pc_program_page: 177
-    pc_erase_sector: 107
-    pc_erase_all: 39
-    data_section_offset: 312
+    pc_init: 0x5
+    pc_uninit: 0x23
+    pc_program_page: 0xb1
+    pc_erase_sector: 0x6b
+    pc_erase_all: 0x27
+    data_section_offset: 0x138
     flash_properties:
       address_range:
-        start: 0
-        end: 262144
-      page_size: 1024
-      erased_byte_value: 255
-      program_page_timeout: 300
-      erase_sector_timeout: 3000
+        start: 0x0
+        end: 0x40000
+      page_size: 0x400
+      erased_byte_value: 0xff
+      program_page_timeout: 0x12c
+      erase_sector_timeout: 0xbb8
       sectors:
-        - size: 32768
-          address: 0
-  lpc5460x_512:
-    name: lpc5460x_512
+        - size: 0x8000
+          address: 0x0
+  - name: lpc5460x_512
     description: LPC5460x IAP 512kB Flash
-    cores: [main]
+    cores:
+      - main
     default: true
     instructions: wAtwR0dJRkhJRAhgRkkAIAhgSGBFSQhgAiBBBwhwACBwRwAgcEf4tUFMMiBMRCFGACUPJmHEFDE9SD5PSEQMPACRuEdgaQAoDdE0IGHENUhIRABoIGA2SAw8SEQAmbhHYGkAKADQASD4vfi1ME3ECzIgTUQRxSlGDDEtSC1OLGAPRkhECD2wR2hpACgO0TQgEcUkSCxgSEQAaGhgJEg5RkhECD2wR2hpACgA0AEg+L34tRRGBgAO0QPMYmhAGCFoiRhAGKFoQBjhaEAYIWlAGEBCYGEIPBZN8AtNRDIhaGApYKhgKUYUMRJPKEYAkbhHaGkAKBHRMyCsYEHFASCAAmhgCEhIRABoqGAJSAg9SEQAmbhHaGkAKADQASD4vQAA4C4AAAQAAACAAgBAgAMAQAgAAAAFAgADAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-    pc_init: 5
-    pc_uninit: 35
-    pc_program_page: 177
-    pc_erase_sector: 107
-    pc_erase_all: 39
-    data_section_offset: 312
+    pc_init: 0x5
+    pc_uninit: 0x23
+    pc_program_page: 0xb1
+    pc_erase_sector: 0x6b
+    pc_erase_all: 0x27
+    data_section_offset: 0x138
     flash_properties:
       address_range:
-        start: 0
-        end: 524288
-      page_size: 1024
-      erased_byte_value: 255
-      program_page_timeout: 300
-      erase_sector_timeout: 3000
+        start: 0x0
+        end: 0x80000
+      page_size: 0x400
+      erased_byte_value: 0xff
+      program_page_timeout: 0x12c
+      erase_sector_timeout: 0xbb8
       sectors:
-        - size: 32768
-          address: 0
-  lpc5460x_mt25ql128:
-    name: lpc5460x_mt25ql128
+        - size: 0x8000
+          address: 0x0
+  - name: lpc5460x_mt25ql128
     description: LPC5460x MT25QL128 SPIFI
-    cores: [main]
+    cores:
+      - main
     default: true
     instructions: QLpwR0C6cEdAunBHwLpwR8C6cEfAunBHcLWlTaVMTUQpRiBGAPDO+eJpkgb81WBpwAf10XC9ELWdSZ5MSUQQOSBGAPC/+ZpJIEZJRAg5APC5+UAhYWH/99//EL1wtQ0gAPAQ+f8klE0nNCNGFyIAIShGAPAY+SNGGCIAIShGAPAS+SNGGSIAIShGAPAM+SNGGiIAIShGAPAG+SNGGyIAIShGAPAA+SNGHCIAIShGAPD6+HC9MLV+Sf8gSUQBMBg5CIAAIopwynABIwtxS3EEJIxxayXNcQqBinLLcgpzSnOLcwYlzXMMgop0y3QKdUp1i3XLdQyDinbKdgp3SneLdwUlzXcIhAhGIDCCcMNwAnECJUVxhHE4JcVxCoWCcsNyAnNCc4RzICTEcwqGgnTDdAJ1QnWDdWAhwXUwvV9JELVJRAhgAyAA8J34BCAA8Jr4BSAA8Jf4WkgA8HL5WUkDIAhgACIKYlhJCGH/93f///eh/09ISEQgMADwvfhMSU1MSUQgMSBGAPDE+ElJIEZJRBg5APA5+QAgEL0AIHBHELVETBAg4GHhackG/NRASSBGSUQQOQDwBvk9SSBGSUQYMQDwAPn/9yj/OUkgRklEGDkA8Br5ACAQvXC1BUY1TBAg4GHgacAG/NQxSSBGSUQQOQDw6PilYC5JIEZJRBAxAPDh+P/3Cf8qSSBGSUQYOQDw+/gAIHC9ASBwR/e1BkYAJSRPgrAQIBRG+GH4acAG/NQfSEhEGDgBRggxIDABkQCQA5iFQhXSOEYBmQDwu/i+YDhGAJkA8Lb4ACACzHlhQBxAKPrb//fY/v81ATX/NgE25ucPSThGSUQYOQDwxfgAIAWw8L0BIwIKGUaBQAMqBdKQAAxKgDqAGAFicEcLSMNgC0hBYXBHyQEIGJEAQ1BwRyAAAAAAAAhAABAAQAQAAAAA2LgFgAIAQIADAEBAAABAAAAEQFZKELUBRgAgekSDANNYi0IC0EAc+dAB4AAoAdAA8OL4EL0AIclDAYAPIYFwACHBcAFxASJCcYFxwXEBcnBHcLUMAAVGEND/99v/RElAAHlESjkIWgEiAQoDKQfSgkCIAD9JQBgCYgbgAPC8+D1JymCCQD1IQmEQIOhh6GnABvzUoXggiAkHCQsIQ+F4onnJB9IHiQoSChFDCEMheckHCQkIQyF6yQfJCAhD4XnJB4kICENheckHSQgIQyhgcL0Qtf/3nv8lSUAAeUTEOQhaASIBCgMpBdKCQIgAIUlAGAJkEL2CQCBIgmEeSQAgyGAQvcJpkgf80QqIi3iSBNsHkgxbDBpDy3jbBxsMGkMLeVsHWwsaQ0t5mwfbChpDi3nJeVsHGwoaQwkGCkNCYMFpiQf81XBHwmmSB/zRCnlLeVIHmwdSC9sKGkOLecl5WwcbChpDCQYKQ4JhcEcAAIgCAAAAAgBAQAAAQAAABEBwtRdL3QCYQgbQmQCIQgPQqEIB0AEgcL0SSRAiCmMSShFolAXJAckPmEIV2Q9LEE6oQgbR2GgJBjBACEMNSQhDB+CYaAkGMEAIQwEhyQdAGCBDEGAAIHC9EGigQ/nnAAAAG7cAAAYAQAAFAEBABAAB/z//AABAAMAQtQAgAPAM+MBGwEYBIADwAfgQvQFJGCCrvv7nJgACABC1APAL+ADwAvgQvXBHELUAKAHQ//fu/xC9AAAQtQAhAqAA8BP4ASAQvQAAU0lHQUJSVDogQWJub3JtYWwgdGVybWluYXRpb24AAABwtQVGDEYKIADgbRwA8BL4AC0G0Ch4ACj30QLgZBwA8An4ACwC0CB4ACj30QogAPAB+HC9CLVpRghwAyCrvgi9CgAAAAAACEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-    pc_init: 317
-    pc_uninit: 411
-    pc_program_page: 539
-    pc_erase_sector: 473
-    pc_erase_all: 415
-    data_section_offset: 1388
+    pc_init: 0x13d
+    pc_uninit: 0x19b
+    pc_program_page: 0x21b
+    pc_erase_sector: 0x1d9
+    pc_erase_all: 0x19f
+    data_section_offset: 0x56c
     flash_properties:
       address_range:
-        start: 268435456
-        end: 285212672
-      page_size: 4096
-      erased_byte_value: 255
-      program_page_timeout: 300
-      erase_sector_timeout: 3000
+        start: 0x10000000
+        end: 0x11000000
+      page_size: 0x1000
+      erased_byte_value: 0xff
+      program_page_timeout: 0x12c
+      erase_sector_timeout: 0xbb8
       sectors:
-        - size: 4096
-          address: 0
-  lpc5461x_mt25ql128:
-    name: lpc5461x_mt25ql128
+        - size: 0x1000
+          address: 0x0
+  - name: lpc5461x_mt25ql128
     description: LPC5461x MT25QL128 SPIFI
-    cores: [main]
+    cores:
+      - main
     default: true
     instructions: QLpwR0C6cEdAunBHwLpwR8C6cEfAunBHcLWlTaVMTUQpRiBGAPDO+eJpkgb81WBpwAf10XC9ELWdSZ5MSUQQOSBGAPC/+ZpJIEZJRAg5APC5+UAhYWH/99//EL1wtQ0gAPAQ+f8klE0nNCNGFyIAIShGAPAY+SNGGCIAIShGAPAS+SNGGSIAIShGAPAM+SNGGiIAIShGAPAG+SNGGyIAIShGAPAA+SNGHCIAIShGAPD6+HC9MLV+Sf8gSUQBMBg5CIAAIopwynABIwtxS3EEJIxxayXNcQqBinLLcgpzSnOLcwYlzXMMgop0y3QKdUp1i3XLdQyDinbKdgp3SneLdwUlzXcIhAhGIDCCcMNwAnECJUVxhHE4JcVxCoWCcsNyAnNCc4RzICTEcwqGgnTDdAJ1QnWDdWAhwXUwvV9JELVJRAhgAyAA8J34BCAA8Jr4BSAA8Jf4WkgA8HL5WUkDIAhgACIKYlhJCGH/93f///eh/09ISEQgMADwvfhMSU1MSUQgMSBGAPDE+ElJIEZJRBg5APA5+QAgEL0AIHBHELVETBAg4GHhackG/NRASSBGSUQQOQDwBvk9SSBGSUQYMQDwAPn/9yj/OUkgRklEGDkA8Br5ACAQvXC1BUY1TBAg4GHgacAG/NQxSSBGSUQQOQDw6PilYC5JIEZJRBAxAPDh+P/3Cf8qSSBGSUQYOQDw+/gAIHC9ASBwR/e1BkYAJSRPgrAQIBRG+GH4acAG/NQfSEhEGDgBRggxIDABkQCQA5iFQhXSOEYBmQDwu/i+YDhGAJkA8Lb4ACACzHlhQBxAKPrb//fY/v81ATX/NgE25ucPSThGSUQYOQDwxfgAIAWw8L0BIwIKGUaBQAMqBdKQAAxKgDqAGAFicEcLSMNgC0hBYXBHyQEIGJEAQ1BwRyAAAAAAAAhAABAAQAQAAAAA2LgFgAIAQIADAEBAAABAAAAEQFZKELUBRgAgekSDANNYi0IC0EAc+dAB4AAoAdAA8OL4EL0AIclDAYAPIYFwACHBcAFxASJCcYFxwXEBcnBHcLUMAAVGEND/99v/RElAAHlESjkIWgEiAQoDKQfSgkCIAD9JQBgCYgbgAPC8+D1JymCCQD1IQmEQIOhh6GnABvzUoXggiAkHCQsIQ+F4onnJB9IHiQoSChFDCEMheckHCQkIQyF6yQfJCAhD4XnJB4kICENheckHSQgIQyhgcL0Qtf/3nv8lSUAAeUTEOQhaASIBCgMpBdKCQIgAIUlAGAJkEL2CQCBIgmEeSQAgyGAQvcJpkgf80QqIi3iSBNsHkgxbDBpDy3jbBxsMGkMLeVsHWwsaQ0t5mwfbChpDi3nJeVsHGwoaQwkGCkNCYMFpiQf81XBHwmmSB/zRCnlLeVIHmwdSC9sKGkOLecl5WwcbChpDCQYKQ4JhcEcAAIgCAAAAAgBAQAAAQAAABEBwtRdL3QCYQgbQmQCIQgPQqEIB0AEgcL0SSRAiCmMSShFolAXJAckPmEIV2Q9LEE6oQgbR2GgJBjBACEMNSQhDB+CYaAkGMEAIQwEhyQdAGCBDEGAAIHC9EGigQ/nnAAAAG7cAAAYAQAAFAEBABAAB/z//AABAAMAQtQAgAPAM+MBGwEYBIADwAfgQvQFJGCCrvv7nJgACABC1APAL+ADwAvgQvXBHELUAKAHQ//fu/xC9AAAQtQAhAqAA8BP4ASAQvQAAU0lHQUJSVDogQWJub3JtYWwgdGVybWluYXRpb24AAABwtQVGDEYKIADgbRwA8BL4AC0G0Ch4ACj30QLgZBwA8An4ACwC0CB4ACj30QogAPAB+HC9CLVpRghwAyCrvgi9CgAAAAAACEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-    pc_init: 317
-    pc_uninit: 411
-    pc_program_page: 539
-    pc_erase_sector: 473
-    pc_erase_all: 415
-    data_section_offset: 1388
+    pc_init: 0x13d
+    pc_uninit: 0x19b
+    pc_program_page: 0x21b
+    pc_erase_sector: 0x1d9
+    pc_erase_all: 0x19f
+    data_section_offset: 0x56c
     flash_properties:
       address_range:
-        start: 268435456
-        end: 285212672
-      page_size: 4096
-      erased_byte_value: 255
-      program_page_timeout: 300
-      erase_sector_timeout: 3000
+        start: 0x10000000
+        end: 0x11000000
+      page_size: 0x1000
+      erased_byte_value: 0xff
+      program_page_timeout: 0x12c
+      erase_sector_timeout: 0xbb8
       sectors:
-        - size: 4096
-          address: 0
-  lpc5462x_w25q128jvfm:
-    name: lpc5462x_w25q128jvfm
+        - size: 0x1000
+          address: 0x0
+  - name: lpc5462x_w25q128jvfm
     description: LPC5462x W25Q128JVFM SPIFI
-    cores: [main]
+    cores:
+      - main
     default: true
     instructions: QLpwR0C6cEfAunBHwLpwR0/qMABwRwAAT+owAHBHAABwtYZNhkxNRClGIEYA8JL54mmSBvzVYGnAB/XRcL0QtX5Jf0xJRBA5IEYA8IP5e0kgRklECDkA8H35QCFhYb3oEEDd50/0AFBBBMH4IAJ1SE/0k3HBZQFmQWaBZsFmAWdwRzC1bUhP9IB0SEQYOAAhBICBcMFwASICcUFxBCODcQslxXEBgYFywnIBc0FzgnMGJcVzA4KBdMJ0AXVBdYJ1wnUDg4F2wXYBd0F3gncFJcV3BISA+CIQgPgjIID4JBCA+CUQgPgmMAIkgPgnQAGFgPgqEID4KyCA+CwQgPgtEID4LjAgI4D4LzABhoD4MhCA+DMggPg0EID4NRCA+DYgYCGA+DcQML1HSRC1SUQIYE/wgEAAIcD4oBLA+JAT//eR///3nv89SEhEIDAA8I/4Okk7TElEIDEgRgDwlvg3SSBGSUQYOQDwIvkAIBC9ACBwRxC1MkwQIOBh4WnJBvzULkkgRklEEDkA8OT4K0kgRklEGDEA8N74//dC/ydJIEZJRBg5APAD+QAgEL1wtSRMBUYQIOBh4GnABvzUH0kgRklEEDkA8Mb4pWAcSSBGSUQQMQDwv/j/9yP/GEkgRklEGDkA8OT4ACBwvQEgcEdwtRNNBkYQIBRG6GHoacAG/NQOSShGSUQQOQDwpPiuYAtJKEZJRAgxAPCd+AAhBMxqYUkcQCn62//3+/4ESShGSUQYOQDwvPgAIHC9AAAgAAAAAAAIQAAQAEAEAAAAZUoQtQFGACB6RFL4IDCLQgLQQBz50AHgACgB0ADwwPgQvU/2/3EBgA8hgXAAIcFwAXEBIkJxgXHBcQFycEdwtQwABUYS0P/32/9TSXlESDkBIjH4EACTBwEKAykI0oJAiAAA8YBAwPggIgXgAPCY+NpkgkBJSEJhECDoYehpwAb81KF4IIhP9HAiAuoBQQhD4XhP9AASAupBUaJ5T/QABgbqwlIRQwhDIXkyAQLqwWEIQyF6UgAC6gFxCEPheVIAAupBcQhDYXkD6oFxCEMoYHC9ELX/95T/L0l5RNY5ASIx+BAAAQoDKQL6APIF0ogAAPGAQMD4QCIQvShIgmFP8IBBACDIZBC9ELXCaZIH/NEKiIt4T/SARMLzDQIE6oMzGkPLeE/2/3QE6sMzGkMLeU/04CQE6gNDGkNLeU/0wBQE6sNDGkOLeU/0YAQE6kNTyXkaQ0LqAWFBYMFpiQf81RC9ELXCaZIH/NEKeU/04CMD6gJCS3lP9MAUBOrDQxpDi3lP9GAEBOpDU8l5GkNC6gFhgWEQvQAASAIAAAAABEAQtQAgAPAO+K/zAIC96BBAASAA8AG4AAABSRggq77+5yYAAgAQtQDwC/i96BBAAPABuHBHACgB0P/37r9wRwAAELUAIQKgAPAT+AEgEL0AAFNJR0FCUlQ6IEFibm9ybWFsIHRlcm1pbmF0aW9uAAAAcLUFRgxGCiAA4G0cAPAR+DWxKHgAKPjRAuBkHADwCfgUsSB4ACj40b3ocEAKIK/zAIAItWlGjfgAAAMgq74IvQoAAAAAAAhAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==
-    pc_init: 297
-    pc_uninit: 367
-    pc_program_page: 495
-    pc_erase_sector: 429
-    pc_erase_all: 371
-    data_section_offset: 1188
+    pc_init: 0x129
+    pc_uninit: 0x16f
+    pc_program_page: 0x1ef
+    pc_erase_sector: 0x1ad
+    pc_erase_all: 0x173
+    data_section_offset: 0x4a4
     flash_properties:
       address_range:
-        start: 268435456
-        end: 285212672
-      page_size: 256
-      erased_byte_value: 255
-      program_page_timeout: 300
-      erase_sector_timeout: 3000
+        start: 0x10000000
+        end: 0x11000000
+      page_size: 0x100
+      erased_byte_value: 0xff
+      program_page_timeout: 0x12c
+      erase_sector_timeout: 0xbb8
       sectors:
-        - size: 4096
-          address: 0
+        - size: 0x1000
+          address: 0x0

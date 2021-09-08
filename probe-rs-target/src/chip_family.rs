@@ -56,8 +56,6 @@ pub struct ChipFamily {
     /// This vector holds all the variants of the family.
     pub variants: Vec<Chip>,
     /// This vector holds all available algorithms.
-    #[serde(deserialize_with = "deserialize")]
-    #[serde(serialize_with = "serialize")]
     pub flash_algorithms: Vec<RawFlashAlgorithm>,
 
     #[serde(skip, default = "default_source")]
@@ -68,48 +66,6 @@ pub struct ChipFamily {
 /// When deserialization is used, this means that the target is read from an external source.
 fn default_source() -> TargetDescriptionSource {
     TargetDescriptionSource::External
-}
-
-pub fn serialize<S>(raw_algorithms: &[RawFlashAlgorithm], serializer: S) -> Result<S::Ok, S::Error>
-where
-    S: serde::Serializer,
-{
-    use serde::ser::SerializeMap;
-    let mut map = serializer.serialize_map(Some(raw_algorithms.len()))?;
-    for entry in raw_algorithms {
-        map.serialize_entry(&entry.name, entry)?;
-    }
-    map.end()
-}
-
-pub fn deserialize<'de, D>(deserializer: D) -> Result<Vec<RawFlashAlgorithm>, D::Error>
-where
-    D: serde::Deserializer<'de>,
-{
-    struct MapVisitor;
-
-    use serde::de::MapAccess;
-    impl<'de> serde::de::Visitor<'de> for MapVisitor {
-        type Value = Vec<RawFlashAlgorithm>;
-
-        fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
-            write!(formatter, "a map")
-        }
-
-        fn visit_map<A>(self, mut v: A) -> Result<Self::Value, A::Error>
-        where
-            A: MapAccess<'de>,
-        {
-            let mut result = vec![];
-            while let Some((_key, value)) = v.next_entry::<String, RawFlashAlgorithm>()? {
-                result.push(value);
-            }
-
-            Ok(result)
-        }
-    }
-
-    deserializer.deserialize_map(MapVisitor)
 }
 
 impl ChipFamily {

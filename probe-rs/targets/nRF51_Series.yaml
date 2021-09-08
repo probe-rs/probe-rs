@@ -1,7 +1,6 @@
----
 name: nRF51 Series
 manufacturer:
-  cc: 0x02
+  cc: 0x2
   id: 0x44
 variants:
   - name: nRF51422_xxAA
@@ -10,21 +9,23 @@ variants:
         type: armv6m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536887296
+            start: 0x20000000
+            end: 0x20004000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 0
-            end: 262144
+            start: 0x0
+            end: 0x40000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - nrf51xxx
       - nrf51xxx_sde
@@ -35,21 +36,23 @@ variants:
         type: armv6m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536887296
+            start: 0x20000000
+            end: 0x20004000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 0
-            end: 131072
+            start: 0x0
+            end: 0x20000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - nrf51xxx
       - nrf51xxx_sde
@@ -60,21 +63,23 @@ variants:
         type: armv6m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536903680
+            start: 0x20000000
+            end: 0x20008000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 0
-            end: 262144
+            start: 0x0
+            end: 0x40000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - nrf51xxx
       - nrf51xxx_sde
@@ -85,21 +90,23 @@ variants:
         type: armv6m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536887296
+            start: 0x20000000
+            end: 0x20004000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 0
-            end: 196608
+            start: 0x0
+            end: 0x30000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - nrf51xxx
       - nrf51xxx_sde
@@ -110,21 +117,23 @@ variants:
         type: armv6m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536887296
+            start: 0x20000000
+            end: 0x20004000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 0
-            end: 262144
+            start: 0x0
+            end: 0x40000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - nrf51xxx
       - nrf51xxx_sde
@@ -135,21 +144,23 @@ variants:
         type: armv6m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536887296
+            start: 0x20000000
+            end: 0x20004000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 0
-            end: 262144
+            start: 0x0
+            end: 0x40000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - nrf51xxx
       - nrf51xxx_sde
@@ -160,21 +171,23 @@ variants:
         type: armv6m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536887296
+            start: 0x20000000
+            end: 0x20004000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 0
-            end: 131072
+            start: 0x0
+            end: 0x20000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - nrf51xxx
       - nrf51xxx_sde
@@ -185,21 +198,23 @@ variants:
         type: armv6m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536903680
+            start: 0x20000000
+            end: 0x20008000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 0
-            end: 262144
+            start: 0x0
+            end: 0x40000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - nrf51xxx
       - nrf51xxx_sde
@@ -210,92 +225,94 @@ variants:
         type: armv6m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536887296
+            start: 0x20000000
+            end: 0x20004000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 0
-            end: 262144
+            start: 0x0
+            end: 0x40000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - nrf51xxx
       - nrf51xxx_sde
       - nrf51xxx_ecb
 flash_algorithms:
-  nrf51xxx_sde:
-    name: nrf51xxx_sde
+  - name: nrf51xxx_sde
     description: nRF51xxx SoftDevice Erase
-    cores: [main]
+    cores:
+      - main
     default: true
     instructions: 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
-    pc_init: 1
-    pc_uninit: 65
-    pc_program_page: 301
-    pc_erase_sector: 197
-    pc_erase_all: 137
-    data_section_offset: 1632
+    pc_init: 0x1
+    pc_uninit: 0x41
+    pc_program_page: 0x12d
+    pc_erase_sector: 0xc5
+    pc_erase_all: 0x89
+    data_section_offset: 0x660
     flash_properties:
       address_range:
-        start: 0
-        end: 2097152
-      page_size: 1024
-      erased_byte_value: 255
-      program_page_timeout: 1000
-      erase_sector_timeout: 3000
+        start: 0x0
+        end: 0x200000
+      page_size: 0x400
+      erased_byte_value: 0xff
+      program_page_timeout: 0x3e8
+      erase_sector_timeout: 0xbb8
       sectors:
-        - size: 1024
-          address: 0
-  nrf51xxx:
-    name: nrf51xxx
+        - size: 0x400
+          address: 0x0
+  - name: nrf51xxx
     description: nRF51xxx
-    cores: [main]
+    cores:
+      - main
     default: false
     instructions: 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
-    pc_init: 1
-    pc_uninit: 65
-    pc_program_page: 453
-    pc_erase_sector: 309
-    pc_erase_all: 137
-    data_section_offset: 2080
+    pc_init: 0x1
+    pc_uninit: 0x41
+    pc_program_page: 0x1c5
+    pc_erase_sector: 0x135
+    pc_erase_all: 0x89
+    data_section_offset: 0x820
     flash_properties:
       address_range:
-        start: 0
-        end: 2097152
-      page_size: 1024
-      erased_byte_value: 255
-      program_page_timeout: 1000
-      erase_sector_timeout: 3000
+        start: 0x0
+        end: 0x200000
+      page_size: 0x400
+      erased_byte_value: 0xff
+      program_page_timeout: 0x3e8
+      erase_sector_timeout: 0xbb8
       sectors:
-        - size: 1024
-          address: 0
-  nrf51xxx_ecb:
-    name: nrf51xxx_ecb
+        - size: 0x400
+          address: 0x0
+  - name: nrf51xxx_ecb
     description: nRF51xxx External Connectivity Board
-    cores: [main]
+    cores:
+      - main
     default: false
     instructions: QLpwR8C6cEdVSAEjASoF0AIqBdADKgXQASBwRwIhAuBDYAHgACFBYE5IAWgAKfzQTUiDYAAgcEdJSQAgSGBJSAFoACn80AAgcEdFSQEgyGBESAFoACn80AAgcEdwtQElLQcERilpAPCB+AApBNEoaWlpSEOgQgHYASBwvThIhGA4SAFoACn80AAgcL1wtYMHFtGLBxTRASMbBxxpXWlsQ4RCDdkcaVtpXENDGJxCB9MAIyxMjQgL4JkARlh2HAHQASBwvVZYRlAhaAAp/NBbHJ1C8dgAIHC9cLUERoMHEdGLBw/RASMbBx1pXml1Q4VCCNkdaV5pQBh1Q4VCA9IYaVlpSENwvQAjjQgI4JkAZlhRWI5CAtCYAAAZcL1bHJ1C9NhwvTC1gwcT0YsHEdEBIxsHHGldaWxDhEIK2RxpW2lcQ0MYnEIE0wAjBeDEXJRCAdABIDC9WxyLQvfTACAwvQDlAUAA5AFAAAYAQAAiAwmLQizTAwqLQhHTACOcRk7gA0YLQzzUACJDCItCMdMDCYtCHNMDCotCAdOURj/gwwmLQgHTywHAGlJBgwmLQgHTiwHAGlJBQwmLQgHTSwHAGlJBAwmLQgHTCwHAGlJBwwiLQgHTywDAGlJBgwiLQgHTiwDAGlJBQwiLQgHTSwDAGlJBQRoA0gFGUkEQRnBHXeDKDwDQSUIDEADTQEJTQAAinEYDCYtCLdMDCotCEtP8IokBEroDCotCDNOJAZIRi0II04kBkhGLQgTTiQE60JIRAOCJCcMJi0IB08sBwBpSQYMJi0IB04sBwBpSQUMJi0IB00sBwBpSQQMJi0IB0wsBwBpSQcMIi0IB08sAwBpSQYMIi0IB04sAwBpSQdnSQwiLQgHTSwDAGlJBQRoA0gFGY0ZSQVsQEEYB00BCACsA1UlCcEdjRlsQANNAQgG1ACDARsBGAr0AAAAAAAA=
-    pc_init: 9
-    pc_uninit: 57
-    pc_program_page: 141
-    pc_erase_sector: 93
-    pc_erase_all: 75
-    data_section_offset: 712
+    pc_init: 0x9
+    pc_uninit: 0x39
+    pc_program_page: 0x8d
+    pc_erase_sector: 0x5d
+    pc_erase_all: 0x4b
+    data_section_offset: 0x2c8
     flash_properties:
       address_range:
-        start: 0
-        end: 2097152
-      page_size: 1024
-      erased_byte_value: 255
-      program_page_timeout: 1000
-      erase_sector_timeout: 3000
+        start: 0x0
+        end: 0x200000
+      page_size: 0x400
+      erased_byte_value: 0xff
+      program_page_timeout: 0x3e8
+      erase_sector_timeout: 0xbb8
       sectors:
-        - size: 1024
-          address: 0
+        - size: 0x400
+          address: 0x0

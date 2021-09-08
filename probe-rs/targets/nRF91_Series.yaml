@@ -1,4 +1,3 @@
----
 name: nRF91 Series
 variants:
   - name: nRF9160_xxAA
@@ -7,69 +6,71 @@ variants:
         type: armv8m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537133056
+            start: 0x20000000
+            end: 0x20040000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 0
-            end: 1048576
+            start: 0x0
+            end: 0x100000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - nrf91xx
       - nrf91xx_uicr
 flash_algorithms:
-  nrf91xx:
-    name: nrf91xx
+  - name: nrf91xx
     description: nRF91xxx
-    cores: [main]
+    cores:
+      - main
     default: true
     instructions: sLVA8gQFwPIABQAgCesFAUn4BQDB6QEAyGDQshRGAPA9+iCxCesFAcHpAgSwvQnrBQABIUFgAPAr+gAgsL0AvxC1BEYAIADwKfo4sUDyBAHA8gABSUTB6QIEEL1A8gQAwPIAAAnrAAGJaAApBL8AIBC9RPIAAcLyAAEBIgpgWfgAIEhESmBCaIpggmjKYMBoCGEAIBC9AL9A8gQAwPIAAAEhSfgAEEhEACHA6QERwWAA8Ci6sLVA8gQFBEbA8gAFAiBJ+AUACesFAAAhwOkBEcFgAPCl+bT78PEB+xBAMLEJ6wUAAyHA6QIUZSCwvQnrBQABIUFgAPCt+aBCE9gA8Kv5oEIP2QnrBQACIUFgIEYA8ML5Aygcv2cgsL0gRgDw5/kAILC9CesFAAQhwOkCFGYgsL0t6fBBQPIEBwRGwPIABxVGDkYDIAnrBwEAIqMHSfgHAMHpASLKYAbQCesHAcHpAgRlIL3o8IEJ6wcAASFBYADwb/mgQhXYAPBt+aBCEdkJ6wcAAyFBYAbrBAgA8GP5gEUP2QnrBwAEIcDpAhhmIL3o8IEJ6wcABCHA6QIUZiC96PCBCesHAAQhQWAA8Gn5MLEJ6wcAAiGBYGcgvejwgQnrBwAFIUFgIEYA8Fz5AigH0gnrBwACIcDpAhRnIL3o8IEP0f8iIEYxRgDwNvhIsQMgSfgHAAnrBwAFIUFgZyC96PCBAyBJ+AcAACCw65YPCesHAU/wBgJKYAi/vejwgU/qlggAJlT4JgABMAzRVfgmAET4JgAA8EL5ATZGRU/wAADw073o8IEJ6wcABSGiGcDpAhJoIL3o8IEt6fBBQPIEBw1GBEbA8gAHBSAWRkn4BwAJ6wcAACGqB8DpARHBYAfQCesHAAMhwOkCFWUgvejwgQnrBwACIUFgAPDS+KBCFdgA8ND4oEIR2QnrBwADIUFgBesECADwxviARQ/ZCesHAAQhwOkCGGYgvejwgQnrBwAEIcDpAhRmIL3o8IEJ6wcABCEALUFgBL8AIL3o8IEAIQfgAL8BMalCT/AAACi/vejwgWBcsEL10GAYCesHAQUiwekCIAEgvejwgQC/LenwQUDyBAUERsDyAAUEIJBGD0ZJ+AUACesFAAAhogfA6QERwWAI0AnrBQADIWUmwOkCFDBGvejwgQnrBQABIUFgAPBv+KBCEtgA8G34oEIO2QnrBQADIUFgPhkA8GT4hkIO2QnrBQAEIcDpAhYE4AnrBQAEIcDpAhRmJjBGvejwgQAhseuXDwnrBQBP8AQBQWAL0LgIACEiaFj4ITCaQgvRATGBQgTxBAT10wnrBQAFIUFgMEa96PCBCesFAAYhwOkCFCBGvejwgQAAQPIwEMDy/wABaAExHL8AaHBHQPbgcc/yAAEIeEloYfMLIHBHQPIgIMDy/wABaAExFL8AaE/0gFBwRwC/QPIkIMDy/wABaAExFL8AaE/0AHBwRwC/ACBwRwAgcEcQtf/34f8ERv/36v8A+wTwEL0AvwFEgUKcvwEgcEcD4IhCJL8BIHBHUPgEKwEyHL8AIHBH9OcAv3BHAL8AIHBHAyBwRwMohL9pIHBHgLVAsgWhUfggAEnyBFHF8gMBCGAA8Ar4ACCAvQAAAAACAAAAAQAAAAAAAABJ8gBAxfIDAAFoACn80HBHSfIMUMXyAwABIQFg8OcAv4GwAJAAmE/w/zEBYAGw5+dpIHBHsLX/96f/BEZAsQAlKEb/9+3///eD/wVEpUL30wAgsL0AAAAAAAAAAAAAAAAAAAAAAAAAAA==
-    pc_init: 1
-    pc_uninit: 65
-    pc_program_page: 309
-    pc_erase_sector: 181
-    pc_erase_all: 153
-    data_section_offset: 1316
+    pc_init: 0x1
+    pc_uninit: 0x41
+    pc_program_page: 0x135
+    pc_erase_sector: 0xb5
+    pc_erase_all: 0x99
+    data_section_offset: 0x524
     flash_properties:
       address_range:
-        start: 0
-        end: 2097152
-      page_size: 4096
-      erased_byte_value: 255
-      program_page_timeout: 1000
-      erase_sector_timeout: 3000
+        start: 0x0
+        end: 0x200000
+      page_size: 0x1000
+      erased_byte_value: 0xff
+      program_page_timeout: 0x3e8
+      erase_sector_timeout: 0xbb8
       sectors:
-        - size: 4096
-          address: 0
-  nrf91xx_uicr:
-    name: nrf91xx_uicr
+        - size: 0x1000
+          address: 0x0
+  - name: nrf91xx_uicr
     description: nRF91xxx UICR Erase
-    cores: [main]
+    cores:
+      - main
     default: true
     instructions: cLVA8gQGwPIABgAlCesGAEn4BlDA6QFVxWDQshRGAPDj+QAoHr8J6wYBwekCBAVGKEZwvRC1BEYAIADw1flA8gQBwPIAAUlEELHB6QIEA+CJaAApCL8QvUTyAAHC8gABASIKYEDyBALA8gACWfgCMEpES2BTaItgk2jLYNJoCmEQvQC/gLVA8gQAwPIAAAEhSfgAEEhEACHA6QERwWAA8MX5ACCAvQC/ELVA8gQAwPIAAAIhSfgAEEhEACTA6QFExGAA8FP5AUZI8gAAwPL/AP8iAPAL+DCxAPC4+QRGaSgUvwAsACQgRhC9AL9wtUDyBAzA8gAMBSNJ+AwwCesMA0/wAA6EB8PpAe7D+AzgBdAJ6wwBAyLB6QIgDOAJ6wwDT/ABDowHw/gE4AjQCesMAAMiwOkCIU/wZQ5wRnC9SPb/fsDy/w4J6wwDAiRwRVxgBdkJ6wwBBCLB6QIgDeALGA7xAQUJ6wwEAyarQmZgCNkJ6wwABCHA6QITT/BmDnBGcL1RsQAjT/AADgC/xlyWQgfRATOLQvnTC+BP8AAOcEZwvRhECesMAQUiT/ABDsHpAiBwRnC9AL8t6fBBQPIEBsDyAAYVRgRGAyAJ6wYCACOPB0n4BgDC6QEz02AG0AnrBgLC6QIBZSC96PCBSPb/cMDy/wAJ6wYCAiOEQlNgB9kJ6wYABCHA6QIUZiC96PCBChkBMAnrBgMDJ4JCX2AH2QnrBgAEIcDpAhJmIL3o8IEAILDrkQ8b0E/qkQgAJwzgVfgnAET4JwAA8Oj4ATdHRU/wAAAov73o8IFU+CcAATDu0AnrBgAFIeIZwOkCEmggvejwgXC1QPIEDMDyAAwEI0n4DDAJ6wwDT/AADoQHw+kB7sP4DOAF0AnrDAEDIsHpAiAM4AnrDANP8AEOjAfD+ATgB9AJ6wwAAyLA6QIhZSMYRnC9SPb/fsDy/w4J6wwDAiRwRVxgBdkJ6wwBBCLB6QIgDeALGA7xAQUJ6wwEAyarQmZgB9kJ6wwABCHA6QITZiMYRnC9ACW165EPCesMBk/wBAV1YBTQT+qRDgAhAL8EaFL4IVCsQgXRATFxRQDxBAD10wXgCesMAQYiA0bB6QIgGEZwvQAAQPIwEMDy/wABaAExHL8AaHBHQPbgcc/yAAEIeEloYfMLIHBHQPIgIMDy/wABaAExFL8AaE/0gFBwRwC/QPIkIMDy/wABaAExFL8AaE/0AHBwRwC/ACBwRwAgcEcQtf/34f8ERv/36v8A+wTwEL0AvwFEgUKcvwEgcEcD4IhCJL8BIHBHUPgEKwEyHL8AIHBH9OcAv3BHAL8AIHBHAyBwRwMohL9pIHBHgLVAsgWhUfggAEnyBFHF8gMBCGAA8Ar4ACCAvQAAAAACAAAAAQAAAAAAAABJ8gBAxfIDAAFoACn80HBHSfIMUMXyAwABIQFg8OcAv4GwAJAAmE/w/zEBYAGw5+dpIHBHsLX/96f/BEZAsQAlKEb/9+3///eD/wVEpUL30wAgsL0AAAAAAAAAAAAAAAAAAAAAAAAAAA==
-    pc_init: 1
-    pc_uninit: 53
-    pc_program_page: 441
-    pc_erase_sector: 169
-    pc_erase_all: 133
-    data_section_offset: 1136
+    pc_init: 0x1
+    pc_uninit: 0x35
+    pc_program_page: 0x1b9
+    pc_erase_sector: 0xa9
+    pc_erase_all: 0x85
+    data_section_offset: 0x470
     flash_properties:
       address_range:
-        start: 16744448
-        end: 16748544
-      page_size: 4096
-      erased_byte_value: 255
-      program_page_timeout: 1000
-      erase_sector_timeout: 3000
+        start: 0xff8000
+        end: 0xff9000
+      page_size: 0x1000
+      erased_byte_value: 0xff
+      program_page_timeout: 0x3e8
+      erase_sector_timeout: 0xbb8
       sectors:
-        - size: 4096
-          address: 0
+        - size: 0x1000
+          address: 0x0
 core: M33

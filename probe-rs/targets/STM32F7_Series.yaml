@@ -1,4 +1,3 @@
----
 name: STM32F7 Series
 variants:
   - name: STM32F722ICKx
@@ -7,21 +6,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537133056
+            start: 0x20000000
+            end: 0x20040000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134479872
+            start: 0x8000000
+            end: 0x8040000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32f7x2_512
       - stm32f7x2tcm_512
@@ -39,21 +40,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537133056
+            start: 0x20000000
+            end: 0x20040000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134479872
+            start: 0x8000000
+            end: 0x8040000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32f7x2_512
       - stm32f7x2tcm_512
@@ -71,21 +74,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537133056
+            start: 0x20000000
+            end: 0x20040000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134742016
+            start: 0x8000000
+            end: 0x8080000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32f7x2_512
       - stm32f7x2tcm_512
@@ -103,21 +108,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537133056
+            start: 0x20000000
+            end: 0x20040000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134742016
+            start: 0x8000000
+            end: 0x8080000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32f7x2_512
       - stm32f7x2tcm_512
@@ -135,21 +142,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537133056
+            start: 0x20000000
+            end: 0x20040000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134479872
+            start: 0x8000000
+            end: 0x8040000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32f7x2_512
       - stm32f7x2tcm_512
@@ -167,21 +176,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537133056
+            start: 0x20000000
+            end: 0x20040000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134742016
+            start: 0x8000000
+            end: 0x8080000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32f7x2_512
       - stm32f7x2tcm_512
@@ -199,21 +210,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537133056
+            start: 0x20000000
+            end: 0x20040000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134479872
+            start: 0x8000000
+            end: 0x8040000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32f7x2_512
       - stm32f7x2tcm_512
@@ -231,21 +244,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537133056
+            start: 0x20000000
+            end: 0x20040000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134742016
+            start: 0x8000000
+            end: 0x8080000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32f7x2_512
       - stm32f7x2tcm_512
@@ -263,21 +278,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537133056
+            start: 0x20000000
+            end: 0x20040000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134479872
+            start: 0x8000000
+            end: 0x8040000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32f7x2_512
       - stm32f7x2tcm_512
@@ -295,21 +312,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537133056
+            start: 0x20000000
+            end: 0x20040000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134742016
+            start: 0x8000000
+            end: 0x8080000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32f7x2_512
       - stm32f7x2tcm_512
@@ -327,21 +346,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537133056
+            start: 0x20000000
+            end: 0x20040000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134479872
+            start: 0x8000000
+            end: 0x8040000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32f7x2_512
       - stm32f7x2tcm_512
@@ -359,21 +380,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537133056
+            start: 0x20000000
+            end: 0x20040000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134479872
+            start: 0x8000000
+            end: 0x8040000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32f7x2_512
       - stm32f7x2tcm_512
@@ -391,21 +414,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537133056
+            start: 0x20000000
+            end: 0x20040000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134742016
+            start: 0x8000000
+            end: 0x8080000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32f7x2_512
       - stm32f7x2tcm_512
@@ -423,21 +448,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537133056
+            start: 0x20000000
+            end: 0x20040000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134742016
+            start: 0x8000000
+            end: 0x8080000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32f7x2_512
       - stm32f7x2tcm_512
@@ -455,21 +482,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537133056
+            start: 0x20000000
+            end: 0x20040000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134742016
+            start: 0x8000000
+            end: 0x8080000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32f7x2_512
       - stm32f7x2tcm_512
@@ -487,21 +516,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537133056
+            start: 0x20000000
+            end: 0x20040000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134479872
+            start: 0x8000000
+            end: 0x8040000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32f7x2_512
       - stm32f7x2tcm_512
@@ -519,21 +550,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537133056
+            start: 0x20000000
+            end: 0x20040000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134479872
+            start: 0x8000000
+            end: 0x8040000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32f7x2_512
       - stm32f7x2tcm_512
@@ -551,21 +584,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537133056
+            start: 0x20000000
+            end: 0x20040000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134742016
+            start: 0x8000000
+            end: 0x8080000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32f7x2_512
       - stm32f7x2tcm_512
@@ -583,21 +618,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537133056
+            start: 0x20000000
+            end: 0x20040000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134742016
+            start: 0x8000000
+            end: 0x8080000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32f7x2_512
       - stm32f7x2tcm_512
@@ -615,21 +652,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537133056
+            start: 0x20000000
+            end: 0x20040000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134283264
+            start: 0x8000000
+            end: 0x8010000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32f7x_64_axi
       - stm32f7x_64_tcm
@@ -647,21 +686,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537133056
+            start: 0x20000000
+            end: 0x20040000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134283264
+            start: 0x8000000
+            end: 0x8010000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32f7x_64_axi
       - stm32f7x_64_tcm
@@ -679,21 +720,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537133056
+            start: 0x20000000
+            end: 0x20040000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134283264
+            start: 0x8000000
+            end: 0x8010000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32f7x_64_axi
       - stm32f7x_64_tcm
@@ -711,21 +754,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537133056
+            start: 0x20000000
+            end: 0x20040000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134283264
+            start: 0x8000000
+            end: 0x8010000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32f7x_64_axi
       - stm32f7x_64_tcm
@@ -743,21 +788,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537133056
+            start: 0x20000000
+            end: 0x20040000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134742016
+            start: 0x8000000
+            end: 0x8080000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32f7x2_512
       - stm32f7x2tcm_512
@@ -775,21 +822,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537133056
+            start: 0x20000000
+            end: 0x20040000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134742016
+            start: 0x8000000
+            end: 0x8080000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32f7x2_512
       - stm32f7x2tcm_512
@@ -807,21 +856,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537133056
+            start: 0x20000000
+            end: 0x20040000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134742016
+            start: 0x8000000
+            end: 0x8080000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32f7x2_512
       - stm32f7x2tcm_512
@@ -839,21 +890,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537133056
+            start: 0x20000000
+            end: 0x20040000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134742016
+            start: 0x8000000
+            end: 0x8080000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32f7x2_512
       - stm32f7x2tcm_512
@@ -871,21 +924,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537133056
+            start: 0x20000000
+            end: 0x20040000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134742016
+            start: 0x8000000
+            end: 0x8080000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32f7x2_512
       - stm32f7x2tcm_512
@@ -903,21 +958,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537133056
+            start: 0x20000000
+            end: 0x20040000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134742016
+            start: 0x8000000
+            end: 0x8080000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32f7x2_512
       - stm32f7x2tcm_512
@@ -935,21 +992,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537133056
+            start: 0x20000000
+            end: 0x20040000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134742016
+            start: 0x8000000
+            end: 0x8080000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32f7x2_512
       - stm32f7x2tcm_512
@@ -967,21 +1026,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537133056
+            start: 0x20000000
+            end: 0x20040000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134742016
+            start: 0x8000000
+            end: 0x8080000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32f7x2_512
       - stm32f7x2tcm_512
@@ -999,21 +1060,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537133056
+            start: 0x20000000
+            end: 0x20040000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134742016
+            start: 0x8000000
+            end: 0x8080000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32f7x2_512
       - stm32f7x2tcm_512
@@ -1031,21 +1094,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537133056
+            start: 0x20000000
+            end: 0x20040000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134742016
+            start: 0x8000000
+            end: 0x8080000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32f7x2_512
       - stm32f7x2tcm_512
@@ -1063,21 +1128,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537133056
+            start: 0x20000000
+            end: 0x20040000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134742016
+            start: 0x8000000
+            end: 0x8080000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32f7x2_512
       - stm32f7x2tcm_512
@@ -1095,21 +1162,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537198592
+            start: 0x20000000
+            end: 0x20050000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134742016
+            start: 0x8000000
+            end: 0x8080000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32f7x_1024
       - stm32f7xtcm_1024
@@ -1127,21 +1196,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537198592
+            start: 0x20000000
+            end: 0x20050000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134742016
+            start: 0x8000000
+            end: 0x8080000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32f7x_1024
       - stm32f7xtcm_1024
@@ -1159,21 +1230,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537198592
+            start: 0x20000000
+            end: 0x20050000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 135266304
+            start: 0x8000000
+            end: 0x8100000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32f7x_1024
       - stm32f7xtcm_1024
@@ -1191,21 +1264,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537198592
+            start: 0x20000000
+            end: 0x20050000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 135266304
+            start: 0x8000000
+            end: 0x8100000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32f7x_1024
       - stm32f7xtcm_1024
@@ -1223,21 +1298,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537198592
+            start: 0x20000000
+            end: 0x20050000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134742016
+            start: 0x8000000
+            end: 0x8080000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32f7x_1024
       - stm32f7xtcm_1024
@@ -1255,21 +1332,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537198592
+            start: 0x20000000
+            end: 0x20050000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134742016
+            start: 0x8000000
+            end: 0x8080000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32f7x_1024
       - stm32f7xtcm_1024
@@ -1287,21 +1366,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537198592
+            start: 0x20000000
+            end: 0x20050000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 135266304
+            start: 0x8000000
+            end: 0x8100000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32f7x_1024
       - stm32f7xtcm_1024
@@ -1319,21 +1400,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537198592
+            start: 0x20000000
+            end: 0x20050000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 135266304
+            start: 0x8000000
+            end: 0x8100000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32f7x_1024
       - stm32f7xtcm_1024
@@ -1351,21 +1434,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537198592
+            start: 0x20000000
+            end: 0x20050000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134742016
+            start: 0x8000000
+            end: 0x8080000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32f7x_1024
       - stm32f7xtcm_1024
@@ -1383,21 +1468,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537198592
+            start: 0x20000000
+            end: 0x20050000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 135266304
+            start: 0x8000000
+            end: 0x8100000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32f7x_1024
       - stm32f7xtcm_1024
@@ -1415,21 +1502,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537198592
+            start: 0x20000000
+            end: 0x20050000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134742016
+            start: 0x8000000
+            end: 0x8080000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32f7x_1024
       - stm32f7xtcm_1024
@@ -1447,21 +1536,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537198592
+            start: 0x20000000
+            end: 0x20050000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 135266304
+            start: 0x8000000
+            end: 0x8100000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32f7x_1024
       - stm32f7xtcm_1024
@@ -1479,21 +1570,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537198592
+            start: 0x20000000
+            end: 0x20050000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134742016
+            start: 0x8000000
+            end: 0x8080000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32f7x_1024
       - stm32f7xtcm_1024
@@ -1511,21 +1604,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537198592
+            start: 0x20000000
+            end: 0x20050000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134742016
+            start: 0x8000000
+            end: 0x8080000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32f7x_1024
       - stm32f7xtcm_1024
@@ -1543,21 +1638,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537198592
+            start: 0x20000000
+            end: 0x20050000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 135266304
+            start: 0x8000000
+            end: 0x8100000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32f7x_1024
       - stm32f7xtcm_1024
@@ -1575,21 +1672,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537198592
+            start: 0x20000000
+            end: 0x20050000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 135266304
+            start: 0x8000000
+            end: 0x8100000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32f7x_1024
       - stm32f7xtcm_1024
@@ -1607,21 +1706,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537198592
+            start: 0x20000000
+            end: 0x20050000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134742016
+            start: 0x8000000
+            end: 0x8080000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32f7x_1024
       - stm32f7xtcm_1024
@@ -1639,21 +1740,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537198592
+            start: 0x20000000
+            end: 0x20050000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 135266304
+            start: 0x8000000
+            end: 0x8100000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32f7x_1024
       - stm32f7xtcm_1024
@@ -1671,21 +1774,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537198592
+            start: 0x20000000
+            end: 0x20050000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134742016
+            start: 0x8000000
+            end: 0x8080000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32f7x_1024
       - stm32f7xtcm_1024
@@ -1703,21 +1808,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537198592
+            start: 0x20000000
+            end: 0x20050000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134742016
+            start: 0x8000000
+            end: 0x8080000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32f7x_1024
       - stm32f7xtcm_1024
@@ -1735,21 +1842,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537198592
+            start: 0x20000000
+            end: 0x20050000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 135266304
+            start: 0x8000000
+            end: 0x8100000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32f7x_1024
       - stm32f7xtcm_1024
@@ -1767,21 +1876,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537198592
+            start: 0x20000000
+            end: 0x20050000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 135266304
+            start: 0x8000000
+            end: 0x8100000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32f7x_1024
       - stm32f7xtcm_1024
@@ -1799,21 +1910,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537198592
+            start: 0x20000000
+            end: 0x20050000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134742016
+            start: 0x8000000
+            end: 0x8080000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32f7x_1024
       - stm32f7xtcm_1024
@@ -1831,21 +1944,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537198592
+            start: 0x20000000
+            end: 0x20050000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134742016
+            start: 0x8000000
+            end: 0x8080000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32f7x_1024
       - stm32f7xtcm_1024
@@ -1863,21 +1978,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537198592
+            start: 0x20000000
+            end: 0x20050000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 135266304
+            start: 0x8000000
+            end: 0x8100000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32f7x_1024
       - stm32f7xtcm_1024
@@ -1895,21 +2012,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537198592
+            start: 0x20000000
+            end: 0x20050000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 135266304
+            start: 0x8000000
+            end: 0x8100000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32f7x_1024
       - stm32f7xtcm_1024
@@ -1927,21 +2046,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537198592
+            start: 0x20000000
+            end: 0x20050000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134283264
+            start: 0x8000000
+            end: 0x8010000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32f75x_64_axi
       - stm32f75x_64_tcm
@@ -1959,21 +2080,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537198592
+            start: 0x20000000
+            end: 0x20050000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134283264
+            start: 0x8000000
+            end: 0x8010000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32f75x_64_axi
       - stm32f75x_64_tcm
@@ -1991,21 +2114,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537198592
+            start: 0x20000000
+            end: 0x20050000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134283264
+            start: 0x8000000
+            end: 0x8010000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32f75x_64_axi
       - stm32f75x_64_tcm
@@ -2023,21 +2148,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537198592
+            start: 0x20000000
+            end: 0x20050000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 135266304
+            start: 0x8000000
+            end: 0x8100000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32f7x_1024
       - stm32f7xtcm_1024
@@ -2055,21 +2182,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537198592
+            start: 0x20000000
+            end: 0x20050000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 135266304
+            start: 0x8000000
+            end: 0x8100000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32f7x_1024
       - stm32f7xtcm_1024
@@ -2087,21 +2216,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537198592
+            start: 0x20000000
+            end: 0x20050000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 135266304
+            start: 0x8000000
+            end: 0x8100000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32f7x_1024
       - stm32f7xtcm_1024
@@ -2119,21 +2250,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537198592
+            start: 0x20000000
+            end: 0x20050000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 135266304
+            start: 0x8000000
+            end: 0x8100000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32f7x_1024
       - stm32f7xtcm_1024
@@ -2151,21 +2284,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537198592
+            start: 0x20000000
+            end: 0x20050000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 135266304
+            start: 0x8000000
+            end: 0x8100000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32f7x_1024
       - stm32f7xtcm_1024
@@ -2183,21 +2318,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537198592
+            start: 0x20000000
+            end: 0x20050000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 135266304
+            start: 0x8000000
+            end: 0x8100000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32f7x_1024
       - stm32f7xtcm_1024
@@ -2215,21 +2352,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537198592
+            start: 0x20000000
+            end: 0x20050000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 135266304
+            start: 0x8000000
+            end: 0x8100000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32f7x_1024
       - stm32f7xtcm_1024
@@ -2247,21 +2386,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537198592
+            start: 0x20000000
+            end: 0x20050000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 135266304
+            start: 0x8000000
+            end: 0x8100000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32f7x_1024
       - stm32f7xtcm_1024
@@ -2279,21 +2420,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537395200
+            start: 0x20000000
+            end: 0x20080000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 135266304
+            start: 0x8000000
+            end: 0x8100000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32f7x_1024
       - stm32f7xtcm_1024
@@ -2313,21 +2456,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537395200
+            start: 0x20000000
+            end: 0x20080000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 136314880
+            start: 0x8000000
+            end: 0x8200000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32f7x_2048
       - stm32f7x_2048dual
@@ -2347,21 +2492,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537395200
+            start: 0x20000000
+            end: 0x20080000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 135266304
+            start: 0x8000000
+            end: 0x8100000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32f7x_1024
       - stm32f7xtcm_1024
@@ -2381,21 +2528,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537395200
+            start: 0x20000000
+            end: 0x20080000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 135266304
+            start: 0x8000000
+            end: 0x8100000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32f7x_1024
       - stm32f7xtcm_1024
@@ -2415,21 +2564,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537395200
+            start: 0x20000000
+            end: 0x20080000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 136314880
+            start: 0x8000000
+            end: 0x8200000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32f7x_2048
       - stm32f7x_2048dual
@@ -2449,21 +2600,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537395200
+            start: 0x20000000
+            end: 0x20080000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 136314880
+            start: 0x8000000
+            end: 0x8200000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32f7x_2048
       - stm32f7x_2048dual
@@ -2483,21 +2636,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537395200
+            start: 0x20000000
+            end: 0x20080000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 135266304
+            start: 0x8000000
+            end: 0x8100000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32f7x_1024
       - stm32f7xtcm_1024
@@ -2517,21 +2672,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537395200
+            start: 0x20000000
+            end: 0x20080000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 136314880
+            start: 0x8000000
+            end: 0x8200000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32f7x_2048
       - stm32f7x_2048dual
@@ -2551,21 +2708,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537395200
+            start: 0x20000000
+            end: 0x20080000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 135266304
+            start: 0x8000000
+            end: 0x8100000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32f7x_1024
       - stm32f7xtcm_1024
@@ -2585,21 +2744,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537395200
+            start: 0x20000000
+            end: 0x20080000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 136314880
+            start: 0x8000000
+            end: 0x8200000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32f7x_2048
       - stm32f7x_2048dual
@@ -2619,21 +2780,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537395200
+            start: 0x20000000
+            end: 0x20080000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 135266304
+            start: 0x8000000
+            end: 0x8100000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32f7x_1024
       - stm32f7xtcm_1024
@@ -2653,21 +2816,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537395200
+            start: 0x20000000
+            end: 0x20080000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 136314880
+            start: 0x8000000
+            end: 0x8200000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32f7x_2048
       - stm32f7x_2048dual
@@ -2687,21 +2852,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537395200
+            start: 0x20000000
+            end: 0x20080000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 135266304
+            start: 0x8000000
+            end: 0x8100000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32f7x_1024
       - stm32f7xtcm_1024
@@ -2721,21 +2888,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537395200
+            start: 0x20000000
+            end: 0x20080000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 136314880
+            start: 0x8000000
+            end: 0x8200000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32f7x_2048
       - stm32f7x_2048dual
@@ -2755,21 +2924,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537395200
+            start: 0x20000000
+            end: 0x20080000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 135266304
+            start: 0x8000000
+            end: 0x8100000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32f7x_1024
       - stm32f7xtcm_1024
@@ -2789,21 +2960,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537395200
+            start: 0x20000000
+            end: 0x20080000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 135266304
+            start: 0x8000000
+            end: 0x8100000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32f7x_1024
       - stm32f7xtcm_1024
@@ -2823,21 +2996,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537395200
+            start: 0x20000000
+            end: 0x20080000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 136314880
+            start: 0x8000000
+            end: 0x8200000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32f7x_2048
       - stm32f7x_2048dual
@@ -2857,21 +3032,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537395200
+            start: 0x20000000
+            end: 0x20080000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 136314880
+            start: 0x8000000
+            end: 0x8200000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32f7x_2048
       - stm32f7x_2048dual
@@ -2891,21 +3068,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537395200
+            start: 0x20000000
+            end: 0x20080000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 135266304
+            start: 0x8000000
+            end: 0x8100000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32f7x_1024
       - stm32f7xtcm_1024
@@ -2925,21 +3104,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537395200
+            start: 0x20000000
+            end: 0x20080000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 136314880
+            start: 0x8000000
+            end: 0x8200000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32f7x_2048
       - stm32f7x_2048dual
@@ -2959,21 +3140,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537395200
+            start: 0x20000000
+            end: 0x20080000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 135266304
+            start: 0x8000000
+            end: 0x8100000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32f7x_1024
       - stm32f7xtcm_1024
@@ -2993,21 +3176,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537395200
+            start: 0x20000000
+            end: 0x20080000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 136314880
+            start: 0x8000000
+            end: 0x8200000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32f7x_2048
       - stm32f7x_2048dual
@@ -3027,21 +3212,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537395200
+            start: 0x20000000
+            end: 0x20080000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 135266304
+            start: 0x8000000
+            end: 0x8100000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32f7x_1024
       - stm32f7xtcm_1024
@@ -3061,21 +3248,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537395200
+            start: 0x20000000
+            end: 0x20080000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 136314880
+            start: 0x8000000
+            end: 0x8200000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32f7x_2048
       - stm32f7x_2048dual
@@ -3095,21 +3284,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537395200
+            start: 0x20000000
+            end: 0x20080000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 136314880
+            start: 0x8000000
+            end: 0x8200000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32f7x_2048
       - stm32f7x_2048dual
@@ -3129,21 +3320,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537395200
+            start: 0x20000000
+            end: 0x20080000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 135266304
+            start: 0x8000000
+            end: 0x8100000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32f7x_1024
       - stm32f7x_1024dual
@@ -3163,21 +3356,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537395200
+            start: 0x20000000
+            end: 0x20080000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 136314880
+            start: 0x8000000
+            end: 0x8200000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32f7x_2048
       - stm32f7x_2048dual
@@ -3197,21 +3392,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537395200
+            start: 0x20000000
+            end: 0x20080000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 135266304
+            start: 0x8000000
+            end: 0x8100000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32f7x_1024
       - stm32f7xtcm_1024
@@ -3231,21 +3428,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537395200
+            start: 0x20000000
+            end: 0x20080000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 136314880
+            start: 0x8000000
+            end: 0x8200000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32f7x_2048
       - stm32f7x_2048dual
@@ -3265,21 +3464,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537395200
+            start: 0x20000000
+            end: 0x20080000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 135266304
+            start: 0x8000000
+            end: 0x8100000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32f7x_1024
       - stm32f7xtcm_1024
@@ -3299,21 +3500,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537395200
+            start: 0x20000000
+            end: 0x20080000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 136314880
+            start: 0x8000000
+            end: 0x8200000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32f7x_2048
       - stm32f7x_2048dual
@@ -3333,21 +3536,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537395200
+            start: 0x20000000
+            end: 0x20080000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 135266304
+            start: 0x8000000
+            end: 0x8100000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32f7x_1024
       - stm32f7xtcm_1024
@@ -3367,21 +3572,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537395200
+            start: 0x20000000
+            end: 0x20080000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 136314880
+            start: 0x8000000
+            end: 0x8200000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32f7x_2048
       - stm32f7x_2048dual
@@ -3401,21 +3608,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537395200
+            start: 0x20000000
+            end: 0x20080000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 136314880
+            start: 0x8000000
+            end: 0x8200000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32f7x_2048
       - stm32f7x_2048dual
@@ -3435,21 +3644,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537395200
+            start: 0x20000000
+            end: 0x20080000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 136314880
+            start: 0x8000000
+            end: 0x8200000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32f7x_2048
       - stm32f7x_2048dual
@@ -3469,21 +3680,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537395200
+            start: 0x20000000
+            end: 0x20080000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 136314880
+            start: 0x8000000
+            end: 0x8200000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32f7x_2048
       - stm32f7x_2048dual
@@ -3503,21 +3716,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537395200
+            start: 0x20000000
+            end: 0x20080000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 136314880
+            start: 0x8000000
+            end: 0x8200000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32f7x_2048
       - stm32f7x_2048dual
@@ -3537,21 +3752,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537395200
+            start: 0x20000000
+            end: 0x20080000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 136314880
+            start: 0x8000000
+            end: 0x8200000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32f7x_2048
       - stm32f7x_2048dual
@@ -3571,21 +3788,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537395200
+            start: 0x20000000
+            end: 0x20080000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 136314880
+            start: 0x8000000
+            end: 0x8200000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32f7x_2048
       - stm32f7x_2048dual
@@ -3605,21 +3824,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537395200
+            start: 0x20000000
+            end: 0x20080000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 136314880
+            start: 0x8000000
+            end: 0x8200000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32f7x_2048
       - stm32f7x_2048dual
@@ -3639,21 +3860,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537395200
+            start: 0x20000000
+            end: 0x20080000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 136314880
+            start: 0x8000000
+            end: 0x8200000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32f7x_2048
       - stm32f7x_2048dual
@@ -3673,21 +3896,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537395200
+            start: 0x20000000
+            end: 0x20080000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 136314880
+            start: 0x8000000
+            end: 0x8200000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32f7x_2048
       - stm32f7x_2048dual
@@ -3707,21 +3932,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537395200
+            start: 0x20000000
+            end: 0x20080000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 136314880
+            start: 0x8000000
+            end: 0x8200000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32f7x_2048
       - stm32f7x_2048dual
@@ -3741,21 +3968,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537395200
+            start: 0x20000000
+            end: 0x20080000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 136314880
+            start: 0x8000000
+            end: 0x8200000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32f7x_2048
       - stm32f7x_2048dual
@@ -3770,642 +3999,642 @@ variants:
       - stm32f769i_qspi_macronix
       - stm32f723e_qspi_macronix
 flash_algorithms:
-  stm32f7x_64_axi:
-    name: stm32f7x_64_axi
+  - name: stm32f7x_64_axi
     description: STM32F7xx 64k AXI Flash
-    cores: [main]
+    cores:
+      - main
     default: true
     instructions: v/NPj3BHwPOEMAgoAtMEIQHr0ABwR1RIUkkBYFNJAWAAIQAfAWBQSAgwAWhB8PABAWBNSBAwAGiABgjUTEhF8lVRAWAGIUFgQPb/cYFgACBwR0VIDDABaEHwAEEBYAAgcEcQtUBMDDQgaEDwBAAgYCBoQPSAMCBgPUkiH0r2qiAA4AhgE2jbA/vUIGgg8AQAIGAAIBC9ELX/97X/MkkIMQpoQvDwAgpgAiIMHSJgImh4IwPqwAACQyJgIGhA9IAwIGArSkr2qiAA4BBgC2jbA/vUIGgg8AIAIGAIaBDw8AAE0AhoQPDwAAhgASAQvfC1HUzJHCHwAwEINCNoQ/DwAyNgACMlHStgQPIBLBhPSvaqJiLgK2hD6gwDK2DA8xMOE2hO8ABuzvgAML/zT48A4D5gI2jbA/vUK2gj8AEDK2AjaBPw8A8F0CBoQPDwACBgASDwvQAdCR8SHQAp2tEAIPC9AAAjAWdFBDwCQKuJ780AMABAAAAAAA==
-    pc_init: 23
-    pc_uninit: 83
-    pc_program_page: 239
-    pc_erase_sector: 151
-    pc_erase_all: 99
-    data_section_offset: 372
+    pc_init: 0x17
+    pc_uninit: 0x53
+    pc_program_page: 0xef
+    pc_erase_sector: 0x97
+    pc_erase_all: 0x63
+    data_section_offset: 0x174
     flash_properties:
       address_range:
-        start: 134217728
-        end: 134283264
-      page_size: 1024
-      erased_byte_value: 255
-      program_page_timeout: 1000
-      erase_sector_timeout: 6000
+        start: 0x8000000
+        end: 0x8010000
+      page_size: 0x400
+      erased_byte_value: 0xff
+      program_page_timeout: 0x3e8
+      erase_sector_timeout: 0x1770
       sectors:
-        - size: 16384
-          address: 0
-  stm32f7x_64_tcm:
-    name: stm32f7x_64_tcm
+        - size: 0x4000
+          address: 0x0
+  - name: stm32f7x_64_tcm
     description: STM32F7xx 64k TCM Flash
-    cores: [main]
+    cores:
+      - main
     default: false
     instructions: v/NPj3BHwPOEMAgoAtMEIQHr0ABwR1RIUkkBYFNJAWAAIQAfAWBQSAgwAWhB8PABAWBNSBAwAGiABgjUTEhF8lVRAWAGIUFgQPb/cYFgACBwR0VIDDABaEHwAEEBYAAgcEcQtUBMDDQgaEDwBAAgYCBoQPSAMCBgPUkiH0r2qiAA4AhgE2jbA/vUIGgg8AQAIGAAIBC9ELX/97X/MkkIMQpoQvDwAgpgAiIMHSJgImh4IwPqwAACQyJgIGhA9IAwIGArSkr2qiAA4BBgC2jbA/vUIGgg8AIAIGAIaBDw8AAE0AhoQPDwAAhgASAQvfC1HUzJHCHwAwEINCNoQ/DwAyNgACMlHStgQPIBLBhPSvaqJiLgK2hD6gwDK2DA8xMOE2hO8ABuzvgAML/zT48A4D5gI2jbA/vUK2gj8AEDK2AjaBPw8A8F0CBoQPDwACBgASDwvQAdCR8SHQAp2tEAIPC9AAAjAWdFBDwCQKuJ780AMABAAAAAAA==
-    pc_init: 23
-    pc_uninit: 83
-    pc_program_page: 239
-    pc_erase_sector: 151
-    pc_erase_all: 99
-    data_section_offset: 372
+    pc_init: 0x17
+    pc_uninit: 0x53
+    pc_program_page: 0xef
+    pc_erase_sector: 0x97
+    pc_erase_all: 0x63
+    data_section_offset: 0x174
     flash_properties:
       address_range:
-        start: 2097152
-        end: 2162688
-      page_size: 1024
-      erased_byte_value: 255
-      program_page_timeout: 100
-      erase_sector_timeout: 6000
+        start: 0x200000
+        end: 0x210000
+      page_size: 0x400
+      erased_byte_value: 0xff
+      program_page_timeout: 0x64
+      erase_sector_timeout: 0x1770
       sectors:
-        - size: 16384
-          address: 0
-  stm32f7x2_512:
-    name: stm32f7x2_512
+        - size: 0x4000
+          address: 0x0
+  - name: stm32f7x2_512
     description: STM32F72x/3x 512KB Flash
-    cores: [main]
+    cores:
+      - main
     default: true
     instructions: v/NPj3BHAAMADiAoAtNACQAdcEcQKALTAAnAHHBHgAhwR0lIR0lBYEhJQWAAIQFgwWjwIhFDwWBAaYAGBtRFSENJAWAGIUFgQ0mBYAAgcEc9SAFpQgURQwFhACBwRxC1OUgBaQQkIUMBYQFpogMRQwFhOkk3SgDgEWDDaNsD+9QBaaFDAWEAIBC9MLX/97v/LUnKaPAjGkPKYAIkDGEKacAGAA4CQwphCGniAxBDCGG/80+PKUgnSgDgEGDNaO0D+9QIaaBDCGHIaAAGAA8D0MhoGEPIYAEgML3wtRpMyRyJCOVoiQDwIx1D5WAAIyNhASf/BhlNIeAjaRlOM0MjYcYC9gr2GRNoM2C/80+PEU4A4DVg42jbA/vUI2lbCFsAI2HjaBsGGw8F0OBo8CEIQ+BgASDwvQAdCR8SHQAp29EAIPC9IwFnRQA8AkCrie/NVVUAAAAwAED/DwAAqqoAAAECAAAAAAAA
-    pc_init: 35
-    pc_uninit: 81
-    pc_program_page: 219
-    pc_erase_sector: 139
-    pc_erase_all: 95
-    data_section_offset: 356
+    pc_init: 0x23
+    pc_uninit: 0x51
+    pc_program_page: 0xdb
+    pc_erase_sector: 0x8b
+    pc_erase_all: 0x5f
+    data_section_offset: 0x164
     flash_properties:
       address_range:
-        start: 134217728
-        end: 134742016
-      page_size: 1024
-      erased_byte_value: 255
-      program_page_timeout: 1000
-      erase_sector_timeout: 6000
+        start: 0x8000000
+        end: 0x8080000
+      page_size: 0x400
+      erased_byte_value: 0xff
+      program_page_timeout: 0x3e8
+      erase_sector_timeout: 0x1770
       sectors:
-        - size: 16384
-          address: 0
-        - size: 65536
-          address: 65536
-        - size: 131072
-          address: 131072
-  stm32f7x2tcm_512:
-    name: stm32f7x2tcm_512
+        - size: 0x4000
+          address: 0x0
+        - size: 0x10000
+          address: 0x10000
+        - size: 0x20000
+          address: 0x20000
+  - name: stm32f7x2tcm_512
     description: STM32F72x/3x TCM 512KB Flash
-    cores: [main]
+    cores:
+      - main
     default: true
     instructions: v/NPj3BHAAMADiAoAtNACQAdcEcQKALTAAnAHHBHgAhwR0lIR0lBYEhJQWAAIQFgwWjwIhFDwWBAaYAGBtRFSENJAWAGIUFgQ0mBYAAgcEc9SAFpQgURQwFhACBwRxC1OUgBaQQkIUMBYQFpogMRQwFhOkk3SgDgEWDDaNsD+9QBaaFDAWEAIBC9MLX/97v/LUnKaPAjGkPKYAIkDGEKacAGAA4CQwphCGniAxBDCGG/80+PKUgnSgDgEGDNaO0D+9QIaaBDCGHIaAAGAA8D0MhoGEPIYAEgML3wtRpMyRyJCOVoiQDwIx1D5WAAIyNhASf/BhlNIeAjaRlOM0MjYcYC9gr2GRNoM2C/80+PEU4A4DVg42jbA/vUI2lbCFsAI2HjaBsGGw8F0OBo8CEIQ+BgASDwvQAdCR8SHQAp29EAIPC9IwFnRQA8AkCrie/NVVUAAAAwAED/DwAAqqoAAAECAAAAAAAA
-    pc_init: 35
-    pc_uninit: 81
-    pc_program_page: 219
-    pc_erase_sector: 139
-    pc_erase_all: 95
-    data_section_offset: 356
+    pc_init: 0x23
+    pc_uninit: 0x51
+    pc_program_page: 0xdb
+    pc_erase_sector: 0x8b
+    pc_erase_all: 0x5f
+    data_section_offset: 0x164
     flash_properties:
       address_range:
-        start: 2097152
-        end: 2621440
-      page_size: 1024
-      erased_byte_value: 255
-      program_page_timeout: 1000
-      erase_sector_timeout: 6000
+        start: 0x200000
+        end: 0x280000
+      page_size: 0x400
+      erased_byte_value: 0xff
+      program_page_timeout: 0x3e8
+      erase_sector_timeout: 0x1770
       sectors:
-        - size: 16384
-          address: 0
-        - size: 65536
-          address: 65536
-        - size: 131072
-          address: 131072
-  stm32f72x_73x_opt:
-    name: stm32f72x_73x_opt
+        - size: 0x4000
+          address: 0x0
+        - size: 0x10000
+          address: 0x10000
+        - size: 0x20000
+          address: 0x20000
+  - name: stm32f72x_73x_opt
     description: STM32F72x/3x Flash Options
-    cores: [main]
+    cores:
+      - main
     default: false
     instructions: v/NPj3BHQkhASYFgQUmBYMFo8CIRQ8FgQGmABgbUP0g9SQFgBiFBYD1JgWAAIHBHN0hBaQEiEUNBYQAgcEcQtTNIwWjwJCFDwWAAIcFhNUmBYTVJQWFBaQIiEUNBYb/zT48ySS1KAOARYMNo2wP71MFoCQYJDwTQwWghQ8FgASAQvQAgEL0AIHBHMLUKyiBIEmjFaPAkJUPFYCVNKkDCYYNhJEoRQEFhQWkCIhFDQWG/80+PHUkZSgDgEWDDaNsD+9TBaAkGCQ8E0MFoIUPBYAEgML0AIDC98LUNThRoU2gUTZJod2ksQC9AvEID0bRpnEIB0EAc8L0NS/RpGkAcQKJCAdCAHPC9QBjwvTsqGQgAPAJAf25dTFVVAAAAMABA/w8AAIAAQAD8qv//qqoAAP8AAID8///AAAAAAA==
-    pc_init: 7
-    pc_uninit: 49
-    pc_program_page: 139
-    pc_erase_sector: 135
-    pc_erase_all: 63
-    data_section_offset: 312
+    pc_init: 0x7
+    pc_uninit: 0x31
+    pc_program_page: 0x8b
+    pc_erase_sector: 0x87
+    pc_erase_all: 0x3f
+    data_section_offset: 0x138
     flash_properties:
       address_range:
-        start: 536805376
-        end: 536805388
-      page_size: 12
-      erased_byte_value: 255
-      program_page_timeout: 3000
-      erase_sector_timeout: 3000
+        start: 0x1fff0000
+        end: 0x1fff000c
+      page_size: 0xc
+      erased_byte_value: 0xff
+      program_page_timeout: 0xbb8
+      erase_sector_timeout: 0xbb8
       sectors:
-        - size: 12
-          address: 0
-  stm32f7x2_otp:
-    name: stm32f7x2_otp
+        - size: 0xc
+          address: 0x0
+  - name: stm32f7x2_otp
     description: STM32F72x/3x Flash OTP
-    cores: [main]
+    cores:
+      - main
     default: false
     instructions: v/NPj3BHK0gpSUFgKklBYAAhAWDBaPAiEUPBYEBpgAYG1CdIJUkBYAYhQWAlSYFgACBwRx9IAWlCBRFDAWEAIHBHACBwR/C1GkzJHIkI5WiJAPAjHUPlYAAjI2EaTxtNIeAjaRpOM0MjYUYFdg32GRNoM2C/80+PEU4A4DVg42jbA/vUI2lbCFsAI2HjaBsGGw8F0OBo8CEIQ+BgASDwvQAdCR8SHQAp29EAIPC9AAAjAWdFADwCQKuJ781VVQAAADAAQP8PAAAAePAfqqoAAAECAAAAAAAA
-    pc_init: 7
-    pc_uninit: 53
-    pc_program_page: 71
-    pc_erase_sector: 67
-    pc_erase_all: ~
-    data_section_offset: 212
+    pc_init: 0x7
+    pc_uninit: 0x35
+    pc_program_page: 0x47
+    pc_erase_sector: 0x43
+    pc_erase_all: null
+    data_section_offset: 0xd4
     flash_properties:
       address_range:
-        start: 535853056
-        end: 535853584
-      page_size: 528
-      erased_byte_value: 255
-      program_page_timeout: 3000
-      erase_sector_timeout: 3000
+        start: 0x1ff07800
+        end: 0x1ff07a10
+      page_size: 0x210
+      erased_byte_value: 0xff
+      program_page_timeout: 0xbb8
+      erase_sector_timeout: 0xbb8
       sectors:
-        - size: 528
-          address: 0
-  stm32f75x_64_axi:
-    name: stm32f75x_64_axi
+        - size: 0x210
+          address: 0x0
+  - name: stm32f75x_64_axi
     description: STM32F75x 64k TCM Flash
-    cores: [main]
+    cores:
+      - main
     default: true
     instructions: v/NPj3BHwPOEMAgoAtMEIQHr0ABwR1RIUkkBYFNJAWAAIQAfAWBQSAgwAWhB8PABAWBNSBAwAGiABgjUTEhF8lVRAWAGIUFgQPb/cYFgACBwR0VIDDABaEHwAEEBYAAgcEcQtUBMDDQgaEDwBAAgYCBoQPSAMCBgPUkiH0r2qiAA4AhgE2jbA/vUIGgg8AQAIGAAIBC9ELX/97X/MkkIMQpoQvDwAgpgAiIMHSJgImh4IwPqwAACQyJgIGhA9IAwIGArSkr2qiAA4BBgC2jbA/vUIGgg8AIAIGAIaBDw8AAE0AhoQPDwAAhgASAQvfC1HUzJHCHwAwEINCNoQ/DwAyNgACMlHStgQPIBLBhPSvaqJiLgK2hD6gwDK2DA8xMOE2hO8ABuzvgAML/zT48A4D5gI2jbA/vUK2gj8AEDK2AjaBPw8A8F0CBoQPDwACBgASDwvQAdCR8SHQAp2tEAIPC9AAAjAWdFBDwCQKuJ780AMABAAAAAAA==
-    pc_init: 23
-    pc_uninit: 83
-    pc_program_page: 239
-    pc_erase_sector: 151
-    pc_erase_all: 99
-    data_section_offset: 372
+    pc_init: 0x17
+    pc_uninit: 0x53
+    pc_program_page: 0xef
+    pc_erase_sector: 0x97
+    pc_erase_all: 0x63
+    data_section_offset: 0x174
     flash_properties:
       address_range:
-        start: 2097152
-        end: 2162688
-      page_size: 1024
-      erased_byte_value: 255
-      program_page_timeout: 100
-      erase_sector_timeout: 6000
+        start: 0x200000
+        end: 0x210000
+      page_size: 0x400
+      erased_byte_value: 0xff
+      program_page_timeout: 0x64
+      erase_sector_timeout: 0x1770
       sectors:
-        - size: 32768
-          address: 0
-  stm32f75x_64_tcm:
-    name: stm32f75x_64_tcm
+        - size: 0x8000
+          address: 0x0
+  - name: stm32f75x_64_tcm
     description: STM32F75x 64k TCM Flash
-    cores: [main]
+    cores:
+      - main
     default: false
     instructions: v/NPj3BHwPOEMAgoAtMEIQHr0ABwR1RIUkkBYFNJAWAAIQAfAWBQSAgwAWhB8PABAWBNSBAwAGiABgjUTEhF8lVRAWAGIUFgQPb/cYFgACBwR0VIDDABaEHwAEEBYAAgcEcQtUBMDDQgaEDwBAAgYCBoQPSAMCBgPUkiH0r2qiAA4AhgE2jbA/vUIGgg8AQAIGAAIBC9ELX/97X/MkkIMQpoQvDwAgpgAiIMHSJgImh4IwPqwAACQyJgIGhA9IAwIGArSkr2qiAA4BBgC2jbA/vUIGgg8AIAIGAIaBDw8AAE0AhoQPDwAAhgASAQvfC1HUzJHCHwAwEINCNoQ/DwAyNgACMlHStgQPIBLBhPSvaqJiLgK2hD6gwDK2DA8xMOE2hO8ABuzvgAML/zT48A4D5gI2jbA/vUK2gj8AEDK2AjaBPw8A8F0CBoQPDwACBgASDwvQAdCR8SHQAp2tEAIPC9AAAjAWdFBDwCQKuJ780AMABAAAAAAA==
-    pc_init: 23
-    pc_uninit: 83
-    pc_program_page: 239
-    pc_erase_sector: 151
-    pc_erase_all: 99
-    data_section_offset: 372
+    pc_init: 0x17
+    pc_uninit: 0x53
+    pc_program_page: 0xef
+    pc_erase_sector: 0x97
+    pc_erase_all: 0x63
+    data_section_offset: 0x174
     flash_properties:
       address_range:
-        start: 2097152
-        end: 2162688
-      page_size: 1024
-      erased_byte_value: 255
-      program_page_timeout: 100
-      erase_sector_timeout: 6000
+        start: 0x200000
+        end: 0x210000
+      page_size: 0x400
+      erased_byte_value: 0xff
+      program_page_timeout: 0x64
+      erase_sector_timeout: 0x1770
       sectors:
-        - size: 32768
-          address: 0
-  stm32f74x_75x_opt:
-    name: stm32f74x_75x_opt
+        - size: 0x8000
+          address: 0x0
+  - name: stm32f74x_75x_opt
     description: STM32F74x/5x Flash Options
-    cores: [main]
+    cores:
+      - main
     default: false
     instructions: v/NPj3BHO0g5SYFgOkmBYMFo8CIRQ8FgQGmABgbUOEg2SQFgBiFBYDZJgWAAIHBHMEhBaQEiEUNBYQAgcEcQtSxIwWjwJCFDwWAvSYFhL0lBYUFpAiIRQ0Fhv/NPjyxJJ0oA4BFgw2jbA/vUwWgJBgkPBNDBaCFDwWABIBC9ACAQvQAgcEcQtRpIBsrDaPAkI0PDYIJhH0oRQEFhQWkCIhFDQWG/80+PGUkVSgDgEWDDaNsD+9TBaAkGCQ8E0MFoIUPBYAEgEL0AIBC9cLUJTBNoEE5SaGVpM0A1QKtCA9GjaZNCAdBAHHC9QBhwvQAAOyoZCAA8AkB/bl1MVVUAAAAwAED/DwAAgABAAPyq//+qqgAA/P//wAAAAAA=
-    pc_init: 7
-    pc_uninit: 49
-    pc_program_page: 135
-    pc_erase_sector: 131
-    pc_erase_all: 63
-    data_section_offset: 280
+    pc_init: 0x7
+    pc_uninit: 0x31
+    pc_program_page: 0x87
+    pc_erase_sector: 0x83
+    pc_erase_all: 0x3f
+    data_section_offset: 0x118
     flash_properties:
       address_range:
-        start: 536805376
-        end: 536805384
-      page_size: 8
-      erased_byte_value: 255
-      program_page_timeout: 3000
-      erase_sector_timeout: 3000
+        start: 0x1fff0000
+        end: 0x1fff0008
+      page_size: 0x8
+      erased_byte_value: 0xff
+      program_page_timeout: 0xbb8
+      erase_sector_timeout: 0xbb8
       sectors:
-        - size: 8
-          address: 0
-  stm32f7x_1024:
-    name: stm32f7x_1024
+        - size: 0x8
+          address: 0x0
+  - name: stm32f7x_1024
     description: STM32F7x 1MB Flash
-    cores: [main]
+    cores:
+      - main
     default: true
     instructions: v/NPj3BHwALADUAoAtOACQAdcEcgKALTQAnAHHBHwAhwR0lIR0lBYEhJQWAAIQFgwWjwIhFDwWBAaYAGBtRFSENJAWAGIUFgQ0mBYAAgcEc9SAFpQgURQwFhACBwRxC1OUgBaQQkIUMBYQFpogMRQwFhOkk3SgDgEWDDaNsD+9QBaaFDAWEAIBC9MLX/97v/LUnKaPAjGkPKYAIkDGEKacAGAA4CQwphCGniAxBDCGG/80+PKUgnSgDgEGDNaO0D+9QIaaBDCGHIaAAGAA8D0MhoGEPIYAEgML3wtRpMyRyJCOVoiQDwIx1D5WAAIyNhASf/BhlNIeAjaRlOM0MjYcYC9gr2GRNoM2C/80+PEU4A4DVg42jbA/vUI2lbCFsAI2HjaBsGGw8F0OBo8CEIQ+BgASDwvQAdCR8SHQAp29EAIPC9IwFnRQA8AkCrie/NVVUAAAAwAED/DwAAqqoAAAECAAAAAAAA
-    pc_init: 35
-    pc_uninit: 81
-    pc_program_page: 219
-    pc_erase_sector: 139
-    pc_erase_all: 95
-    data_section_offset: 356
+    pc_init: 0x23
+    pc_uninit: 0x51
+    pc_program_page: 0xdb
+    pc_erase_sector: 0x8b
+    pc_erase_all: 0x5f
+    data_section_offset: 0x164
     flash_properties:
       address_range:
-        start: 134217728
-        end: 135266304
-      page_size: 1024
-      erased_byte_value: 255
-      program_page_timeout: 1000
-      erase_sector_timeout: 6000
+        start: 0x8000000
+        end: 0x8100000
+      page_size: 0x400
+      erased_byte_value: 0xff
+      program_page_timeout: 0x3e8
+      erase_sector_timeout: 0x1770
       sectors:
-        - size: 32768
-          address: 0
-        - size: 131072
-          address: 131072
-        - size: 262144
-          address: 262144
-  stm32f7xtcm_1024:
-    name: stm32f7xtcm_1024
+        - size: 0x8000
+          address: 0x0
+        - size: 0x20000
+          address: 0x20000
+        - size: 0x40000
+          address: 0x40000
+  - name: stm32f7xtcm_1024
     description: STM32F7x TCM 1MB Flash
-    cores: [main]
+    cores:
+      - main
     default: false
     instructions: v/NPj3BHwALADUAoAtOACQAdcEcgKALTQAnAHHBHwAhwR0lIR0lBYEhJQWAAIQFgwWjwIhFDwWBAaYAGBtRFSENJAWAGIUFgQ0mBYAAgcEc9SAFpQgURQwFhACBwRxC1OUgBaQQkIUMBYQFpogMRQwFhOkk3SgDgEWDDaNsD+9QBaaFDAWEAIBC9MLX/97v/LUnKaPAjGkPKYAIkDGEKacAGAA4CQwphCGniAxBDCGG/80+PKUgnSgDgEGDNaO0D+9QIaaBDCGHIaAAGAA8D0MhoGEPIYAEgML3wtRpMyRyJCOVoiQDwIx1D5WAAIyNhASf/BhlNIeAjaRlOM0MjYcYC9gr2GRNoM2C/80+PEU4A4DVg42jbA/vUI2lbCFsAI2HjaBsGGw8F0OBo8CEIQ+BgASDwvQAdCR8SHQAp29EAIPC9IwFnRQA8AkCrie/NVVUAAAAwAED/DwAAqqoAAAECAAAAAAAA
-    pc_init: 35
-    pc_uninit: 81
-    pc_program_page: 219
-    pc_erase_sector: 139
-    pc_erase_all: 95
-    data_section_offset: 356
+    pc_init: 0x23
+    pc_uninit: 0x51
+    pc_program_page: 0xdb
+    pc_erase_sector: 0x8b
+    pc_erase_all: 0x5f
+    data_section_offset: 0x164
     flash_properties:
       address_range:
-        start: 2097152
-        end: 3145728
-      page_size: 1024
-      erased_byte_value: 255
-      program_page_timeout: 1000
-      erase_sector_timeout: 6000
+        start: 0x200000
+        end: 0x300000
+      page_size: 0x400
+      erased_byte_value: 0xff
+      program_page_timeout: 0x3e8
+      erase_sector_timeout: 0x1770
       sectors:
-        - size: 32768
-          address: 0
-        - size: 131072
-          address: 131072
-        - size: 262144
-          address: 262144
-  stm32f7x_1024dual:
-    name: stm32f7x_1024dual
+        - size: 0x8000
+          address: 0x0
+        - size: 0x20000
+          address: 0x20000
+        - size: 0x40000
+          address: 0x40000
+  - name: stm32f7x_1024dual
     description: STM32F7x dual bank 1MB Flash
-    cores: [main]
+    cores:
+      - main
     default: true
     instructions: v/NPj3BHAUZAA0AOICgC00AJAB0F4BAoAtMACcAcAOCACAkDAdUQIQhDcEdLSEpJQWBLSUFgACEBYMFo8CIRQ8FgQGmABgbUR0hGSQFgBiFBYEZJgWAAIHBHQEgBaUIFEUMBYQAgcEcQtTxIAWkEJCFDAWEBaWIDEUMBYQFpUgARQwFhOkk4SgDgEWDDaNsD+9QBaaFDAWEAIBC9MLX/97L/LknKaPAjGkPKYAIkDGEKacAGAA4CQwphCGniAxBDCGG/80+PKkgnSgDgEGDNaO0D+9QIaaBDCGHIaAAGAA8D0MhoGEPIYAEgML3wtRtMyRyJCOVoiQDwIx1D5WAAIyNhASf/BhpNIeAjaRlOM0MjYcYC9gr2GRNoM2C/80+PEU4A4DVg42jbA/vUI2lbCFsAI2HjaBsGGw8F0OBo8CEIQ+BgASDwvQAdCR8SHQAp29EAIPC9AAAjAWdFADwCQKuJ781VVQAAADAAQP8PAACqqgAAAQIAAAAAAAA=
-    pc_init: 45
-    pc_uninit: 91
-    pc_program_page: 237
-    pc_erase_sector: 157
-    pc_erase_all: 105
-    data_section_offset: 376
+    pc_init: 0x2d
+    pc_uninit: 0x5b
+    pc_program_page: 0xed
+    pc_erase_sector: 0x9d
+    pc_erase_all: 0x69
+    data_section_offset: 0x178
     flash_properties:
       address_range:
-        start: 134217728
-        end: 135266304
-      page_size: 1024
-      erased_byte_value: 255
-      program_page_timeout: 1000
-      erase_sector_timeout: 6000
+        start: 0x8000000
+        end: 0x8100000
+      page_size: 0x400
+      erased_byte_value: 0xff
+      program_page_timeout: 0x3e8
+      erase_sector_timeout: 0x1770
       sectors:
-        - size: 16384
-          address: 0
-        - size: 65536
-          address: 65536
-        - size: 131072
-          address: 131072
-        - size: 16384
-          address: 524288
-        - size: 65536
-          address: 589824
-        - size: 131072
-          address: 655360
-  stm32f7xtcm_1024dual:
-    name: stm32f7xtcm_1024dual
+        - size: 0x4000
+          address: 0x0
+        - size: 0x10000
+          address: 0x10000
+        - size: 0x20000
+          address: 0x20000
+        - size: 0x4000
+          address: 0x80000
+        - size: 0x10000
+          address: 0x90000
+        - size: 0x20000
+          address: 0xa0000
+  - name: stm32f7xtcm_1024dual
     description: STM32F7x TCM dual bank 1MB Flash
-    cores: [main]
+    cores:
+      - main
     default: false
     instructions: v/NPj3BHAUZAA0AOICgC00AJAB0F4BAoAtMACcAcAOCACAkDAdUQIQhDcEdLSEpJQWBLSUFgACEBYMFo8CIRQ8FgQGmABgbUR0hGSQFgBiFBYEZJgWAAIHBHQEgBaUIFEUMBYQAgcEcQtTxIAWkEJCFDAWEBaWIDEUMBYQFpUgARQwFhOkk4SgDgEWDDaNsD+9QBaaFDAWEAIBC9MLX/97L/LknKaPAjGkPKYAIkDGEKacAGAA4CQwphCGniAxBDCGG/80+PKkgnSgDgEGDNaO0D+9QIaaBDCGHIaAAGAA8D0MhoGEPIYAEgML3wtRtMyRyJCOVoiQDwIx1D5WAAIyNhASf/BhpNIeAjaRlOM0MjYcYC9gr2GRNoM2C/80+PEU4A4DVg42jbA/vUI2lbCFsAI2HjaBsGGw8F0OBo8CEIQ+BgASDwvQAdCR8SHQAp29EAIPC9AAAjAWdFADwCQKuJ781VVQAAADAAQP8PAACqqgAAAQIAAAAAAAA=
-    pc_init: 45
-    pc_uninit: 91
-    pc_program_page: 237
-    pc_erase_sector: 157
-    pc_erase_all: 105
-    data_section_offset: 376
+    pc_init: 0x2d
+    pc_uninit: 0x5b
+    pc_program_page: 0xed
+    pc_erase_sector: 0x9d
+    pc_erase_all: 0x69
+    data_section_offset: 0x178
     flash_properties:
       address_range:
-        start: 2097152
-        end: 3145728
-      page_size: 1024
-      erased_byte_value: 255
-      program_page_timeout: 1000
-      erase_sector_timeout: 6000
+        start: 0x200000
+        end: 0x300000
+      page_size: 0x400
+      erased_byte_value: 0xff
+      program_page_timeout: 0x3e8
+      erase_sector_timeout: 0x1770
       sectors:
-        - size: 16384
-          address: 0
-        - size: 65536
-          address: 65536
-        - size: 131072
-          address: 131072
-        - size: 16384
-          address: 524288
-        - size: 65536
-          address: 589824
-        - size: 131072
-          address: 655360
-  stm32f7x_2048:
-    name: stm32f7x_2048
+        - size: 0x4000
+          address: 0x0
+        - size: 0x10000
+          address: 0x10000
+        - size: 0x20000
+          address: 0x20000
+        - size: 0x4000
+          address: 0x80000
+        - size: 0x10000
+          address: 0x90000
+        - size: 0x20000
+          address: 0xa0000
+  - name: stm32f7x_2048
     description: STM32F7x 2MB Flash
-    cores: [main]
+    cores:
+      - main
     default: true
     instructions: v/NPj3BHwALADUAoAtOACQAdcEcgKALTQAnAHHBHwAhwR0lIR0lBYEhJQWAAIQFgwWjwIhFDwWBAaYAGBtRFSENJAWAGIUFgQ0mBYAAgcEc9SAFpQgURQwFhACBwRxC1OUgBaQQkIUMBYQFpogMRQwFhOkk3SgDgEWDDaNsD+9QBaaFDAWEAIBC9MLX/97v/LUnKaPAjGkPKYAIkDGEKacAGAA4CQwphCGniAxBDCGG/80+PKUgnSgDgEGDNaO0D+9QIaaBDCGHIaAAGAA8D0MhoGEPIYAEgML3wtRpMyRyJCOVoiQDwIx1D5WAAIyNhASf/BhlNIeAjaRlOM0MjYcYC9gr2GRNoM2C/80+PEU4A4DVg42jbA/vUI2lbCFsAI2HjaBsGGw8F0OBo8CEIQ+BgASDwvQAdCR8SHQAp29EAIPC9IwFnRQA8AkCrie/NVVUAAAAwAED/DwAAqqoAAAECAAAAAAAA
-    pc_init: 35
-    pc_uninit: 81
-    pc_program_page: 219
-    pc_erase_sector: 139
-    pc_erase_all: 95
-    data_section_offset: 356
+    pc_init: 0x23
+    pc_uninit: 0x51
+    pc_program_page: 0xdb
+    pc_erase_sector: 0x8b
+    pc_erase_all: 0x5f
+    data_section_offset: 0x164
     flash_properties:
       address_range:
-        start: 134217728
-        end: 136314880
-      page_size: 1024
-      erased_byte_value: 255
-      program_page_timeout: 1000
-      erase_sector_timeout: 6000
+        start: 0x8000000
+        end: 0x8200000
+      page_size: 0x400
+      erased_byte_value: 0xff
+      program_page_timeout: 0x3e8
+      erase_sector_timeout: 0x1770
       sectors:
-        - size: 32768
-          address: 0
-        - size: 131072
-          address: 131072
-        - size: 262144
-          address: 262144
-  stm32f7x_2048dual:
-    name: stm32f7x_2048dual
+        - size: 0x8000
+          address: 0x0
+        - size: 0x20000
+          address: 0x20000
+        - size: 0x40000
+          address: 0x40000
+  - name: stm32f7x_2048dual
     description: STM32F7x dual bank 2MB Flash
-    cores: [main]
+    cores:
+      - main
     default: false
     instructions: v/NPj3BHAUYAAwAOICgC00AJAB0F4BAoAtMACcAcAOCACMkCAdUQIQhDcEdLSEpJQWBLSUFgACEBYMFo8CIRQ8FgQGmABgbUR0hGSQFgBiFBYEZJgWAAIHBHQEgBaUIFEUMBYQAgcEcQtTxIAWkEJCFDAWEBaWIDEUMBYQFpUgARQwFhOkk4SgDgEWDDaNsD+9QBaaFDAWEAIBC9MLX/97L/LknKaPAjGkPKYAIkDGEKacAGAA4CQwphCGniAxBDCGG/80+PKkgnSgDgEGDNaO0D+9QIaaBDCGHIaAAGAA8D0MhoGEPIYAEgML3wtRtMyRyJCOVoiQDwIx1D5WAAIyNhASf/BhpNIeAjaRlOM0MjYcYC9gr2GRNoM2C/80+PEU4A4DVg42jbA/vUI2lbCFsAI2HjaBsGGw8F0OBo8CEIQ+BgASDwvQAdCR8SHQAp29EAIPC9AAAjAWdFADwCQKuJ781VVQAAADAAQP8PAACqqgAAAQIAAAAAAAA=
-    pc_init: 45
-    pc_uninit: 91
-    pc_program_page: 237
-    pc_erase_sector: 157
-    pc_erase_all: 105
-    data_section_offset: 376
+    pc_init: 0x2d
+    pc_uninit: 0x5b
+    pc_program_page: 0xed
+    pc_erase_sector: 0x9d
+    pc_erase_all: 0x69
+    data_section_offset: 0x178
     flash_properties:
       address_range:
-        start: 134217728
-        end: 136314880
-      page_size: 1024
-      erased_byte_value: 255
-      program_page_timeout: 1000
-      erase_sector_timeout: 6000
+        start: 0x8000000
+        end: 0x8200000
+      page_size: 0x400
+      erased_byte_value: 0xff
+      program_page_timeout: 0x3e8
+      erase_sector_timeout: 0x1770
       sectors:
-        - size: 16384
-          address: 0
-        - size: 65536
-          address: 65536
-        - size: 131072
-          address: 131072
-        - size: 16384
-          address: 1048576
-        - size: 65536
-          address: 1114112
-        - size: 131072
-          address: 1179648
-  stm32f7xtcm_2048:
-    name: stm32f7xtcm_2048
+        - size: 0x4000
+          address: 0x0
+        - size: 0x10000
+          address: 0x10000
+        - size: 0x20000
+          address: 0x20000
+        - size: 0x4000
+          address: 0x100000
+        - size: 0x10000
+          address: 0x110000
+        - size: 0x20000
+          address: 0x120000
+  - name: stm32f7xtcm_2048
     description: STM32F7x TCM 2MB Flash
-    cores: [main]
+    cores:
+      - main
     default: true
     instructions: v/NPj3BHwALADUAoAtOACQAdcEcgKALTQAnAHHBHwAhwR0lIR0lBYEhJQWAAIQFgwWjwIhFDwWBAaYAGBtRFSENJAWAGIUFgQ0mBYAAgcEc9SAFpQgURQwFhACBwRxC1OUgBaQQkIUMBYQFpogMRQwFhOkk3SgDgEWDDaNsD+9QBaaFDAWEAIBC9MLX/97v/LUnKaPAjGkPKYAIkDGEKacAGAA4CQwphCGniAxBDCGG/80+PKUgnSgDgEGDNaO0D+9QIaaBDCGHIaAAGAA8D0MhoGEPIYAEgML3wtRpMyRyJCOVoiQDwIx1D5WAAIyNhASf/BhlNIeAjaRlOM0MjYcYC9gr2GRNoM2C/80+PEU4A4DVg42jbA/vUI2lbCFsAI2HjaBsGGw8F0OBo8CEIQ+BgASDwvQAdCR8SHQAp29EAIPC9IwFnRQA8AkCrie/NVVUAAAAwAED/DwAAqqoAAAECAAAAAAAA
-    pc_init: 35
-    pc_uninit: 81
-    pc_program_page: 219
-    pc_erase_sector: 139
-    pc_erase_all: 95
-    data_section_offset: 356
+    pc_init: 0x23
+    pc_uninit: 0x51
+    pc_program_page: 0xdb
+    pc_erase_sector: 0x8b
+    pc_erase_all: 0x5f
+    data_section_offset: 0x164
     flash_properties:
       address_range:
-        start: 2097152
-        end: 4194304
-      page_size: 1024
-      erased_byte_value: 255
-      program_page_timeout: 1000
-      erase_sector_timeout: 6000
+        start: 0x200000
+        end: 0x400000
+      page_size: 0x400
+      erased_byte_value: 0xff
+      program_page_timeout: 0x3e8
+      erase_sector_timeout: 0x1770
       sectors:
-        - size: 32768
-          address: 0
-        - size: 131072
-          address: 131072
-        - size: 262144
-          address: 262144
-  stm32f7xtcm_2048dual:
-    name: stm32f7xtcm_2048dual
+        - size: 0x8000
+          address: 0x0
+        - size: 0x20000
+          address: 0x20000
+        - size: 0x40000
+          address: 0x40000
+  - name: stm32f7xtcm_2048dual
     description: STM32F7x TCM dual bank 2MB Flash
-    cores: [main]
+    cores:
+      - main
     default: false
     instructions: v/NPj3BHAUYAAwAOICgC00AJAB0F4BAoAtMACcAcAOCACMkCAdUQIQhDcEdLSEpJQWBLSUFgACEBYMFo8CIRQ8FgQGmABgbUR0hGSQFgBiFBYEZJgWAAIHBHQEgBaUIFEUMBYQAgcEcQtTxIAWkEJCFDAWEBaWIDEUMBYQFpUgARQwFhOkk4SgDgEWDDaNsD+9QBaaFDAWEAIBC9MLX/97L/LknKaPAjGkPKYAIkDGEKacAGAA4CQwphCGniAxBDCGG/80+PKkgnSgDgEGDNaO0D+9QIaaBDCGHIaAAGAA8D0MhoGEPIYAEgML3wtRtMyRyJCOVoiQDwIx1D5WAAIyNhASf/BhpNIeAjaRlOM0MjYcYC9gr2GRNoM2C/80+PEU4A4DVg42jbA/vUI2lbCFsAI2HjaBsGGw8F0OBo8CEIQ+BgASDwvQAdCR8SHQAp29EAIPC9AAAjAWdFADwCQKuJ781VVQAAADAAQP8PAACqqgAAAQIAAAAAAAA=
-    pc_init: 45
-    pc_uninit: 91
-    pc_program_page: 237
-    pc_erase_sector: 157
-    pc_erase_all: 105
-    data_section_offset: 376
+    pc_init: 0x2d
+    pc_uninit: 0x5b
+    pc_program_page: 0xed
+    pc_erase_sector: 0x9d
+    pc_erase_all: 0x69
+    data_section_offset: 0x178
     flash_properties:
       address_range:
-        start: 2097152
-        end: 4194304
-      page_size: 1024
-      erased_byte_value: 255
-      program_page_timeout: 1000
-      erase_sector_timeout: 6000
+        start: 0x200000
+        end: 0x400000
+      page_size: 0x400
+      erased_byte_value: 0xff
+      program_page_timeout: 0x3e8
+      erase_sector_timeout: 0x1770
       sectors:
-        - size: 16384
-          address: 0
-        - size: 65536
-          address: 65536
-        - size: 131072
-          address: 131072
-        - size: 16384
-          address: 1048576
-        - size: 65536
-          address: 1114112
-        - size: 131072
-          address: 1179648
-  stm32f76x_77x_opt:
-    name: stm32f76x_77x_opt
+        - size: 0x4000
+          address: 0x0
+        - size: 0x10000
+          address: 0x10000
+        - size: 0x20000
+          address: 0x20000
+        - size: 0x4000
+          address: 0x100000
+        - size: 0x10000
+          address: 0x110000
+        - size: 0x20000
+          address: 0x120000
+  - name: stm32f76x_77x_opt
     description: STM32F76x/7x Flash Options
-    cores: [main]
+    cores:
+      - main
     default: false
     instructions: v/NPj3BHO0g5SYFgOkmBYMFo8CIRQ8FgQGmABgbUOEg2SQFgBiFBYDZJgWAAIHBHMEhBaQEiEUNBYQAgcEcQtSxIwWjwJCFDwWAvSYFhL0lBYUFpAiIRQ0Fhv/NPjyxJJ0oA4BFgw2jbA/vUwWgJBgkPBNDBaCFDwWABIBC9ACAQvQAgcEcQtRpIBsrDaPAkI0PDYIJhiQiJAEFhQWkCIhFDQWG/80+PGUkVSgDgEWDDaNsD+9TBaAkGCQ8E0MFoIUPBYAEgEL0AIBC9MLUTaFJonAgHS6QAXWmtCK0ArEID0Ztpk0IB0EAcML1AGDC9OyoZCAA8AkB/bl1MVVUAAAAwAED/DwAAgABAAPyq//+qqgAAAAAAAA==
-    pc_init: 7
-    pc_uninit: 49
-    pc_program_page: 135
-    pc_erase_sector: 131
-    pc_erase_all: 63
-    data_section_offset: 276
+    pc_init: 0x7
+    pc_uninit: 0x31
+    pc_program_page: 0x87
+    pc_erase_sector: 0x83
+    pc_erase_all: 0x3f
+    data_section_offset: 0x114
     flash_properties:
       address_range:
-        start: 536805376
-        end: 536805384
-      page_size: 8
-      erased_byte_value: 255
-      program_page_timeout: 3000
-      erase_sector_timeout: 3000
+        start: 0x1fff0000
+        end: 0x1fff0008
+      page_size: 0x8
+      erased_byte_value: 0xff
+      program_page_timeout: 0xbb8
+      erase_sector_timeout: 0xbb8
       sectors:
-        - size: 8
-          address: 0
-  stm32f7xx_otp:
-    name: stm32f7xx_otp
+        - size: 0x8
+          address: 0x0
+  - name: stm32f7xx_otp
     description: STM32F7xx Flash OTP
-    cores: [main]
+    cores:
+      - main
     default: false
     instructions: v/NPj3BHK0gpSUFgKklBYAAhAWDBaPAiEUPBYEBpgAYG1CdIJUkBYAYhQWAlSYFgACBwRx9IAWlCBRFDAWEAIHBHACBwR/C1GkzJHIkI5WiJAPAjHUPlYAAjI2EaTxtNIeAjaRpOM0MjYQYFNg32GRNoM2C/80+PEU4A4DVg42jbA/vUI2lbCFsAI2HjaBsGGw8F0OBo8CEIQ+BgASDwvQAdCR8SHQAp29EAIPC9AAAjAWdFADwCQKuJ781VVQAAADAAQP8PAAAA8PAfqqoAAAECAAAAAAAA
-    pc_init: 7
-    pc_uninit: 53
-    pc_program_page: 71
-    pc_erase_sector: 67
-    pc_erase_all: ~
-    data_section_offset: 212
+    pc_init: 0x7
+    pc_uninit: 0x35
+    pc_program_page: 0x47
+    pc_erase_sector: 0x43
+    pc_erase_all: null
+    data_section_offset: 0xd4
     flash_properties:
       address_range:
-        start: 535883776
-        end: 535884816
-      page_size: 1040
-      erased_byte_value: 255
-      program_page_timeout: 3000
-      erase_sector_timeout: 3000
+        start: 0x1ff0f000
+        end: 0x1ff0f410
+      page_size: 0x410
+      erased_byte_value: 0xff
+      program_page_timeout: 0xbb8
+      erase_sector_timeout: 0xbb8
       sectors:
-        - size: 1040
-          address: 0
-  stm32f7xx_qspi_disco:
-    name: stm32f7xx_qspi_disco
+        - size: 0x410
+          address: 0x0
+  - name: stm32f7xx_qspi_disco
     description: STM32F746G-DISCO_N25Q128A
-    cores: [main]
+    cores:
+      - main
     default: false
     instructions: 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
-    pc_init: 1993
-    pc_uninit: 2451
-    pc_program_page: 2471
-    pc_erase_sector: 2437
-    pc_erase_all: 2461
-    data_section_offset: 4672
+    pc_init: 0x7c9
+    pc_uninit: 0x993
+    pc_program_page: 0x9a7
+    pc_erase_sector: 0x985
+    pc_erase_all: 0x99d
+    data_section_offset: 0x1240
     flash_properties:
       address_range:
-        start: 2415919104
-        end: 2432696320
-      page_size: 8192
-      erased_byte_value: 255
-      program_page_timeout: 3000
-      erase_sector_timeout: 3000
+        start: 0x90000000
+        end: 0x91000000
+      page_size: 0x2000
+      erased_byte_value: 0xff
+      program_page_timeout: 0xbb8
+      erase_sector_timeout: 0xbb8
       sectors:
-        - size: 65536
-          address: 0
-  stm32f7xx_qspi_micron:
-    name: stm32f7xx_qspi_micron
+        - size: 0x10000
+          address: 0x0
+  - name: stm32f7xx_qspi_micron
     description: MT25QL512A_STM32756G-EVAL
-    cores: [main]
+    cores:
+      - main
     default: false
     instructions: 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
-    pc_init: 1953
-    pc_uninit: 2417
-    pc_program_page: 2437
-    pc_erase_sector: 2403
-    pc_erase_all: 2427
-    data_section_offset: 4572
+    pc_init: 0x7a1
+    pc_uninit: 0x971
+    pc_program_page: 0x985
+    pc_erase_sector: 0x963
+    pc_erase_all: 0x97b
+    data_section_offset: 0x11dc
     flash_properties:
       address_range:
-        start: 2415919104
-        end: 2483027968
-      page_size: 12288
-      erased_byte_value: 255
-      program_page_timeout: 3000
-      erase_sector_timeout: 3000
+        start: 0x90000000
+        end: 0x94000000
+      page_size: 0x3000
+      erased_byte_value: 0xff
+      program_page_timeout: 0xbb8
+      erase_sector_timeout: 0xbb8
       sectors:
-        - size: 65536
-          address: 0
-  stm32f77x_qspi_micron:
-    name: stm32f77x_qspi_micron
+        - size: 0x10000
+          address: 0x0
+  - name: stm32f77x_qspi_micron
     description: MT25QL512A_STM32769IG-EVAL
-    cores: [main]
+    cores:
+      - main
     default: false
     instructions: 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
-    pc_init: 1953
-    pc_uninit: 2457
-    pc_program_page: 2477
-    pc_erase_sector: 2443
-    pc_erase_all: 2467
-    data_section_offset: 4612
+    pc_init: 0x7a1
+    pc_uninit: 0x999
+    pc_program_page: 0x9ad
+    pc_erase_sector: 0x98b
+    pc_erase_all: 0x9a3
+    data_section_offset: 0x1204
     flash_properties:
       address_range:
-        start: 2415919104
-        end: 2483027968
-      page_size: 12288
-      erased_byte_value: 255
-      program_page_timeout: 3000
-      erase_sector_timeout: 3000
+        start: 0x90000000
+        end: 0x94000000
+      page_size: 0x3000
+      erased_byte_value: 0xff
+      program_page_timeout: 0xbb8
+      erase_sector_timeout: 0xbb8
       sectors:
-        - size: 65536
-          address: 0
-  stm32f7xx_nor_micron:
-    name: stm32f7xx_nor_micron
+        - size: 0x10000
+          address: 0x0
+  - name: stm32f7xx_nor_micron
     description: PC28F128M29EWxx_STM32756G-EVAL
-    cores: [main]
+    cores:
+      - main
     default: false
     instructions: ELUBiIZMwfOAE0xEIWABiCFgwfOAEppCDNATRokG9tUBiCFgwfOAEgGIIWDB84ARkUIB0QAgEL3wIQGAASAQvXdJCLVJREhgdkgBaEHweAEBYABodUl0SAhgCB1P8MwyAmBySXJIIDkIYHBJb/DwABg5CGBtSAAhHDgBYGtLbUgUOxhgbEgTAgNiQmJoSpYyAmBv8A8CgmBBYGZKSzLCYGZKGAoQYGVLAgQbHRpgY0tjSiA7GmBhS2JKGDsaYBofEWAbHWBKGmBgShBgX0pA9qogIDoQYF1KQPb/cBg6EGAQHwFgER1A8lVQCGBNSAgwAWhB8AEBAWAAaE/wIEBUSQFgVElBYG/wcEHA+AQRAWhB8AEBAWAAaACQACAIvQAgcEc/SBC0SESqIkFoofiqKr/zT49DaFUho/hUFb/zT49EaIAjpPiqOr/zT49DaKP4qiq/80+PQmii+FQVv/NPj0JoECGi+Koav/NPj0BoELxG5ytJMLRJRKojSmii+Ko6v/NPj0xoVSKk+FQlv/NPj01ogCSl+KpKv/NPj0xopPiqOr/zT49JaKH4VCW/80+PMCEBgL/zT48wvCHnLenwTRdPFUYGRgAkT/CqCE9ET/BVCk/woAsB8QEMHOB5aKH4qoq/80+PeWih+FSlv/NPj3loofiqur/zT48oiDCAv/NPjzBG//f8/hCxASC96PCNZBytHLYctOtcD9/TACD15wQAAAAwOAJAzADMzCAMAkAKqqqqBVVVVQAQAkAgFAJAqgoAqv8PAP9VBQBVIBgCQNiwEAA0CBEAAAAAAAAAAAAAAAAA
-    pc_init: 65
-    pc_uninit: 287
-    pc_program_page: 445
-    pc_erase_sector: 371
-    pc_erase_all: 291
-    data_section_offset: 600
+    pc_init: 0x41
+    pc_uninit: 0x11f
+    pc_program_page: 0x1bd
+    pc_erase_sector: 0x173
+    pc_erase_all: 0x123
+    data_section_offset: 0x258
     flash_properties:
       address_range:
-        start: 1610612736
-        end: 1627389952
-      page_size: 4096
-      erased_byte_value: 255
-      program_page_timeout: 100
-      erase_sector_timeout: 3000
+        start: 0x60000000
+        end: 0x61000000
+      page_size: 0x1000
+      erased_byte_value: 0xff
+      program_page_timeout: 0x64
+      erase_sector_timeout: 0xbb8
       sectors:
-        - size: 131072
-          address: 0
-  stm32f769i_qspi_macronix:
-    name: stm32f769i_qspi_macronix
+        - size: 0x20000
+          address: 0x0
+  - name: stm32f769i_qspi_macronix
     description: MX25L51245G_STM32F769I-DISCO
-    cores: [main]
+    cores:
+      - main
     default: false
     instructions: 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
-    pc_init: 1953
-    pc_uninit: 2459
-    pc_program_page: 2479
-    pc_erase_sector: 2445
-    pc_erase_all: 2469
-    data_section_offset: 4740
+    pc_init: 0x7a1
+    pc_uninit: 0x99b
+    pc_program_page: 0x9af
+    pc_erase_sector: 0x98d
+    pc_erase_all: 0x9a5
+    data_section_offset: 0x1284
     flash_properties:
       address_range:
-        start: 2415919104
-        end: 2483027968
-      page_size: 256
-      erased_byte_value: 255
-      program_page_timeout: 3000
-      erase_sector_timeout: 3000
+        start: 0x90000000
+        end: 0x94000000
+      page_size: 0x100
+      erased_byte_value: 0xff
+      program_page_timeout: 0xbb8
+      erase_sector_timeout: 0xbb8
       sectors:
-        - size: 65536
-          address: 0
-  stm32f723e_qspi_macronix:
-    name: stm32f723e_qspi_macronix
+        - size: 0x10000
+          address: 0x0
+  - name: stm32f723e_qspi_macronix
     description: MX25L51245G_STM32F723E-DISCO
-    cores: [main]
+    cores:
+      - main
     default: false
     instructions: QLpwR0C6cEdAunBHQLpwR0C6cEfAunBHwLpwR8C6cEfAunBHwLpwR/dJACIKcAhwcEcCRgAgUQkBKQzQAikN0PFJcjEJaALwHwIBI5NAC0IA0AEgcEfsSYke8+fqSW4x8OcYtQAgT/SgZACQMSD/9+D/AJlJHACRoUIB0AAo9dAxIP/31v8AKADQASAYvd5JiR4KaCLw+AJC6sAACGBwR9lJiR4AKAhoAtBA8AEAAeAg8AEACGBwR9NJACJuMQpwCnABKALQBCgB0QUgCHBwR81KbjIRaCHwGAEBQxFgcEfJSXIxACgIaALQQPABAAHgIPABAAhgcEdB6oIRWggQtcJLApwD6wJCEUMBQ0HqBGC9SYkcCGAQvbtJiR4AKAhoAtBA8IBwAeAg8IBwCGBwRxC1tkxJCATrAUFB6oAQsklA6gJggjFA6gNwCGAQva5JiR4AKAhoAtBA8IBgAeAg8IBgCGBwRxC1qExJCATrAUFB6oAQpElA6gJghjFA6gNwCGAQvaBJiR4AKAhoAtBA8IBQAeAg8IBQCGBwR5pJiR4AKAhoAtBA9AAgAeAg9AAgCGBwR5RKkh0TaAhDI/DsYxhDEGBwR5BKkh0TaAhDI/B4QxhDEGBwR4tKkh0RaCHwAwEBQxFgcEeHSIAdAGgA8AwAcEeESpIdEWgh8PABAUMRYHBHgEqSHRFoIfTgUQFDEWBwR3xJiR0KaCL0YEJC6sAACGBwR8DzASEDKQjRdkqSHRFoIfT4E3VJAUAZQxFgcUluMQpowPMLAAJDCmBwR21JbjEAKAhoAtBA9ABAAeAg9ABACGBwR2dJbjEAKAhoAtBA9IAwAeAg9IAwCGBwR2FJiR0AKAhoAtBA9AAAAeAg9AAACGBwR1tKijIRaEAeIfAfAQFDEWBwR1dJijEKaG/w/wMi9PhSA+sAIBBDCGBwR1FKijIRaCH0QBEBQxFgcEdNSooyEWgh9EABAUMRYHBHSUqKMhFoIfRAMQFDEWBwR0VJijEAKAhoAtBA8IBwAeAg8IBwCGBwRz9KLjIAKRFoAdABQwDggUMRYHBHOkoyMgApEWgB0AFDAOCBQxFgcEc1SjYyACkRaAHQAUMA4IFDEWBwRzBKPjIAKRFoAdABQwDggUMRYHBHK0pCMgApEWgB0AFDAOCBQxFgcEcmSg4yACkRaAHQAUMA4IFDEWBwRyFKEjIAKRFoAdABQwDggUMRYHBHHEoWMgApEWgB0AFDAOCBQxFgcEcXSh4yACkRaAHQAUMA4IFDEWBwRxJKIjIAKRFoAdABQwDggUMRYHBHDUpOMgApEWgB0AFDAOCBQxFgcEcISlIyACkRaAHQAUMA4IFDEWBwRwNKVjIAKRFoB9ABQwbgAjgCQAAA/////P8PgUMRYHBHS0oAKRFoAdABQwDggUMRYHBHRkoSHQApEWgB0AFDAOCBQxFgcEdBSlM6ACkReAHQAUMA4IFDEXBwRzxIFDABaEHwgHEBYHBHAUY4SgAgVDoSaApCANABIHBHNElSOQhwcEcySjAyEWgDDwErBtACKwfQAysI0AQrC9EI4CH0QDEH4CH0QCEE4CH0QBEB4CH0QAEA9H8ACEMQYHBHJEsQtTAzGWgCDwkqHdLf6ALwHAUICw4RFBcaACHwAwET4CHwDAEQ4CHwMAEN4CHwwAEK4CH0QHEH4CH0QGEE4CH0QFEB4CH0QEGAsghDGGAQvQ9KMDIRaCHwQHEBQxFgcEcLSjAyEWgh8IBhAUMRYHBHB0owMhFoIfAAYQFDEWBwRwNKMDIRaCHwgFEBQxFgcEdgOAJAELUBIQIg//cg/wAhvegQQAIg//cavwAhAWBBYIFgwWABYUFhgWFwRwAhQWCBYMFgAWABYUFhgWHBYQFiQWKBYsFicEcwtX9LGWh/SkRpEUACaAV5IkOEaUTqBWQiQwpDGmBZaHlKEUDQ6QJCAIoiQ0HqAEACQ1pgML0wtXFKUWlzSxlA0OkANCND0OkCRSxDI0MEaSNDhGkjQ8RpI0MEaiNDRGojQ4RqI0PEaoCKI0ND6oBACENQYTC9YkkAKAhoAtBA8AEAAeAg8AEACGBwR1xLELWcaKQGCdSYYlliGGgSsUD0AAAB4CD0AAAYYBC9VEmKaJIGBNTKam/zDwICQ8picEdPSYpokgYE1Aprb/MPAgJDCmNwR0pJimiSBgDUiGFwR0dJimiSBgDUyGFwR0RJCmgi9HBiQuoAIAhgcEdASYpokgYA1AhhcEc9SYpokgYI1AAoCGgC0EDwCAAB4CDwCAAIYHBHNkmKaJIGCNQAKAhoAtBA9IAAAeAg9IAACGBwRy9IAWhB8AIBAWBwRyxJIDEIcHBHKkkgMQiAcEcoSQhicEcnSCAwAHhwRyVIIDAAiHBHI0gAanBHIUkAKAhoAtBA8AQAAeAg8AQACGBwRxxLGmgJsQJDAOCCQxpgcEcYSIBowPMEIHBHFUhAaQDwQGBwRxNKAUYAIJJoCkIA0AEgcEcPSchgcEcNSgAgEWgfI5JoA+oRQQLwHwIRQgDQASBwRwdJAAzIYHBHBUkAKAhoAtBA8EAAAeAg8EAACGBwRwAQAKDP//8A/vfg/wAAgJAt6fxHACD/9yX9m0gcIUhEAPBA/ZhIMCFIRBwwAPA6/ZZIAWhB8AIBAWABIT8g//ec/QEhiAP/98D9AiWN+ARQACSN+AZAjfgHQAMg3/gwoo34BQAJIilGUEYA8AT6BCZpRlBGAJYA8HX5hk8JIhFGOEYA8Pj5KAIAkGlGOEYA8Gn5CSIKIThGAPDt+U/0gGhpRjhGzfgAgADwXPl6TwkiAiE4RgDw3/lpRjhGAJYA8FH5dk4JIg0hMEYA8NT5KAMAkGlGMEYA8EX5CiIGIVBGAPDJ+UAgAJABII34BwBpRlBGAPA3+QAg//e0/P/3Xv5hSBohSETA6QBFhGDA6QNBRGGEYf/3dP5bTU/0QFZNRBw1vxUsYOxgbGGsYSxhxekIZK9iASDsYf/3nf4AIP/31f4AIP/32v5VSIFoiQb81ELyZhFBYYRhxGEEYb/zT4+BaIkG/NRC8pkRQWGEYcRhBGG/80+PgWiJBvzUQvJmIUFhhGHEYQRhv/NPj4FoiQb81ELymSFBYYRhxGEEYb/zT4+BaIkG/NRC8mYxQWGEYcRhBGG/80+PgWiJBvzUQvKZMUFhhGHEYQRhv/NPjwEgAPBs+wggaGFP8EBgKGCAEChhayDF6QpwJ0jF6QhoSEQcMP/3IP4AIL3o/IcQtSDwcEAA8Mn5ACAQvRC1//fW/QAgEL0QtQDwDfoAIBC9CLUTRgCRIPBwQWpGGEYA8Nf6ACAIvXC1FEsGRktEHDMIIFhhT/BAYBhgT/SAYFhiT/RAUBhiAAMYYU/0gHCYYmsg2GIVRgxGGEb/9+X9BuAAvxb4AQsV+AEbiEIB0WQe99IwRnC9ASBwRwgAAAA4OAJAAAQCQAAIAkAAEAJAAAwCQAAQAKB8SRC1iEIG0QEhCEb/95X8ACEBIE/geEmIQgbRASECIP/3i/wAIQIgReB0SYhCBtEBIQQg//eB/AAhBCA74HBJiEIG0QEhCCD/93f8ACEIIDHgbEmIQgbRASEQIP/3bfwAIRAgJ+BoSYhCBtEBISAg//dj/AAhICAd4GRJiEIG0QEhQCD/91n8ACFAIBPgYEmIQgbRASGAIP/3T/wAIYAgCeBcSYhCCtGEFQEhIEb/90T8ACEgRr3oEED/9z68EL3wtQAjASQDJw1oBPoD8hVAlUJC0dD4AMBeAAf6BvUs6gUMwPgAwJH4BMDQ+ADgDPoG/EzqDgzA+ADAkfgEwLzxAQ8C0LzxAg8f0dD4CMAs6gUMwPgIwJH4BcDQ+AjgDPoG/EzqDgzA+AjA0PgEwCzqAgzA+ATAQmiR+AbADPoD/B/6jPxC6gwCQmDCaKpDwmDKecVoskAqQ8JgWxwQK7PT8L1P9v9xAWAAIQFxQXGBccFxcEcItUH0gDIAksJhwWEAmcFhwWnAaQCQCL0CRgAgEmkKQgDQASBwRwBpgLJwRwJGACBSaQpCANABIHBHQGmAsnBHAYNwR0GDcEcKsQGDcEdBg3BHQWFwR0JpSkBCYXBHSwfbDppAyQgQtQDrgQABag8knEChQwFiAWoRQwFiEL0AAAAAAkAABAJAAAgCQAAMAkAAEAJAABQCQAAYAkAAHAJAACACQHC1+kwAJUxET/RAUCVg5WBlYaVhJWHE6QgFT/SAcOVhoGIoRv/3BP0AIP/3Cf0GIOBiIEb/96H8ICD/91z9ASj60AIhACIIRv/3wvwBIP/3C/0AIP/39PxP8ABgZWIgYMAQIGEFIOBi4EhIRP/3hfwIIP/3QP0AKPrQCCD/90P9AiD/90D9ICD/9zX9ASj60HC9ELWMsARG//ey/wAhAZEFkQORAJFP9EBQBpHN6QcQT/SAcASRzekJEAhG//e4/AAg//e9/GhGC5T/91b8ICD/9xH9ASj60AywEL1wtQZG//eO/wAg//er/MBISET/9xv8vkxP9IBwTEQAJaBigABgYk/0QFAgYk/wgGAlYSBg2CDgYiBG//cw/DBG//d8/P/3bv8AIP/3i/wAIgEhEEb/9078ASD/95f8ACD/94D8CCD/9+D8T/AAYGViIGDAECBhBSDgYiBG//cP/Agg//fK/AAo+tAIIP/3zfwgIP/3wvwBKPrQcL1wtf/3Qf8AIP/3XvyZSEhE//fO+5dMT/SAcExEACXE6QlQT/RAUCBiT/CAYCVhIGDHIOBiIEb/9+T7//cl/wAg//dC/AAiASEQRv/3BfwBIP/3TvwAIP/3N/wIIP/3l/xP8ABgZWIgYMAQIGEFIOBiIEb/98b7CCD/94H8ACj60Agg//eE/CAg//d5/AEo+tBwvRC1//f4/gAg//cV/HVISET/94X7c0hP9IBxSERP9EBSgWIAIcDpCCFP8IBiAmABYZghwWK96BBA//eauy3p8EEGRhBoFUYMRgAoY9D/99P+KGhAHv/37/sgRv/32PtgSEhE//dc+15MACdMRE/0gHAnYKBigABgYk/0QFAgYgADIGEyIOBiIEb/93L7COAEIP/3LPwAKPrQFvgBC//38/soaEAeKGBAHPHRL2AgIP/3HfwBKPrQAiD/9xj8ACj60AIg//cb/AAg//e1+wAiASEQRv/3ePsBIP/3wfsAIP/3qvtP8ABgZ2IgYMAQIGEFIOBiO0hIRP/3O/sIIP/39vsAKPrQCCD/9/n7ICD/9+77ASj60L3o8IEt6fhPB0YAIACQEGgORhHw/wHDssH1gHRP6hAlmEZP9IB7FNDxssH1gHEG6wEKNbMAGxBgBQoA8P8IakYxRjhGAJT/92//PERWRl9GMeAls1xGbR4K02pGMUY4RgCU//dh/wb1gHYH9YB38ufN+ACAakYxRjhG//dV/73o+I+gRQvZHRtqRjFGOEYAlP/3Sv9RRjgZakYAle3nAJDo52pGMUYgRgCX//c9/wT1gHQG9YB2bR7z0rjxAA/e0GpGMUYgRs34AIDW5wAAJAAAAHC1BUb/9wT+eUwAIUxET/RAUCFgoWEhYcTpCAEIRv/3D/sAIP/3FPsNsbcgAODpIOBib0hIRP/3qPogIP/3Y/sBKPrQcL1wtQVGFEYORgEg//fW/2ZISET/9276ZEgKIUhEQWFP9IBxgWKJBAFgT/RAYUFiiQABYgkDAWHrIcFi//eD+iBoQB7/9+L6MEb/98v6CuAEIP/3NvsYsf/3C/sF+AELIGhAHiBgICD/9yv7ACjv0SAg//cm+wEo+tACIP/3IfsAKPrQAiD/9yT7vehwQAAglOcQtUVMACBMRE/0QFEgYOBgYGGgYSBhxOkIEOBhT/SAcKBiACD/96H6ACD/96b6BiDgYiBG//c++iAg//f5+gEo+tBP8P8w//eY+k/wgGAgYIAQIGEFIOBiMEhIRP/3KvovTExEBuAEIP/34voQsf/3t/ogcCB4gAf11f/3oPogIP/31voBKPrQEL1wtf/3Vf0iTAAlTERP8IB2JWAmYU/0QFClYSBiKEb/91/6ACD/92T6gSDgYiBG//f8+fMg//eE+iAg//e0+gEo+tAAIP/3VPoAIgghEEb/9xf6ASD/92D6ACD/90n6JmFP8ABgZWIgYIUg4GIISEhE//fb+Qgg//eW+gAo+tAIIP/3mfogIP/3jvoBKPrQcL0kAAAABAAAAE/wAAIAtRNGlEaWRiA5Ir+g6AxQoOgMULHxIAG/9PevCQcov6DoDFBIvwzAXfgE64kAKL9A+AQrCL9wR0i/IPgCKxHwgE8YvwD4AStwRwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-    pc_init: 1953
-    pc_uninit: 2459
-    pc_program_page: 2479
-    pc_erase_sector: 2445
-    pc_erase_all: 2469
-    data_section_offset: 4740
+    pc_init: 0x7a1
+    pc_uninit: 0x99b
+    pc_program_page: 0x9af
+    pc_erase_sector: 0x98d
+    pc_erase_all: 0x9a5
+    data_section_offset: 0x1284
     flash_properties:
       address_range:
-        start: 2415919104
-        end: 2483027968
-      page_size: 256
-      erased_byte_value: 255
-      program_page_timeout: 3000
-      erase_sector_timeout: 3000
+        start: 0x90000000
+        end: 0x94000000
+      page_size: 0x100
+      erased_byte_value: 0xff
+      program_page_timeout: 0xbb8
+      erase_sector_timeout: 0xbb8
       sectors:
-        - size: 65536
-          address: 0
+        - size: 0x10000
+          address: 0x0

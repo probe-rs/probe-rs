@@ -1,4 +1,3 @@
----
 name: EFR32FG14P Series
 variants:
   - name: EFR32FG14P231F128
@@ -7,21 +6,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
             start: 0x20000000
             end: 0x20004000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 0
+            start: 0x0
             end: 0x20000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - geckos1
   - name: EFR32FG14P231F256
@@ -30,21 +31,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
             start: 0x20000000
             end: 0x20008000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 0
+            start: 0x0
             end: 0x40000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - geckos1
   - name: EFR32FG14P232F128
@@ -53,21 +56,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
             start: 0x20000000
             end: 0x20004000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 0
+            start: 0x0
             end: 0x20000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - geckos1
   - name: EFR32FG14P232F256
@@ -76,21 +81,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
             start: 0x20000000
             end: 0x20008000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 0
+            start: 0x0
             end: 0x40000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - geckos1
   - name: EFR32FG14P233F128
@@ -99,21 +106,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
             start: 0x20000000
             end: 0x20004000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 0
+            start: 0x0
             end: 0x20000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - geckos1
   - name: EFR32FG14P233F256
@@ -122,44 +131,46 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
             start: 0x20000000
             end: 0x20008000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 0
+            start: 0x0
             end: 0x40000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - geckos1
 flash_algorithms:
-  geckos1:
-    name: geckos1
+  - name: geckos1
     description: EFM32/EFR32 Gecko S1
-    cores: [main]
+    cores:
+      - main
     default: true
     instructions: QLpwR8C6cEdP6jAAcEcAAHC1XEtcTG/wAgXiaRLwFg8N0KBoIPABAKBgkAcC1W/wAQBwvVAHCdVP8P8wcL0CQIpCAdEAIHC9Wx7m0ShGcL1NSUH2cTAIZExIQCEBYUFoSQP81AAgcEdHSIFoIfABAYFgACBwRxC1Q0ygaEDwAQCgYEbyGjBgZaAVAPB1+AAhYWWhaCHwAQGhYAAoANABIBC9cLUERgAjT/QAYQTICR8C8QECAtAAKvjQAOBqsTJNqGhA8AEAqGAsYQMgAPBU+ANGqGgg8AEAqGALsQEgcL0AIHC9LenwTYBGJ0jJHCHwAwaBaJJGQfABAYFgg0Yx4Aj1AGDBCskCoesIB0BGt0IA2TdGAUZYRsv4EBDa+AAQy/gYEBEhCvEEBcv4DBA8HwngCCEIRv/3a/9guQLNWEbL+BgQJB8ALPPRBCHBYAAhASD/913/ELEBIL3o8I26RLhE9hsALsvR2/gIECHwAQHL+AgQACDw5wNJyGAAIQEgRucAAICWmAAAAA5AADAOQAAAAAA=
-    pc_init: 81
-    pc_uninit: 105
-    pc_program_page: 229
-    pc_erase_sector: 163
-    pc_erase_all: 119
-    data_section_offset: 400
+    pc_init: 0x51
+    pc_uninit: 0x69
+    pc_program_page: 0xe5
+    pc_erase_sector: 0xa3
+    pc_erase_all: 0x77
+    data_section_offset: 0x190
     flash_properties:
       address_range:
-        start: 0
+        start: 0x0
         end: 0x100000
-      page_size: 1024
-      erased_byte_value: 255
-      program_page_timeout: 260
-      erase_sector_timeout: 200
+      page_size: 0x400
+      erased_byte_value: 0xff
+      program_page_timeout: 0x104
+      erase_sector_timeout: 0xc8
       sectors:
-        - size: 2048
-          address: 0
+        - size: 0x800
+          address: 0x0

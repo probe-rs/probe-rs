@@ -1,4 +1,3 @@
----
 name: LPC800 Series
 variants:
   - name: LPC802M001JDH16
@@ -7,21 +6,23 @@ variants:
         type: armv6m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 268435456
-            end: 268437504
+            start: 0x10000000
+            end: 0x10000800
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 0
-            end: 16384
+            start: 0x0
+            end: 0x4000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - lpc80x_16
   - name: LPC802M001JDH20
@@ -30,21 +31,23 @@ variants:
         type: armv6m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 268435456
-            end: 268437504
+            start: 0x10000000
+            end: 0x10000800
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 0
-            end: 16384
+            start: 0x0
+            end: 0x4000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - lpc80x_16
   - name: LPC802M001JHI33
@@ -53,21 +56,23 @@ variants:
         type: armv6m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 268435456
-            end: 268437504
+            start: 0x10000000
+            end: 0x10000800
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 0
-            end: 16384
+            start: 0x0
+            end: 0x4000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - lpc80x_16
   - name: LPC802M011JDH20
@@ -76,21 +81,23 @@ variants:
         type: armv6m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 268435456
-            end: 268437504
+            start: 0x10000000
+            end: 0x10000800
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 0
-            end: 16384
+            start: 0x0
+            end: 0x4000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - lpc80x_16
   - name: LPC804M101JDH20
@@ -99,21 +106,23 @@ variants:
         type: armv6m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 268435456
-            end: 268439552
+            start: 0x10000000
+            end: 0x10001000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 0
-            end: 32768
+            start: 0x0
+            end: 0x8000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - lpc80x_32
   - name: LPC804M101JDH24
@@ -122,21 +131,23 @@ variants:
         type: armv6m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 268435456
-            end: 268439552
+            start: 0x10000000
+            end: 0x10001000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 0
-            end: 32768
+            start: 0x0
+            end: 0x8000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - lpc80x_32
   - name: LPC804M101JHI33
@@ -145,21 +156,23 @@ variants:
         type: armv6m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 268435456
-            end: 268439552
+            start: 0x10000000
+            end: 0x10001000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 0
-            end: 32768
+            start: 0x0
+            end: 0x8000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - lpc80x_32
   - name: LPC804M111JDH24
@@ -168,21 +181,23 @@ variants:
         type: armv6m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 268435456
-            end: 268439552
+            start: 0x10000000
+            end: 0x10001000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 0
-            end: 32768
+            start: 0x0
+            end: 0x8000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - lpc80x_32
   - name: LPC810M021FN8
@@ -191,21 +206,23 @@ variants:
         type: armv6m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 268435456
-            end: 268436480
+            start: 0x10000000
+            end: 0x10000400
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 0
-            end: 4096
+            start: 0x0
+            end: 0x1000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - lpc8xx_4
   - name: LPC811M001JDH16
@@ -214,21 +231,23 @@ variants:
         type: armv6m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 268435456
-            end: 268437504
+            start: 0x10000000
+            end: 0x10000800
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 0
-            end: 8192
+            start: 0x0
+            end: 0x2000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - lpc8xx_8
   - name: LPC812M101JD20
@@ -237,21 +256,23 @@ variants:
         type: armv6m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 268435456
-            end: 268439552
+            start: 0x10000000
+            end: 0x10001000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 0
-            end: 16384
+            start: 0x0
+            end: 0x4000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - lpc8xx_16
   - name: LPC812M101JDH16
@@ -260,21 +281,23 @@ variants:
         type: armv6m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 268435456
-            end: 268439552
+            start: 0x10000000
+            end: 0x10001000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 0
-            end: 16384
+            start: 0x0
+            end: 0x4000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - lpc8xx_16
   - name: LPC812M101JDH20
@@ -283,21 +306,23 @@ variants:
         type: armv6m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 268435456
-            end: 268439552
+            start: 0x10000000
+            end: 0x10001000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 0
-            end: 16384
+            start: 0x0
+            end: 0x4000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - lpc8xx_16
   - name: LPC812M101JTB16
@@ -306,21 +331,23 @@ variants:
         type: armv6m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 268435456
-            end: 268439552
+            start: 0x10000000
+            end: 0x10001000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 0
-            end: 16384
+            start: 0x0
+            end: 0x4000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - lpc8xx_16
   - name: LPC822M101JDH20
@@ -329,21 +356,23 @@ variants:
         type: armv6m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 268435456
-            end: 268439552
+            start: 0x10000000
+            end: 0x10001000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 0
-            end: 16384
+            start: 0x0
+            end: 0x4000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - lpc8xx_16
   - name: LPC822M101JHI33
@@ -352,21 +381,23 @@ variants:
         type: armv6m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 268435456
-            end: 268439552
+            start: 0x10000000
+            end: 0x10001000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 0
-            end: 16384
+            start: 0x0
+            end: 0x4000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - lpc8xx_16
   - name: LPC824M201JDH20
@@ -375,21 +406,23 @@ variants:
         type: armv6m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 268435456
-            end: 268443648
+            start: 0x10000000
+            end: 0x10002000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 0
-            end: 32768
+            start: 0x0
+            end: 0x8000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - lpc8xx_32
   - name: LPC824M201JHI33
@@ -398,21 +431,23 @@ variants:
         type: armv6m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 268435456
-            end: 268443648
+            start: 0x10000000
+            end: 0x10002000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 0
-            end: 32768
+            start: 0x0
+            end: 0x8000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - lpc8xx_32
   - name: LPC832M101FDH20
@@ -421,21 +456,23 @@ variants:
         type: armv6m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 268435456
-            end: 268439552
+            start: 0x10000000
+            end: 0x10001000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 0
-            end: 16384
+            start: 0x0
+            end: 0x4000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - lpc8xx_16
   - name: LPC834M101FHI33
@@ -444,21 +481,23 @@ variants:
         type: armv6m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 268435456
-            end: 268439552
+            start: 0x10000000
+            end: 0x10001000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 0
-            end: 32768
+            start: 0x0
+            end: 0x8000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - lpc8xx_32
   - name: LPC844M201JBD48
@@ -467,21 +506,23 @@ variants:
         type: armv6m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 268435456
-            end: 268443648
+            start: 0x10000000
+            end: 0x10002000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 0
-            end: 65536
+            start: 0x0
+            end: 0x10000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - lpc84x_64
   - name: LPC844M201JBD64
@@ -490,21 +531,23 @@ variants:
         type: armv6m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 268435456
-            end: 268443648
+            start: 0x10000000
+            end: 0x10002000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 0
-            end: 65536
+            start: 0x0
+            end: 0x10000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - lpc84x_64
   - name: LPC844M201JHI33
@@ -513,21 +556,23 @@ variants:
         type: armv6m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 268435456
-            end: 268443648
+            start: 0x10000000
+            end: 0x10002000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 0
-            end: 65536
+            start: 0x0
+            end: 0x10000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - lpc84x_64
   - name: LPC844M201JHI48
@@ -536,21 +581,23 @@ variants:
         type: armv6m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 268435456
-            end: 268443648
+            start: 0x10000000
+            end: 0x10002000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 0
-            end: 65536
+            start: 0x0
+            end: 0x10000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - lpc84x_64
   - name: LPC845M301JBD48
@@ -559,21 +606,23 @@ variants:
         type: armv6m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 268435456
-            end: 268451840
+            start: 0x10000000
+            end: 0x10004000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 0
-            end: 65536
+            start: 0x0
+            end: 0x10000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - lpc84x_64
   - name: LPC845M301JBD64
@@ -582,21 +631,23 @@ variants:
         type: armv6m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 268435456
-            end: 268451840
+            start: 0x10000000
+            end: 0x10004000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 0
-            end: 65536
+            start: 0x0
+            end: 0x10000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - lpc84x_64
   - name: LPC845M301JHI33
@@ -605,21 +656,23 @@ variants:
         type: armv6m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 268435456
-            end: 268451840
+            start: 0x10000000
+            end: 0x10004000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 0
-            end: 65536
+            start: 0x0
+            end: 0x10000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - lpc84x_64
   - name: LPC845M301JHI48
@@ -628,21 +681,23 @@ variants:
         type: armv6m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 268435456
-            end: 268451840
+            start: 0x10000000
+            end: 0x10004000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 0
-            end: 65536
+            start: 0x0
+            end: 0x10000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - lpc84x_64
   - name: LPC8N04FHI24
@@ -651,205 +706,207 @@ variants:
         type: armv6m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 268435456
-            end: 268443648
+            start: 0x10000000
+            end: 0x10002000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 0
-            end: 30720
+            start: 0x0
+            end: 0x7800
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - lpc8n04_30
 flash_algorithms:
-  lpc80x_16:
-    name: lpc80x_16
+  - name: lpc80x_16
     description: LPC80x IAP 16kB Flash
-    cores: [main]
+    cores:
+      - main
     default: true
     instructions: gApwR0hJR0hJRAhgR0gAIgJhASFBYUJhQWGBYUNJAiBAOQhwEEZwRwAgcEf4tUBMMiBMRCFGACUPJmHEFDE8SDxPSEQMPACRuEdgaQAoDdE0IGHENEhIRABoIGA0SAw8SEQAmbhHYGkAKADQASD4vfi1L02ECjIgTUQRxSlGDDErSCxOLGAPRkhECD2wR2hpACgO0TQgEcUjSCxgSEQAaGhgI0g5RkhECD2wR2hpACgA0AEg+L34tRRGBgAO0QPMYmhAGCFoiRhAGKFoQBjhaEAYIWlAGEBCYGEIPBRNsApNRDIhaGApYKhgKUYUMRFPKEYAkbhHaGkAKBHRMyCsYEHF/yABMGhgB0hIRABoqGAHSAg9SEQAmbhHaGkAKADQASD4veAuAAAEAAAAQIAEQAgAAADxHwAPAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==
-    pc_init: 5
-    pc_uninit: 41
-    pc_program_page: 183
-    pc_erase_sector: 113
-    pc_erase_all: 45
-    data_section_offset: 312
+    pc_init: 0x5
+    pc_uninit: 0x29
+    pc_program_page: 0xb7
+    pc_erase_sector: 0x71
+    pc_erase_all: 0x2d
+    data_section_offset: 0x138
     flash_properties:
       address_range:
-        start: 0
-        end: 16384
-      page_size: 256
-      erased_byte_value: 0
-      program_page_timeout: 300
-      erase_sector_timeout: 3000
+        start: 0x0
+        end: 0x4000
+      page_size: 0x100
+      erased_byte_value: 0x0
+      program_page_timeout: 0x12c
+      erase_sector_timeout: 0xbb8
       sectors:
-        - size: 1024
-          address: 0
-  lpc80x_32:
-    name: lpc80x_32
+        - size: 0x400
+          address: 0x0
+  - name: lpc80x_32
     description: LPC80x IAP 32kB Flash
-    cores: [main]
+    cores:
+      - main
     default: true
     instructions: gApwR0hJR0hJRAhgR0gAIgJhASFBYUJhQWGBYUNJAiBAOQhwEEZwRwAgcEf4tUBMMiBMRCFGACUfJmHEFDE8SDxPSEQMPACRuEdgaQAoDdE0IGHENEhIRABoIGA0SAw8SEQAmbhHYGkAKADQASD4vfi1L02ECjIgTUQRxSlGDDErSCxOLGAPRkhECD2wR2hpACgO0TQgEcUjSCxgSEQAaGhgI0g5RkhECD2wR2hpACgA0AEg+L34tRRGBgAO0QPMYmhAGCFoiRhAGKFoQBjhaEAYIWlAGEBCYGEIPBRNsApNRDIhaGApYKhgKUYUMRFPKEYAkbhHaGkAKBHRMyCsYEHF/yABMGhgB0hIRABoqGAHSAg9SEQAmbhHaGkAKADQASD4veAuAAAEAAAAQIAEQAgAAADxHwAPAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-    pc_init: 5
-    pc_uninit: 41
-    pc_program_page: 183
-    pc_erase_sector: 113
-    pc_erase_all: 45
-    data_section_offset: 312
+    pc_init: 0x5
+    pc_uninit: 0x29
+    pc_program_page: 0xb7
+    pc_erase_sector: 0x71
+    pc_erase_all: 0x2d
+    data_section_offset: 0x138
     flash_properties:
       address_range:
-        start: 0
-        end: 32768
-      page_size: 256
-      erased_byte_value: 0
-      program_page_timeout: 300
-      erase_sector_timeout: 3000
+        start: 0x0
+        end: 0x8000
+      page_size: 0x100
+      erased_byte_value: 0x0
+      program_page_timeout: 0x12c
+      erase_sector_timeout: 0xbb8
       sectors:
-        - size: 1024
-          address: 0
-  lpc8xx_4:
-    name: lpc8xx_4
+        - size: 0x400
+          address: 0x0
+  - name: lpc8xx_4
     description: LPC8xx IAP 4kB Flash
-    cores: [main]
+    cores:
+      - main
     default: true
     instructions: gApwR0ZJRUhJRAhgRUgAIgJjASFBY0JjQWOBY0FJAiBAOQhwEEZwRwAgcEf4tT5MMiBMRAAlAyYiRmHCIUYUMTpPIEYAkbhHYGkAKAzRNCAhRmHBMkhIRABo4GAgRgCZuEdgaQAoANABIPi9+LUuTYQKTUQyIGxgKUasYBQxKGAqTg9GKEawR2hpACgN0WxgNCCsYChgIkg5RkhEAGjoYChGsEdoaQAoANABIPi9+LUURgYADtFhaCBo4mhAGKFoiRhAGCFpQBhhaUAYoWlAGEBC4GEUTbAKTUQyIWhgKWCoYClGFDERTyhGAJG4R2hpACgQ0W5gMyCsYChg/yABMOhgB0hIRABoKGEoRgCZuEdoaQAoANABIPi9AADgLgAABAAAAECABEAIAAAA8R//HwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
-    pc_init: 5
-    pc_uninit: 41
-    pc_program_page: 175
-    pc_erase_sector: 109
-    pc_erase_all: 45
-    data_section_offset: 304
+    pc_init: 0x5
+    pc_uninit: 0x29
+    pc_program_page: 0xaf
+    pc_erase_sector: 0x6d
+    pc_erase_all: 0x2d
+    data_section_offset: 0x130
     flash_properties:
       address_range:
-        start: 0
-        end: 4096
-      page_size: 256
-      erased_byte_value: 255
-      program_page_timeout: 300
-      erase_sector_timeout: 3000
+        start: 0x0
+        end: 0x1000
+      page_size: 0x100
+      erased_byte_value: 0xff
+      program_page_timeout: 0x12c
+      erase_sector_timeout: 0xbb8
       sectors:
-        - size: 1024
-          address: 0
-  lpc8xx_16:
-    name: lpc8xx_16
+        - size: 0x400
+          address: 0x0
+  - name: lpc8xx_16
     description: LPC8xx IAP 16kB Flash
-    cores: [main]
+    cores:
+      - main
     default: true
     instructions: gApwR0ZJRUhJRAhgRUgAIgJjASFBY0JjQWOBY0FJAiBAOQhwEEZwRwAgcEf4tT5MMiBMRAAlDyYiRmHCIUYUMTpPIEYAkbhHYGkAKAzRNCAhRmHBMkhIRABo4GAgRgCZuEdgaQAoANABIPi9+LUuTYQKTUQyIGxgKUasYBQxKGAqTg9GKEawR2hpACgN0WxgNCCsYChgIkg5RkhEAGjoYChGsEdoaQAoANABIPi9+LUURgYADtFhaCBo4mhAGKFoiRhAGCFpQBhhaUAYoWlAGEBC4GEUTbAKTUQyIWhgKWCoYClGFDERTyhGAJG4R2hpACgQ0W5gMyCsYChg/yABMOhgB0hIRABoKGEoRgCZuEdoaQAoANABIPi9AADgLgAABAAAAECABEAIAAAA8R//HwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
-    pc_init: 5
-    pc_uninit: 41
-    pc_program_page: 175
-    pc_erase_sector: 109
-    pc_erase_all: 45
-    data_section_offset: 304
+    pc_init: 0x5
+    pc_uninit: 0x29
+    pc_program_page: 0xaf
+    pc_erase_sector: 0x6d
+    pc_erase_all: 0x2d
+    data_section_offset: 0x130
     flash_properties:
       address_range:
-        start: 0
-        end: 16384
-      page_size: 256
-      erased_byte_value: 255
-      program_page_timeout: 300
-      erase_sector_timeout: 3000
+        start: 0x0
+        end: 0x4000
+      page_size: 0x100
+      erased_byte_value: 0xff
+      program_page_timeout: 0x12c
+      erase_sector_timeout: 0xbb8
       sectors:
-        - size: 1024
-          address: 0
-  lpc8xx_32:
-    name: lpc8xx_32
+        - size: 0x400
+          address: 0x0
+  - name: lpc8xx_32
     description: LPC8xx IAP 32kB Flash
-    cores: [main]
+    cores:
+      - main
     default: true
     instructions: gApwR0hJR0hJRAhgR0gAIgJjASFBY0JjQWOBY0NJAiBAOQhwEEZwRwAgcEf4tUBMMiBMRCFGACUfJmHEFDE8SDxPSEQMPACRuEdgaQAoDdE0IGHENEhIRABoIGA0SAw8SEQAmbhHYGkAKADQASD4vfi1L02ECjIgTUQRxSlGDDErSCxOLGAPRkhECD2wR2hpACgO0TQgEcUjSCxgSEQAaGhgI0g5RkhECD2wR2hpACgA0AEg+L34tRRGBgAO0QPMYmhAGCFoiRhAGKFoQBjhaEAYIWlAGEBCYGEIPBRNsApNRDIhaGApYKhgKUYUMRFPKEYAkbhHaGkAKBHRMyCsYEHF/yABMGhgB0hIRABoqGAHSAg9SEQAmbhHaGkAKADQASD4veAuAAAEAAAAQIAEQAgAAADxH/8fAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==
-    pc_init: 5
-    pc_uninit: 41
-    pc_program_page: 183
-    pc_erase_sector: 113
-    pc_erase_all: 45
-    data_section_offset: 312
+    pc_init: 0x5
+    pc_uninit: 0x29
+    pc_program_page: 0xb7
+    pc_erase_sector: 0x71
+    pc_erase_all: 0x2d
+    data_section_offset: 0x138
     flash_properties:
       address_range:
-        start: 0
-        end: 32768
-      page_size: 256
-      erased_byte_value: 255
-      program_page_timeout: 300
-      erase_sector_timeout: 3000
+        start: 0x0
+        end: 0x8000
+      page_size: 0x100
+      erased_byte_value: 0xff
+      program_page_timeout: 0x12c
+      erase_sector_timeout: 0xbb8
       sectors:
-        - size: 1024
-          address: 0
-  lpc84x_64:
-    name: lpc84x_64
+        - size: 0x400
+          address: 0x0
+  - name: lpc84x_64
     description: LPC84x IAP 64kB Flash
-    cores: [main]
+    cores:
+      - main
     default: true
     instructions: gApwR0hJR0hJRAhgR0gAIgJhASFBYUJhQWGBYUNJAiBAOQhwEEZwRwAgcEf4tUBMMiBMRCFGACU/JmHEFDE8SDxPSEQMPACRuEdgaQAoDdE0IGHENEhIRABoIGA0SAw8SEQAmbhHYGkAKADQASD4vfi1L02ECjIgTUQRxSlGDDErSCxOLGAPRkhECD2wR2hpACgO0TQgEcUjSCxgSEQAaGhgI0g5RkhECD2wR2hpACgA0AEg+L34tRRGBgAO0QPMYmhAGCFoiRhAGKFoQBjhaEAYIWlAGEBCYGEIPBRNsApNRDIhaGApYKhgKUYUMRFPKEYAkbhHaGkAKBHRMyCsYEHF/yABMGhgB0hIRABoqGAHSAg9SEQAmbhHaGkAKADQASD4veAuAAAEAAAAQIAEQAgAAADxHwAPAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==
-    pc_init: 5
-    pc_uninit: 41
-    pc_program_page: 183
-    pc_erase_sector: 113
-    pc_erase_all: 45
-    data_section_offset: 312
+    pc_init: 0x5
+    pc_uninit: 0x29
+    pc_program_page: 0xb7
+    pc_erase_sector: 0x71
+    pc_erase_all: 0x2d
+    data_section_offset: 0x138
     flash_properties:
       address_range:
-        start: 0
-        end: 65536
-      page_size: 256
-      erased_byte_value: 255
-      program_page_timeout: 300
-      erase_sector_timeout: 3000
+        start: 0x0
+        end: 0x10000
+      page_size: 0x100
+      erased_byte_value: 0xff
+      program_page_timeout: 0x12c
+      erase_sector_timeout: 0xbb8
       sectors:
-        - size: 1024
-          address: 0
-  lpc8n04_30:
-    name: lpc8n04_30
+        - size: 0x400
+          address: 0x0
+  - name: lpc8n04_30
     description: LPC8N04 IAP 30kB Flash
-    cores: [main]
+    cores:
+      - main
     default: true
     instructions: gApwR0FJfSCAAUlECGBASAFoASKSBJFDAWA+SAFqCQwJBAFiACFBYgEhQWIAIHBHACBwR/i1OEwyIExEIUYAJR0mYcQUMTRINE9IRAw8AJG4R2BpACgN0TQgYcQrSEhEAGggYCxIDDxIRACZuEdgaQAoANABIPi9+LUnTYQKMiBNRBHFKUYMMSNIJE4sYA9GSEQIPbBHaGkAKA7RNCARxRpILGBIRABoaGAbSDlGSEQIPbBHaGkAKADQASD4vfi1FUwFRoAKTEQyIWBgIWCgYCFGFDERThdGIEYAkbBHYGkAKBDRMyChxP8gATAgYAdISEQAaGBgCEgMPEhEAJmwR2BpACgA0AEg+L0AAAQAAAAAwANAAIAEQAgAAADxH/8fAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-    pc_init: 5
-    pc_uninit: 49
-    pc_program_page: 191
-    pc_erase_sector: 121
-    pc_erase_all: 53
-    data_section_offset: 288
+    pc_init: 0x5
+    pc_uninit: 0x31
+    pc_program_page: 0xbf
+    pc_erase_sector: 0x79
+    pc_erase_all: 0x35
+    data_section_offset: 0x120
     flash_properties:
       address_range:
-        start: 0
-        end: 30720
-      page_size: 256
-      erased_byte_value: 255
-      program_page_timeout: 300
-      erase_sector_timeout: 3000
+        start: 0x0
+        end: 0x7800
+      page_size: 0x100
+      erased_byte_value: 0xff
+      program_page_timeout: 0x12c
+      erase_sector_timeout: 0xbb8
       sectors:
-        - size: 1024
-          address: 0
-  lpc8xx_8:
-    name: lpc8xx_8
+        - size: 0x400
+          address: 0x0
+  - name: lpc8xx_8
     description: LPC8xx IAP 8kB Flash
-    cores: [main]
+    cores:
+      - main
     default: true
     instructions: gApwR0ZJRUhJRAhgRUgAIgJjASFBY0JjQWOBY0FJAiBAOQhwEEZwRwAgcEf4tT5MMiBMRAAlByYiRmHCIUYUMTpPIEYAkbhHYGkAKAzRNCAhRmHBMkhIRABo4GAgRgCZuEdgaQAoANABIPi9+LUuTYQKTUQyIGxgKUasYBQxKGAqTg9GKEawR2hpACgN0WxgNCCsYChgIkg5RkhEAGjoYChGsEdoaQAoANABIPi9+LUURgYADtFhaCBo4mhAGKFoiRhAGCFpQBhhaUAYoWlAGEBC4GEUTbAKTUQyIWhgKWCoYClGFDERTyhGAJG4R2hpACgQ0W5gMyCsYChg/yABMOhgB0hIRABoKGEoRgCZuEdoaQAoANABIPi9AADgLgAABAAAAECABEAIAAAA8R//HwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
-    pc_init: 5
-    pc_uninit: 41
-    pc_program_page: 175
-    pc_erase_sector: 109
-    pc_erase_all: 45
-    data_section_offset: 304
+    pc_init: 0x5
+    pc_uninit: 0x29
+    pc_program_page: 0xaf
+    pc_erase_sector: 0x6d
+    pc_erase_all: 0x2d
+    data_section_offset: 0x130
     flash_properties:
       address_range:
-        start: 0
-        end: 8192
-      page_size: 256
-      erased_byte_value: 255
-      program_page_timeout: 300
-      erase_sector_timeout: 3000
+        start: 0x0
+        end: 0x2000
+      page_size: 0x100
+      erased_byte_value: 0xff
+      program_page_timeout: 0x12c
+      erase_sector_timeout: 0xbb8
       sectors:
-        - size: 1024
-          address: 0
+        - size: 0x400
+          address: 0x0

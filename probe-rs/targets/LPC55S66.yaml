@@ -1,4 +1,3 @@
----
 name: LPC55S66
 variants:
   - name: LPC55S66JBD100
@@ -7,21 +6,23 @@ variants:
         type: armv8m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536969216
+            start: 0x20000000
+            end: 0x20018000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 0
-            end: 262144
+            start: 0x0
+            end: 0x40000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - lpc55xx_256
       - lpc55xx_s_256
@@ -31,21 +32,23 @@ variants:
         type: armv8m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536969216
+            start: 0x20000000
+            end: 0x20018000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 0
-            end: 262144
+            start: 0x0
+            end: 0x40000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - lpc55xx_256
       - lpc55xx_s_256
@@ -55,68 +58,70 @@ variants:
         type: armv8m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536969216
+            start: 0x20000000
+            end: 0x20018000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 0
-            end: 262144
+            start: 0x0
+            end: 0x40000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - lpc55xx_256
       - lpc55xx_s_256
 flash_algorithms:
-  lpc55xx_256:
-    name: lpc55xx_256
+  - name: lpc55xx_256
     description: LPC55xx IAP 256kB Flash
-    cores: [main]
+    cores:
+      - main
     default: true
     instructions: Z0xWQThnUUF3UElBQUVMMjRHRkorQUFRUVBJQUlNWHlBQUFBSWNENGdCREErSVFRd1BpQUVVZjIrM0VCWUVEMkJHRC9JY1h5QUFETTh0NEJBV0JQOEtCQUFpRUJjRUR5RUFEQThnQUFTRVFBOEhUNEFDZ1l2d0VnZ0wwQUlIQkhnTFZBOGhBQXdQSUFBRWJ5YkdOSVJBQWh4dlpsTTAvMGdDSUE4SC80QUNnWXZ3RWdnTDBBdjRDMUlQQndRVUR5RUFEQThnQUFSdkpzWTBoRXh2WmxNMC8wQUVJQThHcjRBQ2dZdndFZ2dMMXd0UlJHRFVaQkJDRHdjRVlOMFVEeUVBREE4Z0FBUnZKc1kwaEVNVWJHOW1VelQvUUFRZ0R3VWZoQThoQUF3UElBQUxYMUFIK1l2MC8wQUhWSVJERkdJa1lyUmdEd2F2Z0FLQmkvQVNCd3ZiQzFERVlGUmlEd2NFQVJSaUpHQVBBQitnQW9DTDhsUkNoR3NMMkF0UXBHSVBCd1FVRHlFQURBOGdBQVNFUUE4SFg0QUNnWXZ3RWdnTDBBQUVIeTlBTEI4Z0F5MFdnQUtRclFZQ09EWXBKNFNXaEE4Z3dEd1BJQUEwbjRBeUFJUjBEeXVrREE4Z0FBUVBMSFFjRHlBQUY0UkhsRWhDSUE4STM1QUw5QThnd013UElBREZuNERNQzg4UUlQQk5GRThqc2N3ZklBUEdCSFFmSUFITUh5QUR6YytBREF2UEVBRHdMUTNQZ0l3R0JIUVBKcVFNRHlBQUJBOG5kQndQSUFBWGhFZVVTVklnRHdaZmtBdjBEeURBekE4Z0FNV2ZnTXdMenhBZzhFMFVUeW5SekI4Z0E4WUVkQjhnQWN3ZklBUE56NEFNQzg4UUFQQXREYytBekFZRWRBOGhwQXdQSUFBRUR5SjBIQThnQUJlRVI1UktVaUFQQTkrUUMvUWZJQUU4SHlBRE1iYUFBckFkQWJhUmhIUVBMc01NRHlBQUJBOHZreHdQSUFBWGhFZVVTdElnRHdKdmxBOGd3TXdQSUFERm40RE1DODhRSVBCTkZFOG4wc3dmSUFQR0JIUWZJQUhNSHlBRHpjK0FEQXZQRUFEd0xRM1BnVXdHQkhRUEtlTU1EeUFBQkE4cXN4d1BJQUFYaEVlVVRDSWdEdy8vZ0F2MEh5QUJQQjhnQXpHMmdBS3dIUW0ya1lSMER5Y0REQThnQUFRUEo5TWNEeUFBRjRSSGxFeXlJQThPajRRZklBRWNIeUFERUphQUFwQWRDSmFnaEhRUEpFTU1EeUFBQkE4bEV4d1BJQUFYaEVlVVRWSWdEdzB2aEI4Z0FSd2ZJQU1RbG9BQ2tCME1scUNFZEE4aGd3d1BJQUFFRHlKVEhBOGdBQmVFUjVSTndpQVBDOCtFSHlBQlBCOGdBekcyZ0FLd0hRRzJzWVIwRHk3Q0RBOGdBQVFQTDVJY0R5QUFGNFJIbEU0eUlBOEtiNFFmSUFFc0h5QURJU2FBQXFBZEJTYXhCSFFQTEFJTUR5QUFCQThzMGh3UElBQVhoRWVVVHFJZ0R3a1BoQjhnQWN3ZklBUE56NEFNQzg4UUFQQXREYytEakFZRWRBOG80Z3dQSUFBRUR5bXlIQThnQUJlRVI1UlBFaUFQQjMrQUMvUWZJQUVzSHlBRElTYUFBcUFkRFNheEJIUVBKZ0lNRHlBQUJBOG0waHdQSUFBWGhFZVVUNElnRHdZUGhCOGdBU3dmSUFNaEpvQUNvQjBCSnNFRWRBOGpRZ3dQSUFBRUR5UVNIQThnQUJlRVI1UlA4aUFQQksrRUh5QUJQQjhnQXpHMmdBS3dIUVcyd1lSMER5Q0NEQThnQUFRUElWSWNEeUFBRjRSSGxFVC9TRGNnRHdNL2dBdjBIeUFCUEI4Z0F6RzJnQUt3SFFtMndZUjBEeTJCREE4Z0FBUVBMbEVjRHlBQUY0UkhsRVFQSU5FZ0R3Ry9nQXYwSHlBQnpCOGdBODNQZ0F3THp4QUE4QzBOejRUTUJnUjBEeW9oREE4Z0FBUVBLdkVjRHlBQUY0UkhsRVQvU0tjZ0R3QVBnT3RRVkdGRVlPUmhPZ0FQQncrQ2hHQVBCdCtCYWdBUEJxK0RCR0FQQm4rQldnQVBCaytBQWhqZmdMRUFvaERmRUtBSTM0Q2hBSTRKVDc4ZklCK3hKQ2xQdng5REF5QVBnQkxRQXM5TndBOEU3NEFQQkIrQUFBS2lvcUlHRnpjMlZ5ZEdsdmJpQm1ZV2xzWldRNklBQUFMQ0JtYVd4bElBQXNJR3hwYm1VZ0FFRHFBUU1RdFpzSEQ5RUVLZzNURU1nSXlSSWZuRUw0MENDNkdicUlRZ0haQVNBUXZVL3cvekFRdlJxeDB3Y0QwRkljQitBQUlCQzlFUGdCT3hINEFVc2JHd2ZSRVBnQk94SDRBVXNiR3dIUmtoN3gwUmhHRUwwUXRRQWdBUEFlK0svekFJQzk2QkJBQVNBQThCRzRFTFVFUmdMZ1pCd0E4QVQ0SUhnQUtQblJFTDBJdFdsR2pmZ0FBQU1ncTc0SXZRRkpHQ0NydnY3bkpnQUNBQkMxQVBBTCtMM29FRUFBOEFHNGNFY0FLQUhRLy9mdXYzQkhBQUFRdFFBaEFxQUE4QlA0QVNBUXZRQUFVMGxIUVVKU1ZEb2dRV0p1YjNKdFlXd2dkR1Z5YldsdVlYUnBiMjRBQUFCd3RRVkdERVlLSUFEZ2JSei85OFgvTmJFb2VBQW8rTkVDNEdRYy8vZTkveFN4SUhnQUtQalJ2ZWh3UUFvZy8vZTB2MFpNUVZOSVgwRlFTVjlVVWtWRkFHbGhjREV2Wm5Oc1gybGhjREV1WXdBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFB
-    pc_init: 1
-    pc_uninit: 93
-    pc_program_page: 177
-    pc_erase_sector: 137
-    pc_erase_all: 97
-    data_section_offset: 1616
+    pc_init: 0x1
+    pc_uninit: 0x5d
+    pc_program_page: 0xb1
+    pc_erase_sector: 0x89
+    pc_erase_all: 0x61
+    data_section_offset: 0x650
     flash_properties:
       address_range:
-        start: 0
-        end: 262144
-      page_size: 512
-      erased_byte_value: 255
-      program_page_timeout: 300
-      erase_sector_timeout: 3000
+        start: 0x0
+        end: 0x40000
+      page_size: 0x200
+      erased_byte_value: 0xff
+      program_page_timeout: 0x12c
+      erase_sector_timeout: 0xbb8
       sectors:
-        - size: 32768
-          address: 0
-  lpc55xx_s_256:
-    name: lpc55xx_s_256
+        - size: 0x8000
+          address: 0x0
+  - name: lpc55xx_s_256
     description: LPC55xx S IAP 256kB Flash
-    cores: [main]
+    cores:
+      - main
     default: true
     instructions: Z0xWQThnUUF3UElBQUVMMjRHRkorQUFRUVBJQUlNWHlBQUFBSWNENGdCREErSVFRd1BpQUVVZjIrM0VCWUVEMkJHRC9JY1h5QUFETTh0NEJBV0JQOEtCQUFpRUJjRUR5RUFEQThnQUFTRVFBOEhUNEFDZ1l2d0VnZ0wwQUlIQkhnTFZBOGhBQXdQSUFBRWJ5YkdOSVJBQWh4dlpsTTAvMGdDSUE4SC80QUNnWXZ3RWdnTDBBdjRDMUlQQndRVUR5RUFEQThnQUFSdkpzWTBoRXh2WmxNMC8wQUVJQThHcjRBQ2dZdndFZ2dMMXd0UlJHRFVaQkJDRHdjRVlOMFVEeUVBREE4Z0FBUnZKc1kwaEVNVWJHOW1VelQvUUFRZ0R3VWZoQThoQUF3UElBQUxYMUFIK1l2MC8wQUhWSVJERkdJa1lyUmdEd2F2Z0FLQmkvQVNCd3ZiQzFERVlGUmlEd2NFQVJSaUpHQVBBQitnQW9DTDhsUkNoR3NMMkF0UXBHSVBCd1FVRHlFQURBOGdBQVNFUUE4SFg0QUNnWXZ3RWdnTDBBQUVIeTlBTEI4Z0F5MFdnQUtRclFZQ09EWXBKNFNXaEE4Z3dEd1BJQUEwbjRBeUFJUjBEeXVrREE4Z0FBUVBMSFFjRHlBQUY0UkhsRWhDSUE4STM1QUw5QThnd013UElBREZuNERNQzg4UUlQQk5GRThqc2N3ZklBUEdCSFFmSUFITUh5QUR6YytBREF2UEVBRHdMUTNQZ0l3R0JIUVBKcVFNRHlBQUJBOG5kQndQSUFBWGhFZVVTVklnRHdaZmtBdjBEeURBekE4Z0FNV2ZnTXdMenhBZzhFMFVUeW5SekI4Z0E4WUVkQjhnQWN3ZklBUE56NEFNQzg4UUFQQXREYytBekFZRWRBOGhwQXdQSUFBRUR5SjBIQThnQUJlRVI1UktVaUFQQTkrUUMvUWZJQUU4SHlBRE1iYUFBckFkQWJhUmhIUVBMc01NRHlBQUJBOHZreHdQSUFBWGhFZVVTdElnRHdKdmxBOGd3TXdQSUFERm40RE1DODhRSVBCTkZFOG4wc3dmSUFQR0JIUWZJQUhNSHlBRHpjK0FEQXZQRUFEd0xRM1BnVXdHQkhRUEtlTU1EeUFBQkE4cXN4d1BJQUFYaEVlVVRDSWdEdy8vZ0F2MEh5QUJQQjhnQXpHMmdBS3dIUW0ya1lSMER5Y0REQThnQUFRUEo5TWNEeUFBRjRSSGxFeXlJQThPajRRZklBRWNIeUFERUphQUFwQWRDSmFnaEhRUEpFTU1EeUFBQkE4bEV4d1BJQUFYaEVlVVRWSWdEdzB2aEI4Z0FSd2ZJQU1RbG9BQ2tCME1scUNFZEE4aGd3d1BJQUFFRHlKVEhBOGdBQmVFUjVSTndpQVBDOCtFSHlBQlBCOGdBekcyZ0FLd0hRRzJzWVIwRHk3Q0RBOGdBQVFQTDVJY0R5QUFGNFJIbEU0eUlBOEtiNFFmSUFFc0h5QURJU2FBQXFBZEJTYXhCSFFQTEFJTUR5QUFCQThzMGh3UElBQVhoRWVVVHFJZ0R3a1BoQjhnQWN3ZklBUE56NEFNQzg4UUFQQXREYytEakFZRWRBOG80Z3dQSUFBRUR5bXlIQThnQUJlRVI1UlBFaUFQQjMrQUMvUWZJQUVzSHlBRElTYUFBcUFkRFNheEJIUVBKZ0lNRHlBQUJBOG0waHdQSUFBWGhFZVVUNElnRHdZUGhCOGdBU3dmSUFNaEpvQUNvQjBCSnNFRWRBOGpRZ3dQSUFBRUR5UVNIQThnQUJlRVI1UlA4aUFQQksrRUh5QUJQQjhnQXpHMmdBS3dIUVcyd1lSMER5Q0NEQThnQUFRUElWSWNEeUFBRjRSSGxFVC9TRGNnRHdNL2dBdjBIeUFCUEI4Z0F6RzJnQUt3SFFtMndZUjBEeTJCREE4Z0FBUVBMbEVjRHlBQUY0UkhsRVFQSU5FZ0R3Ry9nQXYwSHlBQnpCOGdBODNQZ0F3THp4QUE4QzBOejRUTUJnUjBEeW9oREE4Z0FBUVBLdkVjRHlBQUY0UkhsRVQvU0tjZ0R3QVBnT3RRVkdGRVlPUmhPZ0FQQncrQ2hHQVBCdCtCYWdBUEJxK0RCR0FQQm4rQldnQVBCaytBQWhqZmdMRUFvaERmRUtBSTM0Q2hBSTRKVDc4ZklCK3hKQ2xQdng5REF5QVBnQkxRQXM5TndBOEU3NEFQQkIrQUFBS2lvcUlHRnpjMlZ5ZEdsdmJpQm1ZV2xzWldRNklBQUFMQ0JtYVd4bElBQXNJR3hwYm1VZ0FFRHFBUU1RdFpzSEQ5RUVLZzNURU1nSXlSSWZuRUw0MENDNkdicUlRZ0haQVNBUXZVL3cvekFRdlJxeDB3Y0QwRkljQitBQUlCQzlFUGdCT3hINEFVc2JHd2ZSRVBnQk94SDRBVXNiR3dIUmtoN3gwUmhHRUwwUXRRQWdBUEFlK0svekFJQzk2QkJBQVNBQThCRzRFTFVFUmdMZ1pCd0E4QVQ0SUhnQUtQblJFTDBJdFdsR2pmZ0FBQU1ncTc0SXZRRkpHQ0NydnY3bkpnQUNBQkMxQVBBTCtMM29FRUFBOEFHNGNFY0FLQUhRLy9mdXYzQkhBQUFRdFFBaEFxQUE4QlA0QVNBUXZRQUFVMGxIUVVKU1ZEb2dRV0p1YjNKdFlXd2dkR1Z5YldsdVlYUnBiMjRBQUFCd3RRVkdERVlLSUFEZ2JSei85OFgvTmJFb2VBQW8rTkVDNEdRYy8vZTkveFN4SUhnQUtQalJ2ZWh3UUFvZy8vZTB2MFpNUVZOSVgwRlFTVjlVVWtWRkFHbGhjREV2Wm5Oc1gybGhjREV1WXdBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFB
-    pc_init: 1
-    pc_uninit: 93
-    pc_program_page: 177
-    pc_erase_sector: 137
-    pc_erase_all: 97
-    data_section_offset: 1616
+    pc_init: 0x1
+    pc_uninit: 0x5d
+    pc_program_page: 0xb1
+    pc_erase_sector: 0x89
+    pc_erase_all: 0x61
+    data_section_offset: 0x650
     flash_properties:
       address_range:
-        start: 268435456
-        end: 268697600
-      page_size: 512
-      erased_byte_value: 255
-      program_page_timeout: 300
-      erase_sector_timeout: 3000
+        start: 0x10000000
+        end: 0x10040000
+      page_size: 0x200
+      erased_byte_value: 0xff
+      program_page_timeout: 0x12c
+      erase_sector_timeout: 0xbb8
       sectors:
-        - size: 32768
-          address: 0
+        - size: 0x8000
+          address: 0x0

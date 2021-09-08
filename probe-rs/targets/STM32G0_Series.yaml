@@ -1,4 +1,3 @@
----
 name: STM32G0 Series
 variants:
   - name: STM32G030C6Tx
@@ -7,21 +6,23 @@ variants:
         type: armv6m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536879104
+            start: 0x20000000
+            end: 0x20002000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134250496
+            start: 0x8000000
+            end: 0x8008000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g0xx_32
       - stm32g0xx_otp
@@ -32,21 +33,23 @@ variants:
         type: armv6m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536879104
+            start: 0x20000000
+            end: 0x20002000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134283264
+            start: 0x8000000
+            end: 0x8010000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g0xx_64
       - stm32g0xx_otp
@@ -57,21 +60,23 @@ variants:
         type: armv6m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536879104
+            start: 0x20000000
+            end: 0x20002000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134250496
+            start: 0x8000000
+            end: 0x8008000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g0xx_32
       - stm32g0xx_otp
@@ -82,21 +87,23 @@ variants:
         type: armv6m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536879104
+            start: 0x20000000
+            end: 0x20002000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134250496
+            start: 0x8000000
+            end: 0x8008000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g0xx_32
       - stm32g0xx_otp
@@ -107,21 +114,23 @@ variants:
         type: armv6m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536879104
+            start: 0x20000000
+            end: 0x20002000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134250496
+            start: 0x8000000
+            end: 0x8008000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g0xx_32
       - stm32g0xx_otp
@@ -132,21 +141,23 @@ variants:
         type: armv6m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536879104
+            start: 0x20000000
+            end: 0x20002000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134283264
+            start: 0x8000000
+            end: 0x8010000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g0xx_64
       - stm32g0xx_otp
@@ -157,21 +168,23 @@ variants:
         type: armv6m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536879104
+            start: 0x20000000
+            end: 0x20002000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134234112
+            start: 0x8000000
+            end: 0x8004000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g0xx_16
       - stm32g0xx_otp
@@ -182,21 +195,23 @@ variants:
         type: armv6m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536879104
+            start: 0x20000000
+            end: 0x20002000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134234112
+            start: 0x8000000
+            end: 0x8004000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g0xx_16
       - stm32g0xx_otp
@@ -207,21 +222,23 @@ variants:
         type: armv6m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536879104
+            start: 0x20000000
+            end: 0x20002000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134250496
+            start: 0x8000000
+            end: 0x8008000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g0xx_32
       - stm32g0xx_otp
@@ -232,21 +249,23 @@ variants:
         type: armv6m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536879104
+            start: 0x20000000
+            end: 0x20002000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134250496
+            start: 0x8000000
+            end: 0x8008000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g0xx_32
       - stm32g0xx_otp
@@ -257,21 +276,23 @@ variants:
         type: armv6m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536879104
+            start: 0x20000000
+            end: 0x20002000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134283264
+            start: 0x8000000
+            end: 0x8010000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g0xx_64
       - stm32g0xx_otp
@@ -282,21 +303,23 @@ variants:
         type: armv6m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536879104
+            start: 0x20000000
+            end: 0x20002000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134283264
+            start: 0x8000000
+            end: 0x8010000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g0xx_64
       - stm32g0xx_otp
@@ -307,21 +330,23 @@ variants:
         type: armv6m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536879104
+            start: 0x20000000
+            end: 0x20002000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134234112
+            start: 0x8000000
+            end: 0x8004000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g0xx_16
       - stm32g0xx_otp
@@ -332,21 +357,23 @@ variants:
         type: armv6m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536879104
+            start: 0x20000000
+            end: 0x20002000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134250496
+            start: 0x8000000
+            end: 0x8008000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g0xx_32
       - stm32g0xx_otp
@@ -357,21 +384,23 @@ variants:
         type: armv6m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536879104
+            start: 0x20000000
+            end: 0x20002000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134283264
+            start: 0x8000000
+            end: 0x8010000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g0xx_64
       - stm32g0xx_otp
@@ -382,21 +411,23 @@ variants:
         type: armv6m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536879104
+            start: 0x20000000
+            end: 0x20002000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134234112
+            start: 0x8000000
+            end: 0x8004000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g0xx_16
       - stm32g0xx_otp
@@ -407,21 +438,23 @@ variants:
         type: armv6m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536879104
+            start: 0x20000000
+            end: 0x20002000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134250496
+            start: 0x8000000
+            end: 0x8008000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g0xx_32
       - stm32g0xx_otp
@@ -432,21 +465,23 @@ variants:
         type: armv6m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536879104
+            start: 0x20000000
+            end: 0x20002000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134283264
+            start: 0x8000000
+            end: 0x8010000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g0xx_64
       - stm32g0xx_otp
@@ -457,21 +492,23 @@ variants:
         type: armv6m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536879104
+            start: 0x20000000
+            end: 0x20002000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134234112
+            start: 0x8000000
+            end: 0x8004000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g0xx_16
       - stm32g0xx_otp
@@ -482,21 +519,23 @@ variants:
         type: armv6m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536879104
+            start: 0x20000000
+            end: 0x20002000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134250496
+            start: 0x8000000
+            end: 0x8008000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g0xx_32
       - stm32g0xx_otp
@@ -507,21 +546,23 @@ variants:
         type: armv6m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536879104
+            start: 0x20000000
+            end: 0x20002000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134234112
+            start: 0x8000000
+            end: 0x8004000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g0xx_16
       - stm32g0xx_otp
@@ -532,21 +573,23 @@ variants:
         type: armv6m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536879104
+            start: 0x20000000
+            end: 0x20002000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134234112
+            start: 0x8000000
+            end: 0x8004000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g0xx_16
       - stm32g0xx_otp
@@ -557,21 +600,23 @@ variants:
         type: armv6m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536879104
+            start: 0x20000000
+            end: 0x20002000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134250496
+            start: 0x8000000
+            end: 0x8008000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g0xx_32
       - stm32g0xx_otp
@@ -582,21 +627,23 @@ variants:
         type: armv6m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536879104
+            start: 0x20000000
+            end: 0x20002000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134250496
+            start: 0x8000000
+            end: 0x8008000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g0xx_32
       - stm32g0xx_otp
@@ -607,21 +654,23 @@ variants:
         type: armv6m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536879104
+            start: 0x20000000
+            end: 0x20002000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134283264
+            start: 0x8000000
+            end: 0x8010000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g0xx_64
       - stm32g0xx_otp
@@ -632,21 +681,23 @@ variants:
         type: armv6m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536879104
+            start: 0x20000000
+            end: 0x20002000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134283264
+            start: 0x8000000
+            end: 0x8010000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g0xx_64
       - stm32g0xx_otp
@@ -657,21 +708,23 @@ variants:
         type: armv6m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536879104
+            start: 0x20000000
+            end: 0x20002000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134283264
+            start: 0x8000000
+            end: 0x8010000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g0xx_64
       - stm32g0xx_otp
@@ -682,21 +735,23 @@ variants:
         type: armv6m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536879104
+            start: 0x20000000
+            end: 0x20002000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134250496
+            start: 0x8000000
+            end: 0x8008000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g0xx_32
       - stm32g0xx_otp
@@ -707,21 +762,23 @@ variants:
         type: armv6m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536879104
+            start: 0x20000000
+            end: 0x20002000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134250496
+            start: 0x8000000
+            end: 0x8008000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g0xx_32
       - stm32g0xx_otp
@@ -732,21 +789,23 @@ variants:
         type: armv6m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536879104
+            start: 0x20000000
+            end: 0x20002000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134283264
+            start: 0x8000000
+            end: 0x8010000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g0xx_64
       - stm32g0xx_otp
@@ -757,21 +816,23 @@ variants:
         type: armv6m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536879104
+            start: 0x20000000
+            end: 0x20002000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134283264
+            start: 0x8000000
+            end: 0x8010000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g0xx_64
       - stm32g0xx_otp
@@ -782,21 +843,23 @@ variants:
         type: armv6m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536879104
+            start: 0x20000000
+            end: 0x20002000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134250496
+            start: 0x8000000
+            end: 0x8008000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g0xx_32
       - stm32g0xx_otp
@@ -807,21 +870,23 @@ variants:
         type: armv6m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536879104
+            start: 0x20000000
+            end: 0x20002000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134283264
+            start: 0x8000000
+            end: 0x8010000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g0xx_64
       - stm32g0xx_otp
@@ -832,21 +897,23 @@ variants:
         type: armv6m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536879104
+            start: 0x20000000
+            end: 0x20002000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134250496
+            start: 0x8000000
+            end: 0x8008000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g0xx_32
       - stm32g0xx_otp
@@ -857,21 +924,23 @@ variants:
         type: armv6m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536879104
+            start: 0x20000000
+            end: 0x20002000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134283264
+            start: 0x8000000
+            end: 0x8010000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g0xx_64
       - stm32g0xx_otp
@@ -882,21 +951,23 @@ variants:
         type: armv6m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536879104
+            start: 0x20000000
+            end: 0x20002000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134250496
+            start: 0x8000000
+            end: 0x8008000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g0xx_32
       - stm32g0xx_otp
@@ -907,21 +978,23 @@ variants:
         type: armv6m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536879104
+            start: 0x20000000
+            end: 0x20002000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134250496
+            start: 0x8000000
+            end: 0x8008000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g0xx_32
       - stm32g0xx_otp
@@ -932,21 +1005,23 @@ variants:
         type: armv6m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536879104
+            start: 0x20000000
+            end: 0x20002000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134250496
+            start: 0x8000000
+            end: 0x8008000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g0xx_32
       - stm32g0xx_otp
@@ -957,21 +1032,23 @@ variants:
         type: armv6m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536879104
+            start: 0x20000000
+            end: 0x20002000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134283264
+            start: 0x8000000
+            end: 0x8010000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g0xx_64
       - stm32g0xx_otp
@@ -982,21 +1059,23 @@ variants:
         type: armv6m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536879104
+            start: 0x20000000
+            end: 0x20002000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134283264
+            start: 0x8000000
+            end: 0x8010000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g0xx_64
       - stm32g0xx_otp
@@ -1007,21 +1086,23 @@ variants:
         type: armv6m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536879104
+            start: 0x20000000
+            end: 0x20002000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134283264
+            start: 0x8000000
+            end: 0x8010000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g0xx_64
       - stm32g0xx_otp
@@ -1032,21 +1113,23 @@ variants:
         type: armv6m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536907776
+            start: 0x20000000
+            end: 0x20009000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134348800
+            start: 0x8000000
+            end: 0x8020000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g0xx_128
       - stm32g0xx_otp
@@ -1057,21 +1140,23 @@ variants:
         type: armv6m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536907776
+            start: 0x20000000
+            end: 0x20009000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134348800
+            start: 0x8000000
+            end: 0x8020000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g0xx_128
       - stm32g0xx_otp
@@ -1082,21 +1167,23 @@ variants:
         type: armv6m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536907776
+            start: 0x20000000
+            end: 0x20009000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134348800
+            start: 0x8000000
+            end: 0x8020000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g0xx_128
       - stm32g0xx_otp
@@ -1107,21 +1194,23 @@ variants:
         type: armv6m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536907776
+            start: 0x20000000
+            end: 0x20009000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134250496
+            start: 0x8000000
+            end: 0x8008000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g0xx_32
       - stm32g0xx_otp
@@ -1132,21 +1221,23 @@ variants:
         type: armv6m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536907776
+            start: 0x20000000
+            end: 0x20009000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134250496
+            start: 0x8000000
+            end: 0x8008000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g0xx_32
       - stm32g0xx_otp
@@ -1157,21 +1248,23 @@ variants:
         type: armv6m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536907776
+            start: 0x20000000
+            end: 0x20009000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134283264
+            start: 0x8000000
+            end: 0x8010000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g0xx_64
       - stm32g0xx_otp
@@ -1182,21 +1275,23 @@ variants:
         type: armv6m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536907776
+            start: 0x20000000
+            end: 0x20009000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134283264
+            start: 0x8000000
+            end: 0x8010000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g0xx_64
       - stm32g0xx_otp
@@ -1207,21 +1302,23 @@ variants:
         type: armv6m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536907776
+            start: 0x20000000
+            end: 0x20009000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134348800
+            start: 0x8000000
+            end: 0x8020000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g0xx_128
       - stm32g0xx_otp
@@ -1232,21 +1329,23 @@ variants:
         type: armv6m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536907776
+            start: 0x20000000
+            end: 0x20009000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134348800
+            start: 0x8000000
+            end: 0x8020000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g0xx_128
       - stm32g0xx_otp
@@ -1257,21 +1356,23 @@ variants:
         type: armv6m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536907776
+            start: 0x20000000
+            end: 0x20009000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134348800
+            start: 0x8000000
+            end: 0x8020000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g0xx_128
       - stm32g0xx_otp
@@ -1282,21 +1383,23 @@ variants:
         type: armv6m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536907776
+            start: 0x20000000
+            end: 0x20009000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134250496
+            start: 0x8000000
+            end: 0x8008000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g0xx_32
       - stm32g0xx_otp
@@ -1307,21 +1410,23 @@ variants:
         type: armv6m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536907776
+            start: 0x20000000
+            end: 0x20009000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134283264
+            start: 0x8000000
+            end: 0x8010000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g0xx_64
       - stm32g0xx_otp
@@ -1332,21 +1437,23 @@ variants:
         type: armv6m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536907776
+            start: 0x20000000
+            end: 0x20009000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134283264
+            start: 0x8000000
+            end: 0x8010000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g0xx_64
       - stm32g0xx_otp
@@ -1357,21 +1464,23 @@ variants:
         type: armv6m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536907776
+            start: 0x20000000
+            end: 0x20009000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134348800
+            start: 0x8000000
+            end: 0x8020000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g0xx_128
       - stm32g0xx_otp
@@ -1382,21 +1491,23 @@ variants:
         type: armv6m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536907776
+            start: 0x20000000
+            end: 0x20009000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134348800
+            start: 0x8000000
+            end: 0x8020000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g0xx_128
       - stm32g0xx_otp
@@ -1407,21 +1518,23 @@ variants:
         type: armv6m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536907776
+            start: 0x20000000
+            end: 0x20009000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134250496
+            start: 0x8000000
+            end: 0x8008000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g0xx_32
       - stm32g0xx_otp
@@ -1432,21 +1545,23 @@ variants:
         type: armv6m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536907776
+            start: 0x20000000
+            end: 0x20009000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134250496
+            start: 0x8000000
+            end: 0x8008000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g0xx_32
       - stm32g0xx_otp
@@ -1457,21 +1572,23 @@ variants:
         type: armv6m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536907776
+            start: 0x20000000
+            end: 0x20009000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134283264
+            start: 0x8000000
+            end: 0x8010000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g0xx_64
       - stm32g0xx_otp
@@ -1482,21 +1599,23 @@ variants:
         type: armv6m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536907776
+            start: 0x20000000
+            end: 0x20009000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134283264
+            start: 0x8000000
+            end: 0x8010000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g0xx_64
       - stm32g0xx_otp
@@ -1507,21 +1626,23 @@ variants:
         type: armv6m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536907776
+            start: 0x20000000
+            end: 0x20009000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134283264
+            start: 0x8000000
+            end: 0x8010000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g0xx_64
       - stm32g0xx_otp
@@ -1532,21 +1653,23 @@ variants:
         type: armv6m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536907776
+            start: 0x20000000
+            end: 0x20009000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134283264
+            start: 0x8000000
+            end: 0x8010000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g0xx_64
       - stm32g0xx_otp
@@ -1557,21 +1680,23 @@ variants:
         type: armv6m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536907776
+            start: 0x20000000
+            end: 0x20009000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134348800
+            start: 0x8000000
+            end: 0x8020000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g0xx_128
       - stm32g0xx_otp
@@ -1582,21 +1707,23 @@ variants:
         type: armv6m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536907776
+            start: 0x20000000
+            end: 0x20009000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134348800
+            start: 0x8000000
+            end: 0x8020000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g0xx_128
       - stm32g0xx_otp
@@ -1607,21 +1734,23 @@ variants:
         type: armv6m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536907776
+            start: 0x20000000
+            end: 0x20009000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134348800
+            start: 0x8000000
+            end: 0x8020000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g0xx_128
       - stm32g0xx_otp
@@ -1632,21 +1761,23 @@ variants:
         type: armv6m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536907776
+            start: 0x20000000
+            end: 0x20009000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134348800
+            start: 0x8000000
+            end: 0x8020000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g0xx_128
       - stm32g0xx_otp
@@ -1657,21 +1788,23 @@ variants:
         type: armv6m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536907776
+            start: 0x20000000
+            end: 0x20009000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134250496
+            start: 0x8000000
+            end: 0x8008000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g0xx_32
       - stm32g0xx_otp
@@ -1682,21 +1815,23 @@ variants:
         type: armv6m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536907776
+            start: 0x20000000
+            end: 0x20009000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134283264
+            start: 0x8000000
+            end: 0x8010000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g0xx_64
       - stm32g0xx_otp
@@ -1707,21 +1842,23 @@ variants:
         type: armv6m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536907776
+            start: 0x20000000
+            end: 0x20009000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134348800
+            start: 0x8000000
+            end: 0x8020000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g0xx_128
       - stm32g0xx_otp
@@ -1732,21 +1869,23 @@ variants:
         type: armv6m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536907776
+            start: 0x20000000
+            end: 0x20009000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134348800
+            start: 0x8000000
+            end: 0x8020000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g0xx_128
       - stm32g0xx_otp
@@ -1757,21 +1896,23 @@ variants:
         type: armv6m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536907776
+            start: 0x20000000
+            end: 0x20009000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134348800
+            start: 0x8000000
+            end: 0x8020000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g0xx_128
       - stm32g0xx_otp
@@ -1782,21 +1923,23 @@ variants:
         type: armv6m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536907776
+            start: 0x20000000
+            end: 0x20009000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134348800
+            start: 0x8000000
+            end: 0x8020000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g0xx_128
       - stm32g0xx_otp
@@ -1807,21 +1950,23 @@ variants:
         type: armv6m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536907776
+            start: 0x20000000
+            end: 0x20009000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134348800
+            start: 0x8000000
+            end: 0x8020000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g0xx_128
       - stm32g0xx_otp
@@ -1832,21 +1977,23 @@ variants:
         type: armv6m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536907776
+            start: 0x20000000
+            end: 0x20009000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134348800
+            start: 0x8000000
+            end: 0x8020000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g0xx_128
       - stm32g0xx_otp
@@ -1857,21 +2004,23 @@ variants:
         type: armv6m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536907776
+            start: 0x20000000
+            end: 0x20009000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134348800
+            start: 0x8000000
+            end: 0x8020000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g0xx_128
       - stm32g0xx_otp
@@ -1882,21 +2031,23 @@ variants:
         type: armv6m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536907776
+            start: 0x20000000
+            end: 0x20009000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134348800
+            start: 0x8000000
+            end: 0x8020000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g0xx_128
       - stm32g0xx_otp
@@ -1907,21 +2058,23 @@ variants:
         type: armv6m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536907776
+            start: 0x20000000
+            end: 0x20009000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134348800
+            start: 0x8000000
+            end: 0x8020000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g0xx_128
       - stm32g0xx_otp
@@ -1932,21 +2085,23 @@ variants:
         type: armv6m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536907776
+            start: 0x20000000
+            end: 0x20009000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134348800
+            start: 0x8000000
+            end: 0x8020000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g0xx_128
       - stm32g0xx_otp
@@ -1957,21 +2112,23 @@ variants:
         type: armv6m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536907776
+            start: 0x20000000
+            end: 0x20009000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134348800
+            start: 0x8000000
+            end: 0x8020000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g0xx_128
       - stm32g0xx_otp
@@ -1982,21 +2139,23 @@ variants:
         type: armv6m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536907776
+            start: 0x20000000
+            end: 0x20009000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134348800
+            start: 0x8000000
+            end: 0x8020000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g0xx_128
       - stm32g0xx_otp
@@ -2007,184 +2166,186 @@ variants:
         type: armv6m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536907776
+            start: 0x20000000
+            end: 0x20009000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134348800
+            start: 0x8000000
+            end: 0x8020000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g0xx_128
       - stm32g0xx_otp
       - stm32g0x1_opt
 flash_algorithms:
-  stm32g0xx_otp:
-    name: stm32g0xx_otp
+  - name: stm32g0xx_otp
     description: STM32G0xx Flash OTP
-    cores: [main]
+    cores:
+      - main
     default: false
     instructions: v/NPj3BHG0gZSYFgGkmBYBpJAWEAIHBHASAWScAHSGEAIHBHASBwRwAgcEfwtckdEEzJCBFNyQAlYQEmACcT4GZhE2gDYFNoQ2C/80+PI2nbA/zUZ2EjaStCAtAlYQEg8L0IMAg5CDIAKenRACDwvSMBZ0UAIAJAq4nvzfrDAAAAAAAA
-    pc_init: 7
-    pc_uninit: 25
-    pc_program_page: 45
-    pc_erase_sector: 41
-    pc_erase_all: ~
-    data_section_offset: 128
+    pc_init: 0x7
+    pc_uninit: 0x19
+    pc_program_page: 0x2d
+    pc_erase_sector: 0x29
+    pc_erase_all: null
+    data_section_offset: 0x80
     flash_properties:
       address_range:
-        start: 536834048
-        end: 536835072
-      page_size: 1024
-      erased_byte_value: 255
-      program_page_timeout: 3000
-      erase_sector_timeout: 3000
+        start: 0x1fff7000
+        end: 0x1fff7400
+      page_size: 0x400
+      erased_byte_value: 0xff
+      program_page_timeout: 0xbb8
+      erase_sector_timeout: 0xbb8
       sectors:
-        - size: 1024
-          address: 0
-  stm32g0xx_16:
-    name: stm32g0xx_16
+        - size: 0x400
+          address: 0x0
+  - name: stm32g0xx_16
     description: STM32G0xx 16 KB Flash
-    cores: [main]
+    cores:
+      - main
     default: true
     instructions: v/NPj3BHwAOADnBHNUg0SYFgNUmBYDVJAWEAIHBHASAwScAHSGEAIHBHASBwRy1ILkoCYQQhQWFBaQEjGwQZQ0Fhv/NPjwFpyQP81AAhQWEBaRFCBNABaRFDAWEBIHBHACBwR8ADgQ4eSCBKAmHJAIkcQWFBaQEjGwQZQ0Fhv/NPjwFpyQP81AAhQWEBaRFCAtACYQEgcEcAIHBH8LXJHRBMyQgRTckAJWEBJgAnE+BmYRNoA2BTaENgv/NPjyNp2wP81GdhI2krQgLQJWEBIPC9CDAIOQgyACnp0QAg8L0jAWdFACACQKuJ7836wwAAAAAAAA==
-    pc_init: 13
-    pc_uninit: 31
-    pc_program_page: 157
-    pc_erase_sector: 101
-    pc_erase_all: 47
-    data_section_offset: 240
+    pc_init: 0xd
+    pc_uninit: 0x1f
+    pc_program_page: 0x9d
+    pc_erase_sector: 0x65
+    pc_erase_all: 0x2f
+    data_section_offset: 0xf0
     flash_properties:
       address_range:
-        start: 134217728
-        end: 134234112
-      page_size: 1024
-      erased_byte_value: 255
-      program_page_timeout: 400
-      erase_sector_timeout: 400
+        start: 0x8000000
+        end: 0x8004000
+      page_size: 0x400
+      erased_byte_value: 0xff
+      program_page_timeout: 0x190
+      erase_sector_timeout: 0x190
       sectors:
-        - size: 2048
-          address: 0
-  stm32g0x1_opt:
-    name: stm32g0x1_opt
+        - size: 0x800
+          address: 0x0
+  - name: stm32g0x1_opt
     description: STM32G0x1 Flash Options
-    cores: [main]
+    cores:
+      - main
     default: false
     instructions: v/NPj3BHPEg6SYFgO0mBYDtJwWA7ScFgO0kBYQAgcEcBITVIyQdBYUEEQWEAIHBHASBwRzBINEsDYTRJAWI/IcFiAWP/IUFiACKCYkFjgmMpSYAxCmABIUkEQWG/80+PAWnJA/zUQmEBaRlCBNABaRlDAWEBIHBHACBwRwAgcEfwtRd7Fn28Rhd+FWi+RlRok2gRaRhI0mkbTwdhHE89QAViHE0sQMRiK0ADY2dG+7JDYhlLGUCBYvGyQWN3RvmygWMWSQpADEmAMQpgmQtBYb/zT48BackD/NQCaQpJCkIE0AJpCkMCYQEg8L0AIPC9QBhwRyMBZ0UAIAJAq4nvzTsqGQh/bl1M+sMAAKr+Tzj//08/PwA/AP8AAID/AAEAAAAAAA==
-    pc_init: 7
-    pc_uninit: 33
-    pc_program_page: 129
-    pc_erase_sector: 125
-    pc_erase_all: 53
-    data_section_offset: 288
+    pc_init: 0x7
+    pc_uninit: 0x21
+    pc_program_page: 0x81
+    pc_erase_sector: 0x7d
+    pc_erase_all: 0x35
+    data_section_offset: 0x120
     flash_properties:
       address_range:
-        start: 536836096
-        end: 536836128
-      page_size: 32
-      erased_byte_value: 255
-      program_page_timeout: 3000
-      erase_sector_timeout: 3000
+        start: 0x1fff7800
+        end: 0x1fff7820
+      page_size: 0x20
+      erased_byte_value: 0xff
+      program_page_timeout: 0xbb8
+      erase_sector_timeout: 0xbb8
       sectors:
-        - size: 32
-          address: 0
-  stm32g0xx_64:
-    name: stm32g0xx_64
+        - size: 0x20
+          address: 0x0
+  - name: stm32g0xx_64
     description: STM32G0xx 64 KB Flash
-    cores: [main]
+    cores:
+      - main
     default: true
     instructions: v/NPj3BHwAOADnBHNUg0SYFgNUmBYDVJAWEAIHBHASAwScAHSGEAIHBHASBwRy1ILkoCYQQhQWFBaQEjGwQZQ0Fhv/NPjwFpyQP81AAhQWEBaRFCBNABaRFDAWEBIHBHACBwR8ADgQ4eSCBKAmHJAIkcQWFBaQEjGwQZQ0Fhv/NPjwFpyQP81AAhQWEBaRFCAtACYQEgcEcAIHBH8LXJHRBMyQgRTckAJWEBJgAnE+BmYRNoA2BTaENgv/NPjyNp2wP81GdhI2krQgLQJWEBIPC9CDAIOQgyACnp0QAg8L0jAWdFACACQKuJ7836wwAAAAAAAA==
-    pc_init: 13
-    pc_uninit: 31
-    pc_program_page: 157
-    pc_erase_sector: 101
-    pc_erase_all: 47
-    data_section_offset: 240
+    pc_init: 0xd
+    pc_uninit: 0x1f
+    pc_program_page: 0x9d
+    pc_erase_sector: 0x65
+    pc_erase_all: 0x2f
+    data_section_offset: 0xf0
     flash_properties:
       address_range:
-        start: 134217728
-        end: 134283264
-      page_size: 1024
-      erased_byte_value: 255
-      program_page_timeout: 400
-      erase_sector_timeout: 400
+        start: 0x8000000
+        end: 0x8010000
+      page_size: 0x400
+      erased_byte_value: 0xff
+      program_page_timeout: 0x190
+      erase_sector_timeout: 0x190
       sectors:
-        - size: 2048
-          address: 0
-  stm32g0xx_128:
-    name: stm32g0xx_128
+        - size: 0x800
+          address: 0x0
+  - name: stm32g0xx_128
     description: STM32G0xx 128 KB Flash
-    cores: [main]
+    cores:
+      - main
     default: true
     instructions: v/NPj3BHwAOADnBHNUg0SYFgNUmBYDVJAWEAIHBHASAwScAHSGEAIHBHASBwRy1ILkoCYQQhQWFBaQEjGwQZQ0Fhv/NPjwFpyQP81AAhQWEBaRFCBNABaRFDAWEBIHBHACBwR8ADgQ4eSCBKAmHJAIkcQWFBaQEjGwQZQ0Fhv/NPjwFpyQP81AAhQWEBaRFCAtACYQEgcEcAIHBH8LXJHRBMyQgRTckAJWEBJgAnE+BmYRNoA2BTaENgv/NPjyNp2wP81GdhI2krQgLQJWEBIPC9CDAIOQgyACnp0QAg8L0jAWdFACACQKuJ7836wwAAAAAAAA==
-    pc_init: 13
-    pc_uninit: 31
-    pc_program_page: 157
-    pc_erase_sector: 101
-    pc_erase_all: 47
-    data_section_offset: 240
+    pc_init: 0xd
+    pc_uninit: 0x1f
+    pc_program_page: 0x9d
+    pc_erase_sector: 0x65
+    pc_erase_all: 0x2f
+    data_section_offset: 0xf0
     flash_properties:
       address_range:
-        start: 134217728
-        end: 134348800
-      page_size: 1024
-      erased_byte_value: 255
-      program_page_timeout: 400
-      erase_sector_timeout: 400
+        start: 0x8000000
+        end: 0x8020000
+      page_size: 0x400
+      erased_byte_value: 0xff
+      program_page_timeout: 0x190
+      erase_sector_timeout: 0x190
       sectors:
-        - size: 2048
-          address: 0
-  stm32g0x0_opt:
-    name: stm32g0x0_opt
+        - size: 0x800
+          address: 0x0
+  - name: stm32g0x0_opt
     description: STM32G0x0 Flash Options
-    cores: [main]
+    cores:
+      - main
     default: false
     instructions: v/NPj3BHLUgrSYFgLEmBYCxJwWAsScFgLEkBYQAgcEcBISZIyQdBYUEEQWEAIHBHASBwRyFIJUoCYSVJAWI/IcFiAWMBIUkEQWG/80+PAWnJA/zUACFBYQFpEUIE0AFpEUMBYQEgcEcAIHBHACBwRzC1lGgTaFFoEEgUSgJhFU0rQANiFEsZQMFiHEAEYwEhSQRBYb/zT48BackD/NQBaRFCBNABaRFDAWEBIDC9ACAwvUAYcEcAACMBZ0UAIAJAq4nvzTsqGQh/bl1M+sMAAKr+Tzj//08/PwA/AAAAAAA=
-    pc_init: 7
-    pc_uninit: 33
-    pc_program_page: 113
-    pc_erase_sector: 109
-    pc_erase_all: 53
-    data_section_offset: 220
+    pc_init: 0x7
+    pc_uninit: 0x21
+    pc_program_page: 0x71
+    pc_erase_sector: 0x6d
+    pc_erase_all: 0x35
+    data_section_offset: 0xdc
     flash_properties:
       address_range:
-        start: 536836096
-        end: 536836108
-      page_size: 12
-      erased_byte_value: 255
-      program_page_timeout: 3000
-      erase_sector_timeout: 3000
+        start: 0x1fff7800
+        end: 0x1fff780c
+      page_size: 0xc
+      erased_byte_value: 0xff
+      program_page_timeout: 0xbb8
+      erase_sector_timeout: 0xbb8
       sectors:
-        - size: 12
-          address: 0
-  stm32g0xx_32:
-    name: stm32g0xx_32
+        - size: 0xc
+          address: 0x0
+  - name: stm32g0xx_32
     description: STM32G0xx 32 KB Flash
-    cores: [main]
+    cores:
+      - main
     default: true
     instructions: v/NPj3BHwAOADnBHNUg0SYFgNUmBYDVJAWEAIHBHASAwScAHSGEAIHBHASBwRy1ILkoCYQQhQWFBaQEjGwQZQ0Fhv/NPjwFpyQP81AAhQWEBaRFCBNABaRFDAWEBIHBHACBwR8ADgQ4eSCBKAmHJAIkcQWFBaQEjGwQZQ0Fhv/NPjwFpyQP81AAhQWEBaRFCAtACYQEgcEcAIHBH8LXJHRBMyQgRTckAJWEBJgAnE+BmYRNoA2BTaENgv/NPjyNp2wP81GdhI2krQgLQJWEBIPC9CDAIOQgyACnp0QAg8L0jAWdFACACQKuJ7836wwAAAAAAAA==
-    pc_init: 13
-    pc_uninit: 31
-    pc_program_page: 157
-    pc_erase_sector: 101
-    pc_erase_all: 47
-    data_section_offset: 240
+    pc_init: 0xd
+    pc_uninit: 0x1f
+    pc_program_page: 0x9d
+    pc_erase_sector: 0x65
+    pc_erase_all: 0x2f
+    data_section_offset: 0xf0
     flash_properties:
       address_range:
-        start: 134217728
-        end: 134250496
-      page_size: 1024
-      erased_byte_value: 255
-      program_page_timeout: 400
-      erase_sector_timeout: 400
+        start: 0x8000000
+        end: 0x8008000
+      page_size: 0x400
+      erased_byte_value: 0xff
+      program_page_timeout: 0x190
+      erase_sector_timeout: 0x190
       sectors:
-        - size: 2048
-          address: 0
+        - size: 0x800
+          address: 0x0

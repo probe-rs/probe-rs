@@ -1,4 +1,3 @@
----
 name: STM32G4 Series
 variants:
   - name: STM32G431C6Tx
@@ -7,21 +6,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536903680
+            start: 0x20000000
+            end: 0x20008000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134250496
+            start: 0x8000000
+            end: 0x8008000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g4xx_32
   - name: STM32G431C6Ux
@@ -30,21 +31,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536903680
+            start: 0x20000000
+            end: 0x20008000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134250496
+            start: 0x8000000
+            end: 0x8008000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g4xx_32
   - name: STM32G431C8Tx
@@ -53,21 +56,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536903680
+            start: 0x20000000
+            end: 0x20008000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134283264
+            start: 0x8000000
+            end: 0x8010000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g4xx_64
   - name: STM32G431C8Ux
@@ -76,21 +81,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536903680
+            start: 0x20000000
+            end: 0x20008000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134283264
+            start: 0x8000000
+            end: 0x8010000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g4xx_64
   - name: STM32G431CBTx
@@ -99,21 +106,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536903680
+            start: 0x20000000
+            end: 0x20008000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134348800
+            start: 0x8000000
+            end: 0x8020000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g4xx_128
   - name: STM32G431CBUx
@@ -122,21 +131,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536903680
+            start: 0x20000000
+            end: 0x20008000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134348800
+            start: 0x8000000
+            end: 0x8020000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g4xx_128
   - name: STM32G431CBYx
@@ -145,21 +156,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536903680
+            start: 0x20000000
+            end: 0x20008000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134348800
+            start: 0x8000000
+            end: 0x8020000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g4xx_128
   - name: STM32G431K6Tx
@@ -168,21 +181,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536903680
+            start: 0x20000000
+            end: 0x20008000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134250496
+            start: 0x8000000
+            end: 0x8008000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g4xx_32
   - name: STM32G431K6Ux
@@ -191,21 +206,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536903680
+            start: 0x20000000
+            end: 0x20008000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134250496
+            start: 0x8000000
+            end: 0x8008000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g4xx_32
   - name: STM32G431K8Tx
@@ -214,21 +231,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536903680
+            start: 0x20000000
+            end: 0x20008000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134283264
+            start: 0x8000000
+            end: 0x8010000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g4xx_64
   - name: STM32G431K8Ux
@@ -237,21 +256,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536903680
+            start: 0x20000000
+            end: 0x20008000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134283264
+            start: 0x8000000
+            end: 0x8010000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g4xx_64
   - name: STM32G431KBTx
@@ -260,21 +281,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536903680
+            start: 0x20000000
+            end: 0x20008000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134348800
+            start: 0x8000000
+            end: 0x8020000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g4xx_128
   - name: STM32G431KBUx
@@ -283,21 +306,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536903680
+            start: 0x20000000
+            end: 0x20008000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134348800
+            start: 0x8000000
+            end: 0x8020000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g4xx_128
   - name: STM32G431M6Tx
@@ -306,21 +331,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536903680
+            start: 0x20000000
+            end: 0x20008000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134250496
+            start: 0x8000000
+            end: 0x8008000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g4xx_32
   - name: STM32G431M8Tx
@@ -329,21 +356,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536903680
+            start: 0x20000000
+            end: 0x20008000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134283264
+            start: 0x8000000
+            end: 0x8010000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g4xx_64
   - name: STM32G431R6Ix
@@ -352,21 +381,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536903680
+            start: 0x20000000
+            end: 0x20008000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134250496
+            start: 0x8000000
+            end: 0x8008000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g4xx_32
   - name: STM32G431R6Tx
@@ -375,21 +406,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536903680
+            start: 0x20000000
+            end: 0x20008000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134250496
+            start: 0x8000000
+            end: 0x8008000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g4xx_32
   - name: STM32G431R8Ix
@@ -398,21 +431,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536903680
+            start: 0x20000000
+            end: 0x20008000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134283264
+            start: 0x8000000
+            end: 0x8010000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g4xx_64
   - name: STM32G431R8Tx
@@ -421,21 +456,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536903680
+            start: 0x20000000
+            end: 0x20008000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134283264
+            start: 0x8000000
+            end: 0x8010000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g4xx_64
   - name: STM32G431RBIx
@@ -444,21 +481,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536903680
+            start: 0x20000000
+            end: 0x20008000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134348800
+            start: 0x8000000
+            end: 0x8020000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g4xx_128
   - name: STM32G431RBTx
@@ -467,21 +506,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536903680
+            start: 0x20000000
+            end: 0x20008000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134348800
+            start: 0x8000000
+            end: 0x8020000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g4xx_128
   - name: STM32G431V6Tx
@@ -490,21 +531,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536903680
+            start: 0x20000000
+            end: 0x20008000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134250496
+            start: 0x8000000
+            end: 0x8008000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g4xx_32
   - name: STM32G431V8Tx
@@ -513,21 +556,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536903680
+            start: 0x20000000
+            end: 0x20008000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134283264
+            start: 0x8000000
+            end: 0x8010000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g4xx_64
   - name: STM32G431VBTx
@@ -536,21 +581,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536903680
+            start: 0x20000000
+            end: 0x20008000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134348800
+            start: 0x8000000
+            end: 0x8020000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g4xx_128
   - name: STM32G441CBTx
@@ -559,21 +606,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536903680
+            start: 0x20000000
+            end: 0x20008000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134348800
+            start: 0x8000000
+            end: 0x8020000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g4xx_128
   - name: STM32G441CBUx
@@ -582,21 +631,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536903680
+            start: 0x20000000
+            end: 0x20008000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134348800
+            start: 0x8000000
+            end: 0x8020000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g4xx_128
   - name: STM32G441CBYx
@@ -605,21 +656,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536903680
+            start: 0x20000000
+            end: 0x20008000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134348800
+            start: 0x8000000
+            end: 0x8020000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g4xx_128
   - name: STM32G441KBTx
@@ -628,21 +681,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536903680
+            start: 0x20000000
+            end: 0x20008000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134348800
+            start: 0x8000000
+            end: 0x8020000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g4xx_128
   - name: STM32G441KBUx
@@ -651,21 +706,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536903680
+            start: 0x20000000
+            end: 0x20008000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134348800
+            start: 0x8000000
+            end: 0x8020000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g4xx_128
   - name: STM32G441RBIx
@@ -674,21 +731,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536903680
+            start: 0x20000000
+            end: 0x20008000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134348800
+            start: 0x8000000
+            end: 0x8020000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g4xx_128
   - name: STM32G441RBTx
@@ -697,21 +756,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536903680
+            start: 0x20000000
+            end: 0x20008000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134348800
+            start: 0x8000000
+            end: 0x8020000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g4xx_128
   - name: STM32G441VBTx
@@ -720,21 +781,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536903680
+            start: 0x20000000
+            end: 0x20008000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134348800
+            start: 0x8000000
+            end: 0x8020000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g4xx_128
   - name: STM32G471CCTx
@@ -743,21 +806,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537001984
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134479872
+            start: 0x8000000
+            end: 0x8040000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g4xx_256
   - name: STM32G471CCUx
@@ -766,21 +831,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537001984
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134479872
+            start: 0x8000000
+            end: 0x8040000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g4xx_256
   - name: STM32G471CETx
@@ -789,21 +856,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537001984
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134742016
+            start: 0x8000000
+            end: 0x8080000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g4xx_512_dual
       - stm32g4xx_512
@@ -813,21 +882,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537001984
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134742016
+            start: 0x8000000
+            end: 0x8080000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g4xx_512_dual
       - stm32g4xx_512
@@ -837,21 +908,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537001984
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134479872
+            start: 0x8000000
+            end: 0x8040000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g4xx_256
   - name: STM32G471METx
@@ -860,21 +933,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537001984
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134742016
+            start: 0x8000000
+            end: 0x8080000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g4xx_512_dual
       - stm32g4xx_512
@@ -884,21 +959,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537001984
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134742016
+            start: 0x8000000
+            end: 0x8080000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g4xx_512_dual
       - stm32g4xx_512
@@ -908,21 +985,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537001984
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134479872
+            start: 0x8000000
+            end: 0x8040000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g4xx_256
   - name: STM32G471QETx
@@ -931,21 +1010,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537001984
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134742016
+            start: 0x8000000
+            end: 0x8080000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g4xx_512_dual
       - stm32g4xx_512
@@ -955,21 +1036,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537001984
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134479872
+            start: 0x8000000
+            end: 0x8040000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g4xx_256
   - name: STM32G471RE
@@ -978,21 +1061,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537001984
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134742016
+            start: 0x8000000
+            end: 0x8080000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g4xx_512_dual
       - stm32g4xx_512
@@ -1002,21 +1087,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537001984
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134479872
+            start: 0x8000000
+            end: 0x8040000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g4xx_256
   - name: STM32G471VCIx
@@ -1025,21 +1112,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537001984
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134479872
+            start: 0x8000000
+            end: 0x8040000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g4xx_256
   - name: STM32G471VCTx
@@ -1048,21 +1137,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537001984
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134479872
+            start: 0x8000000
+            end: 0x8040000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g4xx_256
   - name: STM32G471VEHx
@@ -1071,21 +1162,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537001984
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134742016
+            start: 0x8000000
+            end: 0x8080000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g4xx_512_dual
       - stm32g4xx_512
@@ -1095,21 +1188,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537001984
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134742016
+            start: 0x8000000
+            end: 0x8080000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g4xx_512_dual
       - stm32g4xx_512
@@ -1119,21 +1214,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537001984
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134742016
+            start: 0x8000000
+            end: 0x8080000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g4xx_512_dual
       - stm32g4xx_512
@@ -1143,21 +1240,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537001984
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134348800
+            start: 0x8000000
+            end: 0x8020000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g4xx_128
   - name: STM32G473CBUx
@@ -1166,21 +1265,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537001984
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134348800
+            start: 0x8000000
+            end: 0x8020000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g4xx_128
   - name: STM32G473CCTx
@@ -1189,21 +1290,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537001984
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134479872
+            start: 0x8000000
+            end: 0x8040000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g4xx_256
   - name: STM32G473CCUx
@@ -1212,21 +1315,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537001984
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134479872
+            start: 0x8000000
+            end: 0x8040000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g4xx_256
   - name: STM32G473CETx
@@ -1235,21 +1340,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537001984
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134742016
+            start: 0x8000000
+            end: 0x8080000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g4xx_512_dual
       - stm32g4xx_512
@@ -1259,21 +1366,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537001984
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134742016
+            start: 0x8000000
+            end: 0x8080000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g4xx_512_dual
       - stm32g4xx_512
@@ -1283,21 +1392,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537001984
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134348800
+            start: 0x8000000
+            end: 0x8020000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g4xx_128
   - name: STM32G473MCTx
@@ -1306,21 +1417,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537001984
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134479872
+            start: 0x8000000
+            end: 0x8040000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g4xx_256
   - name: STM32G473METx
@@ -1329,21 +1442,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537001984
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134742016
+            start: 0x8000000
+            end: 0x8080000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g4xx_512_dual
       - stm32g4xx_512
@@ -1353,21 +1468,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537001984
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134742016
+            start: 0x8000000
+            end: 0x8080000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g4xx_512_dual
       - stm32g4xx_512
@@ -1377,21 +1494,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537001984
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134348800
+            start: 0x8000000
+            end: 0x8020000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g4xx_128
   - name: STM32G473QCTx
@@ -1400,21 +1519,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537001984
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134479872
+            start: 0x8000000
+            end: 0x8040000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g4xx_256
   - name: STM32G473QETx
@@ -1423,21 +1544,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537001984
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134742016
+            start: 0x8000000
+            end: 0x8080000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g4xx_512_dual
       - stm32g4xx_512
@@ -1447,21 +1570,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537001984
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134348800
+            start: 0x8000000
+            end: 0x8020000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g4xx_128
   - name: STM32G473RCTx
@@ -1470,21 +1595,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537001984
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134479872
+            start: 0x8000000
+            end: 0x8040000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g4xx_256
   - name: STM32G473RETx
@@ -1493,21 +1620,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537001984
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134742016
+            start: 0x8000000
+            end: 0x8080000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g4xx_512_dual
       - stm32g4xx_512
@@ -1517,21 +1646,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537001984
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134348800
+            start: 0x8000000
+            end: 0x8020000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g4xx_128
   - name: STM32G473VBIx
@@ -1540,21 +1671,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537001984
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134348800
+            start: 0x8000000
+            end: 0x8020000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g4xx_128
   - name: STM32G473VBTx
@@ -1563,21 +1696,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537001984
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134348800
+            start: 0x8000000
+            end: 0x8020000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g4xx_128
   - name: STM32G473VCHx
@@ -1586,21 +1721,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537001984
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134479872
+            start: 0x8000000
+            end: 0x8040000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g4xx_256
   - name: STM32G473VCIx
@@ -1609,21 +1746,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537001984
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134479872
+            start: 0x8000000
+            end: 0x8040000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g4xx_256
   - name: STM32G473VCTx
@@ -1632,21 +1771,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537001984
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134479872
+            start: 0x8000000
+            end: 0x8040000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g4xx_256
   - name: STM32G473VEHx
@@ -1655,21 +1796,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537001984
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134742016
+            start: 0x8000000
+            end: 0x8080000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g4xx_512_dual
       - stm32g4xx_512
@@ -1679,21 +1822,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537001984
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134742016
+            start: 0x8000000
+            end: 0x8080000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g4xx_512_dual
       - stm32g4xx_512
@@ -1703,21 +1848,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537001984
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134742016
+            start: 0x8000000
+            end: 0x8080000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g4xx_512_dual
       - stm32g4xx_512
@@ -1727,21 +1874,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537001984
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134348800
+            start: 0x8000000
+            end: 0x8020000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g4xx_128
   - name: STM32G474CBUx
@@ -1750,21 +1899,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537001984
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134348800
+            start: 0x8000000
+            end: 0x8020000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g4xx_128
   - name: STM32G474CCTx
@@ -1773,21 +1924,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537001984
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134479872
+            start: 0x8000000
+            end: 0x8040000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g4xx_256
   - name: STM32G474CCUx
@@ -1796,21 +1949,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537001984
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134479872
+            start: 0x8000000
+            end: 0x8040000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g4xx_256
   - name: STM32G474CETx
@@ -1819,21 +1974,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537001984
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134742016
+            start: 0x8000000
+            end: 0x8080000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g4xx_512_dual
       - stm32g4xx_512
@@ -1843,21 +2000,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537001984
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134742016
+            start: 0x8000000
+            end: 0x8080000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g4xx_512_dual
       - stm32g4xx_512
@@ -1867,21 +2026,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537001984
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134348800
+            start: 0x8000000
+            end: 0x8020000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g4xx_128
   - name: STM32G474MCTx
@@ -1890,21 +2051,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537001984
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134479872
+            start: 0x8000000
+            end: 0x8040000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g4xx_256
   - name: STM32G474METx
@@ -1913,21 +2076,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537001984
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134742016
+            start: 0x8000000
+            end: 0x8080000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g4xx_512_dual
       - stm32g4xx_512
@@ -1937,21 +2102,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537001984
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134742016
+            start: 0x8000000
+            end: 0x8080000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g4xx_512_dual
       - stm32g4xx_512
@@ -1961,21 +2128,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537001984
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134348800
+            start: 0x8000000
+            end: 0x8020000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g4xx_128
   - name: STM32G474QCTx
@@ -1984,21 +2153,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537001984
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134479872
+            start: 0x8000000
+            end: 0x8040000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g4xx_256
   - name: STM32G474QETx
@@ -2007,21 +2178,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537001984
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134742016
+            start: 0x8000000
+            end: 0x8080000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g4xx_512_dual
       - stm32g4xx_512
@@ -2031,21 +2204,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537001984
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134348800
+            start: 0x8000000
+            end: 0x8020000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g4xx_128
   - name: STM32G474RCTx
@@ -2054,21 +2229,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537001984
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134479872
+            start: 0x8000000
+            end: 0x8040000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g4xx_256
   - name: STM32G474RETx
@@ -2077,21 +2254,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537001984
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134742016
+            start: 0x8000000
+            end: 0x8080000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g4xx_512_dual
       - stm32g4xx_512
@@ -2101,21 +2280,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537001984
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134348800
+            start: 0x8000000
+            end: 0x8020000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g4xx_128
   - name: STM32G474VBIx
@@ -2124,21 +2305,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537001984
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134348800
+            start: 0x8000000
+            end: 0x8020000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g4xx_128
   - name: STM32G474VBTx
@@ -2147,21 +2330,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537001984
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134348800
+            start: 0x8000000
+            end: 0x8020000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g4xx_128
   - name: STM32G474VCHx
@@ -2170,21 +2355,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537001984
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134479872
+            start: 0x8000000
+            end: 0x8040000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g4xx_256
   - name: STM32G474VCIx
@@ -2193,21 +2380,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537001984
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134479872
+            start: 0x8000000
+            end: 0x8040000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g4xx_256
   - name: STM32G474VCTx
@@ -2216,21 +2405,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537001984
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134479872
+            start: 0x8000000
+            end: 0x8040000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g4xx_256
   - name: STM32G474VEHx
@@ -2239,21 +2430,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537001984
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134742016
+            start: 0x8000000
+            end: 0x8080000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g4xx_512_dual
       - stm32g4xx_512
@@ -2263,21 +2456,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537001984
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134742016
+            start: 0x8000000
+            end: 0x8080000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g4xx_512_dual
       - stm32g4xx_512
@@ -2287,21 +2482,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537001984
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134742016
+            start: 0x8000000
+            end: 0x8080000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g4xx_512_dual
       - stm32g4xx_512
@@ -2311,21 +2508,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537001984
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134742016
+            start: 0x8000000
+            end: 0x8080000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g4xx_512_dual
       - stm32g4xx_512
@@ -2335,21 +2534,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537001984
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134742016
+            start: 0x8000000
+            end: 0x8080000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g4xx_512_dual
       - stm32g4xx_512
@@ -2359,21 +2560,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537001984
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134742016
+            start: 0x8000000
+            end: 0x8080000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g4xx_512_dual
       - stm32g4xx_512
@@ -2383,21 +2586,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537001984
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134742016
+            start: 0x8000000
+            end: 0x8080000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g4xx_512_dual
       - stm32g4xx_512
@@ -2407,21 +2612,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537001984
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134742016
+            start: 0x8000000
+            end: 0x8080000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g4xx_512_dual
       - stm32g4xx_512
@@ -2431,21 +2638,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537001984
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134742016
+            start: 0x8000000
+            end: 0x8080000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g4xx_512_dual
       - stm32g4xx_512
@@ -2455,21 +2664,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537001984
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134742016
+            start: 0x8000000
+            end: 0x8080000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g4xx_512_dual
       - stm32g4xx_512
@@ -2479,21 +2690,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537001984
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134742016
+            start: 0x8000000
+            end: 0x8080000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g4xx_512_dual
       - stm32g4xx_512
@@ -2503,21 +2716,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537001984
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134742016
+            start: 0x8000000
+            end: 0x8080000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g4xx_512_dual
       - stm32g4xx_512
@@ -2527,21 +2742,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537001984
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134742016
+            start: 0x8000000
+            end: 0x8080000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g4xx_512_dual
       - stm32g4xx_512
@@ -2551,21 +2768,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537001984
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134742016
+            start: 0x8000000
+            end: 0x8080000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g4xx_512_dual
       - stm32g4xx_512
@@ -2575,21 +2794,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537001984
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134742016
+            start: 0x8000000
+            end: 0x8080000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g4xx_512_dual
       - stm32g4xx_512
@@ -2599,21 +2820,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537001984
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134742016
+            start: 0x8000000
+            end: 0x8080000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g4xx_512_dual
       - stm32g4xx_512
@@ -2623,21 +2846,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537001984
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134742016
+            start: 0x8000000
+            end: 0x8080000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g4xx_512_dual
       - stm32g4xx_512
@@ -2647,21 +2872,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537001984
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134742016
+            start: 0x8000000
+            end: 0x8080000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g4xx_512_dual
       - stm32g4xx_512
@@ -2671,21 +2898,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537001984
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134742016
+            start: 0x8000000
+            end: 0x8080000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g4xx_512_dual
       - stm32g4xx_512
@@ -2695,21 +2924,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537001984
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134742016
+            start: 0x8000000
+            end: 0x8080000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g4xx_512_dual
       - stm32g4xx_512
@@ -2719,21 +2950,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537001984
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134742016
+            start: 0x8000000
+            end: 0x8080000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g4xx_512_dual
       - stm32g4xx_512
@@ -2743,159 +2976,161 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536903680
+            start: 0x20000000
+            end: 0x20008000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134348800
+            start: 0x8000000
+            end: 0x8020000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32g4xx_128
 flash_algorithms:
-  stm32g4xx_32:
-    name: stm32g4xx_32
+  - name: stm32g4xx_32
     description: STM32G4xx 32 Flash
-    cores: [main]
+    cores:
+      - main
     default: true
     instructions: ELUDRnZId0ygYHdIoGAgRgBqwLKqKBfQdEjgYHRI4GAgRgBqIPD/ACBiIEYAakDwqgAgYiBGQGlA9AAwYGEgRkBpQPAAYGBhAL9mSABpAPSAMAAo+dEQvQFGYkhAaUDwAEBgSlBhACBwRwNGASBwRwPgTPL7MFtJCGFaSABpAPSAMAAo9dEEIFZJSGEIRkBpQPSAMEhhAL9SSABpAPSAMAAo+dFPSABpRPL6MQhAILEIRkxJCGEBIHBHSkhAaSDwBABISUhhACD25wFGTPL7MERLGGEYRkBpQPACAFhhRUhIRABogUIJ08oKgDoC8H8CGEZAaUD0AGBYYQfgwfPGIjhIQGkg9ABgNktYYTVIQGkg9H5wM0tYYRhGQGlA6sIAWGEYRkBpQPSAMFhhAL8tSABpAPSAMAAo+dEAvylIAGkA9IAwACj50SZIAGlE8vozGEAgsRhGI0sYYQEgcEchSEBpIPACAB9LWGEAIPbnELUDRsgdIPAHAQC/GkgAaQD0gDAAKPnRTPL7MBZMIGEgRkBpQPABAGBhGOAQaBhgUGhYYAC/D0gAaQD0gDAAKPnRCDMIMgg5C0gAaQDwAQAosUTy+jAHTCBhASAQvQAp5NEESEBpIPABAAJMYGEAIPTnIwFnRQAgAkCrie/NOyoZCH9uXUwEAAAAAAAAAAAABAg=
-    pc_init: 1
-    pc_uninit: 89
-    pc_program_page: 367
-    pc_erase_sector: 203
-    pc_erase_all: 113
-    data_section_offset: 504
+    pc_init: 0x1
+    pc_uninit: 0x59
+    pc_program_page: 0x16f
+    pc_erase_sector: 0xcb
+    pc_erase_all: 0x71
+    data_section_offset: 0x1f8
     flash_properties:
       address_range:
-        start: 134217728
-        end: 134250496
-      page_size: 1024
-      erased_byte_value: 255
-      program_page_timeout: 400
-      erase_sector_timeout: 400
+        start: 0x8000000
+        end: 0x8008000
+      page_size: 0x400
+      erased_byte_value: 0xff
+      program_page_timeout: 0x190
+      erase_sector_timeout: 0x190
       sectors:
-        - size: 2048
-          address: 0
-  stm32g4xx_64:
-    name: stm32g4xx_64
+        - size: 0x800
+          address: 0x0
+  - name: stm32g4xx_64
     description: STM32G4xx 64 Flash
-    cores: [main]
+    cores:
+      - main
     default: true
     instructions: ELUDRnZId0ygYHdIoGAgRgBqwLKqKBfQdEjgYHRI4GAgRgBqIPD/ACBiIEYAakDwqgAgYiBGQGlA9AAwYGEgRkBpQPAAYGBhAL9mSABpAPSAMAAo+dEQvQFGYkhAaUDwAEBgSlBhACBwRwNGASBwRwPgTPL7MFtJCGFaSABpAPSAMAAo9dEEIFZJSGEIRkBpQPSAMEhhAL9SSABpAPSAMAAo+dFPSABpRPL6MQhAILEIRkxJCGEBIHBHSkhAaSDwBABISUhhACD25wFGTPL7MERLGGEYRkBpQPACAFhhRUhIRABogUIJ08oKgDoC8H8CGEZAaUD0AGBYYQfgwfPGIjhIQGkg9ABgNktYYTVIQGkg9H5wM0tYYRhGQGlA6sIAWGEYRkBpQPSAMFhhAL8tSABpAPSAMAAo+dEAvylIAGkA9IAwACj50SZIAGlE8vozGEAgsRhGI0sYYQEgcEchSEBpIPACAB9LWGEAIPbnELUDRsgdIPAHAQC/GkgAaQD0gDAAKPnRTPL7MBZMIGEgRkBpQPABAGBhGOAQaBhgUGhYYAC/D0gAaQD0gDAAKPnRCDMIMgg5C0gAaQDwAQAosUTy+jAHTCBhASAQvQAp5NEESEBpIPABAAJMYGEAIPTnIwFnRQAgAkCrie/NOyoZCH9uXUwEAAAAAAAAAAAABAg=
-    pc_init: 1
-    pc_uninit: 89
-    pc_program_page: 367
-    pc_erase_sector: 203
-    pc_erase_all: 113
-    data_section_offset: 504
+    pc_init: 0x1
+    pc_uninit: 0x59
+    pc_program_page: 0x16f
+    pc_erase_sector: 0xcb
+    pc_erase_all: 0x71
+    data_section_offset: 0x1f8
     flash_properties:
       address_range:
-        start: 134217728
-        end: 134283264
-      page_size: 1024
-      erased_byte_value: 255
-      program_page_timeout: 400
-      erase_sector_timeout: 400
+        start: 0x8000000
+        end: 0x8010000
+      page_size: 0x400
+      erased_byte_value: 0xff
+      program_page_timeout: 0x190
+      erase_sector_timeout: 0x190
       sectors:
-        - size: 2048
-          address: 0
-  stm32g4xx_256:
-    name: stm32g4xx_256
-    description: "STM32G4xx 256 "
-    cores: [main]
+        - size: 0x800
+          address: 0x0
+  - name: stm32g4xx_256
+    description: 'STM32G4xx 256 '
+    cores:
+      - main
     default: true
     instructions: ELUDRmlIakygYGpIoGAAv2dIAGkA9IAwACj50RC9AUZjSEBpQPAAQGFKUGEAIHBHA0YBIHBHA+BM8vswXEkIYVtIAGkA9IAwACj10UjyBABXSUhhCEZAaUD0gDBIYQC/U0gAaQD0gDAAKPnRUEgAaUTy+jEIQCCxCEZNSQhhASBwR0tIQGkg8AQASUlIYQhGQGkg9ABASGEAIPHnAUZESEBpQPACAEJLWGFDSEhEAGiBQgnTygqAOgLwfwIYRkBpQPQAYFhhB+DB88YiOEhAaSD0AGA2S1hhNUhAaSD0fnAzS1hhGEZAaUDqwgBYYRhGQGlA9IAwWGEAvy1IAGkA9IAwACj50QC/KUgAaQD0gDAAKPnRJkgAaUTy+jMYQCCxGEYjSxhhASBwRyFIQGkg8AIAH0tYYQAg9ucQtQNGyB0g8AcBAL8aSABpAPSAMAAo+dFM8vswFkwgYSBGQGlA8AEAYGEY4BBoGGBQaFhgAL8PSABpAPSAMAAo+dEIMwgyCDkLSABpAPABACixRPL6MAdMIGEBIBC9ACnk0QRIQGkg8AEAAkxgYQAg9OcjAWdFACACQKuJ780EAAAAAAAAAAAABAg=
-    pc_init: 1
-    pc_uninit: 31
-    pc_program_page: 315
-    pc_erase_sector: 157
-    pc_erase_all: 55
-    data_section_offset: 444
+    pc_init: 0x1
+    pc_uninit: 0x1f
+    pc_program_page: 0x13b
+    pc_erase_sector: 0x9d
+    pc_erase_all: 0x37
+    data_section_offset: 0x1bc
     flash_properties:
       address_range:
-        start: 134217728
-        end: 134479872
-      page_size: 1024
-      erased_byte_value: 255
-      program_page_timeout: 400
-      erase_sector_timeout: 400
+        start: 0x8000000
+        end: 0x8040000
+      page_size: 0x400
+      erased_byte_value: 0xff
+      program_page_timeout: 0x190
+      erase_sector_timeout: 0x190
       sectors:
-        - size: 4096
-          address: 0
-  stm32g4xx_512_dual:
-    name: stm32g4xx_512_dual
+        - size: 0x1000
+          address: 0x0
+  - name: stm32g4xx_512_dual
     description: STM32G4xx 512 Dual Flash
-    cores: [main]
+    cores:
+      - main
     default: true
     instructions: ELUDRmlIakygYGpIoGAAv2dIAGkA9IAwACj50RC9AUZjSEBpQPAAQGFKUGEAIHBHA0YBIHBHA+BM8vswXEkIYVtIAGkA9IAwACj10UjyBABXSUhhCEZAaUD0gDBIYQC/U0gAaQD0gDAAKPnRUEgAaUTy+jEIQCCxCEZNSQhhASBwR0tIQGkg8AQASUlIYQhGQGkg9ABASGEAIPHnAUZESEBpQPACAEJLWGFDSEhEAGiBQgnTygqAOgLwfwIYRkBpQPQAYFhhB+DB88YiOEhAaSD0AGA2S1hhNUhAaSD0fnAzS1hhGEZAaUDqwgBYYRhGQGlA9IAwWGEAvy1IAGkA9IAwACj50QC/KUgAaQD0gDAAKPnRJkgAaUTy+jMYQCCxGEYjSxhhASBwRyFIQGkg8AIAH0tYYQAg9ucQtQNGyB0g8AcBAL8aSABpAPSAMAAo+dFM8vswFkwgYSBGQGlA8AEAYGEY4BBoGGBQaFhgAL8PSABpAPSAMAAo+dEIMwgyCDkLSABpAPABACixRPL6MAdMIGEBIBC9ACnk0QRIQGkg8AEAAkxgYQAg9OcjAWdFACACQKuJ780EAAAAAAAAAAAABAgAAAAAAAAAAA==
-    pc_init: 1
-    pc_uninit: 31
-    pc_program_page: 315
-    pc_erase_sector: 157
-    pc_erase_all: 55
-    data_section_offset: 444
+    pc_init: 0x1
+    pc_uninit: 0x1f
+    pc_program_page: 0x13b
+    pc_erase_sector: 0x9d
+    pc_erase_all: 0x37
+    data_section_offset: 0x1bc
     flash_properties:
       address_range:
-        start: 134217728
-        end: 134742016
-      page_size: 1024
-      erased_byte_value: 255
-      program_page_timeout: 400
-      erase_sector_timeout: 400
+        start: 0x8000000
+        end: 0x8080000
+      page_size: 0x400
+      erased_byte_value: 0xff
+      program_page_timeout: 0x190
+      erase_sector_timeout: 0x190
       sectors:
-        - size: 2048
-          address: 0
-  stm32g4xx_512:
-    name: stm32g4xx_512
+        - size: 0x800
+          address: 0x0
+  - name: stm32g4xx_512
     description: STM32G4xx 512 Single Flash
-    cores: [main]
+    cores:
+      - main
     default: false
     instructions: ELUDRmFIYkygYGJIoGAAv19IAGkA9IAwACj50RC9AUZbSEBpQPAAQFlKUGEAIHBHA0YBIHBHA+BM8vswVEkIYVNIAGkA9IAwACj10UjyBABPSUhhCEZAaUD0gDBIYQC/S0gAaQD0gDAAKPnRSEgAaUTy+jEIQCCxCEZFSQhhASBwR0NIQGkg8AQAQUlIYQhGQGkg9ABASGEAIPHnAUY8SEBpQPACADpLWGHB8wYyGEZAaSD0AGBYYRhGQGkg9H5wWGEYRkBpQOrCAFhhGEZAaUD0gDBYYQC/LUgAaQD0gDAAKPnRAL8qSABpAPSAMAAo+dEnSABpRPL6MxhAILEYRiNLGGEBIHBHIUhAaSDwAgAfS1hhACD25xC1A0bIHSDwBwEAvxpIAGkA9IAwACj50Uzy+zAWTCBhIEZAaUDwAQBgYRjgEGgYYFBoWGAAvxBIAGkA9IAwACj50QgzCDIIOQtIAGkA8AEAKLFE8vowCEwgYQEgEL0AKeTRBUhAaSDwAQADTGBhACD05wAAIwFnRQAgAkCrie/NAAAAAA==
-    pc_init: 1
-    pc_uninit: 31
-    pc_program_page: 281
-    pc_erase_sector: 157
-    pc_erase_all: 55
-    data_section_offset: 408
+    pc_init: 0x1
+    pc_uninit: 0x1f
+    pc_program_page: 0x119
+    pc_erase_sector: 0x9d
+    pc_erase_all: 0x37
+    data_section_offset: 0x198
     flash_properties:
       address_range:
-        start: 134217728
-        end: 134742016
-      page_size: 1024
-      erased_byte_value: 255
-      program_page_timeout: 400
-      erase_sector_timeout: 400
+        start: 0x8000000
+        end: 0x8080000
+      page_size: 0x400
+      erased_byte_value: 0xff
+      program_page_timeout: 0x190
+      erase_sector_timeout: 0x190
       sectors:
-        - size: 4096
-          address: 0
-  stm32g4xx_128:
-    name: stm32g4xx_128
+        - size: 0x1000
+          address: 0x0
+  - name: stm32g4xx_128
     description: STM32G4xx 128 Flash
-    cores: [main]
+    cores:
+      - main
     default: true
     instructions: ELUDRnZId0ygYHdIoGAgRgBqwLKqKBfQdEjgYHRI4GAgRgBqIPD/ACBiIEYAakDwqgAgYiBGQGlA9AAwYGEgRkBpQPAAYGBhAL9mSABpAPSAMAAo+dEQvQFGYkhAaUDwAEBgSlBhACBwRwNGASBwRwPgTPL7MFtJCGFaSABpAPSAMAAo9dEEIFZJSGEIRkBpQPSAMEhhAL9SSABpAPSAMAAo+dFPSABpRPL6MQhAILEIRkxJCGEBIHBHSkhAaSDwBABISUhhACD25wFGTPL7MERLGGEYRkBpQPACAFhhRUhIRABogUIJ08oKgDoC8H8CGEZAaUD0AGBYYQfgwfPGIjhIQGkg9ABgNktYYTVIQGkg9H5wM0tYYRhGQGlA6sIAWGEYRkBpQPSAMFhhAL8tSABpAPSAMAAo+dEAvylIAGkA9IAwACj50SZIAGlE8vozGEAgsRhGI0sYYQEgcEchSEBpIPACAB9LWGEAIPbnELUDRsgdIPAHAQC/GkgAaQD0gDAAKPnRTPL7MBZMIGEgRkBpQPABAGBhGOAQaBhgUGhYYAC/D0gAaQD0gDAAKPnRCDMIMgg5C0gAaQDwAQAosUTy+jAHTCBhASAQvQAp5NEESEBpIPABAAJMYGEAIPTnIwFnRQAgAkCrie/NOyoZCH9uXUwEAAAAAAAAAAAABAgAAAAAAAAAAA==
-    pc_init: 1
-    pc_uninit: 89
-    pc_program_page: 367
-    pc_erase_sector: 203
-    pc_erase_all: 113
-    data_section_offset: 504
+    pc_init: 0x1
+    pc_uninit: 0x59
+    pc_program_page: 0x16f
+    pc_erase_sector: 0xcb
+    pc_erase_all: 0x71
+    data_section_offset: 0x1f8
     flash_properties:
       address_range:
-        start: 134217728
-        end: 134348800
-      page_size: 1024
-      erased_byte_value: 255
-      program_page_timeout: 400
-      erase_sector_timeout: 400
+        start: 0x8000000
+        end: 0x8020000
+      page_size: 0x400
+      erased_byte_value: 0xff
+      program_page_timeout: 0x190
+      erase_sector_timeout: 0x190
       sectors:
-        - size: 2048
-          address: 0
+        - size: 0x800
+          address: 0x0

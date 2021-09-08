@@ -1,4 +1,3 @@
----
 name: STM32L5 Series
 variants:
   - name: STM32L552CCTx
@@ -7,21 +6,23 @@ variants:
         type: armv8m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537133056
+            start: 0x20000000
+            end: 0x20040000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134479872
+            start: 0x8000000
+            end: 0x8040000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32l5x_512_0c00
       - stm32l5x_512_0800
@@ -33,21 +34,23 @@ variants:
         type: armv8m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537133056
+            start: 0x20000000
+            end: 0x20040000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134479872
+            start: 0x8000000
+            end: 0x8040000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32l5x_512_0c00
       - stm32l5x_512_0800
@@ -59,21 +62,23 @@ variants:
         type: armv8m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537133056
+            start: 0x20000000
+            end: 0x20040000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134742016
+            start: 0x8000000
+            end: 0x8080000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32l5x_512_0c00
       - stm32l5x_512_0800
@@ -85,21 +90,23 @@ variants:
         type: armv8m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537133056
+            start: 0x20000000
+            end: 0x20040000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134742016
+            start: 0x8000000
+            end: 0x8080000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32l5x_512_0c00
       - stm32l5x_512_0800
@@ -111,21 +118,23 @@ variants:
         type: armv8m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537133056
+            start: 0x20000000
+            end: 0x20040000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134742016
+            start: 0x8000000
+            end: 0x8080000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32l5x_512_0c00
       - stm32l5x_512_0800
@@ -137,21 +146,23 @@ variants:
         type: armv8m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537133056
+            start: 0x20000000
+            end: 0x20040000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134742016
+            start: 0x8000000
+            end: 0x8080000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32l5x_512_0c00
       - stm32l5x_512_0800
@@ -163,21 +174,23 @@ variants:
         type: armv8m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537133056
+            start: 0x20000000
+            end: 0x20040000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134742016
+            start: 0x8000000
+            end: 0x8080000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32l5x_512_0c00
       - stm32l5x_512_0800
@@ -189,21 +202,23 @@ variants:
         type: armv8m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537133056
+            start: 0x20000000
+            end: 0x20040000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134742016
+            start: 0x8000000
+            end: 0x8080000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32l5x_512_0c00
       - stm32l5x_512_0800
@@ -215,21 +230,23 @@ variants:
         type: armv8m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537133056
+            start: 0x20000000
+            end: 0x20040000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134479872
+            start: 0x8000000
+            end: 0x8040000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32l5x_512_0c00
       - stm32l5x_512_0800
@@ -241,21 +258,23 @@ variants:
         type: armv8m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537133056
+            start: 0x20000000
+            end: 0x20040000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134742016
+            start: 0x8000000
+            end: 0x8080000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32l5x_512_0c00
       - stm32l5x_512_0800
@@ -267,21 +286,23 @@ variants:
         type: armv8m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537133056
+            start: 0x20000000
+            end: 0x20040000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134742016
+            start: 0x8000000
+            end: 0x8080000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32l5x_512_0c00
       - stm32l5x_512_0800
@@ -293,21 +314,23 @@ variants:
         type: armv8m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537133056
+            start: 0x20000000
+            end: 0x20040000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134742016
+            start: 0x8000000
+            end: 0x8080000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32l5x_512_0c00
       - stm32l5x_512_0800
@@ -319,21 +342,23 @@ variants:
         type: armv8m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537133056
+            start: 0x20000000
+            end: 0x20040000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134479872
+            start: 0x8000000
+            end: 0x8040000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32l5x_512_0c00
       - stm32l5x_512_0800
@@ -345,21 +370,23 @@ variants:
         type: armv8m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537133056
+            start: 0x20000000
+            end: 0x20040000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134742016
+            start: 0x8000000
+            end: 0x8080000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32l5x_512_0c00
       - stm32l5x_512_0800
@@ -371,21 +398,23 @@ variants:
         type: armv8m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537133056
+            start: 0x20000000
+            end: 0x20040000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134742016
+            start: 0x8000000
+            end: 0x8080000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32l5x_512_0c00
       - stm32l5x_512_0800
@@ -397,21 +426,23 @@ variants:
         type: armv8m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537133056
+            start: 0x20000000
+            end: 0x20040000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134742016
+            start: 0x8000000
+            end: 0x8080000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32l5x_512_0c00
       - stm32l5x_512_0800
@@ -423,21 +454,23 @@ variants:
         type: armv8m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537133056
+            start: 0x20000000
+            end: 0x20040000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134479872
+            start: 0x8000000
+            end: 0x8040000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32l5x_512_0c00
       - stm32l5x_512_0800
@@ -449,21 +482,23 @@ variants:
         type: armv8m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537133056
+            start: 0x20000000
+            end: 0x20040000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134742016
+            start: 0x8000000
+            end: 0x8080000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32l5x_512_0c00
       - stm32l5x_512_0800
@@ -475,21 +510,23 @@ variants:
         type: armv8m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537133056
+            start: 0x20000000
+            end: 0x20040000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134742016
+            start: 0x8000000
+            end: 0x8080000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32l5x_512_0c00
       - stm32l5x_512_0800
@@ -501,21 +538,23 @@ variants:
         type: armv8m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537133056
+            start: 0x20000000
+            end: 0x20040000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134479872
+            start: 0x8000000
+            end: 0x8040000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32l5x_512_0c00
       - stm32l5x_512_0800
@@ -527,21 +566,23 @@ variants:
         type: armv8m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537133056
+            start: 0x20000000
+            end: 0x20040000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134742016
+            start: 0x8000000
+            end: 0x8080000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32l5x_512_0c00
       - stm32l5x_512_0800
@@ -553,21 +594,23 @@ variants:
         type: armv8m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537133056
+            start: 0x20000000
+            end: 0x20040000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134742016
+            start: 0x8000000
+            end: 0x8080000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32l5x_512_0c00
       - stm32l5x_512_0800
@@ -579,21 +622,23 @@ variants:
         type: armv8m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537133056
+            start: 0x20000000
+            end: 0x20040000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134742016
+            start: 0x8000000
+            end: 0x8080000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32l5x_512_0c00
       - stm32l5x_512_0800
@@ -605,21 +650,23 @@ variants:
         type: armv8m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537133056
+            start: 0x20000000
+            end: 0x20040000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134742016
+            start: 0x8000000
+            end: 0x8080000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32l5x_512_0c00
       - stm32l5x_512_0800
@@ -631,21 +678,23 @@ variants:
         type: armv8m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537133056
+            start: 0x20000000
+            end: 0x20040000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134742016
+            start: 0x8000000
+            end: 0x8080000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32l5x_512_0c00
       - stm32l5x_512_0800
@@ -657,21 +706,23 @@ variants:
         type: armv8m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537133056
+            start: 0x20000000
+            end: 0x20040000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134742016
+            start: 0x8000000
+            end: 0x8080000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32l5x_512_0c00
       - stm32l5x_512_0800
@@ -683,21 +734,23 @@ variants:
         type: armv8m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537133056
+            start: 0x20000000
+            end: 0x20040000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134742016
+            start: 0x8000000
+            end: 0x8080000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32l5x_512_0c00
       - stm32l5x_512_0800
@@ -709,21 +762,23 @@ variants:
         type: armv8m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537133056
+            start: 0x20000000
+            end: 0x20040000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134742016
+            start: 0x8000000
+            end: 0x8080000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32l5x_512_0c00
       - stm32l5x_512_0800
@@ -735,21 +790,23 @@ variants:
         type: armv8m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537133056
+            start: 0x20000000
+            end: 0x20040000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134742016
+            start: 0x8000000
+            end: 0x8080000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32l5x_512_0c00
       - stm32l5x_512_0800
@@ -761,21 +818,23 @@ variants:
         type: armv8m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537133056
+            start: 0x20000000
+            end: 0x20040000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134742016
+            start: 0x8000000
+            end: 0x8080000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32l5x_512_0c00
       - stm32l5x_512_0800
@@ -787,21 +846,23 @@ variants:
         type: armv8m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537133056
+            start: 0x20000000
+            end: 0x20040000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134742016
+            start: 0x8000000
+            end: 0x8080000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32l5x_512_0c00
       - stm32l5x_512_0800
@@ -813,21 +874,23 @@ variants:
         type: armv8m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537133056
+            start: 0x20000000
+            end: 0x20040000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134742016
+            start: 0x8000000
+            end: 0x8080000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32l5x_512_0c00
       - stm32l5x_512_0800
@@ -839,21 +902,23 @@ variants:
         type: armv8m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537133056
+            start: 0x20000000
+            end: 0x20040000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134742016
+            start: 0x8000000
+            end: 0x8080000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32l5x_512_0c00
       - stm32l5x_512_0800
@@ -865,21 +930,23 @@ variants:
         type: armv8m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537133056
+            start: 0x20000000
+            end: 0x20040000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134742016
+            start: 0x8000000
+            end: 0x8080000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32l5x_512_0c00
       - stm32l5x_512_0800
@@ -891,21 +958,23 @@ variants:
         type: armv8m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537133056
+            start: 0x20000000
+            end: 0x20040000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134742016
+            start: 0x8000000
+            end: 0x8080000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32l5x_512_0c00
       - stm32l5x_512_0800
@@ -917,116 +986,118 @@ variants:
         type: armv8m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537133056
+            start: 0x20000000
+            end: 0x20040000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 134217728
-            end: 134742016
+            start: 0x8000000
+            end: 0x8080000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - stm32l5x_512_0c00
       - stm32l5x_512_0800
       - mx25l51245g_stm32l5_ospi
       - stm32l5x_opt
 flash_algorithms:
-  stm32l5x_512_0c00:
-    name: stm32l5x_512_0c00
+  - name: stm32l5x_512_0c00
     description: STM32L5x_512_Secure_Flash
-    cores: [main]
+    cores:
+      - main
     default: true
     instructions: LenwQWpMB0YgbGxNaUlqSsAPTUQb0GZILDCoYGRIJDDoYOFg4mC/80+PYGrAA/zUT/D/NsT4gGDE+IRgxPiIYMT4jGAA8K74ASgO0BLgWEgoMKhgVkggMOhgoWCiYL/zT48gasAD/NQE4ET4oG9mYKZg5mDoaAFoyQP81FBIL2AAaAAEgAloYAAgvejwgUtIT/AAQUhEgmgRYL/zT4/AaAFoyQP81AAgcEdESULy+gJJRMhoAmCJaEjyBAIKYApoQvSAMgpgv/NPjwFoyQP81AAgcEdwtSDwd0UA8GP4N04BKE5EB9HW6QABAOtRAalCAdgBJADgACQA8FT4AShwaBzQQB4FQCkL8GhC8voCAmACIwPrwQFB6sQjsWgLYAtoQ/SAMwtgv/NPjwFoyQP81AFoEUIJ0AJgASBwvU/w/zEB61AAKEDBCt7nACBwvfC1GkzJHUxEQvL6BeNoIfAHAR1gpmgBJzdgF+DXeBRoZ/MfZARg13lUaGfzH2REYL/zT48caOQD/NQcaCxCAtAdYAEg8L0IMAg5CDIAKeXRACAwYPC9AkgAbMDzgFBwRwAAACACQCMBZ0Wrie/NBAAAAOAF+gsAAAAAAAAAAAAAAAAAAAAAAAAAAA==
-    pc_init: 1
-    pc_uninit: 143
-    pc_program_page: 335
-    pc_erase_sector: 213
-    pc_erase_all: 171
-    data_section_offset: 452
+    pc_init: 0x1
+    pc_uninit: 0x8f
+    pc_program_page: 0x14f
+    pc_erase_sector: 0xd5
+    pc_erase_all: 0xab
+    data_section_offset: 0x1c4
     flash_properties:
       address_range:
-        start: 201326592
-        end: 201850880
-      page_size: 1024
-      erased_byte_value: 255
-      program_page_timeout: 400
-      erase_sector_timeout: 400
+        start: 0xc000000
+        end: 0xc080000
+      page_size: 0x400
+      erased_byte_value: 0xff
+      program_page_timeout: 0x190
+      erase_sector_timeout: 0x190
       sectors:
-        - size: 2048
-          address: 0
-  stm32l5x_512_0800:
-    name: stm32l5x_512_0800
+        - size: 0x800
+          address: 0x0
+  - name: stm32l5x_512_0800
     description: STM32L5x_512_NSecure_Flash
-    cores: [main]
+    cores:
+      - main
     default: true
     instructions: LenwQWpMB0YgbGxNaUlqSsAPTUQb0GZILDCoYGRIJDDoYOFg4mC/80+PYGrAA/zUT/D/NsT4gGDE+IRgxPiIYMT4jGAA8K74ASgO0BLgWEgoMKhgVkggMOhgoWCiYL/zT48gasAD/NQE4ET4oG9mYKZg5mDoaAFoyQP81FBIL2AAaAAEgAloYAAgvejwgUtIT/AAQUhEgmgRYL/zT4/AaAFoyQP81AAgcEdESULy+gJJRMhoAmCJaEjyBAIKYApoQvSAMgpgv/NPjwFoyQP81AAgcEdwtSDwd0UA8GP4N04BKE5EB9HW6QABAOtRAalCAdgBJADgACQA8FT4AShwaBzQQB4FQCkL8GhC8voCAmACIwPrwQFB6sQjsWgLYAtoQ/SAMwtgv/NPjwFoyQP81AFoEUIJ0AJgASBwvU/w/zEB61AAKEDBCt7nACBwvfC1GkzJHUxEQvL6BeNoIfAHAR1gpmgBJzdgF+DXeBRoZ/MfZARg13lUaGfzH2REYL/zT48caOQD/NQcaCxCAtAdYAEg8L0IMAg5CDIAKeXRACAwYPC9AkgAbMDzgFBwRwAAACACQCMBZ0Wrie/NBAAAAOAF+gsAAAAAAAAAAAAAAAAAAAAAAAAAAA==
-    pc_init: 1
-    pc_uninit: 143
-    pc_program_page: 335
-    pc_erase_sector: 213
-    pc_erase_all: 171
-    data_section_offset: 452
+    pc_init: 0x1
+    pc_uninit: 0x8f
+    pc_program_page: 0x14f
+    pc_erase_sector: 0xd5
+    pc_erase_all: 0xab
+    data_section_offset: 0x1c4
     flash_properties:
       address_range:
-        start: 134217728
-        end: 134742016
-      page_size: 1024
-      erased_byte_value: 255
-      program_page_timeout: 400
-      erase_sector_timeout: 400
+        start: 0x8000000
+        end: 0x8080000
+      page_size: 0x400
+      erased_byte_value: 0xff
+      program_page_timeout: 0x190
+      erase_sector_timeout: 0x190
       sectors:
-        - size: 2048
-          address: 0
-  mx25l51245g_stm32l5_ospi:
-    name: mx25l51245g_stm32l5_ospi
+        - size: 0x800
+          address: 0x0
+  - name: mx25l51245g_stm32l5_ospi
     description: MX25L51245G_STM32L5_OSPI
-    cores: [main]
+    cores:
+      - main
     default: false
     instructions: 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vfgKAAEhAPCP/I34CQAAKATQ/+cBII34DwAD4AAgjfgPAP/nnfgPAASwgL2AtYSwCkYDRq34DACt+AoQCEYBkgCT/ffh+UTyAAHE8k5R/feB+QAhxPJ/Mf33Svn999n5jfgIAL34DAABIQDwQ/uN+AkAACgE0P/nASCN+A8AEeCd+AgQASAB8Nn8jfgJAAAoBND/5wEgjfgPAAPgACCN+A8A/+ed+A8ABLCAvYC1hLAKRgNGrfgMAK34ChC9+AwAAiEBkgCTAPAV+434CQAAKATQ/+cBII34DwAR4L34CgACIQDwB/uN+AkAACgE0P/nASCN+A8AA+AAII34DwD/5534DwAEsIC9gLWEsApGA0at+AwArfgKEL34DAACIQGSAJMA8AH8jfgJAAAoBND/5wEgjfgPABHgvfgKAAIhAPDz+434CQAAKATQ/+cBII34DwAD4AAgjfgPAP/nnfgPAASwgL2AtYSwCkYDRq34DACt+AoQvfgMAAMhAZIAkwDwufqN+AkAACgE0P/nASCN+A8AEeC9+AoAAyEA8Kv6jfgJAAAoBND/5wEgjfgPAAPgACCN+A8A/+ed+A8ABLCAvYC1hLAKRgNGrfgMAK34ChC9+AwAAyEBkgCTAPCl+434CQAAKATQ/+cBII34DwAR4L34CgADIQDwl/uN+AkAACgE0P/nASCN+A8AA+AAII34DwD/5534DwAEsIC9gLWEsApGA0at+AwArfgKEL34DAAEIQGSAJMA8F36jfgJAAAoBND/5wEgjfgPABHgvfgKAAQhAPBP+o34CQAAKATQ/+cBII34DwAD4AAgjfgPAP/nnfgPAASwgL2AtYSwCkYDRq34DACt+AoQvfgMAAUhAZIAkwDwL/qN+AkAACgE0P/nASCN+A8AEeC9+AoABSEA8CH6jfgJAAAoBND/5wEgjfgPAAPgACCN+A8A/+ed+A8ABLCAvYC1hLAKRgNGrfgMAK34ChC9+AwABiEBkgCTAPAB+o34CQAAKATQ/+cBII34DwAR4L34CgAGIQDw8/mN+AkAACgE0P/nASCN+A8AA+AAII34DwD/5534DwAEsIC9gLWEsApGA0at+AwArfgKEL34DAAHIQGSAJMA8NP5jfgJAAAoBND/5wEgjfgPABHgvfgKAAchAPDF+Y34CQAAKATQ/+cBII34DwAD4AAgjfgPAP/nnfgPAASwgL2AtYSwACCN+A4AjfgNABtJSkYRRFMiSnBIgP/nF0hJRgpYCERBaINowGjsRsz4AAA0IAKREUYCmv/3WPmN+A4AfyAI8CX4nfgNAAEwjfgNABDw/w8E0f/nASCN+A8ACeD/5534DgABKNjQ/+cAII34DwD/5534DwAEsIC96AsAAIC1hLAAII34DQAbSUpGEURUIkpwSID/5xdISUYKWAhEQWiDaMBo7EbM+AAANCACkRFGApr/9xr5jfgOAH8gB/Dn/534DQABMMGyjfgNAAQpBNH/5wEgjfgPAAng/+ed+A4AASjY0P/nACCN+A8A/+ed+A8ABLCAvegLAACAtYSwACCN+A0AG0lKRhFEayJKcEiA/+cXSElGClgIREFog2jAaOxGzPgAADQgApERRgKa//fc+I34DgB/IAfwqf+d+A0AATDBso34DQAEKQTR/+cBII34DwAJ4P/nnfgOAAEo2ND/5wAgjfgPAP/nnfgPAASwgL3oCwAAgLWEsAAgjfgNABtJSkYRRFYiSnBIgP/nF0hJRgpYCERBaINowGjsRsz4AAA0IAKREUYCmv/3nviN+A4AfyAH8Gv/nfgNAAEwwbKN+A0ABCkE0f/nASCN+A8ACeD/5534DgABKNjQ/+cAII34DwD/5534DwAEsIC96AsAAIC1hLAAII34DQAbSUpGEURYIkpwSID/5xdISUYKWAhEQWiDaMBo7EbM+AAANCACkRFGApr/92D4jfgOAH8gB/At/534DQABMMGyjfgNAAQpBNH/5wEgjfgPAAng/+ed+A4AASjY0P/nACCN+A8A/+ed+A8ABLCAvegLAACAtYSwACCN+A0AG0lKRhFEVSJKcEiA/+cXSElGClgIREFog2jAaOxGzPgAADQgApERRgKa//ci+I34DgB/IAfw7/6d+A0AATDBso34DQAEKQTR/+cBII34DwAJ4P/nnfgOAAEo2ND/5wAgjfgPAP/nnfgPAASwgL3oCwAAgLWEsAAgjfgNABtJSkYRRFciSnBIgP/nF0hJRgpYCERBaINowGjsRsz4AAA0IAKREUYCmv735P+N+A4AfyAH8LH+nfgNAAEwwbKN+A0ABCkE0f/nASCN+A8ACeD/5534DgABKNjQ/+cAII34DwD/5534DwAEsIC96AsAAIC1hrAKRgNGrfgUAI34ExAAII34EgCN+BEAnfgTAKAwHknMRmFESHC9+BQASICd+BMAA5ICk/z3vf7/5xdISUYKWAhEQWiDaMBo7EbM+AAANCABkRFGAZr+95T/jfgSAH8gB/Bh/p34EQABMI34EQAQ8P8PBNH/5wEgjfgXAAng/+ed+BIAASjY0P/nACCN+BcA/+ed+BcABrCAvegLAACAtYSwAUaN+A4AACCN+AwAHUpLRhpEWCNTcFCAnfgOAAKR/Pd3/v/nF0hJRgpYCERBaINowGjsRsz4AAA0IAGREUYBmv73Tv+N+A0AfyAH8Bv+nfgMAAEwwbKN+AwABykE0f/nASCN+A8ACeD/5534DQABKNjQ/+cAII34DwD/5534DwAEsIC96AsAAIC1jLA+SElGCFwBKAbQ/+c7SElGCFwAKAjR/+c5SElGRfIAQsTyAAIKUP/nNEhJRghcAigI0f/nMkhJRkX2AALE8gACClD/5y1ISUYIXAMoCNH/5ytISUZF9gBCxPIAAgpQ/+cnSElGClgCkBBGAZEI8ND6AZgCmUBYCPAp+k/0gFAKkAAgrfgsAE/0AEEFkQaQZSGt+BwQCJCt+CQArfgmAA4hjfgMEBMhjfgNEBIhjfgOEI34DwABII34EAABmAKZQFgKqQWqA6sI8NH6AZgCmUBYCPBk+gGYAplAWAjwJfoBmAKZQlgTaEPwgAMTYEJYE2hD8BADE2AMsIC9AL/ADAAAqAMAAIC1hrAKRgNGrfgUAI34ExAAII34EgCN+BEAnfgTAOAwHknMRmFESHC9+BQASICd+BMAA5ICk/335fr/5xdISUYKWAhEQWiDaMBo7EbM+AAANCABkRFGAZr+93r+jfgSAH8gB/BH/Z34EQABMI34EQAQ8P8PBNH/5wEgjfgXAAng/+ed+BIAASjY0P/nACCN+BcA/+ed+BcABrCAvegLAACAtYawCkYDRq34FACN+BMQACCN+BIAjfgRAJ34EwDgMB5JzEZhREhwvfgUAEiAnfgTAAOSApP995X6/+cXSElGClgIREFog2jAaOxGzPgAADQgAZERRgGa/vcq/o34EgB/IAfw9/yd+BEAATCN+BEAEPD/DwTR/+cBII34FwAJ4P/nnfgSAAEo2ND/5wAgjfgXAP/nnfgXAAawgL3oCwAAsLWKsJxGlkYMRgVGrfgkAI34IxCt+CAgjfgfMAAgjfgeAI34HQApSElGCEQQIYGAvfgkEJ34IyBB6gJBgWC9+CAQnfgfIEHqAkHBYJ34IwDN+BjAzfgU4ASUA5X89/D8nfgfAPz37Pz/5xhISUYKWAhEQWiDaMBo7EbM+AAANCACkRFGApr+9wv/jfgeAH8gB/CQ/J34HQABMMGyjfgdAAcpBNH/5wEgjfgnAArg/+ed+B4AASjY0P/nnfgeAI34JwD/5534JwAKsLC96AsAAIC1hrABRq34FAAAII34EgAcSEpGEESkIkJwvfgUIEKAA5H/5xdISUYKWAhEQWiDaMBo7EbM+AAAViACkRFGApr+9379jfgTAH8gB/BL/J34EgABMMGyjfgSAAQpBNH/5wEgjfgXAAng/+ed+BMAASjY0P/nACCN+BcA/+ed+BcABrCAvegLAACAtYKwAUat+AYAAJH/5wHwhfiN+AUA/+ed+AUAASj20P/n/+f/5534BQABKPrQ/+f/5734BgAAIf/3fP2N+AUA/+ed+AUAASjz0P/nACACsIC9AACAtYSwACCN+A0AHElKRhFEDyJKcEiA/+cYSElGClgIREFog2jAaOxGzPgAAFYgApERRgKa/vcW/Y34DgB/IAfw4/ud+A0AATDBso34DQAHKQTR/+cBII34DwAK4P/nnfgOAAEo2ND/5534DgCN+A8A/+ed+A8ABLCAvQC/6AsAAIC1hrAAII34FQAySElGCET+IUFwASFBgP/nLkhJRgpYCERBaINowGjsRsz4AABWIASREUYEmv731fyN+BYAfyAH8KL7nfgVAAEwwbKN+BUABykE0f/nASCN+BcANeD/5534FgABKNjQ/+f/5xpISUYKGFYjA5AYRgKREUb+94D6jfgWAAKYA5lCXAEqBdH/5xFISUYAIgpUEuCd+BUAATDBso34FQAFKQTR/+cBII34FwAK4P/nnfgWAAEo1tD/5534FgCN+BcA/+ed+BcABrCAvQC/6AsAAPgLAACAtYiwAUYGkAAgjfgWADZISkYQRP4iQnADIkKABJH/5zFISUYKWAhEQWiDaMBo7EbM+AAAViADkRFGA5r+92T8jfgXAEHy/3AH8DD7nfgWAAEwwbKN+BYABykE0f/nASCN+B8APOD/5534FwABKNfQ/+cAII34FgD/5xxISUYKGFYjApAYRgGREUb+9wv6jfgXAAGYAplCXAEqCdH/5xNISUYKGFKIBpsagAAiClQS4J34FgABMMGyjfgWAAUpBNH/5wEgjfgfAArg/+ed+BcAASjS0P/nnfgXAI34HwD/5534HwAIsIC96AsAAPgLAACAtYSwAUaN+A4AACCN+A0AjfgMAB9ISkYQREEiQnCd+A4gQoCd+A4AApH990/4/+cYSElGClgIREFog2jAaOxGzPgAADQgAZERRgGa/vfk+434DQB/IAfwsfqd+AwAATDBso34DAAHKQTR/+cBII34DwAK4P/nnfgNAAEo2ND/5534DQCN+A8A/+ed+A8ABLCAvQC/6AsAAIC1hLABRo34DgAAII34DQCN+AwAH0hKRhBEQCJCcJ34DiBCgJ34DgACkf33A/j/5xhISUYKWAhEQWiDaMBo7EbM+AAANCABkRFGAZr+95j7jfgNAH8gB/Bl+p34DAABMMGyjfgMAAcpBNH/5wEgjfgPAArg/+ed+A0AASjY0P/nnfgNAI34DwD/5534DwAEsIC9AL/oCwAAgLWQsApGA0at+DwADpEAII34NgBfScxGYURP8GAOgfgB4EiACagIkgeTzfgYwAXwofpZSAaZCFwAKATR/+cHIPz3avr/51RISUYKXAEyClT/51BISUYKWAhEQWiDaMBo7EbM+AAANCAFkRFGBZr+9zv7jfg3AH8gB/AI+p34NgABMMGyjfg2AAcpBNH/5wEgjfg/AHng/+ed+DcAASjY0P/nvfg8AAch//dc+534NxAIRI34NwA3SElGCETmIUFw/+c0SElGClgIREFog2jAaOxGzPgAAFYgBJERRgSa/vcD+434NwB/IAfw0Pmd+DYAATDBso34NgAHKQTR/+cBII34PwBB4P/nnfg3AAEo2ND/5yJISUYAIgpU/+cfSElGChhWIwOQGEYCkRFG/veq+I34NwACmAOZQlwBKgnR/+cWSElGACIKVAhEQIgOmQhwF+B/IAfwmvmd+DYAATBf+oD+jfg2AL7xBQ8E0f/nASCN+D8ACeD/5534NwABKM3Q/+cAII34PwD/5534PwAQsIC9AL/oCwAA3AwAAPgLAACAtZKwCkYDRq34RAAQkQAgjfg+AJZJzEZhRE/wYA6B+AHgSIALqAqSCZPN+CDABfDR+ZBICJkIXAAoBNH/5wcg/Pea+f/ni0hJRgpcATIKVP/nh0hJRgpYCERBaINowGjsRsz4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AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
-    pc_init: 6757
-    pc_uninit: 43325
-    pc_program_page: 35941
-    pc_erase_sector: 2953
-    pc_erase_all: 2949
-    data_section_offset: 49672
+    pc_init: 0x1a65
+    pc_uninit: 0xa93d
+    pc_program_page: 0x8c65
+    pc_erase_sector: 0xb89
+    pc_erase_all: 0xb85
+    data_section_offset: 0xc208
     flash_properties:
       address_range:
-        start: 2415919104
-        end: 2483027968
-      page_size: 256
-      erased_byte_value: 255
-      program_page_timeout: 3000
-      erase_sector_timeout: 3000
+        start: 0x90000000
+        end: 0x94000000
+      page_size: 0x100
+      erased_byte_value: 0xff
+      program_page_timeout: 0xbb8
+      erase_sector_timeout: 0xbb8
       sectors:
-        - size: 4096
-          address: 0
-  stm32l5x_opt:
-    name: stm32l5x_opt
+        - size: 0x1000
+          address: 0x0
+  - name: stm32l5x_opt
     description: STM32L5xx Flash Options
-    cores: [main]
+    cores:
+      - main
     default: false
     instructions: 1EjTSYFg1EmBYL/zT48BaskD/NTRSQFh0UkBYb/zT48BaskD/NQAIHBHykhP8IBBgWK/80+PgWrJA/zUT/AAQYFiv/NPj4FqyQP81AAgcEcAIHBHcLW/TELy+gUlYiBswEkA8ABACEMgZL9IYGS/SKBkb/T+AKBl4GWgZuBmAPBj+QEoCNG6SOBkukhgZWBmb/B/ACBlIGZP9AAwoGK/80+PIGrAA/zUIGooQAHQJWIBIHC9ACBwRy3p/E3ReBBo03lh8x9gUWhj8x9hAZHRepRo0vgMwGHzH2TRexNpYfMfbNF8Vmlh8x9j0X3VfmHzH2aRaWXzH2EAkdF/0vgcgJL4I1Bh8x9oEWqS+CdwZfMfYVVqwkZn8x9lkvgrcNL4KIBn8x9okvgvcNJqw0Zn8x9iiE+WRkLy+gI6Yo5KEEM4ZEzwfwB4ZEPwfwC4ZGrwfxC4ZWHwfxD4ZWvwfxC4Zm7wfxD4ZgDw7/gBKA/RRvB8APhkgUkBmAhDeGUMQ3xmAJhg8H8QOGVl8H8QOGa/80+PT/QAMLhiv/NPjzhqwAP81DhqQvL6AQhAA9A4aghDOGIBIL3o/I0t6fdNBEbReBBoVmhh8x9g0XmVaGHzH2bRetNoYfMfZdF713xh8x9jEWmS+BfAZ/MfYVdpkvgfgGzzH2e6RpL4G8CXaYOwbPMfZ9L4HMBo8x9szfgEwJL4I4DS+CDAaPMfbOZGkvgngNL4JMBo8x9szfgAwJL4K4DS+CjAaPMfbONGkvgvwNJqbPMfYt/4DMHc+EDA3/gogW/qCAgM6ggMAOoIAIRFA9AgRgawvejwjTpI0PhEwE/q7By86+MfAdDgHPLng2zbEbPr4R8B0CAd6+eBbQHwfxMBmQHwfxGLQgHQ4B3h58FtAfB/Ew7wfxGLQgLQBPEIANfngW4B8H8TC/B/EYtCAtAE8QoAzeeARsBuAvB/EQDwfxCIQgLQBPELAMLnAPA0+AEoLtHY+EwAQUYg8HwCKvB8AIJCAdBgHbPnSm0fSMBDAkAGQLJCAdBgHKrnSm4FQAJAqkIB0KAco+cIbQfwfxIA8H8QkEIB0KAdmucIbgDwfxEAmADwfxCBQgLQBPEJAI/nBJggRIznAkgAbMAPcEcjAWdFACACQKuJ7807KhkIf25dTKr4739/AAAIfwD5C3wAAAyAf4B/AIiAYP//gH8AAAAA
-    pc_init: 1
-    pc_uninit: 43
-    pc_program_page: 185
-    pc_erase_sector: 181
-    pc_erase_all: 85
-    data_section_offset: 896
+    pc_init: 0x1
+    pc_uninit: 0x2b
+    pc_program_page: 0xb9
+    pc_erase_sector: 0xb5
+    pc_erase_all: 0x55
+    data_section_offset: 0x380
     flash_properties:
       address_range:
-        start: 535822336
-        end: 535822384
-      page_size: 48
-      erased_byte_value: 255
-      program_page_timeout: 3000
-      erase_sector_timeout: 3000
+        start: 0x1ff00000
+        end: 0x1ff00030
+      page_size: 0x30
+      erased_byte_value: 0xff
+      program_page_timeout: 0xbb8
+      erase_sector_timeout: 0xbb8
       sectors:
-        - size: 48
-          address: 0
+        - size: 0x30
+          address: 0x0
