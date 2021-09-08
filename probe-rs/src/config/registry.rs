@@ -186,7 +186,7 @@ impl Registry {
                     }
                 }
             }
-            if exact_matches > 1 || ( exact_matches == 0 && partial_matches > 1 ) {
+            if exact_matches > 1 || (exact_matches == 0 && partial_matches > 1) {
                 log::warn!(
                     "Ignoring ambiguous matches for specified chip name {}",
                     name,
