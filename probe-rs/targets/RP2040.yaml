@@ -68,6 +68,65 @@ variants:
           cores: [core0, core1]
     flash_algorithms:
       - algo
+  - name: RP2040_SELFDEBUG
+    cores:
+      - name: core0
+        type: armv6m
+        core_access_options:
+          Arm:
+            ap: 0
+            psel: 0
+    memory_map:
+      - Ram: # Banks 0-3 striped
+          range:
+            start: 0x20000000
+            end: 0x20040000
+          is_boot_memory: false
+          cores: [core0]
+      - Ram: # Bank 4
+          range:
+            start: 0x20040000
+            end: 0x20041000
+          is_boot_memory: false
+          cores: [core0]
+      - Ram: # Bank 5
+          range:
+            start: 0x20041000
+            end: 0x20042000
+          is_boot_memory: false
+          cores: [core0]
+      - Ram: # Bank 0 non-striped alias
+          range:
+            start: 0x21000000
+            end: 0x21010000
+          is_boot_memory: false
+          cores: [core0]
+      - Ram: # Bank 1 non-striped alias
+          range:
+            start: 0x21010000
+            end: 0x21020000
+          is_boot_memory: false
+          cores: [core0]
+      - Ram: # Bank 2 non-striped alias
+          range:
+            start: 0x21020000
+            end: 0x21030000
+          is_boot_memory: false
+          cores: [core0]
+      - Ram: # Bank 3 non-striped alias
+          range:
+            start: 0x21030000
+            end: 0x21040000
+          is_boot_memory: false
+          cores: [core0]
+      - Nvm: # Flash XIP
+          range:
+            start: 0x10000000
+            end: 0x11000000
+          is_boot_memory: true
+          cores: [core0]
+    flash_algorithms:
+      - algo
 flash_algorithms:
   algo:
     name: algo
