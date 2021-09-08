@@ -1,3 +1,5 @@
+use std::time::Instant;
+
 use crate::TIMEOUT;
 use crate::{Elf, TargetInfo};
 use probe_rs::{MemoryInterface, Session};
@@ -11,7 +13,7 @@ const CANARY_VALUE: u8 = 0xAA;
 /// The canary is placed in memory as shown in the diagram below:
 ///
 /// ``` text
-/// +--------+ -> initial_stack_pointer
+/// +--------+ -> initial_stack_pointer / stack_range.end()
 /// |        |
 /// | stack  | (grows downwards)
 /// |        |
@@ -20,7 +22,7 @@ const CANARY_VALUE: u8 = 0xAA;
 /// |        |
 /// +--------+
 /// | canary |
-/// +--------+ -> highest_static_var_address
+/// +--------+ -> stack_range.start()
 /// |        |
 /// | static | (variables, fixed size)
 /// |        |
@@ -33,13 +35,13 @@ const CANARY_VALUE: u8 = 0xAA;
 /// When the programs ends (due to panic or breakpoint) the integrity of the canary is checked. If it was
 /// "touched" (any of its bytes != `CANARY_VALUE`) then that is considered to be a *potential* stack
 /// overflow.
-///
-/// The canary is not installed if the program memory layout is "inverted" (stack is *below* the
-/// static variables).
 #[derive(Clone, Copy)]
 pub(crate) struct Canary {
     address: u32,
     size: usize,
+    stack_available: u32,
+    data_below_stack: bool,
+    measure_stack: bool,
 }
 
 impl Canary {
@@ -47,62 +49,140 @@ impl Canary {
         sess: &mut Session,
         target_info: &TargetInfo,
         elf: &Elf,
+        measure_stack: bool,
     ) -> Result<Option<Self>, anyhow::Error> {
         let mut core = sess.core(0)?;
         core.reset_and_halt(TIMEOUT)?;
 
         // Decide if and where to place the stack canary.
-        if let Some(highest_static_var_address) = target_info.highest_static_var_address {
-            // standard = static variables are at a lower address; stack (grows down) is at a higher address
-            let standard_memory_layout =
-                highest_static_var_address < elf.vector_table.initial_stack_pointer;
 
-            if !elf.program_uses_heap() && standard_memory_layout {
-                let stack_available =
-                    elf.vector_table.initial_stack_pointer - highest_static_var_address - 1;
-
-                // We consider >90% stack usage a potential stack overflow, but don't go beyond 1 kb since
-                // filling a lot of RAM is slow (and 1 kb should be "good enough" for what we're doing).
-                let size = 1024.min(stack_available / 10) as usize;
-
-                log::debug!(
-                    "{} bytes of stack available ({:#010X} ..= {:#010X}), using {} byte canary to detect overflows",
-                    stack_available,
-                    highest_static_var_address + 1,
-                    elf.vector_table.initial_stack_pointer,
-                    size,
-                );
-
-                // Canary starts right after `highest_ram_addr_in_use`.
-                let address = highest_static_var_address + 1;
-                let canary = vec![CANARY_VALUE; size];
-                core.write_8(address, &canary)?;
-
-                return Ok(Some(Canary { address, size }));
+        let stack_info = match &target_info.stack_info {
+            Some(range) => range,
+            None => {
+                log::debug!("couldn't find valid stack range, not placing stack canary");
+                return Ok(None);
             }
+        };
+
+        if elf.program_uses_heap() {
+            log::debug!("heap in use, not placing stack canary");
+            return Ok(None);
         }
 
-        Ok(None)
+        let stack_available = stack_info.range.end() - stack_info.range.start() - 1;
+
+        let size = if measure_stack {
+            // When measuring stack consumption, we have to color the whole stack.
+            stack_available as usize
+        } else {
+            // We consider >90% stack usage a potential stack overflow, but don't go beyond 1 kb
+            // since filling a lot of RAM is slow (and 1 kb should be "good enough" for what we're
+            // doing).
+            1024.min(stack_available / 10) as usize
+        };
+
+        log::debug!(
+            "{} bytes of stack available ({:#010X} ..= {:#010X}), using {} byte canary",
+            stack_available,
+            stack_info.range.start(),
+            stack_info.range.end(),
+            size,
+        );
+
+        let size_kb = size as f64 / 1024.0;
+        if measure_stack {
+            // Painting 100KB or more takes a few seconds, so provide user feedback.
+            log::info!(
+                "painting {:.2} KiB of RAM for stack usage estimation",
+                size_kb
+            );
+        }
+        let address = *stack_info.range.start();
+        let canary = vec![CANARY_VALUE; size];
+        let start = Instant::now();
+        core.write_8(address, &canary)?;
+        let seconds = start.elapsed().as_secs_f64();
+        log::trace!(
+            "setting up canary took {:.3}s ({:.2} KiB/s)",
+            seconds,
+            size_kb / seconds
+        );
+
+        Ok(Some(Canary {
+            address,
+            size,
+            stack_available,
+            data_below_stack: stack_info.data_below_stack,
+            measure_stack,
+        }))
     }
 
     pub(crate) fn touched(self, core: &mut probe_rs::Core, elf: &Elf) -> anyhow::Result<bool> {
-        let mut canary = vec![0; self.size];
-        core.read_8(self.address, &mut canary)?;
-
-        if let Some(pos) = canary.iter().position(|b| *b != CANARY_VALUE) {
-            let touched_address = self.address + pos as u32;
-            log::debug!("canary was touched at {:#010X}", touched_address);
-
-            let min_stack_usage = elf.vector_table.initial_stack_pointer - touched_address;
-            log::warn!(
-                "program has used at least {} bytes of stack space, data segments \
-                     may be corrupted due to stack overflow",
-                min_stack_usage,
+        let size_kb = self.size as f64 / 1024.0;
+        if self.measure_stack {
+            log::info!(
+                "reading {:.2} KiB of RAM for stack usage estimation",
+                size_kb,
             );
-            Ok(true)
-        } else {
-            log::debug!("stack canary intact");
+        }
+        let mut canary = vec![0; self.size];
+        let start = Instant::now();
+        core.read_8(self.address, &mut canary)?;
+        let seconds = start.elapsed().as_secs_f64();
+        log::trace!(
+            "reading canary took {:.3}s ({:.2} KiB/s)",
+            seconds,
+            size_kb / seconds
+        );
+
+        let min_stack_usage = match canary.iter().position(|b| *b != CANARY_VALUE) {
+            Some(pos) => {
+                let touched_address = self.address + pos as u32;
+                log::debug!("canary was touched at {:#010X}", touched_address);
+
+                Some(elf.vector_table.initial_stack_pointer - touched_address)
+            }
+            None => None,
+        };
+
+        if self.measure_stack {
+            let min_stack_usage = min_stack_usage.unwrap_or(0);
+            let used_kb = min_stack_usage as f64 / 1024.0;
+            let avail_kb = self.stack_available as f64 / 1024.0;
+            let pct = used_kb / avail_kb * 100.0;
+            log::info!(
+                "program has used at least {:.2}/{:.2} KiB ({:.1}%) of stack space",
+                used_kb,
+                avail_kb,
+                pct,
+            );
+
+            // Don't test for stack overflows if we're measuring stack usage.
             Ok(false)
+        } else {
+            match min_stack_usage {
+                Some(min_stack_usage) => {
+                    let used_kb = min_stack_usage as f64 / 1024.0;
+                    let avail_kb = self.stack_available as f64 / 1024.0;
+                    let pct = used_kb / avail_kb * 100.0;
+                    log::warn!(
+                        "program has used at least {:.2}/{:.2} KiB ({:.1}%) of stack space",
+                        used_kb,
+                        avail_kb,
+                        pct,
+                    );
+
+                    if self.data_below_stack {
+                        log::warn!("data segments might be corrupted due to stack overflow");
+                    }
+
+                    Ok(true)
+                }
+                None => {
+                    log::debug!("stack canary intact");
+                    Ok(false)
+                }
+            }
         }
     }
 }

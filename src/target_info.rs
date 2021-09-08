@@ -1,6 +1,6 @@
 use object::{Object, ObjectSection as _};
 use probe_rs::config::{MemoryRegion, RamRegion};
-use std::convert::TryInto;
+use std::{convert::TryInto, ops::RangeInclusive};
 
 use crate::elf::Elf;
 
@@ -8,8 +8,13 @@ pub(crate) struct TargetInfo {
     pub(crate) probe_target: probe_rs::Target,
     /// RAM region that contains the call stack
     pub(crate) active_ram_region: Option<RamRegion>,
-    /// Only `Some` if static variables are located in the `active_ram_region`
-    pub(crate) highest_static_var_address: Option<u32>,
+    pub(crate) stack_info: Option<StackInfo>,
+}
+
+pub(crate) struct StackInfo {
+    /// Valid values of the stack pointer (that don't collide with other data).
+    pub(crate) range: RangeInclusive<u32>,
+    pub(crate) data_below_stack: bool,
 }
 
 impl TargetInfo {
@@ -17,13 +22,16 @@ impl TargetInfo {
         let probe_target = probe_rs::config::get_target_by_name(chip)?;
         let active_ram_region =
             extract_active_ram_region(&probe_target, elf.vector_table.initial_stack_pointer);
-        let highest_static_var_address =
-            extract_highest_static_var_address(elf, active_ram_region.as_ref());
+        let stack_info = extract_stack_info(
+            elf,
+            active_ram_region.as_ref(),
+            elf.vector_table.initial_stack_pointer,
+        );
 
         Ok(Self {
             probe_target,
             active_ram_region,
-            highest_static_var_address,
+            stack_info,
         })
     }
 }
@@ -56,36 +64,55 @@ fn extract_active_ram_region(
         .cloned()
 }
 
-fn extract_highest_static_var_address(
+fn extract_stack_info(
     elf: &object::read::File,
     active_ram_region: Option<&RamRegion>,
-) -> Option<u32> {
+    initial_stack_pointer: u32,
+) -> Option<StackInfo> {
     let active_ram_region = active_ram_region?;
 
-    elf.sections()
-        .filter_map(|section| {
-            let size = section.size();
-            if size == 0 {
+    // SP points one past the end of the stack.
+    let mut stack_range = active_ram_region.range.start..=initial_stack_pointer - 1;
+
+    for section in elf.sections() {
+        let size: u32 = section.size().try_into().expect("expected 32-bit ELF");
+        if size == 0 {
+            continue;
+        }
+
+        let lowest_address: u32 = section.address().try_into().expect("expected 32-bit ELF");
+        let highest_address = lowest_address + size - 1;
+        let section_range = lowest_address..=highest_address;
+        let name = section.name().unwrap_or("<unknown>");
+
+        if active_ram_region.range.contains(&highest_address) {
+            log::debug!(
+                "section `{}` is in RAM at {:#010X} ..= {:#010X}",
+                name,
+                lowest_address,
+                highest_address,
+            );
+
+            if section_range.contains(&(initial_stack_pointer - 1)) {
+                log::debug!(
+                    "initial SP is in section `{}`, cannot determine valid stack range",
+                    name
+                );
                 return None;
             }
 
-            let lowest_address = section.address();
-            let highest_address = (lowest_address + size - 1)
-                .try_into()
-                .expect("expected 32-bit ELF");
-
-            if active_ram_region.range.contains(&highest_address) {
-                log::debug!(
-                    "section `{}` is in RAM at {:#010X} ..= {:#010X}",
-                    section.name().unwrap_or("<unknown>"),
-                    lowest_address,
-                    highest_address,
-                );
-
-                Some(highest_address)
-            } else {
-                None
+            if initial_stack_pointer > lowest_address && *stack_range.start() <= highest_address {
+                stack_range = highest_address + 1..=initial_stack_pointer;
             }
-        })
-        .max()
+        }
+    }
+    log::debug!(
+        "valid SP range: {:#010X} ..= {:#010X}",
+        stack_range.start(),
+        stack_range.end(),
+    );
+    Some(StackInfo {
+        data_below_stack: *stack_range.start() > active_ram_region.range.start,
+        range: stack_range,
+    })
 }

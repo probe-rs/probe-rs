@@ -40,10 +40,10 @@ fn main() -> anyhow::Result<()> {
 
 fn run_target_program(elf_path: &Path, chip_name: &str, opts: &cli::Opts) -> anyhow::Result<i32> {
     if !elf_path.exists() {
-        return Err(anyhow!(
+        bail!(
             "can't find ELF file at `{}`; are you sure you got the right path?",
             elf_path.display()
-        ));
+        );
     }
 
     let elf_bytes = fs::read(elf_path)?;
@@ -87,7 +87,10 @@ fn run_target_program(elf_path: &Path, chip_name: &str, opts: &cli::Opts) -> any
         log::info!("success!");
     }
 
-    let canary = Canary::install(&mut sess, &target_info, elf)?;
+    let canary = Canary::install(&mut sess, &target_info, elf, opts.measure_stack)?;
+    if opts.measure_stack && canary.is_none() {
+        bail!("failed to set up stack measurement");
+    }
     start_program(&mut sess, elf)?;
 
     let sess = Arc::new(Mutex::new(sess));

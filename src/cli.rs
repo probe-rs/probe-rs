@@ -67,6 +67,10 @@ pub(crate) struct Opts {
     #[structopt(long)]
     pub(crate) shorten_paths: bool,
 
+    /// Whether to measure the program's stack consumption.
+    #[structopt(long)]
+    pub(crate) measure_stack: bool,
+
     /// Arguments passed after the ELF file path are discarded
     #[structopt(name = "REST")]
     _rest: Vec<String>,
