@@ -163,6 +163,8 @@ impl Registry {
         let (family, chip) = {
             // Try get the corresponding chip.
             let mut selected_family_and_chip = None;
+            let mut exact_matches = 0;
+            let mut partial_matches = 0;
             for family in &self.families {
                 for variant in family.variants.iter() {
                     if variant
@@ -171,18 +173,32 @@ impl Registry {
                         .starts_with(&name.to_ascii_lowercase())
                     {
                         if variant.name.to_ascii_lowercase() != name.to_ascii_lowercase() {
-                            log::warn!(
-                                "Found chip {} which matches given partial name {}. Consider specifying its full name.",
-                                variant.name,
-                                name,
-                            );
-                            if selected_family_and_chip.is_some() {
+                            log::debug!("Partial match for chip name: {}", variant.name);
+                            partial_matches += 1;
+                            if exact_matches > 0 {
                                 continue;
                             }
+                        } else {
+                            log::debug!("Exact match for chip name: {}", variant.name);
+                            exact_matches += 1;
                         }
                         selected_family_and_chip = Some((family, variant));
                     }
                 }
+            }
+            if exact_matches > 1 || ( exact_matches == 0 && partial_matches > 1 ) {
+                log::warn!(
+                    "Ignoring ambiguous matches for specified chip name {}",
+                    name,
+                );
+                return Err(RegistryError::ChipNotFound(name.to_owned()));
+            }
+            if exact_matches == 0 && partial_matches == 1 {
+                log::warn!(
+                    "Found chip {} which matches given partial name {}. Consider specifying its full name.",
+                    selected_family_and_chip.unwrap().1.name,
+                    name,
+                );
             }
             let (family, chip) = selected_family_and_chip
                 .ok_or_else(|| RegistryError::ChipNotFound(name.to_owned()))?;
