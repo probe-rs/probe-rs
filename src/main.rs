@@ -89,6 +89,9 @@ fn run_target_program(elf_path: &Path, chip_name: &str, opts: &cli::Opts) -> any
     }
 
     let canary = Canary::install(&mut sess, &target_info, elf, opts.measure_stack)?;
+    if opts.measure_stack && canary.is_none() {
+        bail!("failed to set up stack measurement");
+    }
     start_program(&mut sess, elf)?;
 
     let sess = Arc::new(Mutex::new(sess));
