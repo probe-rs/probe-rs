@@ -1178,7 +1178,7 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
                                 "request" => {
                                     match serde_json::from_slice::<Request>(&message_content) {
                                         Ok(request) => {
-                                            //This is the SUCCESS request for new requests from the client
+                                            // This is the SUCCESS request for new requests from the client.
                                             match self.console_log_level {
                                                 ConsoleLog::Error => {}
                                                 ConsoleLog::Info | ConsoleLog::Warn => {
