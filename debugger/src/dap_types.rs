@@ -14,6 +14,7 @@ pub struct RttChannelEventBody {
     pub channel_name: String,
     pub data_format: crate::rtt::DataFormat,
 }
+
 #[derive(Clone, PartialEq, Debug, Deserialize, Serialize)]
 pub struct RttDataEventBody {
     pub channel_number: usize,
