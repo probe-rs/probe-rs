@@ -29,7 +29,13 @@ You can use it like any cargo command would be used
 cargo embed <args>
 ```
 
-which will then build your binary and download the contents onto the connected target.
+This will do following in sequence:
+1. build your binary
+2. detect a probe
+3. (if enabled) upload the contents onto the connected target
+4. (if enabled) reset the target
+5. (if enabled) start RTT host side
+6. (if enabled) start gdb debugging
 
 ## Configuration
 
