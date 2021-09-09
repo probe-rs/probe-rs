@@ -1563,8 +1563,8 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
         }
     }
 
-    /// Send a custom "probe-rs-show-message" event to the MS DAP Client
-    /// The `severity` field can be one of "information", "warning", or "error"
+    /// Send a custom "probe-rs-show-message" event to the MS DAP Client.
+    /// The `severity` field can be one of `information`, `warning`, or `error`.
     pub fn show_message<S: Into<String>>(&mut self, severity: String, message: S) -> bool {
         if self.adapter_type == DebugAdapterType::DapClient {
             let event_body = match serde_json::to_value(ShowMessageEventBody {
