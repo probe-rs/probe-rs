@@ -19,6 +19,7 @@ use structopt::StructOpt;
 fn default_channel_formats() -> Vec<RttChannelConfig> {
     vec![]
 }
+
 fn default_rtt_timeout() -> usize {
     500
 }
@@ -49,7 +50,7 @@ impl Default for DataFormat {
     }
 }
 
-/// The initial configuration for RTT (Segger Real Time Transfer). This configuration is complimented with the additional information specified for each of the channels in `RttChannel`
+/// The initial configuration for RTT (Real Time Transfer). This configuration is complimented with the additional information specified for each of the channels in `RttChannel`.
 #[derive(StructOpt, Debug, Clone, Deserialize, Default)]
 pub struct RttConfig {
     #[structopt(skip)]
@@ -65,7 +66,7 @@ pub struct RttConfig {
     pub channels: Vec<RttChannelConfig>,
 }
 
-/// The User specified configuration for each active RTT Channel. The configuration is passed via a DAP Client configuration (`launch.json`). If no configuration is specified, the defaults will be Dataformat::String and show_timestamps=false
+/// The User specified configuration for each active RTT Channel. The configuration is passed via a DAP Client configuration (`launch.json`). If no configuration is specified, the defaults will be `Dataformat::String` and `show_timestamps=false`.
 #[derive(StructOpt, Debug, Clone, serde::Deserialize, Default)]
 pub struct RttChannelConfig {
     pub channel_number: Option<usize>,
@@ -143,13 +144,13 @@ impl RttActiveChannel {
         }
     }
 
-    /// Returns the number of the UpChannel
+    /// Returns the number of the `UpChannel`.
     pub fn number(&self) -> Option<usize> {
         self.up_channel.as_ref().map(|uc| uc.number())
     }
 
-    /// Polls the RTT target for new data on the specified channel.
-    /// Processes all the new data into the channel `rtt_buffer` and returns the number of bytes that was read
+    /// Polls the RTT target for new data on the channel represented by `self`.
+    /// Processes all the new data into the channel internal buffer and returns the number of bytes that was read.
     pub fn poll_rtt(&mut self, core: &mut Core) -> Option<usize> {
         if let Some(channel) = self.up_channel.as_mut() {
             match channel.read(core, self.rtt_buffer.0.as_mut()) {

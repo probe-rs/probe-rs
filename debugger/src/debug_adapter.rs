@@ -530,7 +530,7 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
                                 location, err
                             )
                                 .to_string();
-                                //In addition to sending the error to the 'Hover' message, also write it to the Debug Console Log
+                                // In addition to sending the error to the 'Hover' message, also write it to the Debug Console Log.
                                 self.log_to_console(format!("WARNING: {}", message));
                                 self.show_message("warning".to_string(), message.clone());
                                 (false, Some(message))
@@ -551,7 +551,7 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
                     });
                 } else {
                     let message = "No source location for breakpoint. Try reducing `opt-level` in `Cargo.toml` ".to_string();
-                    //In addition to sending the error to the 'Hover' message, also write it to the Debug Console Log
+                    // In addition to sending the error to the 'Hover' message, also write it to the Debug Console Log.
                     self.log_to_console(format!("WARNING: {}", message));
                     self.show_message("warning".to_string(), message.clone());
                     created_breakpoints.push(Breakpoint {
@@ -1178,7 +1178,7 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
                                 "request" => {
                                     match serde_json::from_slice::<Request>(&message_content) {
                                         Ok(request) => {
-                                            //This is the SUCCESS request for new requests from the client
+                                            // This is the SUCCESS request for new requests from the client.
                                             match self.console_log_level {
                                                 ConsoleLog::Error => {}
                                                 ConsoleLog::Info | ConsoleLog::Warn => {
@@ -1563,8 +1563,8 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
         }
     }
 
-    /// Send a custom "probe-rs-show-message" event to the MS DAP Client
-    /// The `severity` field can be one of "information", "warning", or "error"
+    /// Send a custom "probe-rs-show-message" event to the MS DAP Client.
+    /// The `severity` field can be one of `information`, `warning`, or `error`.
     pub fn show_message<S: Into<String>>(&mut self, severity: String, message: S) -> bool {
         if self.adapter_type == DebugAdapterType::DapClient {
             let event_body = match serde_json::to_value(ShowMessageEventBody {
