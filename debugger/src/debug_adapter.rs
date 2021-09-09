@@ -1622,7 +1622,6 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
             };
             self.send_event("probe-rs-rtt-data", Some(event_body))
         } else {
-            //DebugAdapterType::CommandLine
             println!("RTT Channel {}: {}", channel_number, rtt_data);
             true
         }
