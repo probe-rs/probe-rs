@@ -1584,7 +1584,7 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
         }
     }
 
-    /// Send a custom "probe-rs-rtt-channel-config" event to the MS DAP Client, to create a window for a specific RTT channel
+    /// Send a custom `probe-rs-rtt-channel-config` event to the MS DAP Client, to create a window for a specific RTT channel.
     pub fn rtt_window(
         &mut self,
         channel_number: usize,
