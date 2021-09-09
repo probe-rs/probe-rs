@@ -149,8 +149,8 @@ impl RttActiveChannel {
         self.up_channel.as_ref().map(|uc| uc.number())
     }
 
-    /// Polls the RTT target for new data on the specified channel.
-    /// Processes all the new data into the channel `rtt_buffer` and returns the number of bytes that was read
+    /// Polls the RTT target for new data on the channel represented by `self`.
+    /// Processes all the new data into the channel internal buffer and returns the number of bytes that was read.
     pub fn poll_rtt(&mut self, core: &mut Core) -> Option<usize> {
         if let Some(channel) = self.up_channel.as_mut() {
             match channel.read(core, self.rtt_buffer.0.as_mut()) {
