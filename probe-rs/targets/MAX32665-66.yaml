@@ -1,6 +1,5 @@
----
 name: MAX32665-66
-manufacturer: ~
+manufacturer: null
 variants:
   - name: MAX32665
     cores:
@@ -8,21 +7,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
             start: 0x20000000
-            end: 0x2008C000
+            end: 0x2008c000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
             start: 0x10000000
             end: 0x10100000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - max32665
   - name: MAX32666
@@ -31,44 +32,46 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
             start: 0x20000000
-            end: 0x2008C000
+            end: 0x2008c000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
             start: 0x10000000
             end: 0x10100000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - max32665
 flash_algorithms:
-  max32665:
-    name: max32665
+  - name: max32665
     description: MAX32665 1MB Flash
-    cores: [main]
+    cores:
+      - main
     default: true
     instructions: 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
-    pc_init: 49
-    pc_uninit: 139
-    pc_program_page: 163
-    pc_erase_sector: 153
-    pc_erase_all: 143
-    data_section_offset: 2792
+    pc_init: 0x31
+    pc_uninit: 0x8b
+    pc_program_page: 0xa3
+    pc_erase_sector: 0x99
+    pc_erase_all: 0x8f
+    data_section_offset: 0xae8
     flash_properties:
       address_range:
         start: 0x10000000
         end: 0x10100000
-      page_size: 1024
-      erased_byte_value: 255
-      program_page_timeout: 1000
-      erase_sector_timeout: 5000
+      page_size: 0x400
+      erased_byte_value: 0xff
+      program_page_timeout: 0x3e8
+      erase_sector_timeout: 0x1388
       sectors:
-        - size: 8192
-          address: 0
+        - size: 0x2000
+          address: 0x0

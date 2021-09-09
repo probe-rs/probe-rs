@@ -1,4 +1,3 @@
----
 name: SAME70
 variants:
   - name: ATSAME70J19
@@ -7,21 +6,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 541065216
-            end: 541327360
+            start: 0x20400000
+            end: 0x20440000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 4194304
-            end: 4718592
+            start: 0x400000
+            end: 0x480000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - atsame7x_512
       - atsame7x_gpnvm
@@ -31,21 +32,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 541065216
-            end: 541327360
+            start: 0x20400000
+            end: 0x20440000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 4194304
-            end: 4718592
+            start: 0x400000
+            end: 0x480000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - atsame7x_512
       - atsame7x_gpnvm
@@ -55,21 +58,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 541065216
-            end: 541458432
+            start: 0x20400000
+            end: 0x20460000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 4194304
-            end: 5242880
+            start: 0x400000
+            end: 0x500000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - atsame7x_1024
       - atsame7x_gpnvm
@@ -79,21 +84,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 541065216
-            end: 541458432
+            start: 0x20400000
+            end: 0x20460000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 4194304
-            end: 5242880
+            start: 0x400000
+            end: 0x500000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - atsame7x_1024
       - atsame7x_gpnvm
@@ -103,21 +110,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 541065216
-            end: 541458432
+            start: 0x20400000
+            end: 0x20460000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 4194304
-            end: 6291456
+            start: 0x400000
+            end: 0x600000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - atsame7x_2048
       - atsame7x_gpnvm
@@ -127,21 +136,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 541065216
-            end: 541458432
+            start: 0x20400000
+            end: 0x20460000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 4194304
-            end: 6291456
+            start: 0x400000
+            end: 0x600000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - atsame7x_2048
       - atsame7x_gpnvm
@@ -151,21 +162,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 541065216
-            end: 541327360
+            start: 0x20400000
+            end: 0x20440000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 4194304
-            end: 4718592
+            start: 0x400000
+            end: 0x480000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - atsame7x_512
       - atsame7x_gpnvm
@@ -175,21 +188,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 541065216
-            end: 541327360
+            start: 0x20400000
+            end: 0x20440000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 4194304
-            end: 4718592
+            start: 0x400000
+            end: 0x480000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - atsame7x_512
       - atsame7x_gpnvm
@@ -199,21 +214,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 541065216
-            end: 541458432
+            start: 0x20400000
+            end: 0x20460000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 4194304
-            end: 5242880
+            start: 0x400000
+            end: 0x500000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - atsame7x_1024
       - atsame7x_gpnvm
@@ -223,21 +240,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 541065216
-            end: 541458432
+            start: 0x20400000
+            end: 0x20460000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 4194304
-            end: 5242880
+            start: 0x400000
+            end: 0x500000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - atsame7x_1024
       - atsame7x_gpnvm
@@ -247,21 +266,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 541065216
-            end: 541458432
+            start: 0x20400000
+            end: 0x20460000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 4194304
-            end: 6291456
+            start: 0x400000
+            end: 0x600000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - atsame7x_2048
       - atsame7x_gpnvm
@@ -271,21 +292,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 541065216
-            end: 541458432
+            start: 0x20400000
+            end: 0x20460000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 4194304
-            end: 6291456
+            start: 0x400000
+            end: 0x600000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - atsame7x_2048
       - atsame7x_gpnvm
@@ -295,21 +318,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 541065216
-            end: 541327360
+            start: 0x20400000
+            end: 0x20440000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 4194304
-            end: 4718592
+            start: 0x400000
+            end: 0x480000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - atsame7x_512
       - atsame7x_gpnvm
@@ -319,21 +344,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 541065216
-            end: 541327360
+            start: 0x20400000
+            end: 0x20440000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 4194304
-            end: 4718592
+            start: 0x400000
+            end: 0x480000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - atsame7x_512
       - atsame7x_gpnvm
@@ -343,21 +370,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 541065216
-            end: 541458432
+            start: 0x20400000
+            end: 0x20460000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 4194304
-            end: 5242880
+            start: 0x400000
+            end: 0x500000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - atsame7x_1024
       - atsame7x_gpnvm
@@ -367,21 +396,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 541065216
-            end: 541458432
+            start: 0x20400000
+            end: 0x20460000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 4194304
-            end: 5242880
+            start: 0x400000
+            end: 0x500000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - atsame7x_1024
       - atsame7x_gpnvm
@@ -391,21 +422,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 541065216
-            end: 541458432
+            start: 0x20400000
+            end: 0x20460000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 4194304
-            end: 6291456
+            start: 0x400000
+            end: 0x600000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - atsame7x_2048
       - atsame7x_gpnvm
@@ -415,114 +448,116 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 541065216
-            end: 541458432
+            start: 0x20400000
+            end: 0x20460000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 4194304
-            end: 6291456
+            start: 0x400000
+            end: 0x600000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - atsame7x_2048
       - atsame7x_gpnvm
 flash_algorithms:
-  atsame7x_512:
-    name: atsame7x_512
+  - name: atsame7x_512
     description: ATSAME7x 512kB Flash
-    cores: [main]
+    cores:
+      - main
     default: true
     instructions: MLVdSUlECGBdSVxISGIPIFtJAALAOQhgASBaScADSGFYScAxSGBZS1dIWGJXSsA6EGuACIAAQBwQY1RIgDiBagkH/NURa3AkoUMRY4FqCQf81RFqTk0pQxFigWqJA/zVEWqhQ0pMGDQhQxFiEWrkBKFDNyQkBCFDEWKBaskD/NURa4kIiQBJHBFjgWoJB/zVASERY4FqCQf81TtIQBxYYgAgML0CKBHRNUg6ScA4QWCBaMkH/NDBaIkHB9Q1Sf4xQWAA4AC/gWjJB/vQK0gsSUAcSGIAIHBHLkkpSAg5wDhBYADgAL+BaMkH+9AAIHBHIUojSUpEEmjAOYAaQAqACIAAgBwABAIKIkgAHxBDSGAA4AC/iGjAB/vQHkiAHwJDSmAA4AC/iGjAB/vQiGgAB0APANABIHBHMLUPSRBLSUQJaMA7QRpMClkVIMoJHyDAACn60SAED0kACgw5CENYYADgAL+YaMAH+9CYaAAHQA8A0AEgML0AAAQAAAAAQ0ZFwAwOQEAYDkAAQ01QwAYOQAgANwANAABaAAAAAAAAAAA=
-    pc_init: 1
-    pc_uninit: 165
-    pc_program_page: 313
-    pc_erase_sector: 241
-    pc_erase_all: 217
-    data_section_offset: 408
+    pc_init: 0x1
+    pc_uninit: 0xa5
+    pc_program_page: 0x139
+    pc_erase_sector: 0xf1
+    pc_erase_all: 0xd9
+    data_section_offset: 0x198
     flash_properties:
       address_range:
-        start: 4194304
-        end: 4718592
-      page_size: 512
-      erased_byte_value: 255
-      program_page_timeout: 100
-      erase_sector_timeout: 1000
+        start: 0x400000
+        end: 0x480000
+      page_size: 0x200
+      erased_byte_value: 0xff
+      program_page_timeout: 0x64
+      erase_sector_timeout: 0x3e8
       sectors:
-        - size: 8192
-          address: 0
-  atsame7x_1024:
-    name: atsame7x_1024
+        - size: 0x2000
+          address: 0x0
+  - name: atsame7x_1024
     description: ATSAME7x 1024kB Flash
-    cores: [main]
+    cores:
+      - main
     default: true
     instructions: MLVdSUlECGBdSVxISGIPIFtJAALAOQhgASBaScADSGFYScAxSGBZS1dIWGJXSsA6EGuACIAAQBwQY1RIgDiBagkH/NURa3AkoUMRY4FqCQf81RFqTk0pQxFigWqJA/zVEWqhQ0pMGDQhQxFiEWrkBKFDNyQkBCFDEWKBaskD/NURa4kIiQBJHBFjgWoJB/zVASERY4FqCQf81TtIQBxYYgAgML0CKBHRNUg6ScA4QWCBaMkH/NDBaIkHB9Q1Sf4xQWAA4AC/gWjJB/vQK0gsSUAcSGIAIHBHLkkpSAg5wDhBYADgAL+BaMkH+9AAIHBHIUojSUpEEmjAOYAaQAqACIAAgBwABAIKIkgAHxBDSGAA4AC/iGjAB/vQHkiAHwJDSmAA4AC/iGjAB/vQiGgAB0APANABIHBHMLUPSRBLSUQJaMA7QRpMClkVIMoJHyDAACn60SAED0kACgw5CENYYADgAL+YaMAH+9CYaAAHQA8A0AEgML0AAAQAAAAAQ0ZFwAwOQEAYDkAAQ01QwAYOQAgANwANAABaAAAAAAAAAAA=
-    pc_init: 1
-    pc_uninit: 165
-    pc_program_page: 313
-    pc_erase_sector: 241
-    pc_erase_all: 217
-    data_section_offset: 408
+    pc_init: 0x1
+    pc_uninit: 0xa5
+    pc_program_page: 0x139
+    pc_erase_sector: 0xf1
+    pc_erase_all: 0xd9
+    data_section_offset: 0x198
     flash_properties:
       address_range:
-        start: 4194304
-        end: 5242880
-      page_size: 512
-      erased_byte_value: 255
-      program_page_timeout: 100
-      erase_sector_timeout: 1000
+        start: 0x400000
+        end: 0x500000
+      page_size: 0x200
+      erased_byte_value: 0xff
+      program_page_timeout: 0x64
+      erase_sector_timeout: 0x3e8
       sectors:
-        - size: 8192
-          address: 0
-  atsame7x_2048:
-    name: atsame7x_2048
+        - size: 0x2000
+          address: 0x0
+  - name: atsame7x_2048
     description: ATSAME7x 2048kB Flash
-    cores: [main]
+    cores:
+      - main
     default: true
     instructions: MLVdSUlECGBdSVxISGIPIFtJAALAOQhgASBaScADSGFYScAxSGBZS1dIWGJXSsA6EGuACIAAQBwQY1RIgDiBagkH/NURa3AkoUMRY4FqCQf81RFqTk0pQxFigWqJA/zVEWqhQ0pMGDQhQxFiEWrkBKFDNyQkBCFDEWKBaskD/NURa4kIiQBJHBFjgWoJB/zVASERY4FqCQf81TtIQBxYYgAgML0CKBHRNUg6ScA4QWCBaMkH/NDBaIkHB9Q1Sf4xQWAA4AC/gWjJB/vQK0gsSUAcSGIAIHBHLkkpSAg5wDhBYADgAL+BaMkH+9AAIHBHIUojSUpEEmjAOYAaQAqACIAAgBwABAIKIkgAHxBDSGAA4AC/iGjAB/vQHkiAHwJDSmAA4AC/iGjAB/vQiGgAB0APANABIHBHMLUPSRBLSUQJaMA7QRpMClkVIMoJHyDAACn60SAED0kACgw5CENYYADgAL+YaMAH+9CYaAAHQA8A0AEgML0AAAQAAAAAQ0ZFwAwOQEAYDkAAQ01QwAYOQAgANwANAABaAAAAAAAAAAA=
-    pc_init: 1
-    pc_uninit: 165
-    pc_program_page: 313
-    pc_erase_sector: 241
-    pc_erase_all: 217
-    data_section_offset: 408
+    pc_init: 0x1
+    pc_uninit: 0xa5
+    pc_program_page: 0x139
+    pc_erase_sector: 0xf1
+    pc_erase_all: 0xd9
+    data_section_offset: 0x198
     flash_properties:
       address_range:
-        start: 4194304
-        end: 6291456
-      page_size: 512
-      erased_byte_value: 255
-      program_page_timeout: 100
-      erase_sector_timeout: 1000
+        start: 0x400000
+        end: 0x600000
+      page_size: 0x200
+      erased_byte_value: 0xff
+      program_page_timeout: 0x64
+      erase_sector_timeout: 0x3e8
       sectors:
-        - size: 8192
-          address: 0
-  atsame7x_gpnvm:
-    name: atsame7x_gpnvm
+        - size: 0x2000
+          address: 0x0
+  - name: atsame7x_gpnvm
     description: ATSAME7x GPNVM bits
-    cores: [main]
+    cores:
+      - main
     default: false
     instructions: MLWASUlECGCASX9ISGIPIH5JAALAOQhgASB9ScADSGF7ScAxSGB8S3pIWGJ6SsA6EGuACIAAQBwQY3dIgDiBagkH/NURa3AkoUMRY4FqCQf81RFqcU0pQxFigWqJA/zVEWqhQ21MGDQhQxFiEWrkBKFDNyQkBCFDEWKBaskD/NURa4kIiQBJHBFjgWoJB/zVASERY4FqCQf81V5IQBxYYgAgML1YSFlJQBxIYgAgcEcAIHBHACBwR1JKVElKRBJowDmAGkAKgAiAAIAcAAQCClNIEENIYADgAL+IaMAH+9BPSIAeAkNKYADgAL+IaMAH+9CIaAAHQA8A0AEgcEcQtRBoR0pBSRIdwDlKYIpo0gf80MpowwfUB9sP5A+jQgzQwwcC0D5LmxwB4D1L2xxLYADgAL+LaNsH+9ACIwRGHEATQJxCC9CDBwHVNksB4DVLWxxLYADgAL+LaNsH+9CAIwRGHEATQJxCC9ADBgHVLksB4C1LWxxLYADgAL+LaNsH+9D/IwEzBEYcQBpAlEIL0MAFAdUlSAHgJEhAHEhgAOAAv4howAf70AAgEL0wtRxMFkskHRJowDtcYJxo5Af80Nto1AfdB+QP7Q+sQgbRAiQVRiVAHEClQgHQQBwwvYAkFUYlQBxApUIB0MAdML3/JAE0IkAjQJpCAdAIMDC9QBgwvQAABAAAAABDRkXADA5AQBgOQABDTVDABg5ACAA3AAkAAFoLAQBaCwcAWgsIAFoAAAAAAAAAAA==
-    pc_init: 1
-    pc_uninit: 165
-    pc_program_page: 255
-    pc_erase_sector: 185
-    pc_erase_all: 181
-    data_section_offset: 560
+    pc_init: 0x1
+    pc_uninit: 0xa5
+    pc_program_page: 0xff
+    pc_erase_sector: 0xb9
+    pc_erase_all: 0xb5
+    data_section_offset: 0x230
     flash_properties:
       address_range:
-        start: 536870896
-        end: 536870912
-      page_size: 16
-      erased_byte_value: 255
-      program_page_timeout: 100
-      erase_sector_timeout: 1000
+        start: 0x1ffffff0
+        end: 0x20000000
+      page_size: 0x10
+      erased_byte_value: 0xff
+      program_page_timeout: 0x64
+      erase_sector_timeout: 0x3e8
       sectors:
-        - size: 16
-          address: 0
+        - size: 0x10
+          address: 0x0

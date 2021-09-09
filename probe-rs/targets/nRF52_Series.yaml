@@ -1,7 +1,6 @@
----
 name: nRF52 Series
 manufacturer:
-  cc: 0x02
+  cc: 0x2
   id: 0x44
 variants:
   - name: nRF52805_xxAA
@@ -10,27 +9,30 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
             start: 0x20000000
             end: 0x20006000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 0
+            start: 0x0
             end: 0x30000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
             start: 0x10001000
             end: 0x10002000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - nrf52
   - name: nRF52810_xxAA
@@ -39,27 +41,30 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
             start: 0x20000000
             end: 0x20006000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 0
+            start: 0x0
             end: 0x30000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
             start: 0x10001000
             end: 0x10002000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - nrf52
   - name: nRF52811_xxAA
@@ -68,27 +73,30 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
             start: 0x20000000
             end: 0x20006000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 0
+            start: 0x0
             end: 0x30000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
             start: 0x10001000
             end: 0x10002000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - nrf52
   - name: nRF52820_xxAA
@@ -97,27 +105,30 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
             start: 0x20000000
             end: 0x20008000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 0
+            start: 0x0
             end: 0x40000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
             start: 0x10001000
             end: 0x10002000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - nrf52
   - name: nRF52832_xxAA
@@ -126,27 +137,30 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
             start: 0x20000000
             end: 0x20010000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 0
+            start: 0x0
             end: 0x80000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
             start: 0x10001000
             end: 0x10002000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - nrf52
   - name: nRF52832_xxAB
@@ -155,27 +169,30 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
             start: 0x20000000
             end: 0x20008000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 0
+            start: 0x0
             end: 0x100000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
             start: 0x10001000
             end: 0x10002000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - nrf52
   - name: nRF52833_xxAA
@@ -184,27 +201,30 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
             start: 0x20000000
             end: 0x20020000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 0
+            start: 0x0
             end: 0x80000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
             start: 0x10001000
             end: 0x10002000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - nrf52
   - name: nRF52840_xxAA
@@ -213,34 +233,37 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
             start: 0x20000000
             end: 0x20040000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 0
+            start: 0x0
             end: 0x100000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
             start: 0x10001000
             end: 0x10002000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - nrf52
 flash_algorithms:
-  nrf52:
-    name: nrf52
+  - name: nrf52
     description: nrf52
-    cores: [main]
+    cores:
+      - main
     default: true
     instructions: AL4K4A14LQZoQAgkQAAA01hAZB760UkcUh4AKvLRcEcAIHBHACBwR3C1JkwCIGBgASDgYCRNKGjABwLQACBgYHC9APAs+PbncLUeTAIhYWAeSYhCAtMBIGBhAOCgYBpNAPAd+ChowAf60AAgYGBwvfi1BUaOCBNIASEURkFgEk8BzAHFOGjABwbQdh740Q1IACFBYAhG+L0A8AH48ucMSEBoAAYADgvQCklJaAApB9AJSQpKwwcA0ApgCR1ACPnRcEcAAADlAUAA5AFAABAAEAAEAUAABQFAAAYBQDVGUm4AAAAA
     pc_init: 0x21
@@ -251,12 +274,12 @@ flash_algorithms:
     data_section_offset: 0x170
     flash_properties:
       address_range:
-        start: 0
+        start: 0x0
         end: 0x10002000
       page_size: 0x1000
-      erased_byte_value: 0xFF
-      program_page_timeout: 1000
-      erase_sector_timeout: 3000
+      erased_byte_value: 0xff
+      program_page_timeout: 0x3e8
+      erase_sector_timeout: 0xbb8
       sectors:
         - size: 0x1000
-          address: 0
+          address: 0x0

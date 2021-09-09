@@ -39,6 +39,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Information on whether a rebuild was necessary is included in the artefact (nothing changed if
  `fresh == true`) (#795).
 - `Debug` was reimplemented on `Session` (#795).
+- Target YAMLs: Changed `flash_algorithms` from a map to an array. (#813)
 - Reject ambiguous chip selection.
 
 ### Fixed

@@ -1,4 +1,3 @@
----
 name: SAM4 Series
 variants:
   - name: ATSAM4E16C
@@ -7,21 +6,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537001984
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 4194304
-            end: 5242880
+            start: 0x400000
+            end: 0x500000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - atsam4e_1024
   - name: ATSAM4E16E
@@ -30,21 +31,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537001984
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 4194304
-            end: 5242880
+            start: 0x400000
+            end: 0x500000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - atsam4e_1024
   - name: ATSAM4E8C
@@ -53,21 +56,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537001984
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 4194304
-            end: 4718592
+            start: 0x400000
+            end: 0x480000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - atsam4e_512
   - name: ATSAM4E8E
@@ -76,21 +81,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537001984
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 4194304
-            end: 4718592
+            start: 0x400000
+            end: 0x480000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - atsam4e_512
   - name: ATSAM4LC2A
@@ -99,21 +106,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536903680
+            start: 0x20000000
+            end: 0x20008000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 0
-            end: 131072
+            start: 0x0
+            end: 0x20000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - atsam4l_128
   - name: ATSAM4LC2B
@@ -122,21 +131,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536903680
+            start: 0x20000000
+            end: 0x20008000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 0
-            end: 131072
+            start: 0x0
+            end: 0x20000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - atsam4l_128
   - name: ATSAM4LC2C
@@ -145,21 +156,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536903680
+            start: 0x20000000
+            end: 0x20008000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 0
-            end: 131072
+            start: 0x0
+            end: 0x20000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - atsam4l_128
   - name: ATSAM4LC4A
@@ -168,21 +181,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536903680
+            start: 0x20000000
+            end: 0x20008000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 0
-            end: 262144
+            start: 0x0
+            end: 0x40000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - atsam4l_256
   - name: ATSAM4LC4B
@@ -191,21 +206,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536903680
+            start: 0x20000000
+            end: 0x20008000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 0
-            end: 262144
+            start: 0x0
+            end: 0x40000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - atsam4l_256
   - name: ATSAM4LC4C
@@ -214,21 +231,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536903680
+            start: 0x20000000
+            end: 0x20008000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 0
-            end: 262144
+            start: 0x0
+            end: 0x40000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - atsam4l_256
   - name: ATSAM4LC8A
@@ -237,21 +256,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536936448
+            start: 0x20000000
+            end: 0x20010000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 0
-            end: 524288
+            start: 0x0
+            end: 0x80000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - atsam4l_512
   - name: ATSAM4LC8B
@@ -260,21 +281,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536936448
+            start: 0x20000000
+            end: 0x20010000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 0
-            end: 524288
+            start: 0x0
+            end: 0x80000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - atsam4l_512
   - name: ATSAM4LC8C
@@ -283,21 +306,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536936448
+            start: 0x20000000
+            end: 0x20010000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 0
-            end: 524288
+            start: 0x0
+            end: 0x80000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - atsam4l_512
   - name: ATSAM4LS2A
@@ -306,21 +331,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536903680
+            start: 0x20000000
+            end: 0x20008000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 0
-            end: 131072
+            start: 0x0
+            end: 0x20000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - atsam4l_128
   - name: ATSAM4LS2B
@@ -329,21 +356,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536903680
+            start: 0x20000000
+            end: 0x20008000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 0
-            end: 131072
+            start: 0x0
+            end: 0x20000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - atsam4l_128
   - name: ATSAM4LS2C
@@ -352,21 +381,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536903680
+            start: 0x20000000
+            end: 0x20008000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 0
-            end: 131072
+            start: 0x0
+            end: 0x20000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - atsam4l_128
   - name: ATSAM4LS4A
@@ -375,21 +406,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536903680
+            start: 0x20000000
+            end: 0x20008000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 0
-            end: 262144
+            start: 0x0
+            end: 0x40000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - atsam4l_256
   - name: ATSAM4LS4B
@@ -398,21 +431,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536903680
+            start: 0x20000000
+            end: 0x20008000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 0
-            end: 262144
+            start: 0x0
+            end: 0x40000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - atsam4l_256
   - name: ATSAM4LS4C
@@ -421,21 +456,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536903680
+            start: 0x20000000
+            end: 0x20008000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 0
-            end: 262144
+            start: 0x0
+            end: 0x40000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - atsam4l_256
   - name: ATSAM4LS8A
@@ -444,21 +481,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536936448
+            start: 0x20000000
+            end: 0x20010000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 0
-            end: 524288
+            start: 0x0
+            end: 0x80000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - atsam4l_512
   - name: ATSAM4LS8B
@@ -467,21 +506,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536936448
+            start: 0x20000000
+            end: 0x20010000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 0
-            end: 524288
+            start: 0x0
+            end: 0x80000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - atsam4l_512
   - name: ATSAM4LS8C
@@ -490,21 +531,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536936448
+            start: 0x20000000
+            end: 0x20010000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 0
-            end: 524288
+            start: 0x0
+            end: 0x80000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - atsam4l_512
   - name: ATSAM4N16B
@@ -513,21 +556,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536952832
+            start: 0x20000000
+            end: 0x20014000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 4194304
-            end: 5242880
+            start: 0x400000
+            end: 0x500000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - atsam4n_1024
   - name: ATSAM4N16C
@@ -536,21 +581,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536952832
+            start: 0x20000000
+            end: 0x20014000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 4194304
-            end: 5242880
+            start: 0x400000
+            end: 0x500000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - atsam4n_1024
   - name: ATSAM4N8A
@@ -559,21 +606,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536936448
+            start: 0x20000000
+            end: 0x20010000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 4194304
-            end: 4718592
+            start: 0x400000
+            end: 0x480000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - atsam4n_512
   - name: ATSAM4N8B
@@ -582,21 +631,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536936448
+            start: 0x20000000
+            end: 0x20010000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 4194304
-            end: 4718592
+            start: 0x400000
+            end: 0x480000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - atsam4n_512
   - name: ATSAM4N8C
@@ -605,21 +656,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536936448
+            start: 0x20000000
+            end: 0x20010000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 4194304
-            end: 4718592
+            start: 0x400000
+            end: 0x480000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - atsam4n_512
   - name: ATSAM4S16B
@@ -628,21 +681,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537001984
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 4194304
-            end: 5242880
+            start: 0x400000
+            end: 0x500000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - atsam4s_1024
       - atsam4s_gpnvm
@@ -652,21 +707,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537001984
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 4194304
-            end: 5242880
+            start: 0x400000
+            end: 0x500000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - atsam4s_1024
       - atsam4s_gpnvm
@@ -676,21 +733,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536936448
+            start: 0x20000000
+            end: 0x20010000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 4194304
-            end: 4325376
+            start: 0x400000
+            end: 0x420000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - atsam4s_128
       - atsam4s_gpnvm
@@ -700,21 +759,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536936448
+            start: 0x20000000
+            end: 0x20010000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 4194304
-            end: 4325376
+            start: 0x400000
+            end: 0x420000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - atsam4s_128
       - atsam4s_gpnvm
@@ -724,21 +785,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536936448
+            start: 0x20000000
+            end: 0x20010000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 4194304
-            end: 4325376
+            start: 0x400000
+            end: 0x420000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - atsam4s_128
       - atsam4s_gpnvm
@@ -748,21 +811,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536936448
+            start: 0x20000000
+            end: 0x20010000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 4194304
-            end: 4456448
+            start: 0x400000
+            end: 0x440000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - atsam4s_256
       - atsam4s_gpnvm
@@ -772,21 +837,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536936448
+            start: 0x20000000
+            end: 0x20010000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 4194304
-            end: 4456448
+            start: 0x400000
+            end: 0x440000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - atsam4s_256
       - atsam4s_gpnvm
@@ -796,21 +863,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 536936448
+            start: 0x20000000
+            end: 0x20010000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 4194304
-            end: 4456448
+            start: 0x400000
+            end: 0x440000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - atsam4s_256
       - atsam4s_gpnvm
@@ -820,21 +889,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537001984
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 4194304
-            end: 4718592
+            start: 0x400000
+            end: 0x480000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - atsam4s_512
       - atsam4s_gpnvm
@@ -844,21 +915,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537001984
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 4194304
-            end: 4718592
+            start: 0x400000
+            end: 0x480000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - atsam4s_512
       - atsam4s_gpnvm
@@ -868,21 +941,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537034752
+            start: 0x20000000
+            end: 0x20028000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 4194304
-            end: 5242880
+            start: 0x400000
+            end: 0x500000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - atsam4s_1024
       - atsam4s_gpnvm
@@ -892,21 +967,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537034752
+            start: 0x20000000
+            end: 0x20028000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 4194304
-            end: 5242880
+            start: 0x400000
+            end: 0x500000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - atsam4s_1024
       - atsam4s_gpnvm
@@ -916,21 +993,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537034752
+            start: 0x20000000
+            end: 0x20028000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 4194304
-            end: 5242880
+            start: 0x400000
+            end: 0x500000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - atsam4sd_1024
       - atsam4s_gpnvm
@@ -940,21 +1019,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537034752
+            start: 0x20000000
+            end: 0x20028000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 4194304
-            end: 5242880
+            start: 0x400000
+            end: 0x500000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - atsam4sd_1024
       - atsam4s_gpnvm
@@ -964,21 +1045,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537034752
+            start: 0x20000000
+            end: 0x20028000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 4194304
-            end: 6291456
+            start: 0x400000
+            end: 0x600000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - atsam4sd_2048
       - atsam4s_gpnvm
@@ -988,21 +1071,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537034752
+            start: 0x20000000
+            end: 0x20028000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 4194304
-            end: 6291456
+            start: 0x400000
+            end: 0x600000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - atsam4sd_2048
       - atsam4s_gpnvm
@@ -1012,366 +1097,368 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537034752
+            start: 0x20000000
+            end: 0x20028000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 4194304
-            end: 6291456
+            start: 0x400000
+            end: 0x600000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - atsam4sp_2048
 flash_algorithms:
-  atsam4e_1024:
-    name: atsam4e_1024
+  - name: atsam4e_1024
     description: ATSAM4E 1024kB Flash
-    cores: [main]
+    cores:
+      - main
     default: true
     instructions: MLVVSUlECGAPIFRJAAIIYAEgU0nAA0hhU0tSSFhiUkrAOhBrgAiAAEAcEGNOSIA4gWoJB/zVEWtwJKFDEWOBagkH/NURaklNKUMRYoFqiQP81RFqoUNFTBg0IUMRYhFq5AShQzckJAQhQxFigWrJA/zVEWuJCIkASRwRY4FqCQf81QEhEWOBagkH/NU1SEAcWGIAIDC9AigV0TBINElBYIFoyQf80MJokQcF1DBJ/jFBYIFoyQf80FEHBNUtSUFggWjJB/zQACBwRylJI0gIOUFggWjJB/zQACBwRx5KH0lKRBJogBpACoAIgACAHAAEAgofSAAfEENIYIhowAf80BtIgB8CQ0pgiGjAB/zQiGgAB0APANABIHBHMLUOTA9LTEQkaAQbyRxkCokIiQAC4CDKCR8gwAAp+tEgBAxJAAoMOQhDWGCYaMAH/NCYaAAHQA8A0AEgML0EAAAAAAoOQEAYDkAAQ01QwAQOQAgANwANAABaDAIAWgAAAAAAAAAA
-    pc_init: 1
-    pc_uninit: 151
-    pc_program_page: 283
-    pc_erase_sector: 221
-    pc_erase_all: 203
-    data_section_offset: 376
+    pc_init: 0x1
+    pc_uninit: 0x97
+    pc_program_page: 0x11b
+    pc_erase_sector: 0xdd
+    pc_erase_all: 0xcb
+    data_section_offset: 0x178
     flash_properties:
       address_range:
-        start: 4194304
-        end: 5242880
-      page_size: 512
-      erased_byte_value: 255
-      program_page_timeout: 100
-      erase_sector_timeout: 1000
+        start: 0x400000
+        end: 0x500000
+      page_size: 0x200
+      erased_byte_value: 0xff
+      program_page_timeout: 0x64
+      erase_sector_timeout: 0x3e8
       sectors:
-        - size: 8192
-          address: 0
-  atsam4e_512:
-    name: atsam4e_512
+        - size: 0x2000
+          address: 0x0
+  - name: atsam4e_512
     description: ATSAM4E 512kB Flash
-    cores: [main]
+    cores:
+      - main
     default: true
     instructions: MLVVSUlECGAPIFRJAAIIYAEgU0nAA0hhU0tSSFhiUkrAOhBrgAiAAEAcEGNOSIA4gWoJB/zVEWtwJKFDEWOBagkH/NURaklNKUMRYoFqiQP81RFqoUNFTBg0IUMRYhFq5AShQzckJAQhQxFigWrJA/zVEWuJCIkASRwRY4FqCQf81QEhEWOBagkH/NU1SEAcWGIAIDC9AigV0TBINElBYIFoyQf80MJokQcF1DBJ/jFBYIFoyQf80FEHBNUtSUFggWjJB/zQACBwRylJI0gIOUFggWjJB/zQACBwRx5KH0lKRBJogBpACoAIgACAHAAEAgofSAAfEENIYIhowAf80BtIgB8CQ0pgiGjAB/zQiGgAB0APANABIHBHMLUOTA9LTEQkaAQbyRxkCokIiQAC4CDKCR8gwAAp+tEgBAxJAAoMOQhDWGCYaMAH/NCYaAAHQA8A0AEgML0EAAAAAAoOQEAYDkAAQ01QwAQOQAgANwANAABaDAIAWgAAAAAAAAAA
-    pc_init: 1
-    pc_uninit: 151
-    pc_program_page: 283
-    pc_erase_sector: 221
-    pc_erase_all: 203
-    data_section_offset: 376
+    pc_init: 0x1
+    pc_uninit: 0x97
+    pc_program_page: 0x11b
+    pc_erase_sector: 0xdd
+    pc_erase_all: 0xcb
+    data_section_offset: 0x178
     flash_properties:
       address_range:
-        start: 4194304
-        end: 4718592
-      page_size: 512
-      erased_byte_value: 255
-      program_page_timeout: 100
-      erase_sector_timeout: 1000
+        start: 0x400000
+        end: 0x480000
+      page_size: 0x200
+      erased_byte_value: 0xff
+      program_page_timeout: 0x64
+      erase_sector_timeout: 0x3e8
       sectors:
-        - size: 8192
-          address: 0
-  atsam4l_128:
-    name: atsam4l_128
+        - size: 0x2000
+          address: 0x0
+  - name: atsam4l_128
     description: ATSAM4L 128kB Flash
-    cores: [main]
+    cores:
+      - main
     default: true
     instructions: MLU+SQpoVSMbBhpDUghSAApgCmhbABpDUghSAApgOUo3SZFhN0kBIkAxCmEKadIH/NAzSTRMTDmhYTNNgiFAPWlgMUmAMUppkgb81aNhBCIqYEppkgb81SxJSUQIYAAgML0AIHBHKUkQtUlECWhAGkAKAQQKCiZJCkMmSUpgimjSB/zQIksERtseIDQN4AIEEgoaQ0pgimjSB/zQimgSB5IPAdABIBC9QBygQu/TACAQvTC1FUsWTUtEG2jDGlwKFEutHl1gnWjtB/zQyR3JCMkAAuAgygkfIMAAKfrRIAQLSQAKCR8IQ1hgmGjAB/zQmGgAB4APANABIDC9AAwPQFAAAKoACA5AQAAOQAQAAAAFAAClAAAKQAAAAAAAAAAA
-    pc_init: 1
-    pc_uninit: 99
-    pc_program_page: 179
-    pc_erase_sector: 103
-    pc_erase_all: ~
-    data_section_offset: 280
+    pc_init: 0x1
+    pc_uninit: 0x63
+    pc_program_page: 0xb3
+    pc_erase_sector: 0x67
+    pc_erase_all: null
+    data_section_offset: 0x118
     flash_properties:
       address_range:
-        start: 0
-        end: 131072
-      page_size: 512
-      erased_byte_value: 255
-      program_page_timeout: 300
-      erase_sector_timeout: 3000
+        start: 0x0
+        end: 0x20000
+      page_size: 0x200
+      erased_byte_value: 0xff
+      program_page_timeout: 0x12c
+      erase_sector_timeout: 0xbb8
       sectors:
-        - size: 16384
-          address: 0
-  atsam4l_256:
-    name: atsam4l_256
+        - size: 0x4000
+          address: 0x0
+  - name: atsam4l_256
     description: ATSAM4L 256kB Flash
-    cores: [main]
+    cores:
+      - main
     default: true
     instructions: MLU+SQpoVSMbBhpDUghSAApgCmhbABpDUghSAApgOUo3SZFhN0kBIkAxCmEKadIH/NAzSTRMTDmhYTNNgiFAPWlgMUmAMUppkgb81aNhBCIqYEppkgb81SxJSUQIYAAgML0AIHBHKUkQtUlECWhAGkAKAQQKCiZJCkMmSUpgimjSB/zQIksERtseIDQN4AIEEgoaQ0pgimjSB/zQimgSB5IPAdABIBC9QBygQu/TACAQvTC1FUsWTUtEG2jDGlwKFEutHl1gnWjtB/zQyR3JCMkAAuAgygkfIMAAKfrRIAQLSQAKCR8IQ1hgmGjAB/zQmGgAB4APANABIDC9AAwPQFAAAKoACA5AQAAOQAQAAAAFAAClAAAKQAAAAAAAAAAA
-    pc_init: 1
-    pc_uninit: 99
-    pc_program_page: 179
-    pc_erase_sector: 103
-    pc_erase_all: ~
-    data_section_offset: 280
+    pc_init: 0x1
+    pc_uninit: 0x63
+    pc_program_page: 0xb3
+    pc_erase_sector: 0x67
+    pc_erase_all: null
+    data_section_offset: 0x118
     flash_properties:
       address_range:
-        start: 0
-        end: 262144
-      page_size: 512
-      erased_byte_value: 255
-      program_page_timeout: 300
-      erase_sector_timeout: 3000
+        start: 0x0
+        end: 0x40000
+      page_size: 0x200
+      erased_byte_value: 0xff
+      program_page_timeout: 0x12c
+      erase_sector_timeout: 0xbb8
       sectors:
-        - size: 16384
-          address: 0
-  atsam4l_512:
-    name: atsam4l_512
+        - size: 0x4000
+          address: 0x0
+  - name: atsam4l_512
     description: ATSAM4L 512kB Flash
-    cores: [main]
+    cores:
+      - main
     default: true
     instructions: MLU+SQpoVSMbBhpDUghSAApgCmhbABpDUghSAApgOUo3SZFhN0kBIkAxCmEKadIH/NAzSTRMTDmhYTNNgiFAPWlgMUmAMUppkgb81aNhBCIqYEppkgb81SxJSUQIYAAgML0AIHBHKUkQtUlECWhAGkAKAQQKCiZJCkMmSUpgimjSB/zQIksERtseIDQN4AIEEgoaQ0pgimjSB/zQimgSB5IPAdABIBC9QBygQu/TACAQvTC1FUsWTUtEG2jDGlwKFEutHl1gnWjtB/zQyR3JCMkAAuAgygkfIMAAKfrRIAQLSQAKCR8IQ1hgmGjAB/zQmGgAB4APANABIDC9AAwPQFAAAKoACA5AQAAOQAQAAAAFAAClAAAKQAAAAAAAAAAA
-    pc_init: 1
-    pc_uninit: 99
-    pc_program_page: 179
-    pc_erase_sector: 103
-    pc_erase_all: ~
-    data_section_offset: 280
+    pc_init: 0x1
+    pc_uninit: 0x63
+    pc_program_page: 0xb3
+    pc_erase_sector: 0x67
+    pc_erase_all: null
+    data_section_offset: 0x118
     flash_properties:
       address_range:
-        start: 0
-        end: 524288
-      page_size: 512
-      erased_byte_value: 255
-      program_page_timeout: 300
-      erase_sector_timeout: 3000
+        start: 0x0
+        end: 0x80000
+      page_size: 0x200
+      erased_byte_value: 0xff
+      program_page_timeout: 0x12c
+      erase_sector_timeout: 0xbb8
       sectors:
-        - size: 16384
-          address: 0
-  atsam4n_1024:
-    name: atsam4n_1024
+        - size: 0x4000
+          address: 0x0
+  - name: atsam4n_1024
     description: ATSAM4N 1024kB Flash
-    cores: [main]
+    cores:
+      - main
     default: true
     instructions: MLVVSUlECGAPIFRJAAIIYAEgU0nAA0hhU0tSSFhiUkrAOhBrgAiAAEAcEGNOSIA4gWoJB/zVEWtwJKFDEWOBagkH/NURaklNKUMRYoFqiQP81RFqoUNFTBg0IUMRYhFq5AShQzckJAQhQxFigWrJA/zVEWuJCIkASRwRY4FqCQf81QEhEWOBagkH/NU1SEAcWGIAIDC9AigV0TBINElBYIFoyQf80MJokQcF1DBJ/jFBYIFoyQf80FEHBNUtSUFggWjJB/zQACBwRylJI0gIOUFggWjJB/zQACBwRx5KH0lKRBJogBpACoAIgACAHAAEAgofSAAfEENIYIhowAf80BtIgB8CQ0pgiGjAB/zQiGgAB0APANABIHBHMLUOTA9LTEQkaAQbyRxkCokIiQAC4CDKCR8gwAAp+tEgBAxJAAoMOQhDWGCYaMAH/NCYaAAHQA8A0AEgML0EAAAAAAoOQEAUDkAAQ01QwAQOQAgANwANAABaDAIAWgAAAAAAAAAA
-    pc_init: 1
-    pc_uninit: 151
-    pc_program_page: 283
-    pc_erase_sector: 221
-    pc_erase_all: 203
-    data_section_offset: 376
+    pc_init: 0x1
+    pc_uninit: 0x97
+    pc_program_page: 0x11b
+    pc_erase_sector: 0xdd
+    pc_erase_all: 0xcb
+    data_section_offset: 0x178
     flash_properties:
       address_range:
-        start: 4194304
-        end: 5242880
-      page_size: 512
-      erased_byte_value: 255
-      program_page_timeout: 100
-      erase_sector_timeout: 1000
+        start: 0x400000
+        end: 0x500000
+      page_size: 0x200
+      erased_byte_value: 0xff
+      program_page_timeout: 0x64
+      erase_sector_timeout: 0x3e8
       sectors:
-        - size: 8192
-          address: 0
-  atsam4n_512:
-    name: atsam4n_512
+        - size: 0x2000
+          address: 0x0
+  - name: atsam4n_512
     description: ATSAM4N 512kB Flash
-    cores: [main]
+    cores:
+      - main
     default: true
     instructions: MLVVSUlECGAPIFRJAAIIYAEgU0nAA0hhU0tSSFhiUkrAOhBrgAiAAEAcEGNOSIA4gWoJB/zVEWtwJKFDEWOBagkH/NURaklNKUMRYoFqiQP81RFqoUNFTBg0IUMRYhFq5AShQzckJAQhQxFigWrJA/zVEWuJCIkASRwRY4FqCQf81QEhEWOBagkH/NU1SEAcWGIAIDC9AigV0TBINElBYIFoyQf80MJokQcF1DBJ/jFBYIFoyQf80FEHBNUtSUFggWjJB/zQACBwRylJI0gIOUFggWjJB/zQACBwRx5KH0lKRBJogBpACoAIgACAHAAEAgofSAAfEENIYIhowAf80BtIgB8CQ0pgiGjAB/zQiGgAB0APANABIHBHMLUOTA9LTEQkaAQbyRxkCokIiQAC4CDKCR8gwAAp+tEgBAxJAAoMOQhDWGCYaMAH/NCYaAAHQA8A0AEgML0EAAAAAAoOQEAUDkAAQ01QwAQOQAgANwANAABaDAIAWgAAAAAAAAAA
-    pc_init: 1
-    pc_uninit: 151
-    pc_program_page: 283
-    pc_erase_sector: 221
-    pc_erase_all: 203
-    data_section_offset: 376
+    pc_init: 0x1
+    pc_uninit: 0x97
+    pc_program_page: 0x11b
+    pc_erase_sector: 0xdd
+    pc_erase_all: 0xcb
+    data_section_offset: 0x178
     flash_properties:
       address_range:
-        start: 4194304
-        end: 4718592
-      page_size: 512
-      erased_byte_value: 255
-      program_page_timeout: 100
-      erase_sector_timeout: 1000
+        start: 0x400000
+        end: 0x480000
+      page_size: 0x200
+      erased_byte_value: 0xff
+      program_page_timeout: 0x64
+      erase_sector_timeout: 0x3e8
       sectors:
-        - size: 8192
-          address: 0
-  atsam4s_128:
-    name: atsam4s_128
+        - size: 0x2000
+          address: 0x0
+  - name: atsam4s_128
     description: ATSAM4S 128kB Flash
-    cores: [main]
+    cores:
+      - main
     default: true
     instructions: MLVVSUlECGAPIFRJAAIIYAEgU0nAA0hhU0tSSFhiUkrAOhBrgAiAAEAcEGNOSIA4gWoJB/zVEWtwJKFDEWOBagkH/NURaklNKUMRYoFqiQP81RFqoUNFTBg0IUMRYhFq5AShQzckJAQhQxFigWrJA/zVEWuJCIkASRwRY4FqCQf81QEhEWOBagkH/NU1SEAcWGIAIDC9AigV0TBINElBYIFoyQf80MJokQcF1DBJ/jFBYIFoyQf80FEHBNUtSUFggWjJB/zQACBwRylJI0gIOUFggWjJB/zQACBwRx5KH0lKRBJogBpACoAIgACAHAAEAgofSAAfEENIYIhowAf80BtIgB8CQ0pgiGjAB/zQiGgAB0APANABIHBHMLUOTA9LTEQkaAQbyRxkCokIiQAC4CDKCR8gwAAp+tEgBAxJAAoMOQhDWGCYaMAH/NCYaAAHQA8A0AEgML0EAAAAAAoOQEAUDkAAQ01QwAQOQAgANwANAABaDAIAWgAAAAAAAAAA
-    pc_init: 1
-    pc_uninit: 151
-    pc_program_page: 283
-    pc_erase_sector: 221
-    pc_erase_all: 203
-    data_section_offset: 376
+    pc_init: 0x1
+    pc_uninit: 0x97
+    pc_program_page: 0x11b
+    pc_erase_sector: 0xdd
+    pc_erase_all: 0xcb
+    data_section_offset: 0x178
     flash_properties:
       address_range:
-        start: 4194304
-        end: 4325376
-      page_size: 512
-      erased_byte_value: 255
-      program_page_timeout: 100
-      erase_sector_timeout: 1000
+        start: 0x400000
+        end: 0x420000
+      page_size: 0x200
+      erased_byte_value: 0xff
+      program_page_timeout: 0x64
+      erase_sector_timeout: 0x3e8
       sectors:
-        - size: 8192
-          address: 0
-  atsam4s_256:
-    name: atsam4s_256
+        - size: 0x2000
+          address: 0x0
+  - name: atsam4s_256
     description: ATSAM4S 256kB Flash
-    cores: [main]
+    cores:
+      - main
     default: true
     instructions: MLVVSUlECGAPIFRJAAIIYAEgU0nAA0hhU0tSSFhiUkrAOhBrgAiAAEAcEGNOSIA4gWoJB/zVEWtwJKFDEWOBagkH/NURaklNKUMRYoFqiQP81RFqoUNFTBg0IUMRYhFq5AShQzckJAQhQxFigWrJA/zVEWuJCIkASRwRY4FqCQf81QEhEWOBagkH/NU1SEAcWGIAIDC9AigV0TBINElBYIFoyQf80MJokQcF1DBJ/jFBYIFoyQf80FEHBNUtSUFggWjJB/zQACBwRylJI0gIOUFggWjJB/zQACBwRx5KH0lKRBJogBpACoAIgACAHAAEAgofSAAfEENIYIhowAf80BtIgB8CQ0pgiGjAB/zQiGgAB0APANABIHBHMLUOTA9LTEQkaAQbyRxkCokIiQAC4CDKCR8gwAAp+tEgBAxJAAoMOQhDWGCYaMAH/NCYaAAHQA8A0AEgML0EAAAAAAoOQEAUDkAAQ01QwAQOQAgANwANAABaDAIAWgAAAAAAAAAA
-    pc_init: 1
-    pc_uninit: 151
-    pc_program_page: 283
-    pc_erase_sector: 221
-    pc_erase_all: 203
-    data_section_offset: 376
+    pc_init: 0x1
+    pc_uninit: 0x97
+    pc_program_page: 0x11b
+    pc_erase_sector: 0xdd
+    pc_erase_all: 0xcb
+    data_section_offset: 0x178
     flash_properties:
       address_range:
-        start: 4194304
-        end: 4456448
-      page_size: 512
-      erased_byte_value: 255
-      program_page_timeout: 100
-      erase_sector_timeout: 1000
+        start: 0x400000
+        end: 0x440000
+      page_size: 0x200
+      erased_byte_value: 0xff
+      program_page_timeout: 0x64
+      erase_sector_timeout: 0x3e8
       sectors:
-        - size: 8192
-          address: 0
-  atsam4s_512:
-    name: atsam4s_512
+        - size: 0x2000
+          address: 0x0
+  - name: atsam4s_512
     description: ATSAM4S 512kB Flash
-    cores: [main]
+    cores:
+      - main
     default: true
     instructions: MLVVSUlECGAPIFRJAAIIYAEgU0nAA0hhU0tSSFhiUkrAOhBrgAiAAEAcEGNOSIA4gWoJB/zVEWtwJKFDEWOBagkH/NURaklNKUMRYoFqiQP81RFqoUNFTBg0IUMRYhFq5AShQzckJAQhQxFigWrJA/zVEWuJCIkASRwRY4FqCQf81QEhEWOBagkH/NU1SEAcWGIAIDC9AigV0TBINElBYIFoyQf80MJokQcF1DBJ/jFBYIFoyQf80FEHBNUtSUFggWjJB/zQACBwRylJI0gIOUFggWjJB/zQACBwRx5KH0lKRBJogBpACoAIgACAHAAEAgofSAAfEENIYIhowAf80BtIgB8CQ0pgiGjAB/zQiGgAB0APANABIHBHMLUOTA9LTEQkaAQbyRxkCokIiQAC4CDKCR8gwAAp+tEgBAxJAAoMOQhDWGCYaMAH/NCYaAAHQA8A0AEgML0EAAAAAAoOQEAUDkAAQ01QwAQOQAgANwANAABaDAIAWgAAAAAAAAAA
-    pc_init: 1
-    pc_uninit: 151
-    pc_program_page: 283
-    pc_erase_sector: 221
-    pc_erase_all: 203
-    data_section_offset: 376
+    pc_init: 0x1
+    pc_uninit: 0x97
+    pc_program_page: 0x11b
+    pc_erase_sector: 0xdd
+    pc_erase_all: 0xcb
+    data_section_offset: 0x178
     flash_properties:
       address_range:
-        start: 4194304
-        end: 4718592
-      page_size: 512
-      erased_byte_value: 255
-      program_page_timeout: 100
-      erase_sector_timeout: 1000
+        start: 0x400000
+        end: 0x480000
+      page_size: 0x200
+      erased_byte_value: 0xff
+      program_page_timeout: 0x64
+      erase_sector_timeout: 0x3e8
       sectors:
-        - size: 8192
-          address: 0
-  atsam4s_1024:
-    name: atsam4s_1024
+        - size: 0x2000
+          address: 0x0
+  - name: atsam4s_1024
     description: ATSAM4S 1024kB Flash
-    cores: [main]
+    cores:
+      - main
     default: true
     instructions: MLVVSUlECGAPIFRJAAIIYAEgU0nAA0hhU0tSSFhiUkrAOhBrgAiAAEAcEGNOSIA4gWoJB/zVEWtwJKFDEWOBagkH/NURaklNKUMRYoFqiQP81RFqoUNFTBg0IUMRYhFq5AShQzckJAQhQxFigWrJA/zVEWuJCIkASRwRY4FqCQf81QEhEWOBagkH/NU1SEAcWGIAIDC9AigV0TBINElBYIFoyQf80MJokQcF1DBJ/jFBYIFoyQf80FEHBNUtSUFggWjJB/zQACBwRylJI0gIOUFggWjJB/zQACBwRx5KH0lKRBJogBpACoAIgACAHAAEAgofSAAfEENIYIhowAf80BtIgB8CQ0pgiGjAB/zQiGgAB0APANABIHBHMLUOTA9LTEQkaAQbyRxkCokIiQAC4CDKCR8gwAAp+tEgBAxJAAoMOQhDWGCYaMAH/NCYaAAHQA8A0AEgML0EAAAAAAoOQEAUDkAAQ01QwAQOQAgANwANAABaDAIAWgAAAAAAAAAA
-    pc_init: 1
-    pc_uninit: 151
-    pc_program_page: 283
-    pc_erase_sector: 221
-    pc_erase_all: 203
-    data_section_offset: 376
+    pc_init: 0x1
+    pc_uninit: 0x97
+    pc_program_page: 0x11b
+    pc_erase_sector: 0xdd
+    pc_erase_all: 0xcb
+    data_section_offset: 0x178
     flash_properties:
       address_range:
-        start: 4194304
-        end: 5242880
-      page_size: 512
-      erased_byte_value: 255
-      program_page_timeout: 100
-      erase_sector_timeout: 1000
+        start: 0x400000
+        end: 0x500000
+      page_size: 0x200
+      erased_byte_value: 0xff
+      program_page_timeout: 0x64
+      erase_sector_timeout: 0x3e8
       sectors:
-        - size: 8192
-          address: 0
-  atsam4sd_1024:
-    name: atsam4sd_1024
+        - size: 0x2000
+          address: 0x0
+  - name: atsam4sd_1024
     description: ATSAM4SD 1024kB Flash
-    cores: [main]
+    cores:
+      - main
     default: true
     instructions: MLVhSUlECGAPIGBJAAIIYF9JCGABIF9JwANIYV9LXkhYYl5KwDoQa4AIgABAHBBjWkiAOIFqCQf81RFrcCShQxFjgWoJB/zVEWpVTSlDEWKBaokD/NURaqFDUUwYNCFDEWIRauQEoUM3JCQEIUMRYoFqyQP81RFriQiJAEkcEWOBagkH/NUBIRFjgWoJB/zVQUhAHFhiACAwvQIoFdE7SEBJQWCBaMkH/NDCaJEHBdQ8Sf4xQWCBaMkH/NBRBwTVOUlBYIFoyQf80AAgcEc1Si5ICDpCYIFoyQf80CxIQmCBaMkH/NAAIHBHJ0kBIklECWjSBIsYQRqYQgHSI0gB4CNIiRpJCokIiQCJHAkECgokSQkfEUNBYIFoyQf80CFJiR8KQ0JggWjJB/zQgGgAB0APANABIHBHcLUTSwElS0QbaO0EXhnEGrBCAdIPSwHgD0tkG8kcZAqJCIkAAuAgygkfIMAAKfrRIAQOSQAKDDkIQ1hgmGjAB/zQmGgAB0APANABIHC9AAAEAAAAAAoOQAAMDkBAFA5AAENNUMAEDkAIADcADQAAWgwCAFoAAAAAAAAAAA==
-    pc_init: 1
-    pc_uninit: 155
-    pc_program_page: 313
-    pc_erase_sector: 235
-    pc_erase_all: 207
-    data_section_offset: 428
+    pc_init: 0x1
+    pc_uninit: 0x9b
+    pc_program_page: 0x139
+    pc_erase_sector: 0xeb
+    pc_erase_all: 0xcf
+    data_section_offset: 0x1ac
     flash_properties:
       address_range:
-        start: 4194304
-        end: 5242880
-      page_size: 512
-      erased_byte_value: 255
-      program_page_timeout: 100
-      erase_sector_timeout: 1000
+        start: 0x400000
+        end: 0x500000
+      page_size: 0x200
+      erased_byte_value: 0xff
+      program_page_timeout: 0x64
+      erase_sector_timeout: 0x3e8
       sectors:
-        - size: 8192
-          address: 0
-  atsam4sd_2048:
-    name: atsam4sd_2048
+        - size: 0x2000
+          address: 0x0
+  - name: atsam4sd_2048
     description: ATSAM4SD 2048kB Flash
-    cores: [main]
+    cores:
+      - main
     default: true
     instructions: MLVhSUlECGAPIGBJAAIIYF9JCGABIF9JwANIYV9LXkhYYl5KwDoQa4AIgABAHBBjWkiAOIFqCQf81RFrcCShQxFjgWoJB/zVEWpVTSlDEWKBaokD/NURaqFDUUwYNCFDEWIRauQEoUM3JCQEIUMRYoFqyQP81RFriQiJAEkcEWOBagkH/NUBIRFjgWoJB/zVQUhAHFhiACAwvQIoFdE7SEBJQWCBaMkH/NDCaJEHBdQ8Sf4xQWCBaMkH/NBRBwTVOUlBYIFoyQf80AAgcEc1Si5ICDpCYIFoyQf80CxIQmCBaMkH/NAAIHBHJ0kBIklECWgSBYsYQRqYQgHSI0gB4CNIiRpJCokIiQCJHAkECgokSQkfEUNBYIFoyQf80CFJiR8KQ0JggWjJB/zQgGgAB0APANABIHBHcLUTSwElS0QbaC0FXhnEGrBCAdIPSwHgD0tkG8kcZAqJCIkAAuAgygkfIMAAKfrRIAQOSQAKDDkIQ1hgmGjAB/zQmGgAB0APANABIHC9AAAEAAAAAAoOQAAMDkBAFA5AAENNUMAEDkAIADcADQAAWgwCAFoAAAAAAAAAAA==
-    pc_init: 1
-    pc_uninit: 155
-    pc_program_page: 313
-    pc_erase_sector: 235
-    pc_erase_all: 207
-    data_section_offset: 428
+    pc_init: 0x1
+    pc_uninit: 0x9b
+    pc_program_page: 0x139
+    pc_erase_sector: 0xeb
+    pc_erase_all: 0xcf
+    data_section_offset: 0x1ac
     flash_properties:
       address_range:
-        start: 4194304
-        end: 6291456
-      page_size: 512
-      erased_byte_value: 255
-      program_page_timeout: 100
-      erase_sector_timeout: 1000
+        start: 0x400000
+        end: 0x600000
+      page_size: 0x200
+      erased_byte_value: 0xff
+      program_page_timeout: 0x64
+      erase_sector_timeout: 0x3e8
       sectors:
-        - size: 8192
-          address: 0
-  atsam4s_gpnvm:
-    name: atsam4s_gpnvm
+        - size: 0x2000
+          address: 0x0
+  - name: atsam4s_gpnvm
     description: ATSAM4S GPNVM bits
-    cores: [main]
+    cores:
+      - main
     default: false
     instructions: MLVwSUlECGAPIG9JAAIIYAEgbknAA0hhbkttSFhibUrAOhBrgAiAAEAcEGNpSIA4gWoJB/zVEWtwJKFDEWOBagkH/NURamRNKUMRYoFqiQP81RFqoUNgTBg0IUMRYhFq5AShQzckJAQhQxFigWrJA/zVEWuJCIkASRwRY4FqCQf81QEhEWOBagkH/NVQSEAcWGIAIDC9ACBwRwAgcEcAIHBHSEpISUpEEmiAGkAKgAiAAIAcAAQCCkhIEENIYIhowAf80EVIgB4CQ0pgiGjAB/zQiGgAB0APANABIHBHELU+STlLEHgJHVlgmWjJB/zQ2WjCB8wH0g/kD6JCEdDCBwLQNkqSHAHgNErSHFpgnGjkB/zQnGgkBwPVWmCaaNIH/NACIgRGFEAKQJRCENCCBwHVK0oB4CpKUhxaYJxo5Af80JxoJAcD1VpgmmjSB/zQBCIERhRAEUCMQhDQQAcB1SBIAeAfSEAcWGCZaMkH/NCZaAkHA9VYYJhowAf80AAgEL0wtRVMEEsSeCQdXGCcaOQH/NDbaNQH3QfkD+0PrEIG0QIkFUYlQBxApUIB0EAcML0EJCJAI0CaQgHQgBwwvUAYML0EAAAAAAoOQEAUDkAAQ01QwAQOQAgANwAJAABaCwEAWgsCAFoAAAAAAAAAAA==
-    pc_init: 1
-    pc_uninit: 151
-    pc_program_page: 223
-    pc_erase_sector: 163
-    pc_erase_all: 159
-    data_section_offset: 488
+    pc_init: 0x1
+    pc_uninit: 0x97
+    pc_program_page: 0xdf
+    pc_erase_sector: 0xa3
+    pc_erase_all: 0x9f
+    data_section_offset: 0x1e8
     flash_properties:
       address_range:
-        start: 536870896
-        end: 536870912
-      page_size: 16
-      erased_byte_value: 255
-      program_page_timeout: 100
-      erase_sector_timeout: 1000
+        start: 0x1ffffff0
+        end: 0x20000000
+      page_size: 0x10
+      erased_byte_value: 0xff
+      program_page_timeout: 0x64
+      erase_sector_timeout: 0x3e8
       sectors:
-        - size: 16
-          address: 0
-  atsam4sp_2048:
-    name: atsam4sp_2048
+        - size: 0x10
+          address: 0x0
+  - name: atsam4sp_2048
     description: ATSAM4SP 2048kB Flash
-    cores: [main]
+    cores:
+      - main
     default: true
     instructions: MLVhSUlECGAPIGBJAAIIYF9JCGABIF9JwANIYV9LXkhYYl5KwDoQa4AIgABAHBBjWkiAOIFqCQf81RFrcCShQxFjgWoJB/zVEWpVTSlDEWKBaokD/NURaqFDUUwYNCFDEWIRauQEoUM3JCQEIUMRYoFqyQP81RFriQiJAEkcEWOBagkH/NUBIRFjgWoJB/zVQUhAHFhiACAwvQIoFdE7SEBJQWCBaMkH/NDCaJEHBdQ8Sf4xQWCBaMkH/NBRBwTVOUlBYIFoyQf80AAgcEc1Si5ICDpCYIFoyQf80CxIQmCBaMkH/NAAIHBHJ0kBIklECWgSBYsYQRqYQgHSI0gB4CNIiRpJCokIiQCJHAkECgokSQkfEUNBYIFoyQf80CFJiR8KQ0JggWjJB/zQgGgAB0APANABIHBHcLUTSwElS0QbaC0FXhnEGrBCAdIPSwHgD0tkG8kcZAqJCIkAAuAgygkfIMAAKfrRIAQOSQAKDDkIQ1hgmGjAB/zQmGgAB0APANABIHC9AAAEAAAAAAoOQAAMDkBAFA5AAENNUMAEDkAIADcADQAAWgwCAFoAAAAAAAAAAA==
-    pc_init: 1
-    pc_uninit: 155
-    pc_program_page: 313
-    pc_erase_sector: 235
-    pc_erase_all: 207
-    data_section_offset: 428
+    pc_init: 0x1
+    pc_uninit: 0x9b
+    pc_program_page: 0x139
+    pc_erase_sector: 0xeb
+    pc_erase_all: 0xcf
+    data_section_offset: 0x1ac
     flash_properties:
       address_range:
-        start: 4194304
-        end: 6291456
-      page_size: 512
-      erased_byte_value: 255
-      program_page_timeout: 100
-      erase_sector_timeout: 1000
+        start: 0x400000
+        end: 0x600000
+      page_size: 0x200
+      erased_byte_value: 0xff
+      program_page_timeout: 0x64
+      erase_sector_timeout: 0x3e8
       sectors:
-        - size: 8192
-          address: 0
+        - size: 0x2000
+          address: 0x0

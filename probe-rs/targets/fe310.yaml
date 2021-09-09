@@ -1,8 +1,7 @@
----
 name: fe310
-manufacturer: ~
+manufacturer: null
 variants:
-  - name: "fe310-g002"
+  - name: fe310-g002
     cores:
       - name: main
         type: riscv
@@ -14,36 +13,38 @@ variants:
             start: 0x20000000
             end: 0x40000000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
       - Ram:
           range:
             start: 0x80000000
             end: 0x80004000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - hifive-flashloader
 flash_algorithms:
-  hifive-flashloader:
-    name: hifive-flashloader
-    description: "Flashloader for HiFive1 Rev B"
-    cores: [main]
+  - name: hifive-flashloader
+    description: Flashloader for HiFive1 Rev B
+    cores:
+      - main
     default: true
     instructions: t0UBELBF408G/rdFARAThoUEmUYUwvBF408G/rdFARAThoUBiUYUwrBF408G/rdFARAThoUEkwZwDRTC8EXjTwb+k1WFAEFmEwYG8PGNE1aFAdGNExaFALcG/wB1jmIFUY1NjbdFARCwReNPBv6TVQUBE1aFAJN29g83RgEQNMZ0RuPPBv5hgTdGARA0RuPPBv4T9vUPt0UBEJOGhQSQwvBF408G/rdFARCwReNPBv63RQEQE4aFBAjC6EXjTwX+N0UBEJMFhQEjoAUACUaTBoUEFUeQwTxF488H/pjCfEXjzwf+PEXjzwf+I6AGAHxF488H/oWLIywFAOn/AUWCgDdFARAjIAUGAUWCgLdGARC4RuNPB/63RgEQE4eGBJlHHMP4RuNPB/63RgEQE4eGAYlHHMO4RuNPB/63RgEQE4eGBIlHHMP4RuNPB/6TVoUAQWcTBwfw+Y4TV4UB2Y4TF4UAtwf/AH2PYgVZjVWNt0YBELhG408H/pNWBQETV4UAk3f3DzdHARA8x3xH488H/mGBN0cBEDxH488H/hP39g+3RgEQk4eGBJjD+EbjTwf+t0YBELhG408H/rdGARATh4YECMPoRuNPBf6FxTMItgC3RQEQk4aFBH1Xg0cGAKhF408F/pzC6EXjX6f+BQbjFgb/N0UBEJMFhQEjoAUACUaTBoUEFUeQwTxF488H/pjCfEXjzwf+PEXjzwf+I6AGAHxF488H/oWLIywFAOn/AUWCgAFFgoAAAA==
-    pc_init: 256
-    pc_uninit: 562
-    pc_program_page: 268
-    pc_erase_sector: 0
-    pc_erase_all: ~
-    data_section_offset: 568
+    pc_init: 0x100
+    pc_uninit: 0x232
+    pc_program_page: 0x10c
+    pc_erase_sector: 0x0
+    pc_erase_all: null
+    data_section_offset: 0x238
     flash_properties:
       address_range:
         start: 0x20000000
         end: 0x40000000
-      page_size: 256
-      erased_byte_value: 255
-      program_page_timeout: 1000
-      erase_sector_timeout: 2000
+      page_size: 0x100
+      erased_byte_value: 0xff
+      program_page_timeout: 0x3e8
+      erase_sector_timeout: 0x7d0
       sectors:
-        - size: 4096
-          address: 0
+        - size: 0x1000
+          address: 0x0

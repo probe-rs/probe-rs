@@ -1,4 +1,3 @@
----
 name: nRF53 Series
 variants:
   - name: nRF5340_xxAA
@@ -7,134 +6,138 @@ variants:
         type: armv8m
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
       - name: network
         type: armv8m
         core_access_options:
           Arm:
-            ap: 1
-            psel: 0
+            ap: 0x1
+            psel: 0x0
     memory_map:
       - Ram:
           range:
             start: 0x20000000
             end: 0x20040000
           is_boot_memory: false
-          cores: [application]
+          cores:
+            - application
       - Ram:
           range:
             start: 0x21000000
             end: 0x21020000
           is_boot_memory: false
-          cores: [network]
+          cores:
+            - network
       - Nvm:
           range:
-            start: 0x00000000
-            end: 0x00100000
+            start: 0x0
+            end: 0x100000
           is_boot_memory: true
-          cores: [application]
+          cores:
+            - application
       - Nvm:
           range:
-            start: 0x01000000
-            end: 0x01040000
+            start: 0x1000000
+            end: 0x1040000
           is_boot_memory: true
-          cores: [network]
+          cores:
+            - network
     flash_algorithms:
       - nrf53xx_application
       - nrf53xx_application_uicr
       - nrf53xx_network
       - nrf53xx_network_uicr
 flash_algorithms:
-  nrf53xx_application:
-    name: nrf53xx_application
+  - name: nrf53xx_application
     description: nRF53xxx_app
-    cores: [application]
+    cores:
+      - application
     default: true
     instructions: sLVA8gQFwPIABQAgCesFAUn4BQDB6QEAyGDQshRGAPA9+iCxCesFAcHpAgSwvQnrBQABIUFgAPAr+gAgsL0AvxC1BEYAIADwKfo4sUDyBAHA8gABSUTB6QIEEL1A8gQAwPIAAAnrAAGJaAApBL8AIBC9RPIAAcLyAAEBIgpgWfgAIEhESmBCaIpggmjKYMBoCGEAIBC9AL9A8gQAwPIAAAEhSfgAEEhEACHA6QERwWAA8Ci6sLVA8gQFBEbA8gAFAiBJ+AUACesFAAAhwOkBEcFgAPCl+bT78PEB+xBAMLEJ6wUAAyHA6QIUZSCwvQnrBQABIUFgAPCt+aBCE9gA8Kv5oEIP2QnrBQACIUFgIEYA8ML5Aygcv2cgsL0gRgDw5/kAILC9CesFAAQhwOkCFGYgsL0t6fBBQPIEBwRGwPIABxVGDkYDIAnrBwEAIqMHSfgHAMHpASLKYAbQCesHAcHpAgRlIL3o8IEJ6wcAASFBYADwb/mgQhXYAPBt+aBCEdkJ6wcAAyFBYAbrBAgA8GP5gEUP2QnrBwAEIcDpAhhmIL3o8IEJ6wcABCHA6QIUZiC96PCBCesHAAQhQWAA8Gn5MLEJ6wcAAiGBYGcgvejwgQnrBwAFIUFgIEYA8Fz5AigH0gnrBwACIcDpAhRnIL3o8IEP0f8iIEYxRgDwNvhIsQMgSfgHAAnrBwAFIUFgZyC96PCBAyBJ+AcAACCw65YPCesHAU/wBgJKYAi/vejwgU/qlggAJlT4JgABMAzRVfgmAET4JgAA8EL5ATZGRU/wAADw073o8IEJ6wcABSGiGcDpAhJoIL3o8IEt6fBBQPIEBw1GBEbA8gAHBSAWRkn4BwAJ6wcAACGqB8DpARHBYAfQCesHAAMhwOkCFWUgvejwgQnrBwACIUFgAPDS+KBCFdgA8ND4oEIR2QnrBwADIUFgBesECADwxviARQ/ZCesHAAQhwOkCGGYgvejwgQnrBwAEIcDpAhRmIL3o8IEJ6wcABCEALUFgBL8AIL3o8IEAIQfgAL8BMalCT/AAACi/vejwgWBcsEL10GAYCesHAQUiwekCIAEgvejwgQC/LenwQUDyBAUERsDyAAUEIJBGD0ZJ+AUACesFAAAhogfA6QERwWAI0AnrBQADIWUmwOkCFDBGvejwgQnrBQABIUFgAPBv+KBCEtgA8G34oEIO2QnrBQADIUFgPhkA8GT4hkIO2QnrBQAEIcDpAhYE4AnrBQAEIcDpAhRmJjBGvejwgQAhseuXDwnrBQBP8AQBQWAL0LgIACEiaFj4ITCaQgvRATGBQgTxBAT10wnrBQAFIUFgMEa96PCBCesFAAYhwOkCFCBGvejwgQAAQPIwEMDy/wABaAExHL8AaHBHQPbgcc/yAAEIeEloYfMLIHBHQPIgIMDy/wABaAExFL8AaE/0gFBwRwC/QPIkIMDy/wABaAExFL8AaE/0AHBwRwC/ACBwRwAgcEcQtf/34f8ERv/36v8A+wTwEL0AvwFEgUKcvwEgcEcD4IhCJL8BIHBHUPgEKwEyHL8AIHBH9OcAv3BHAL8AIHBHAyBwRwMohL9pIHBHgLVAsgWhUfggAEnyBFHF8gMBCGAA8Ar4ACCAvQAAAAACAAAAAQAAAAAAAABJ8gBAxfIDAAFoACn80HBHSfIMUMXyAwABIQFg8OcAv4GwAJAAmE/w/zEBYAGw5+dpIHBHsLX/96f/BEZAsQAlKEb/9+3///eD/wVEpUL30wAgsL0AAAAAAAAAAAAAAAAAAAAAAAAAAA==
-    pc_init: 1
-    pc_uninit: 65
-    pc_program_page: 309
-    pc_erase_sector: 181
-    pc_erase_all: 153
-    data_section_offset: 1316
+    pc_init: 0x1
+    pc_uninit: 0x41
+    pc_program_page: 0x135
+    pc_erase_sector: 0xb5
+    pc_erase_all: 0x99
+    data_section_offset: 0x524
     flash_properties:
       address_range:
-        start: 0
+        start: 0x0
         end: 0x200000
       page_size: 0x1000
-      erased_byte_value: 0xFF
-      program_page_timeout: 1000
-      erase_sector_timeout: 3000
+      erased_byte_value: 0xff
+      program_page_timeout: 0x3e8
+      erase_sector_timeout: 0xbb8
       sectors:
         - size: 0x1000
-          address: 0
-  nrf53xx_application_uicr:
-    name: nrf53xx_application_uicr
+          address: 0x0
+  - name: nrf53xx_application_uicr
     description: nRF53xxx_app UICR Erase
-    cores: [application]
+    cores:
+      - application
     default: false
     instructions: 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
-    pc_init: 1
-    pc_uninit: 53
-    pc_program_page: 653
-    pc_erase_sector: 169
-    pc_erase_all: 133
-    data_section_offset: 1680
+    pc_init: 0x1
+    pc_uninit: 0x35
+    pc_program_page: 0x28d
+    pc_erase_sector: 0xa9
+    pc_erase_all: 0x85
+    data_section_offset: 0x690
     flash_properties:
       address_range:
         start: 0xff8000
         end: 0xff9000
       page_size: 0x1000
-      erased_byte_value: 0xFF
-      program_page_timeout: 1000
-      erase_sector_timeout: 3000
+      erased_byte_value: 0xff
+      program_page_timeout: 0x3e8
+      erase_sector_timeout: 0xbb8
       sectors:
         - size: 0x1000
-          address: 0
-  nrf53xx_network:
-    name: nrf53xx_network
+          address: 0x0
+  - name: nrf53xx_network
     description: nRF53xxx_net
-    cores: [network]
+    cores:
+      - network
     default: true
     instructions: sLVA8gQFwPIABQAgCesFAUn4BQDB6QEAyGDQshRGAPA/+iCxCesFAcHpAgSwvQnrBQABIUFgAPAt+gAgsL0AvxC1BEYAIADwK/o4sUDyBAHA8gABSUTB6QIEEL1A8gQAwPIAAAnrAAGJaAApBL8AIBC9RPIAAcLyABEBIgpgWfgAIEhESmBCaIpggmjKYMBoCGEAIBC9AL9A8gQAwPIAAAEhSfgAEEhEACHA6QERwWAA8Cq6sLVA8gQFBEbA8gAFAiBJ+AUACesFAAAhwOkBEcFgAPCl+bT78PEB+xBAMLEJ6wUAAyHA6QIUZSCwvQnrBQABIUFgAPCr+aBCE9gA8Kv5oEIP2QnrBQACIUFgIEYA8MT5Aygcv2cgsL0gRgDw6fkAILC9CesFAAQhwOkCFGYgsL0t6fBBQPIEBwRGwPIABxVGDkYDIAnrBwEAIqMHSfgHAMHpASLKYAbQCesHAcHpAgRlIL3o8IEJ6wcAASFBYADwbfmgQhXYAPBt+aBCEdkJ6wcAAyFBYAbrBAgA8GP5gEUP2QnrBwAEIcDpAhhmIL3o8IEJ6wcABCHA6QIUZiC96PCBCesHAAQhQWAA8Gv5MLEJ6wcAAiGBYGcgvejwgQnrBwAFIUFgIEYA8F75AigH0gnrBwACIcDpAhRnIL3o8IEP0f8iIEYxRgDwNvhIsQMgSfgHAAnrBwAFIUFgZyC96PCBAyBJ+AcAACCw65YPCesHAU/wBgJKYAi/vejwgU/qlggAJlT4JgABMAzRVfgmAET4JgAA8ET5ATZGRU/wAADw073o8IEJ6wcABSGiGcDpAhJoIL3o8IEt6fBBQPIEBw1GBEbA8gAHBSAWRkn4BwAJ6wcAACGqB8DpARHBYAfQCesHAAMhwOkCFWUgvejwgQnrBwACIUFgAPDQ+KBCFdgA8ND4oEIR2QnrBwADIUFgBesECADwxviARQ/ZCesHAAQhwOkCGGYgvejwgQnrBwAEIcDpAhRmIL3o8IEJ6wcABCEALUFgBL8AIL3o8IEAIQfgAL8BMalCT/AAACi/vejwgWBcsEL10GAYCesHAQUiwekCIAEgvejwgQC/LenwQUDyBAUERsDyAAUEIJBGD0ZJ+AUACesFAAAhogfA6QERwWAI0AnrBQADIWUmwOkCFDBGvejwgQnrBQABIUFgAPBt+KBCEtgA8G34oEIO2QnrBQADIUFgPhkA8GT4hkIO2QnrBQAEIcDpAhYE4AnrBQAEIcDpAhRmJjBGvejwgQAhseuXDwnrBQBP8AQBQWAL0LgIACEiaFj4ITCaQgvRATGBQgTxBAT10wnrBQAFIUFgMEa96PCBCesFAAYhwOkCFCBGvejwgQAAQPIwEMDy/xABaAExHL8AaHBHQPbgcc/yAAEIeEloYfMLIHBHQPIgIMDy/xABaAExFL8AaE/0AGBwRwC/QPIkIMDy/xABaAExFL8AaIAgcEcAIHBHT/CAcHBHAL8Qtf/34f8ERv/36v8A+wTwAPGAcBC9AL8BRIFCnL8BIHBHA+CIQiS/ASBwR1D4BCsBMhy/ACBwR/TnAL9wRwC/ACBwRwMgcEcDKIS/aSBwR4C1QLIFoVH4IABA8gRRxPIIEQhgAPAK+AAggL0AAAAAAgAAAAEAAAAAAAAAQPIAQMTyCBABaAAp/NBwR0DyDFDE8ggQASEBYPDnAL+BsACQAJhP8P8xAWABsOfnaSBwR7C1//el/wRGsPGAfwrZT/CAdQC/KEb/9+n///d9/wVEpUL30wAgsL0AAAAAAAAAAAAAAAAAAAAAAAAAAA==
-    pc_init: 1
-    pc_uninit: 65
-    pc_program_page: 309
-    pc_erase_sector: 181
-    pc_erase_all: 153
-    data_section_offset: 1328
+    pc_init: 0x1
+    pc_uninit: 0x41
+    pc_program_page: 0x135
+    pc_erase_sector: 0xb5
+    pc_erase_all: 0x99
+    data_section_offset: 0x530
     flash_properties:
       address_range:
         start: 0x1000000
         end: 0x1040000
       page_size: 0x800
-      erased_byte_value: 0xFF
-      program_page_timeout: 1000
-      erase_sector_timeout: 3000
+      erased_byte_value: 0xff
+      program_page_timeout: 0x3e8
+      erase_sector_timeout: 0xbb8
       sectors:
         - size: 0x800
-          address: 0
-  nrf53xx_network_uicr:
-    name: nrf53xx_network_uicr
+          address: 0x0
+  - name: nrf53xx_network_uicr
     description: nRF53xxx_net UICR Erase
-    cores: [network]
+    cores:
+      - network
     default: false
     instructions: cLVA8gQGwPIABgAlCesGAEn4BlDA6QFVxWDQshRGAPDl+QAoHr8J6wYBwekCBAVGKEZwvRC1BEYAIADw1/lA8gQBwPIAAUlEELHB6QIEA+CJaAApCL8QvUTyAAHC8gARASIKYEDyBALA8gACWfgCMEpES2BTaItgk2jLYNJoCmEQvQC/gLVA8gQAwPIAAAEhSfgAEEhEACHA6QERwWAA8Mf5ACCAvQC/ELVA8gQAwPIAAAIhSfgAEEhEACTA6QFExGAA8FP5AUZI8gAAwPL/EP8iAPAL+DCxAPC6+QRGaSgUvwAsACQgRhC9AL9wtUDyBAzA8gAMBSNJ+AwwCesMA0/wAA6EB8PpAe7D+AzgBdAJ6wwBAyLB6QIgDOAJ6wwDT/ABDowHw/gE4AjQCesMAAMiwOkCIU/wZQ5wRnC9SPb/fsDy/x4J6wwDAiRwRVxgBdkJ6wwBBCLB6QIgDeALGA7xAQUJ6wwEAyarQmZgCNkJ6wwABCHA6QITT/BmDnBGcL1RsQAjT/AADgC/xlyWQgfRATOLQvnTC+BP8AAOcEZwvRhECesMAQUiT/ABDsHpAiBwRnC9AL8t6fBBQPIEBsDyAAYVRgRGAyAJ6wYCACOPB0n4BgDC6QEz02AG0AnrBgLC6QIBZSC96PCBSPb/cMDy/xAJ6wYCAiOEQlNgB9kJ6wYABCHA6QIUZiC96PCBChkBMAnrBgMDJ4JCX2AH2QnrBgAEIcDpAhJmIL3o8IEAILDrkQ8b0E/qkQgAJwzgVfgnAET4JwAA8Or4ATdHRU/wAAAov73o8IFU+CcAATDu0AnrBgAFIeIZwOkCEmggvejwgXC1QPIEDMDyAAwEI0n4DDAJ6wwDT/AADoQHw+kB7sP4DOAF0AnrDAEDIsHpAiAM4AnrDANP8AEOjAfD+ATgB9AJ6wwAAyLA6QIhZSMYRnC9SPb/fsDy/x4J6wwDAiRwRVxgBdkJ6wwBBCLB6QIgDeALGA7xAQUJ6wwEAyarQmZgB9kJ6wwABCHA6QITZiMYRnC9ACW165EPCesMBk/wBAV1YBTQT+qRDgAhAL8EaFL4IVCsQgXRATFxRQDxBAD10wXgCesMAQYiA0bB6QIgGEZwvQAAQPIwEMDy/xABaAExHL8AaHBHQPbgcc/yAAEIeEloYfMLIHBHQPIgIMDy/xABaAExFL8AaE/0AGBwRwC/QPIkIMDy/xABaAExFL8AaIAgcEcAIHBHT/CAcHBHAL8Qtf/34f8ERv/36v8A+wTwAPGAcBC9AL8BRIFCnL8BIHBHA+CIQiS/ASBwR1D4BCsBMhy/ACBwR/TnAL9wRwC/ACBwRwMgcEcDKIS/aSBwR4C1QLIFoVH4IABA8gRRxPIIEQhgAPAK+AAggL0AAAAAAgAAAAEAAAAAAAAAQPIAQMTyCBABaAAp/NBwR0DyDFDE8ggQASEBYPDnAL+BsACQAJhP8P8xAWABsOfnaSBwR7C1//el/wRGsPGAfwrZT/CAdQC/KEb/9+n///d9/wVEpUL30wAgsL0AAAAAAAAAAAAAAAAAAAAAAAAAAA==
-    pc_init: 1
-    pc_uninit: 53
-    pc_program_page: 441
-    pc_erase_sector: 169
-    pc_erase_all: 133
-    data_section_offset: 1148
+    pc_init: 0x1
+    pc_uninit: 0x35
+    pc_program_page: 0x1b9
+    pc_erase_sector: 0xa9
+    pc_erase_all: 0x85
+    data_section_offset: 0x47c
     flash_properties:
       address_range:
         start: 0x1ff8000
         end: 0x1ff9000
       page_size: 0x800
-      erased_byte_value: 0xFF
-      program_page_timeout: 1000
-      erase_sector_timeout: 3000
+      erased_byte_value: 0xff
+      program_page_timeout: 0x3e8
+      erase_sector_timeout: 0xbb8
       sectors:
         - size: 0x800
-          address: 0
+          address: 0x0

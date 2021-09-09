@@ -1,4 +1,3 @@
----
 name: SAME53
 variants:
   - name: ATSAME53J18A
@@ -7,21 +6,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537001984
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 0
-            end: 262144
+            start: 0x0
+            end: 0x40000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - atsame53_256
   - name: ATSAME53J19A
@@ -30,21 +31,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537067520
+            start: 0x20000000
+            end: 0x20030000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 0
-            end: 524288
+            start: 0x0
+            end: 0x80000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - atsame53_512
   - name: ATSAME53J20A
@@ -53,21 +56,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537133056
+            start: 0x20000000
+            end: 0x20040000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 0
-            end: 1048576
+            start: 0x0
+            end: 0x100000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - atsame53_1024
   - name: ATSAME53N19A
@@ -76,21 +81,23 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537067520
+            start: 0x20000000
+            end: 0x20030000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 0
-            end: 524288
+            start: 0x0
+            end: 0x80000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - atsame53_512
   - name: ATSAME53N20A
@@ -99,90 +106,92 @@ variants:
         type: armv7em
         core_access_options:
           Arm:
-            ap: 0
-            psel: 0
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
-            start: 536870912
-            end: 537133056
+            start: 0x20000000
+            end: 0x20040000
           is_boot_memory: false
-          cores: [main]
+          cores:
+            - main
       - Nvm:
           range:
-            start: 0
-            end: 1048576
+            start: 0x0
+            end: 0x100000
           is_boot_memory: true
-          cores: [main]
+          cores:
+            - main
     flash_algorithms:
       - atsame53_1024
 flash_algorithms:
-  atsame53_256:
-    name: atsame53_256
+  - name: atsame53_256
     description: ATSAME53 256kB Flash
-    cores: [main]
+    cores:
+      - main
     default: true
     instructions: ASGJB4prUgcB1SFKCmDPIiBJEgIKgE4iCoIfSUlECGAAIHBHACBwRxpJSGEbSoqASorSB/zQSGEYSBE4iIBIisAH/NAIik4hCEAA0AEgcEcwtRJLD0zbHKOAY4rbB/zQyRyJCANGiQAC4CDKCR8gwwAp+tFgYQlIDziggGCKwAf80CCKTiEIQADQASAwvQAAIgABAABAAEEEAAAAEqUAAAAAAAAAAAAA
-    pc_init: 1
-    pc_uninit: 37
-    pc_program_page: 81
-    pc_erase_sector: 41
-    pc_erase_all: ~
-    data_section_offset: 160
+    pc_init: 0x1
+    pc_uninit: 0x25
+    pc_program_page: 0x51
+    pc_erase_sector: 0x29
+    pc_erase_all: null
+    data_section_offset: 0xa0
     flash_properties:
       address_range:
-        start: 0
-        end: 262144
-      page_size: 512
-      erased_byte_value: 255
-      program_page_timeout: 100
-      erase_sector_timeout: 1000
+        start: 0x0
+        end: 0x40000
+      page_size: 0x200
+      erased_byte_value: 0xff
+      program_page_timeout: 0x64
+      erase_sector_timeout: 0x3e8
       sectors:
-        - size: 8192
-          address: 0
-  atsame53_512:
-    name: atsame53_512
+        - size: 0x2000
+          address: 0x0
+  - name: atsame53_512
     description: ATSAME53 512kB Flash
-    cores: [main]
+    cores:
+      - main
     default: true
     instructions: ASGJB4prUgcB1SFKCmDPIiBJEgIKgE4iCoIfSUlECGAAIHBHACBwRxpJSGEbSoqASorSB/zQSGEYSBE4iIBIisAH/NAIik4hCEAA0AEgcEcwtRJLD0zbHKOAY4rbB/zQyRyJCANGiQAC4CDKCR8gwwAp+tFgYQlIDziggGCKwAf80CCKTiEIQADQASAwvQAAIgABAABAAEEEAAAAEqUAAAAAAAAAAAAA
-    pc_init: 1
-    pc_uninit: 37
-    pc_program_page: 81
-    pc_erase_sector: 41
-    pc_erase_all: ~
-    data_section_offset: 160
+    pc_init: 0x1
+    pc_uninit: 0x25
+    pc_program_page: 0x51
+    pc_erase_sector: 0x29
+    pc_erase_all: null
+    data_section_offset: 0xa0
     flash_properties:
       address_range:
-        start: 0
-        end: 524288
-      page_size: 512
-      erased_byte_value: 255
-      program_page_timeout: 100
-      erase_sector_timeout: 1000
+        start: 0x0
+        end: 0x80000
+      page_size: 0x200
+      erased_byte_value: 0xff
+      program_page_timeout: 0x64
+      erase_sector_timeout: 0x3e8
       sectors:
-        - size: 8192
-          address: 0
-  atsame53_1024:
-    name: atsame53_1024
+        - size: 0x2000
+          address: 0x0
+  - name: atsame53_1024
     description: ATSAME53 1024kB Flash
-    cores: [main]
+    cores:
+      - main
     default: true
     instructions: ASGJB4prUgcB1SFKCmDPIiBJEgIKgE4iCoIfSUlECGAAIHBHACBwRxpJSGEbSoqASorSB/zQSGEYSBE4iIBIisAH/NAIik4hCEAA0AEgcEcwtRJLD0zbHKOAY4rbB/zQyRyJCANGiQAC4CDKCR8gwwAp+tFgYQlIDziggGCKwAf80CCKTiEIQADQASAwvQAAIgABAABAAEEEAAAAEqUAAAAAAAAAAAAA
-    pc_init: 1
-    pc_uninit: 37
-    pc_program_page: 81
-    pc_erase_sector: 41
-    pc_erase_all: ~
-    data_section_offset: 160
+    pc_init: 0x1
+    pc_uninit: 0x25
+    pc_program_page: 0x51
+    pc_erase_sector: 0x29
+    pc_erase_all: null
+    data_section_offset: 0xa0
     flash_properties:
       address_range:
-        start: 0
-        end: 1048576
-      page_size: 512
-      erased_byte_value: 255
-      program_page_timeout: 100
-      erase_sector_timeout: 1000
+        start: 0x0
+        end: 0x100000
+      page_size: 0x200
+      erased_byte_value: 0xff
+      program_page_timeout: 0x64
+      erase_sector_timeout: 0x3e8
       sectors:
-        - size: 8192
-          address: 0
+        - size: 0x2000
+          address: 0x0
