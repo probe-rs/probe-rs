@@ -17,7 +17,7 @@ pub struct RttChannelEventBody {
 #[derive(Clone, PartialEq, Debug, Deserialize, Serialize)]
 pub struct RttDataEventBody {
     pub channel_number: usize,
-    #[doc = " RTT output"]
+    #[doc = "RTT output"]
     pub data: String,
 }
 #[derive(Clone, PartialEq, Debug, Deserialize, Serialize)]
