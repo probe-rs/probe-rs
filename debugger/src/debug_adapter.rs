@@ -1608,7 +1608,7 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
         }
     }
 
-    /// Send a custom "probe-rs-rtt-data" event to the MS DAP Client, to
+    /// Send a custom `probe-rs-rtt-data` event to the MS DAP Client, to
     pub fn rtt_output(&mut self, channel_number: usize, rtt_data: String) -> bool {
         if self.adapter_type == DebugAdapterType::DapClient {
             let event_body = match serde_json::to_value(RttDataEventBody {
