@@ -49,7 +49,7 @@ impl Default for DataFormat {
     }
 }
 
-/// The initial configuration for RTT (Segger Real Time Transfer). This configuration is complimented with the additional information specified for each of the channels in `RttChannel`
+/// The initial configuration for RTT (Real Time Transfer). This configuration is complimented with the additional information specified for each of the channels in `RttChannel`.
 #[derive(StructOpt, Debug, Clone, Deserialize, Default)]
 pub struct RttConfig {
     #[structopt(skip)]
