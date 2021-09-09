@@ -551,7 +551,7 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
                     });
                 } else {
                     let message = "No source location for breakpoint. Try reducing `opt-level` in `Cargo.toml` ".to_string();
-                    //In addition to sending the error to the 'Hover' message, also write it to the Debug Console Log
+                    // In addition to sending the error to the 'Hover' message, also write it to the Debug Console Log.
                     self.log_to_console(format!("WARNING: {}", message));
                     self.show_message("warning".to_string(), message.clone());
                     created_breakpoints.push(Breakpoint {
