@@ -2020,7 +2020,7 @@
 		"SetVariableRequest": {
 			"allOf": [ { "$ref": "#/definitions/Request" }, {
 				"type": "object",
-				"description": "Set the variable with the given name in the variable container to a new value. Clients should only call this request if the capability 'supportsSetVariable' is true.\nIf a debug adapter implements both 'setVariable' and 'setExpression', a client will only use 'setExpression' if the variable has an 'evaluateName' property.",
+				"description": "Set the variable with the given name in the variable container to a new value. Clients should only call this request if the capability 'supportsSetVariable' is true.\nIf a debug adapter implements both setVariable and setExpression, a client will only use setExpression if the variable has an evaluateName property.",
 				"properties": {
 					"command": {
 						"type": "string",
