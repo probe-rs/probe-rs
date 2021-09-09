@@ -530,7 +530,7 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
                                 location, err
                             )
                                 .to_string();
-                                //In addition to sending the error to the 'Hover' message, also write it to the Debug Console Log
+                                // In addition to sending the error to the 'Hover' message, also write it to the Debug Console Log.
                                 self.log_to_console(format!("WARNING: {}", message));
                                 self.show_message("warning".to_string(), message.clone());
                                 (false, Some(message))
