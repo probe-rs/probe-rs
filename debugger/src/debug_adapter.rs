@@ -532,7 +532,7 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
                                 .to_string();
                                 // In addition to sending the error to the 'Hover' message, also write it to the Debug Console Log.
                                 self.log_to_console(format!("WARNING: {}", message));
-                                self.show_message("warning".to_string(), message.clone());
+                                self.show_message(MessageSeverity::Warning, message.clone());
                                 (false, Some(message))
                             }
                         };
@@ -553,7 +553,7 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
                     let message = "No source location for breakpoint. Try reducing `opt-level` in `Cargo.toml` ".to_string();
                     // In addition to sending the error to the 'Hover' message, also write it to the Debug Console Log.
                     self.log_to_console(format!("WARNING: {}", message));
-                    self.show_message("warning".to_string(), message.clone());
+                    self.show_message(MessageSeverity::Warning, message.clone());
                     created_breakpoints.push(Breakpoint {
                         column: bp.column,
                         end_column: None,
@@ -1414,7 +1414,7 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
             self.send_data(&encoded_resp);
             if !resp.success {
                 self.log_to_console(&resp.clone().message.unwrap());
-                self.show_message("error".to_string(), &resp.message.unwrap());
+                self.show_message(MessageSeverity::Error, &resp.message.unwrap());
             } else {
                 match self.console_log_level {
                     ConsoleLog::Error => {}
@@ -1565,7 +1565,7 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
 
     /// Send a custom "probe-rs-show-message" event to the MS DAP Client.
     /// The `severity` field can be one of `information`, `warning`, or `error`.
-    pub fn show_message<S: Into<String>>(&mut self, severity: String, message: S) -> bool {
+    pub fn show_message(&mut self, severity: MessageSeverity, message: impl Into<String>) -> bool {
         if self.adapter_type == DebugAdapterType::DapClient {
             let event_body = match serde_json::to_value(ShowMessageEventBody {
                 severity,
@@ -1579,7 +1579,7 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
             self.send_event("probe-rs-show-message", Some(event_body))
         } else {
             //DebugAdapterType::CommandLine
-            println!("{}: {}", severity.to_uppercase(), message.into());
+            println!("{:?}: {}", severity, message.into());
             true
         }
     }

@@ -22,10 +22,17 @@ pub struct RttDataEventBody {
     pub data: String,
 }
 
+#[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
+#[serde(rename_all(serialize = "lowercase", deserialize = "PascalCase"))]
+pub enum MessageSeverity {
+    Information,
+    Warning,
+    Error
+}
+
 #[derive(Clone, PartialEq, Debug, Deserialize, Serialize)]
 pub struct ShowMessageEventBody {
-    /// The `severity` field can be one of "information", "warning", or "error"
-    pub severity: String,
+    pub severity: MessageSeverity,
     pub message: String,
 }
 

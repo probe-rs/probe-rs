@@ -595,7 +595,7 @@ impl Debugger {
                                         .to_owned()))),
                                 );
                                 debug_adapter.show_message(
-                                    "error".to_string(),
+                                    MessageSeverity::Error,
                                     new_status.short_long_status().1.to_owned(),
                                 );
                                 return false;
