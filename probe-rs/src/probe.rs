@@ -679,31 +679,21 @@ pub trait JTAGAccess: DebugProbe {
         len: u32,
     ) -> Result<Vec<u8>, DebugProbeError>;
 
-    #[inline(always)]
-    fn batch_support(&mut self) -> Option<&mut dyn JTAGBatching> {
-        None
-    }
-}
-
-pub trait JTAGBatching: JTAGAccess {
-    /// Schedules a register write to be executed later by calling `execute`
-    ///
-    /// Returns a DeferredCommandResult which can be used to get the result after `execute`.
-    /// If the probe doesn't support batching this will be emulated.
-    fn schedule_write_register(
+    fn write_register_batch(
         &mut self,
-        address: u32,
-        data: &[u8],
-        len: u32,
-        transform: fn(Vec<u8>) -> Result<u32, DebugProbeError>,
-    ) -> Result<Box<dyn DeferredCommandResult>, DebugProbeError>;
+        writes: &[JtagWriteCommand],
+    ) -> Result<Box<dyn CommandResults>, BatchExecutionError> {
+        let mut results = Vec::new();
 
-    /// Clear any scheduled commands.
-    fn clear_schedule(&mut self);
+        for write in writes {
+            match self.write_register(write.address, &write.data, write.len).and_then(|response| (write.transform)(response)) {
+                Ok(res) => results.push(res),
+                Err(e) => return Err(BatchExecutionError::new(e, Box::new(BasicCommandResults::new(results))))
+            }
+        }
 
-    /// Executes register writes scheduled by `schedule_write_register`
-    /// If the probe doesn't support batching this will be emulated.
-    fn execute(&mut self) -> Result<Box<dyn CommandResults>, BatchExecutionError>;
+        Ok(Box::new(BasicCommandResults::new(results)))
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -711,7 +701,7 @@ pub struct JtagWriteCommand {
     pub address: u32,
     pub data: Vec<u8>,
     pub len: u32,
-    pub transform: fn(Vec<u8>) -> Result<u32, DebugProbeError>,
+    pub transform: fn(Vec<u8>) -> Result<CommandResult, DebugProbeError>,
 }
 
 #[derive(thiserror::Error, Debug)]

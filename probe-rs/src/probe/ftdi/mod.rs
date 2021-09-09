@@ -2,7 +2,7 @@ use crate::architecture::{
     arm::communication_interface::UninitializedArmProbe,
     riscv::communication_interface::RiscvCommunicationInterface,
 };
-use crate::probe::{JTAGAccess, ProbeCreationError};
+use crate::probe::{BasicCommandResults, JTAGAccess, ProbeCreationError};
 use crate::{
     DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, DebugProbeType, WireProtocol,
 };
@@ -19,9 +19,7 @@ mod commands;
 
 use self::commands::{JtagCommand, WriteRegisterCommand};
 
-use super::{
-    BatchExecutionError, CommandResult, CommandResults, DeferredCommandResult, JTAGBatching,
-};
+use super::{BatchExecutionError, CommandResult, CommandResults};
 
 #[derive(Debug)]
 struct JtagChainItem {
@@ -582,44 +580,14 @@ impl JTAGAccess for FtdiProbe {
         Ok(r)
     }
 
-    #[inline(always)]
-    fn batch_support(&mut self) -> Option<&mut dyn JTAGBatching> {
-        Some(self)
-    }
-
     fn get_idle_cycles(&self) -> u8 {
         self.idle_cycles
     }
-}
 
-impl JTAGBatching for FtdiProbe {
-    fn schedule_write_register(
+    fn write_register_batch(
         &mut self,
-        address: u32,
-        data: &[u8],
-        len: u32,
-        transform: fn(Vec<u8>) -> Result<u32, DebugProbeError>,
-    ) -> Result<Box<dyn DeferredCommandResult>, DebugProbeError> {
-        self.queued_commands.push(Box::new(
-            WriteRegisterCommand::new(
-                address,
-                data.to_vec(),
-                len as usize,
-                self.idle_cycles as usize,
-                self.adapter
-                    .get_chain_params()
-                    .map_err(|e| DebugProbeError::ProbeSpecific(Box::new(e)))?,
-            )
-            .map_err(|e| DebugProbeError::ProbeSpecific(Box::new(e)))?,
-        ));
-        self.output_transformers.push(Some(transform));
-
-        Ok(Box::new(FtdiDeferredCommandResult::new(
-            self.queued_commands.len() - 1,
-        )))
-    }
-
-    fn execute(&mut self) -> Result<Box<dyn CommandResults>, BatchExecutionError> {
+        writes: &[super::JtagWriteCommand],
+    ) -> Result<Box<dyn CommandResults>, BatchExecutionError> {
         // this value was determined by experimenting and doesn't match e.g
         // the libftdi read/write chunk size - it is hopefully useful for every setup
         const CHUNK_SIZE: usize = 40;
@@ -627,7 +595,34 @@ impl JTAGBatching for FtdiProbe {
         let mut index_offset = 0;
         let mut results = Vec::<CommandResult>::new();
 
-        for cmd_chunk in self.queued_commands.chunks_mut(CHUNK_SIZE) {
+        let chain_params = self.adapter.get_chain_params().map_err(|e| {
+            BatchExecutionError::new(
+                DebugProbeError::ProbeSpecific(Box::new(e)),
+                Box::new(BasicCommandResults::new(results.clone())),
+            )
+        })?;
+
+        let commands: Result<Vec<Box<WriteRegisterCommand>>, _> = writes
+            .iter()
+            .map(|w| {
+                WriteRegisterCommand::new(
+                    w.address,
+                    w.data.clone(),
+                    w.len as usize,
+                    self.idle_cycles as usize,
+                    chain_params,
+                ).map(Box::new)
+            })
+            .collect();
+
+        let mut commands = commands.map_err(|e| {
+            BatchExecutionError::new(
+                DebugProbeError::ProbeSpecific(Box::new(e)),
+                Box::new(BasicCommandResults::new(results.clone())),
+            )
+        })?;
+
+        for cmd_chunk in commands.chunks_mut(CHUNK_SIZE) {
             let mut out_buffer = Vec::<u8>::new();
             let mut size = 0;
             for cmd in cmd_chunk.iter_mut() {
@@ -730,28 +725,7 @@ impl JTAGBatching for FtdiProbe {
             index_offset += cmd_chunk.len();
         }
 
-        self.queued_commands = vec![];
-        Ok(Box::new(FtdiCommandResults::new(results)))
-    }
-
-    fn clear_schedule(&mut self) {
-        self.queued_commands.clear();
-    }
-}
-
-struct FtdiDeferredCommandResult {
-    index: usize,
-}
-
-impl FtdiDeferredCommandResult {
-    fn new(index: usize) -> FtdiDeferredCommandResult {
-        FtdiDeferredCommandResult { index }
-    }
-}
-
-impl DeferredCommandResult for FtdiDeferredCommandResult {
-    fn get(&self, command_results: &dyn CommandResults) -> CommandResult {
-        command_results.get(self.index)
+        Ok(Box::new(BasicCommandResults::new(results)))
     }
 }
 
