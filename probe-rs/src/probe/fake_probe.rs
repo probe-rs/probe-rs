@@ -385,6 +385,6 @@ mod test {
 
         let probe = fake_probe.into_probe();
 
-        probe.attach("nrf51822").unwrap();
+        probe.attach("nrf51822_xxAC").unwrap();
     }
 }

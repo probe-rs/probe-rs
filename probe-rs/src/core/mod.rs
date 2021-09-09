@@ -273,7 +273,7 @@ impl SpecificCoreState {
     ) -> Result<Core<'probe>, Error> {
         let debug_sequence = match &target.debug_sequence {
             crate::config::DebugSequence::Arm(sequence) => sequence.clone(),
-            crate::config::DebugSequence::Riscv => {
+            crate::config::DebugSequence::Riscv(_) => {
                 return Err(Error::UnableToOpenProbe(
                     "Core architecture and Probe mismatch.",
                 ))
