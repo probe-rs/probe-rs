@@ -144,7 +144,7 @@ impl RttActiveChannel {
         }
     }
 
-    /// Returns the number of the UpChannel
+    /// Returns the number of the `UpChannel`.
     pub fn number(&self) -> Option<usize> {
         self.up_channel.as_ref().map(|uc| uc.number())
     }
