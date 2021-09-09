@@ -21,6 +21,7 @@ pub struct RttDataEventBody {
     #[doc = "RTT output"]
     pub data: String,
 }
+
 #[derive(Clone, PartialEq, Debug, Deserialize, Serialize)]
 pub struct ShowMessageEventBody {
     /// The `severity` field can be one of "information", "warning", or "error"
