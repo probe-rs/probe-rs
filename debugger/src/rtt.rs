@@ -19,6 +19,7 @@ use structopt::StructOpt;
 fn default_channel_formats() -> Vec<RttChannelConfig> {
     vec![]
 }
+
 fn default_rtt_timeout() -> usize {
     500
 }
