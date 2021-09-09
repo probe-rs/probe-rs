@@ -1604,7 +1604,6 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
             };
             self.send_event("probe-rs-rtt-channel-config", Some(event_body))
         } else {
-            //DebugAdapterType::CommandLine
             true
         }
     }
