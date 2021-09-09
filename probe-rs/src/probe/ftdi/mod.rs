@@ -609,7 +609,9 @@ impl JTAGAccess for FtdiProbe {
     fn execute(&mut self) -> Result<Box<dyn CommandResults>, BatchExecutionError> {
         // this value was determined by experimenting and doesn't match e.g
         // the libftdi read/write chunk size - it is hopefully useful for every setup
-        const CHUNK_SIZE: usize = 40;
+        // max value seems to be different for different adapters, e.g. for the Sipeed JTAG adapter
+        // 40 works but for the Pine64 adapter it doesn't
+        const CHUNK_SIZE: usize = 30;
 
         let mut index_offset = 0;
         let mut results = Vec::<CommandResult>::new();
