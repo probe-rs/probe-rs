@@ -7,10 +7,7 @@ use bitfield::bitfield;
 
 use super::communication_interface::RiscvError;
 use crate::{
-    probe::{
-        BasicDeferredCommandResult, CommandResult, CommandResults,
-        DeferredCommandResult, JTAGAccess, JtagWriteCommand,
-    },
+    probe::{CommandResult, DeferredResultIndex, JTAGAccess, JtagWriteCommand},
     DebugProbeError,
 };
 
@@ -88,7 +85,7 @@ impl Dtm {
         Ok(())
     }
 
-    pub fn execute(&mut self) -> Result<Box<dyn CommandResults>, DebugProbeError> {
+    pub fn execute(&mut self) -> Result<Vec<CommandResult>, DebugProbeError> {
         let cmds = self.queued_commands.clone();
         self.queued_commands = Vec::new();
 
@@ -97,12 +94,9 @@ impl Dtm {
             Err(e) => match e.error {
                 DebugProbeError::ArchitectureSpecific(ref ae) => {
                     match ae.downcast_ref::<RiscvError>() {
-                        Some(RiscvError::DmiTransfer(
-                            DmiOperationStatus::RequestInProgress,
-                        )) => {
-                            self.reset().map_err(|e| {
-                                DebugProbeError::ArchitectureSpecific(Box::new(e))
-                            })?;
+                        Some(RiscvError::DmiTransfer(DmiOperationStatus::RequestInProgress)) => {
+                            self.reset()
+                                .map_err(|e| DebugProbeError::ArchitectureSpecific(Box::new(e)))?;
 
                             // queue up the remaining commands when we retry
                             self.queued_commands
@@ -125,7 +119,7 @@ impl Dtm {
         address: u64,
         value: u32,
         op: DmiOperation,
-    ) -> Result<Box<dyn DeferredCommandResult>, DebugProbeError> {
+    ) -> Result<DeferredResultIndex, DebugProbeError> {
         let register_value: u128 = ((address as u128) << DMI_ADDRESS_BIT_OFFSET)
             | ((value as u128) << DMI_VALUE_BIT_OFFSET)
             | op as u128;
@@ -161,9 +155,7 @@ impl Dtm {
             len: bit_size,
         });
 
-        Ok(Box::new(BasicDeferredCommandResult::new(
-            self.queued_commands.len() - 1,
-        )))
+        Ok(self.queued_commands.len() - 1)
     }
 
     /// Perform an access to the dmi register of the JTAG Transport module.

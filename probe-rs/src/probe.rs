@@ -682,19 +682,24 @@ pub trait JTAGAccess: DebugProbe {
     fn write_register_batch(
         &mut self,
         writes: &[JtagWriteCommand],
-    ) -> Result<Box<dyn CommandResults>, BatchExecutionError> {
+    ) -> Result<Vec<CommandResult>, BatchExecutionError> {
         let mut results = Vec::new();
 
         for write in writes {
-            match self.write_register(write.address, &write.data, write.len).and_then(|response| (write.transform)(response)) {
+            match self
+                .write_register(write.address, &write.data, write.len)
+                .and_then(|response| (write.transform)(response))
+            {
                 Ok(res) => results.push(res),
-                Err(e) => return Err(BatchExecutionError::new(e, Box::new(BasicCommandResults::new(results))))
+                Err(e) => return Err(BatchExecutionError::new(e, results.clone())),
             }
         }
 
-        Ok(Box::new(BasicCommandResults::new(results)))
+        Ok(results)
     }
 }
+
+pub type DeferredResultIndex = usize;
 
 #[derive(Debug, Clone)]
 pub struct JtagWriteCommand {
@@ -708,11 +713,11 @@ pub struct JtagWriteCommand {
 pub struct BatchExecutionError {
     #[source]
     pub error: DebugProbeError,
-    pub results: Box<dyn CommandResults>,
+    pub results: Vec<CommandResult>,
 }
 
 impl BatchExecutionError {
-    pub fn new(error: DebugProbeError, results: Box<dyn CommandResults>) -> BatchExecutionError {
+    pub fn new(error: DebugProbeError, results: Vec<CommandResult>) -> BatchExecutionError {
         BatchExecutionError { error, results }
     }
 }
@@ -725,56 +730,6 @@ impl std::fmt::Display for BatchExecutionError {
             self.error,
             self.results.len()
         )
-    }
-}
-
-/// A deferred result returned by scheduling a command
-/// The value can be retrieved after the batched commands are executed.
-pub trait DeferredCommandResult {
-    fn get(&self, command_results: &dyn CommandResults) -> CommandResult;
-}
-
-pub(crate) struct BasicDeferredCommandResult {
-    index: usize,
-}
-
-impl BasicDeferredCommandResult {
-    pub fn new(index: usize) -> BasicDeferredCommandResult {
-        BasicDeferredCommandResult { index }
-    }
-}
-
-impl DeferredCommandResult for BasicDeferredCommandResult {
-    fn get(&self, command_results: &dyn CommandResults) -> CommandResult {
-        command_results.get(self.index)
-    }
-}
-
-/// Contains all results of batched commands executed by `execute`
-pub trait CommandResults: std::fmt::Debug {
-    fn get(&self, index: usize) -> CommandResult;
-
-    fn len(&self) -> usize;
-}
-
-#[derive(Debug)]
-pub struct BasicCommandResults {
-    results: Vec<CommandResult>,
-}
-
-impl BasicCommandResults {
-    pub fn new(results: Vec<CommandResult>) -> BasicCommandResults {
-        BasicCommandResults { results }
-    }
-}
-
-impl CommandResults for BasicCommandResults {
-    fn get(&self, index: usize) -> CommandResult {
-        self.results[index].clone()
-    }
-
-    fn len(&self) -> usize {
-        self.results.len()
     }
 }
 

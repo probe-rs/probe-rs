@@ -8,10 +8,10 @@ use super::{
     dtm::{DmiOperation, DmiOperationStatus, Dtm},
     register, Dmcontrol, Dmstatus,
 };
-use crate::{architecture::riscv::*, probe::CommandResult};
+use crate::DebugProbeError;
 use crate::{
-    probe::{CommandResults, DeferredCommandResult},
-    DebugProbeError,
+    architecture::riscv::*,
+    probe::{CommandResult, DeferredResultIndex},
 };
 use crate::{MemoryInterface, Probe};
 
@@ -599,7 +599,7 @@ impl<'probe> RiscvCommunicationInterface {
 
         let data_len = data.len();
 
-        let mut read_results: Vec<Box<dyn DeferredCommandResult>> = vec![];
+        let mut read_results: Vec<usize> = vec![];
         for _ in data[..data_len - 1].iter() {
             let idx = self.schedule_read_large_dtm_register::<V, Sbdata>()?;
             read_results.push(idx);
@@ -616,15 +616,15 @@ impl<'probe> RiscvCommunicationInterface {
         let result = self.execute();
 
         let result = result?;
-        for (out_index, idx) in read_results.iter().enumerate() {
-            data[out_index] = match idx.get(&*result) {
+        for (out_index, &idx) in read_results.iter().enumerate() {
+            data[out_index] = match result[idx] {
                 CommandResult::U32(data) => V::from_register_value(data),
                 _ => panic!("Internal error occured."),
             };
         }
 
         // Check that the read was succesful
-        let sbcs = match sbcs_result.get(&*result) {
+        let sbcs = match result[sbcs_result] {
             CommandResult::U32(res) => res,
             _ => panic!("Internal error occured."),
         };
@@ -788,7 +788,7 @@ impl<'probe> RiscvCommunicationInterface {
         let result = self.execute()?;
 
         // Check that the write was succesful
-        let sbcs = match ok_index.get(&*result) {
+        let sbcs = match result[ok_index] {
             CommandResult::U32(res) => res,
             _ => panic!("Internal error occured."),
         };
@@ -1238,7 +1238,7 @@ impl<'probe> RiscvCommunicationInterface {
         Probe::from_attached_probe(self.dtm.probe.into_probe())
     }
 
-    pub(super) fn execute(&mut self) -> Result<Box<dyn CommandResults>, DebugProbeError> {
+    pub(super) fn execute(&mut self) -> Result<Vec<CommandResult>, DebugProbeError> {
         self.dtm.execute()
     }
 
@@ -1266,14 +1266,14 @@ impl<'probe> RiscvCommunicationInterface {
         &mut self,
         address: u64,
         value: u32,
-    ) -> Result<Box<dyn DeferredCommandResult>, DebugProbeError> {
+    ) -> Result<DeferredResultIndex, DebugProbeError> {
         self.dtm
             .schedule_dmi_register_access(address, value, DmiOperation::Write)
     }
 
     pub(super) fn schedule_read_dm_register<R: DebugRegister>(
         &mut self,
-    ) -> Result<Box<dyn DeferredCommandResult>, DebugProbeError> {
+    ) -> Result<DeferredResultIndex, DebugProbeError> {
         log::debug!("Reading DM register '{}' at {:#010x}", R::NAME, R::ADDRESS);
 
         self.schedule_read_dm_register_untyped(R::ADDRESS as u64)
@@ -1285,7 +1285,7 @@ impl<'probe> RiscvCommunicationInterface {
     fn schedule_read_dm_register_untyped(
         &mut self,
         address: u64,
-    ) -> Result<Box<dyn DeferredCommandResult>, DebugProbeError> {
+    ) -> Result<DeferredResultIndex, DebugProbeError> {
         // Prepare the read by sending a read request with the register address
         self.dtm
             .schedule_dmi_register_access(address, 0, DmiOperation::Read)?;
@@ -1297,7 +1297,7 @@ impl<'probe> RiscvCommunicationInterface {
 
     fn schedule_read_large_dtm_register<V, R>(
         &mut self,
-    ) -> Result<Box<dyn DeferredCommandResult>, DebugProbeError>
+    ) -> Result<DeferredResultIndex, DebugProbeError>
     where
         V: RiscvValue,
         R: LargeRegister,
@@ -1308,7 +1308,7 @@ impl<'probe> RiscvCommunicationInterface {
     fn schedule_write_large_dtm_register<V, R>(
         &mut self,
         value: V,
-    ) -> Result<Box<dyn DeferredCommandResult>, DebugProbeError>
+    ) -> Result<DeferredResultIndex, DebugProbeError>
     where
         V: RiscvValue,
         R: LargeRegister,
@@ -1382,14 +1382,14 @@ pub(crate) trait RiscvValue: std::fmt::Debug + Copy + Sized {
 
     fn schedule_read_from_register<R>(
         interface: &mut RiscvCommunicationInterface,
-    ) -> Result<Box<dyn DeferredCommandResult>, DebugProbeError>
+    ) -> Result<DeferredResultIndex, DebugProbeError>
     where
         R: LargeRegister;
 
     fn schedule_write_to_register<R>(
         interface: &mut RiscvCommunicationInterface,
         value: Self,
-    ) -> Result<Box<dyn DeferredCommandResult>, DebugProbeError>
+    ) -> Result<DeferredResultIndex, DebugProbeError>
     where
         R: LargeRegister;
 }
@@ -1420,7 +1420,7 @@ impl RiscvValue for u8 {
 
     fn schedule_read_from_register<R>(
         interface: &mut RiscvCommunicationInterface,
-    ) -> Result<Box<dyn DeferredCommandResult>, DebugProbeError>
+    ) -> Result<DeferredResultIndex, DebugProbeError>
     where
         R: LargeRegister,
     {
@@ -1430,7 +1430,7 @@ impl RiscvValue for u8 {
     fn schedule_write_to_register<R>(
         interface: &mut RiscvCommunicationInterface,
         value: Self,
-    ) -> Result<Box<dyn DeferredCommandResult>, DebugProbeError>
+    ) -> Result<DeferredResultIndex, DebugProbeError>
     where
         R: LargeRegister,
     {
@@ -1463,7 +1463,7 @@ impl RiscvValue for u16 {
 
     fn schedule_read_from_register<R>(
         interface: &mut RiscvCommunicationInterface,
-    ) -> Result<Box<dyn DeferredCommandResult>, DebugProbeError>
+    ) -> Result<DeferredResultIndex, DebugProbeError>
     where
         R: LargeRegister,
     {
@@ -1473,7 +1473,7 @@ impl RiscvValue for u16 {
     fn schedule_write_to_register<R>(
         interface: &mut RiscvCommunicationInterface,
         value: Self,
-    ) -> Result<Box<dyn DeferredCommandResult>, DebugProbeError>
+    ) -> Result<DeferredResultIndex, DebugProbeError>
     where
         R: LargeRegister,
     {
@@ -1504,7 +1504,7 @@ impl RiscvValue for u32 {
 
     fn schedule_read_from_register<R>(
         interface: &mut RiscvCommunicationInterface,
-    ) -> Result<Box<dyn DeferredCommandResult>, DebugProbeError>
+    ) -> Result<DeferredResultIndex, DebugProbeError>
     where
         R: LargeRegister,
     {
@@ -1513,7 +1513,7 @@ impl RiscvValue for u32 {
     fn schedule_write_to_register<R>(
         interface: &mut RiscvCommunicationInterface,
         value: Self,
-    ) -> Result<Box<dyn DeferredCommandResult>, DebugProbeError>
+    ) -> Result<DeferredResultIndex, DebugProbeError>
     where
         R: LargeRegister,
     {
@@ -1557,7 +1557,7 @@ impl RiscvValue for u64 {
 
     fn schedule_read_from_register<R>(
         interface: &mut RiscvCommunicationInterface,
-    ) -> Result<Box<dyn DeferredCommandResult>, DebugProbeError>
+    ) -> Result<DeferredResultIndex, DebugProbeError>
     where
         R: LargeRegister,
     {
@@ -1568,7 +1568,7 @@ impl RiscvValue for u64 {
     fn schedule_write_to_register<R>(
         interface: &mut RiscvCommunicationInterface,
         value: Self,
-    ) -> Result<Box<dyn DeferredCommandResult>, DebugProbeError>
+    ) -> Result<DeferredResultIndex, DebugProbeError>
     where
         R: LargeRegister,
     {
@@ -1628,7 +1628,7 @@ impl RiscvValue for u128 {
 
     fn schedule_read_from_register<R>(
         interface: &mut RiscvCommunicationInterface,
-    ) -> Result<Box<dyn DeferredCommandResult>, DebugProbeError>
+    ) -> Result<DeferredResultIndex, DebugProbeError>
     where
         R: LargeRegister,
     {
@@ -1641,7 +1641,7 @@ impl RiscvValue for u128 {
     fn schedule_write_to_register<R>(
         interface: &mut RiscvCommunicationInterface,
         value: Self,
-    ) -> Result<Box<dyn DeferredCommandResult>, DebugProbeError>
+    ) -> Result<DeferredResultIndex, DebugProbeError>
     where
         R: LargeRegister,
     {

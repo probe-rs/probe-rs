@@ -2,7 +2,7 @@ use crate::architecture::{
     arm::communication_interface::UninitializedArmProbe,
     riscv::communication_interface::RiscvCommunicationInterface,
 };
-use crate::probe::{BasicCommandResults, JTAGAccess, ProbeCreationError};
+use crate::probe::{JTAGAccess, ProbeCreationError};
 use crate::{
     DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, DebugProbeType, WireProtocol,
 };
@@ -19,7 +19,7 @@ mod commands;
 
 use self::commands::{JtagCommand, WriteRegisterCommand};
 
-use super::{BatchExecutionError, CommandResult, CommandResults};
+use super::{BatchExecutionError, CommandResult};
 
 #[derive(Debug)]
 struct JtagChainItem {
@@ -399,8 +399,6 @@ pub struct FtdiProbe {
     adapter: JtagAdapter,
     speed_khz: u32,
     idle_cycles: u8,
-    queued_commands: Vec<Box<dyn JtagCommand + Send>>,
-    output_transformers: Vec<Option<fn(Vec<u8>) -> Result<u32, DebugProbeError>>>,
 }
 
 impl DebugProbe for FtdiProbe {
@@ -426,8 +424,6 @@ impl DebugProbe for FtdiProbe {
             adapter,
             speed_khz: 0,
             idle_cycles: 0,
-            queued_commands: vec![],
-            output_transformers: vec![],
         };
         log::debug!("opened probe: {:?}", probe);
         Ok(Box::new(probe))
@@ -587,7 +583,7 @@ impl JTAGAccess for FtdiProbe {
     fn write_register_batch(
         &mut self,
         writes: &[super::JtagWriteCommand],
-    ) -> Result<Box<dyn CommandResults>, BatchExecutionError> {
+    ) -> Result<Vec<CommandResult>, BatchExecutionError> {
         // this value was determined by experimenting and doesn't match e.g
         // the libftdi read/write chunk size - it is hopefully useful for every setup
         const CHUNK_SIZE: usize = 40;
@@ -596,13 +592,10 @@ impl JTAGAccess for FtdiProbe {
         let mut results = Vec::<CommandResult>::new();
 
         let chain_params = self.adapter.get_chain_params().map_err(|e| {
-            BatchExecutionError::new(
-                DebugProbeError::ProbeSpecific(Box::new(e)),
-                Box::new(BasicCommandResults::new(results.clone())),
-            )
+            BatchExecutionError::new(DebugProbeError::ProbeSpecific(Box::new(e)), results.clone())
         })?;
 
-        let commands: Result<Vec<Box<WriteRegisterCommand>>, _> = writes
+        let commands: Result<Vec<WriteRegisterCommand>, _> = writes
             .iter()
             .map(|w| {
                 WriteRegisterCommand::new(
@@ -611,15 +604,12 @@ impl JTAGAccess for FtdiProbe {
                     w.len as usize,
                     self.idle_cycles as usize,
                     chain_params,
-                ).map(Box::new)
+                )
             })
             .collect();
 
         let mut commands = commands.map_err(|e| {
-            BatchExecutionError::new(
-                DebugProbeError::ProbeSpecific(Box::new(e)),
-                Box::new(BasicCommandResults::new(results.clone())),
-            )
+            BatchExecutionError::new(DebugProbeError::ProbeSpecific(Box::new(e)), results.clone())
         })?;
 
         for cmd_chunk in commands.chunks_mut(CHUNK_SIZE) {
@@ -641,7 +631,7 @@ impl JTAGAccess for FtdiProbe {
                 Err(e) => {
                     return Err(BatchExecutionError::new(
                         DebugProbeError::ProbeSpecific(Box::new(e)),
-                        Box::new(FtdiCommandResults::new(results)),
+                        results.clone(),
                     ));
                 }
             }
@@ -654,7 +644,7 @@ impl JTAGAccess for FtdiProbe {
                 if t0.elapsed() > timeout {
                     return Err(BatchExecutionError::new(
                         DebugProbeError::Timeout,
-                        Box::new(FtdiCommandResults::new(results)),
+                        results.clone(),
                     ));
                 }
 
@@ -664,7 +654,7 @@ impl JTAGAccess for FtdiProbe {
                     Err(e) => {
                         return Err(BatchExecutionError::new(
                             DebugProbeError::ProbeSpecific(Box::new(e)),
-                            Box::new(FtdiCommandResults::new(results)),
+                            results.clone(),
                         ));
                     }
                 }
@@ -676,7 +666,7 @@ impl JTAGAccess for FtdiProbe {
                         io::ErrorKind::InvalidData,
                         "Read more data than expected",
                     ))),
-                    Box::new(FtdiCommandResults::new(results)),
+                    results.clone(),
                 ));
             }
 
@@ -691,32 +681,18 @@ impl JTAGAccess for FtdiProbe {
 
                 match result {
                     Ok(data) => {
-                        let transformer = self.output_transformers[index];
+                        let transformer = writes[index].transform;
 
-                        match transformer {
-                            Some(transformer) => {
-                                let data = match data {
-                                    CommandResult::VecU8(data) => data,
-                                    _ => panic!("Internal error occured. Cannot have a transformer function for outputs other than Vec<u8>"),
-                                };
-                                results.push(CommandResult::U32(transformer(data).map_err(
-                                    |e| {
-                                        BatchExecutionError::new(
-                                            e,
-                                            Box::new(FtdiCommandResults::new(results.clone())),
-                                        )
-                                    },
-                                )?));
-                            }
-                            None => results.push(data),
-                        }
+                        let data = match data {
+                            CommandResult::VecU8(data) => data,
+                            _ => panic!("Internal error occured. Cannot have a transformer function for outputs other than Vec<u8>"),
+                        };
+                        results.push(
+                            transformer(data)
+                                .map_err(|e| BatchExecutionError::new(e, results.clone()))?,
+                        );
                     }
-                    Err(e) => {
-                        return Err(BatchExecutionError::new(
-                            e,
-                            Box::new(FtdiCommandResults::new(results)),
-                        ))
-                    }
+                    Err(e) => return Err(BatchExecutionError::new(e, results.clone())),
                 }
 
                 pos += len;
@@ -725,28 +701,7 @@ impl JTAGAccess for FtdiProbe {
             index_offset += cmd_chunk.len();
         }
 
-        Ok(Box::new(BasicCommandResults::new(results)))
-    }
-}
-
-#[derive(Debug)]
-struct FtdiCommandResults {
-    results: Vec<CommandResult>,
-}
-
-impl FtdiCommandResults {
-    fn new(results: Vec<CommandResult>) -> FtdiCommandResults {
-        FtdiCommandResults { results }
-    }
-}
-
-impl CommandResults for FtdiCommandResults {
-    fn get(&self, index: usize) -> CommandResult {
-        self.results[index].clone()
-    }
-
-    fn len(&self) -> usize {
-        self.results.len()
+        Ok(results)
     }
 }
 
