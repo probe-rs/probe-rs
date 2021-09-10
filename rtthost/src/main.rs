@@ -43,9 +43,9 @@ fn parse_scan_region(mut src: &str) -> Result<ScanRegion, Box<dyn std::error::Er
         })
         .collect::<Result<Vec<_>, _>>()?;
 
-    match parts.as_slice() {
-        &[addr] => Ok(ScanRegion::Exact(addr)),
-        &[start, end] => Ok(ScanRegion::Range(start..end)),
+    match *parts.as_slice() {
+        [addr] => Ok(ScanRegion::Exact(addr)),
+        [start, end] => Ok(ScanRegion::Range(start..end)),
         _ => Err("Invalid range: multiple '..'s".into()),
     }
 }
@@ -107,7 +107,7 @@ fn run() -> i32 {
 
     let probes = Probe::list_all();
 
-    if probes.len() == 0 {
+    if probes.is_empty() {
         eprintln!("No debug probes available. Make sure your probe is plugged in, supported and up-to-date.");
         return 1;
     }
@@ -137,7 +137,7 @@ fn run() -> i32 {
     let target_selector = opts
         .chip
         .clone()
-        .map(|t| TargetSelector::Unspecified(t))
+        .map(TargetSelector::Unspecified)
         .unwrap_or(TargetSelector::Auto);
 
     let mut session = match probe.attach(target_selector) {
@@ -261,7 +261,7 @@ fn run() -> i32 {
     }
 }
 
-fn list_probes(mut stream: impl std::io::Write, probes: &Vec<DebugProbeInfo>) {
+fn list_probes(mut stream: impl std::io::Write, probes: &[DebugProbeInfo]) {
     writeln!(stream, "Available probes:").unwrap();
 
     for (i, probe) in probes.iter().enumerate() {
@@ -272,8 +272,7 @@ fn list_probes(mut stream: impl std::io::Write, probes: &Vec<DebugProbeInfo>) {
             probe.identifier,
             probe
                 .serial_number
-                .as_ref()
-                .map(|s| &**s)
+                .as_deref()
                 .unwrap_or("(no serial number)")
         )
         .unwrap();
@@ -290,7 +289,7 @@ fn list_channels(channels: &Channels<impl RttChannel>) {
         println!(
             "  {}: {} (buffer size {})",
             chan.number(),
-            chan.name().as_ref().map(|s| &**s).unwrap_or("(no name)"),
+            chan.name().as_deref().unwrap_or("(no name)"),
             chan.buffer_size(),
         );
     }

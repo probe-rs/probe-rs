@@ -1154,7 +1154,7 @@ impl UninitializedArmProbe for UninitializedStLink {
             .read_register(DP_PORT, DPIDR::ADDRESS)
             .map_err(|e| ProbeRsError::Other(e.into()))?;
 
-        Ok(result.into())
+        Ok(result)
     }
 
     fn initialize(

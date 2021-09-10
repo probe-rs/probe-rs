@@ -14,6 +14,7 @@ use crate::{
     DebugProbe, DebugProbeError, DebugProbeSelector, Error, Memory, Probe, WireProtocol,
 };
 
+#[allow(clippy::type_complexity)]
 pub struct FakeProbe {
     protocol: WireProtocol,
     speed: u32,

@@ -17,7 +17,7 @@ use super::{
 pub struct DefaultArmSequence(pub(crate) ());
 
 impl DefaultArmSequence {
-    pub fn new() -> Arc<dyn ArmDebugSequence> {
+    pub fn create() -> Arc<dyn ArmDebugSequence> {
         Arc::new(Self(()))
     }
 }

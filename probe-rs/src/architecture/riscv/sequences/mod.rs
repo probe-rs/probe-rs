@@ -12,7 +12,7 @@ pub trait RiscvDebugSequence: Send + Sync {
 pub struct DefaultRiscvSequence(pub(crate) ());
 
 impl DefaultRiscvSequence {
-    pub fn new() -> Arc<dyn RiscvDebugSequence> {
+    pub fn create() -> Arc<dyn RiscvDebugSequence> {
         Arc::new(Self(()))
     }
 }

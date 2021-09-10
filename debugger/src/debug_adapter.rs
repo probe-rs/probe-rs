@@ -1436,14 +1436,12 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
                     }
                 }
             }
-        } else {
-            if resp.success {
-                if let Some(body) = resp.body {
-                    println!("{}", body.as_str().unwrap());
-                }
-            } else {
-                println!("ERROR: {}", resp.message.unwrap());
+        } else if resp.success {
+            if let Some(body) = resp.body {
+                println!("{}", body.as_str().unwrap());
             }
+        } else {
+            println!("ERROR: {}", resp.message.unwrap());
         }
         true
     }
