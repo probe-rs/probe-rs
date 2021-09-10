@@ -1,6 +1,5 @@
-use crate::dap_types::*;
-use crate::debug_adapter::DapStatus;
 use crate::debug_adapter::*;
+use crate::{dap_types::*, rtt::*};
 
 use crate::DebuggerError;
 use anyhow::{anyhow, Result};
@@ -8,14 +7,19 @@ use capstone::{arch::arm::ArchMode, prelude::*, Capstone, Endian};
 use log::info;
 use probe_rs::debug::DebugInfo;
 use probe_rs::flashing::{download_file, download_file_with_options, DownloadOptions, Format};
-use probe_rs::{config::TargetSelector, ProbeCreationError};
+use probe_rs::{
+    config::{MemoryRegion, TargetSelector},
+    ProbeCreationError,
+};
 use probe_rs::{
     Core, CoreStatus, DebugProbeError, DebugProbeSelector, MemoryInterface, Probe, Session,
     WireProtocol,
 };
+use probe_rs_rtt::{Rtt, ScanRegion};
 use serde::Deserialize;
 use std::{
     env::{current_dir, set_current_dir},
+    fs::File,
     io,
     io::{Read, Write},
     net::{Ipv4Addr, TcpListener, ToSocketAddrs},
@@ -29,15 +33,19 @@ use structopt::StructOpt;
 fn parse_protocol(src: &str) -> Result<WireProtocol, String> {
     WireProtocol::from_str(src)
 }
+
 fn default_wire_protocol() -> Option<WireProtocol> {
     Some(WireProtocol::Swd)
 }
+
 fn default_console_log() -> Option<ConsoleLog> {
     Some(ConsoleLog::Error)
 }
+
 fn parse_console_log(src: &str) -> Result<ConsoleLog, String> {
     ConsoleLog::from_str(src)
 }
+
 fn parse_probe_selector(src: &str) -> Result<DebugProbeSelector, String> {
     match DebugProbeSelector::from_str(src) {
         Ok(probe_selector) => Ok(probe_selector),
@@ -45,23 +53,28 @@ fn parse_probe_selector(src: &str) -> Result<DebugProbeSelector, String> {
     }
 }
 
-/// The level of information to be logged to the debugger console
+/// The level of information to be logged to the debugger console. The DAP Client will set appropriate RUST_LOG env for 'launch' configurations,  and will pass the rust log output to the client debug console.
 #[derive(Copy, Clone, PartialEq, Debug, serde::Serialize, serde::Deserialize)]
 pub enum ConsoleLog {
     Error,
+    Warn,
     Info,
     Debug,
-} //TODO: It would be nice instead to tap into log write once the DebugAdapter has been initialized, and intercept RUST like log info
+    Trace,
+}
+
 impl std::str::FromStr for ConsoleLog {
     type Err = String;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match &s.to_ascii_lowercase()[..] {
             "error" => Ok(ConsoleLog::Error),
+            "warn" => Ok(ConsoleLog::Error),
             "info" => Ok(ConsoleLog::Info),
             "debug" => Ok(ConsoleLog::Debug),
+            "trace" => Ok(ConsoleLog::Trace),
             _ => Err(format!(
-                "'{}' is not a valid console log level. Choose from [error, info, debug].",
+                "'{}' is not a valid console log level. Choose from [error, warn, info, debug, or trace].",
                 s
             )),
         }
@@ -73,11 +86,11 @@ impl std::str::FromStr for ConsoleLog {
 pub struct DebuggerOptions {
     /// Path to the requested working directory for the debugger
     #[structopt(long, parse(from_os_str), conflicts_with("dap"))]
-    cwd: Option<PathBuf>,
+    pub(crate) cwd: Option<PathBuf>,
 
     /// Binary to debug as a path. Relative to `cwd`, or fully qualified.
     #[structopt(long, parse(from_os_str), conflicts_with("dap"))]
-    program_binary: Option<PathBuf>,
+    pub(crate) program_binary: Option<PathBuf>,
 
     /// The number associated with the debug probe to use. Use 'list' command to see available probes
     #[structopt(
@@ -117,7 +130,7 @@ pub struct DebuggerOptions {
     pub(crate) port: Option<u16>,
 
     /// Flash the target before debugging
-    #[structopt(long, hidden = true)]
+    #[structopt(long)]
     #[serde(default)]
     pub(crate) flashing_enabled: bool,
 
@@ -145,6 +158,10 @@ pub struct DebuggerOptions {
     #[structopt(long, parse(try_from_str = parse_console_log))]
     #[serde(default = "default_console_log")]
     pub(crate) console_log_level: Option<ConsoleLog>,
+
+    #[structopt(flatten)]
+    #[serde(flatten)]
+    pub(crate) rtt: RttConfig,
 }
 
 impl DebuggerOptions {
@@ -197,6 +214,8 @@ pub struct Debugger {
     debugger_options: DebuggerOptions,
     all_commands: Vec<DebugCommand>,
     pub supported_commands: Vec<DebugCommand>,
+    /// The optional connection to RTT on the target
+    target_rtt: Option<RttActiveTarget>,
 }
 
 pub struct SessionData {
@@ -204,11 +223,13 @@ pub struct SessionData {
     #[allow(dead_code)]
     pub(crate) capstone: Capstone,
 }
+
 pub struct CoreData<'p> {
     pub(crate) target_core: Core<'p>,
     pub(crate) target_name: String,
     pub(crate) debug_info: Option<DebugInfo>,
 }
+
 /// Definition of commands that have been implemented in Debugger.
 #[derive(Clone, Copy)]
 pub struct DebugCommand {
@@ -313,7 +334,7 @@ pub fn start_session(debugger_options: &DebuggerOptions) -> Result<SessionData, 
 }
 
 pub fn attach_core<'p>(
-    session_data: &'p mut SessionData,
+    session: &'p mut Session,
     debugger_options: &DebuggerOptions,
 ) -> Result<CoreData<'p>, DebuggerError> {
     //Configure the DebugInfo
@@ -321,9 +342,9 @@ pub fn attach_core<'p>(
         .program_binary
         .as_ref()
         .and_then(|path| DebugInfo::from_file(path).ok());
-    let target_name = session_data.session.target().name.clone();
+    let target_name = session.target().name.clone();
     //Do no-op attach to the core and return it
-    match session_data.session.core(debugger_options.core_index) {
+    match session.core(debugger_options.core_index) {
         Ok(target_core) => Ok(CoreData {
             target_core,
             target_name: format!("{}-{}", debugger_options.core_index, target_name),
@@ -468,6 +489,7 @@ impl Debugger {
                 },
             ],
             supported_commands: vec![],
+            target_rtt: None,
         }
     }
 
@@ -490,16 +512,39 @@ impl Debugger {
                 - If the `new_status` is `Running`, then we have to poll on a regular basis, until the Probe stops for good reasons like breakpoints, or bad reasons like panics. Then tell the DAP-Client.
                 */
                 match debug_adapter.last_known_status {
-                    CoreStatus::Unknown => true,
+                    CoreStatus::Unknown => true, // Don't do anything until we know VSCode's startup sequence is complete, and changes this to either Halted or Running.
+                    CoreStatus::Halted(_) => {
+                        // No need to poll the target if we know it is halted and waiting for us to do something.
+                        thread::sleep(Duration::from_millis(50)); //small delay to reduce fast looping costs on the client
+                        true
+                    }
                     _other => {
-                        let mut core_data = match attach_core(session_data, &self.debugger_options)
-                        {
-                            Ok(core_data) => core_data,
-                            Err(error) => {
-                                debug_adapter.send_response::<()>(&request, Err(error));
-                                return false;
+                        let mut core_data =
+                            match attach_core(&mut session_data.session, &self.debugger_options) {
+                                Ok(core_data) => core_data,
+                                Err(error) => {
+                                    debug_adapter.send_response::<()>(&request, Err(error));
+                                    return false;
+                                }
+                            };
+
+                        // Use every opportunity to poll the RTT channels for data
+                        let mut received_rtt_data = false;
+                        if let Some(ref mut rtt_active_target) = self.target_rtt {
+                            let channel_data_stream =
+                                rtt_active_target.poll_rtt(&mut core_data.target_core);
+                            if !channel_data_stream.is_empty() {
+                                received_rtt_data = true;
+                                for (rtt_channel, rtt_data) in channel_data_stream {
+                                    debug_adapter.rtt_output(
+                                        rtt_channel.parse::<usize>().unwrap_or(0),
+                                        rtt_data,
+                                    );
+                                }
                             }
-                        };
+                        }
+
+                        //Check and update the core status.
                         let new_status = match core_data.target_core.status() {
                             Ok(new_status) => new_status,
                             Err(error) => {
@@ -511,8 +556,11 @@ impl Debugger {
                             }
                         };
 
-                        if new_status == debug_adapter.last_known_status {
-                            thread::sleep(Duration::from_millis(50)); //small delay to reduce fast looping costs. Do not change this, else RTT polling will be negatively impacted / delayed.
+                        // Only sleep (nap for a short duration) IF the probe's status hasn't changed AND there was no RTT data in the last poll. Otherwise loop again to keep things flowing as fast as possible. The justification is that any client side CPU used to keep polling is a small price to pay for maximum throughput of debug requests and RTT from the probe.
+                        if received_rtt_data && new_status == debug_adapter.last_known_status {
+                            return true;
+                        } else if new_status == debug_adapter.last_known_status {
+                            thread::sleep(Duration::from_millis(50)); //small delay to reduce fast looping costs
                             return true;
                         } else {
                             debug_adapter.last_known_status = new_status;
@@ -539,16 +587,17 @@ impl Debugger {
                                 debug_adapter.send_event("stopped", event_body);
                             }
                             CoreStatus::LockedUp => {
-                                let event_body = Some(StoppedEventBody {
-                                    reason: new_status.short_long_status().0.to_owned(),
-                                    description: Some(new_status.short_long_status().1.to_owned()),
-                                    thread_id: Some(core_data.target_core.id() as i64),
-                                    preserve_focus_hint: Some(false),
-                                    text: None,
-                                    all_threads_stopped: Some(true),
-                                    hit_breakpoint_ids: None,
-                                });
-                                debug_adapter.send_event("stopped", event_body);
+                                debug_adapter.send_response::<()>(
+                                    &request,
+                                    Err(DebuggerError::Other(anyhow!(new_status
+                                        .short_long_status()
+                                        .1
+                                        .to_owned()))),
+                                );
+                                debug_adapter.show_message(
+                                    MessageSeverity::Error,
+                                    new_status.short_long_status().1.to_owned(),
+                                );
                                 return false;
                             }
                             CoreStatus::Unknown => {
@@ -566,7 +615,7 @@ impl Debugger {
                 }
             }
             "error" | "quit" => {
-                //The listen_for_request would have reported this, so we just have to exit.
+                // The listen_for_request would have reported this, so we just have to exit.
                 false
             }
             "help" => {
@@ -584,14 +633,14 @@ impl Debugger {
                 match valid_command {
                     Some(valid_command) => {
                         //First, attach to the core
-                        let mut core_data = match attach_core(session_data, &self.debugger_options)
-                        {
-                            Ok(core_data) => core_data,
-                            Err(error) => {
-                                debug_adapter.send_response::<()>(&request, Err(error));
-                                return false;
-                            }
-                        };
+                        let mut core_data =
+                            match attach_core(&mut session_data.session, &self.debugger_options) {
+                                Ok(core_data) => core_data,
+                                Err(error) => {
+                                    debug_adapter.send_response::<()>(&request, Err(error));
+                                    return false;
+                                }
+                            };
                         // For some operations, we need to make sure the core isn't sleeping, by calling `Core::halt()`
                         // When we do this, we need to flag it (`unhalt_me = true`), and later call `Core::run()` again.
                         // NOTE: the target will exit sleep mode as a result of this command.
@@ -680,7 +729,7 @@ impl Debugger {
                         };
                         if unhalt_me {
                             match core_data.target_core.run() {
-                                Ok(_) => {}
+                                Ok(_) => debug_adapter.last_known_status = CoreStatus::Running,
                                 Err(error) => {
                                     debug_adapter.send_response::<()>(
                                         &request,
@@ -973,10 +1022,14 @@ impl Debugger {
             }
         }
 
-        //This is the first attach to the requested core. If this one works, all subsequent ones will be no-op requests for a Core reference. Do NOT hold onto this reference for the duration of the session ... that is why this code is in a block of its own.
+        // This is the first attach to the requested core. If this one works, all subsequent ones will be no-op requests for a Core reference. Do NOT hold onto this reference for the duration of the session ... that is why this code is in a block of its own.
         {
+            // Get a copy of the memory map for later use. This needs to be done here so that we don't get clashing references to session_data.session
+            let memory_map = session_data.session.target().memory_map.clone();
+
             // First, attach to the core
-            let mut core_data = match attach_core(&mut session_data, &self.debugger_options) {
+            let mut core_data = match attach_core(&mut session_data.session, &self.debugger_options)
+            {
                 Ok(mut core_data) => {
                     // Immediately after attaching, halt the core, so that we can finish initalization without bumping into user code.
                     // Depending on supplied `debugger_options`, the core will be restarted at the end of initialization in the `configuration_done` request.
@@ -1001,6 +1054,36 @@ impl Debugger {
             {
                 return;
             }
+
+            // This is a good time to initialize RTT if it is enabled
+            self.target_rtt = if self.debugger_options.rtt.enabled {
+                match attach_to_rtt(
+                    &mut core_data.target_core,
+                    &memory_map,
+                    &self.debugger_options,
+                ) {
+                    Ok(target_rtt) => {
+                        for any_channel in target_rtt.active_channels.iter() {
+                            if let Some(up_channel) = &any_channel.up_channel {
+                                debug_adapter.rtt_window(
+                                    up_channel.number(),
+                                    any_channel.channel_name.clone(),
+                                    any_channel.data_format,
+                                );
+                            }
+                        }
+
+                        Some(target_rtt)
+                    }
+                    Err(error) => {
+                        log::error!("{:?} Continuing without RTT... ", error);
+                        None
+                    }
+                }
+            } else {
+                log::debug!("No RTT configured. Continuing without RTT ...");
+                None
+            };
         }
 
         //After flashing and forced setup, we can signal the client that are ready to receive incoming requests
@@ -1032,11 +1115,56 @@ impl Debugger {
                 break;
             }
         }
-        //Exiting this function means we the debug_session is complete and we are done. End of process.
+        //Exiting this function means the debug_session is complete and we are done. End of process.
         //TODO: Add functionality to keep the server alive, respond to DAP Client sessions that end, and accept new session requests.
     }
 }
+
 // SECTION: Functions for CLI struct matches from main.rs
+pub fn attach_to_rtt(
+    core: &mut Core,
+    memory_map: &[MemoryRegion],
+    debugger_options: &DebuggerOptions,
+) -> Result<crate::rtt::RttActiveTarget, anyhow::Error> {
+    let t = std::time::Instant::now();
+    let mut error = None;
+
+    let mut i = 1;
+
+    while (t.elapsed().as_millis() as usize) < debugger_options.rtt.timeout {
+        log::info!("Initializing RTT (attempt {})...", i);
+        i += 1;
+
+        let rtt_header_address = if let Ok(mut file) =
+            File::open(debugger_options.program_binary.clone().unwrap().as_path())
+        {
+            if let Some(address) = RttActiveTarget::get_rtt_symbol(&mut file) {
+                ScanRegion::Exact(address as u32)
+            } else {
+                ScanRegion::Ram
+            }
+        } else {
+            ScanRegion::Ram
+        };
+
+        match Rtt::attach_region(core, memory_map, &rtt_header_address) {
+            Ok(rtt) => {
+                log::info!("RTT initialized.");
+                let app = RttActiveTarget::new(rtt, debugger_options)?;
+                return Ok(app);
+            }
+            Err(err) => {
+                error = Some(anyhow!("Error attempting to attach to RTT: {}", err));
+            }
+        };
+
+        log::debug!("Timeout reading RTT control block. Retrying until timeout.");
+    }
+    if let Some(error) = error {
+        return Err(error);
+    }
+    Err(anyhow!("Rtt initialization failed."))
+}
 
 pub fn list_connected_devices() -> Result<()> {
     let connected_devices = Probe::list_all();
@@ -1059,7 +1187,7 @@ pub fn reset_target_of_device(
     _assert: Option<bool>,
 ) -> Result<()> {
     let mut session_data = start_session(&debugger_options)?;
-    attach_core(&mut session_data, &debugger_options)
+    attach_core(&mut session_data.session, &debugger_options)
         .unwrap()
         .target_core
         .reset()?;
@@ -1068,7 +1196,7 @@ pub fn reset_target_of_device(
 
 pub fn dump_memory(debugger_options: DebuggerOptions, loc: u32, words: u32) -> Result<()> {
     let mut session_data = start_session(&debugger_options)?;
-    let mut target_core = attach_core(&mut session_data, &debugger_options)
+    let mut target_core = attach_core(&mut session_data.session, &debugger_options)
         .unwrap()
         .target_core;
 
@@ -1098,7 +1226,6 @@ pub fn dump_memory(debugger_options: DebuggerOptions, loc: u32, words: u32) -> R
 
 pub fn download_program_fast(debugger_options: DebuggerOptions, path: &str) -> Result<()> {
     let mut session_data = start_session(&debugger_options)?;
-
     download_file(&mut session_data.session, &path, Format::Elf)?;
     Ok(())
 }
@@ -1114,7 +1241,7 @@ pub fn trace_u32_on_target(debugger_options: DebuggerOptions, loc: u32) -> Resul
     let start = Instant::now();
 
     let mut session_data = start_session(&debugger_options)?;
-    let mut target_core = attach_core(&mut session_data, &debugger_options)
+    let mut target_core = attach_core(&mut session_data.session, &debugger_options)
         .unwrap()
         .target_core;
 
@@ -1161,7 +1288,7 @@ pub fn debug(debugger_options: DebuggerOptions, dap: bool) {
         debugger.debug_session(adapter);
     } else {
         //TODO: Implement the case where the server needs to keep running after the client has disconnected.
-        info!("Starting {:?} as a DAP Protocol server", &program_name);
+        log::info!("Starting {:?} as a DAP Protocol server", &program_name);
         match &debugger.debugger_options.port.clone() {
             Some(port) => {
                 let addr = format!("{}:{:?}", Ipv4Addr::LOCALHOST.to_string(), port)
@@ -1173,33 +1300,45 @@ pub fn debug(debugger_options: DebuggerOptions, dap: bool) {
                 let listener = match TcpListener::bind(addr) {
                     Ok(listener) => listener,
                     Err(error) => {
-                        info!("{:?}", error);
+                        log::error!("{:?}", error);
                         return;
                     }
                 };
 
-                info!("Listening for requests on :{}", addr);
+                log::info!("Listening for requests on :{}", addr);
+                println!(
+                    "probe-rs-debugger Listening for requests on port {}",
+                    addr.port()
+                );
 
-                let (socket, addr) = listener.accept().unwrap();
-                match socket.set_nonblocking(true) {
-                    Ok(_) => {
-                        info!("..Starting session from   :{}", addr);
+                listener.set_nonblocking(false).ok();
+                match listener.accept() {
+                    Ok((socket, addr)) => {
+                        match socket.set_nonblocking(true) {
+                            Ok(_) => {
+                                log::info!("..Starting session from   :{}", addr);
+                            }
+                            Err(_) => {
+                                log::error!(
+                                    "ERROR: Failed to negotiate non-blocking socket with request from :{}",
+                                    addr
+                                );
+                            }
+                        }
+
+                        let reader = socket.try_clone().unwrap();
+                        let writer = socket;
+
+                        let adapter =
+                            DebugAdapter::new(reader, writer, DebugAdapterType::DapClient);
+                        //TODO: When running in server mode, we want to stay open for new sessions. Implement intelligent restart in debug_session.
+                        debugger.debug_session(adapter);
                     }
-                    Err(_) => {
-                        info!(
-                            "ERROR: Failed to negotiate non-blocking socket with request from :{}",
-                            addr
-                        );
+                    Err(error) => {
+                        log::error!("probe-rs-debugger failed to establish a socket connection. Reason: {:?}", error)
                     }
                 }
-
-                let reader = socket.try_clone().unwrap();
-                let writer = socket;
-
-                let adapter = DebugAdapter::new(reader, writer, DebugAdapterType::DapClient);
-                //TODO: When running in server mode, we want to stay open for new sessions. Implement intelligent restart in debug_session.
-                debugger.debug_session(adapter);
-                info!("....Closing session from  :{}", addr);
+                log::info!("....Closing session from  :{}", addr);
             }
             None => {
                 info!(

@@ -1,7 +1,7 @@
-use crate::dap_types;
 use crate::debugger::ConsoleLog;
 use crate::debugger::CoreData;
 use crate::DebuggerError;
+use crate::{dap_types, rtt::DataFormat};
 use anyhow::{anyhow, Result};
 use dap_types::*;
 use parse_int::parse;
@@ -105,7 +105,9 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
     }
 
     pub(crate) fn pause(&mut self, core_data: &mut CoreData, request: &Request) -> bool {
-        match halt_core(&mut core_data.target_core) {
+        // let args: PauseArguments = get_arguments(&request)?;
+
+        match core_data.target_core.halt(Duration::from_millis(500)) {
             Ok(cpu_info) => {
                 let event_body = Some(StoppedEventBody {
                     reason: "pause".to_owned(),
@@ -128,7 +130,9 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
 
                 true
             }
-            Err(error) => self.send_response::<()>(request, Err(error)),
+            Err(error) => {
+                self.send_response::<()>(request, Err(DebuggerError::Other(anyhow!("{}", error))))
+            }
         }
 
         //TODO: This is from original probe_rs_cli 'halt' function ... disasm code at memory location
@@ -315,7 +319,7 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
         // true
     }
     pub(crate) fn restart(&mut self, core_data: &mut CoreData, request: &Request) -> bool {
-        match core_data.target_core.halt(Duration::from_millis(100)) {
+        match core_data.target_core.halt(Duration::from_millis(500)) {
             Ok(_) => {}
             Err(error) => {
                 return self
@@ -327,7 +331,7 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
         {
             match core_data
                 .target_core
-                .reset_and_halt(Duration::from_millis(100))
+                .reset_and_halt(Duration::from_millis(500))
             {
                 Ok(_) => {
                     match self.adapter_type {
@@ -521,12 +525,15 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
                                 Some(format!("Breakpoint at memory address: 0x{:08x}", location)),
                             ),
                             Err(err) => {
-                                //In addition to sending the error to the 'Hover' message, also write it to the Debug Console Log
-                                self.log_to_console(format!(
-                                "ERROR: Could not set breakpoint at memory address: 0x{:08x}: {}",
+                                let message = format!(
+                                "WARNING: Could not set breakpoint at memory address: 0x{:08x}: {}",
                                 location, err
-                            ));
-                                (false, Some(err.to_string()))
+                            )
+                                .to_string();
+                                // In addition to sending the error to the 'Hover' message, also write it to the Debug Console Log.
+                                self.log_to_console(format!("WARNING: {}", message));
+                                self.show_message(MessageSeverity::Warning, message.clone());
+                                (false, Some(message))
                             }
                         };
 
@@ -543,15 +550,17 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
                         verified,
                     });
                 } else {
+                    let message = "No source location for breakpoint. Try reducing `opt-level` in `Cargo.toml` ".to_string();
+                    // In addition to sending the error to the 'Hover' message, also write it to the Debug Console Log.
+                    self.log_to_console(format!("WARNING: {}", message));
+                    self.show_message(MessageSeverity::Warning, message.clone());
                     created_breakpoints.push(Breakpoint {
                         column: bp.column,
                         end_column: None,
                         end_line: None,
                         id: None,
                         line: Some(bp.line),
-                        message: Some(
-                            "No source location for breakpoint. Try reducing `opt-level` in `Cargo.toml` ".to_string(),
-                        ),
+                        message: Some(message),
                         source: None,
                         instruction_reference: None,
                         offset: None,
@@ -568,7 +577,7 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
     }
 
     pub(crate) fn stack_trace(&mut self, core_data: &mut CoreData, request: &Request) -> bool {
-        let _statuss = match core_data.target_core.status() {
+        let _status = match core_data.target_core.status() {
             Ok(status) => {
                 if !status.is_halted() {
                     return self.send_response::<()>(
@@ -672,8 +681,6 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
 
                                         path
                                     });
-
-                                //TODO: Consider implementing RTIC's expanded source access. Might also do a general macro expansion if that makes sense.
                                 Some(Source {
                                     name: source_location.file.clone(),
                                     path: path.map(|p| p.to_string_lossy().to_string()),
@@ -1170,7 +1177,25 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
                             match protocol_message.type_.as_str() {
                                 "request" => {
                                     match serde_json::from_slice::<Request>(&message_content) {
-                                        Ok(request) => request,
+                                        Ok(request) => {
+                                            // This is the SUCCESS request for new requests from the client.
+                                            match self.console_log_level {
+                                                ConsoleLog::Error => {}
+                                                ConsoleLog::Info | ConsoleLog::Warn => {
+                                                    self.log_to_console(format!(
+                                                        "\nReceived DAP Request sequence #{} : {}",
+                                                        request.seq, request.command
+                                                    ));
+                                                }
+                                                ConsoleLog::Debug | ConsoleLog::Trace => {
+                                                    self.log_to_console(format!(
+                                                        "\nReceived DAP Request: {:#?}",
+                                                        request
+                                                    ));
+                                                }
+                                            }
+                                            request
+                                        }
                                         Err(error) => {
                                             let request = Request {
                                                 seq: self.seq,
@@ -1228,7 +1253,6 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
                             os_error_number: _,
                             original_error,
                         } => {
-                            // println!("temporary error ... retry: {}", os_error_number);
                             if original_error.kind() == std::io::ErrorKind::WouldBlock {
                                 //non-blocking read is waiting for incoming data that is not ready yet.
                                 //This is not a real error, so use this opportunity to check on probe status and notify the debug client if required.
@@ -1270,7 +1294,7 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
             let mut header = String::new();
 
             match self.input.read_line(&mut header) {
-                Ok(_len) => {}
+                Ok(_data_length) => {}
                 Err(error) => {
                     //There is no data available, so do something else (like check Probe status) or try again
                     return Err(DebuggerError::NonBlockingReadError {
@@ -1283,7 +1307,7 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
             // we should read an empty line here
             let mut buff = String::new();
             match self.input.read_line(&mut buff) {
-                Ok(_len) => {}
+                Ok(_data_length) => {}
                 Err(error) => {
                     //There is no data available, so do something else (like check Probe status) or try again
                     return Err(DebuggerError::NonBlockingReadError {
@@ -1293,14 +1317,14 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
                 }
             }
 
-            let len = get_content_len(&header).ok_or_else(|| {
+            let data_length = get_content_len(&header).ok_or_else(|| {
                 DebuggerError::Other(anyhow!(
                     "Failed to read content length from header '{}'",
                     header
                 ))
             })?;
 
-            let mut content = vec![0u8; len];
+            let mut content = vec![0u8; data_length];
             let bytes_read = match self.input.read(&mut content) {
                 Ok(len) => len,
                 Err(error) => {
@@ -1313,12 +1337,12 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
             };
             // println!("content: {:?}", str::from_utf8(&content));
 
-            if bytes_read == len {
+            if bytes_read == data_length {
                 Ok(content)
             } else {
                 Err(DebuggerError::Other(anyhow!(
                     "Failed to read the expected {} bytes from incoming data",
-                    len
+                    data_length
                 )))
             }
         }
@@ -1354,9 +1378,32 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
                 resp.success = true;
                 resp.body = body_value;
             }
-            Err(e) => {
+            Err(debugger_error) => {
                 resp.success = false;
-                resp.message = Some(e.to_string());
+                resp.message = {
+                    let mut response_message = debugger_error.to_string();
+                    let mut offset_iterations = 0;
+                    let mut child_error: Option<&dyn std::error::Error> =
+                        std::error::Error::source(&debugger_error);
+                    while let Some(source_error) = child_error {
+                        offset_iterations += 1;
+                        response_message = format!(
+                            "{}\n{:?}",
+                            response_message,
+                            <dyn std::error::Error>::to_string(source_error)
+                        );
+                        for _offset_counter in 0..offset_iterations {
+                            response_message = format!("{}\t", response_message);
+                        }
+                        response_message = format!(
+                            "{}{:?}",
+                            response_message,
+                            <dyn std::error::Error>::to_string(source_error)
+                        );
+                        child_error = std::error::Error::source(source_error);
+                    }
+                    Some(response_message)
+                };
             }
         };
         if self.adapter_type == DebugAdapterType::DapClient {
@@ -1366,7 +1413,21 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
             };
             self.send_data(&encoded_resp);
             if !resp.success {
-                self.log_to_console(format!("ERROR: {}", &resp.message.unwrap()));
+                self.log_to_console(&resp.clone().message.unwrap());
+                self.show_message(MessageSeverity::Error, &resp.message.unwrap());
+            } else {
+                match self.console_log_level {
+                    ConsoleLog::Error => {}
+                    ConsoleLog::Info | ConsoleLog::Warn => {
+                        self.log_to_console(format!(
+                            "   Sent DAP Response sequence #{} : {}",
+                            resp.seq, resp.command
+                        ));
+                    }
+                    ConsoleLog::Debug | ConsoleLog::Trace => {
+                        self.log_to_console(format!("\nSent DAP Response: {:#?}", resp));
+                    }
+                }
             }
         } else {
             //DebugAdapterType::CommandLine
@@ -1430,13 +1491,10 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
                 //This would result in an endless loop
                 match self.console_log_level {
                     ConsoleLog::Error => {}
-                    ConsoleLog::Info => {
-                        self.log_to_console(format!(
-                            "INFO: Triggered DAP Event: {}",
-                            new_event.event
-                        ));
+                    ConsoleLog::Info | ConsoleLog::Warn => {
+                        self.log_to_console(format!("\nTriggered DAP Event: {}", new_event.event));
                     }
-                    ConsoleLog::Debug => {
+                    ConsoleLog::Debug | ConsoleLog::Trace => {
                         self.log_to_console(format!("INFO: Triggered DAP Event: {:#?}", new_event));
                     }
                 }
@@ -1463,16 +1521,27 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
                         self.last_known_status.short_long_status().1.to_owned()
                     );
                 }
-                _ => {}
+                other => match self.console_log_level {
+                    ConsoleLog::Error => {}
+                    ConsoleLog::Info | ConsoleLog::Warn => {
+                        self.log_to_console(format!("Triggered Event: {}", other));
+                    }
+                    ConsoleLog::Debug | ConsoleLog::Trace => {
+                        self.log_to_console(format!(
+                            "Triggered Event: {:#?}",
+                            serde_json::to_value(event_body).unwrap_or_default()
+                        ));
+                    }
+                },
             }
         }
         true
     }
 
-    pub fn log_to_console<S: Into<String>>(&mut self, msg: S) -> bool {
+    pub fn log_to_console<S: Into<String>>(&mut self, message: S) -> bool {
         if self.adapter_type == DebugAdapterType::DapClient {
             let event_body = match serde_json::to_value(OutputEventBody {
-                output: format!("{}\n", msg.into()),
+                output: format!("{}\n", message.into()),
                 category: Some("console".to_owned()),
                 variables_reference: None,
                 source: None,
@@ -1489,7 +1558,71 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
             self.send_event("output", Some(event_body))
         } else {
             //DebugCAdapterType::CommandLine
-            println!("{}", msg.into());
+            println!("{}", message.into());
+            true
+        }
+    }
+
+    /// Send a custom "probe-rs-show-message" event to the MS DAP Client.
+    /// The `severity` field can be one of `information`, `warning`, or `error`.
+    pub fn show_message(&mut self, severity: MessageSeverity, message: impl Into<String>) -> bool {
+        if self.adapter_type == DebugAdapterType::DapClient {
+            let event_body = match serde_json::to_value(ShowMessageEventBody {
+                severity,
+                message: format!("{}\n", message.into()),
+            }) {
+                Ok(event_body) => event_body,
+                Err(_) => {
+                    return false;
+                }
+            };
+            self.send_event("probe-rs-show-message", Some(event_body))
+        } else {
+            //DebugAdapterType::CommandLine
+            println!("{:?}: {}", severity, message.into());
+            true
+        }
+    }
+
+    /// Send a custom `probe-rs-rtt-channel-config` event to the MS DAP Client, to create a window for a specific RTT channel.
+    pub fn rtt_window(
+        &mut self,
+        channel_number: usize,
+        channel_name: String,
+        data_format: DataFormat,
+    ) -> bool {
+        if self.adapter_type == DebugAdapterType::DapClient {
+            let event_body = match serde_json::to_value(RttChannelEventBody {
+                channel_number,
+                channel_name,
+                data_format,
+            }) {
+                Ok(event_body) => event_body,
+                Err(_) => {
+                    return false;
+                }
+            };
+            self.send_event("probe-rs-rtt-channel-config", Some(event_body))
+        } else {
+            true
+        }
+    }
+
+    /// Send a custom `probe-rs-rtt-data` event to the MS DAP Client, to
+    pub fn rtt_output(&mut self, channel_number: usize, rtt_data: String) -> bool {
+        if self.adapter_type == DebugAdapterType::DapClient {
+            let event_body = match serde_json::to_value(RttDataEventBody {
+                channel_number,
+                data: rtt_data,
+            }) {
+                Ok(event_body) => event_body,
+                Err(_) => {
+                    return false;
+                }
+            };
+            self.send_event("probe-rs-rtt-data", Some(event_body))
+        } else {
+            println!("RTT Channel {}: {}", channel_number, rtt_data);
             true
         }
     }

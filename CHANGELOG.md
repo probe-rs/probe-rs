@@ -31,6 +31,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Support batching of FTDI commands and use it for RISCV (#717)
 - Include the chip string for `NoRamDefined` in its error message
 - Improved handling of errors in CMSIS-DAP commands (#745).
+- Implemented RTT (String, BinaryLE, and Defmt) in `probe-rs-debugger` (#688).
+- `probe-rs-debugger` will use the VSCode Client `launch.json` configuration to set RUST_LOG levels and send output to the VSCode Debug Console (#688).
 - Bumped dependencies `bitvec 0.19.4`to `bitvec 0.22`, `nom 6.0.0` to `nom 7.0.0-alpha1`. (#756)
 - `DebugProbeError::CommandNotSupportedByProbe` now holds a name string of the unsupported command.
 - Target YAMLs: Renamed `core.type` values from `M0, M4, etc` to `armv6m`, `armv7m`, `armv8m`.

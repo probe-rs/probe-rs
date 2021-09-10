@@ -29,7 +29,7 @@ bitfield! {
     pub s_halt, _: 17;
     pub s_regrdy, _: 16;
     pub c_snapstall, set_c_snapstall: 5;
-    pub c_maskings, set_c_maskints: 3;
+    pub c_maskints, set_c_maskints: 3;
     pub c_step, set_c_step: 2;
     pub c_halt, set_c_halt: 1;
     pub c_debugen, set_c_debugen: 0;
@@ -409,7 +409,9 @@ impl<'probe> CoreInterface for Armv7m<'probe> {
         let dhcsr = Dhcsr(self.memory.read_word_32(Dhcsr::ADDRESS)?);
 
         if dhcsr.s_lockup() {
-            log::warn!("The core is in locked up status as a result of an unrecoverable exception");
+            log::error!(
+                "The core is in locked up status as a result of an unrecoverable exception"
+            );
 
             self.state.current_state = CoreStatus::LockedUp;
 
@@ -505,12 +507,21 @@ impl<'probe> CoreInterface for Armv7m<'probe> {
         //before we run, we always perform a single instruction step, to account for possible breakpoints that might get us stuck on the current instruction
         self.step()?;
 
-        let mut value = Dhcsr(0);
-        value.set_c_halt(false);
-        value.set_c_debugen(true);
-        value.enable_write();
+        let mut dhcsr = Dhcsr(self.memory.read_word_32(Dhcsr::ADDRESS)?);
 
-        self.memory.write_word_32(Dhcsr::ADDRESS, value.into())?;
+        // First disable the DHCSR->C_MASKINTS
+        if dhcsr.c_maskints() {
+            dhcsr.set_c_maskints(false);
+            dhcsr.enable_write();
+            self.memory.write_word_32(Dhcsr::ADDRESS, dhcsr.into())?;
+            self.memory.flush()?;
+        }
+
+        // Exit halt state ..
+        dhcsr.set_c_step(false);
+        dhcsr.set_c_halt(false);
+        dhcsr.enable_write();
+        self.memory.write_word_32(Dhcsr::ADDRESS, dhcsr.into())?;
         self.memory.flush()?;
 
         // We assume that the core is running now
@@ -529,17 +540,27 @@ impl<'probe> CoreInterface for Armv7m<'probe> {
                 false
             };
 
-        let mut value = Dhcsr(0);
+        let mut dhcsr = Dhcsr(self.memory.read_word_32(Dhcsr::ADDRESS)?);
+
+        // Follow the rules of the ... ARMv7-M Architecture reference, C1.6 Debug System Registers - DHCSR, with respect to setting maskints
+        if !dhcsr.c_debugen() {
+            log::warn!("Attempting to STEP while DHCSR->C_DEBUGEN is false");
+        }
+        if !dhcsr.c_maskints() {
+            dhcsr.set_c_maskints(true); // This must be reset to false when we run() again.
+            dhcsr.enable_write();
+            self.memory.write_word_32(Dhcsr::ADDRESS, dhcsr.into())?;
+            self.memory.flush()?;
+        }
+
         // Leave halted state.
         // Step one instruction.
-        value.set_c_step(true);
-        value.set_c_halt(false);
-        value.set_c_debugen(true);
-        value.set_c_maskints(true);
-        value.enable_write();
-
-        self.memory.write_word_32(Dhcsr::ADDRESS, value.into())?;
+        dhcsr.set_c_step(true);
+        dhcsr.set_c_halt(false);
+        dhcsr.enable_write();
+        self.memory.write_word_32(Dhcsr::ADDRESS, dhcsr.into())?;
         self.memory.flush()?;
+
         self.wait_for_core_halted(Duration::from_millis(100))?;
 
         //Re-enable breakpoints before we continue

@@ -2,6 +2,7 @@ mod dap_types; //Uses Schemafy to generate DAP types from Json
 mod debug_adapter;
 mod debugger; //The probe-rs debugger.
 mod info;
+mod rtt;
 
 use anyhow::Result;
 use debugger::{
@@ -143,15 +144,12 @@ enum CliCommands {
 }
 
 fn main() -> Result<()> {
-    //TODO: See if we can have a single solution for RUST_LOG and the DAP Client Console Log (`debug_adapter::log_to_console`)
-    // Initialize the logging backend.
     env_logger::Builder::from_default_env()
         .target(env_logger::Target::Stderr) // Log to Stderr, so that VSCode Debug Extension can intercept the messages and pass them to the VSCode DAP Client
         .init();
 
     let matches = CliCommands::from_args();
 
-    //TODO: Fix all the unwrap() and ?'s
     match matches {
         CliCommands::List {} => list_connected_devices()?,
         CliCommands::Info { debugger_options } => {

@@ -58,13 +58,20 @@ impl Channel {
         ptr: u32,
         mem: &[u8],
     ) -> Result<Option<Channel>, Error> {
-        let buffer_ptr: u32 = mem.pread_with(Self::O_BUFFER_PTR, LE).unwrap();
+        let buffer_ptr: u32 = match mem.pread_with(Self::O_BUFFER_PTR, LE) {
+            Ok(buffer_ptr) => buffer_ptr,
+            Err(_error) => return Err(Error::MemoryRead("RTT channel address".to_string())),
+        };
+
         if buffer_ptr == 0 {
             // This buffer isn't in use
             return Ok(None);
         }
 
-        let name_ptr: u32 = mem.pread_with(Self::O_NAME, LE).unwrap();
+        let name_ptr: u32 = match mem.pread_with(Self::O_NAME, LE) {
+            Ok(name_ptr) => name_ptr,
+            Err(_error) => return Err(Error::MemoryRead("RTT channel name".to_string())),
+        };
 
         let name = if name_ptr == 0 {
             None
@@ -376,11 +383,16 @@ fn read_c_string(
     let mut bytes = vec![0u8; min(128, (range.end - ptr) as usize)];
     core.read_8(ptr, bytes.as_mut())?;
 
-    // If the bytes read contain a null, return the preceding part as a string, otherwise None.
-    Ok(bytes
+    let return_value = bytes
         .iter()
         .position(|&b| b == 0)
-        .map(|p| String::from_utf8_lossy(&bytes[..p]).into_owned()))
+        .map(|p| String::from_utf8_lossy(&bytes[..p]).into_owned());
+    log::debug!(
+        "probe-rs-rtt::Channel::read_c_string() result = {:?}",
+        return_value
+    );
+    // If the bytes read contain a null, return the preceding part as a string, otherwise None.
+    Ok(return_value)
 }
 
 /// Specifies what to do when a channel doesn't have enough buffer space for a complete write on the

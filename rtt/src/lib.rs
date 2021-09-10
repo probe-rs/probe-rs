@@ -78,4 +78,8 @@ pub enum Error {
     /// Wraps errors propagated up from probe-rs.
     #[error("Error communicating with probe: {0}")]
     Probe(#[from] probe_rs::Error),
+
+    /// Wraps errors propagated up from reading memory on the target.
+    #[error("Unexpected error while reading {0} from target memory. Please report this as a bug.")]
+    MemoryRead(String),
 }
