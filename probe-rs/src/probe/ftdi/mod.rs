@@ -19,7 +19,7 @@ mod commands;
 
 use self::commands::{JtagCommand, WriteRegisterCommand};
 
-use super::{BatchExecutionError, CommandResult, CommandResults, DeferredCommandResult};
+use super::{BatchExecutionError, CommandResult};
 
 #[derive(Debug)]
 struct JtagChainItem {
@@ -399,8 +399,6 @@ pub struct FtdiProbe {
     adapter: JtagAdapter,
     speed_khz: u32,
     idle_cycles: u8,
-    queued_commands: Vec<Box<dyn JtagCommand + Send>>,
-    output_transformers: Vec<Option<fn(Vec<u8>) -> Result<u32, DebugProbeError>>>,
 }
 
 impl DebugProbe for FtdiProbe {
@@ -426,8 +424,6 @@ impl DebugProbe for FtdiProbe {
             adapter,
             speed_khz: 0,
             idle_cycles: 0,
-            queued_commands: vec![],
-            output_transformers: vec![],
         };
         log::debug!("opened probe: {:?}", probe);
         Ok(Box::new(probe))
@@ -580,33 +576,14 @@ impl JTAGAccess for FtdiProbe {
         Ok(r)
     }
 
-    fn schedule_write_register(
-        &mut self,
-        address: u32,
-        data: &[u8],
-        len: u32,
-        transform: fn(Vec<u8>) -> Result<u32, DebugProbeError>,
-    ) -> Result<Box<dyn DeferredCommandResult>, DebugProbeError> {
-        self.queued_commands.push(Box::new(
-            WriteRegisterCommand::new(
-                address,
-                data.to_vec(),
-                len as usize,
-                self.idle_cycles as usize,
-                self.adapter
-                    .get_chain_params()
-                    .map_err(|e| DebugProbeError::ProbeSpecific(Box::new(e)))?,
-            )
-            .map_err(|e| DebugProbeError::ProbeSpecific(Box::new(e)))?,
-        ));
-        self.output_transformers.push(Some(transform));
-
-        Ok(Box::new(FtdiDeferredCommandResult::new(
-            self.queued_commands.len() - 1,
-        )))
+    fn get_idle_cycles(&self) -> u8 {
+        self.idle_cycles
     }
 
-    fn execute(&mut self) -> Result<Box<dyn CommandResults>, BatchExecutionError> {
+    fn write_register_batch(
+        &mut self,
+        writes: &[super::JtagWriteCommand],
+    ) -> Result<Vec<CommandResult>, BatchExecutionError> {
         // this value was determined by experimenting and doesn't match e.g
         // the libftdi read/write chunk size - it is hopefully useful for every setup
         // max value seems to be different for different adapters, e.g. for the Sipeed JTAG adapter
@@ -616,7 +593,28 @@ impl JTAGAccess for FtdiProbe {
         let mut index_offset = 0;
         let mut results = Vec::<CommandResult>::new();
 
-        for cmd_chunk in self.queued_commands.chunks_mut(CHUNK_SIZE) {
+        let chain_params = self.adapter.get_chain_params().map_err(|e| {
+            BatchExecutionError::new(DebugProbeError::ProbeSpecific(Box::new(e)), results.clone())
+        })?;
+
+        let commands: Result<Vec<WriteRegisterCommand>, _> = writes
+            .iter()
+            .map(|w| {
+                WriteRegisterCommand::new(
+                    w.address,
+                    w.data.clone(),
+                    w.len as usize,
+                    self.idle_cycles as usize,
+                    chain_params,
+                )
+            })
+            .collect();
+
+        let mut commands = commands.map_err(|e| {
+            BatchExecutionError::new(DebugProbeError::ProbeSpecific(Box::new(e)), results.clone())
+        })?;
+
+        for cmd_chunk in commands.chunks_mut(CHUNK_SIZE) {
             let mut out_buffer = Vec::<u8>::new();
             let mut size = 0;
             for cmd in cmd_chunk.iter_mut() {
@@ -635,7 +633,7 @@ impl JTAGAccess for FtdiProbe {
                 Err(e) => {
                     return Err(BatchExecutionError::new(
                         DebugProbeError::ProbeSpecific(Box::new(e)),
-                        Box::new(FtdiCommandResults::new(results)),
+                        results.clone(),
                     ));
                 }
             }
@@ -648,7 +646,7 @@ impl JTAGAccess for FtdiProbe {
                 if t0.elapsed() > timeout {
                     return Err(BatchExecutionError::new(
                         DebugProbeError::Timeout,
-                        Box::new(FtdiCommandResults::new(results)),
+                        results.clone(),
                     ));
                 }
 
@@ -658,7 +656,7 @@ impl JTAGAccess for FtdiProbe {
                     Err(e) => {
                         return Err(BatchExecutionError::new(
                             DebugProbeError::ProbeSpecific(Box::new(e)),
-                            Box::new(FtdiCommandResults::new(results)),
+                            results.clone(),
                         ));
                     }
                 }
@@ -670,7 +668,7 @@ impl JTAGAccess for FtdiProbe {
                         io::ErrorKind::InvalidData,
                         "Read more data than expected",
                     ))),
-                    Box::new(FtdiCommandResults::new(results)),
+                    results.clone(),
                 ));
             }
 
@@ -685,32 +683,18 @@ impl JTAGAccess for FtdiProbe {
 
                 match result {
                     Ok(data) => {
-                        let transformer = self.output_transformers[index];
+                        let transformer = writes[index].transform;
 
-                        match transformer {
-                            Some(transformer) => {
-                                let data = match data {
-                                    CommandResult::VecU8(data) => data,
-                                    _ => panic!("Internal error occured. Cannot have a transformer function for outputs other than Vec<u8>"),
-                                };
-                                results.push(CommandResult::U32(transformer(data).map_err(
-                                    |e| {
-                                        BatchExecutionError::new(
-                                            e,
-                                            Box::new(FtdiCommandResults::new(results.clone())),
-                                        )
-                                    },
-                                )?));
-                            }
-                            None => results.push(data),
-                        }
+                        let data = match data {
+                            CommandResult::VecU8(data) => data,
+                            _ => panic!("Internal error occured. Cannot have a transformer function for outputs other than Vec<u8>"),
+                        };
+                        results.push(
+                            transformer(data)
+                                .map_err(|e| BatchExecutionError::new(e, results.clone()))?,
+                        );
                     }
-                    Err(e) => {
-                        return Err(BatchExecutionError::new(
-                            e,
-                            Box::new(FtdiCommandResults::new(results)),
-                        ))
-                    }
+                    Err(e) => return Err(BatchExecutionError::new(e, results.clone())),
                 }
 
                 pos += len;
@@ -719,45 +703,7 @@ impl JTAGAccess for FtdiProbe {
             index_offset += cmd_chunk.len();
         }
 
-        self.queued_commands = vec![];
-        Ok(Box::new(FtdiCommandResults::new(results)))
-    }
-}
-
-struct FtdiDeferredCommandResult {
-    index: usize,
-}
-
-impl FtdiDeferredCommandResult {
-    fn new(index: usize) -> FtdiDeferredCommandResult {
-        FtdiDeferredCommandResult { index }
-    }
-}
-
-impl DeferredCommandResult for FtdiDeferredCommandResult {
-    fn get(&self, command_results: &dyn CommandResults) -> CommandResult {
-        command_results.get(self.index)
-    }
-}
-
-#[derive(Debug)]
-struct FtdiCommandResults {
-    results: Vec<CommandResult>,
-}
-
-impl FtdiCommandResults {
-    fn new(results: Vec<CommandResult>) -> FtdiCommandResults {
-        FtdiCommandResults { results }
-    }
-}
-
-impl CommandResults for FtdiCommandResults {
-    fn get(&self, index: usize) -> CommandResult {
-        self.results[index].clone()
-    }
-
-    fn len(&self) -> usize {
-        self.results.len()
+        Ok(results)
     }
 }
 
