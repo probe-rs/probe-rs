@@ -27,7 +27,7 @@ pub struct RttDataEventBody {
 pub enum MessageSeverity {
     Information,
     Warning,
-    Error
+    Error,
 }
 
 #[derive(Clone, PartialEq, Debug, Deserialize, Serialize)]

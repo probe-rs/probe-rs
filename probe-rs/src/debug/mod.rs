@@ -35,7 +35,7 @@ pub enum DebugError {
     Parse(#[from] gimli::read::Error),
     #[error("Non-UTF8 data found in debug data")]
     NonUtf8(#[from] Utf8Error),
-    #[error(transparent)] //"Error using the probe")]
+    #[error("Error using the probe")]
     Probe(#[from] crate::Error),
     #[error(transparent)]
     CharConversion(#[from] std::char::CharTryFromError),
@@ -1112,8 +1112,9 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                 Complete => break,
                 RequiresMemory { address, size, .. } => {
                     let mut buff = vec![0u8; size as usize];
-                    core.read_8(address as u32, &mut buff)
-                        .map_err(DebugError::Probe)?;
+                    core.read_8(address as u32, &mut buff).map_err(|error| {
+                        DebugError::Other(anyhow::anyhow!("Failed to read memory. {:?}", error))
+                    })?;
                     match size {
                         1 => evaluation.resume_with_memory(gimli::Value::U8(buff[0]))?,
                         2 => {

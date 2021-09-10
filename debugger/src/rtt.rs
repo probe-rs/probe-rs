@@ -118,7 +118,7 @@ impl RttActiveChannel {
             .as_ref()
             .map(|up| up.buffer_size())
             .or_else(|| down_channel.as_ref().map(|down| down.buffer_size()))
-            .unwrap_or(1024); // This should never be the case ...
+            .unwrap_or(1024); // If no explicit config is requested, assign a default
         let defmt_enabled: bool = up_channel
             .as_ref()
             .map(|up| up.name() == Some("defmt"))
@@ -127,7 +127,7 @@ impl RttActiveChannel {
                     .as_ref()
                     .map(|down| down.name() == Some("defmt"))
             })
-            .unwrap_or(false); // This should never be the case ...
+            .unwrap_or(false); // If no explicit config is requested, assign a default
         let data_format: DataFormat = if defmt_enabled {
             DataFormat::Defmt
         } else {
@@ -313,7 +313,6 @@ impl RttActiveTarget {
                                         for element in &active_channel.rtt_buffer.0[..bytes_read] {
                                             write!(formatted_data, "{:#04x}", element).map_or_else(|err| log::error!("Failed to format RTT data - {:?}", err), |r|r); //Width of 4 allows 0xFF to be printed.
                                         }
-                                        // write!(formatted_data, "").map_or_else(|err| log::error!("Failed to format RTT data - {:?}", err), |r|r);
                                     }
                                     DataFormat::Defmt => {
                                         match defmt_state {

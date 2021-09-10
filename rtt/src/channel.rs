@@ -60,7 +60,7 @@ impl Channel {
     ) -> Result<Option<Channel>, Error> {
         let buffer_ptr: u32 = match mem.pread_with(Self::O_BUFFER_PTR, LE) {
             Ok(buffer_ptr) => buffer_ptr,
-            Err(error) => return Err(Error::Scroll(error)),
+            Err(_error) => return Err(Error::MemoryRead("RTT channel address".to_string())),
         };
 
         if buffer_ptr == 0 {
@@ -70,7 +70,7 @@ impl Channel {
 
         let name_ptr: u32 = match mem.pread_with(Self::O_NAME, LE) {
             Ok(name_ptr) => name_ptr,
-            Err(error) => return Err(Error::Scroll(error)),
+            Err(_error) => return Err(Error::MemoryRead("RTT channel name".to_string())),
         };
 
         let name = if name_ptr == 0 {
