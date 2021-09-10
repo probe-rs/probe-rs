@@ -44,7 +44,6 @@ connect_under_reset = false
 
 [default.rtt]
 # Whether or not an RTTUI should be opened after flashing.
-# This is exclusive and cannot be used with GDB at the moment.
 enabled = false
 # A list of channel associations to be displayed. If left empty, all channels are displayed.
 # formats are: String, Defmt, BinaryLE,
@@ -67,7 +66,6 @@ log_path = "./logs"
 
 [default.gdb]
 # Whether or not a GDB server should be opened after flashing.
-# This is exclusive and cannot be used with RTT at the moment.
 enabled = false
 # The connection string in host:port format wher the GDB server will open a socket.
 gdb_connection_string = "127.0.0.1:1337"
