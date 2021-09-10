@@ -10,7 +10,6 @@ use crate::{
 };
 use anyhow::Result;
 use bitfield::bitfield;
-use log::debug;
 use std::sync::Arc;
 use std::{
     mem::size_of,
@@ -464,7 +463,7 @@ impl<'probe> CoreInterface for Armv6m<'probe> {
     }
 
     fn enable_breakpoints(&mut self, state: bool) -> Result<(), Error> {
-        debug!("Enabling breakpoints: {:?}", state);
+        log::debug!("Enabling breakpoints: {:?}", state);
         let mut value = BpCtrl(0);
         value.set_key(true);
         value.set_enable(state);
@@ -478,7 +477,7 @@ impl<'probe> CoreInterface for Armv6m<'probe> {
     }
 
     fn set_hw_breakpoint(&mut self, bp_register_index: usize, addr: u32) -> Result<(), Error> {
-        debug!("Setting breakpoint on address 0x{:08x}", addr);
+        log::debug!("Setting breakpoint on address 0x{:08x}", addr);
 
         // The highest 3 bits of the address have to be zero, otherwise the breakpoint cannot
         // be set at the address.

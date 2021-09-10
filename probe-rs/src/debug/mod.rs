@@ -22,7 +22,6 @@ use gimli::{
     DW_AT_abstract_origin, DebuggingInformationEntry, FileEntry, LineProgramHeader, Location,
     UnitOffset,
 };
-use log::{debug, error, info, warn};
 use object::read::{Object, ObjectSection};
 
 #[derive(Debug, thiserror::Error)]
@@ -243,7 +242,7 @@ impl<'debuginfo, 'probe, 'core> Iterator for StackFrameIterator<'debuginfo, 'pro
         let pc = match self.pc {
             Some(pc) => pc,
             None => {
-                debug!("Unable to determine next frame, program counter is zero");
+                log::debug!("Unable to determine next frame, program counter is zero");
                 return None;
             }
         };
@@ -353,9 +352,10 @@ impl<'debuginfo, 'probe, 'core> Iterator for StackFrameIterator<'debuginfo, 'pro
         let unwind_info = match unwind_info {
             Ok(uw) => uw,
             Err(e) => {
-                info!(
+                log::info!(
                     "Failed to retrieve debug information for program counter {:#x}: {}",
-                    pc, e
+                    pc,
+                    e
                 );
                 return None;
             }
@@ -380,7 +380,7 @@ impl<'debuginfo, 'probe, 'core> Iterator for StackFrameIterator<'debuginfo, 'pro
         };
 
         if let Some(ref cfa) = &current_cfa {
-            debug!("Current CFA: {:#x}", cfa);
+            log::debug!("Current CFA: {:#x}", cfa);
         }
 
         if !in_inlined_function {
@@ -431,7 +431,7 @@ impl<'debuginfo, 'probe, 'core> Iterator for StackFrameIterator<'debuginfo, 'pro
 
                         let val = u32::from_le_bytes(buff);
 
-                        debug!("reg[{: >}] @ {:#010x} = {:#08x}", i, addr, val);
+                        log::debug!("reg[{: >}] @ {:#010x} = {:#08x}", i, addr, val);
 
                         Some(val)
                     }
@@ -762,7 +762,7 @@ impl DebugInfo {
         line: u64,
         column: Option<u64>,
     ) -> Result<Option<u64>, DebugError> {
-        debug!(
+        log::debug!(
             "Looking for breakpoint location for {}:{}:{}",
             path.display(),
             line,
@@ -812,7 +812,7 @@ impl DebugInfo {
             0 => Ok(None),
             1 => Ok(Some(locations[0].0)),
             n => {
-                debug!("Found {} possible breakpoint locations", n);
+                log::debug!("Found {} possible breakpoint locations", n);
 
                 locations.sort_by({
                     |a, b| {
@@ -825,7 +825,7 @@ impl DebugInfo {
                 });
 
                 for loc in &locations {
-                    debug!("col={:?}, addr=0x{:08x}", loc.1, loc.0);
+                    log::debug!("col={:?}, addr=0x{:08x}", loc.1, loc.0);
                 }
 
                 match column {
@@ -2142,14 +2142,14 @@ fn extract_byte_size(
             Some(byte_size_attr) => match byte_size_attr.value() {
                 gimli::AttributeValue::Udata(byte_size) => byte_size,
                 other => {
-                    warn!("UNIMPLEMENTED: DW_AT_byte_size value: {:?} ", other);
+                    log::warn!("UNIMPLEMENTED: DW_AT_byte_size value: {:?} ", other);
                     0
                 }
             },
             None => 0,
         },
         Err(error) => {
-            warn!(
+            log::warn!(
                 "Failed to extract byte_size: {:?} for debug_entry {:?}",
                 error,
                 di_entry.tag().static_string()
@@ -2241,7 +2241,7 @@ pub(crate) fn _print_all_attributes(
                                         .unwrap()
                                 }
                                 x => {
-                                    error!(
+                                    log::error!(
                                         "Requested memory with size {}, which is not supported yet.",
                                         x
                                     );

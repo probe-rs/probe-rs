@@ -4,7 +4,6 @@ use crate::{dap_types::*, rtt::*};
 use crate::DebuggerError;
 use anyhow::{anyhow, Result};
 use capstone::{arch::arm::ArchMode, prelude::*, Capstone, Endian};
-use log::info;
 use probe_rs::debug::DebugInfo;
 use probe_rs::flashing::{download_file, download_file_with_options, DownloadOptions, Format};
 use probe_rs::{
@@ -1341,7 +1340,7 @@ pub fn debug(debugger_options: DebuggerOptions, dap: bool) {
                 log::info!("....Closing session from  :{}", addr);
             }
             None => {
-                info!(
+                log::info!(
                     "Debugger started in directory {}",
                     &current_dir().unwrap().display()
                 );

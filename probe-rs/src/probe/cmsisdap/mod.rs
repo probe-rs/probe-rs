@@ -43,8 +43,6 @@ use commands::{
     CmsisDapDevice, Status,
 };
 
-use log::{debug, warn};
-
 use std::time::Duration;
 
 pub struct CmsisDap {
@@ -94,12 +92,12 @@ impl CmsisDap {
         // Read remaining probe information.
         let packet_count = commands::send_command(&mut device, PacketCountCommand {})?;
         let caps: Capabilities = commands::send_command(&mut device, CapabilitiesCommand {})?;
-        debug!("Detected probe capabilities: {:?}", caps);
+        log::debug!("Detected probe capabilities: {:?}", caps);
         let mut swo_buffer_size = None;
         if caps.swo_uart_implemented || caps.swo_manchester_implemented {
             let swo_size = commands::send_command(&mut device, SWOTraceBufferSizeCommand {})?;
             swo_buffer_size = Some(swo_size as usize);
-            debug!("Probe SWO buffer size: {}", swo_size);
+            log::debug!("Probe SWO buffer size: {}", swo_size);
         }
 
         Ok(Self {
@@ -176,10 +174,10 @@ impl CmsisDap {
 
         let mut batch = std::mem::take(&mut self.batch);
 
-        debug!("{} items in batch", batch.len());
+        log::debug!("{} items in batch", batch.len());
 
         for retry in (0..5).rev() {
-            debug!("Attempting batch of {} items", batch.len());
+            log::debug!("Attempting batch of {} items", batch.len());
 
             let transfers: Vec<InnerTransferRequest> = batch
                 .iter()
@@ -201,7 +199,7 @@ impl CmsisDap {
 
             let count = response.transfer_count as usize;
 
-            debug!("{:?} of batch of {} items suceeded", count, batch.len());
+            log::debug!("{:?} of batch of {} items suceeded", count, batch.len());
 
             if response.last_transfer_response.protocol_error {
                 return Err(DapError::SwdProtocol.into());
@@ -265,7 +263,7 @@ impl CmsisDap {
     /// executed immediately if the batch is full, otherwise it is queued for
     /// later execution.
     fn batch_add(&mut self, command: BatchCommand) -> Result<Option<u32>, DebugProbeError> {
-        debug!("Adding command to batch: {}", command);
+        log::debug!("Adding command to batch: {}", command);
 
         self.batch.push(command);
 
@@ -313,7 +311,7 @@ impl CmsisDap {
     /// may differ from the requested baud rate).
     fn set_swo_baudrate(&mut self, baud: swo::BaudrateRequest) -> Result<u32, DebugProbeError> {
         let response = commands::send_command(&mut self.device, baud)?;
-        debug!("Requested baud {}, got {}", baud.0, response);
+        log::debug!("Requested baud {}, got {}", baud.0, response);
         if response == 0 {
             Err(CmsisDapError::SwoBaudrateNotConfigured.into())
         } else {
@@ -418,7 +416,7 @@ impl DebugProbe for CmsisDap {
 
     /// Enters debug mode.
     fn attach(&mut self) -> Result<(), DebugProbeError> {
-        debug!("Attaching to target system (clock = {}kHz)", self.speed_khz);
+        log::debug!("Attaching to target system (clock = {}kHz)", self.speed_khz);
 
         let protocol = if let Some(protocol) = self.protocol {
             match protocol {
@@ -576,15 +574,15 @@ impl RawDapAccess for CmsisDap {
                     // response to the DPIDR read is incorrect, or there is no response, the host must start the sequence again."
                     match self.raw_read_register(PortType::DebugPort, 0) {
                         Ok(res) => {
-                            debug!("DPIDR read {:08x}", res);
+                            log::debug!("DPIDR read {:08x}", res);
                             return Ok(());
                         }
                         Err(e) => {
-                            debug!("DPIDR read failed, retrying. Error: {:?}", e);
+                            log::debug!("DPIDR read failed, retrying. Error: {:?}", e);
                         }
                     }
                 }
-                warn!("Giving up on TARGETSEL, too many retries.");
+                log::warn!("Giving up on TARGETSEL, too many retries.");
                 Err(DapError::NoAcknowledge.into())
             }
         }
@@ -636,7 +634,7 @@ impl RawDapAccess for CmsisDap {
             let request =
                 TransferBlockRequest::write_request(register_address as u8, port, Vec::from(chunk));
 
-            debug!("Transfer block: chunk={}, len={} bytes", i, chunk.len() * 4);
+            log::debug!("Transfer block: chunk={}, len={} bytes", i, chunk.len() * 4);
 
             let resp: TransferBlockResponse =
                 commands::send_command(&mut self.device, request).map_err(DebugProbeError::from)?;
@@ -678,7 +676,7 @@ impl RawDapAccess for CmsisDap {
                 chunk.len() as u16,
             );
 
-            debug!("Transfer block: chunk={}, len={} bytes", i, chunk.len() * 4);
+            log::debug!("Transfer block: chunk={}, len={} bytes", i, chunk.len() * 4);
 
             let resp: TransferBlockResponse =
                 commands::send_command(&mut self.device, request).map_err(DebugProbeError::from)?;
@@ -754,11 +752,11 @@ impl SwoAccess for CmsisDap {
         // the probe in V2 mode and it has an SWO endpoint, request that, otherwise
         // request the DAP_SWO_Data polling mode.
         if caps.swo_streaming_trace_implemented && self.device.swo_streaming_supported() {
-            debug!("Starting SWO capture with streaming transport");
+            log::debug!("Starting SWO capture with streaming transport");
             self.set_swo_transport(swo::TransportRequest::WinUsbEndpoint)?;
             self.swo_streaming = true;
         } else {
-            debug!("Starting SWO capture with polled transport");
+            log::debug!("Starting SWO capture with polled transport");
             self.set_swo_transport(swo::TransportRequest::DataCommand)?;
             self.swo_streaming = false;
         }
@@ -786,7 +784,7 @@ impl SwoAccess for CmsisDap {
     }
 
     fn disable_swo(&mut self) -> Result<(), ProbeRsError> {
-        debug!("Stopping SWO capture");
+        log::debug!("Stopping SWO capture");
         self.stop_swo_capture()?;
         self.swo_active = false;
         Ok(())
@@ -834,7 +832,7 @@ impl SwoAccess for CmsisDap {
 
 impl Drop for CmsisDap {
     fn drop(&mut self) {
-        debug!("Detaching from CMSIS-DAP probe");
+        log::debug!("Detaching from CMSIS-DAP probe");
         // We ignore the error cases as we can't do much about it anyways.
         let _ = self.process_batch();
 
