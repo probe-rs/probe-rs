@@ -90,7 +90,7 @@ impl Dtm {
         self.queued_commands = Vec::new();
 
         match self.probe.write_register_batch(&cmds) {
-            Ok(r) => return Ok(r),
+            Ok(r) => Ok(r),
             Err(e) => match e.error {
                 DebugProbeError::ArchitectureSpecific(ref ae) => {
                     match ae.downcast_ref::<RiscvError>() {
@@ -106,10 +106,10 @@ impl Dtm {
 
                             self.execute()
                         }
-                        _ => Err(e.error)?,
+                        _ => Err(e.error),
                     }
                 }
-                _ => Err(e.error)?,
+                _ => Err(e.error),
             },
         }
     }

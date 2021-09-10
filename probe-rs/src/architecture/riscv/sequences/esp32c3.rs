@@ -6,7 +6,7 @@ use crate::MemoryInterface;
 pub struct ESP32C3(());
 
 impl ESP32C3 {
-    pub fn new() -> Arc<dyn RiscvDebugSequence> {
+    pub fn create() -> Arc<dyn RiscvDebugSequence> {
         Arc::new(Self(()))
     }
 }

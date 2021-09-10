@@ -83,7 +83,7 @@ impl ArchitectureInterface {
                 let config = target
                     .cores
                     .get(core_state.id())
-                    .ok_or(Error::CoreNotFound(core_state.id()))?;
+                    .ok_or_else(|| Error::CoreNotFound(core_state.id()))?;
                 let arm_core_access_options = match &config.core_access_options {
                     probe_rs_target::CoreAccessOptions::Arm(opt) => Ok(opt),
                     probe_rs_target::CoreAccessOptions::Riscv(_) => {
@@ -136,7 +136,7 @@ impl Session {
                 let arm_core_access_options = match config.core_access_options {
                     probe_rs_target::CoreAccessOptions::Arm(opt) => Ok(opt),
                     probe_rs_target::CoreAccessOptions::Riscv(_) => {
-                        Err(AccessPortError::InvalidCoreAccessOption(config.clone()))
+                        Err(AccessPortError::InvalidCoreAccessOption(config))
                     }
                 }?;
 
@@ -527,7 +527,7 @@ fn get_target_from_selector(
             if probe.has_arm_interface() {
                 match probe.try_into_arm_interface() {
                     Ok(interface) => {
-                        let mut interface = interface.initialize(DefaultArmSequence::new())?;
+                        let mut interface = interface.initialize(DefaultArmSequence::create())?;
 
                         // TODO:
                         let dp = DpAddress::Default;

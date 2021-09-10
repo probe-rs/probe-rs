@@ -68,16 +68,16 @@ impl Target {
     ) -> Target {
         // TODO: Figure out how to handle this if cores can have different architectures.
         let mut debug_sequence = match cores[0].core_type.architecture() {
-            Architecture::Arm => DebugSequence::Arm(DefaultArmSequence::new()),
-            Architecture::Riscv => DebugSequence::Riscv(DefaultRiscvSequence::new()),
+            Architecture::Arm => DebugSequence::Arm(DefaultArmSequence::create()),
+            Architecture::Riscv => DebugSequence::Riscv(DefaultRiscvSequence::create()),
         };
 
         if chip.name.starts_with("LPC55S69") {
             log::warn!("Using custom sequence for LPC55S69");
-            debug_sequence = DebugSequence::Arm(LPC55S69::new());
+            debug_sequence = DebugSequence::Arm(LPC55S69::create());
         } else if chip.name.starts_with("esp32c3") {
             log::warn!("Using custom sequence for ESP32c3");
-            debug_sequence = DebugSequence::Riscv(ESP32C3::new());
+            debug_sequence = DebugSequence::Riscv(ESP32C3::create());
         }
 
         Target {

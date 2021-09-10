@@ -20,7 +20,7 @@ use super::ArmDebugSequence;
 pub struct LPC55S69(());
 
 impl LPC55S69 {
-    pub fn new() -> Arc<dyn ArmDebugSequence> {
+    pub fn create() -> Arc<dyn ArmDebugSequence> {
         Arc::new(Self(()))
     }
 }
@@ -60,7 +60,7 @@ impl ArmDebugSequence for LPC55S69 {
             }
 
             if timeout {
-                return Err(DebugProbeError::Timeout.into());
+                return Err(DebugProbeError::Timeout);
             }
 
             // TODO: Handle JTAG Specific part

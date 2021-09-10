@@ -15,7 +15,12 @@ use crate::{
 use anyhow::anyhow;
 use jep106::JEP106Code;
 
-use std::{collections::HashMap, fmt::Debug, sync::Arc, time::Duration};
+use std::{
+    collections::{hash_map, HashMap},
+    fmt::Debug,
+    sync::Arc,
+    time::Duration,
+};
 
 #[derive(Debug, thiserror::Error, Clone, PartialEq)]
 pub enum DapError {
@@ -77,7 +82,7 @@ pub trait UninitializedArmProbe: SwdSequence {
     ) -> Result<Box<dyn ArmProbeInterface>, ProbeRsError>;
 
     fn initialize_unspecified(self: Box<Self>) -> Result<Box<dyn ArmProbeInterface>, ProbeRsError> {
-        self.initialize(DefaultArmSequence::new())
+        self.initialize(DefaultArmSequence::create())
     }
 
     /// Read DPDIR Register
@@ -393,10 +398,10 @@ impl<'interface> ArmCommunicationInterface<Initialized> {
 
         self.state.current_dp = Some(dp);
 
-        if !self.state.dps.contains_key(&dp) {
+        if let hash_map::Entry::Vacant(entry) = self.state.dps.entry(dp) {
             let sequence = self.state.sequence.clone();
 
-            self.state.dps.insert(dp, DpState::new());
+            entry.insert(DpState::new());
             sequence.debug_port_start(self, dp)?;
 
             // Make sure we always enable the overrun detect mode as we rely on it for good, stable communication.

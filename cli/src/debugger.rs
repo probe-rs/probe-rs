@@ -111,52 +111,48 @@ impl DebugCli {
                     if exception_number != 0 {
                         println!("Currently handling exception {}", exception_number);
 
-                        match exception_number {
-                            3 => {
-                                println!("Hard Fault!");
+                        if exception_number == 3 {
+                            println!("Hard Fault!");
 
 
-                                let return_address = cli_data.core.read_core_reg(cli_data.core.registers().return_address())?;
+                            let return_address = cli_data.core.read_core_reg(cli_data.core.registers().return_address())?;
 
-                                println!("Return address (LR): {:#010x}", return_address);
+                            println!("Return address (LR): {:#010x}", return_address);
 
-                                // Get reason for hard fault
-                                let hfsr = cli_data.core.read_word_32(0xE000_ED2C)?;
+                            // Get reason for hard fault
+                            let hfsr = cli_data.core.read_word_32(0xE000_ED2C)?;
 
-                                if hfsr & (1 << 30) == (1 << 30) {
-                                    println!("-> configurable priority exception has been escalated to hard fault!");
-
-
-                                    // read cfsr 
-                                    let cfsr = cli_data.core.read_word_32(0xE000_ED28)?;
-
-                                    let ufsr = (cfsr >> 16) & 0xffff;
-                                    let bfsr = (cfsr >> 8) & 0xff;
-                                    let mmfsr = (cfsr >> 0) & 0xff;
+                            if hfsr & (1 << 30) == (1 << 30) {
+                                println!("-> configurable priority exception has been escalated to hard fault!");
 
 
-                                    if ufsr != 0 {
-                                        println!("\tUsage Fault     - UFSR: {:#06x}", ufsr);
-                                    }
+                                // read cfsr 
+                                let cfsr = cli_data.core.read_word_32(0xE000_ED28)?;
 
-                                    if bfsr != 0 {
-                                        println!("\tBus Fault       - BFSR: {:#04x}", bfsr);
+                                let ufsr = (cfsr >> 16) & 0xffff;
+                                let bfsr = (cfsr >> 8) & 0xff;
+                                let mmfsr = cfsr & 0xff;
 
-                                        if bfsr & (1 << 7) == (1 << 7) {
-                                            // Read address from BFAR
-                                            let bfar = cli_data.core.read_word_32(0xE000_ED38)?;
-                                            println!("\t Location       - BFAR: {:#010x}", bfar);
-                                        }
-                                    }
 
-                                    if mmfsr != 0 {
-                                        println!("\tMemManage Fault - BFSR: {:04x}", bfsr);
-                                    }
-
+                                if ufsr != 0 {
+                                    println!("\tUsage Fault     - UFSR: {:#06x}", ufsr);
                                 }
+
+                                if bfsr != 0 {
+                                    println!("\tBus Fault       - BFSR: {:#04x}", bfsr);
+
+                                    if bfsr & (1 << 7) == (1 << 7) {
+                                        // Read address from BFAR
+                                        let bfar = cli_data.core.read_word_32(0xE000_ED38)?;
+                                        println!("\t Location       - BFAR: {:#010x}", bfar);
+                                    }
+                                }
+
+                                if mmfsr != 0 {
+                                    println!("\tMemManage Fault - BFSR: {:04x}", bfsr);
+                                }
+
                             }
-                            // Ignore other exceptions for now
-                            _ => ()
                         }
                     }
                 }
