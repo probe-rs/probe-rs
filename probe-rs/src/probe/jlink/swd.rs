@@ -248,7 +248,6 @@ fn perform_transfers<P: RawSwdIo>(
         num_transfers += 1;
     }
 
-    //if need_ap_read || write_response_pending {
     if need_ap_read || write_response_pending {
         if write_response_pending {
             io_sequence.add_output_sequence(&vec![

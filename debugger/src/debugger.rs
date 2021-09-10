@@ -241,8 +241,8 @@ pub struct DebugCommand {
     pub(crate) help_text: &'static str,
     /// The function that will be called when this command is intiated. It returns data via the DebugAdapter send_response() methods, so the only return from the function is and hint to the caller on whether it should continue with other commands, or terminate.
     pub(crate) function_name: &'static str,
-    //TODO: Need to be able to pass DebugAdapter<R,W> as a parameter then we can simplify the DebugAdapter::process_next_request() match statement to invoke the function from a pointer.
-    //pub(crate) function: fn(core_data: &mut CoreData, request: &Request) -> bool,
+    // TODO: Need to be able to pass `DebugAdapter<R,W>` as a parameter then we can simplify the `DebugAdapter::process_next_request()` match statement to invoke the function from a pointer.
+    // pub(crate) function: fn(core_data: &mut CoreData, request: &Request) -> bool,
 }
 pub fn start_session(debugger_options: &DebuggerOptions) -> Result<SessionData, DebuggerError> {
     let mut target_probe = match debugger_options.probe_selector.clone() {
@@ -258,8 +258,7 @@ pub fn start_session(debugger_options: &DebuggerOptions) -> Result<SessionData, 
             other_error => DebuggerError::DebugProbe(other_error),
         }),
         None => {
-            // Only automatically select a probe if there is only
-            // a single probe detected.
+            // Only automatically select a probe if there is only a single probe detected.
             let list = Probe::list_all();
             if list.len() > 1 {
                 return Err(DebuggerError::Other(anyhow!(
@@ -282,10 +281,11 @@ pub fn start_session(debugger_options: &DebuggerOptions) -> Result<SessionData, 
         Some(identifier) => identifier.into(),
         None => TargetSelector::Auto,
     };
-    //set the protocol
+
+    // Set the protocol.
     target_probe.select_protocol(debugger_options.protocol.unwrap_or(WireProtocol::Swd))?;
 
-    //set the speed
+    // Set the speed.
     if let Some(speed) = debugger_options.speed {
         let actual_speed = target_probe.set_speed(speed).unwrap();
         if actual_speed != speed {
@@ -296,7 +296,8 @@ pub fn start_session(debugger_options: &DebuggerOptions) -> Result<SessionData, 
             );
         }
     }
-    //attach a Session to the probe
+
+    // Attach a Session to the probe.
     let target_session = if debugger_options.connect_under_reset {
         target_probe.attach_under_reset(target_selector)?
     } else {
@@ -307,7 +308,8 @@ pub fn start_session(debugger_options: &DebuggerOptions) -> Result<SessionData, 
             )
         })?
     };
-    //Change the current working directory if a debugger_option exists
+
+    // Change the current working directory if `debugger_options.cwd` is `Some(T)`.
     if let Some(new_cwd) = debugger_options.cwd.clone() {
         set_current_dir(new_cwd.as_path()).map_err(|err| {
             anyhow!(
@@ -318,7 +320,6 @@ pub fn start_session(debugger_options: &DebuggerOptions) -> Result<SessionData, 
         })?;
     };
 
-    //Configure the Capstone
     let capstone = Capstone::new()
         .arm()
         .mode(ArchMode::Thumb)
@@ -326,7 +327,6 @@ pub fn start_session(debugger_options: &DebuggerOptions) -> Result<SessionData, 
         .build()
         .unwrap();
 
-    //Populate the return SessionData
     Ok(SessionData {
         session: target_session,
         capstone,
@@ -337,13 +337,13 @@ pub fn attach_core<'p>(
     session: &'p mut Session,
     debugger_options: &DebuggerOptions,
 ) -> Result<CoreData<'p>, DebuggerError> {
-    //Configure the DebugInfo
+    // Configure the `DebugInfo`.
     let debug_info = debugger_options
         .program_binary
         .as_ref()
         .and_then(|path| DebugInfo::from_file(path).ok());
     let target_name = session.target().name.clone();
-    //Do no-op attach to the core and return it
+    // Do no-op attach to the core and return it.
     match session.core(debugger_options.core_index) {
         Ok(target_core) => Ok(CoreData {
             target_core,
@@ -358,10 +358,10 @@ pub fn attach_core<'p>(
 
 impl Debugger {
     pub fn new(debugger_options: DebuggerOptions) -> Self {
-        //Define all the commands supported by the debugger
-        //TODO: There is a lot of repetitive code here, and a great opportunity for macros
-        //TODO: Implement command completion and saved-history for rustyline CLI
-        //TODO: Implement DAP Evaluate to allow CLI commands to be processed though the VSCode Debug Console REPLE
+        // Define all the commands supported by the debugger.
+        // TODO: There is a lot of repetitive code here, and a great opportunity for macros.
+        // TODO: Implement command completion and saved-history for rustyline CLI.
+        // TODO: Implement DAP Evaluate to allow CLI commands to be processed though the VSCode Debug Console REPLE.
 
         Self {
             debugger_options,
@@ -408,7 +408,7 @@ impl Debugger {
                     help_text: "Clear a breakpoint",
                     function_name: "clear_breakpoint",
                 },
-                //TODO: These need to be implemented in debug_adapter.rs if we're going to keep them
+                // TODO: These need to be implemented in `debug_adapter.rs` if we're going to keep them.
                 // DebugCommand {
                 //     dap_cmd: "",
                 //     cli_cmd: "show_cpu_register_values",
@@ -493,7 +493,6 @@ impl Debugger {
         }
     }
 
-    //SECTION: Methods to handle DAP requests
     pub fn process_next_request<R: Read, W: Write>(
         &mut self,
         session_data: &mut SessionData,
@@ -515,7 +514,7 @@ impl Debugger {
                     CoreStatus::Unknown => true, // Don't do anything until we know VSCode's startup sequence is complete, and changes this to either Halted or Running.
                     CoreStatus::Halted(_) => {
                         // No need to poll the target if we know it is halted and waiting for us to do something.
-                        thread::sleep(Duration::from_millis(50)); //small delay to reduce fast looping costs on the client
+                        thread::sleep(Duration::from_millis(50)); // Small delay to reduce fast looping costs on the client
                         true
                     }
                     _other => {
@@ -544,7 +543,7 @@ impl Debugger {
                             }
                         }
 
-                        //Check and update the core status.
+                        // Check and update the core status.
                         let new_status = match core_data.target_core.status() {
                             Ok(new_status) => new_status,
                             Err(error) => {
@@ -556,11 +555,13 @@ impl Debugger {
                             }
                         };
 
-                        // Only sleep (nap for a short duration) IF the probe's status hasn't changed AND there was no RTT data in the last poll. Otherwise loop again to keep things flowing as fast as possible. The justification is that any client side CPU used to keep polling is a small price to pay for maximum throughput of debug requests and RTT from the probe.
+                        // Only sleep (nap for a short duration) IF the probe's status hasn't changed AND there was no RTT data in the last poll.
+                        // Otherwise loop again to keep things flowing as fast as possible.
+                        // The justification is that any client side CPU used to keep polling is a small price to pay for maximum throughput of debug requests and RTT from the probe.
                         if received_rtt_data && new_status == debug_adapter.last_known_status {
                             return true;
                         } else if new_status == debug_adapter.last_known_status {
-                            thread::sleep(Duration::from_millis(50)); //small delay to reduce fast looping costs
+                            thread::sleep(Duration::from_millis(50)); // Small delay to reduce fast looping costs.
                             return true;
                         } else {
                             debug_adapter.last_known_status = new_status;
@@ -632,7 +633,7 @@ impl Debugger {
                     .find(|c| c.dap_cmd == command_lookup || c.cli_cmd == command_lookup);
                 match valid_command {
                     Some(valid_command) => {
-                        //First, attach to the core
+                        // First, attach to the core.
                         let mut core_data =
                             match attach_core(&mut session_data.session, &self.debugger_options) {
                                 Ok(core_data) => core_data,
@@ -641,9 +642,9 @@ impl Debugger {
                                     return false;
                                 }
                             };
-                        // For some operations, we need to make sure the core isn't sleeping, by calling `Core::halt()`
+                        // For some operations, we need to make sure the core isn't sleeping, by calling `Core::halt()`.
                         // When we do this, we need to flag it (`unhalt_me = true`), and later call `Core::run()` again.
-                        // NOTE: the target will exit sleep mode as a result of this command.
+                        // NOTE: The target will exit sleep mode as a result of this command.
                         let mut unhalt_me = false;
                         match valid_command.function_name {
                             "set_breakpoint" | "set_breakpoints" | "clear_breakpoint"
@@ -742,7 +743,7 @@ impl Debugger {
                         command_status
                     }
                     None => {
-                        //Unimplemented command
+                        // Unimplemented command.
                         if debug_adapter.adapter_type == DebugAdapterType::DapClient {
                             debug_adapter.log_to_console(format!(
                                 "ERROR: Received unsupported request '{}'\n",
@@ -774,12 +775,11 @@ impl Debugger {
         }
     }
 
-    /** debug_session(..) is where the primary _debug processing_ for the DAP (Debug Adapter Protocol) adapter happens.
-    All requests are interpreted, actions taken, and responses formulated here. This function is self contained and returns nothing.
-    The [debug_adapter::DebugAdapter] takes care of _implementing the DAP Base Protocol_ and _communicating with the DAP client_ and _probe_.
-    */
+    /// [`debug_session`] is where the primary _debug processing_ for the DAP (Debug Adapter Protocol) adapter happens.
+    /// All requests are interpreted, actions taken, and responses formulated here. This function is self contained and returns nothing.
+    /// The [`debug_adapter::DebugAdapter`] takes care of _implementing the DAP Base Protocol_ and _communicating with the DAP client_ and _probe_.
     pub fn debug_session<R: Read, W: Write>(&mut self, mut debug_adapter: DebugAdapter<R, W>) {
-        //Filter out just the set of commands that will work for this session.
+        // Filter out just the set of commands that will work for this session.
         self.supported_commands = if debug_adapter.adapter_type == DebugAdapterType::DapClient {
             self.all_commands
                 .iter()
@@ -794,7 +794,7 @@ impl Debugger {
                 .collect()
         };
 
-        //Create a custom request to use in responses for errors, etc. where no specific incoming request applies.
+        // Create a custom request to use in responses for errors, etc. where no specific incoming request applies.
         let custom_request = Request {
             arguments: None,
             command: "probe_rs_setup_during_initialize".to_owned(),
@@ -802,11 +802,13 @@ impl Debugger {
             type_: "request".to_owned(),
         };
 
-        //The DapClient startup process has a specific sequence. Handle it here before starting a probe-rs session and looping through user generated requests.
+        // The DapClient startup process has a specific sequence.
+        // Handle it here before starting a probe-rs session and looping through user generated requests.
         if debug_adapter.adapter_type == DebugAdapterType::DapClient {
-            //Handling the initialize, and Attach/Launch requests here in this method, before entering the interactive loop that processes requests through the process_request method.
+            // Handling the initialize, and Attach/Launch requests here in this method,
+            // before entering the interactive loop that processes requests through the process_request method.
 
-            //Initialize request
+            // Initialize request.
             #[allow(unused_assignments)]
             let mut request = Request {
                 arguments: None,
@@ -819,7 +821,7 @@ impl Debugger {
                 match request.command.as_str() {
                     "process_next_request" => continue,
                     "error" => return,
-                    "initialize" => break, //We have lift- off
+                    "initialize" => break, // We have lift off.
                     other => {
                         debug_adapter.send_response::<()>(
                             &request,
@@ -851,11 +853,11 @@ impl Debugger {
                 }
             };
 
-            //Reply to Initialize with Capabilities
+            // Reply to Initialize with `Capabilities`.
             let capabilities = Capabilities {
                 supports_configuration_done_request: Some(true),
                 supports_read_memory_request: Some(true),
-                supports_restart_request: Some(false), // It is better (and cheap enough) to let the client kill and restart the debugadapter, than to try a in-process reset.
+                supports_restart_request: Some(false), // It is better (and cheap enough) to let the client kill and restart the debug adapter, than to try a in-process reset.
                 supports_terminate_request: Some(true),
                 // supports_value_formatting_options: Some(true),
                 // supports_function_breakpoints: Some(true),
@@ -866,14 +868,14 @@ impl Debugger {
             };
             debug_adapter.send_response(&request, Ok(Some(capabilities)));
 
-            //Process either the Launch or Attach request
+            // Process either the Launch or Attach request.
             request.command = "error".to_owned();
             loop {
                 request = debug_adapter.listen_for_request();
                 match request.command.as_str() {
                     "process_next_request" => continue,
                     "error" => return,
-                    "attach" | "launch" => break, //OK
+                    "attach" | "launch" => break, // OK
                     other => {
                         debug_adapter.send_response::<()>(
                             &request,
@@ -893,7 +895,7 @@ impl Debugger {
                         .debugger_options
                         .console_log_level
                         .unwrap_or(ConsoleLog::Error);
-                    //update the cwd and program_binary
+                    // Update the `cwd` and `program_binary`.
                     self.debugger_options
                         .validate_and_update_cwd(self.debugger_options.cwd.clone());
                     self.debugger_options.qualify_and_update_program_binary(
@@ -934,8 +936,7 @@ impl Debugger {
                 }
             };
         } else {
-            //DebugAdapterType::CommandLine
-            //update the cwd and program_binary
+            // Update the `cwd` and `program_binary`.
             self.debugger_options
                 .validate_and_update_cwd(self.debugger_options.cwd.clone());
             self.debugger_options
@@ -983,7 +984,7 @@ impl Debugger {
         };
         debug_adapter.halt_after_reset = self.debugger_options.halt_after_reset;
 
-        //Do the flashing
+        // Do the flashing.
         {
             if self.debugger_options.flashing_enabled {
                 let path_to_elf = self.debugger_options.program_binary.clone().unwrap();
@@ -1086,8 +1087,8 @@ impl Debugger {
             };
         }
 
-        //After flashing and forced setup, we can signal the client that are ready to receive incoming requests
-        //Send Initalized event to client
+        // After flashing and forced setup, we can signal the client that are ready to receive incoming requests.
+        // Send the `initalized` event to client.
         if !debug_adapter.send_event::<Event>("initialized", None) {
             debug_adapter.send_response::<()>(
                 &custom_request,
@@ -1098,10 +1099,10 @@ impl Debugger {
             debug_adapter.send_event("exited", Some(ExitedEventBody { exit_code: 1 }));
             return;
         }
-        //Loop through remaining (user generated) requests and send to the [processs_request] method until either the client or some unexpected behaviour termintates the process.
+        // Loop through remaining (user generated) requests and send to the [processs_request] method until either the client or some unexpected behaviour termintates the process.
         loop {
             if !self.process_next_request(&mut session_data, &mut debug_adapter) {
-                //DapClient STEP FINAL: Let the client know that we are done and exiting
+                // DapClient STEP FINAL: Let the client know that we are done and exiting.
                 if debug_adapter.adapter_type == DebugAdapterType::DapClient {
                     debug_adapter
                         .send_event("terminated", Some(TerminatedEventBody { restart: None }));
@@ -1115,12 +1116,11 @@ impl Debugger {
                 break;
             }
         }
-        //Exiting this function means the debug_session is complete and we are done. End of process.
-        //TODO: Add functionality to keep the server alive, respond to DAP Client sessions that end, and accept new session requests.
+        // Exiting this function means the debug_session is complete and we are done. End of process.
+        // TODO: Add functionality to keep the server alive, respond to DAP Client sessions that end, and accept new session requests.
     }
 }
 
-// SECTION: Functions for CLI struct matches from main.rs
 pub fn attach_to_rtt(
     core: &mut Core,
     memory_map: &[MemoryRegion],
@@ -1287,7 +1287,7 @@ pub fn debug(debugger_options: DebuggerOptions, dap: bool) {
         let adapter = DebugAdapter::new(io::stdin(), io::stdout(), DebugAdapterType::CommandLine);
         debugger.debug_session(adapter);
     } else {
-        //TODO: Implement the case where the server needs to keep running after the client has disconnected.
+        // TODO: Implement the case where the server needs to keep running after the client has disconnected.
         log::info!("Starting {:?} as a DAP Protocol server", &program_name);
         match &debugger.debugger_options.port.clone() {
             Some(port) => {
@@ -1295,7 +1295,7 @@ pub fn debug(debugger_options: DebuggerOptions, dap: bool) {
                     .to_socket_addrs()
                     .unwrap()
                     .next()
-                    .unwrap(); //TODO: Implement multi-core and multi-session
+                    .unwrap(); // TODO: Implement multi-core and multi-session.
 
                 let listener = match TcpListener::bind(addr) {
                     Ok(listener) => listener,
@@ -1331,7 +1331,7 @@ pub fn debug(debugger_options: DebuggerOptions, dap: bool) {
 
                         let adapter =
                             DebugAdapter::new(reader, writer, DebugAdapterType::DapClient);
-                        //TODO: When running in server mode, we want to stay open for new sessions. Implement intelligent restart in debug_session.
+                        // TODO: When running in server mode, we want to stay open for new sessions. Implement intelligent restart in `debug_session`.
                         debugger.debug_session(adapter);
                     }
                     Err(error) => {

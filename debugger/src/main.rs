@@ -1,6 +1,7 @@
-mod dap_types; //Uses Schemafy to generate DAP types from Json
+// Uses Schemafy to generate DAP types from Json
+mod dap_types;
 mod debug_adapter;
-mod debugger; //The probe-rs debugger.
+mod debugger;
 mod info;
 mod rtt;
 
@@ -105,7 +106,7 @@ enum CliCommands {
         #[structopt(flatten)]
         debugger_options: DebuggerOptions,
 
-        //TODO: Implement multi-session --server choices
+        // TODO: Implement multi-session --server choices
         /// Switch from using CLI to DAP Protocol debug commands. By default, the DAP communication for the first session is via STDIN and STDOUT. Adding the additional --port property will run as an IP server, listening to connections on the specified port.
         #[structopt(long)]
         dap: bool,

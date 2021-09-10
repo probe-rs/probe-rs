@@ -377,7 +377,7 @@ impl<'probe> CoreInterface for Armv6m<'probe> {
     }
 
     fn run(&mut self) -> Result<(), Error> {
-        //before we run, we always perform a single instruction step, to account for possible breakpoints that might get us stuck on the current instruction
+        // Before we run, we always perform a single instruction step, to account for possible breakpoints that might get us stuck on the current instruction.
         self.step()?;
 
         let mut value = Dhcsr(0);
@@ -388,14 +388,14 @@ impl<'probe> CoreInterface for Armv6m<'probe> {
         self.memory.write_word_32(Dhcsr::ADDRESS, value.into())?;
         self.memory.flush()?;
 
-        // We assume that the core is running now
+        // We assume that the core is running now.
         self.state.current_state = CoreStatus::Running;
 
         Ok(())
     }
 
     fn step(&mut self) -> Result<CoreInformation, Error> {
-        //First check if we stopped on a breakpoint, because this requires special handling before we can continue
+        // First check if we stopped on a breakpoint, because this requires special handling before we can continue.
         let was_breakpoint =
             if self.state.current_state == CoreStatus::Halted(HaltReason::Breakpoint) {
                 log::debug!("Core was halted on breakpoint, disabling breakpoints");
@@ -418,7 +418,7 @@ impl<'probe> CoreInterface for Armv6m<'probe> {
         self.memory.flush()?;
         self.wait_for_core_halted(Duration::from_millis(100))?;
 
-        //Re-enable breakpoints before we continue
+        // Re-enable breakpoints before we continue.
         if was_breakpoint {
             self.enable_breakpoints(true)?;
         }

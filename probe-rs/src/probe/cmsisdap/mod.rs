@@ -154,11 +154,6 @@ impl CmsisDap {
     }
 
     fn send_swj_sequences(&mut self, request: SequenceRequest) -> Result<(), CmsisDapError> {
-        /* 12 38 FF FF FF FF FF FF FF -> 12 00 // SWJ Sequence
-        12 10 9E E7 -> 12 00 // SWJ Sequence
-        12 38 FF FF FF FF FF FF FF -> 12 00 // SWJ Sequence */
-        //let sequence_1 = SequenceRequest::new(&[0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF]);
-
         commands::send_command::<SequenceRequest>(&mut self.device, request)
             .map_err(CmsisDapError::from)
             .and_then(|v| match v {
@@ -218,13 +213,13 @@ impl CmsisDap {
                     }
                     Ack::NoAck => {
                         log::trace!("Transfer status: NACK");
-                        //try a reset?
+                        // TODO: Try a reset?
                         return Err(DapError::NoAcknowledge.into());
                     }
                     Ack::Fault => {
                         log::trace!("Transfer status: FAULT");
 
-                        // Check the reason for the fault
+                        // Check the reason for the fault.
                         let response = RawDapAccess::raw_read_register(
                             self,
                             PortType::DebugPort,
@@ -236,7 +231,7 @@ impl CmsisDap {
                         if ctrl.sticky_err() {
                             let mut abort = Abort(0);
 
-                            // Clear sticky error flags
+                            // Clear sticky error flags.
                             abort.set_stkerrclr(ctrl.sticky_err());
 
                             RawDapAccess::raw_write_register(

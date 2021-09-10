@@ -43,7 +43,6 @@ pub fn test_stepping(core: &mut Core, memory_regions: &[MemoryRegion]) -> Result
 
     let core_status = core.status()?;
 
-    //assert_eq!(core_status, CoreStatus::Halted(HaltReason::Step));
     if core_status != CoreStatus::Halted(HaltReason::Step) {
         log::warn!("Unexpected core status: {:?}!", core_status);
     }

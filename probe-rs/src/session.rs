@@ -529,9 +529,6 @@ fn get_target_from_selector(
                     Ok(interface) => {
                         let mut interface = interface.initialize(DefaultArmSequence::new())?;
 
-                        //let chip_result = try_arm_autodetect(interface);
-                        log::debug!("Autodetect: Trying DAP interface...");
-
                         // TODO:
                         let dp = DpAddress::Default;
 

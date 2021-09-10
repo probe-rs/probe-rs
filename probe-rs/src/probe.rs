@@ -578,7 +578,8 @@ pub enum DebugProbeSelectorParseError {
 /// let selector: probe_rs::DebugProbeSelector = "1337:1337:SERIAL".try_into().unwrap();
 /// ```
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(try_from = "String")] //We need this so that serde will first converst from the string `PID:VID:<Serial>` to a struct before deserializing
+// We need this so that serde will first converst from the string `PID:VID:<Serial>` to a struct before deserializing.
+#[serde(try_from = "String")]
 pub struct DebugProbeSelector {
     pub vendor_id: u16,
     pub product_id: u16,

@@ -105,7 +105,7 @@ bitfield! {
     pub cpievtena, set_cpievtena: 17;
     pub exctrcena, set_exctrcena: 16;
     pub pcsamplena, set_pcsamplena: 12;
-    ///00 Disabled. No Synchronization packets.
+    /// 00 Disabled. No Synchronization packets.
     /// 01 Synchronization counter tap at CYCCNT[24].
     /// 10 Synchronization counter tap at CYCCNT[26].
     /// 11 Synchronization counter tap at CYCCNT[28].

@@ -35,8 +35,6 @@ impl ArmDebugSequence for LPC55S69 {
 
         interface.write_dp_register(dp, Select(0))?;
 
-        //let powered_down = interface.read_dp_register::<Select>::()
-
         let ctrl = interface.read_dp_register::<Ctrl>(dp)?;
 
         let powered_down = !(ctrl.csyspwrupack() && ctrl.cdbgpwrupack());
@@ -258,8 +256,6 @@ pub fn enable_debug_mailbox(
     let ap = ApAddress { dp, ap: 2 };
 
     let status: IDR = interface.read_ap_register(GenericAp::new(ap))?;
-
-    //let status = read_ap(interface, 2, 0xFC)?;
 
     log::info!("APIDR: {:?}", status);
     log::info!("APIDR: 0x{:08X}", u32::from(status));

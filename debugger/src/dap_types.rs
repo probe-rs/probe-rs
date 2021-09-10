@@ -97,7 +97,8 @@ fn get_string_argument(
                     argument_name: argument_name.to_string(),
                 });
             }
-            Ok(arguments[index].as_str().unwrap().to_string()) //convert this to RUST string
+            // Convert this to a Rust string.
+            Ok(arguments[index].as_str().unwrap().to_string())
         }
         _ => Err(DebuggerError::MissingArgument {
             argument_name: argument_name.to_string(),

@@ -311,7 +311,8 @@ impl RttActiveTarget {
                                     }
                                     DataFormat::BinaryLE => {
                                         for element in &active_channel.rtt_buffer.0[..bytes_read] {
-                                            write!(formatted_data, "{:#04x}", element).map_or_else(|err| log::error!("Failed to format RTT data - {:?}", err), |r|r); //Width of 4 allows 0xFF to be printed.
+                                            // Width of 4 allows 0xFF to be printed.
+                                            write!(formatted_data, "{:#04x}", element).map_or_else(|err| log::error!("Failed to format RTT data - {:?}", err), |r|r);
                                         }
                                     }
                                     DataFormat::Defmt => {

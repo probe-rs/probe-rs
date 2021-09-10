@@ -22,7 +22,7 @@
         {
             "type": "lldb",
             "request": "launch",
-            "name": "DAP-STDIO probe-rs-debugger", //Use this to test the dap server, in 'launch' mode
+            "name": "DAP-STDIO probe-rs-debugger", // Use this to test the dap server, in 'launch' mode.
             "cargo": {
                 "args": [
                     "build",
@@ -43,7 +43,7 @@
         {
             "type": "lldb",
             "request": "launch",
-            "name": "DAP-Server probe-rs-debugger", //Use this to test the dap server in 'attach' mode
+            "name": "DAP-Server probe-rs-debugger", // Use this to test the dap server in 'attach' mode.
             "cargo": {
                 "args": [
                     "build",
