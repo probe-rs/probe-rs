@@ -31,19 +31,23 @@ pub struct DebugAdapter<R: Read, W: Write> {
     seq: i64,
     input: BufReader<R>,
     output: W,
-    /// Track the last_known_status of the probe. The debug client needs to be notified when the probe changes state, and the only way is to poll the probe status periodically. For instance, when the client sets the probe running, and the probe halts because of a breakpoint, we need to notify the client.
+    /// Track the last_known_status of the probe.
+    /// The debug client needs to be notified when the probe changes state,
+    /// and the only way is to poll the probe status periodically.
+    /// For instance, when the client sets the probe running,
+    /// and the probe halts because of a breakpoint, we need to notify the client.
     pub(crate) last_known_status: CoreStatus,
     pub(crate) adapter_type: DebugAdapterType,
     pub(crate) halt_after_reset: bool,
     pub(crate) console_log_level: ConsoleLog,
-    /// rl is the optional rustyline command line processor instance
+    /// `rl` is the optional rustyline command line processor instance.
     rl: Option<Editor<()>>,
-    /// scope_map stores a list of all MS DAP Scopes with a each stack frame's unique id as key
-    /// It is cleared by threads(), populated by stack_trace(), for later re-use by scopes()
+    /// `scope_map` stores a list of all MS DAP Scopes with a each stack frame's unique id as key.
+    /// It is cleared by `threads()`, populated by stack_trace(), for later re-use by `scopes()`.
     scope_map: HashMap<i64, Vec<Scope>>,
-    /// variable_map stores a list of all MS DAP Variables with a unique per-level reference
-    /// It is cleared by threads(), populated by stack_trace(), for later nested re-use by variables()
-    variable_map_key_seq: i64, //Used to create unique values for self.variable_map keys
+    /// `variable_map` stores a list of all MS DAP Variables with a unique per-level reference.
+    /// It is cleared by `threads()`, populated by stack_trace(), for later nested re-use by `variables()`.
+    variable_map_key_seq: i64, // Used to create unique values for `self.variable_map` keys.
     variable_map: HashMap<i64, Vec<Variable>>,
 }
 
@@ -55,7 +59,7 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
             output,
             last_known_status: CoreStatus::Unknown,
             adapter_type,
-            halt_after_reset: false, //default of false
+            halt_after_reset: false,
             console_log_level: ConsoleLog::Error,
             rl: match adapter_type {
                 DebugAdapterType::CommandLine => Some(Editor::<()>::new()),
@@ -135,7 +139,7 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
             }
         }
 
-        //TODO: This is from original probe_rs_cli 'halt' function ... disasm code at memory location
+        // TODO: This is from original probe_rs_cli 'halt' function ... disasm code at memory location
         /*
         let mut code = [0u8; 16 * 2];
 
@@ -327,7 +331,8 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
             }
         }
         if self.halt_after_reset || self.adapter_type == DebugAdapterType::DapClient
-        //the DAP Client will always do a reset_and_halt, and then will consider halt_after_reset value after the configuration_done request. Otherwise the probe will run past the main() before the DAP Client has had a chance to set breakpoints in main().
+        // The DAP Client will always do a `reset_and_halt`, and then will consider `halt_after_reset` value after the `configuration_done` request.
+        // Otherwise the probe will run past the `main()` before the DAP Client has had a chance to set breakpoints in `main()`.
         {
             match core_data
                 .target_core
@@ -340,7 +345,7 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
                             self.send_response::<()>(request, Ok(None));
                         }
                     }
-                    //Only notify the DAP client if we are NOT in initialization stage (CoreStatus::Unknown)
+                    // Only notify the DAP client if we are NOT in initialization stage (`CoreStatus::Unknown`).
                     if self.last_known_status != CoreStatus::Unknown {
                         let event_body = Some(StoppedEventBody {
                             reason: "reset".to_owned(),
@@ -396,7 +401,7 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
         core_data: &mut CoreData,
         request: &Request,
     ) -> bool {
-        //Make sure the DAP Client and DAP Server are in synch with status of the core
+        // Make sure the DAP Client and the DAP Server are in sync with the status of the core.
         match core_data.target_core.status() {
             Ok(core_status) => {
                 self.last_known_status = core_status;
@@ -459,7 +464,7 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
         arguments.restart.unwrap_or(false)
     }
     pub(crate) fn threads(&mut self, core_data: &mut CoreData, request: &Request) -> bool {
-        //TODO: Implement actual thread resolution. For now, we just use the core id as the thread id.
+        // TODO: Implement actual thread resolution. For now, we just use the core id as the thread id.
 
         let single_thread = Thread {
             id: core_data.target_core.id() as i64,
@@ -624,7 +629,7 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
         };
 
         if let Some(debug_info) = core_data.debug_info.as_ref() {
-            //Evaluate the static scoped variables.
+            // Evaluate the static scoped variables.
             let static_variables =
                 match debug_info.get_stack_statics(&mut core_data.target_core, u64::from(pc)) {
                     Ok(static_variables) => static_variables,
@@ -637,7 +642,7 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
                     }
                 };
 
-            //Store the static variables for later calls to `variables()` to retrieve
+            // Store the static variables for later calls to `variables()` to retrieve.
             let (static_scope_reference, named_static_variables_cnt, indexed_static_variables_cnt) =
                 self.create_variable_map(&static_variables);
 
@@ -647,7 +652,7 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
             match self.adapter_type {
                 DebugAdapterType::CommandLine => {
                     let mut body = "".to_string();
-                    //TODO: Update the code to include static variables
+                    // TODO: Update the code to include static variables.
                     for frame in current_stackframes {
                         body.push_str(format!("{}\n", frame).as_str());
                     }
@@ -702,12 +707,12 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
                                 .and_then(|sl| sl.line)
                                 .unwrap_or(0) as i64;
 
-                            //MS DAP requests happen in the order Threads->StackFrames->Scopes->Variables(recursive)
-                            // We build & extract all the info during this stack_trace() method, and re-use it when MS DAP requests come in
+                            // MS DAP requests happen in the order Threads -> StackFrames -> Scopes -> Variables (recursive).
+                            // We build & extract all the info during this `stack_trace()` method, and re-use it when MS DAP requests come in.
                             let mut scopes = vec![];
 
-                            //Build the locals scope
-                            //Extract all the variables from the StackFrame for later MS DAP calls to retrieve
+                            // Build the locals scope.
+                            // Extract all the variables from the `StackFrame` for later MS DAP calls to retrieve.
                             let (variables_reference, named_variables_cnt, indexed_variables_cnt) =
                                 self.create_variable_map(&frame.variables);
                             scopes.push(Scope {
@@ -729,13 +734,13 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
                                 variables_reference,
                             });
 
-                            //The static variables are mapped and stored before iterating the frames. Store a reference to them here.
+                            // The static variables are mapped and stored before iterating the frames. Store a reference to them here.
                             scopes.push(Scope {
                                 line: None,
                                 column: None,
                                 end_column: None,
                                 end_line: None,
-                                expensive: true, //VSCode won't open this tree by default.
+                                expensive: true, // VSCode won't open this tree by default.
                                 indexed_variables: Some(indexed_static_variables_cnt),
                                 name: "Static".to_string(),
                                 presentation_hint: Some("statics".to_string()),
@@ -751,8 +756,8 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
                                 },
                             });
 
-                            //Build the registers scope and add it's variables
-                            //TODO: Consider expanding beyond core register to add other architectue registers
+                            // Build the registers scope and add its variables.
+                            // TODO: Consider expanding beyond core registers to add other architectue registers.
                             let register_scope_reference = self.new_variable_map_key();
                             let mut register_count: i64 = 0;
                             self.variable_map.insert(
@@ -794,7 +799,7 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
                                 column: None,
                                 end_column: None,
                                 end_line: None,
-                                expensive: true, //VSCode won't open this tree by default.
+                                expensive: true, // VSCode won't open this tree by default.
                                 indexed_variables: Some(0),
                                 name: "Registers".to_string(),
                                 presentation_hint: Some("registers".to_string()),
@@ -807,10 +812,10 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
                                 },
                             });
 
-                            //Finally, store the scopes for this frame
+                            // Finally, store the scopes for this frame.
                             self.scope_map.insert(frame.id as i64, scopes);
 
-                            //TODO: Can we add more meaningful info to module_id, etc.
+                            // TODO: Can we add more meaningful info to `module_id`, etc.
                             StackFrame {
                                 id: frame.id as i64,
                                 name: frame.function_name.clone(),
@@ -940,12 +945,13 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
                     match arguments.filter {
                         Some(filter) => {
                             match filter.as_str() {
-                                //TODO: Use probe-rs::Variables for the variable_map, and then transform them here before serving them up. That way we can actually track indexed versus named variables (The DAP protocol doesn't have Variable fields to do so)
+                                // TODO: Use `probe_rs::Variables` for the `variable_map`, and then transform them here before serving them up.
+                                // That way we can actually track indexed versus named variables (The DAP protocol doesn't have Variable fields to do so).
                                 "indexed" => Ok(Some(VariablesResponseBody {
-                                    variables: dap_variables.clone(), //.retain(|&var| true ).collect::<Vec<Variable>>()
+                                    variables: dap_variables.clone(),
                                 })),
                                 "named" => Ok(Some(VariablesResponseBody {
-                                    variables: dap_variables.clone(), //.retain(|&var| true ).collect::<Vec<Variable>>()
+                                    variables: dap_variables.clone(),
                                 })),
                                 other => Err(DebuggerError::Other(anyhow!(
                                     "ERROR: Received invalid variable filter: {}",
@@ -990,8 +996,10 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
                                 },
                             })),
                         );
-                        //We have to consider the fact that sometimes the `run()` is successfull, but "immediately" after the MCU hits a breakpoint or exception. So we have to check the status again to be sure.
-                        thread::sleep(Duration::from_millis(100)); //small delay to make sure the MCU hits user breakpoints early in main()
+                        // We have to consider the fact that sometimes the `run()` is successfull,
+                        // but "immediately" after the MCU hits a breakpoint or exception.
+                        // So we have to check the status again to be sure.
+                        thread::sleep(Duration::from_millis(100)); // Small delay to make sure the MCU hits user breakpoints early in `main()`.
                         let core_status = match core_data.target_core.status() {
                             Ok(new_status) => match new_status {
                                 CoreStatus::Halted(_) => {
@@ -1027,7 +1035,7 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
 
     /// Steps at 'instruction' granularity ONLY.
     pub(crate) fn next(&mut self, core_data: &mut CoreData, request: &Request) -> bool {
-        //TODO: Implement 'statement' granularity, then update DAP `Capabilities` and read `NextArguments`
+        // TODO: Implement 'statement' granularity, then update DAP `Capabilities` and read `NextArguments`.
         // let args: NextArguments = get_arguments(&request)?;
 
         match core_data.target_core.step() {
@@ -1062,7 +1070,6 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
         }
     }
 
-    //SECTION: Helper functions
     pub fn peek_seq(&self) -> i64 {
         self.seq
     }
@@ -1081,7 +1088,8 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
         let dap_variables: Vec<Variable> = variables
             .iter()
             .map(|variable| {
-                //TODO: The DAP Protocol doesn't seem to have an easy way to indicate if a variable is Named or Indexed. Figure out what needs to be done to improve this.
+                // TODO: The DAP Protocol doesn't seem to have an easy way to indicate if a variable is `Named` or `Indexed`.
+                // Figure out what needs to be done to improve this.
                 if variable.kind == VariableKind::Indexed {
                     indexed_child_variables_cnt += 1;
                 } else {
@@ -1112,7 +1120,7 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
             0
         };
         match self.variable_map.insert(variable_map_key, dap_variables) {
-            Some(_) => (0, 0, 0), //This should never happen ... unless this module has a logic error for calculating unique variable_map_key values :)
+            Some(_) => unreachable!("This should never happen,  unless this module has a logic error for calculating unique `variable_map_key` values. Please report this as a bug!"),
             None => (
                 variable_map_key,
                 named_child_variables_cnt,
@@ -1121,7 +1129,8 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
         }
     }
 
-    /// Returns one of the standard DAP Requests if all goes well, or a "error" request, which should indicate that the calling function should return. When preparing to return an "error" request, we will send a Response containing the DebuggerError encountered.
+    /// Returns one of the standard DAP Requests if all goes well, or a "error" request, which should indicate that the calling function should return.
+    /// When preparing to return an "error" request, we will send a Response containing the DebuggerError encountered.
     pub fn listen_for_request(&mut self) -> Request {
         if self.adapter_type == DebugAdapterType::CommandLine {
             let readline = self.rl.as_mut().unwrap().readline(">> ");
@@ -1254,8 +1263,8 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
                             original_error,
                         } => {
                             if original_error.kind() == std::io::ErrorKind::WouldBlock {
-                                //non-blocking read is waiting for incoming data that is not ready yet.
-                                //This is not a real error, so use this opportunity to check on probe status and notify the debug client if required.
+                                // Non-blocking read is waiting for incoming data that is not ready yet.
+                                // This is not a real error, so use this opportunity to check on probe status and notify the debug client if required.
                                 return Request {
                                     arguments: None,
                                     command: "process_next_request".to_owned(),
@@ -1263,7 +1272,7 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
                                     type_: "request".to_owned(),
                                 };
                             } else {
-                                //This is a legitimate error. Tell the client about it.
+                                // This is a legitimate error. Tell the client about it.
                                 self.send_response::<Request>(
                                     &request,
                                     Err(DebuggerError::StdIO(original_error)),
@@ -1271,7 +1280,7 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
                             }
                         }
                         _ => {
-                            //This is a legitimate error. Tell the client about it.
+                            // This is a legitimate error. Tell the client about it.
                             self.send_response::<Request>(
                                 &request,
                                 Err(DebuggerError::Other(anyhow!("{}", error))),
@@ -1290,13 +1299,12 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
                 "Please use the `listen_for_request` method to retrieve data from the CLI"
             )))
         } else {
-            // DebugAdapterType::DapClient
             let mut header = String::new();
 
             match self.input.read_line(&mut header) {
                 Ok(_data_length) => {}
                 Err(error) => {
-                    //There is no data available, so do something else (like check Probe status) or try again
+                    // There is no data available, so do something else (like checking the probe status) or try again.
                     return Err(DebuggerError::NonBlockingReadError {
                         os_error_number: error.raw_os_error().unwrap_or(0),
                         original_error: error,
@@ -1304,12 +1312,12 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
                 }
             }
 
-            // we should read an empty line here
+            // We should read an empty line here.
             let mut buff = String::new();
             match self.input.read_line(&mut buff) {
                 Ok(_data_length) => {}
                 Err(error) => {
-                    //There is no data available, so do something else (like check Probe status) or try again
+                    // There is no data available, so do something else (like checking the probe status) or try again.
                     return Err(DebuggerError::NonBlockingReadError {
                         os_error_number: error.raw_os_error().unwrap_or(0),
                         original_error: error,
@@ -1328,14 +1336,13 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
             let bytes_read = match self.input.read(&mut content) {
                 Ok(len) => len,
                 Err(error) => {
-                    //There is no data available, so do something else (like check Probe status) or try again
+                    // There is no data available, so do something else (like checking the probe status) or try again.
                     return Err(DebuggerError::NonBlockingReadError {
                         os_error_number: error.raw_os_error().unwrap_or(0),
                         original_error: error,
                     });
                 }
             };
-            // println!("content: {:?}", str::from_utf8(&content));
 
             if bytes_read == data_length {
                 Ok(content)
@@ -1430,7 +1437,6 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
                 }
             }
         } else {
-            //DebugAdapterType::CommandLine
             if resp.success {
                 if let Some(body) = resp.body {
                     println!("{}", body.as_str().unwrap());
@@ -1488,7 +1494,7 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
             };
             self.send_data(&encoded_event);
             if new_event.event != "output" {
-                //This would result in an endless loop
+                // This would result in an endless loop.
                 match self.console_log_level {
                     ConsoleLog::Error => {}
                     ConsoleLog::Info | ConsoleLog::Warn => {
@@ -1500,8 +1506,7 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
                 }
             }
         } else {
-            //DebugAdapterType::CommandLine
-            //Only report on continued or stopped events, so the user knows when the core halts
+            // Only report on continued or stopped events, so the user knows when the core halts.
             match event_type {
                 "stopped" => {
                     if let Some(event_body) = event_body {
@@ -1557,7 +1562,6 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
             };
             self.send_event("output", Some(event_body))
         } else {
-            //DebugCAdapterType::CommandLine
             println!("{}", message.into());
             true
         }
@@ -1578,7 +1582,6 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
             };
             self.send_event("probe-rs-show-message", Some(event_body))
         } else {
-            //DebugAdapterType::CommandLine
             println!("{:?}: {}", severity, message.into());
             true
         }
@@ -1627,8 +1630,6 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
         }
     }
 }
-
-// SECTION: Some helper functions
 
 /// Provides halt functionality that is re-used elsewhere, in context of multiple DAP Requests
 pub(crate) fn halt_core(

@@ -504,12 +504,12 @@ impl<'probe> CoreInterface for Armv7m<'probe> {
     }
 
     fn run(&mut self) -> Result<(), Error> {
-        //before we run, we always perform a single instruction step, to account for possible breakpoints that might get us stuck on the current instruction
+        // Before we run, we always perform a single instruction step, to account for possible breakpoints that might get us stuck on the current instruction.
         self.step()?;
 
         let mut dhcsr = Dhcsr(self.memory.read_word_32(Dhcsr::ADDRESS)?);
 
-        // First disable the DHCSR->C_MASKINTS
+        // First disable the DHCSR->C_MASKINTS.
         if dhcsr.c_maskints() {
             dhcsr.set_c_maskints(false);
             dhcsr.enable_write();
@@ -531,7 +531,7 @@ impl<'probe> CoreInterface for Armv7m<'probe> {
     }
 
     fn step(&mut self) -> Result<CoreInformation, Error> {
-        //First check if we stopped on a breakpoint, because this requires special handling before we can continue
+        // First check if we stopped on a breakpoint, because this requires special handling before we can continue.
         let was_breakpoint =
             if self.state.current_state == CoreStatus::Halted(HaltReason::Breakpoint) {
                 self.enable_breakpoints(false)?;
@@ -563,12 +563,12 @@ impl<'probe> CoreInterface for Armv7m<'probe> {
 
         self.wait_for_core_halted(Duration::from_millis(100))?;
 
-        //Re-enable breakpoints before we continue
+        // Re-enable breakpoints before we continue.
         if was_breakpoint {
             self.enable_breakpoints(true)?;
         }
 
-        // try to read the program counter
+        // Try to read the program counter.
         let pc_value = self.read_core_reg(register::PC.address)?;
 
         // get pc
@@ -633,7 +633,7 @@ impl<'probe> CoreInterface for Armv7m<'probe> {
     }
 
     fn set_hw_breakpoint(&mut self, bp_unit_index: usize, addr: u32) -> Result<(), Error> {
-        //First make sure they are asking for a breakpoint on a half-word boundary
+        // First make sure they are asking for a breakpoint on a half-word boundary.
         if (addr & 0x1) > 0 {
             return Err(Error::Other(anyhow!(
                 "The requested breakpoint address 0x{:08x} is not on a half-word boundary",
@@ -687,7 +687,7 @@ impl<'probe> CoreInterface for Armv7m<'probe> {
         Architecture::Arm
     }
 
-    /// See docs on the [`CoreInterface::get_hw_breakpoints`] trait
+    /// See docs on the [`CoreInterface::get_hw_breakpoints`] trait.
     fn get_hw_breakpoints(&mut self) -> Result<Vec<Option<u32>>, Error> {
         let mut breakpoints = vec![];
         let num_hw_breakpoints = self.get_available_breakpoint_units()? as usize;
@@ -696,11 +696,12 @@ impl<'probe> CoreInterface for Armv7m<'probe> {
             let ctrl_reg = FpCtrl::from(raw_val);
             // FpRev1 and FpRev2 needs different decoding of the register value, but the location where we read from is the same ...
             let reg_addr = FpRev1CompX::ADDRESS + (bp_unit_index * size_of::<u32>()) as u32;
-            // The raw breakpoint address as read from memory
+            // The raw breakpoint address as read from memory.
             let register_value = self.memory.read_word_32(reg_addr)?;
-            // The breakpoint address after it has been adjusted for FpRev 1 or 2
+            // The breakpoint address after it has been adjusted for FpRev 1 or 2.
             let breakpoint:u32;
-            if register_value & 0b1 == 0b1 { // We only care about `enabled` breakpoints
+            if register_value & 0b1 == 0b1 {
+                // We only care about `enabled` breakpoints.
                 if ctrl_reg.rev() == 0 {
                     breakpoint = FpRev1CompX::get_breakpoint_comparator(register_value)?;
                 } else if ctrl_reg.rev() == 1 {

@@ -121,9 +121,6 @@ fn show_arm_info(interface: &mut Box<dyn ArmProbeInterface>) -> Result<()> {
 
         let ap_information = interface.ap_information(access_port).unwrap();
 
-        //let idr = interface.read_ap_register(access_port, IDR::default())?;
-        //println!("{:#x?}", idr);
-
         match ap_information {
             ApInformation::MemoryAp(MemoryApInformation {
                 debug_base_address, ..

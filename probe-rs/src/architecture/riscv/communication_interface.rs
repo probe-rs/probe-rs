@@ -954,7 +954,7 @@ impl<'probe> RiscvCommunicationInterface {
         log::debug!("abstractcs: {:?}", abstractcs_prev);
 
         if abstractcs_prev.cmderr() != 0 {
-            //clear previous command error
+            // Clear previous command error.
             let mut abstractcs_clear = Abstractcs(0);
             abstractcs_clear.set_cmderr(0x7);
 

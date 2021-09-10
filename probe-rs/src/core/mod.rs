@@ -439,7 +439,7 @@ impl<'probe> Core<'probe> {
             self.enable_breakpoints(true)?;
         }
 
-        //If there is a breakpoint set already, return its bp_unit_index, else find the next free index
+        // If there is a breakpoint set already, return its bp_unit_index, else find the next free index.
         let breakpoint_comparator_index = match self
             .inner
             .get_hw_breakpoints()?

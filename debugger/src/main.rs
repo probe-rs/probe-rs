@@ -1,6 +1,7 @@
-mod dap_types; //Uses Schemafy to generate DAP types from Json
+// Uses Schemafy to generate DAP types from Json
+mod dap_types;
 mod debug_adapter;
-mod debugger; //The probe-rs debugger.
+mod debugger;
 mod info;
 mod rtt;
 
@@ -9,7 +10,6 @@ use debugger::{
     debug, download_program_fast, dump_memory, list_connected_devices, reset_target_of_device,
     trace_u32_on_target, DebuggerOptions,
 };
-use log::error;
 use probe_rs::architecture::arm::ap::AccessPortError;
 use probe_rs::flashing::FileDownloadError;
 use probe_rs::{DebugProbeError, Error};
@@ -105,7 +105,7 @@ enum CliCommands {
         #[structopt(flatten)]
         debugger_options: DebuggerOptions,
 
-        //TODO: Implement multi-session --server choices
+        // TODO: Implement multi-session --server choices
         /// Switch from using CLI to DAP Protocol debug commands. By default, the DAP communication for the first session is via STDIN and STDOUT. Adding the additional --port property will run as an IP server, listening to connections on the specified port.
         #[structopt(long)]
         dap: bool,

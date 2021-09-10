@@ -114,12 +114,17 @@ impl InnerTransferResponse {
 
 /// Read/write single and multiple registers.
 ///
-///The DAP_Transfer Command reads or writes data to CoreSight registers. Each CoreSight register is accessed with a single 32-bit read or write. The CoreSight registers are addressed with DPBANKSEL/APBANKSEL and address lines A2, A3 (A0 = 0 and A1 = 0). This command executes several read/write operations on the selected DP/AP registers. The Transfer Data in the Response are in the order of the Transfer Request in the Command but might be shorter in case of communication failures. The data transfer is aborted on a communication error:
+/// The DAP_Transfer Command reads or writes data to CoreSight registers.
+/// Each CoreSight register is accessed with a single 32-bit read or write.
+/// The CoreSight registers are addressed with DPBANKSEL/APBANKSEL and address lines A2, A3 (A0 = 0 and A1 = 0).
+/// This command executes several read/write operations on the selected DP/AP registers.
+/// The Transfer Data in the Response are in the order of the Transfer Request in the Command but might be shorter in case of communication failures.
+/// The data transfer is aborted on a communication error:
 ///
-///- Protocol Error
-///- Target FAULT response
-///- Target WAIT responses exceed configured value
-///- Value Mismatch (Read Register with Value Match)
+/// - Protocol Error
+/// - Target FAULT response
+/// - Target WAIT responses exceed configured value
+/// - Value Mismatch (Read Register with Value Match)
 #[derive(Debug)]
 pub struct TransferRequest {
     /// Zero based device index of the selected JTAG device. For SWD mode the value is ignored.

@@ -3,11 +3,11 @@ use crate::{DebuggerError, DebuggerOptions};
 use probe_rs::{
     architecture::{
         arm::{
-            ap::{GenericAp, MemoryAp},
+            ap::{GenericAp, MemoryAp, IDR},
             armv6m::Demcr,
             memory::Component,
             sequences::DefaultArmSequence,
-            ApAddress, ApInformation, ArmProbeInterface, DpAddress, MemoryApInformation,
+            ApAddress, ApInformation, ArmProbeInterface, DpAddress, MemoryApInformation, Register,
         },
         riscv::communication_interface::RiscvCommunicationInterface,
     },
@@ -138,10 +138,10 @@ fn show_arm_info(interface: &mut Box<dyn ArmProbeInterface>) -> Result<()> {
         };
         let access_port = GenericAp::new(ap);
 
-        let ap_information = interface.ap_information(access_port).unwrap();
+        let idr = interface.read_raw_ap_register(ap, IDR::ADDRESS)?;
+        println!("{:#x?}", idr);
 
-        //let idr = interface.read_ap_register(access_port, IDR::default())?;
-        //println!("{:#x?}", idr);
+        let ap_information = interface.ap_information(access_port).unwrap();
 
         match ap_information {
             ApInformation::MemoryAp(MemoryApInformation {

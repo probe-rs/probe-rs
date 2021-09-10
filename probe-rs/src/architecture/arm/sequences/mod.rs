@@ -79,24 +79,23 @@ pub trait ArmDebugSequence: Send + Sync {
 
         // TODO: Use atomic block
 
-        // todo!();
-
-        // Ensure current debug interface is in reset state
+        // Ensure current debug interface is in reset state.
         interface.swj_sequence(51, 0x0007_FFFF_FFFF_FFFF)?;
 
-        // Execute SWJ-DP Switch Sequence JTAG to SWD (0xE79E)
-        // Change if SWJ-DP uses deprecated switch code (0xEDB6)
+        // Execute SWJ-DP Switch Sequence JTAG to SWD (0xE79E).
+        // Change if SWJ-DP uses deprecated switch code (0xEDB6).
         interface.swj_sequence(16, 0xE79E)?;
 
-        interface.swj_sequence(51, 0x0007_FFFF_FFFF_FFFF)?; // > 50 cycles SWDIO/TMS High
-        interface.swj_sequence(3, 0x00)?; // At least 2 idle cycles (SWDIO/TMS Low)
+        interface.swj_sequence(51, 0x0007_FFFF_FFFF_FFFF)?; // > 50 cycles SWDIO/TMS High.
+        interface.swj_sequence(3, 0x00)?; // At least 2 idle cycles (SWDIO/TMS Low).
 
-        // End of atomic block
+        // End of atomic block.
 
-        // Read DPIDR to enable SWD interface
+        // Read DPIDR to enable SWD interface.
         let _ = interface.raw_read_register(PortType::DebugPort, DPIDR::ADDRESS);
 
-        //interface.read_dpidr()?;
+        // TODO: Figure a way how to do this.
+        // interface.read_dpidr()?;
 
         Ok(())
     }
@@ -122,8 +121,6 @@ pub trait ArmDebugSequence: Send + Sync {
         interface.write_dp_register(dp, abort)?;
 
         interface.write_dp_register(dp, Select(0))?;
-
-        //let powered_down = interface.read_dp_register::<Select>::()
 
         let ctrl = interface.read_dp_register::<Ctrl>(dp)?;
 
