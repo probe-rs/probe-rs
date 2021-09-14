@@ -215,8 +215,11 @@ impl FlashAlgorithm {
             // Load address
             addr_load = raw
                 .load_address
-                .map(|a| a - (header.len() * size_of::<u32>()) as u32) // adjust the raw load address to account for the algo header
-                .unwrap_or(ram_region.range.start);
+                .map(|a| {
+                    a.checked_sub((header.len() * size_of::<u32>()) as u32) // adjust the raw load address to account for the algo header
+                        .ok_or(FlashError::InvalidFlashAlgorithmLoadAddress { addr: addr_load })
+                })
+                .unwrap_or(Ok(ram_region.range.start))?;
             if addr_load < ram_region.range.start {
                 return Err(FlashError::InvalidFlashAlgorithmLoadAddress { addr: addr_load });
             }
