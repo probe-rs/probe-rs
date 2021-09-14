@@ -16,7 +16,7 @@ pub struct RawFlashAlgorithm {
     pub description: String,
     /// Whether this flash algorithm is the default one or not.
     pub default: bool,
-    /// List of 32-bit words containing the code for the algo.
+    /// List of 32-bit words containing the code for the algo. If `load_address` is not specified, the code must be position indepent (PIC).
     #[serde(deserialize_with = "deserialize")]
     #[serde(serialize_with = "serialize")]
     pub instructions: Vec<u8>,

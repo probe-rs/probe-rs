@@ -213,12 +213,21 @@ impl FlashAlgorithm {
         // Try to find a stack size that fits with at least one page of data.
         for i in 0..Self::FLASH_ALGO_STACK_SIZE / Self::FLASH_ALGO_STACK_DECREMENT {
             // Load address
-            addr_load = raw.load_address.unwrap_or(ram_region.range.start);
+            addr_load = raw
+                .load_address
+                .map(|a| a - (header.len() * size_of::<u32>()) as u32) // adjust the raw load address to account for the algo header
+                .unwrap_or(ram_region.range.start);
+            if addr_load < ram_region.range.start {
+                return Err(FlashError::InvalidFlashAlgorithmLoadAddress { addr: addr_load });
+            }
             offset += (header.len() * size_of::<u32>()) as u32;
             code_start = addr_load + offset;
             offset += (instructions.len() * size_of::<u32>()) as u32;
 
-            addr_stack = addr_load + offset + (Self::FLASH_ALGO_STACK_SIZE - Self::FLASH_ALGO_STACK_DECREMENT * i);
+            // Stack start address (desc)
+            addr_stack = addr_load
+                + offset
+                + (Self::FLASH_ALGO_STACK_SIZE - Self::FLASH_ALGO_STACK_DECREMENT * i);
 
             // Data buffer 1
             addr_data = addr_stack;
