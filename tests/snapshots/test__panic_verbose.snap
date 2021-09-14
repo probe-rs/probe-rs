@@ -8,17 +8,22 @@ expression: run_result.output
 (HOST) DEBUG section `.data` is in RAM at 0x2003FBC8 ..= 0x2003FBF7
 (HOST) DEBUG section `.bss` is in RAM at 0x2003FBF8 ..= 0x2003FBFB
 (HOST) DEBUG section `.uninit` is in RAM at 0x2003FBFC ..= 0x2003FFFB
+(HOST) DEBUG valid SP range: 0x20000000 ..= 0x2003FBC7
 (HOST) DEBUG found 1 probes
 (HOST) DEBUG opened probe
 (HOST) DEBUG started session
 (HOST) INFO  flashing program (5.82 KiB)
 (HOST) INFO  success!
+(HOST) DEBUG 261062 bytes of stack available (0x20000000 ..= 0x2003FBC7), using 1024 byte canary
+(HOST) TRACE setting up canary took 0.013s (75.91 KiB/s)
 (HOST) DEBUG starting device
 (HOST) DEBUG Successfully attached RTT
 ────────────────────────────────────────────────────────────────────────────────
  INFO  main
  ERROR panicked at 'explicit panic'
 ────────────────────────────────────────────────────────────────────────────────
+(HOST) TRACE reading canary took 0.012s (83.93 KiB/s)
+(HOST) DEBUG stack canary intact
 (HOST) DEBUG LR=0xFFFFFFF9 PC=0x000013E4
 (HOST) DEBUG LR=0x000006FF PC=0x0000071C
 (HOST) DEBUG update_cfa: CFA changed Some(2003fb68) -> 2003fb70
