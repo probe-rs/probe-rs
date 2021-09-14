@@ -24,6 +24,7 @@ use colored::Colorize as _;
 use defmt_decoder::Locations;
 use probe_rs::{
     flashing::{self, Format},
+    Core,
     DebugProbeError::ProbeSpecific,
     MemoryInterface as _, Session,
 };
@@ -138,7 +139,7 @@ fn run_target_program(elf_path: &Path, chip_name: &str, opts: &cli::Opts) -> any
     Ok(outcome.into())
 }
 
-fn start_program(sess: &mut Session, elf: &Elf) -> Result<(), anyhow::Error> {
+fn start_program(sess: &mut Session, elf: &Elf) -> anyhow::Result<()> {
     let mut core = sess.core(0)?;
 
     log::debug!("starting device");
@@ -150,20 +151,42 @@ fn start_program(sess: &mut Session, elf: &Elf) -> Result<(), anyhow::Error> {
         }
     }
 
-    if let Some(rtt) = elf.rtt_buffer_address() {
-        let main = elf.main_fn_address();
-        core.set_hw_breakpoint(main)?;
-        core.run()?;
-        core.wait_for_core_halted(Duration::from_secs(5))?;
-
-        const OFFSET: u32 = 44;
-        const FLAG: u32 = 2; // BLOCK_IF_FULL
-        core.write_word_32(rtt + OFFSET, FLAG)?;
-        core.clear_hw_breakpoint(main)?;
+    if let Some(rtt_buffer_address) = elf.rtt_buffer_address() {
+        set_rtt_to_blocking(&mut core, elf.main_fn_address(), rtt_buffer_address)?
     }
 
     core.set_hw_breakpoint(cortexm::clear_thumb_bit(elf.vector_table.hard_fault))?;
     core.run()?;
+
+    Ok(())
+}
+
+/// Set rtt to blocking mode
+fn set_rtt_to_blocking(
+    core: &mut Core,
+    main_fn_address: u32,
+    rtt_buffer_address: u32,
+) -> anyhow::Result<()> {
+    // set and wait for a hardware breakpoint at the beginning of `fn main()`
+    core.set_hw_breakpoint(main_fn_address)?;
+    core.run()?;
+    core.wait_for_core_halted(Duration::from_secs(5))?;
+
+    // calculate address of up-channel-flags inside the rtt control block
+    const OFFSET: u32 = 44;
+    let rtt_buffer_address = rtt_buffer_address + OFFSET;
+
+    // read flags
+    let channel_flags = &mut [0];
+    core.read_32(rtt_buffer_address, channel_flags)?;
+    // modify flags to blocking
+    const BLOCK_IF_FULL: u32 = 2;
+    let modified_channel_flags = channel_flags[0] | BLOCK_IF_FULL;
+    // write flags back
+    core.write_word_32(rtt_buffer_address, modified_channel_flags)?;
+
+    // clear the breakpoint we set before
+    core.clear_hw_breakpoint(main_fn_address)?;
 
     Ok(())
 }
@@ -173,7 +196,7 @@ fn extract_and_print_logs(
     sess: &Arc<Mutex<Session>>,
     opts: &cli::Opts,
     current_dir: &Path,
-) -> Result<bool, anyhow::Error> {
+) -> anyhow::Result<bool> {
     let exit = Arc::new(AtomicBool::new(false));
     let sig_id = signal_hook::flag::register(signal::SIGINT, exit.clone())?;
 
@@ -270,7 +293,7 @@ fn decode_and_print_defmt_logs(
     locations: Option<&Locations>,
     current_dir: &Path,
     opts: &cli::Opts,
-) -> Result<(), anyhow::Error> {
+) -> anyhow::Result<()> {
     loop {
         match table.decode(buffer) {
             Ok((frame, consumed)) => {
