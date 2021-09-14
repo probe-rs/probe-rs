@@ -46,11 +46,8 @@ pub(crate) fn subroutine_eq(addr1: u32, addr2: u32) -> bool {
 /// The contents of the vector table
 #[derive(Debug)]
 pub(crate) struct VectorTable {
-    pub(crate) location: u32,
     // entry 0
     pub(crate) initial_stack_pointer: u32,
-    // entry 1: Reset handler
-    pub(crate) reset: u32,
     // entry 3: HardFault handler
     pub(crate) hard_fault: u32,
 }

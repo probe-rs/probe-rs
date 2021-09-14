@@ -128,7 +128,7 @@ fn extract_vector_table(elf: &ObjectFile) -> anyhow::Result<cortexm::VectorTable
         .section_by_name(".vector_table")
         .ok_or_else(|| anyhow!("`.vector_table` section is missing"))?;
 
-    let start = section.address().try_into()?;
+    let start = section.address();
     let size = section.size();
 
     if size % 4 != 0 || start % 4 != 0 {
@@ -140,13 +140,11 @@ fn extract_vector_table(elf: &ObjectFile) -> anyhow::Result<cortexm::VectorTable
         .chunks_exact(4)
         .map(|chunk| u32::from_le_bytes(chunk.try_into().unwrap()));
 
-    if let (Some(initial_stack_pointer), Some(reset), Some(_third), Some(hard_fault)) =
+    if let (Some(initial_stack_pointer), Some(_reset), Some(_third), Some(hard_fault)) =
         (words.next(), words.next(), words.next(), words.next())
     {
         Ok(cortexm::VectorTable {
-            location: start,
             initial_stack_pointer,
-            reset,
             hard_fault,
         })
     } else {
