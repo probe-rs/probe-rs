@@ -180,8 +180,9 @@ fn set_rtt_to_blocking(
     let channel_flags = &mut [0];
     core.read_32(rtt_buffer_address, channel_flags)?;
     // modify flags to blocking
-    const BLOCK_IF_FULL: u32 = 2;
-    let modified_channel_flags = channel_flags[0] | BLOCK_IF_FULL;
+    const MODE_MASK: u32 = 0b11;
+    const MODE_BLOCK_IF_FULL: u32 = 0b10;
+    let modified_channel_flags = (channel_flags[0] & !MODE_MASK) | MODE_BLOCK_IF_FULL;
     // write flags back
     core.write_word_32(rtt_buffer_address, modified_channel_flags)?;
 
