@@ -208,37 +208,49 @@ impl FlashAlgorithm {
         let mut addr_stack = 0;
         let mut addr_load = 0;
         let mut addr_data = 0;
+        let mut code_start = 0;
 
         // Try to find a stack size that fits with at least one page of data.
         for i in 0..Self::FLASH_ALGO_STACK_SIZE / Self::FLASH_ALGO_STACK_DECREMENT {
-            offset = Self::FLASH_ALGO_STACK_SIZE - Self::FLASH_ALGO_STACK_DECREMENT * i;
-            // Stack address
-            addr_stack = ram_region.range.start + offset;
             // Load address
-            addr_load = addr_stack;
+            addr_load = raw
+                .load_address
+                .map(|a| {
+                    a.checked_sub((header.len() * size_of::<u32>()) as u32) // adjust the raw load address to account for the algo header
+                        .ok_or(FlashError::InvalidFlashAlgorithmLoadAddress { addr: addr_load })
+                })
+                .unwrap_or(Ok(ram_region.range.start))?;
+            if addr_load < ram_region.range.start {
+                return Err(FlashError::InvalidFlashAlgorithmLoadAddress { addr: addr_load });
+            }
+            offset += (header.len() * size_of::<u32>()) as u32;
+            code_start = addr_load + offset;
             offset += (instructions.len() * size_of::<u32>()) as u32;
 
+            // Stack start address (desc)
+            addr_stack = addr_load
+                + offset
+                + (Self::FLASH_ALGO_STACK_SIZE - Self::FLASH_ALGO_STACK_DECREMENT * i);
+
             // Data buffer 1
-            addr_data = ram_region.range.start + offset;
+            addr_data = addr_stack;
             offset += raw.flash_properties.page_size;
 
-            if offset <= ram_region.range.end - ram_region.range.start {
+            if offset <= ram_region.range.end - addr_load {
                 break;
             }
         }
 
         // Data buffer 2
-        let addr_data2 = ram_region.range.start + offset;
+        let addr_data2 = addr_data + raw.flash_properties.page_size;
         offset += raw.flash_properties.page_size;
 
         // Determine whether we can use double buffering or not by the remaining RAM region size.
-        let page_buffers = if offset <= ram_region.range.end - ram_region.range.start {
+        let page_buffers = if offset <= ram_region.range.end - addr_load {
             vec![addr_data, addr_data2]
         } else {
             vec![addr_data]
         };
-
-        let code_start = addr_load + (header.len() * size_of::<u32>()) as u32;
 
         let name = raw.name.clone();
 

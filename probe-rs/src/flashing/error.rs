@@ -45,6 +45,10 @@ pub enum FlashError {
         "The RAM contents did not match the expected contents after loading the flash algorithm."
     )]
     FlashAlgorithmNotLoaded,
+    #[error(
+        "Failed to load flash algorithm into RAM at address {addr:08X?}. Is there space for the algorithm header?"
+    )]
+    InvalidFlashAlgorithmLoadAddress { addr: u32 },
 
     // TODO: Warn at YAML parsing stage.
     // TODO: 1 Add information about flash (name, address)

@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Improved number parsing on all the `probe-rs-cli` commands. They now all accept normal (`01234`), hex (`0x1234`), octal (`0o1234`) and binary (`0b1`) formats. (#774)
 - Added progress bars to the probe-rs-cli download command. (#776)
 - Improve reliability of communication with the RISCV debug module by recovering from busy errors in batch operations. (#802)
+- Add optional ability to load fixed address flashing algorithms (non PIC). (#822)
 
 ### Removed
 
