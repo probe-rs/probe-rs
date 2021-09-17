@@ -2,7 +2,9 @@ use anyhow::{Context, Result};
 use probe_rs::flashing::FileDownloadError;
 use probe_rs_cli_util::common_options::{CargoOptions, FlashOptions, ProbeOptions};
 use probe_rs_cli_util::flash::run_flash_download;
+use probe_rs_cli_util::rtt;
 use std::fs::File;
+use std::io::Write;
 use std::path::Path;
 
 pub fn run(common: ProbeOptions, path: &str, chip_erase: bool) -> Result<()> {
@@ -37,8 +39,29 @@ pub fn run(common: ProbeOptions, path: &str, chip_erase: bool) -> Result<()> {
         chip_erase,
     )?;
 
+    let rtt_config = rtt::RttConfig::default();
+
+    let memory_map = session.target().memory_map.clone();
+
     let mut core = session.core(0)?;
     core.reset()?;
+
+    let mut rtta = match rtt::attach_to_rtt(&mut core, &memory_map, Path::new(path), &rtt_config) {
+        Ok(target_rtt) => Some(target_rtt),
+        Err(error) => {
+            log::error!("{:?} Continuing without RTT... ", error);
+            None
+        }
+    };
+
+    if let Some(rtta) = &mut rtta {
+        let mut stdout = std::io::stdout();
+        loop {
+            for (_ch, data) in rtta.poll_rtt(&mut core) {
+                stdout.write_all(data.as_bytes()).unwrap();
+            }
+        }
+    }
 
     Ok(())
 }
