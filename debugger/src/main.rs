@@ -4,7 +4,6 @@ mod debug_adapter;
 mod debugger;
 mod info;
 mod protocol;
-mod rtt;
 
 use anyhow::Result;
 use clap::{crate_authors, crate_description, crate_name, crate_version, Parser};
