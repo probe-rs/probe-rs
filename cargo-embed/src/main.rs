@@ -26,7 +26,8 @@ use probe_rs::{
 use probe_rs_cli_util::logging::{ask_to_log_crash, capture_anyhow, capture_panic};
 
 use probe_rs_cli_util::{
-    argument_handling, build_artifact,
+    build_artifact,
+    common_options::CargoOptions,
     indicatif::{MultiProgress, ProgressBar, ProgressStyle},
     logging::{self, Metadata},
 };
@@ -67,29 +68,9 @@ struct Opt {
     list_chips: bool,
     #[structopt(name = "disable-progressbars", long = "disable-progressbars")]
     disable_progressbars: bool,
-
-    // `cargo build` arguments
-    #[structopt(name = "binary", long = "bin")]
-    bin: Option<String>,
-    #[structopt(name = "example", long = "example")]
-    example: Option<String>,
-    #[structopt(name = "package", short = "p", long = "package")]
-    package: Option<String>,
-    #[structopt(name = "release", long = "release")]
-    release: bool,
-    #[structopt(name = "target", long = "target")]
-    target: Option<String>,
-    #[structopt(name = "PATH", long = "manifest-path", parse(from_os_str))]
-    manifest_path: Option<PathBuf>,
-    #[structopt(long)]
-    no_default_features: bool,
-    #[structopt(long)]
-    all_features: bool,
-    #[structopt(long)]
-    features: Vec<String>,
+    #[structopt(flatten)]
+    cargo_options: CargoOptions,
 }
-
-const ARGUMENTS_TO_REMOVE: &[&str] = &["list-chips", "disable-progressbars", "chip=", "probe="];
 
 fn main() {
     let next = panic::take_hook();
@@ -199,15 +180,16 @@ fn main_try() -> Result<()> {
     // Remove executable name from the arguments list.
     args.remove(0);
 
-    // Remove all arguments that `cargo build` does not understand.
-    argument_handling::remove_arguments(ARGUMENTS_TO_REMOVE, &mut args);
-
     if let Some(index) = args.iter().position(|x| x == config_name) {
         // We remove the argument we found.
         args.remove(index);
     }
 
-    let path = build_artifact(&work_dir, &args)?;
+    let cargo_options = opt.cargo_options.to_cargo_options();
+
+    let artifact = build_artifact(&work_dir, &cargo_options)?;
+
+    let path = artifact.path();
 
     // Get the binary name (without extension) from the build artifact path
     let name = path.file_stem().and_then(|f| f.to_str()).ok_or_else(|| {
@@ -539,7 +521,7 @@ fn main_try() -> Result<()> {
             log::info!("Initializing RTT (attempt {})...", i);
             i += 1;
 
-            let rtt_header_address = if let Ok(mut file) = File::open(path.as_path()) {
+            let rtt_header_address = if let Ok(mut file) = File::open(path) {
                 if let Some(address) = rttui::app::App::get_rtt_symbol(&mut file) {
                     ScanRegion::Exact(address as u32)
                 } else {
