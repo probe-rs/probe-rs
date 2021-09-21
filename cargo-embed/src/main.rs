@@ -9,8 +9,8 @@ use std::{
     env, fs,
     fs::File,
     io::Write,
-    iter, panic,
-    path::{Path, PathBuf},
+    panic,
+    path::Path,
     process,
     sync::{Arc, Mutex},
     time::{Duration, Instant},
@@ -96,9 +96,7 @@ fn main() {
             let mut stderr = std::io::stderr();
 
             let first_line_prefix = "Error".red().bold();
-            let other_line_prefix: String = iter::repeat(" ")
-                .take(first_line_prefix.chars().count())
-                .collect();
+            let other_line_prefix: String = " ".repeat(first_line_prefix.chars().count());
 
             let error = format!("{:?}", e);
 
@@ -161,7 +159,7 @@ fn main_try() -> Result<()> {
 
     // Make sure we load the config given in the cli parameters.
     for cdp in &config.general.chip_descriptions {
-        probe_rs::config::add_target_from_yaml(&Path::new(cdp))
+        probe_rs::config::add_target_from_yaml(Path::new(cdp))
             .with_context(|| format!("failed to load the chip description from {}", cdp))?;
     }
 
@@ -490,7 +488,7 @@ fn main_try() -> Result<()> {
             .iter()
             .any(|elem| elem.format == DataFormat::Defmt);
         let defmt_state = if defmt_enable {
-            let elf = fs::read(path.clone()).unwrap();
+            let elf = fs::read(path).unwrap();
             let table = defmt_decoder::Table::parse(&elf)?;
 
             let locs = {

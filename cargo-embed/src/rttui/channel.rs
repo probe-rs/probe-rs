@@ -179,7 +179,7 @@ impl ChannelState {
     pub fn push_rtt(&mut self) {
         if let Some(down_channel) = self.down_channel.as_mut() {
             self.input += "\n";
-            down_channel.write(&self.input.as_bytes()).unwrap();
+            down_channel.write(self.input.as_bytes()).unwrap();
             self.input.clear();
         }
     }
