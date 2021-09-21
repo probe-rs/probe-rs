@@ -9,8 +9,8 @@ use std::{
     env, fs,
     fs::File,
     io::Write,
-    iter, panic,
-    path::{Path, PathBuf},
+    panic,
+    path::Path,
     process,
     sync::{Arc, Mutex},
     time::{Duration, Instant},
@@ -26,7 +26,8 @@ use probe_rs::{
 use probe_rs_cli_util::logging::{ask_to_log_crash, capture_anyhow, capture_panic};
 
 use probe_rs_cli_util::{
-    argument_handling, build_artifact,
+    build_artifact,
+    common_options::CargoOptions,
     indicatif::{MultiProgress, ProgressBar, ProgressStyle},
     logging::{self, Metadata},
 };
@@ -67,29 +68,9 @@ struct Opt {
     list_chips: bool,
     #[structopt(name = "disable-progressbars", long = "disable-progressbars")]
     disable_progressbars: bool,
-
-    // `cargo build` arguments
-    #[structopt(name = "binary", long = "bin")]
-    bin: Option<String>,
-    #[structopt(name = "example", long = "example")]
-    example: Option<String>,
-    #[structopt(name = "package", short = "p", long = "package")]
-    package: Option<String>,
-    #[structopt(name = "release", long = "release")]
-    release: bool,
-    #[structopt(name = "target", long = "target")]
-    target: Option<String>,
-    #[structopt(name = "PATH", long = "manifest-path", parse(from_os_str))]
-    manifest_path: Option<PathBuf>,
-    #[structopt(long)]
-    no_default_features: bool,
-    #[structopt(long)]
-    all_features: bool,
-    #[structopt(long)]
-    features: Vec<String>,
+    #[structopt(flatten)]
+    cargo_options: CargoOptions,
 }
-
-const ARGUMENTS_TO_REMOVE: &[&str] = &["list-chips", "disable-progressbars", "chip=", "probe="];
 
 fn main() {
     let next = panic::take_hook();
@@ -115,9 +96,7 @@ fn main() {
             let mut stderr = std::io::stderr();
 
             let first_line_prefix = "Error".red().bold();
-            let other_line_prefix: String = iter::repeat(" ")
-                .take(first_line_prefix.chars().count())
-                .collect();
+            let other_line_prefix: String = " ".repeat(first_line_prefix.chars().count());
 
             let error = format!("{:?}", e);
 
@@ -180,7 +159,7 @@ fn main_try() -> Result<()> {
 
     // Make sure we load the config given in the cli parameters.
     for cdp in &config.general.chip_descriptions {
-        probe_rs::config::add_target_from_yaml(&Path::new(cdp))
+        probe_rs::config::add_target_from_yaml(Path::new(cdp))
             .with_context(|| format!("failed to load the chip description from {}", cdp))?;
     }
 
@@ -199,15 +178,16 @@ fn main_try() -> Result<()> {
     // Remove executable name from the arguments list.
     args.remove(0);
 
-    // Remove all arguments that `cargo build` does not understand.
-    argument_handling::remove_arguments(ARGUMENTS_TO_REMOVE, &mut args);
-
     if let Some(index) = args.iter().position(|x| x == config_name) {
         // We remove the argument we found.
         args.remove(index);
     }
 
-    let path = build_artifact(&work_dir, &args)?;
+    let cargo_options = opt.cargo_options.to_cargo_options();
+
+    let artifact = build_artifact(&work_dir, &cargo_options)?;
+
+    let path = artifact.path();
 
     // Get the binary name (without extension) from the build artifact path
     let name = path.file_stem().and_then(|f| f.to_str()).ok_or_else(|| {
@@ -508,7 +488,7 @@ fn main_try() -> Result<()> {
             .iter()
             .any(|elem| elem.format == DataFormat::Defmt);
         let defmt_state = if defmt_enable {
-            let elf = fs::read(path.clone()).unwrap();
+            let elf = fs::read(path).unwrap();
             let table = defmt_decoder::Table::parse(&elf)?;
 
             let locs = {
@@ -539,7 +519,7 @@ fn main_try() -> Result<()> {
             log::info!("Initializing RTT (attempt {})...", i);
             i += 1;
 
-            let rtt_header_address = if let Ok(mut file) = File::open(path.as_path()) {
+            let rtt_header_address = if let Ok(mut file) = File::open(path) {
                 if let Some(address) = rttui::app::App::get_rtt_symbol(&mut file) {
                     ScanRegion::Exact(address as u32)
                 } else {
