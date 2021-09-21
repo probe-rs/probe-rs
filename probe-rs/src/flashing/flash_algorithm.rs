@@ -186,6 +186,13 @@ impl FlashAlgorithm {
     ) -> Result<Self, FlashError> {
         use std::mem::size_of;
 
+        if raw.flash_properties.page_size % 4 != 0 {
+            // TODO move to yaml validation
+            return Err(FlashError::InvalidPageSize {
+                size: raw.flash_properties.page_size,
+            });
+        }
+
         let assembled_instructions = raw.instructions.chunks_exact(size_of::<u32>());
 
         if !assembled_instructions.remainder().is_empty() {

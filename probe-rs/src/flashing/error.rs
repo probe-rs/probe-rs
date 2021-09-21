@@ -50,6 +50,9 @@ pub enum FlashError {
     )]
     InvalidFlashAlgorithmLoadAddress { addr: u32 },
 
+    #[error("Invalid page size {size:08X?}. Must be a multiple of 4 bytes.")]
+    InvalidPageSize { size: u32 },
+
     // TODO: Warn at YAML parsing stage.
     // TODO: 1 Add information about flash (name, address)
     // TODO: 2 Add source of target definition (built-in, yaml)
