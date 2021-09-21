@@ -805,11 +805,22 @@ impl<'p> ActiveFlasher<'p, Program> {
         );
 
         // TODO: Prevent security settings from locking the device.
-
         // Transfer the buffer bytes to RAM.
+        let words: Vec<u32> = bytes
+            .chunks_exact(core::mem::size_of::<u32>())
+            .map(|a| u32::from_le_bytes([a[0], a[1], a[2], a[3]]))
+            .collect();
+
+        let t1 = std::time::Instant::now();
         self.core
-            .write_8(algo.page_buffers[buffer_number], bytes)
+            .write_32(algo.page_buffers[buffer_number], &words)
             .map_err(FlashError::Core)?;
+
+        log::info!(
+            "Took {:?} to download {} byte page into ram",
+            t1.elapsed(),
+            bytes.len()
+        );
 
         Ok(())
     }
