@@ -263,31 +263,56 @@ impl JtagAdapter {
         }
 
         self.reset()?;
-        let cmd = vec![0xff; max_device_count];
-        let mut r = self.transfer_ir(&cmd, cmd.len() * 8)?;
 
-        let mut ir = 0;
-        let mut irbits = 0;
-        for (i, target) in targets.iter_mut().enumerate() {
-            if (!r.is_empty()) && irbits < 8 {
-                let byte = r[0];
-                r.remove(0);
-                ir |= (byte as u32) << irbits;
-                irbits += 8;
-            }
-            if ir & 0b11 == 0b01 {
-                ir &= !1;
-                let irlen = ir.trailing_zeros();
-                ir >>= irlen;
-                irbits -= irlen;
-                log::debug!("tap {} irlen: {}", i, irlen);
-                target.irlen = irlen as usize;
-            } else {
-                log::debug!("invalid irlen for tap {}", i);
-                return Err(io::Error::new(
-                    io::ErrorKind::InvalidData,
-                    "Invalid IR sequence during the chain scan",
-                ));
+        // Autodetect the targets' IR lengths.
+        //
+        // For many targets, reading the IR right after a reset yields 0b00..001. This allows
+        // autodetecting the IR lengths even when we have multiple targets. For example,
+        // if we read `0b1111111111110001000001` (LSB first) we know the first target in the
+        // chain has an irlen of 6 and the next one has an irlen of 4.
+        //
+        // However, not all targets satisfy this. For example, the esp32c3 shifts out a fixed value
+        // of `0b00101`. This makes the above algorithm to incorrectly detect the IR len as 2.
+        //
+        // Fortunately, we can use a different autodetection algorithm when we only have one target
+        // in the chain, that doesn't rely on the target to shift out a particular value. The key is
+        // the fact that whatever we shift in gets shifted back out, but delayed by the number of bits
+        // in the IR shfit register. So, we shift in lots of `1` bits to fill the shift register with `1`s.
+        // Then we shift in lots of `0` bytes. The output will be something like `0b00000111`, and the
+        // number of ones is the IR length.
+        if targets.len() == 1 {
+            let r = self.transfer_ir(&[0xFF, 0x00], 16)?;
+
+            let irlen = r[1].count_ones() as usize;
+            targets[0].irlen = irlen;
+            log::debug!("tap irlen: {}", irlen);
+        } else {
+            let cmd = vec![0xff; max_device_count];
+            let mut r = self.transfer_ir(&cmd, cmd.len() * 8)?;
+
+            let mut ir = 0;
+            let mut irbits = 0;
+            for (i, target) in targets.iter_mut().enumerate() {
+                if (!r.is_empty()) && irbits < 8 {
+                    let byte = r[0];
+                    r.remove(0);
+                    ir |= (byte as u32) << irbits;
+                    irbits += 8;
+                }
+                if ir & 0b11 == 0b01 {
+                    ir &= !1;
+                    let irlen = ir.trailing_zeros();
+                    ir >>= irlen;
+                    irbits -= irlen;
+                    log::debug!("tap {} irlen: {}", i, irlen);
+                    target.irlen = irlen as usize;
+                } else {
+                    log::debug!("invalid irlen for tap {}", i);
+                    return Err(io::Error::new(
+                        io::ErrorKind::InvalidData,
+                        "Invalid IR sequence during the chain scan",
+                    ));
+                }
             }
         }
 
