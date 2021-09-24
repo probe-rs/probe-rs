@@ -414,7 +414,7 @@ impl<'debuginfo, 'probe, 'core> Iterator for StackFrameIterator<'debuginfo, 'pro
 
                         let mut buff = [0u8; 4];
 
-                        if let Err(e) = self.core.read_8(addr as u32, &mut buff) {
+                        if let Err(e) = self.core.read(addr as u32, &mut buff) {
                             log::info!(
                                 "Failed to read from address {:#010x} ({} bytes): {}",
                                 addr,
@@ -1110,7 +1110,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                 Complete => break,
                 RequiresMemory { address, size, .. } => {
                     let mut buff = vec![0u8; size as usize];
-                    core.read_8(address as u32, &mut buff).map_err(|_| {
+                    core.read(address as u32, &mut buff).map_err(|_| {
                         DebugError::Other(anyhow::anyhow!("Unexpected error while reading debug expressions from target memory. Please report this as a bug."))
                     })?;
                     match size {
@@ -1718,7 +1718,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                         };
                                         // Now, retrieve the location by reading the adddress pointed to by the parent variable.
                                         let mut buff = [0u8; 4];
-                                        core.read_8(
+                                        core.read(
                                             child_variable.memory_location as u32,
                                             &mut buff,
                                         )?;
@@ -1790,7 +1790,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                 };
                 // NOTE: hard-coding value of variable.byte_size to 1 ... replace with code if necessary.
                 let mut buff = [0u8; 1];
-                core.read_8(child_variable.memory_location as u32, &mut buff)?;
+                core.read(child_variable.memory_location as u32, &mut buff)?;
                 let this_enum_const_value = u8::from_le_bytes(buff).to_string();
                 let enumumerator_value =
                     match enumerator_values.into_iter().find(|enumerator_variable| {
@@ -2219,7 +2219,7 @@ pub(crate) fn _print_all_attributes(
                         Complete => break,
                         RequiresMemory { address, size, .. } => {
                             let mut buff = vec![0u8; size as usize];
-                            core.read_8(address as u32, &mut buff)
+                            core.read(address as u32, &mut buff)
                                 .expect("Failed to read memory");
                             match size {
                                 1 => evaluation

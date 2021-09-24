@@ -305,7 +305,7 @@ impl<'session> Flasher<'session> {
         self.run_verify(|active| {
             active
                 .core
-                .read_8(fill.address(), page_slice)
+                .read(fill.address(), page_slice)
                 .map_err(FlashError::Core)
         })
     }
