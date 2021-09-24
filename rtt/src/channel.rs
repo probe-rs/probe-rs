@@ -202,7 +202,7 @@ impl UpChannel {
                 break;
             }
 
-            core.read_8(self.0.buffer_ptr + read, &mut buf[..count])?;
+            core.read(self.0.buffer_ptr + read, &mut buf[..count])?;
 
             total += count;
             read += count as u32;
@@ -381,7 +381,7 @@ fn read_c_string(
 
     // Read up to 128 bytes not going past the end of the region
     let mut bytes = vec![0u8; min(128, (range.end - ptr) as usize)];
-    core.read_8(ptr, bytes.as_mut())?;
+    core.read(ptr, bytes.as_mut())?;
 
     let return_value = bytes
         .iter()

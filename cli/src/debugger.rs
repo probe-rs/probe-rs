@@ -57,7 +57,7 @@ impl DebugCli {
 
                 let mut code = [0u8; 16 * 2];
 
-                cli_data.core.read_8(cpu_info.pc, &mut code)?;
+                cli_data.core.read(cpu_info.pc, &mut code)?;
 
                 /*
                 let instructions = cli_data
@@ -313,7 +313,7 @@ impl DebugCli {
 
                 let mut stack = vec![0u8; (stack_top - stack_bot) as usize];
 
-                cli_data.core.read_8(stack_bot, &mut stack[..])?;
+                cli_data.core.read(stack_bot, &mut stack[..])?;
 
                 let mut dump = Dump::new(stack_bot, stack);
 

@@ -143,7 +143,7 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
         /*
         let mut code = [0u8; 16 * 2];
 
-        core_data.target_core.read_8(cpu_info.pc, &mut code)?;
+        core_data.target_core.read(cpu_info.pc, &mut code)?;
 
         let instructions = core_data
             .capstone
@@ -299,7 +299,7 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
 
         // let mut stack = vec![0u8; (stack_top - stack_bot) as usize];
 
-        // core_data.target_core.read_8(stack_bot, &mut stack[..])?;
+        // core_data.target_core.read(stack_bot, &mut stack[..])?;
 
         // let mut dump = Dump::new(stack_bot, stack);
 
