@@ -106,6 +106,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Initial support for batched commands for J-Link (#515).
 - Added support for the STM32F2 family (#675).
 - Added support for FE310-G002 (HiFive1 Rev. B).
+- Added flash algorithm for GD32VF1 family (#830).
 
 ### Changed
 
