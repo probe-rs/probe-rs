@@ -1,13 +1,12 @@
 ---
 source: tests/test.rs
-expression: run_output
+expression: run_result.output
 
 ---
-(HOST) INFO  flashing program (5.82 KiB)
+(HOST) INFO  flashing program (6.57 KiB)
 (HOST) INFO  success!
 ────────────────────────────────────────────────────────────────────────────────
- INFO  main
- ERROR panicked at 'explicit panic'
+ERROR panicked at 'explicit panic'
 ────────────────────────────────────────────────────────────────────────────────
 stack backtrace:
    0: HardFaultTrampoline
@@ -17,15 +16,15 @@ stack backtrace:
    2: __udf
         at ./asm/lib.rs:49:17
    3: cortex_m::asm::udf
-        at [cortex-m-0.7.2]/src/asm.rs:43:5
+        at [cortex-m-0.7.3]/src/asm.rs:43:5
    4: _defmt_panic
-        at /Users/lottesteenbrink/ferrous/my-app/src/lib.rs:13:5
+        at /tmp/app/src/lib.rs:11:5
    5: defmt::export::panic
-        at [defmt-0.2.2]/src/export.rs:233:14
+        at /home/japaric/.cargo/git/checkouts/defmt-52fbd7917982cfac/e021e7d/src/export.rs:266:14
    6: panic::__cortex_m_rt_main
-        at /Users/lottesteenbrink/ferrous/my-app/src/bin/panic.rs:10:5
+        at /tmp/app/src/bin/panic.rs:8:5
    7: main
-        at /Users/lottesteenbrink/ferrous/my-app/src/bin/panic.rs:6:1
+        at /tmp/app/src/bin/panic.rs:6:1
    8: ResetTrampoline
         at [cortex-m-rt-0.6.14]/src/lib.rs:547:26
    9: Reset

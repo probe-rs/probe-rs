@@ -3,41 +3,38 @@ source: tests/test.rs
 expression: run_result.output
 
 ---
-(HOST) DEBUG vector table: VectorTable { location: 0, initial_stack_pointer: 2003fbc8, reset: 101, hard_fault: 13e5 }
+(HOST) DEBUG vector table: VectorTable { initial_stack_pointer: 2003fbc8, hard_fault: 15b1 }
 (HOST) DEBUG RAM region: 0x20000000-0x2003FFFF
 (HOST) DEBUG section `.data` is in RAM at 0x2003FBC8 ..= 0x2003FBF7
-(HOST) DEBUG section `.bss` is in RAM at 0x2003FBF8 ..= 0x2003FBFB
-(HOST) DEBUG section `.uninit` is in RAM at 0x2003FBFC ..= 0x2003FFFB
+(HOST) DEBUG section `.bss` is in RAM at 0x2003FBF8 ..= 0x2003FBFF
+(HOST) DEBUG section `.uninit` is in RAM at 0x2003FC00 ..= 0x2003FFFF
 (HOST) DEBUG valid SP range: 0x20000000 ..= 0x2003FBC7
 (HOST) DEBUG found 1 probes
 (HOST) DEBUG opened probe
 (HOST) DEBUG started session
-(HOST) INFO  flashing program (5.82 KiB)
+(HOST) INFO  flashing program (6.57 KiB)
 (HOST) INFO  success!
 (HOST) DEBUG 261062 bytes of stack available (0x20000000 ..= 0x2003FBC7), using 1024 byte canary
-(HOST) TRACE setting up canary took 0.013s (75.91 KiB/s)
+(HOST) TRACE setting up canary took 0.012s (83.61 KiB/s)
 (HOST) DEBUG starting device
 (HOST) DEBUG Successfully attached RTT
 ────────────────────────────────────────────────────────────────────────────────
- INFO  main
- ERROR panicked at 'explicit panic'
+ERROR panicked at 'explicit panic'
 ────────────────────────────────────────────────────────────────────────────────
-(HOST) TRACE reading canary took 0.012s (83.93 KiB/s)
+(HOST) TRACE reading canary took 0.011s (92.16 KiB/s)
 (HOST) DEBUG stack canary intact
-(HOST) DEBUG LR=0xFFFFFFF9 PC=0x000013E4
-(HOST) DEBUG LR=0x000006FF PC=0x0000071C
-(HOST) DEBUG update_cfa: CFA changed Some(2003fb68) -> 2003fb70
-(HOST) DEBUG LR=0x00000709 PC=0x000006FE
-(HOST) DEBUG update_cfa: CFA changed Some(2003fb70) -> 2003fb78
-(HOST) DEBUG LR=0x000005C5 PC=0x00000708
-(HOST) DEBUG update_cfa: CFA changed Some(2003fb78) -> 2003fb80
-(HOST) DEBUG LR=0x00000229 PC=0x000005C4
-(HOST) DEBUG update_cfa: CFA changed Some(2003fb80) -> 2003fbb0
-(HOST) DEBUG LR=0x00000195 PC=0x00000228
+(HOST) DEBUG LR=0xFFFFFFF9 PC=0x000015B0
+(HOST) DEBUG LR=0x000001C9 PC=0x000008DE
+(HOST) DEBUG update_cfa: CFA changed Some(2003fb90) -> 2003fb98
+(HOST) DEBUG LR=0x000001D3 PC=0x000001C8
+(HOST) DEBUG update_cfa: CFA changed Some(2003fb98) -> 2003fba0
+(HOST) DEBUG LR=0x000001BF PC=0x000001D2
+(HOST) DEBUG update_cfa: CFA changed Some(2003fba0) -> 2003fbb0
+(HOST) DEBUG LR=0x00000195 PC=0x000001BE
 (HOST) DEBUG update_cfa: CFA changed Some(2003fbb0) -> 2003fbb8
-(HOST) DEBUG LR=0x00000233 PC=0x00000194
+(HOST) DEBUG LR=0x000001DD PC=0x00000194
 (HOST) DEBUG update_cfa: CFA changed Some(2003fbb8) -> 2003fbc0
-(HOST) DEBUG LR=0x0000018B PC=0x00000232
+(HOST) DEBUG LR=0x0000018B PC=0x000001DC
 (HOST) DEBUG update_cfa: CFA changed Some(2003fbc0) -> 2003fbc8
 (HOST) DEBUG LR=0xFFFFFFFF PC=0x0000018A
 stack backtrace:
@@ -48,15 +45,15 @@ stack backtrace:
    2: __udf
         at ./asm/lib.rs:49:17
    3: cortex_m::asm::udf
-        at [cortex-m-0.7.2]/src/asm.rs:43:5
+        at [cortex-m-0.7.3]/src/asm.rs:43:5
    4: _defmt_panic
-        at /Users/lottesteenbrink/ferrous/my-app/src/lib.rs:13:5
+        at /tmp/app/src/lib.rs:11:5
    5: defmt::export::panic
-        at [defmt-0.2.2]/src/export.rs:233:14
+        at /home/japaric/.cargo/git/checkouts/defmt-52fbd7917982cfac/e021e7d/src/export.rs:266:14
    6: panic::__cortex_m_rt_main
-        at /Users/lottesteenbrink/ferrous/my-app/src/bin/panic.rs:10:5
+        at /tmp/app/src/bin/panic.rs:8:5
    7: main
-        at /Users/lottesteenbrink/ferrous/my-app/src/bin/panic.rs:6:1
+        at /tmp/app/src/bin/panic.rs:6:1
    8: ResetTrampoline
         at [cortex-m-rt-0.6.14]/src/lib.rs:547:26
    9: Reset

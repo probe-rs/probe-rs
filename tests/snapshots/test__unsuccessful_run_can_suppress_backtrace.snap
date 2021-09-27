@@ -3,11 +3,10 @@ source: tests/test.rs
 expression: run_result.output
 
 ---
-(HOST) INFO  flashing program (5.82 KiB)
+(HOST) INFO  flashing program (6.57 KiB)
 (HOST) INFO  success!
 ────────────────────────────────────────────────────────────────────────────────
- INFO  main
- ERROR panicked at 'explicit panic'
+ERROR panicked at 'explicit panic'
 ────────────────────────────────────────────────────────────────────────────────
 (HOST) ERROR the program panicked
 

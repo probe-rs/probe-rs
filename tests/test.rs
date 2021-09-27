@@ -98,7 +98,18 @@ fn truncate_output(probe_run_output: String) -> String {
 // this test should not be run by default, as it requires the target hardware to be present
 #[ignore]
 fn successful_run_has_no_backtrace() {
-    let run_result = run("--chip nRF52840_xxAA tests/test_elfs/hello");
+    let run_result = run("--chip nRF52840_xxAA tests/test_elfs/hello-rzcobs");
+
+    assert_eq!(true, run_result.exit_status.success());
+    insta::assert_snapshot!(run_result.output);
+}
+
+#[test]
+#[serial]
+// this test should not be run by default, as it requires the target hardware to be present
+#[ignore]
+fn raw_encoding() {
+    let run_result = run("--chip nRF52840_xxAA tests/test_elfs/hello-raw");
 
     assert_eq!(true, run_result.exit_status.success());
     insta::assert_snapshot!(run_result.output);
@@ -109,7 +120,7 @@ fn successful_run_has_no_backtrace() {
 // this test should not be run by default, as it requires the target hardware to be present
 #[ignore]
 fn successful_run_can_enforce_backtrace() {
-    let run_result = run("--chip nRF52840_xxAA tests/test_elfs/hello --backtrace=always");
+    let run_result = run("--chip nRF52840_xxAA tests/test_elfs/hello-rzcobs --backtrace=always");
 
     assert_eq!(true, run_result.exit_status.success());
     insta::assert_snapshot!(run_result.output);
@@ -120,7 +131,7 @@ fn successful_run_can_enforce_backtrace() {
 // this test should not be run by default, as it requires the target hardware to be present
 #[ignore]
 fn stack_overflow_is_reported_as_such() {
-    let run_result = run("--chip nRF52840_xxAA tests/test_elfs/overflow");
+    let run_result = run("--chip nRF52840_xxAA tests/test_elfs/overflow-rzcobs");
 
     assert_eq!(false, run_result.exit_status.success());
     insta::assert_snapshot!(run_result.output);
@@ -131,7 +142,7 @@ fn stack_overflow_is_reported_as_such() {
 // this test should not be run by default, as it requires the target hardware to be present
 #[ignore]
 fn panic_is_reported_as_such() {
-    let run_result = run("--chip nRF52840_xxAA tests/test_elfs/panic");
+    let run_result = run("--chip nRF52840_xxAA tests/test_elfs/panic-rzcobs");
 
     assert_eq!(false, run_result.exit_status.success());
     insta::assert_snapshot!(run_result.output);
@@ -143,7 +154,7 @@ fn panic_is_reported_as_such() {
 #[ignore]
 fn panic_verbose() {
     // record current verbose backtrace to catch deviations
-    let run_result = run("--chip nRF52840_xxAA tests/test_elfs/panic --verbose");
+    let run_result = run("--chip nRF52840_xxAA tests/test_elfs/panic-rzcobs --verbose");
 
     assert_eq!(false, run_result.exit_status.success());
     insta::assert_snapshot!(run_result.output);
@@ -154,7 +165,7 @@ fn panic_verbose() {
 // this test should not be run by default, as it requires the target hardware to be present
 #[ignore]
 fn unsuccessful_run_can_suppress_backtrace() {
-    let run_result = run("--chip nRF52840_xxAA tests/test_elfs/panic --backtrace=never");
+    let run_result = run("--chip nRF52840_xxAA tests/test_elfs/panic-rzcobs --backtrace=never");
 
     assert_eq!(false, run_result.exit_status.success());
     insta::assert_snapshot!(run_result.output);
@@ -165,7 +176,7 @@ fn unsuccessful_run_can_suppress_backtrace() {
 // this test should not be run by default, as it requires the target hardware to be present
 #[ignore]
 fn stack_overflow_can_suppress_backtrace() {
-    let run_result = run("--chip nRF52840_xxAA tests/test_elfs/overflow --backtrace=never");
+    let run_result = run("--chip nRF52840_xxAA tests/test_elfs/overflow-rzcobs --backtrace=never");
 
     assert_eq!(false, run_result.exit_status.success());
 }
@@ -176,7 +187,8 @@ fn stack_overflow_can_suppress_backtrace() {
 #[ignore]
 #[cfg(target_family = "unix")]
 fn ctrl_c_by_user_is_reported_as_such() {
-    let run_result = run_and_terminate("--chip nRF52840_xxAA tests/test_elfs/silent_loop", 5);
+    let run_result =
+        run_and_terminate("--chip nRF52840_xxAA tests/test_elfs/silent-loop-rzcobs", 5);
 
     assert_eq!(false, run_result.exit_status.success());
     insta::assert_snapshot!(run_result.output);

@@ -3,7 +3,7 @@ source: tests/test.rs
 expression: run_result.output
 
 ---
-(HOST) INFO  flashing program (6.57 KiB)
+(HOST) INFO  flashing program (5.73 KiB)
 (HOST) INFO  success!
 ────────────────────────────────────────────────────────────────────────────────
 INFO  Hello, world!
