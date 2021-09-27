@@ -5,6 +5,10 @@ use probe_rs::{DebugProbeInfo, Probe};
 
 use crate::cli;
 
+const NO_PROBE_FOUND_ERR: &str = "no probe was found.\n
+Common reasons for this are faulty cables or missing permissions.
+For detailed instructions, visit: https://github.com/knurling-rs/probe-run/tree/2f138c3#troubleshooting";
+
 pub(crate) fn open(opts: &cli::Opts) -> Result<Probe, anyhow::Error> {
     let all_probes = Probe::list_all();
     let filtered_probes = if let Some(probe_opt) = opts.probe.as_deref() {
@@ -15,7 +19,7 @@ pub(crate) fn open(opts: &cli::Opts) -> Result<Probe, anyhow::Error> {
     };
 
     if filtered_probes.is_empty() {
-        bail!("no probe was found")
+        bail!("{}", NO_PROBE_FOUND_ERR)
     }
 
     log::debug!("found {} probes", filtered_probes.len());
@@ -37,13 +41,13 @@ pub(crate) fn open(opts: &cli::Opts) -> Result<Probe, anyhow::Error> {
 
 pub(crate) fn print(probes: &[DebugProbeInfo]) {
     if !probes.is_empty() {
-        println!("The following devices were found:");
+        println!("the following probes were found:");
         probes
             .iter()
             .enumerate()
             .for_each(|(num, link)| println!("[{}]: {:?}", num, link));
     } else {
-        println!("No devices were found.");
+        println!("Error: {}", NO_PROBE_FOUND_ERR);
     }
 }
 
