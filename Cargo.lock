@@ -10,7 +10,7 @@ checksum = "e7a2e47a1fbe209ee101dd6d61285226744c6c8d3c21c8dc878ba6cb9f467f3a"
 dependencies = [
  "cpp_demangle",
  "fallible-iterator",
- "gimli 0.24.0",
+ "gimli",
  "object 0.24.0",
  "rustc-demangle",
  "smallvec",
@@ -191,8 +191,6 @@ dependencies = [
 [[package]]
 name = "defmt-decoder"
 version = "0.2.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f8cdd4e6b34a81db2aa4a493f5745007131fc85d10d2f0fba6c125ba7fd5138a"
 dependencies = [
  "ansi_term 0.12.1",
  "anyhow",
@@ -200,12 +198,11 @@ dependencies = [
  "colored",
  "defmt-parser",
  "difference",
- "gimli 0.23.0",
+ "gimli",
  "leb128",
  "log",
- "object 0.23.0",
+ "object 0.25.3",
  "ryu",
- "semver 1.0.3",
  "serde",
  "serde_json",
 ]
@@ -213,8 +210,6 @@ dependencies = [
 [[package]]
 name = "defmt-parser"
 version = "0.2.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bc621c2b4f5f5635e34021c38af2ccb0c1dae38ba11ebee25258de8bb1cee9fe"
 
 [[package]]
 name = "diff"
@@ -310,17 +305,6 @@ dependencies = [
  "cfg-if",
  "libc",
  "wasi",
-]
-
-[[package]]
-name = "gimli"
-version = "0.23.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f6503fe142514ca4799d4c26297c4248239fe8838d827db6bd6065c6ed29a6ce"
-dependencies = [
- "fallible-iterator",
- "indexmap",
- "stable_deref_trait",
 ]
 
 [[package]]
@@ -567,12 +551,6 @@ dependencies = [
 
 [[package]]
 name = "object"
-version = "0.23.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a9a7ab5d64814df0fe4a4b5ead45ed6c5f181ee3ff04ba344313a6c80446c5d4"
-
-[[package]]
-name = "object"
 version = "0.24.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1a5b3dd1c072ee7963717671d1ca129f1048fda25edea6b752bfc71ac8854170"
@@ -678,7 +656,7 @@ dependencies = [
  "bitfield",
  "bitvec",
  "enum-primitive-derive",
- "gimli 0.24.0",
+ "gimli",
  "hidapi",
  "ihex",
  "jaylink",
@@ -733,7 +711,7 @@ dependencies = [
  "difference",
  "dirs",
  "either",
- "gimli 0.24.0",
+ "gimli",
  "git-version",
  "hidapi",
  "insta",
@@ -859,7 +837,7 @@ version = "0.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f0dfe2087c51c460008730de8b57e6a320782fbfb312e1f4d520e6c6fae155ee"
 dependencies = [
- "semver 0.11.0",
+ "semver",
 ]
 
 [[package]]
@@ -888,12 +866,6 @@ checksum = "f301af10236f6df4160f7c3f04eec6dbc70ace82d23326abad5edee88801c6b6"
 dependencies = [
  "semver-parser",
 ]
-
-[[package]]
-name = "semver"
-version = "1.0.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5f3aac57ee7f3272d8395c6e4f502f434f0e289fcd62876f70daa008c20dcabe"
 
 [[package]]
 name = "semver-parser"

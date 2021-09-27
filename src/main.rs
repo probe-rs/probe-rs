@@ -21,7 +21,7 @@ use std::{
 
 use anyhow::{anyhow, bail};
 use colored::Colorize as _;
-use defmt_decoder::Locations;
+use defmt_decoder::{Locations, StreamDecoder};
 use probe_rs::{
     flashing::{self, Format},
     Core,
@@ -220,12 +220,19 @@ fn extract_and_print_logs(
         bail!("\"defmt\" RTT channel is in use, but the firmware binary contains no defmt data");
     }
 
+    let mut stream_decoder = if use_defmt {
+        elf.defmt_table
+            .as_ref()
+            .map(|table| table.new_stream_decoder())
+    } else {
+        None
+    };
+
     print_separator();
 
     let stdout = io::stdout();
     let mut stdout = stdout.lock();
     let mut read_buf = [0; 1024];
-    let mut defmt_buffer = vec![];
     let mut was_halted = false;
     while !exit.load(Ordering::Relaxed) {
         if let Some(logging_channel) = &mut logging_channel {
@@ -238,13 +245,12 @@ fn extract_and_print_logs(
             };
 
             if num_bytes_read != 0 {
-                match &elf.defmt_table {
-                    Some(table) if use_defmt => {
-                        defmt_buffer.extend_from_slice(&read_buf[..num_bytes_read]);
+                match stream_decoder.as_mut() {
+                    Some(stream_decoder) => {
+                        stream_decoder.received(&read_buf[..num_bytes_read]);
 
                         decode_and_print_defmt_logs(
-                            &mut defmt_buffer,
-                            table,
+                            &mut **stream_decoder,
                             elf.defmt_locations.as_ref(),
                             current_dir,
                             opts,
@@ -289,15 +295,14 @@ fn extract_and_print_logs(
 }
 
 fn decode_and_print_defmt_logs(
-    buffer: &mut Vec<u8>,
-    table: &defmt_decoder::Table,
+    stream_decoder: &mut dyn StreamDecoder,
     locations: Option<&Locations>,
     current_dir: &Path,
     opts: &cli::Opts,
 ) -> anyhow::Result<()> {
     loop {
-        match table.decode(buffer) {
-            Ok((frame, consumed)) => {
+        match stream_decoder.decode() {
+            Ok(frame) => {
                 // NOTE(`[]` indexing) all indices in `table` have already been verified to exist in
                 // the `locations` map
                 let (file, line, mod_path) = locations
@@ -325,16 +330,12 @@ fn decode_and_print_defmt_logs(
 
                 // Forward the defmt frame to our logger.
                 defmt_decoder::log::log_defmt(&frame, file.as_deref(), line, mod_path);
-
-                let num_bytes = buffer.len();
-                buffer.rotate_left(consumed);
-                buffer.truncate(num_bytes - consumed);
             }
 
             Err(defmt_decoder::DecodeError::UnexpectedEof) => break,
 
             Err(defmt_decoder::DecodeError::Malformed) => {
-                log::error!("failed to decode defmt data: {:x?}", buffer);
+                log::error!("failed to decode defmt data");
                 return Err(defmt_decoder::DecodeError::Malformed.into());
             }
         }
