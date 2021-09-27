@@ -1,24 +1,24 @@
 ---
 source: tests/test.rs
-expression: run_output
+expression: run_result.output
 
 ---
-(HOST) INFO  flashing program (5.75 KiB)
+(HOST) INFO  flashing program (6.57 KiB)
 (HOST) INFO  success!
 ────────────────────────────────────────────────────────────────────────────────
- INFO  Hello, world!
+INFO  Hello, world!
 ────────────────────────────────────────────────────────────────────────────────
 stack backtrace:
    0: lib::inline::__bkpt
         at ./asm/inline.rs:13:5
    1: __bkpt
         at ./asm/lib.rs:49:17
-   2: my_app::exit
-        at /Users/lottesteenbrink/ferrous/my-app/src/lib.rs:18:5
+   2: app::exit
+        at /tmp/app/src/lib.rs:16:5
    3: hello::__cortex_m_rt_main
-        at /Users/lottesteenbrink/ferrous/my-app/src/bin/hello.rs:10:5
+        at /tmp/app/src/bin/hello.rs:9:5
    4: main
-        at /Users/lottesteenbrink/ferrous/my-app/src/bin/hello.rs:6:1
+        at /tmp/app/src/bin/hello.rs:6:1
    5: ResetTrampoline
         at [cortex-m-rt-0.6.14]/src/lib.rs:547:26
    6: Reset
