@@ -37,12 +37,12 @@ jobs:
         if: (matrix.os == 'ubuntu-latest') || (matrix.os == 'ubuntu-20.04')
 
       - name: Test Hello
-        uses: probe-rs/actions@f569ad1bef09f6ef1d252ab77d44d7bad732c28f
+        uses: probe-rs/actions@d93212cbc8bba176ee1687673e8862ae05ff090f
         with:
           who-to-greet: "Everyone"
 
       - name: Test Hello on Linux
-        uses: probe-rs/actions@f569ad1bef09f6ef1d252ab77d44d7bad732c28f
+        uses: probe-rs/actions@d93212cbc8bba176ee1687673e8862ae05ff090f
         with:
           who-to-greet: "Linux"
         if: (matrix.os == 'ubuntu-latest') || (matrix.os == 'ubuntu-20.04')
