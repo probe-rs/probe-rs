@@ -1,0 +1,261 @@
+---
+name: SAM3U
+manufacturer: ~
+variants:
+  - name: ATSAM3U1C
+    cores:
+    - name: main
+      type: armv7m
+      core_access_options:
+        Arm:
+          ap: 0x0
+          psel: 0x0
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536879104
+          is_boot_memory: false
+          cores:
+            - main
+      - Nvm:
+          range:
+            start: 524288
+            end: 589824
+          is_boot_memory: true
+          cores:
+            - main
+    flash_algorithms:
+      - atsam3u_64
+      - atsam3u_gpnvm
+  - name: ATSAM3U1E
+    cores:
+      - name: main
+        type: armv7m
+        core_access_options:
+          Arm:
+            ap: 0x0
+            psel: 0x0
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536879104
+          is_boot_memory: false
+          cores:
+            - main
+      - Nvm:
+          range:
+            start: 524288
+            end: 589824
+          is_boot_memory: true
+          cores:
+            - main
+    flash_algorithms:
+      - atsam3u_64
+      - atsam3u_gpnvm
+  - name: ATSAM3U2C
+    cores:
+    - name: main
+      type: armv7m
+      core_access_options:
+        Arm:
+          ap: 0x0
+          psel: 0x0
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536887296
+          is_boot_memory: false
+          cores:
+            - main
+      - Nvm:
+          range:
+            start: 524288
+            end: 655360
+          is_boot_memory: true
+          cores:
+            - main
+    flash_algorithms:
+      - atsam3u_128
+      - atsam3u_gpnvm
+  - name: ATSAM3U2E
+    cores:
+    - name: main
+      type: armv7m
+      core_access_options:
+        Arm:
+          ap: 0x0
+          psel: 0x0
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536887296
+          is_boot_memory: false
+          cores:
+            - main
+      - Nvm:
+          range:
+            start: 524288
+            end: 655360
+          is_boot_memory: true
+          cores:
+            - main
+    flash_algorithms:
+      - atsam3u_128
+      - atsam3u_gpnvm
+  - name: ATSAM3U4C
+    cores:
+    - name: main
+      type: armv7m
+      core_access_options:
+        Arm:
+          ap: 0x0
+          psel: 0x0
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536903680
+          is_boot_memory: false
+          cores:
+            - main
+      - Nvm:
+          range:
+            start: 524288
+            end: 655360
+          is_boot_memory: true
+          cores:
+            - main
+    flash_algorithms:
+      - atsam3u_128
+      - atsam3u_128_b1
+      - atsam3u_gpnvm
+  - name: ATSAM3U4E
+    cores:
+    - name: main
+      type: armv7m
+      core_access_options:
+        Arm:
+          ap: 0x0
+          psel: 0x0
+    part: ~
+    memory_map:
+      - Ram:
+          range:
+            start: 536870912
+            end: 536903680
+          is_boot_memory: false
+          cores:
+            - main
+      - Nvm:
+          range:
+            start: 524288
+            end: 655360
+          is_boot_memory: true
+          cores:
+            - main
+    flash_algorithms:
+      - atsam3u_128
+      - atsam3u_128_b1
+      - atsam3u_gpnvm
+flash_algorithms:
+  - name: atsam3u_64
+    description: ATSAM3U 64kB Flash
+    cores:
+      - main
+    default: true
+    instructions: OklJRAhgDyA5SQACCGA5SQhgASA4ScADSGE5SzdIWGI3SjhIwDoQYjVIgDiBaskH/NARa4kIiQBJHBFjgWoJB/zVASERY4FqCQf81StIQBxYYgAgcEcCKBXRJUgqSUFggWjJB/zQwmiRBwfUJkn+MUFggWjJB/zQkQcE1SNJQWCBaMkH/NAAIHBHH0kYSAg5QWCBaMkH/NAAIHBHACBwRzC1EkwYTUxEJGgRSwQbJAIkDCQCLR8lQ11gnWjtB/zQyRyJCIkAAuAgygkfIMAAKfrRDUgKOARDXGCYaMAH/NCYaEAHgA8A0AEgML0EAAAAAAgOQAAKDkBAEg5AAENNUMAEDkABDzcBDQAAWgwCAFoAAAAAAAAAAA==
+    pc_init: 1
+    pc_uninit: 87
+    pc_program_page: 161
+    pc_erase_sector: 157
+    pc_erase_all: 139
+    data_section_offset: 272
+    flash_properties:
+      address_range:
+        start: 524288
+        end: 589824
+      page_size: 256
+      erased_byte_value: 255
+      program_page_timeout: 100
+      erase_sector_timeout: 1000
+      sectors:
+        - size: 256
+          address: 0
+  - name: atsam3u_128
+    description: ATSAM3U 128kB Flash
+    cores:
+      - main
+    default: true
+    instructions: OklJRAhgDyA5SQACCGA5SQhgASA4ScADSGE5SzdIWGI3SjhIwDoQYjVIgDiBaskH/NARa4kIiQBJHBFjgWoJB/zVASERY4FqCQf81StIQBxYYgAgcEcCKBXRJUgqSUFggWjJB/zQwmiRBwfUJkn+MUFggWjJB/zQkQcE1SNJQWCBaMkH/NAAIHBHH0kYSAg5QWCBaMkH/NAAIHBHACBwRzC1EkwYTUxEJGgRSwQbJAIkDCQCLR8lQ11gnWjtB/zQyRyJCIkAAuAgygkfIMAAKfrRDUgKOARDXGCYaMAH/NCYaEAHgA8A0AEgML0EAAAAAAgOQAAKDkBAEg5AAENNUMAEDkABDzcBDQAAWgwCAFoAAAAAAAAAAA==
+    pc_init: 1
+    pc_uninit: 87
+    pc_program_page: 161
+    pc_erase_sector: 157
+    pc_erase_all: 139
+    data_section_offset: 272
+    flash_properties:
+      address_range:
+        start: 524288
+        end: 655360
+      page_size: 256
+      erased_byte_value: 255
+      program_page_timeout: 100
+      erase_sector_timeout: 1000
+      sectors:
+        - size: 256
+          address: 0
+  - name: atsam3u_128_b1
+    description: ATSAM3U 128kB Flash Bank 1
+    cores:
+      - main
+    default: true
+    instructions: OklJRAhgDyA5SQACCGA5SQhgASA4ScADSGE5SzdIWGI3SjhIwDoQYjVIgDiBaskH/NARa4kIiQBJHBFjgWoJB/zVASERY4FqCQf81StIQBxYYgAgcEcCKBXRJUgqSUFggWjJB/zQwmiRBwfUJkn+MUFggWjJB/zQkQcE1SNJQWCBaMkH/NAAIHBHH0kZSAg5QWCBaMkH/NAAIHBHACBwRzC1EkwYTUxEJGgSSwQbJAIkDCQCLR8lQ11gnWjtB/zQyRyJCIkAAuAgygkfIMAAKfrRDUgKOARDXGCYaMAH/NCYaEAHgA8A0AEgML0EAAAAAAgOQAAKDkBAEg5AAENNUMAEDkABDzcBDQAAWgwCAFoAAAAAAAAAAA==
+    pc_init: 1
+    pc_uninit: 87
+    pc_program_page: 161
+    pc_erase_sector: 157
+    pc_erase_all: 139
+    data_section_offset: 272
+    flash_properties:
+      address_range:
+        start: 1048576
+        end: 1179648
+      page_size: 256
+      erased_byte_value: 255
+      program_page_timeout: 100
+      erase_sector_timeout: 1000
+      sectors:
+        - size: 256
+          address: 0
+  - name: atsam3u_gpnvm
+    description: ATSAM3U GPNVM bits
+    cores:
+      - main
+    default: false
+    instructions: UUlJRAhgDyBQSQACCGBQSQhgASBPScADSGFQS05IWGJOSk9IwDoQYkxIgDiBaskH/NARa4kIiQBJHBFjgWoJB/zVASERY4FqCQf81UJIQBxYYgAgcEcAIHBHACBwRwAgcEcAIHBHELUQeDhJPUpKYIpo0gf80MpowwfUB9sP5A+jQgrQwwcC0DZLmx4B4DVLWx5LYIto2wf80AIjBEYcQBNAnEIK0IMHAtUuS/4zAeAsS/8zS2CLaNsH/NAEIwRGHEAaQJRCCdBABwHVJkgB4CVIQBxIYIhowAf80AAgEL0wtRN4GUofTFRglGjkB/zQ0mjcB9UH5A/tD6xCBtECJB1GJUAUQKVCAdBAHDC9BCQjQCJAk0IB0IAcML1AGDC9ELUAIgJgCmAISg5MVGCTaNsH/NDSaAJgBUhEYIJo0gf80MBoCGAQvQQAAAAACA5AAAoOQEASDkAAQ01QwAQOQAEPNwENAABaCwIAWgAAAAAAAAAA
+    pc_init: 1
+    pc_uninit: 87
+    pc_program_page: 103
+    pc_erase_sector: 99
+    pc_erase_all: 95
+    data_section_offset: 364
+    flash_properties:
+      address_range:
+        start: 536870896
+        end: 536870912
+      page_size: 16
+      erased_byte_value: 255
+      program_page_timeout: 100
+      erase_sector_timeout: 1000
+      sectors:
+        - size: 16
+          address: 0
