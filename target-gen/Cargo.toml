@@ -8,6 +8,7 @@ edition = "2018"
 
 [dependencies]
 probe-rs = { git = "https://github.com/probe-rs/probe-rs.git", default-features = false }
+probe-rs-target = { git = "https://github.com/probe-rs/probe-rs.git", default-features = false }
 cmsis-pack = { git = "https://github.com/probe-rs/cmsis-pack-manager.git" }
 
 goblin = "0.2.0"
