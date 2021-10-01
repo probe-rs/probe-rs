@@ -11,9 +11,14 @@ use std::{
 };
 
 use anyhow::{bail, ensure, Context, Result};
-use probe_rs::config::{
-    Chip, ChipFamily, MemoryRegion, NvmRegion, RamRegion, TargetDescriptionSource::BuiltIn,
+use probe_rs::{
+    config::{
+        Chip, ChipFamily, Core, MemoryRegion, NvmRegion, RamRegion,
+        TargetDescriptionSource::BuiltIn,
+    },
+    CoreType,
 };
+use probe_rs_target::{ArmCoreAccessOptions, CoreAccessOptions};
 use simplelog::*;
 use structopt::StructOpt;
 
@@ -118,7 +123,20 @@ fn cmd_elf(
 
         match algorithm_to_update {
             None => bail!("Unable to update flash algorithm in target description file '{}'. Did not find an existing algorithm with name '{}'", target_description_file.display(), &algorithm.name),
-            Some(index) => family.flash_algorithms[index] = algorithm,
+            Some(index) => {
+                let current = &family.flash_algorithms[index];
+
+                // if a load address was specified, use it in the replacement
+                if let Some(load_addr)  = current.load_address {
+                    algorithm.load_address = Some(load_addr);
+                    algorithm.data_section_offset = algorithm.data_section_offset.saturating_sub(load_addr);
+                }
+                // core access cannot be determined, use the current value
+                algorithm.cores = current.cores.clone();
+                algorithm.description = current.description.clone();
+
+                family.flash_algorithms[index] = algorithm
+            },
         }
 
         let target_description = File::create(&target_description_file)?;
@@ -127,27 +145,37 @@ fn cmd_elf(
     } else {
         // Create a complete target specification, with place holder values
         let algorithm_name = algorithm.name.clone();
+        algorithm.cores = vec!["main".to_owned()];
 
         let chip_family = ChipFamily {
             name: "<family name>".to_owned(),
             manufacturer: None,
             variants: vec![Chip {
+                cores: vec![Core {
+                    name: "main".to_owned(),
+                    core_type: CoreType::Armv6m,
+                    core_access_options: CoreAccessOptions::Arm(ArmCoreAccessOptions {
+                        ap: 0,
+                        psel: 0,
+                    }),
+                }],
                 part: None,
                 name: "<chip name>".to_owned(),
                 memory_map: vec![
                     MemoryRegion::Nvm(NvmRegion {
                         is_boot_memory: false,
                         range: 0..0x2000,
+                        cores: vec!["main".to_owned()],
                     }),
                     MemoryRegion::Ram(RamRegion {
                         is_boot_memory: true,
                         range: 0x1_0000..0x2_0000,
+                        cores: vec!["main".to_owned()],
                     }),
                 ],
                 flash_algorithms: vec![algorithm_name],
             }],
             flash_algorithms: vec![algorithm],
-            core: probe_rs::CoreType::M0,
             source: BuiltIn,
         };
 

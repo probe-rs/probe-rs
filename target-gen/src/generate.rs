@@ -6,8 +6,11 @@ use anyhow::{anyhow, bail, Context, Result};
 use cmsis_pack::pdsc::{Core, Device, Package, Processors};
 use cmsis_pack::{pack_index::PdscRef, utils::FromElem};
 use futures::StreamExt;
-use probe_rs::config::{Chip, ChipFamily, MemoryRegion, NvmRegion, RamRegion, RawFlashAlgorithm};
+use probe_rs::config::{
+    Chip, ChipFamily, Core as ProbeCore, MemoryRegion, NvmRegion, RamRegion, RawFlashAlgorithm,
+};
 use probe_rs::CoreType;
+use probe_rs_target::{ArmCoreAccessOptions, CoreAccessOptions};
 use tokio::runtime::Builder;
 
 pub(crate) enum Kind<'a, T>
@@ -88,25 +91,6 @@ where
             }
         };
 
-        let core = if let Some(ct) = core_type {
-            match ct {
-                Core::CortexM0 => CoreType::M0,
-                Core::CortexM0Plus => CoreType::M0,
-                Core::CortexM4 => CoreType::M4,
-                Core::CortexM3 => CoreType::M3,
-                Core::CortexM33 => CoreType::M33,
-                Core::CortexM7 => CoreType::M7,
-                c => {
-                    bail!("Core '{:?}' is not yet supported for target generation.", c);
-                }
-            }
-        } else {
-            bail!(
-                "Asymmetric core types are not supported yet: {:?}",
-                &device.processor
-            );
-        };
-
         // Check if this device family is already known.
         let mut potential_family = families
             .iter_mut()
@@ -119,7 +103,6 @@ where
                 name: device.family,
                 manufacturer: None,
                 variants: Vec::new(),
-                core,
                 flash_algorithms: Vec::new(),
                 source: probe_rs::config::TargetDescriptionSource::BuiltIn,
             });
@@ -144,9 +127,36 @@ where
             memory_map.push(MemoryRegion::Nvm(mem));
         }
 
+        let core = if let Some(ct) = core_type {
+            match ct {
+                Core::CortexM0 => CoreType::Armv6m,
+                Core::CortexM0Plus => CoreType::Armv6m,
+                Core::CortexM4 => CoreType::Armv7em,
+                Core::CortexM3 => CoreType::Armv7m,
+                Core::CortexM33 => CoreType::Armv8m,
+                Core::CortexM7 => CoreType::Armv7em,
+                c => {
+                    bail!("Core '{:?}' is not yet supported for target generation.", c);
+                }
+            }
+        } else {
+            bail!(
+                "Asymmetric core types are not supported yet: {:?}",
+                &device.processor
+            );
+        };
+
         family.variants.push(Chip {
             name: device_name,
             part: None,
+            cores: vec![ProbeCore {
+                name: "main".to_owned(),
+                core_type: core,
+                core_access_options: CoreAccessOptions::Arm(ArmCoreAccessOptions {
+                    ap: 0,
+                    psel: 0,
+                }),
+            }],
             memory_map,
             flash_algorithms: flash_algorithm_names,
         });
@@ -367,6 +377,7 @@ pub(crate) fn get_ram(device: &Device) -> Option<RamRegion> {
             regions.push(RamRegion {
                 range: memory.start as u32..memory.start as u32 + memory.size as u32,
                 is_boot_memory: memory.startup,
+                cores: vec!["main".to_owned()],
             });
         }
     }
@@ -402,6 +413,7 @@ pub(crate) fn get_flash(device: &Device) -> Option<NvmRegion> {
             regions.push(NvmRegion {
                 range: memory.start as u32..memory.start as u32 + memory.size as u32,
                 is_boot_memory: memory.startup,
+                cores: vec!["main".to_owned()],
             });
         }
     }
