@@ -1,4 +1,5 @@
 pub(crate) mod cmsisdap;
+pub(crate) mod espusbjtag;
 pub(crate) mod fake_probe;
 #[cfg(feature = "ftdi")]
 pub(crate) mod ftdi;
@@ -21,6 +22,8 @@ use crate::{
 };
 use jlink::list_jlink_devices;
 use std::{convert::TryFrom, fmt};
+
+use self::espusbjtag::list_espjtag_devices;
 
 /// Used to log warnings when the measured target voltage is
 /// lower than 1.4V, if at all measureable.
@@ -197,6 +200,8 @@ impl Probe {
 
         list.extend(list_jlink_devices());
 
+        list.extend(list_espjtag_devices());
+
         list
     }
 
@@ -220,7 +225,12 @@ impl Probe {
             Err(DebugProbeError::ProbeCouldNotBeCreated(ProbeCreationError::NotFound)) => {}
             Err(e) => return Err(e),
         };
-        match jlink::JLink::new_from_selector(selector) {
+        match jlink::JLink::new_from_selector(selector.clone()) {
+            Ok(link) => return Ok(Probe::from_specific_probe(link)),
+            Err(DebugProbeError::ProbeCouldNotBeCreated(ProbeCreationError::NotFound)) => {}
+            Err(e) => return Err(e),
+        };
+        match espusbjtag::EspUsbJtag::new_from_selector(selector) {
             Ok(link) => return Ok(Probe::from_specific_probe(link)),
             Err(DebugProbeError::ProbeCouldNotBeCreated(ProbeCreationError::NotFound)) => {}
             Err(e) => return Err(e),
@@ -503,6 +513,7 @@ pub enum DebugProbeType {
     Ftdi,
     StLink,
     JLink,
+    EspJtag,
 }
 
 #[derive(Clone)]

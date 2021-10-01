@@ -1,0 +1,518 @@
+use core::fmt;
+use std::{fmt::Debug, time::Duration};
+
+use rusb::{request_type, Context, Device, UsbContext};
+
+use crate::{
+    DebugProbeError, DebugProbeInfo, DebugProbeSelector, DebugProbeType, ProbeCreationError,
+};
+
+const JTAG_PROTOCOL_CAPABILITIES_VERSION: u8 = 1;
+const JTAG_PROTOCOL_CAPABILITIES_SPEED_APB_TYPE: u8 = 1;
+const MAX_COMMAND_REPETITIONS: usize = 1024;
+const OUT_BUFFER_SIZE: usize = OUT_EP_BUFFER_SIZE * 64;
+const OUT_EP_BUFFER_SIZE: usize = 64;
+const IN_EP_BUFFER_SIZE: usize = 64;
+const USB_TIMEOUT: Duration = Duration::from_millis(5000);
+
+const USB_VID: u16 = 0x303A;
+const USB_PID: u16 = 0x1001;
+
+const VENDOR_DESCRIPTOR_JTAG_CAPABILITIES: u16 = 0x2000;
+
+// const VENDOR_JTAG_SETDIV: u16 = 0;
+// const VENDOR_JTAG_SETIO: u16 = 1;
+// const VENDOR_JTAG_GETTDO: u16 = 2;
+
+// const VENDOR_JTAG_SETIO_TDI: u16 = 1 << 0;
+// const VENDOR_JTAG_SETIO_TMS: u16 = 1 << 1;
+// const VENDOR_JTAG_SETIO_TCK: u16 = 1 << 2;
+// const VENDOR_JTAG_SETIO_TRST: u16 = 1 << 3;
+// const VENDOR_JTAG_SETIO_SRST: u16 = 1 << 4;
+
+pub(super) struct ProtocolHandler {
+    // The USB device handle.
+    device_handle: rusb::DeviceHandle<rusb::Context>,
+
+    // The command in the queue and their repetitions.
+    // For now we do one command at a time.
+    command_queue: Option<(Command, usize)>,
+    output_buffer: Vec<Command>,
+    input_buffer: Vec<u8>,
+    pending_in_bits: usize,
+
+    ep_out: u8,
+    ep_in: u8,
+}
+
+impl Debug for ProtocolHandler {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("ProtocolHandler")
+            .field("command_queue", &self.command_queue)
+            .field("output_buffer", &self.output_buffer)
+            .field("input_buffer", &self.input_buffer)
+            .field("ep_out", &self.ep_out)
+            .field("ep_in", &self.ep_in)
+            .finish()
+    }
+}
+
+impl ProtocolHandler {
+    pub fn new_from_selector(
+        selector: impl Into<DebugProbeSelector>,
+    ) -> Result<Self, ProbeCreationError> {
+        let selector = selector.into();
+
+        let context = Context::new()?;
+
+        log::debug!("Acquired libusb context.");
+
+        let device = context
+            .devices()?
+            .iter()
+            .filter(is_espjtag_device)
+            .find_map(|device| {
+                let descriptor = device.device_descriptor().ok()?;
+                // First match the VID & PID.
+                if selector.vendor_id == descriptor.vendor_id()
+                    && selector.product_id == descriptor.product_id()
+                {
+                    // If the VID & PID match, match the serial if one was given.
+                    if let Some(serial) = &selector.serial_number {
+                        let sn_str = read_serial_number(&device, &descriptor).ok();
+                        if sn_str.as_ref() == Some(serial) {
+                            Some(device)
+                        } else {
+                            None
+                        }
+                    } else {
+                        // If no serial was given, the VID & PID match is enough; return the device.
+                        Some(device)
+                    }
+                } else {
+                    None
+                }
+            })
+            .map_or(Err(ProbeCreationError::NotFound), Ok)?;
+
+        let mut device_handle = device.open()?;
+
+        log::debug!("Aquired handle for probe");
+
+        let config = device.active_config_descriptor()?;
+
+        log::debug!("Active config descriptor: {:?}", &config);
+
+        let descriptor = device.device_descriptor()?;
+
+        log::debug!("Device descriptor: {:?}", &descriptor);
+
+        device_handle.claim_interface(0)?;
+
+        log::debug!("Claimed interface 0 of USB device.");
+
+        let mut buffer = [0; 256];
+        device_handle.read_control(
+            request_type(
+                rusb::Direction::In,
+                rusb::RequestType::Standard,
+                rusb::Recipient::Device,
+            ),
+            rusb::constants::LIBUSB_REQUEST_GET_DESCRIPTOR,
+            VENDOR_DESCRIPTOR_JTAG_CAPABILITIES,
+            0,
+            &mut buffer,
+            USB_TIMEOUT,
+        )?;
+
+        // TODO:
+        // let mut base_speed_khz = 1000;
+        // let mut div_min = 1;
+        // let mut div_max = 1;
+
+        let protocol_version = buffer[0];
+        if protocol_version != JTAG_PROTOCOL_CAPABILITIES_VERSION {
+            return Err(ProbeCreationError::ProbeSpecific(
+                "Unknown capabilities descriptor version.".into(),
+            ));
+        }
+
+        let length = buffer[1] as usize;
+
+        let mut p = 2usize;
+        while p < length {
+            let typ = buffer[p + 0];
+            let length = buffer[p + 1];
+
+            if typ == JTAG_PROTOCOL_CAPABILITIES_SPEED_APB_TYPE {
+                // TODO:
+                // base_speed_khz = (((buffer[p + 3] as u16) << 8) | buffer[p + 2] as u16) * 10 / 2;
+                // div_min = ((buffer[p + 5] as u16) << 8) | buffer[p + 4] as u16;
+                // div_max = ((buffer[p + 7] as u16) << 8) | buffer[p + 6] as u16;
+            } else {
+                log::warn!("Unknown capabilities type {:01X?}", typ);
+            }
+
+            p += length as usize;
+        }
+
+        // TODO:
+        // let hw_in_fifo_len = 4;
+
+        log::debug!("Succesfully attached to ESP USB JTAG.");
+
+        Ok(Self {
+            device_handle,
+            command_queue: None,
+            output_buffer: Vec::new(),
+            input_buffer: Vec::new(),
+            ep_out: 0x02,
+            ep_in: 0x01,
+            pending_in_bits: 0,
+        })
+    }
+
+    /// Put a bit on TDI and possibly read one from TDO.
+    pub fn jtag_io(
+        &mut self,
+        tms: impl IntoIterator<Item = bool>,
+        tdi: impl IntoIterator<Item = bool>,
+    ) -> Result<BitIter, DebugProbeError> {
+        for (tms, tdi) in tms.into_iter().zip(tdi.into_iter()) {
+            self.push_command(Command::Clock {
+                cap: true,
+                tdi: tdi,
+                tms: tms,
+            })?;
+            self.pending_in_bits += 1;
+        }
+
+        // TODO Read bits from TDO:
+
+        Ok(BitIter::new(&[], 42))
+    }
+
+    /// Sets the two different resets on the target.
+    /// NOTE: Only srst can be set for now. Setting trst is not implemented yet.
+    pub fn set_reset(&mut self, _trst: bool, srst: bool) -> Result<(), DebugProbeError> {
+        // TODO: Handle trst using setup commands. This is not necessarily required and can be left as is for the moiment..
+        self.push_command(Command::Reset(srst))?;
+        self.flush()
+    }
+
+    /// Adds a command to the command queue.
+    /// This will properly add repeat commands if possible.
+    fn push_command(&mut self, command: Command) -> Result<(), DebugProbeError> {
+        if let Some((command_in_queue, repetitions)) = self.command_queue.as_mut() {
+            if command == *command_in_queue && *repetitions < MAX_COMMAND_REPETITIONS {
+                *repetitions += 1;
+                return Ok(());
+            }
+            let command = command_in_queue.clone();
+            let repetitions = *repetitions;
+            self.write_stream(command, repetitions)?;
+        }
+
+        self.command_queue = Some((command, 1));
+
+        Ok(())
+    }
+
+    /// Flushes all the pending commands to the JTAG adapter.
+    pub fn flush(&mut self) -> Result<(), DebugProbeError> {
+        if let Some((command_in_queue, repetitions)) = self.command_queue.take() {
+            self.write_stream(command_in_queue, repetitions)?;
+        }
+
+        log::debug!("Flushing ...");
+        // Make sure we add an additional nibble to the command buffer if the number of nibbles is odd,
+        // as we cannot send a standalone nibble.
+        if self.output_buffer.len() % 2 == 1 {
+            self.add_raw_command(Command::Flush)?;
+        }
+
+        self.send_buffer()?;
+
+        while self.pending_in_bits > 0 {
+            self.receive_buffer()?;
+        }
+
+        Ok(())
+    }
+
+    /// Writes a command one or multiple times into the raw buffer we send to the USB EP later
+    /// or if the out buffer reaches a limit of `OUT_BUFFER_SIZE`.
+    fn write_stream(
+        &mut self,
+        command: Command,
+        mut repetitions: usize,
+    ) -> Result<(), DebugProbeError> {
+        // Make sure we send flush commands only once and not repeated (Could make the target unhapy).
+        if command == Command::Flush {
+            repetitions = 1;
+        }
+
+        // Send the actual command.
+        self.add_raw_command(command)?;
+        // We already sent the command once so we need to do one less repetition.
+        repetitions -= 1;
+
+        // Send repetitions as many times as required.
+        // We only send 2 bits with each repetition command as per the protocol.
+        for _ in 0..repetitions {
+            self.add_raw_command(Command::Repetitions(repetitions as u8 & 3))?;
+            repetitions >>= 2;
+        }
+
+        Ok(())
+    }
+
+    /// Adds a single command to the output buffer and writes it to the USB EP if the buffer reaches a limit of `OUT_BUFFER_SIZE`.
+    fn add_raw_command(&mut self, command: Command) -> Result<(), DebugProbeError> {
+        let command = command.into();
+        self.output_buffer.push(command);
+
+        // If we reach a maximal size of the output buffer, we flush.
+        if self.output_buffer.len() == OUT_BUFFER_SIZE {
+            self.send_buffer()?;
+        }
+
+        // TODO: Bizarre undocumented condition to flush buffer.
+        // https://github.com/espressif/openocd-esp32/blob/a28f71785066722f49494e0d946fdc56966dcc0d/src/jtag/drivers/esp_usb_jtag.c#L367
+
+        Ok(())
+    }
+
+    /// Sends the commands stored in the output buffer to the USB EP.
+    fn send_buffer(&mut self) -> Result<(), DebugProbeError> {
+        let commands = self
+            .output_buffer
+            .chunks(2)
+            .map(|chunk| {
+                if chunk.len() == 2 {
+                    let unibble: u8 = chunk[1].into();
+                    let lnibble: u8 = chunk[0].into();
+                    (unibble << 4) | lnibble
+                } else {
+                    chunk[0].into()
+                }
+            })
+            .collect::<Vec<_>>();
+
+        self.device_handle
+            .write_bulk(self.ep_out, &commands, USB_TIMEOUT)
+            .map_err(|e| DebugProbeError::Usb(Some(Box::new(e))))?;
+
+        // We only clear the output buffer on a successful transmission of all bytes.
+        self.output_buffer.clear();
+
+        // TODO: Weird condition again.
+        // https://github.com/espressif/openocd-esp32/blob/a28f71785066722f49494e0d946fdc56966dcc0d/src/jtag/drivers/esp_usb_jtag.c#L345
+
+        Ok(())
+    }
+
+    /// Tries to receive pending in bits from the USB EP.
+    fn receive_buffer(&mut self) -> Result<(), DebugProbeError> {
+        let count = ((self.pending_in_bits + 7) / 8).min(IN_EP_BUFFER_SIZE);
+
+        if count == 0 {
+            return Ok(());
+        }
+
+        let mut buffer = vec![0; count];
+
+        let read_bytes = self
+            .device_handle
+            .read_bulk(self.ep_in, &mut buffer, USB_TIMEOUT)
+            .map_err(|e| DebugProbeError::Usb(Some(Box::new(e))))?;
+
+        if read_bytes == 0 {
+            // Sometimes the hardware returns 0 bytes instead of NAKking the transaction. Ignore this.
+            return Err(DebugProbeError::ProbeSpecific(
+                "Transaction not acknowledged.".into(),
+            ));
+        }
+
+        self.input_buffer.extend(&buffer);
+        self.pending_in_bits -= buffer.len();
+
+        Ok(())
+    }
+}
+
+#[derive(PartialEq, Debug, Clone, Copy)]
+pub(super) enum Command {
+    Clock { cap: bool, tdi: bool, tms: bool },
+    Reset(bool),
+    Flush,
+    // TODO: What is this?
+    _Rsvd,
+    Repetitions(u8),
+}
+
+impl Into<u8> for Command {
+    fn into(self) -> u8 {
+        match self {
+            Self::Clock { cap, tdi, tms } => {
+                (if cap { 4 } else { 0 } | if tms { 2 } else { 0 } | if tdi { 1 } else { 0 })
+            }
+            Self::Reset(srst) => 8 | if srst { 1 } else { 0 },
+            Self::Flush => 0xA,
+            Self::_Rsvd => 0xB,
+            Self::Repetitions(repetitions) => 0xC + repetitions,
+        }
+    }
+}
+
+/// Try to read the serial number of a USB device.
+fn read_serial_number<T: rusb::UsbContext>(
+    device: &rusb::Device<T>,
+    descriptor: &rusb::DeviceDescriptor,
+) -> Result<String, rusb::Error> {
+    let timeout = Duration::from_millis(100);
+
+    let handle = device.open()?;
+    let language = handle
+        .read_languages(timeout)?
+        .get(0)
+        .cloned()
+        .ok_or(rusb::Error::BadDescriptor)?;
+    handle.read_serial_number_string(language, descriptor, timeout)
+}
+
+/// An iterator over a received bit stream.
+#[derive(Clone)]
+pub struct BitIter<'a> {
+    buf: &'a [u8],
+    next_bit: u8,
+    bits_left: usize,
+}
+
+impl<'a> BitIter<'a> {
+    pub(crate) fn new(buf: &'a [u8], total_bits: usize) -> Self {
+        assert!(
+            buf.len() * 8 >= total_bits,
+            "cannot pull {} bits out of {} bytes",
+            total_bits,
+            buf.len()
+        );
+
+        Self {
+            buf,
+            next_bit: 0,
+            bits_left: total_bits,
+        }
+    }
+
+    /// Returns the number of bits left in `self`.
+    pub fn bits_left(&self) -> usize {
+        self.bits_left
+    }
+
+    /// Splits off another `BitIter` from `self`s current position that will return `count` bits.
+    ///
+    /// After this call, `self` will be advanced by `count` bits.
+    pub fn split_off(&mut self, count: usize) -> BitIter<'a> {
+        assert!(count <= self.bits_left);
+        let other = Self {
+            buf: self.buf,
+            next_bit: self.next_bit,
+            bits_left: count,
+        };
+
+        // Update self
+        let next_byte = (count + self.next_bit as usize) / 8;
+        self.next_bit = (count as u8 + self.next_bit) % 8;
+        self.buf = &self.buf[next_byte..];
+        self.bits_left -= count;
+        other
+    }
+}
+
+impl Iterator for BitIter<'_> {
+    type Item = bool;
+
+    fn next(&mut self) -> Option<bool> {
+        if self.bits_left > 0 {
+            let byte = self.buf.first().unwrap();
+            let bit = byte & (1 << self.next_bit) != 0;
+            if self.next_bit < 7 {
+                self.next_bit += 1;
+            } else {
+                self.next_bit = 0;
+                self.buf = &self.buf[1..];
+            }
+
+            self.bits_left -= 1;
+            Some(bit)
+        } else {
+            None
+        }
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        (self.bits_left, Some(self.bits_left))
+    }
+}
+
+impl ExactSizeIterator for BitIter<'_> {}
+
+impl fmt::Debug for BitIter<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let s = self
+            .clone()
+            .map(|bit| if bit { '1' } else { '0' })
+            .collect::<String>();
+        write!(f, "BitIter({})", s)
+    }
+}
+
+pub(super) fn is_espjtag_device<T: UsbContext>(device: &Device<T>) -> bool {
+    // Check the VID/PID.
+    if let Ok(descriptor) = device.device_descriptor() {
+        descriptor.vendor_id() == USB_VID && descriptor.product_id() == USB_PID
+    } else {
+        false
+    }
+}
+
+pub fn list_espjtag_devices() -> Vec<DebugProbeInfo> {
+    rusb::Context::new()
+        .and_then(|context| context.devices())
+        .map_or(vec![], |devices| {
+            devices
+                .iter()
+                .filter(is_espjtag_device)
+                .filter_map(|device| {
+                    let descriptor = device.device_descriptor().ok()?;
+
+                    let sn_str = match read_serial_number(&device, &descriptor) {
+                        Ok(serial_number) => Some(serial_number),
+                        Err(e) => {
+                            // Reading the serial number can fail, e.g. if the driver for the probe
+                            // is not installed. In this case we can still list the probe,
+                            // just without serial number.
+                            log::debug!(
+                                "Failed to read serial number of device {:#06x}:{:#06x} : {}",
+                                descriptor.product_id(),
+                                descriptor.vendor_id(),
+                                e
+                            );
+                            log::debug!("This might be happening because of a missing driver.");
+                            None
+                        }
+                    };
+
+                    Some(DebugProbeInfo::new(
+                        format!("ESP JTAG"),
+                        descriptor.vendor_id(),
+                        descriptor.product_id(),
+                        sn_str,
+                        DebugProbeType::EspJtag,
+                        None,
+                    ))
+                })
+                .collect::<Vec<_>>()
+        })
+}
