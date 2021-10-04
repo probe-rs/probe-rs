@@ -35,10 +35,10 @@ git = "https://github.com/knurling-rs/defmt"
 # version = "0.3.0" # uncomment when defmt-decoder 0.3.0 is released
 
 [dev-dependencies]
-dirs = "3.0"
+dirs = "4.0"
 insta = "1.7"
 os_pipe = "0.9"
-pretty_assertions = "0.7"
-rstest = "0.10"
-nix = "0.22.1"
-serial_test = "0.5.1"
+pretty_assertions = "1.0"
+rstest = "0.11"
+nix = "0.23"
+serial_test = "0.5"
