@@ -21,7 +21,7 @@ use std::{
 
 use anyhow::{anyhow, bail};
 use colored::Colorize as _;
-use defmt_decoder::{Locations, StreamDecoder};
+use defmt_decoder::{DecodeError, Locations, StreamDecoder};
 use probe_rs::{
     flashing::{self, Format},
     Core,
@@ -254,6 +254,7 @@ fn extract_and_print_logs(
                             elf.defmt_locations.as_ref(),
                             current_dir,
                             opts,
+                            elf.defmt_table.as_ref().map(|t| t.encoding().can_recover()),
                         )?;
                     }
 
@@ -299,6 +300,7 @@ fn decode_and_print_defmt_logs(
     locations: Option<&Locations>,
     current_dir: &Path,
     opts: &cli::Opts,
+    encoding_can_recover: Option<bool>,
 ) -> anyhow::Result<()> {
     loop {
         match stream_decoder.decode() {
@@ -331,13 +333,13 @@ fn decode_and_print_defmt_logs(
                 // Forward the defmt frame to our logger.
                 defmt_decoder::log::log_defmt(&frame, file.as_deref(), line, mod_path);
             }
-
-            Err(defmt_decoder::DecodeError::UnexpectedEof) => break,
-
-            Err(defmt_decoder::DecodeError::Malformed) => {
-                log::error!("failed to decode defmt data");
-                return Err(defmt_decoder::DecodeError::Malformed.into());
-            }
+            Err(DecodeError::UnexpectedEof) => break,
+            Err(DecodeError::Malformed) => match encoding_can_recover {
+                // if recovery is impossible, or we don't know if it is, abort
+                Some(false) | None => return Err(DecodeError::Malformed.into()),
+                // if recovery is possible, skip the current frame and continue with new data
+                Some(true) => continue,
+            },
         }
     }
 
