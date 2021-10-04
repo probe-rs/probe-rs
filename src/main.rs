@@ -253,7 +253,7 @@ fn extract_and_print_logs(
                             &mut **stream_decoder,
                             elf.defmt_locations.as_ref(),
                             current_dir,
-                            opts,
+                            opts.shorten_paths,
                             elf.defmt_table.as_ref().map(|t| t.encoding().can_recover()),
                         )?;
                     }
@@ -299,7 +299,7 @@ fn decode_and_print_defmt_logs(
     stream_decoder: &mut dyn StreamDecoder,
     locations: Option<&Locations>,
     current_dir: &Path,
-    opts: &cli::Opts,
+    shorten_paths: bool,
     encoding_can_recover: Option<bool>,
 ) -> anyhow::Result<()> {
     loop {
@@ -315,7 +315,7 @@ fn decode_and_print_defmt_logs(
                         } else {
                             let dep_path = dep::Path::from_std_path(&location.file);
 
-                            if opts.shorten_paths {
+                            if shorten_paths {
                                 dep_path.format_short()
                             } else {
                                 dep_path.format_highlight()
