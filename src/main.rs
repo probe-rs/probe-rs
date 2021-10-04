@@ -21,7 +21,7 @@ use std::{
 
 use anyhow::{anyhow, bail};
 use colored::Colorize as _;
-use defmt_decoder::{DecodeError, Locations, StreamDecoder};
+use defmt_decoder::{DecodeError, Frame, Locations, StreamDecoder};
 use probe_rs::{
     flashing::{self, Format},
     Core,
@@ -304,35 +304,7 @@ fn decode_and_print_defmt_logs(
 ) -> anyhow::Result<()> {
     loop {
         match stream_decoder.decode() {
-            Ok(frame) => {
-                // NOTE(`[]` indexing) all indices in `table` have already been verified to exist in
-                // the `locations` map
-                let (file, line, mod_path) = locations
-                    .map(|locations| &locations[&frame.index()])
-                    .map(|location| {
-                        let path = if let Ok(relpath) = location.file.strip_prefix(&current_dir) {
-                            relpath.display().to_string()
-                        } else {
-                            let dep_path = dep::Path::from_std_path(&location.file);
-
-                            if shorten_paths {
-                                dep_path.format_short()
-                            } else {
-                                dep_path.format_highlight()
-                            }
-                        };
-
-                        (
-                            Some(path),
-                            Some(location.line as u32),
-                            Some(&*location.module),
-                        )
-                    })
-                    .unwrap_or((None, None, None));
-
-                // Forward the defmt frame to our logger.
-                defmt_decoder::log::log_defmt(&frame, file.as_deref(), line, mod_path);
-            }
+            Ok(frame) => forward_to_logger(&frame, locations, current_dir, shorten_paths),
             Err(DecodeError::UnexpectedEof) => break,
             Err(DecodeError::Malformed) => match encoding_can_recover {
                 // if recovery is impossible, or we don't know if it is, abort
@@ -344,6 +316,43 @@ fn decode_and_print_defmt_logs(
     }
 
     Ok(())
+}
+
+fn forward_to_logger(
+    frame: &Frame,
+    locations: Option<&Locations>,
+    current_dir: &Path,
+    shorten_paths: bool,
+) {
+    let (file, line, mod_path) = location_info(frame, locations, current_dir, shorten_paths);
+    defmt_decoder::log::log_defmt(&frame, file.as_deref(), line, mod_path.as_deref());
+}
+
+fn location_info(
+    frame: &Frame,
+    locations: Option<&Locations>,
+    current_dir: &Path,
+    shorten_paths: bool,
+) -> (Option<String>, Option<u32>, Option<String>) {
+    locations
+        .map(|locations| &locations[&frame.index()])
+        .map(|location| {
+            let path = if let Ok(relpath) = location.file.strip_prefix(&current_dir) {
+                relpath.display().to_string()
+            } else {
+                let dep_path = dep::Path::from_std_path(&location.file);
+                match shorten_paths {
+                    true => dep_path.format_short(),
+                    false => dep_path.format_highlight(),
+                }
+            };
+            (
+                Some(path),
+                Some(location.line as u32),
+                Some(location.module.clone()),
+            )
+        })
+        .unwrap_or((None, None, None))
 }
 
 fn setup_logging_channel(
