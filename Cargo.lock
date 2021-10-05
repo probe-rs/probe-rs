@@ -191,6 +191,7 @@ dependencies = [
 [[package]]
 name = "defmt-decoder"
 version = "0.2.2"
+source = "git+https://github.com/knurling-rs/defmt?branch=main#89370d19983a1cc8b48aaa518e4079e09ca26850"
 dependencies = [
  "ansi_term 0.12.1",
  "anyhow",
@@ -210,6 +211,7 @@ dependencies = [
 [[package]]
 name = "defmt-parser"
 version = "0.2.2"
+source = "git+https://github.com/knurling-rs/defmt?branch=main#89370d19983a1cc8b48aaa518e4079e09ca26850"
 
 [[package]]
 name = "diff"
