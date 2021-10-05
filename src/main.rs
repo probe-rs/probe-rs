@@ -325,7 +325,7 @@ fn forward_to_logger(
     shorten_paths: bool,
 ) {
     let (file, line, mod_path) = location_info(frame, locations, current_dir, shorten_paths);
-    defmt_decoder::log::log_defmt(&frame, file.as_deref(), line, mod_path.as_deref());
+    defmt_decoder::log::log_defmt(frame, file.as_deref(), line, mod_path.as_deref());
 }
 
 fn location_info(
