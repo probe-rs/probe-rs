@@ -220,10 +220,10 @@ fn extract_and_print_logs(
         bail!("\"defmt\" RTT channel is in use, but the firmware binary contains no defmt data");
     }
 
-    let mut stream_decoder = if use_defmt {
+    let mut decoder_and_encoding = if use_defmt {
         elf.defmt_table
             .as_ref()
-            .map(|table| table.new_stream_decoder())
+            .map(|table| (table.new_stream_decoder(), table.encoding()))
     } else {
         None
     };
@@ -245,8 +245,8 @@ fn extract_and_print_logs(
             };
 
             if num_bytes_read != 0 {
-                match stream_decoder.as_mut() {
-                    Some(stream_decoder) => {
+                match decoder_and_encoding.as_mut() {
+                    Some((stream_decoder, encoding)) => {
                         stream_decoder.received(&read_buf[..num_bytes_read]);
 
                         decode_and_print_defmt_logs(
@@ -254,7 +254,7 @@ fn extract_and_print_logs(
                             elf.defmt_locations.as_ref(),
                             current_dir,
                             opts.shorten_paths,
-                            elf.defmt_table.as_ref().map(|t| t.encoding().can_recover()),
+                            encoding.can_recover(),
                         )?;
                     }
 
@@ -300,17 +300,17 @@ fn decode_and_print_defmt_logs(
     locations: Option<&Locations>,
     current_dir: &Path,
     shorten_paths: bool,
-    encoding_can_recover: Option<bool>,
+    encoding_can_recover: bool,
 ) -> anyhow::Result<()> {
     loop {
         match stream_decoder.decode() {
             Ok(frame) => forward_to_logger(&frame, locations, current_dir, shorten_paths),
             Err(DecodeError::UnexpectedEof) => break,
             Err(DecodeError::Malformed) => match encoding_can_recover {
-                // if recovery is impossible, or we don't know if it is, abort
-                Some(false) | None => return Err(DecodeError::Malformed.into()),
+                // if recovery is impossible, abort
+                false => return Err(DecodeError::Malformed.into()),
                 // if recovery is possible, skip the current frame and continue with new data
-                Some(true) => continue,
+                true => continue,
             },
         }
     }
