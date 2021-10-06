@@ -21,7 +21,7 @@ use std::{
 
 use anyhow::{anyhow, bail};
 use colored::Colorize as _;
-use defmt_decoder::{Locations, StreamDecoder};
+use defmt_decoder::{DecodeError, Frame, Locations, StreamDecoder};
 use probe_rs::{
     flashing::{self, Format},
     Core,
@@ -220,10 +220,10 @@ fn extract_and_print_logs(
         bail!("\"defmt\" RTT channel is in use, but the firmware binary contains no defmt data");
     }
 
-    let mut stream_decoder = if use_defmt {
+    let mut decoder_and_encoding = if use_defmt {
         elf.defmt_table
             .as_ref()
-            .map(|table| table.new_stream_decoder())
+            .map(|table| (table.new_stream_decoder(), table.encoding()))
     } else {
         None
     };
@@ -245,15 +245,16 @@ fn extract_and_print_logs(
             };
 
             if num_bytes_read != 0 {
-                match stream_decoder.as_mut() {
-                    Some(stream_decoder) => {
+                match decoder_and_encoding.as_mut() {
+                    Some((stream_decoder, encoding)) => {
                         stream_decoder.received(&read_buf[..num_bytes_read]);
 
                         decode_and_print_defmt_logs(
                             &mut **stream_decoder,
                             elf.defmt_locations.as_ref(),
                             current_dir,
-                            opts,
+                            opts.shorten_paths,
+                            encoding.can_recover(),
                         )?;
                     }
 
@@ -298,50 +299,60 @@ fn decode_and_print_defmt_logs(
     stream_decoder: &mut dyn StreamDecoder,
     locations: Option<&Locations>,
     current_dir: &Path,
-    opts: &cli::Opts,
+    shorten_paths: bool,
+    encoding_can_recover: bool,
 ) -> anyhow::Result<()> {
     loop {
         match stream_decoder.decode() {
-            Ok(frame) => {
-                // NOTE(`[]` indexing) all indices in `table` have already been verified to exist in
-                // the `locations` map
-                let (file, line, mod_path) = locations
-                    .map(|locations| &locations[&frame.index()])
-                    .map(|location| {
-                        let path = if let Ok(relpath) = location.file.strip_prefix(&current_dir) {
-                            relpath.display().to_string()
-                        } else {
-                            let dep_path = dep::Path::from_std_path(&location.file);
-
-                            if opts.shorten_paths {
-                                dep_path.format_short()
-                            } else {
-                                dep_path.format_highlight()
-                            }
-                        };
-
-                        (
-                            Some(path),
-                            Some(location.line as u32),
-                            Some(&*location.module),
-                        )
-                    })
-                    .unwrap_or((None, None, None));
-
-                // Forward the defmt frame to our logger.
-                defmt_decoder::log::log_defmt(&frame, file.as_deref(), line, mod_path);
-            }
-
-            Err(defmt_decoder::DecodeError::UnexpectedEof) => break,
-
-            Err(defmt_decoder::DecodeError::Malformed) => {
-                log::error!("failed to decode defmt data");
-                return Err(defmt_decoder::DecodeError::Malformed.into());
-            }
+            Ok(frame) => forward_to_logger(&frame, locations, current_dir, shorten_paths),
+            Err(DecodeError::UnexpectedEof) => break,
+            Err(DecodeError::Malformed) => match encoding_can_recover {
+                // if recovery is impossible, abort
+                false => return Err(DecodeError::Malformed.into()),
+                // if recovery is possible, skip the current frame and continue with new data
+                true => continue,
+            },
         }
     }
 
     Ok(())
+}
+
+fn forward_to_logger(
+    frame: &Frame,
+    locations: Option<&Locations>,
+    current_dir: &Path,
+    shorten_paths: bool,
+) {
+    let (file, line, mod_path) = location_info(frame, locations, current_dir, shorten_paths);
+    defmt_decoder::log::log_defmt(frame, file.as_deref(), line, mod_path.as_deref());
+}
+
+fn location_info(
+    frame: &Frame,
+    locations: Option<&Locations>,
+    current_dir: &Path,
+    shorten_paths: bool,
+) -> (Option<String>, Option<u32>, Option<String>) {
+    locations
+        .map(|locations| &locations[&frame.index()])
+        .map(|location| {
+            let path = if let Ok(relpath) = location.file.strip_prefix(&current_dir) {
+                relpath.display().to_string()
+            } else {
+                let dep_path = dep::Path::from_std_path(&location.file);
+                match shorten_paths {
+                    true => dep_path.format_short(),
+                    false => dep_path.format_highlight(),
+                }
+            };
+            (
+                Some(path),
+                Some(location.line as u32),
+                Some(location.module.clone()),
+            )
+        })
+        .unwrap_or((None, None, None))
 }
 
 fn setup_logging_channel(
