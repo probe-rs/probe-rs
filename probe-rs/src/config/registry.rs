@@ -18,6 +18,9 @@ pub enum RegistryError {
     /// The requested chip was not found in the registry.
     #[error("The requested chip '{0}' was not found in the list of known targets.")]
     ChipNotFound(String),
+    /// Multiple chips found which match the given string, unable to return a single chip.
+    #[error("Found multiple chips matching '{0}', unable to select a single chip.")]
+    ChipNotUnique(String),
     /// When searching for a chip based on information read from the target,
     /// no matching chip was found in the registry.
     #[error("The connected chip could not automatically be determined.")]
@@ -191,7 +194,7 @@ impl Registry {
                     "Ignoring ambiguous matches for specified chip name {}",
                     name,
                 );
-                return Err(RegistryError::ChipNotFound(name.to_owned()));
+                return Err(RegistryError::ChipNotUnique(name.to_owned()));
             }
             if exact_matches == 0 && partial_matches == 1 {
                 log::warn!(
@@ -337,10 +340,22 @@ mod tests {
     use super::*;
 
     #[test]
-    fn try_fetch1() {
+    fn try_fetch_not_unique() {
         let registry = Registry::from_builtin_families();
         // ambiguous: partially matches STM32G081KBUx and STM32G081KBUxN
-        assert!(registry.get_target_by_name("STM32G081KBU").is_err());
+        assert!(matches!(
+            registry.get_target_by_name("STM32G081KBU"),
+            Err(RegistryError::ChipNotUnique(_))
+        ));
+    }
+
+    #[test]
+    fn try_fetch_not_found() {
+        let registry = Registry::from_builtin_families();
+        assert!(matches!(
+            registry.get_target_by_name("not_a_real_chip"),
+            Err(RegistryError::ChipNotFound(_))
+        ));
     }
 
     #[test]
