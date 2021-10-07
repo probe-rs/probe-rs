@@ -11,17 +11,20 @@ repository = "https://github.com/knurling-rs/probe-run"
 version = "0.2.5"
 
 [dependencies]
-addr2line = "0.15"
+addr2line = { version = "0.15", default-features = false, features = [
+    "fallible-iterator",
+    "std-object",
+] }
 ansi_term = "0.12"
 anyhow = "1.0"
 colored = "2.0"
 difference = "2.0"
 either = "1.6"
-gimli = "0.24"
+gimli = { version = "0.24", default-features = false }
 git-version = "0.3"
 hidapi = "1.2"
 log = "0.4"
-object = "0.24"
+object = { version = "0.24", default-features = false }
 probe-rs = "0.11"
 probe-rs-rtt = "0.11"
 rustc-demangle = "0.1"
@@ -35,10 +38,10 @@ git = "https://github.com/knurling-rs/defmt"
 # version = "0.3.0" # uncomment when defmt-decoder 0.3.0 is released
 
 [dev-dependencies]
-dirs = "3.0"
+dirs = "4.0"
 insta = "1.7"
 os_pipe = "0.9"
-pretty_assertions = "0.7"
-rstest = "0.10"
-nix = "0.22.1"
-serial_test = "0.5.1"
+pretty_assertions = "1.0"
+rstest = "0.11"
+nix = "0.23"
+serial_test = "0.5"
