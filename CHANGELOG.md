@@ -21,6 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Improve reliability of communication with the RISCV debug module by recovering from busy errors in batch operations. (#802)
 - Add optional ability to load fixed address flashing algorithms (non PIC). (#822)
 - Added STM32WL55JCIx target. (#835)
+- Add esp32.yaml with esp32c3 variant. (#846)
 
 ### Removed
 
