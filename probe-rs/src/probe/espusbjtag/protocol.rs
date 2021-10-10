@@ -1,7 +1,7 @@
 use core::fmt;
 use std::{fmt::Debug, time::Duration};
 
-use rusb::{request_type, Context, Device, UsbContext};
+use rusb::{request_type, Context, Device, Direction, TransferType, UsbContext};
 
 use crate::{
     DebugProbeError, DebugProbeInfo, DebugProbeSelector, DebugProbeType, ProbeCreationError,
@@ -14,6 +14,12 @@ const OUT_BUFFER_SIZE: usize = OUT_EP_BUFFER_SIZE * 64;
 const OUT_EP_BUFFER_SIZE: usize = 64;
 const IN_EP_BUFFER_SIZE: usize = 64;
 const USB_TIMEOUT: Duration = Duration::from_millis(5000);
+const USB_DEVICE_CLASS: u8 = 0xFF;
+const USB_DEVICE_SUBCLASS: u8 = 0xFF;
+const USB_DEVICE_PROTOCOL: u8 = 0x01;
+const USB_DEVICE_TRANSFER_TYPE: TransferType = TransferType::Bulk;
+
+const USB_CONFIGURATION: u8 = 0x0;
 
 const USB_VID: u16 = 0x303A;
 const USB_PID: u16 = 0x1001;
@@ -99,7 +105,7 @@ impl ProtocolHandler {
 
         log::debug!("Aquired handle for probe");
 
-        let config = device.active_config_descriptor()?;
+        let config = device.config_descriptor(0)?;
 
         log::debug!("Active config descriptor: {:?}", &config);
 
@@ -107,9 +113,47 @@ impl ProtocolHandler {
 
         log::debug!("Device descriptor: {:?}", &descriptor);
 
-        device_handle.claim_interface(0)?;
+        let mut ep_out = None;
+        let mut ep_in = None;
 
-        log::debug!("Claimed interface 0 of USB device.");
+        for interface in config.interfaces() {
+            log::trace!("Interface {}", interface.number());
+            let descriptor = interface.descriptors().next();
+            if let Some(descriptor) = descriptor {
+                if descriptor.class_code() == USB_DEVICE_CLASS
+                    && descriptor.sub_class_code() == USB_DEVICE_SUBCLASS
+                    && descriptor.protocol_code() == USB_DEVICE_PROTOCOL
+                {
+                    for endpoint in descriptor.endpoint_descriptors() {
+                        log::trace!("Endpoint {}: {}", endpoint.number(), endpoint.address());
+                        if endpoint.transfer_type() == USB_DEVICE_TRANSFER_TYPE {
+                            if endpoint.direction() == Direction::In {
+                                ep_in = Some(endpoint.number());
+                            } else {
+                                ep_out = Some(endpoint.number());
+                            }
+                        }
+                    }
+                }
+            }
+
+            if let (Some(ep_in), Some(ep_out)) = (ep_in, ep_out) {
+                log::debug!(
+                    "Claiming interface {} with IN EP {} and OUT EP {}.",
+                    interface.number(),
+                    ep_in,
+                    ep_out
+                );
+                device_handle.claim_interface(interface.number())?;
+            }
+        }
+
+        if let (Some(_), Some(_)) = (ep_in, ep_out) {
+        } else {
+            return Err(ProbeCreationError::ProbeSpecific(
+                "USB interface or endpoints could not be found.".into(),
+            ));
+        }
 
         let mut buffer = [0; 256];
         device_handle.read_control(
@@ -131,6 +175,8 @@ impl ProtocolHandler {
         // let mut div_max = 1;
 
         let protocol_version = buffer[0];
+        log::debug!("{:?}", &buffer[..20]);
+        log::debug!("Protocol version: {}", protocol_version);
         if protocol_version != JTAG_PROTOCOL_CAPABILITIES_VERSION {
             return Err(ProbeCreationError::ProbeSpecific(
                 "Unknown capabilities descriptor version.".into(),
@@ -166,8 +212,9 @@ impl ProtocolHandler {
             command_queue: None,
             output_buffer: Vec::new(),
             input_buffer: Vec::new(),
-            ep_out: 0x02,
-            ep_in: 0x01,
+            // The following expects are okay as we check that the values we call them on are `Some`.
+            ep_out: ep_out.expect("This is a bug. Please report it."),
+            ep_in: ep_in.expect("This is a bug. Please report it."),
             pending_in_bits: 0,
         })
     }
