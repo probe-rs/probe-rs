@@ -128,9 +128,9 @@ impl ProtocolHandler {
                         log::trace!("Endpoint {}: {}", endpoint.number(), endpoint.address());
                         if endpoint.transfer_type() == USB_DEVICE_TRANSFER_TYPE {
                             if endpoint.direction() == Direction::In {
-                                ep_in = Some(endpoint.number());
+                                ep_in = Some(endpoint.address());
                             } else {
-                                ep_out = Some(endpoint.number());
+                                ep_out = Some(endpoint.address());
                             }
                         }
                     }
@@ -155,7 +155,7 @@ impl ProtocolHandler {
             ));
         }
 
-        let mut buffer = [0; 256];
+        let mut buffer = [0; 255];
         device_handle.read_control(
             request_type(
                 rusb::Direction::In,
