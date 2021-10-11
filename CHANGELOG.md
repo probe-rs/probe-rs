@@ -7,6 +7,33 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/) and this p
 ## [Unreleased]
 
 - [#]
+- [#266]: Recover from decoding-errors
+- [#247]: Print troubleshooting information on "probe not found" error
+- [#264]: Use new stream decoder API
+- [#263]: Set blocking mode to `0b10` (`BLOCK_IF_FULL`)
+- [#257]: Split "set rtt to blocking-mode" into function
+- [#259]: Update snapshot tests
+- [#260]: Fix CI on nightly
+- [#254]: Add support for measuring the program's stack usage
+- [#248]: Print dedicated message on control + c
+- [#250]: Backtrace options
+- [#253]: feat: add help message for JtagNoDeviceConnected
+- [#251]: Removes call to fill in user survey from readme.
+- [#246]: Enable deactivated tests for Windows
+
+[#266]: https://github.com/knurling-rs/probe-run/pull/266
+[#247]: https://github.com/knurling-rs/probe-run/pull/247
+[#264]: https://github.com/knurling-rs/probe-run/pull/264
+[#263]: https://github.com/knurling-rs/probe-run/pull/263
+[#257]: https://github.com/knurling-rs/probe-run/pull/257
+[#259]: https://github.com/knurling-rs/probe-run/pull/259
+[#260]: https://github.com/knurling-rs/probe-run/pull/260
+[#254]: https://github.com/knurling-rs/probe-run/pull/254
+[#248]: https://github.com/knurling-rs/probe-run/pull/248
+[#250]: https://github.com/knurling-rs/probe-run/pull/250
+[#253]: https://github.com/knurling-rs/probe-run/pull/253
+[#251]: https://github.com/knurling-rs/probe-run/pull/251
+[#246]: https://github.com/knurling-rs/probe-run/pull/246
 
 ## [v0.2.5] - 2021-08-02
 
