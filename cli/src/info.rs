@@ -101,11 +101,10 @@ fn try_show_info(
             }
             Err((interface_probe, e)) => {
                 let mut source = Some(&e as &dyn Error);
-                log::error!("Error: {}", e);
 
                 while let Some(parent) = source {
+                    log::error!("Error: {}", parent);
                     source = parent.source();
-                    log::error!("Error: {}", source.unwrap());
                 }
 
                 probe = interface_probe;

@@ -256,10 +256,11 @@ impl ProtocolHandler {
             if command == *command_in_queue && *repetitions < MAX_COMMAND_REPETITIONS {
                 *repetitions += 1;
                 return Ok(());
+            } else {
+                let command = command_in_queue.clone();
+                let repetitions = *repetitions;
+                self.write_stream(command, repetitions)?;
             }
-            let command = command_in_queue.clone();
-            let repetitions = *repetitions;
-            self.write_stream(command, repetitions)?;
         }
 
         self.command_queue = Some((command, 1));
@@ -304,7 +305,7 @@ impl ProtocolHandler {
 
         // Send repetitions as many times as required.
         // We only send 2 bits with each repetition command as per the protocol.
-        for _ in 0..repetitions {
+        while repetitions > 0 {
             self.add_raw_command(Command::Repetitions(repetitions as u8 & 3))?;
             repetitions >>= 2;
         }
@@ -330,6 +331,8 @@ impl ProtocolHandler {
 
     /// Sends the commands stored in the output buffer to the USB EP.
     fn send_buffer(&mut self) -> Result<(), DebugProbeError> {
+        log::trace!("Command Buffer: {:?}", self.output_buffer);
+
         let commands = self
             .output_buffer
             .chunks(2)
@@ -393,6 +396,7 @@ impl ProtocolHandler {
         }
 
         log::trace!("Read: {:?}, length = {}", self.buffer, bits_read);
+        self.pending_in_bits -= bits_read;
 
         Ok(BitIter::new(&self.buffer, bits_read))
     }
