@@ -49,6 +49,8 @@ pub(super) struct ProtocolHandler {
 
     ep_out: u8,
     ep_in: u8,
+
+    buffer: Vec<u8>,
 }
 
 impl Debug for ProtocolHandler {
@@ -105,7 +107,7 @@ impl ProtocolHandler {
 
         log::debug!("Aquired handle for probe");
 
-        let config = device.config_descriptor(0)?;
+        let config = device.config_descriptor(USB_CONFIGURATION)?;
 
         log::debug!("Active config descriptor: {:?}", &config);
 
@@ -216,6 +218,7 @@ impl ProtocolHandler {
             ep_out: ep_out.expect("This is a bug. Please report it."),
             ep_in: ep_in.expect("This is a bug. Please report it."),
             pending_in_bits: 0,
+            buffer: Vec::new(),
         })
     }
 
@@ -234,9 +237,7 @@ impl ProtocolHandler {
             self.pending_in_bits += 1;
         }
 
-        // TODO Read bits from TDO:
-
-        Ok(BitIter::new(&[], 42))
+        self.flush()
     }
 
     /// Sets the two different resets on the target.
@@ -244,7 +245,8 @@ impl ProtocolHandler {
     pub fn set_reset(&mut self, _trst: bool, srst: bool) -> Result<(), DebugProbeError> {
         // TODO: Handle trst using setup commands. This is not necessarily required and can be left as is for the moiment..
         self.push_command(Command::Reset(srst))?;
-        self.flush()
+        self.flush()?;
+        Ok(())
     }
 
     /// Adds a command to the command queue.
@@ -266,7 +268,7 @@ impl ProtocolHandler {
     }
 
     /// Flushes all the pending commands to the JTAG adapter.
-    pub fn flush(&mut self) -> Result<(), DebugProbeError> {
+    pub fn flush(&mut self) -> Result<BitIter, DebugProbeError> {
         if let Some((command_in_queue, repetitions)) = self.command_queue.take() {
             self.write_stream(command_in_queue, repetitions)?;
         }
@@ -280,11 +282,7 @@ impl ProtocolHandler {
 
         self.send_buffer()?;
 
-        while self.pending_in_bits > 0 {
-            self.receive_buffer()?;
-        }
-
-        Ok(())
+        self.receive_buffer()
     }
 
     /// Writes a command one or multiple times into the raw buffer we send to the USB EP later
@@ -360,31 +358,43 @@ impl ProtocolHandler {
     }
 
     /// Tries to receive pending in bits from the USB EP.
-    fn receive_buffer(&mut self) -> Result<(), DebugProbeError> {
-        let count = ((self.pending_in_bits + 7) / 8).min(IN_EP_BUFFER_SIZE);
+    fn receive_buffer(&mut self) -> Result<BitIter, DebugProbeError> {
+        self.buffer = vec![0; (self.pending_in_bits + 7) / 8];
 
-        if count == 0 {
-            return Ok(());
+        let mut bits_read = 0;
+
+        while bits_read != self.pending_in_bits {
+            let count = ((self.pending_in_bits + 7) / 8).min(IN_EP_BUFFER_SIZE);
+            log::trace!("Receiveing {} bytes.", count);
+
+            if count == 0 {
+                return Ok(BitIter::new(&[], 0));
+            }
+
+            let offset = bits_read / 8;
+            let read_bytes = self
+                .device_handle
+                .read_bulk(
+                    self.ep_in,
+                    &mut self.buffer[offset..offset + count],
+                    USB_TIMEOUT,
+                )
+                .map_err(|e| DebugProbeError::Usb(Some(Box::new(e))))?;
+
+            if read_bytes == 0 {
+                // Sometimes the hardware returns 0 bytes instead of NAKing the transaction. Ignore this.
+                return Err(DebugProbeError::ProbeSpecific(
+                    "Transaction not acknowledged.".into(),
+                ));
+            }
+
+            let bits_in_buffer = self.pending_in_bits.min(count * 8);
+            bits_read += bits_in_buffer;
         }
 
-        let mut buffer = vec![0; count];
+        log::trace!("Read: {:?}, length = {}", self.buffer, bits_read);
 
-        let read_bytes = self
-            .device_handle
-            .read_bulk(self.ep_in, &mut buffer, USB_TIMEOUT)
-            .map_err(|e| DebugProbeError::Usb(Some(Box::new(e))))?;
-
-        if read_bytes == 0 {
-            // Sometimes the hardware returns 0 bytes instead of NAKking the transaction. Ignore this.
-            return Err(DebugProbeError::ProbeSpecific(
-                "Transaction not acknowledged.".into(),
-            ));
-        }
-
-        self.input_buffer.extend(&buffer);
-        self.pending_in_bits -= buffer.len();
-
-        Ok(())
+        Ok(BitIter::new(&self.buffer, bits_read))
     }
 }
 

@@ -91,13 +91,15 @@ fn try_show_info(
     if probe.has_riscv_interface() {
         match probe.try_into_riscv_interface() {
             Ok(mut interface) => {
+                println!("HEHE");
                 if let Err(e) = show_riscv_info(&mut interface) {
                     log::warn!("Error showing RISCV chip information: {}", e);
                 }
 
                 probe = interface.close();
             }
-            Err((interface_probe, _e)) => {
+            Err((interface_probe, e)) => {
+                log::error!("Error: {}", e);
                 probe = interface_probe;
             }
         }
