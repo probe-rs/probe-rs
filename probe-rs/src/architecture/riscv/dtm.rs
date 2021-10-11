@@ -35,8 +35,6 @@ impl Dtm {
             Err(e) => return Err((probe, e.into())),
         };
 
-        println!("HEHE");
-
         let dtmcs = Dtmcs(u32::from_le_bytes((&dtmcs_raw[..]).try_into().unwrap()));
 
         log::debug!("Dtmcs: {:?}", dtmcs);

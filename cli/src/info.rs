@@ -1,3 +1,5 @@
+use std::error::Error;
+
 use probe_rs::{
     architecture::{
         arm::{
@@ -91,7 +93,6 @@ fn try_show_info(
     if probe.has_riscv_interface() {
         match probe.try_into_riscv_interface() {
             Ok(mut interface) => {
-                println!("HEHE");
                 if let Err(e) = show_riscv_info(&mut interface) {
                     log::warn!("Error showing RISCV chip information: {}", e);
                 }
@@ -99,7 +100,14 @@ fn try_show_info(
                 probe = interface.close();
             }
             Err((interface_probe, e)) => {
+                let mut source = Some(&e as &dyn Error);
                 log::error!("Error: {}", e);
+
+                while let Some(parent) = source {
+                    source = parent.source();
+                    log::error!("Error: {}", source.unwrap());
+                }
+
                 probe = interface_probe;
             }
         }
