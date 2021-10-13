@@ -49,7 +49,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Target YAMLs: Changed `flash_algorithms` from a map to an array. (#813)
 - Reject ambiguous chip selection.
 - Prefer using `read` over `read_8` for better performance and compatibility. (#829)
-- Increased default RTT Timeout (retry waiting for RTT Control Block initialization) to 100ms in `probe-rs-debugger` (#)
+- Increased default RTT Timeout (retry waiting for RTT Control Block initialization) to 100ms in `probe-rs-debugger`. (#847)
 
 ### Fixed
 - Detect proper USB HID interface to use for CMSIS-DAP v1 probes. Without this, CMSIS-DAP probes with multiple HID interfaces, e.g. MCUlink, were not working properly on MacOS (#722).
@@ -59,8 +59,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Multiple default algorithims would silently select the first, now errors intead (#744).
 - Fixed STM32WL targets getting a HardFault when flashing binaries larger than 64K (#762).
 - Use a more reliable JTAG IR length detection when there's only a single target in the chain. Fixes an issue with the esp32c3. (#796, #823).
-- Replaced `unreachable!` induced panic with logic to fix `probe-rs-debugger` failures (#)
-- Fixed logic errors and timing of RTT initialization in `probe-rs-debugger`. (#)
+- Replaced `unreachable!` induced panic with logic to fix `probe-rs-debugger` failures. (#847)
+- Fixed logic errors and timing of RTT initialization in `probe-rs-debugger`. (#847)
 
 ## [0.11.0]
 
