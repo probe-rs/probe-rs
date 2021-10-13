@@ -21,7 +21,7 @@ fn default_channel_formats() -> Vec<RttChannelConfig> {
 }
 
 fn default_rtt_timeout() -> usize {
-    500
+    1000
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
