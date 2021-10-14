@@ -1,8 +1,0 @@
-{
-    "rust-analyzer.cargo.allFeatures": true,
-    "workbench.colorCustomizations": {
-        "activityBar.background": "#4F1E23",
-        "titleBar.activeBackground": "#6F2931",
-        "titleBar.activeForeground": "#FEFBFB"
-    }
-}
