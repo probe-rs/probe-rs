@@ -403,21 +403,21 @@ mod tests {
         let mut families = vec![];
         add_generic_targets(&mut families);
 
-        assert!(families
+        families
             .iter()
             .map(|family| family.validate())
             .collect::<Result<Vec<_>, _>>()
-            .is_ok())
+            .unwrap();
     }
 
     #[test]
     fn validate_builtin() {
         let registry = Registry::from_builtin_families();
-        assert!(registry
+        registry
             .families()
             .iter()
             .map(|family| family.validate())
             .collect::<Result<Vec<_>, _>>()
-            .is_ok())
+            .unwrap();
     }
 }
