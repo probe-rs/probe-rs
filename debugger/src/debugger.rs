@@ -632,6 +632,12 @@ impl Debugger {
                     .find(|c| c.dap_cmd == command_lookup || c.cli_cmd == command_lookup);
                 match valid_command {
                     Some(valid_command) => {
+                        // Get a copy of the memory map for later use. This needs to be done here so that we don't get clashing references to session_data.session
+                        let memory_map = if valid_command.function_name == "configuration_done" {
+                            Some(session_data.session.target().memory_map.clone())
+                        } else {
+                            None
+                        };
                         // First, attach to the core.
                         let mut core_data =
                             match attach_core(&mut session_data.session, &self.debugger_options) {
@@ -646,9 +652,9 @@ impl Debugger {
                         // NOTE: The target will exit sleep mode as a result of this command.
                         let mut unhalt_me = false;
                         match valid_command.function_name {
-                            "set_breakpoint" | "set_breakpoints" | "clear_breakpoint"
-                            | "stack_trace" | "threads" | "scopes" | "variables"
-                            | "read_memory" | "write" | "source" => {
+                            "configuration_done" | "set_breakpoint" | "set_breakpoints"
+                            | "clear_breakpoint" | "stack_trace" | "threads" | "scopes"
+                            | "variables" | "read_memory" | "write" | "source" => {
                                 match core_data.target_core.status() {
                                     Ok(current_status) => {
                                         if current_status == CoreStatus::Sleeping {
@@ -739,6 +745,38 @@ impl Debugger {
                                 }
                             }
                         }
+                        // This is the 'safest' place from which to initialize RTT.
+                        // RTT can only be initialized if the target application has been allowed to run to the point where it does the RTT initialization.
+                        // If the target halts before it processes this code, then this RTT intialization will yield unpredictable results.
+                        // See `probe-rs-rtt::Rtt` for more information.
+                        if self.debugger_options.rtt.enabled
+                            && valid_command.function_name == "configuration_done"
+                            && memory_map.is_some()
+                        {
+                            self.target_rtt = match attach_to_rtt(
+                                &mut core_data.target_core,
+                                memory_map.as_ref().unwrap(),
+                                &self.debugger_options,
+                            ) {
+                                Ok(target_rtt) => {
+                                    for any_channel in target_rtt.active_channels.iter() {
+                                        if let Some(up_channel) = &any_channel.up_channel {
+                                            debug_adapter.rtt_window(
+                                                up_channel.number(),
+                                                any_channel.channel_name.clone(),
+                                                any_channel.data_format,
+                                            );
+                                        }
+                                    }
+
+                                    Some(target_rtt)
+                                }
+                                Err(error) => {
+                                    log::error!("{:?}\nContinuing without RTT... ", error);
+                                    None
+                                }
+                            }
+                        };
                         command_status
                     }
                     None => {
@@ -983,6 +1021,13 @@ impl Debugger {
         };
         debug_adapter.halt_after_reset = self.debugger_options.halt_after_reset;
 
+        if self.debugger_options.halt_after_reset && self.debugger_options.rtt.enabled {
+            debug_adapter.show_message(
+                MessageSeverity::Warning,
+                "Using both `halt_after_reset` and `rtt_enabled` is not currently supported.",
+            );
+        }
+
         // Do the flashing.
         {
             if self.debugger_options.flashing_enabled {
@@ -1024,9 +1069,6 @@ impl Debugger {
 
         // This is the first attach to the requested core. If this one works, all subsequent ones will be no-op requests for a Core reference. Do NOT hold onto this reference for the duration of the session ... that is why this code is in a block of its own.
         {
-            // Get a copy of the memory map for later use. This needs to be done here so that we don't get clashing references to session_data.session
-            let memory_map = session_data.session.target().memory_map.clone();
-
             // First, attach to the core
             let mut core_data = match attach_core(&mut session_data.session, &self.debugger_options)
             {
@@ -1054,36 +1096,6 @@ impl Debugger {
             {
                 return;
             }
-
-            // This is a good time to initialize RTT if it is enabled
-            self.target_rtt = if self.debugger_options.rtt.enabled {
-                match attach_to_rtt(
-                    &mut core_data.target_core,
-                    &memory_map,
-                    &self.debugger_options,
-                ) {
-                    Ok(target_rtt) => {
-                        for any_channel in target_rtt.active_channels.iter() {
-                            if let Some(up_channel) = &any_channel.up_channel {
-                                debug_adapter.rtt_window(
-                                    up_channel.number(),
-                                    any_channel.channel_name.clone(),
-                                    any_channel.data_format,
-                                );
-                            }
-                        }
-
-                        Some(target_rtt)
-                    }
-                    Err(error) => {
-                        log::error!("{:?} Continuing without RTT... ", error);
-                        None
-                    }
-                }
-            } else {
-                log::debug!("No RTT configured. Continuing without RTT ...");
-                None
-            };
         }
 
         // After flashing and forced setup, we can signal the client that are ready to receive incoming requests.
@@ -1157,7 +1169,7 @@ pub fn attach_to_rtt(
             }
         };
 
-        log::debug!("Timeout reading RTT control block. Retrying until timeout.");
+        log::trace!("Failed to validate the RTT control block. Retrying until timeout.");
     }
     if let Some(error) = error {
         return Err(error);

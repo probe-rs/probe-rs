@@ -8,7 +8,31 @@ use std::ops::Range;
 
 /// The RTT interface.
 ///
-/// Use [`Rtt::attach`] to attach to a probe-rs `Core` and detect channels.
+/// Use [`Rtt::attach`] or [`Rt:attach_region`] to attach to a probe-rs `Core` and detect the channels, as they were
+///     configured on the target.
+/// The timing of when this is called is really important, or else unexpected results can be expected.
+///
+/// *Examples of how timing between host and target effects the results*
+/// 1. **Scenario: Ideal configuration** The host RTT interface is created AFTER the target program has successfully executing the RTT
+/// initialization, by calling an api such as [rtt:target](https://github.com/mvirkkunen/rtt-target)`::rtt_init_print!()`
+///     * At this point, both the RTT Control Block and the RTT Channel configurations are present in the target memory, and
+/// this RTT interface can be expected to work as expected.  
+///
+/// 2. **Scenario: Failure to detect RTT Control Block** The target has been configured correctly, BUT the host creates this interface BEFORE
+/// the target program has initalized RTT.
+///     * This most commonly occurs when the target halts processing before intializing RTT. For example, this could happen ...
+///         * During debugging, if the user sets a breakpoint in the code before the RTT initalization.
+///         * After flashing, if the user has configured `probe-rs` to `reset_after_flashing` AND `halt_after_reset`. On most targets, this
+/// will result in the target halting with reason `Exception` and will delay the subsequent RTT intialization.
+///         * If RTT initialization on the target is delayed because of time consuming processing or excessive interrupt handling. This can
+/// usually be prevented by moving the RTT intialization code to the very beginning of the target program logic.
+///     * The result of such a timing issue is that `probe-rs` will fail to intialize RTT with an [`probe-rs-rtt::Error::ControlBlockNotFound`]
+///
+/// 3. **Scenario: Incorrect Channel names and incorrect Channel buffer sizes** This scenario usually occurs when two conditions co-incide. Firstly, the same timing mismatch as described in point #2 above, and secondly, the target memory has NOT been cleared since a previous version of the binary program has been flashed to the target.
+///     * What happens here is that the RTT Control Block is validated by reading a previously initialized RTT ID from the target memory. The next step in the logic is then to read the Channel configuration from the RTT Control block which is usually contains unreliable data
+/// at this point. The symptomps will appear as:
+///         * RTT Channel names are incorrect and/or contain unprintable characters.
+///         * RTT Channel names are correct, but no data, or corrupted data, will be reported from RTT, because the buffer sizes are incorrect.
 #[derive(Debug)]
 pub struct Rtt {
     ptr: u32,
@@ -63,11 +87,11 @@ impl Rtt {
         let rtt_id = &mem[Self::O_ID..(Self::O_ID + Self::RTT_ID.len())];
         if rtt_id != Self::RTT_ID {
             log::trace!(
-                "Expected control block to start with RTT ID. Got instead: {:?}",
-                rtt_id
+                "Expected control block to start with RTT ID: {:?}\n. Got instead: {:?}",
+                String::from_utf8_lossy(&Self::RTT_ID),
+                String::from_utf8_lossy(rtt_id)
             );
-
-            return Ok(None);
+            return Err(Error::ControlBlockNotFound);
         }
 
         let max_up_channels = mem.pread_with::<u32>(Self::O_MAX_UP_CHANNELS, LE).unwrap() as usize;
@@ -210,7 +234,7 @@ impl Rtt {
             return Err(Error::ControlBlockNotFound);
         }
 
-        if !instances.is_empty() {
+        if instances.len() > 1 {
             return Err(Error::MultipleControlBlocksFound(
                 instances.into_iter().map(|i| i.ptr).collect(),
             ));

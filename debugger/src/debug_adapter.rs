@@ -1114,18 +1114,23 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
                 }
             })
             .collect();
-        let variable_map_key = if named_child_variables_cnt > 0 || indexed_child_variables_cnt > 0 {
-            self.new_variable_map_key()
+
+        if named_child_variables_cnt > 0 || indexed_child_variables_cnt > 0 {
+            let variable_map_key = self.new_variable_map_key();
+            match self.variable_map.insert(variable_map_key, dap_variables) {
+                Some(_) => {
+                    log::warn!("Failed to create a unique `variable_map_key`. Variables shown in this frame may be incomplete or corrupted. Please report this as a bug!");
+                    (0, 0, 0)
+                }
+                None => (
+                    variable_map_key,
+                    named_child_variables_cnt,
+                    indexed_child_variables_cnt,
+                ),
+            }
         } else {
-            0
-        };
-        match self.variable_map.insert(variable_map_key, dap_variables) {
-            Some(_) => unreachable!("This should never happen,  unless this module has a logic error for calculating unique `variable_map_key` values. Please report this as a bug!"),
-            None => (
-                variable_map_key,
-                named_child_variables_cnt,
-                indexed_child_variables_cnt,
-            ),
+            // Returning 0's allows VSCode DAP Client to behave correctly for frames that have no variables, and variables that have no children.
+            (0, 0, 0)
         }
     }
 

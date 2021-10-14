@@ -58,7 +58,9 @@ pub enum Error {
     /// RTT control block not found in target memory. Make sure RTT is initialized on the target.
     #[error(
         "RTT control block not found in target memory.\n\
-        - Make sure RTT is initialized on the target.\n\
+        - Make sure RTT is initialized on the target, AND that there are NO target breakpoints before RTT initalization.\n\
+        - For VSCode and probe-rs-debugger users, using `halt_after_reset:true` in your `launch.json` file will prevent RTT \n\
+        \tinitialization from happening on time.\n\
         - Depending on the target, sleep modes can interfere with RTT."
     )]
     ControlBlockNotFound,
