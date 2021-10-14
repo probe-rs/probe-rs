@@ -22,7 +22,7 @@ pub enum TargetDescriptionSource {
     External,
 }
 
-/// Type of a supported core
+/// Type of a supported core.
 #[derive(Debug, Copy, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum CoreType {
@@ -36,6 +36,25 @@ pub enum CoreType {
     Armv8m,
     /// RISC-V
     Riscv,
+}
+
+/// The architecture family of a specific [`CoreType`].
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum Architecture {
+    /// An ARM core of one of the specific types [`CoreType::Armv6m`], [`CoreType::Armv7m`], [`CoreType::Armv7em`] or [`CoreType::Armv8m`]
+    Arm,
+    /// A RISC-V core.
+    Riscv,
+}
+
+impl CoreType {
+    /// Returns the parent architecture family of this core type.
+    pub fn architecture(&self) -> Architecture {
+        match self {
+            CoreType::Riscv => Architecture::Riscv,
+            _ => Architecture::Arm,
+        }
+    }
 }
 
 /// This describes a chip family with all its variants.
@@ -77,7 +96,7 @@ impl ChipFamily {
         for variant in &self.variants {
             // Make sure the algorithms used on the variant actually exist on the family (this is basically a check for typos).
             for algorithm_name in variant.flash_algorithms.iter() {
-                if self
+                if !self
                     .flash_algorithms
                     .iter()
                     .any(|algorithm| &algorithm.name == algorithm_name)
@@ -92,11 +111,11 @@ impl ChipFamily {
             // Check that there is at least one core.
             if let Some(core) = variant.cores.get(0) {
                 // Make sure that the core types (architectures) are not mixed.
-                let architecture = core.core_type;
+                let architecture = core.core_type.architecture();
                 if variant
                     .cores
                     .iter()
-                    .any(|core| core.core_type != architecture)
+                    .any(|core| core.core_type.architecture() != architecture)
                 {
                     return Err(format!(
                         "definition for variant `{}` contains mixed core architectures",

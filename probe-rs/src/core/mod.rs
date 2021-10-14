@@ -1,6 +1,7 @@
 pub(crate) mod communication_interface;
 
 pub use communication_interface::CommunicationInterface;
+pub use probe_rs_target::Architecture;
 use probe_rs_target::CoreType;
 
 use crate::architecture::{
@@ -532,12 +533,6 @@ impl BreakpointId {
 pub struct Breakpoint {
     address: u32,
     register_hw: usize,
-}
-
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub enum Architecture {
-    Arm,
-    Riscv,
 }
 
 #[derive(Debug, PartialEq, Copy, Clone)]
