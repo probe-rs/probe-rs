@@ -147,9 +147,9 @@ impl Registry {
 
         add_generic_targets(&mut families);
 
-        // Here we should be required to validate the built in targets.
-        // This is done in the tests `validate_generic_targets` and `validate_builtin` instead,
-        // such that it does not have to be redone everytime the Registry is constructed.
+        // We skip validating the targets here as this is done at a later stage in `get_target`.
+        // Additionally, validation for existing targets is done in the tests `validate_generic_targets` and
+        // `validate_builtin` as well, to ensure we do not ship broken target definitions.
 
         Self { families }
     }
@@ -159,9 +159,9 @@ impl Registry {
         let mut families = vec![];
         add_generic_targets(&mut families);
 
-        // Here we should be required to validate the built in targets.
-        // This is done in the tests `validate_generic_targets` and `validate_builtin` instead,
-        // such that it does not have to be redone everytime the Registry is constructed.
+        // We skip validating the targets here as this is done at a later stage in `get_target`.
+        // Additionally, validation for existing targets is done in the tests `validate_generic_targets` and
+        // `validate_builtin` as well, to ensure we do not ship broken target definitions.
 
         Self { families }
     }
@@ -287,6 +287,7 @@ impl Registry {
     }
 
     fn get_target(&self, family: &ChipFamily, chip: &Chip) -> Result<Target, RegistryError> {
+        // Make sure the given `ChipFamily` is valid.
         family
             .validate()
             .map_err(RegistryError::InvalidChipFamilyDefinition)?;
