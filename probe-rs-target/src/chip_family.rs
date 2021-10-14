@@ -80,8 +80,7 @@ impl ChipFamily {
                 if self
                     .flash_algorithms
                     .iter()
-                    .find(|algorithm| &algorithm.name == algorithm_name)
-                    .is_none()
+                    .any(|algorithm| &algorithm.name == algorithm_name)
                 {
                     return Err(format!(
                         "unknown flash algorithm `{}` for variant `{}`",
