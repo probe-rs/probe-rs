@@ -339,8 +339,7 @@ impl Probe {
         self.inner.has_arm_interface()
     }
 
-    #[allow(rustdoc::private_intra_doc_links)]
-    /// Try to get a trait object implementing [`UninitializedArmProbe`](crate::architecture::arm::communication_interface::UninitializedArmProbe), which can
+    /// Try to get a trait object implementing `UninitializedArmProbe`, which can
     /// can be used to communicate with chips using the ARM architecture.
     ///
     /// If an error occurs while trying to connect, the probe is returned.
