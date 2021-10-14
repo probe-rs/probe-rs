@@ -20,10 +20,6 @@ fn default_channel_formats() -> Vec<RttChannelConfig> {
     vec![]
 }
 
-fn default_rtt_timeout() -> usize {
-    1000
-}
-
 #[derive(Debug, Copy, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub enum DataFormat {
     String,
@@ -56,10 +52,6 @@ pub struct RttConfig {
     #[structopt(skip)]
     #[serde(default, rename = "rtt_enabled")]
     pub enabled: bool,
-    /// Connection timeout in ms.
-    #[structopt(skip)]
-    #[serde(default = "default_rtt_timeout", rename = "rtt_timeout")]
-    pub timeout: usize,
     /// Configure data_format and show_timestamps for select channels
     #[structopt(skip)]
     #[serde(default = "default_channel_formats", rename = "rtt_channel_formats")]

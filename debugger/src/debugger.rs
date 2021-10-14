@@ -632,12 +632,6 @@ impl Debugger {
                     .find(|c| c.dap_cmd == command_lookup || c.cli_cmd == command_lookup);
                 match valid_command {
                     Some(valid_command) => {
-                        // Get a copy of the memory map for later use. This needs to be done here so that we don't get clashing references to session_data.session
-                        let memory_map = if valid_command.function_name == "configuration_done" {
-                            Some(session_data.session.target().memory_map.clone())
-                        } else {
-                            None
-                        };
                         // First, attach to the core.
                         let mut core_data =
                             match attach_core(&mut session_data.session, &self.debugger_options) {
@@ -745,38 +739,6 @@ impl Debugger {
                                 }
                             }
                         }
-                        // This is the 'safest' place from which to initialize RTT.
-                        // RTT can only be initialized if the target application has been allowed to run to the point where it does the RTT initialization.
-                        // If the target halts before it processes this code, then this RTT intialization will yield unpredictable results.
-                        // See `probe-rs-rtt::Rtt` for more information.
-                        if self.debugger_options.rtt.enabled
-                            && valid_command.function_name == "configuration_done"
-                            && memory_map.is_some()
-                        {
-                            self.target_rtt = match attach_to_rtt(
-                                &mut core_data.target_core,
-                                memory_map.as_ref().unwrap(),
-                                &self.debugger_options,
-                            ) {
-                                Ok(target_rtt) => {
-                                    for any_channel in target_rtt.active_channels.iter() {
-                                        if let Some(up_channel) = &any_channel.up_channel {
-                                            debug_adapter.rtt_window(
-                                                up_channel.number(),
-                                                any_channel.channel_name.clone(),
-                                                any_channel.data_format,
-                                            );
-                                        }
-                                    }
-
-                                    Some(target_rtt)
-                                }
-                                Err(error) => {
-                                    log::error!("{:?}\nContinuing without RTT... ", error);
-                                    None
-                                }
-                            }
-                        };
                         command_status
                     }
                     None => {
@@ -1021,13 +983,6 @@ impl Debugger {
         };
         debug_adapter.halt_after_reset = self.debugger_options.halt_after_reset;
 
-        if self.debugger_options.halt_after_reset && self.debugger_options.rtt.enabled {
-            debug_adapter.show_message(
-                MessageSeverity::Warning,
-                "Using both `halt_after_reset` and `rtt_enabled` is not currently supported.",
-            );
-        }
-
         // Do the flashing.
         {
             if self.debugger_options.flashing_enabled {
@@ -1110,9 +1065,58 @@ impl Debugger {
             debug_adapter.send_event("exited", Some(ExitedEventBody { exit_code: 1 }));
             return;
         }
+
         // Loop through remaining (user generated) requests and send to the [processs_request] method until either the client or some unexpected behaviour termintates the process.
         loop {
-            if !self.process_next_request(&mut session_data, &mut debug_adapter) {
+            if self.process_next_request(&mut session_data, &mut debug_adapter) {
+                // Validate and if necessary, initialize the RTT structure.
+                if debug_adapter.adapter_type == DebugAdapterType::DapClient
+                    && self.debugger_options.rtt.enabled
+                    && self.target_rtt.is_none()
+                    && !(debug_adapter.last_known_status == CoreStatus::Unknown
+                        || debug_adapter.last_known_status.is_halted())
+                //Do not attempt this until we have processed the MSDAP request for "configuration_done" ...
+                {
+                    let target_memory_map = session_data.session.target().memory_map.clone();
+                    let mut core_data =
+                        match attach_core(&mut session_data.session, &self.debugger_options) {
+                            Ok(core_data) => core_data,
+                            Err(error) => {
+                                debug_adapter.send_response::<()>(&custom_request, Err(error));
+                                return;
+                            }
+                        };
+                    log::info!("Attempting to initialize the RTT.");
+                    // RTT can only be initialized if the target application has been allowed to run to the point where it does the RTT initialization.
+                    // If the target halts before it processes this code, then this RTT intialization silently fail, and try again later ...
+                    // See `probe-rs-rtt::Rtt` for more information.
+                    self.target_rtt = match attach_to_rtt(
+                        &mut core_data.target_core,
+                        &target_memory_map,
+                        &self.debugger_options,
+                    ) {
+                        Ok(target_rtt) => {
+                            for any_channel in target_rtt.active_channels.iter() {
+                                if let Some(up_channel) = &any_channel.up_channel {
+                                    debug_adapter.rtt_window(
+                                        up_channel.number(),
+                                        any_channel.channel_name.clone(),
+                                        any_channel.data_format,
+                                    );
+                                }
+                            }
+
+                            Some(target_rtt)
+                        }
+                        Err(_error) => {
+                            log::warn!(
+                                "Failed to initalize RTT. Will try again on the next request... "
+                            );
+                            None
+                        }
+                    }
+                }
+            } else {
                 // DapClient STEP FINAL: Let the client know that we are done and exiting.
                 if debug_adapter.adapter_type == DebugAdapterType::DapClient {
                     debug_adapter
@@ -1137,44 +1141,26 @@ pub fn attach_to_rtt(
     memory_map: &[MemoryRegion],
     debugger_options: &DebuggerOptions,
 ) -> Result<crate::rtt::RttActiveTarget, anyhow::Error> {
-    let t = std::time::Instant::now();
-    let mut error = None;
-
-    let mut i = 1;
-
-    while (t.elapsed().as_millis() as usize) < debugger_options.rtt.timeout {
-        log::info!("Initializing RTT (attempt {})...", i);
-        i += 1;
-
-        let rtt_header_address = if let Ok(mut file) =
-            File::open(debugger_options.program_binary.clone().unwrap().as_path())
-        {
-            if let Some(address) = RttActiveTarget::get_rtt_symbol(&mut file) {
-                ScanRegion::Exact(address as u32)
-            } else {
-                ScanRegion::Ram
-            }
+    let rtt_header_address = if let Ok(mut file) =
+        File::open(debugger_options.program_binary.clone().unwrap().as_path())
+    {
+        if let Some(address) = RttActiveTarget::get_rtt_symbol(&mut file) {
+            ScanRegion::Exact(address as u32)
         } else {
             ScanRegion::Ram
-        };
+        }
+    } else {
+        ScanRegion::Ram
+    };
 
-        match Rtt::attach_region(core, memory_map, &rtt_header_address) {
-            Ok(rtt) => {
-                log::info!("RTT initialized.");
-                let app = RttActiveTarget::new(rtt, debugger_options)?;
-                return Ok(app);
-            }
-            Err(err) => {
-                error = Some(anyhow!("Error attempting to attach to RTT: {}", err));
-            }
-        };
-
-        log::trace!("Failed to validate the RTT control block. Retrying until timeout.");
+    match Rtt::attach_region(core, memory_map, &rtt_header_address) {
+        Ok(rtt) => {
+            log::info!("RTT initialized.");
+            let app = RttActiveTarget::new(rtt, debugger_options)?;
+            Ok(app)
+        }
+        Err(err) => Err(anyhow!("Error attempting to attach to RTT: {}", err)),
     }
-    if let Some(error) = error {
-        return Err(error);
-    }
-    Err(anyhow!("Rtt initialization failed."))
 }
 
 pub fn list_connected_devices() -> Result<()> {
