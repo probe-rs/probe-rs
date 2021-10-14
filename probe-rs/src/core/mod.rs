@@ -127,17 +127,17 @@ impl RegisterFile {
 
 pub trait CoreInterface: MemoryInterface {
     /// Wait until the core is halted. If the core does not halt on its own,
-    /// a [DebugProbeError::Timeout] error will be returned.
+    /// a [`DebugProbeError::Timeout`](crate::DebugProbeError::Timeout) error will be returned.
     fn wait_for_core_halted(&mut self, timeout: Duration) -> Result<(), error::Error>;
 
     /// Check if the core is halted. If the core does not halt on its own,
-    /// a [DebugProbeError::Timeout] error will be returned.
+    /// a [`DebugProbeError::Timeout`](crate::DebugProbeError::Timeout) error will be returned.
     fn core_halted(&mut self) -> Result<bool, error::Error>;
 
     fn status(&mut self) -> Result<CoreStatus, error::Error>;
 
     /// Try to halt the core. This function ensures the core is actually halted, and
-    /// returns a [DebugProbeError::Timeout] otherwise.
+    /// returns a [`DebugProbeError::Timeout`](crate::DebugProbeError::Timeout) otherwise.
     fn halt(&mut self, timeout: Duration) -> Result<CoreInformation, error::Error>;
 
     fn run(&mut self) -> Result<(), error::Error>;
@@ -341,19 +341,19 @@ impl<'probe> Core<'probe> {
     }
 
     /// Wait until the core is halted. If the core does not halt on its own,
-    /// a [DebugProbeError::Timeout] error will be returned.
+    /// a [`DebugProbeError::Timeout`](crate::DebugProbeError::Timeout) error will be returned.
     pub fn wait_for_core_halted(&mut self, timeout: Duration) -> Result<(), error::Error> {
         self.inner.wait_for_core_halted(timeout)
     }
 
     /// Check if the core is halted. If the core does not halt on its own,
-    /// a [DebugProbeError::Timeout] error will be returned.
+    /// a [`DebugProbeError::Timeout`](crate::DebugProbeError::Timeout) error will be returned.
     pub fn core_halted(&mut self) -> Result<bool, error::Error> {
         self.inner.core_halted()
     }
 
     /// Try to halt the core. This function ensures the core is actually halted, and
-    /// returns a [DebugProbeError::Timeout] otherwise.
+    /// returns a [`DebugProbeError::Timeout`](crate::DebugProbeError::Timeout) otherwise.
     pub fn halt(&mut self, timeout: Duration) -> Result<CoreInformation, error::Error> {
         self.inner.halt(timeout)
     }
@@ -491,7 +491,7 @@ impl<'probe> Core<'probe> {
     ///
     /// This function will clear all HW breakpoints which are configured on the target,
     /// regardless if they are set by probe-rs, AND regardless if they are enabled or not.
-    /// Also used as a helper function in [`Session::drop`].
+    /// Also used as a helper function in [`Session::drop`](crate::session::Session).
     pub fn clear_all_hw_breakpoints(&mut self) -> Result<(), error::Error> {
         for breakpoint in (self.inner.get_hw_breakpoints()?).into_iter().flatten() {
             self.clear_hw_breakpoint(breakpoint)?
