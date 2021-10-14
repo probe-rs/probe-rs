@@ -23,7 +23,7 @@ pub enum TargetDescriptionSource {
 }
 
 /// Type of a supported core
-#[derive(Debug, Copy, Clone, Serialize, Deserialize)]
+#[derive(Debug, Copy, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum CoreType {
     /// ARMv6-M: Cortex M0, M0+, M1
@@ -63,9 +63,57 @@ pub struct ChipFamily {
     pub source: TargetDescriptionSource,
 }
 
-/// When deserialization is used, this means that the target is read from an external source.
 fn default_source() -> TargetDescriptionSource {
     TargetDescriptionSource::External
+}
+
+impl ChipFamily {
+    /// Validates the [`ChipFamily`] such that probe-rs can make assumptions about the correctness without validating thereafter.
+    ///
+    /// This method should be called right after the [`ChipFamily`] is created!
+    pub fn validate(&self) -> Result<(), String> {
+        // We check each variant if it is valid.
+        // If one is not valid, we abort with an appropriate error message.
+        for variant in &self.variants {
+            // Make sure the algorithms used on the variant actually exist on the family (this is basically a check for typos).
+            for algorithm_name in variant.flash_algorithms.iter() {
+                if self
+                    .flash_algorithms
+                    .iter()
+                    .find(|algorithm| &algorithm.name == algorithm_name)
+                    .is_none()
+                {
+                    return Err(format!(
+                        "unknown flash algorithm `{}` for variant `{}`",
+                        algorithm_name, variant.name
+                    ));
+                }
+            }
+
+            // Check that there is at least one core.
+            if let Some(core) = variant.cores.get(0) {
+                // Make sure that the core types (architectures) are not mixed.
+                let architecture = core.core_type;
+                if variant
+                    .cores
+                    .iter()
+                    .any(|core| core.core_type != architecture)
+                {
+                    return Err(format!(
+                        "definition for variant `{}` contains mixed core architectures",
+                        variant.name
+                    ));
+                }
+            } else {
+                return Err(format!(
+                    "definition for variant `{}` does not contain any cores",
+                    variant.name
+                ));
+            }
+        }
+
+        Ok(())
+    }
 }
 
 impl ChipFamily {

@@ -38,6 +38,9 @@ pub enum RegistryError {
     /// Unable to lock the registry.
     #[error("Unable to lock registry")]
     LockUnavailable,
+    /// An invalid [`ChipFamily`] was encountered.
+    #[error("Invalid chip definition")]
+    InvalidChipFamilyDefinition(String),
 }
 
 impl<R> From<TryLockError<R>> for RegistryError {
@@ -144,6 +147,10 @@ impl Registry {
 
         add_generic_targets(&mut families);
 
+        // Here we should be required to validate the built in targets.
+        // This is done in the tests `validate_generic_targets` and `validate_builtin` instead,
+        // such that it does not have to be redone everytime the Registry is constructed.
+
         Self { families }
     }
 
@@ -151,6 +158,11 @@ impl Registry {
     fn from_builtin_families() -> Self {
         let mut families = vec![];
         add_generic_targets(&mut families);
+
+        // Here we should be required to validate the built in targets.
+        // This is done in the tests `validate_generic_targets` and `validate_builtin` instead,
+        // such that it does not have to be redone everytime the Registry is constructed.
+
         Self { families }
     }
 
@@ -275,6 +287,10 @@ impl Registry {
     }
 
     fn get_target(&self, family: &ChipFamily, chip: &Chip) -> Result<Target, RegistryError> {
+        family
+            .validate()
+            .map_err(RegistryError::InvalidChipFamilyDefinition)?;
+
         // find relevant algorithms
         let chip_algorithms = chip
             .flash_algorithms
@@ -294,6 +310,9 @@ impl Registry {
     fn add_target_from_yaml(&mut self, path_to_yaml: &Path) -> Result<(), RegistryError> {
         let file = File::open(path_to_yaml)?;
         let chip: ChipFamily = serde_yaml::from_reader(file)?;
+
+        chip.validate()
+            .map_err(RegistryError::InvalidChipFamilyDefinition)?;
 
         let index = self
             .families
@@ -377,5 +396,28 @@ mod tests {
         let registry = Registry::from_builtin_families();
         // ok: unique exact match
         assert!(registry.get_target_by_name("nrf51822_Xxaa").is_ok());
+    }
+
+    #[test]
+    fn validate_generic_targets() {
+        let mut families = vec![];
+        add_generic_targets(&mut families);
+
+        assert!(families
+            .iter()
+            .map(|family| family.validate())
+            .collect::<Result<Vec<_>, _>>()
+            .is_ok())
+    }
+
+    #[test]
+    fn validate_builtin() {
+        let registry = Registry::from_builtin_families();
+        assert!(registry
+            .families()
+            .iter()
+            .map(|family| family.validate())
+            .collect::<Result<Vec<_>, _>>()
+            .is_ok())
     }
 }

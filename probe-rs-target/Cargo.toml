@@ -22,3 +22,4 @@ bincode = []
 jep106 = "0.2.4"
 serde = { version = "1.0.104", features = ["derive"] }
 base64 = "0.13.0"
+log = "0.4.14"
