@@ -3,3 +3,4 @@
 *.yaml
 *.yml
 /chips
+.vscode/settings.json

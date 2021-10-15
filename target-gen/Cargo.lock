@@ -286,7 +286,7 @@ dependencies = [
 [[package]]
 name = "cmsis-pack"
 version = "0.1.0"
-source = "git+https://github.com/probe-rs/cmsis-pack-manager.git#e475c90fcd0ce8b9978e1f18d23da849b8c49572"
+source = "git+https://github.com/probe-rs/cmsis-pack-manager.git#9ba5776e2453483e25744e3225e0b00967142dd9"
 dependencies = [
  "failure",
  "futures 0.1.31",
@@ -1520,7 +1520,7 @@ dependencies = [
 [[package]]
 name = "probe-rs"
 version = "0.11.0"
-source = "git+https://github.com/probe-rs/probe-rs.git#cc8d713eb3bcaf2b3da887c8292b60a317be922d"
+source = "git+https://github.com/probe-rs/probe-rs.git?branch=validation#c5a0ab88f649ba595b9e7c50c7c71057151fd129"
 dependencies = [
  "anyhow",
  "base64 0.13.0",
@@ -1551,7 +1551,7 @@ dependencies = [
 [[package]]
 name = "probe-rs-target"
 version = "0.11.0"
-source = "git+https://github.com/probe-rs/probe-rs.git#cc8d713eb3bcaf2b3da887c8292b60a317be922d"
+source = "git+https://github.com/probe-rs/probe-rs.git?branch=validation#c5a0ab88f649ba595b9e7c50c7c71057151fd129"
 dependencies = [
  "base64 0.13.0",
  "jep106",

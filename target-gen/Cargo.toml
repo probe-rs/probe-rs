@@ -7,9 +7,12 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-probe-rs = { git = "https://github.com/probe-rs/probe-rs.git", default-features = false }
-probe-rs-target = { git = "https://github.com/probe-rs/probe-rs.git", default-features = false }
+probe-rs = { git = "https://github.com/probe-rs/probe-rs.git", default-features = false, branch = "validation" }
+probe-rs-target = { git = "https://github.com/probe-rs/probe-rs.git", default-features = false,branch = "validation" }
 cmsis-pack = { git = "https://github.com/probe-rs/cmsis-pack-manager.git" }
+
+# , path = "../cmsis-pack-manager/rust/cmsis-pack"
+# , git = "https://github.com/probe-rs/cmsis-pack-manager.git"
 
 goblin = "0.2.0"
 scroll = "0.10.1"

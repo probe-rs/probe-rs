@@ -2,15 +2,15 @@ use std::fs::{self};
 use std::io::Read;
 use std::path::Path;
 
-use anyhow::{anyhow, bail, Context, Result};
-use cmsis_pack::pdsc::{Core, Device, Package, Processors};
+use anyhow::{anyhow, bail, Context, Error, Result};
+use cmsis_pack::pdsc::{Core, Device, Package, Processor};
 use cmsis_pack::{pack_index::PdscRef, utils::FromElem};
 use futures::StreamExt;
 use probe_rs::config::{
     Chip, ChipFamily, Core as ProbeCore, MemoryRegion, NvmRegion, RamRegion, RawFlashAlgorithm,
 };
-use probe_rs::CoreType;
-use probe_rs_target::{ArmCoreAccessOptions, CoreAccessOptions};
+use probe_rs::{Architecture, CoreType};
+use probe_rs_target::{ArmCoreAccessOptions, CoreAccessOptions, RiscvCoreAccessOptions};
 use tokio::runtime::Builder;
 
 pub(crate) enum Kind<'a, T>
@@ -72,24 +72,9 @@ where
         // Extract the flash info from the .pdsc file.
         let flash = get_flash(&device);
 
-        // Get the core type.
-        let core_type = match &device.processor {
-            Processors::Symmetric(c) => Some(c.core.clone()),
-            Processors::Asymmetric(c) => {
-                let cores: Vec<Core> = c.values().map(|p| p.core.clone()).collect();
-                if !cores.is_empty() {
-                    let mut c: Option<Core> = Some(cores[0].clone());
-                    for i in 1..cores.len() {
-                        if std::mem::discriminant(&cores[i]) != std::mem::discriminant(&cores[0]) {
-                            c = None;
-                        }
-                    }
-                    c
-                } else {
-                    None
-                }
-            }
-        };
+        if device.processors.len() > 1 {
+            println!("{:#?}", device.processors);
+        }
 
         // Check if this device family is already known.
         let mut potential_family = families
@@ -127,42 +112,52 @@ where
             memory_map.push(MemoryRegion::Nvm(mem));
         }
 
-        let core = if let Some(ct) = core_type {
-            match ct {
-                Core::CortexM0 => CoreType::Armv6m,
-                Core::CortexM0Plus => CoreType::Armv6m,
-                Core::CortexM4 => CoreType::Armv7em,
-                Core::CortexM3 => CoreType::Armv7m,
-                Core::CortexM33 => CoreType::Armv8m,
-                Core::CortexM7 => CoreType::Armv7em,
-                c => {
-                    bail!("Core '{:?}' is not yet supported for target generation.", c);
-                }
-            }
-        } else {
-            bail!(
-                "Asymmetric core types are not supported yet: {:?}",
-                &device.processor
-            );
-        };
+        let cores = device
+            .processors
+            .iter()
+            .map(|processor| create_core(processor))
+            .collect::<Result<Vec<_>>>()?;
 
         family.variants.push(Chip {
             name: device_name,
             part: None,
-            cores: vec![ProbeCore {
-                name: "main".to_owned(),
-                core_type: core,
-                core_access_options: CoreAccessOptions::Arm(ArmCoreAccessOptions {
-                    ap: 0,
-                    psel: 0,
-                }),
-            }],
+            cores,
             memory_map,
             flash_algorithms: flash_algorithm_names,
         });
     }
 
     Ok(())
+}
+
+fn create_core(processor: &Processor) -> Result<ProbeCore> {
+    let core_type = core_to_probe_core(&processor.core)?;
+    Ok(ProbeCore {
+        name: processor
+            .name
+            .as_ref()
+            .map(|s| s.to_ascii_lowercase())
+            .unwrap_or_else(|| "main".to_string()),
+        core_type,
+        core_access_options: match core_type.architecture() {
+            Architecture::Arm => CoreAccessOptions::Arm(ArmCoreAccessOptions { ap: 0, psel: 0 }),
+            Architecture::Riscv => CoreAccessOptions::Riscv(RiscvCoreAccessOptions {}),
+        },
+    })
+}
+
+fn core_to_probe_core(value: &Core) -> Result<CoreType, Error> {
+    Ok(match value {
+        Core::CortexM0 => CoreType::Armv6m,
+        Core::CortexM0Plus => CoreType::Armv6m,
+        Core::CortexM4 => CoreType::Armv7em,
+        Core::CortexM3 => CoreType::Armv7m,
+        Core::CortexM33 => CoreType::Armv8m,
+        Core::CortexM7 => CoreType::Armv7em,
+        c => {
+            bail!("Core '{:?}' is not yet supported for target generation.", c);
+        }
+    })
 }
 
 // one possible implementation of walking a directory only visiting files
