@@ -287,25 +287,8 @@ impl Registry {
     }
 
     fn get_target(&self, family: &ChipFamily, chip: &Chip) -> Result<Target, RegistryError> {
-        // Make sure the given `ChipFamily` is valid.
-        family
-            .validate()
-            .map_err(|e| RegistryError::InvalidChipFamilyDefinition(family.clone(), e))?;
-
-        // find relevant algorithms
-        let chip_algorithms = chip
-            .flash_algorithms
-            .iter()
-            .filter_map(|fa| family.get_algorithm(fa))
-            .cloned()
-            .collect();
-
-        Ok(Target::new(
-            chip,
-            chip.cores.clone(),
-            chip_algorithms,
-            family.source.clone(),
-        ))
+        // The validity of the given `ChipFamily` is checked in the constructor.
+        Target::new(family, &chip.name)
     }
 
     fn add_target_from_yaml(&mut self, path_to_yaml: &Path) -> Result<(), RegistryError> {
