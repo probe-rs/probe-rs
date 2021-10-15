@@ -39,8 +39,8 @@ pub enum RegistryError {
     #[error("Unable to lock registry")]
     LockUnavailable,
     /// An invalid [`ChipFamily`] was encountered.
-    #[error("Invalid chip definition")]
-    InvalidChipFamilyDefinition(String),
+    #[error("Invalid chip family definition ({})", .0.name)]
+    InvalidChipFamilyDefinition(ChipFamily, String),
 }
 
 impl<R> From<TryLockError<R>> for RegistryError {
@@ -290,7 +290,7 @@ impl Registry {
         // Make sure the given `ChipFamily` is valid.
         family
             .validate()
-            .map_err(RegistryError::InvalidChipFamilyDefinition)?;
+            .map_err(|e| RegistryError::InvalidChipFamilyDefinition(family.clone(), e))?;
 
         // find relevant algorithms
         let chip_algorithms = chip
@@ -310,19 +310,20 @@ impl Registry {
 
     fn add_target_from_yaml(&mut self, path_to_yaml: &Path) -> Result<(), RegistryError> {
         let file = File::open(path_to_yaml)?;
-        let chip: ChipFamily = serde_yaml::from_reader(file)?;
+        let family: ChipFamily = serde_yaml::from_reader(file)?;
 
-        chip.validate()
-            .map_err(RegistryError::InvalidChipFamilyDefinition)?;
+        family
+            .validate()
+            .map_err(|e| RegistryError::InvalidChipFamilyDefinition(family.clone(), e))?;
 
         let index = self
             .families
             .iter()
-            .position(|old_chip| old_chip.name == chip.name);
+            .position(|old_family| old_family.name == family.name);
         if let Some(index) = index {
             self.families.remove(index);
         }
-        self.families.push(chip);
+        self.families.push(family);
 
         Ok(())
     }
