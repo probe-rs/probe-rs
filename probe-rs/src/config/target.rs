@@ -1,10 +1,12 @@
-use super::{Chip, Core, CoreType, MemoryRegion, RawFlashAlgorithm, TargetDescriptionSource};
+use probe_rs_target::{Architecture, ChipFamily};
+
+use super::{Core, MemoryRegion, RawFlashAlgorithm, RegistryError, TargetDescriptionSource};
 
 use crate::architecture::arm::sequences::nxp::LPC55S69;
 use crate::architecture::arm::sequences::ArmDebugSequence;
 use crate::architecture::riscv::sequences::esp32c3::ESP32C3;
 use crate::architecture::riscv::sequences::{DefaultRiscvSequence, RiscvDebugSequence};
-use crate::{core::Architecture, flashing::FlashLoader};
+use crate::flashing::FlashLoader;
 use std::sync::Arc;
 
 use crate::architecture::arm::sequences::DefaultArmSequence;
@@ -45,29 +47,44 @@ impl std::fmt::Debug for Target {
 /// An error occured while parsing the target description.
 pub type TargetParseError = serde_yaml::Error;
 
-trait CoreArchitecture {
-    fn architecture(&self) -> Architecture;
-}
-
-impl CoreArchitecture for CoreType {
-    fn architecture(&self) -> Architecture {
-        match self {
-            CoreType::Riscv => Architecture::Riscv,
-            _ => Architecture::Arm,
-        }
-    }
-}
-
 impl Target {
-    /// Create a new target
-    pub fn new(
-        chip: &Chip,
-        cores: Vec<Core>,
-        flash_algorithms: Vec<RawFlashAlgorithm>,
-        source: TargetDescriptionSource,
-    ) -> Target {
-        // TODO: Figure out how to handle this if cores can have different architectures.
-        let mut debug_sequence = match cores[0].core_type.architecture() {
+    /// Create a new target for the given details.
+    ///
+    /// We suggest never using this function directly.
+    /// Use (crate::registry::Registry::get_target)[`Registry::get_target`] instead.
+    /// This will ensure that the used target is valid.
+    ///
+    /// The user has to make sure that all the cores have the same [`Architecture`].
+    /// In any case, this function will always just use the architecture of the first core in any further functionality.
+    /// In practice we have never encountered a [`Chip`] with mixed architectures so this should not be of issue.
+    ///
+    /// Furthermore, the user has to ensure that any [`Core`] in `flash_algorithms[n].cores` is present in `cores` as well.
+    pub(crate) fn new(
+        family: &ChipFamily,
+        chip_name: impl AsRef<str>,
+    ) -> Result<Target, RegistryError> {
+        // Make sure we are given a valid family:
+        family
+            .validate()
+            .map_err(|e| RegistryError::InvalidChipFamilyDefinition(family.clone(), e))?;
+
+        let chip = family
+            .variants
+            .iter()
+            .find(|chip| chip.name == chip_name.as_ref())
+            .ok_or_else(|| RegistryError::ChipNotFound(chip_name.as_ref().to_string()))?;
+
+        let mut flash_algorithms = Vec::new();
+        for algo_name in chip.flash_algorithms.iter() {
+            let algo = family.get_algorithm(algo_name).expect(
+                "The required flash algorithm was not found. This is a bug. Please report it.",
+            );
+
+            flash_algorithms.push(algo.clone());
+        }
+
+        // We always just take the architecture of the first core which is okay if there is no mixed architectures.
+        let mut debug_sequence = match chip.cores[0].core_type.architecture() {
             Architecture::Arm => DebugSequence::Arm(DefaultArmSequence::create()),
             Architecture::Riscv => DebugSequence::Riscv(DefaultRiscvSequence::create()),
         };
@@ -80,20 +97,21 @@ impl Target {
             debug_sequence = DebugSequence::Riscv(ESP32C3::create());
         }
 
-        Target {
+        Ok(Target {
             name: chip.name.clone(),
-            cores,
+            cores: chip.cores.clone(),
             flash_algorithms,
-            source,
+            source: family.source.clone(),
             memory_map: chip.memory_map.clone(),
             debug_sequence,
-        }
+        })
     }
 
     /// Get the architecture of the target
     pub fn architecture(&self) -> Architecture {
         let target_arch = self.cores[0].core_type.architecture();
 
+        // This should be ensured when a `ChipFamily` is loaded.
         assert!(
             self.cores
                 .iter()

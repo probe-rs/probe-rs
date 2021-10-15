@@ -38,6 +38,9 @@ pub enum RegistryError {
     /// Unable to lock the registry.
     #[error("Unable to lock registry")]
     LockUnavailable,
+    /// An invalid [`ChipFamily`] was encountered.
+    #[error("Invalid chip family definition ({})", .0.name)]
+    InvalidChipFamilyDefinition(ChipFamily, String),
 }
 
 impl<R> From<TryLockError<R>> for RegistryError {
@@ -144,6 +147,10 @@ impl Registry {
 
         add_generic_targets(&mut families);
 
+        // We skip validating the targets here as this is done at a later stage in `get_target`.
+        // Additionally, validation for existing targets is done in the tests `validate_generic_targets` and
+        // `validate_builtin` as well, to ensure we do not ship broken target definitions.
+
         Self { families }
     }
 
@@ -151,6 +158,11 @@ impl Registry {
     fn from_builtin_families() -> Self {
         let mut families = vec![];
         add_generic_targets(&mut families);
+
+        // We skip validating the targets here as this is done at a later stage in `get_target`.
+        // Additionally, validation for existing targets is done in the tests `validate_generic_targets` and
+        // `validate_builtin` as well, to ensure we do not ship broken target definitions.
+
         Self { families }
     }
 
@@ -275,34 +287,26 @@ impl Registry {
     }
 
     fn get_target(&self, family: &ChipFamily, chip: &Chip) -> Result<Target, RegistryError> {
-        // find relevant algorithms
-        let chip_algorithms = chip
-            .flash_algorithms
-            .iter()
-            .filter_map(|fa| family.get_algorithm(fa))
-            .cloned()
-            .collect();
-
-        Ok(Target::new(
-            chip,
-            chip.cores.clone(),
-            chip_algorithms,
-            family.source.clone(),
-        ))
+        // The validity of the given `ChipFamily` is checked in the constructor.
+        Target::new(family, &chip.name)
     }
 
     fn add_target_from_yaml(&mut self, path_to_yaml: &Path) -> Result<(), RegistryError> {
         let file = File::open(path_to_yaml)?;
-        let chip: ChipFamily = serde_yaml::from_reader(file)?;
+        let family: ChipFamily = serde_yaml::from_reader(file)?;
+
+        family
+            .validate()
+            .map_err(|e| RegistryError::InvalidChipFamilyDefinition(family.clone(), e))?;
 
         let index = self
             .families
             .iter()
-            .position(|old_chip| old_chip.name == chip.name);
+            .position(|old_family| old_family.name == family.name);
         if let Some(index) = index {
             self.families.remove(index);
         }
-        self.families.push(chip);
+        self.families.push(family);
 
         Ok(())
     }
@@ -377,5 +381,28 @@ mod tests {
         let registry = Registry::from_builtin_families();
         // ok: unique exact match
         assert!(registry.get_target_by_name("nrf51822_Xxaa").is_ok());
+    }
+
+    #[test]
+    fn validate_generic_targets() {
+        let mut families = vec![];
+        add_generic_targets(&mut families);
+
+        families
+            .iter()
+            .map(|family| family.validate())
+            .collect::<Result<Vec<_>, _>>()
+            .unwrap();
+    }
+
+    #[test]
+    fn validate_builtin() {
+        let registry = Registry::from_builtin_families();
+        registry
+            .families()
+            .iter()
+            .map(|family| family.validate())
+            .collect::<Result<Vec<_>, _>>()
+            .unwrap();
     }
 }
