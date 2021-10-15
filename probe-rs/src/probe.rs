@@ -339,7 +339,7 @@ impl Probe {
         self.inner.has_arm_interface()
     }
 
-    /// Try to get a trait object implementing [`ArmProbeInterface`], which can
+    /// Try to get a trait object implementing `UninitializedArmProbe`, which can
     /// can be used to communicate with chips using the ARM architecture.
     ///
     /// If an error occurs while trying to connect, the probe is returned.

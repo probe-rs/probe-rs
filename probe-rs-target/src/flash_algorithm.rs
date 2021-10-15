@@ -6,8 +6,8 @@ use serde::{Deserialize, Serialize};
 /// and is usually read from a target description file.
 ///
 /// Before it can be used for flashing, it has to be assembled for
-/// a specific chip, using the [RawFlashAlgorithm::assemble] function. This function
-/// will determine the RAM addresses which are used when flashing.
+/// a specific chip, by determining the RAM addresses which are used when flashing.
+/// This process is done in the main `probe-rs` library.
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
 pub struct RawFlashAlgorithm {
     /// The name of the flash algorithm.
