@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Added LPC5516 targets. (#853)
 - Added LPC552x and LPC55S2x targets. (#742)
 - Added SAM3U targets. (#833)
 - Added initial multicore support. (#565)
