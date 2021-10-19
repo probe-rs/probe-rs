@@ -52,6 +52,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Reject ambiguous chip selection.
 - Prefer using `read` over `read_8` for better performance and compatibility. (#829)
 - Increased default RTT Timeout (retry waiting for RTT Control Block initialization) to 1000ms in `probe-rs-debugger`. (#847)
+- Improved when RTT is initialized/retried, and removed `rtt_timeout` from recognized options of `probe-rs-debugger`. (#850)
 
 ### Fixed
 - Detect proper USB HID interface to use for CMSIS-DAP v1 probes. Without this, CMSIS-DAP probes with multiple HID interfaces, e.g. MCUlink, were not working properly on MacOS (#722).
