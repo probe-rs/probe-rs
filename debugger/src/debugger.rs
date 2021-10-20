@@ -125,36 +125,36 @@ pub struct DebuggerOptions {
     pub(crate) connect_under_reset: bool,
 
     /// IP port number to listen for incoming DAP connections, e.g. "50000"
-    #[structopt(long, requires("dap"))]
+    #[structopt(long, requires("dap"), required_if("dap", "true"))]
     pub(crate) port: Option<u16>,
 
     /// Flash the target before debugging
-    #[structopt(long)]
+    #[structopt(long, conflicts_with("dap"))]
     #[serde(default)]
     pub(crate) flashing_enabled: bool,
 
     /// Reset the target after flashing
-    #[structopt(long, hidden = true, required_if("flashing_enabled", "true"))]
+    #[structopt(long, hidden = true, required_if("flashing_enabled", "true"), conflicts_with("dap"))]
     #[serde(default)]
     pub(crate) reset_after_flashing: bool,
 
     /// Halt the target after reset
-    #[structopt(long, hidden = true)]
+    #[structopt(long, conflicts_with("dap"))]
     #[serde(default)]
     pub(crate) halt_after_reset: bool,
 
     /// Do a full chip erase, versus page-by-page erase
-    #[structopt(long, hidden = true, required_if("flashing_enabled", "true"))]
+    #[structopt(long, conflicts_with("dap"), required_if("flashing_enabled", "true"))]
     #[serde(default)]
     pub(crate) full_chip_erase: bool,
 
     /// Restore erased bytes that will not be rewritten from ELF
-    #[structopt(long, hidden = true, required_if("flashing_enabled", "true"))]
+    #[structopt(long, conflicts_with("dap"), required_if("flashing_enabled", "true"))]
     #[serde(default)]
     pub(crate) restore_unwritten_bytes: bool,
 
     /// Level of information to be logged to the debugger console (Error, Info or Debug )
-    #[structopt(long, parse(try_from_str = parse_console_log))]
+    #[structopt(long, conflicts_with("dap"), parse(try_from_str = parse_console_log))]
     #[serde(default = "default_console_log")]
     pub(crate) console_log_level: Option<ConsoleLog>,
 
@@ -1284,8 +1284,9 @@ pub fn debug(debugger_options: DebuggerOptions, dap: bool) {
         let adapter = DebugAdapter::new(io::stdin(), io::stdout(), DebugAdapterType::CommandLine);
         debugger.debug_session(adapter);
     } else {
-        // TODO: Implement the case where the server needs to keep running after the client has disconnected.
         log::info!("Starting {:?} as a DAP Protocol server", &program_name);
+        // It is usually too early for logging to the client to show up, so use println also.
+        println!("Starting {:?} as a DAP Protocol server", &program_name);
         match &debugger.debugger_options.port.clone() {
             Some(port) => {
                 let addr = format!("{}:{:?}", Ipv4Addr::LOCALHOST.to_string(), port)
@@ -1338,13 +1339,7 @@ pub fn debug(debugger_options: DebuggerOptions, dap: bool) {
                 log::info!("....Closing session from  :{}", addr);
             }
             None => {
-                log::info!(
-                    "Debugger started in directory {}",
-                    &current_dir().unwrap().display()
-                );
-                let adapter =
-                    DebugAdapter::new(io::stdin(), io::stdout(), DebugAdapterType::DapClient);
-                debugger.debug_session(adapter);
+                log::error!("Using the `--dap` option requires the use of the `--port` option. Please use the `--help` option for additional information");
             }
         };
     }

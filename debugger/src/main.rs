@@ -105,8 +105,8 @@ enum CliCommands {
         #[structopt(flatten)]
         debugger_options: DebuggerOptions,
 
-        // TODO: Implement multi-session --server choices
-        /// Switch from using CLI to DAP Protocol debug commands. By default, the DAP communication for the first session is via STDIN and STDOUT. Adding the additional --port property will run as an IP server, listening to connections on the specified port.
+        /// Switch from using the CLI(command line interface) to using DAP Protocol debug commands (enables connections from clients such as Microsoft Visual Studio Code). 
+        /// This option requires the user to specify the `port` option, along with a valid IP port number on which the server will listen for incoming connections.
         #[structopt(long)]
         dap: bool,
     },
