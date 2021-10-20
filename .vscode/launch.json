@@ -22,28 +22,7 @@
         {
             "type": "lldb",
             "request": "launch",
-            "name": "DAP-STDIO probe-rs-debugger", // Use this to test the dap server
-            "cargo": {
-                "args": [
-                    "build",
-                    "--bin=probe-rs-debugger",
-                    "--package=probe-rs-debugger"
-                ],
-                "filter": {
-                    "name": "probe-rs-debugger",
-                    "kind": "bin"
-                }
-            },
-            "args": [
-                "debug",
-                "--dap"
-            ],
-            "cwd": "${workspaceFolder}/debugger"
-        },
-        {
-            "type": "lldb",
-            "request": "launch",
-            "name": "DAP-Server probe-rs-debugger", // Use this to test the dap server in 'attach' mode.
+            "name": "DAP-Server probe-rs-debugger", // Use this to test the dap server .
             "cargo": {
                 "args": [
                     "build",

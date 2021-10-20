@@ -134,7 +134,12 @@ pub struct DebuggerOptions {
     pub(crate) flashing_enabled: bool,
 
     /// Reset the target after flashing
-    #[structopt(long, hidden = true, required_if("flashing_enabled", "true"), conflicts_with("dap"))]
+    #[structopt(
+        long,
+        hidden = true,
+        required_if("flashing_enabled", "true"),
+        conflicts_with("dap")
+    )]
     #[serde(default)]
     pub(crate) reset_after_flashing: bool,
 

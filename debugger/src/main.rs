@@ -105,7 +105,7 @@ enum CliCommands {
         #[structopt(flatten)]
         debugger_options: DebuggerOptions,
 
-        /// Switch from using the CLI(command line interface) to using DAP Protocol debug commands (enables connections from clients such as Microsoft Visual Studio Code). 
+        /// Switch from using the CLI(command line interface) to using DAP Protocol debug commands (enables connections from clients such as Microsoft Visual Studio Code).
         /// This option requires the user to specify the `port` option, along with a valid IP port number on which the server will listen for incoming connections.
         #[structopt(long)]
         dap: bool,
