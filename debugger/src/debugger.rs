@@ -204,24 +204,6 @@ impl DebuggerOptions {
     }
 }
 
-/// #Debugger Overview
-/// The Debugger struct and it's implementation supports both CLI and DAP requests. On startup, the command line arguments are checked for validity, then executed by a dedicated method, and results/errors are wrapped for appropriate CLI or DAP handling
-/// ## Usage: CLI for `probe-rs`
-/// The CLI accepts commands on STDIN and returns results to STDOUT, while all LOG actions are sent to STDERR.
-/// - `probe-rs-debug --help` to list available commands and flags. All of the commands, except for `debug` will execute and then return to the OS.
-/// - `probe-rs-debug debug --help` to list required and optional options for debug mode. The `debug` command will accept and process incoming requests until the user, or a fatal error, ends the session.
-/// ## Usage: DAP Server for `probe-rs`
-/// The DAP Server can run in one of two modes.
-/// - `probe-rs-debug --debug --dap <other options>` : Uses STDIN and STDOUT to service DAP requests. For example, a VSCode `Launch` request prefers this mode.
-/// - `probe-rs-debug --debug --dap --port <IP port number> <other options>` : Uses TCP Sockets to the defined IP port number to service DAP requests. For example, a VSCode `Attach` request prefers this mode.
-pub struct Debugger {
-    debugger_options: DebuggerOptions,
-    all_commands: Vec<DebugCommand>,
-    pub supported_commands: Vec<DebugCommand>,
-    /// The optional connection to RTT on the target
-    target_rtt: Option<RttActiveTarget>,
-}
-
 pub struct SessionData {
     pub(crate) session: Session,
     #[allow(dead_code)]
@@ -358,6 +340,31 @@ pub fn attach_core<'p>(
             "No core at the specified index.",
         ))),
     }
+}
+
+/// The DebuggerStatus is used to control how the Debugger::debug_session() decides if it should respond to DAP Client requests such as `Terminate`, `Disconnect`, and `Reset`, as well as how to repond to unrecoverable errors during a debug session interacting with a target session.
+pub(crate) enum DebuggerStatus {
+    UnrecoverableFailure,
+    SuccessContinue,
+    SuccessTerminate,
+    SuccessReset,
+}
+
+/// #Debugger Overview
+/// The Debugger struct and it's implementation supports both CLI and DAP requests. On startup, the command line arguments are checked for validity, then executed by a dedicated method, and results/errors are wrapped for appropriate CLI or DAP handling
+/// ## Usage: CLI for `probe-rs`
+/// The CLI accepts commands on STDIN and returns results to STDOUT, while all LOG actions are sent to STDERR.
+/// - `probe-rs-debug --help` to list available commands and flags. All of the commands, except for `debug` will execute and then return to the OS.
+/// - `probe-rs-debug debug --help` to list required and optional options for debug mode. The `debug` command will accept and process incoming requests until the user, or a fatal error, ends the session.
+/// ## Usage: DAP Server for `probe-rs`
+/// The DAP Server will usually be managed automatically by the VSCode client, but can also be run from the command line as a "server" process. In the latter case, the management (start and stop) of the server process is the responsibility of the user.
+/// - `probe-rs-debug --debug --dap --port <IP port number> <other options>` : Uses TCP Sockets to the defined IP port number to service DAP requests.
+pub struct Debugger {
+    debugger_options: DebuggerOptions,
+    all_commands: Vec<DebugCommand>,
+    pub supported_commands: Vec<DebugCommand>,
+    /// The optional connection to RTT on the target
+    target_rtt: Option<RttActiveTarget>,
 }
 
 impl Debugger {
@@ -861,7 +868,7 @@ impl Debugger {
             let capabilities = Capabilities {
                 supports_configuration_done_request: Some(true),
                 supports_read_memory_request: Some(true),
-                supports_restart_request: Some(false), // It is better (and cheap enough) to let the client kill and restart the debug adapter, than to try a in-process reset.
+                supports_restart_request: Some(false),
                 supports_terminate_request: Some(true),
                 // supports_value_formatting_options: Some(true),
                 // supports_function_breakpoints: Some(true),
@@ -1137,7 +1144,6 @@ impl Debugger {
             }
         }
         // Exiting this function means the debug_session is complete and we are done. End of process.
-        // TODO: Add functionality to keep the server alive, respond to DAP Client sessions that end, and accept new session requests.
     }
 }
 
@@ -1341,6 +1347,7 @@ pub fn debug(debugger_options: DebuggerOptions, dap: bool) {
                         log::error!("probe-rs-debugger failed to establish a socket connection. Reason: {:?}", error)
                     }
                 }
+                drop(listener);
                 log::info!("....Closing session from  :{}", addr);
             }
             None => {
