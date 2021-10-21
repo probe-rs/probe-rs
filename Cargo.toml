@@ -15,19 +15,15 @@ addr2line = { version = "0.15", default-features = false, features = [
     "fallible-iterator",
     "std-object",
 ] }
-ansi_term = "0.12"
 anyhow = "1.0"
 colored = "2.0"
-difference = "2.0"
 either = "1.6"
 gimli = { version = "0.24", default-features = false }
 git-version = "0.3"
-hidapi = "1.2"
 log = "0.4"
 object = { version = "0.24", default-features = false }
 probe-rs = "0.11"
 probe-rs-rtt = "0.11"
-rustc-demangle = "0.1"
 signal-hook = "0.3"
 structopt = "0.3"
 
