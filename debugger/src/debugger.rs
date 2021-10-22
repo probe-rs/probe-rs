@@ -80,9 +80,35 @@ impl std::str::FromStr for ConsoleLog {
     }
 }
 
+#[derive(StructOpt, Copy, Clone, Debug, Deserialize)]
+pub(crate) enum TargetSessionType {
+    AttachRequest,
+    LaunchRequest,
+}
+
+impl std::str::FromStr for TargetSessionType {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match &s.to_ascii_lowercase()[..] {
+            "attach" => Ok(TargetSessionType::AttachRequest),
+            "launch" => Ok(TargetSessionType::LaunchRequest),
+            _ => Err(format!(
+                "'{}' is not a valid target session type. Can be either 'attach' or 'launch'].",
+                s
+            )),
+        }
+    }
+}
+
 /// Shared options for all commands which use a specific probe
 #[derive(StructOpt, Clone, Deserialize, Debug, Default)]
 pub struct DebuggerOptions {
+    /// Will be set when the DAP client issues a `launch` or `attach` request
+    #[structopt(long, requires("dap"))]
+    #[serde(default)]
+    pub(crate) target_session_type: Option<TargetSessionType>,
+
     /// Path to the requested working directory for the debugger
     #[structopt(long, parse(from_os_str), conflicts_with("dap"))]
     pub(crate) cwd: Option<PathBuf>,
@@ -342,12 +368,14 @@ pub fn attach_core<'p>(
     }
 }
 
-/// The DebuggerStatus is used to control how the Debugger::debug_session() decides if it should respond to DAP Client requests such as `Terminate`, `Disconnect`, and `Reset`, as well as how to repond to unrecoverable errors during a debug session interacting with a target session.
+#[derive(Debug)]
+/// The `DebuggerStatus` is used to control how the Debugger::debug_session() decides if it should respond to DAP Client requests such as `Terminate`, `Disconnect`, and `Reset`, as well as how to repond to unrecoverable errors during a debug session interacting with a target session.
 pub(crate) enum DebuggerStatus {
-    UnrecoverableFailure,
-    SuccessContinue,
-    SuccessTerminate,
-    SuccessReset,
+    SuccessContinueSession,
+    SuccessTerminateSession,
+    SuccessTerminateDebugger,
+    SuccessResetTarget,
+    ErrorTerminateSession,
 }
 
 /// #Debugger Overview
@@ -504,11 +532,11 @@ impl Debugger {
         }
     }
 
-    pub fn process_next_request<R: Read, W: Write>(
+    pub(crate) fn process_next_request<R: Read, W: Write>(
         &mut self,
         session_data: &mut SessionData,
         debug_adapter: &mut DebugAdapter<R, W>,
-    ) -> bool {
+    ) -> DebuggerStatus {
         let request = debug_adapter.listen_for_request();
         match request.command.as_ref() {
             "process_next_request" => {
@@ -522,11 +550,11 @@ impl Debugger {
                 - If the `new_status` is `Running`, then we have to poll on a regular basis, until the Probe stops for good reasons like breakpoints, or bad reasons like panics. Then tell the DAP-Client.
                 */
                 match debug_adapter.last_known_status {
-                    CoreStatus::Unknown => true, // Don't do anything until we know VSCode's startup sequence is complete, and changes this to either Halted or Running.
+                    CoreStatus::Unknown => DebuggerStatus::SuccessContinueSession, // Don't do anything until we know VSCode's startup sequence is complete, and changes this to either Halted or Running.
                     CoreStatus::Halted(_) => {
                         // No need to poll the target if we know it is halted and waiting for us to do something.
                         thread::sleep(Duration::from_millis(50)); // Small delay to reduce fast looping costs on the client
-                        true
+                        DebuggerStatus::SuccessContinueSession
                     }
                     _other => {
                         let mut core_data =
@@ -534,7 +562,7 @@ impl Debugger {
                                 Ok(core_data) => core_data,
                                 Err(error) => {
                                     debug_adapter.send_response::<()>(&request, Err(error));
-                                    return false;
+                                    return DebuggerStatus::ErrorTerminateSession;
                                 }
                             };
 
@@ -562,7 +590,7 @@ impl Debugger {
                                     &request,
                                     Err(DebuggerError::ProbeRs(error)),
                                 );
-                                return false;
+                                return DebuggerStatus::ErrorTerminateSession;
                             }
                         };
 
@@ -570,10 +598,10 @@ impl Debugger {
                         // Otherwise loop again to keep things flowing as fast as possible.
                         // The justification is that any client side CPU used to keep polling is a small price to pay for maximum throughput of debug requests and RTT from the probe.
                         if received_rtt_data && new_status == debug_adapter.last_known_status {
-                            return true;
+                            return DebuggerStatus::SuccessContinueSession;
                         } else if new_status == debug_adapter.last_known_status {
                             thread::sleep(Duration::from_millis(50)); // Small delay to reduce fast looping costs.
-                            return true;
+                            return DebuggerStatus::SuccessContinueSession;
                         } else {
                             debug_adapter.last_known_status = new_status;
                         };
@@ -610,7 +638,7 @@ impl Debugger {
                                     MessageSeverity::Error,
                                     new_status.short_long_status().1.to_owned(),
                                 );
-                                return false;
+                                return DebuggerStatus::ErrorTerminateSession;
                             }
                             CoreStatus::Unknown => {
                                 debug_adapter.send_response::<()>(
@@ -619,23 +647,24 @@ impl Debugger {
                                         "Unknown Device status reveived from Probe-rs"
                                     ))),
                                 );
-                                return false;
+                                return DebuggerStatus::ErrorTerminateSession;
                             }
                         };
-                        true
+                        DebuggerStatus::SuccessContinueSession
                     }
                 }
             }
-            "error" | "quit" => {
+            "error" => DebuggerStatus::ErrorTerminateSession,
+            "quit" => {
                 // The listen_for_request would have reported this, so we just have to exit.
-                false
+                DebuggerStatus::SuccessTerminateSession
             }
             "help" => {
                 println!("The following commands are available:");
                 for cmd in self.supported_commands.iter() {
                     println!(" - {:<30} : {}", cmd.cli_cmd, cmd.help_text);
                 }
-                true
+                DebuggerStatus::SuccessContinueSession
             }
             command_lookup => {
                 let valid_command = self
@@ -650,7 +679,7 @@ impl Debugger {
                                 Ok(core_data) => core_data,
                                 Err(error) => {
                                     debug_adapter.send_response::<()>(&request, Err(error));
-                                    return false;
+                                    return DebuggerStatus::ErrorTerminateSession;
                                 }
                             };
                         // For some operations, we need to make sure the core isn't sleeping, by calling `Core::halt()`.
@@ -682,7 +711,7 @@ impl Debugger {
                                                             "{}", error
                                                         ))),
                                                     );
-                                                    return false;
+                                                    return DebuggerStatus::ErrorTerminateSession;
                                                 }
                                             }
                                         }
@@ -692,7 +721,7 @@ impl Debugger {
                                             &request,
                                             Err(DebuggerError::ProbeRs(error)),
                                         );
-                                        return false;
+                                        return DebuggerStatus::ErrorTerminateSession;
                                     }
                                 }
                             }
@@ -747,11 +776,15 @@ impl Debugger {
                                         &request,
                                         Err(DebuggerError::Other(anyhow!("{}", error))),
                                     );
-                                    return false;
+                                    return DebuggerStatus::ErrorTerminateSession;
                                 }
                             }
                         }
-                        command_status
+                        if command_status {
+                            DebuggerStatus::SuccessContinueSession
+                        } else {
+                            DebuggerStatus::ErrorTerminateSession
+                        }
                     }
                     None => {
                         // Unimplemented command.
@@ -769,7 +802,7 @@ impl Debugger {
                                     )
                                         )),
                                     );
-                            true
+                            DebuggerStatus::SuccessContinueSession
                         } else {
                             debug_adapter.send_response::<()>(
                                 &request,
@@ -778,7 +811,7 @@ impl Debugger {
                                     command_lookup
                                 ))),
                             );
-                            true
+                            DebuggerStatus::SuccessContinueSession
                         }
                     }
                 }
@@ -789,7 +822,10 @@ impl Debugger {
     /// [`debug_session`] is where the primary _debug processing_ for the DAP (Debug Adapter Protocol) adapter happens.
     /// All requests are interpreted, actions taken, and responses formulated here. This function is self contained and returns nothing.
     /// The [`debug_adapter::DebugAdapter`] takes care of _implementing the DAP Base Protocol_ and _communicating with the DAP client_ and _probe_.
-    pub fn debug_session<R: Read, W: Write>(&mut self, mut debug_adapter: DebugAdapter<R, W>) {
+    pub(crate) fn debug_session<R: Read, W: Write>(
+        &mut self,
+        mut debug_adapter: DebugAdapter<R, W>,
+    ) -> DebuggerStatus {
         // Filter out just the set of commands that will work for this session.
         self.supported_commands = if debug_adapter.adapter_type == DebugAdapterType::DapClient {
             self.all_commands
@@ -817,7 +853,7 @@ impl Debugger {
         // Handle it here before starting a probe-rs session and looping through user generated requests.
         if debug_adapter.adapter_type == DebugAdapterType::DapClient {
             // Handling the initialize, and Attach/Launch requests here in this method,
-            // before entering the interactive loop that processes requests through the process_request method.
+            // before entering the iterative loop that processes requests through the process_request method.
 
             // Initialize request.
             #[allow(unused_assignments)]
@@ -831,7 +867,7 @@ impl Debugger {
                 request = debug_adapter.listen_for_request();
                 match request.command.as_str() {
                     "process_next_request" => continue,
-                    "error" => return,
+                    "error" => return DebuggerStatus::ErrorTerminateSession,
                     "initialize" => break, // We have lift off.
                     other => {
                         debug_adapter.send_response::<()>(
@@ -841,7 +877,7 @@ impl Debugger {
                                     .into(),
                             ),
                         );
-                        return;
+                        return DebuggerStatus::ErrorTerminateSession;
                     }
                 };
             }
@@ -854,13 +890,13 @@ impl Debugger {
                     {
                     } else {
                         debug_adapter.send_response::<()>(&request, Err(DebuggerError::Other(anyhow!("Unsupported Capability: Client requested column and row numbers start at 0."))));
-                        return;
+                        return DebuggerStatus::ErrorTerminateSession;
                     }
                     arguments
                 }
                 Err(error) => {
                     debug_adapter.send_response::<()>(&request, Err(error));
-                    return;
+                    return DebuggerStatus::ErrorTerminateSession;
                 }
             };
 
@@ -881,12 +917,20 @@ impl Debugger {
 
             // Process either the Launch or Attach request.
             request.command = "error".to_owned();
+            let mut requested_target_session_type: Option<TargetSessionType> = None;
             loop {
                 request = debug_adapter.listen_for_request();
                 match request.command.as_str() {
                     "process_next_request" => continue,
-                    "error" => return,
-                    "attach" | "launch" => break, // OK
+                    "error" => return DebuggerStatus::ErrorTerminateSession,
+                    "attach" => {
+                        requested_target_session_type = Some(TargetSessionType::AttachRequest);
+                        break;
+                    }
+                    "launch" => {
+                        requested_target_session_type = Some(TargetSessionType::LaunchRequest);
+                        break;
+                    }
                     other => {
                         debug_adapter.send_response::<()>(
                             &request,
@@ -895,13 +939,37 @@ impl Debugger {
                                 other
                             ))),
                         );
-                        return;
+                        return DebuggerStatus::ErrorTerminateSession;
                     }
                 };
             }
             match get_arguments(&request) {
                 Ok(arguments) => {
-                    self.debugger_options = DebuggerOptions { ..arguments };
+                    if requested_target_session_type.is_some() {
+                        self.debugger_options = DebuggerOptions {
+                            target_session_type: requested_target_session_type,
+                            ..arguments
+                        };
+                        if matches!(
+                            requested_target_session_type,
+                            Some(TargetSessionType::AttachRequest)
+                        ) {
+                            // Since VSCode doesn't do field validation checks for relationships in launch.json request types, check it here.
+                            if self.debugger_options.flashing_enabled
+                                || self.debugger_options.reset_after_flashing
+                                || self.debugger_options.halt_after_reset
+                                || self.debugger_options.full_chip_erase
+                                || self.debugger_options.restore_unwritten_bytes
+                            {
+                                debug_adapter.send_response::<()>(
+                                        &request,
+                                        Err(DebuggerError::Other(anyhow!(
+                                            "Please do not use any of the `flashing_enabled`, `reset_after_flashing`, halt_after_reset`, `full_chip_erase`, or `restore_unwritten_bytes` options when using `attach` request type."))),
+                                    );
+                                return DebuggerStatus::ErrorTerminateSession;
+                            }
+                        }
+                    }
                     debug_adapter.console_log_level = self
                         .debugger_options
                         .console_log_level
@@ -922,7 +990,7 @@ impl Debugger {
                                         program_binary
                                     ))),
                                 );
-                                return;
+                                return DebuggerStatus::ErrorTerminateSession;
                             }
                         }
                         None => {
@@ -932,7 +1000,7 @@ impl Debugger {
                                 "Please use the --program-binary option to specify an executable"
                             ))),
                             );
-                            return;
+                            return DebuggerStatus::ErrorTerminateSession;
                         }
                     }
                     debug_adapter.send_response::<()>(&request, Ok(None));
@@ -943,7 +1011,7 @@ impl Debugger {
                         Err(DebuggerError::Other(anyhow!(
                         "Could not derive DebuggerOptions from request '{}', with arguments {:?}\n{:?} ", request.command, request.arguments, error
                     ))));
-                    return;
+                    return DebuggerStatus::ErrorTerminateSession;
                 }
             };
         } else {
@@ -962,7 +1030,7 @@ impl Debugger {
                                 program_binary
                             ))),
                         );
-                        return;
+                        return DebuggerStatus::ErrorTerminateSession;
                     }
                 }
                 None => {
@@ -972,7 +1040,7 @@ impl Debugger {
                             "Please use the --program-binary option to specify an executable"
                         ))),
                     );
-                    return;
+                    return DebuggerStatus::ErrorTerminateSession;
                 }
             }
         }
@@ -989,8 +1057,7 @@ impl Debugger {
                     },
                     Err(error),
                 );
-                debug_adapter.send_event("exited", Some(ExitedEventBody { exit_code: 1 }));
-                return;
+                return DebuggerStatus::ErrorTerminateSession;
             }
         };
         debug_adapter.halt_after_reset = self.debugger_options.halt_after_reset;
@@ -1028,7 +1095,7 @@ impl Debugger {
                             &custom_request,
                             Err(DebuggerError::FileDownload(error)),
                         );
-                        return;
+                        return DebuggerStatus::ErrorTerminateSession;
                     }
                 }
             }
@@ -1046,14 +1113,14 @@ impl Debugger {
                         Ok(_) => {}
                         Err(error) => {
                             debug_adapter.send_response::<()>(&custom_request, Err(error));
-                            return;
+                            return DebuggerStatus::ErrorTerminateSession;
                         }
                     }
                     core_data
                 }
                 Err(error) => {
                     debug_adapter.send_response::<()>(&custom_request, Err(error));
-                    return;
+                    return DebuggerStatus::ErrorTerminateSession;
                 }
             };
 
@@ -1061,7 +1128,7 @@ impl Debugger {
                 && self.debugger_options.reset_after_flashing
                 && !debug_adapter.restart(&mut core_data, &custom_request)
             {
-                return;
+                return DebuggerStatus::ErrorTerminateSession;
             }
         }
 
@@ -1074,76 +1141,98 @@ impl Debugger {
                     "Failed sending 'initialized' event to DAP Client"
                 ))),
             );
-            debug_adapter.send_event("exited", Some(ExitedEventBody { exit_code: 1 }));
-            return;
+            return DebuggerStatus::ErrorTerminateSession;
         }
 
         // Loop through remaining (user generated) requests and send to the [processs_request] method until either the client or some unexpected behaviour termintates the process.
         loop {
-            if self.process_next_request(&mut session_data, &mut debug_adapter) {
-                // Validate and if necessary, initialize the RTT structure.
-                if debug_adapter.adapter_type == DebugAdapterType::DapClient
-                    && self.debugger_options.rtt.enabled
-                    && self.target_rtt.is_none()
-                    && !(debug_adapter.last_known_status == CoreStatus::Unknown
-                        || debug_adapter.last_known_status.is_halted())
-                //Do not attempt this until we have processed the MSDAP request for "configuration_done" ...
-                {
-                    let target_memory_map = session_data.session.target().memory_map.clone();
-                    let mut core_data =
-                        match attach_core(&mut session_data.session, &self.debugger_options) {
-                            Ok(core_data) => core_data,
-                            Err(error) => {
-                                debug_adapter.send_response::<()>(&custom_request, Err(error));
-                                return;
-                            }
-                        };
-                    log::info!("Attempting to initialize the RTT.");
-                    // RTT can only be initialized if the target application has been allowed to run to the point where it does the RTT initialization.
-                    // If the target halts before it processes this code, then this RTT intialization silently fail, and try again later ...
-                    // See `probe-rs-rtt::Rtt` for more information.
-                    self.target_rtt = match attach_to_rtt(
-                        &mut core_data.target_core,
-                        &target_memory_map,
-                        &self.debugger_options,
-                    ) {
-                        Ok(target_rtt) => {
-                            for any_channel in target_rtt.active_channels.iter() {
-                                if let Some(up_channel) = &any_channel.up_channel {
-                                    debug_adapter.rtt_window(
-                                        up_channel.number(),
-                                        any_channel.channel_name.clone(),
-                                        any_channel.data_format,
-                                    );
+            match self.process_next_request(&mut session_data, &mut debug_adapter) {
+                DebuggerStatus::SuccessContinueSession => {
+                    // Validate and if necessary, initialize the RTT structure.
+                    if debug_adapter.adapter_type == DebugAdapterType::DapClient
+                        && self.debugger_options.rtt.enabled
+                        && self.target_rtt.is_none()
+                        && !(debug_adapter.last_known_status == CoreStatus::Unknown
+                            || debug_adapter.last_known_status.is_halted())
+                    //Do not attempt this until we have processed the MSDAP request for "configuration_done" ...
+                    {
+                        let target_memory_map = session_data.session.target().memory_map.clone();
+                        let mut core_data =
+                            match attach_core(&mut session_data.session, &self.debugger_options) {
+                                Ok(core_data) => core_data,
+                                Err(error) => {
+                                    debug_adapter.send_response::<()>(&custom_request, Err(error));
+                                    return DebuggerStatus::ErrorTerminateSession;
                                 }
-                            }
+                            };
+                        log::info!("Attempting to initialize the RTT.");
+                        // RTT can only be initialized if the target application has been allowed to run to the point where it does the RTT initialization.
+                        // If the target halts before it processes this code, then this RTT intialization silently fail, and try again later ...
+                        // See `probe-rs-rtt::Rtt` for more information.
+                        self.target_rtt = match attach_to_rtt(
+                            &mut core_data.target_core,
+                            &target_memory_map,
+                            &self.debugger_options,
+                        ) {
+                            Ok(target_rtt) => {
+                                for any_channel in target_rtt.active_channels.iter() {
+                                    if let Some(up_channel) = &any_channel.up_channel {
+                                        debug_adapter.rtt_window(
+                                            up_channel.number(),
+                                            any_channel.channel_name.clone(),
+                                            any_channel.data_format,
+                                        );
+                                    }
+                                }
 
-                            Some(target_rtt)
-                        }
-                        Err(_error) => {
-                            log::warn!(
-                                "Failed to initalize RTT. Will try again on the next request... "
-                            );
-                            None
+                                Some(target_rtt)
+                            }
+                            Err(_error) => {
+                                log::warn!(
+                                    "Failed to initalize RTT. Will try again on the next request... "
+                                );
+                                None
+                            }
                         }
                     }
                 }
-            } else {
-                // DapClient STEP FINAL: Let the client know that we are done and exiting.
-                if debug_adapter.adapter_type == DebugAdapterType::DapClient {
-                    debug_adapter
-                        .send_event("terminated", Some(TerminatedEventBody { restart: None }));
-                    // Now send the exited event to make sure the client knows we are done
-                    debug_adapter.send_event("exited", Some(ExitedEventBody { exit_code: 0 }));
-                    // Keep the process alive for a bit, so that VSCode doesn't complain about broken pipes.
-                    for _loop_count in 0..10 {
-                        thread::sleep(Duration::from_millis(50));
+                DebuggerStatus::SuccessResetTarget => todo!(),
+                DebuggerStatus::SuccessTerminateSession => {
+                    if debug_adapter.adapter_type == DebugAdapterType::DapClient {
+                        debug_adapter
+                            .send_event("terminated", Some(TerminatedEventBody { restart: None }));
+                        // Keep the process alive for a bit, so that VSCode doesn't complain about broken pipes.
+                        for _loop_count in 0..10 {
+                            thread::sleep(Duration::from_millis(50));
+                        }
                     }
+                    return DebuggerStatus::SuccessTerminateSession;
                 }
-                break;
+                DebuggerStatus::SuccessTerminateDebugger => {
+                    if debug_adapter.adapter_type == DebugAdapterType::DapClient {
+                        debug_adapter
+                            .send_event("terminated", Some(TerminatedEventBody { restart: None }));
+                        // Keep the process alive for a bit, so that VSCode doesn't complain about broken pipes.
+                        for _loop_count in 0..10 {
+                            thread::sleep(Duration::from_millis(50));
+                        }
+                    }
+                    return DebuggerStatus::SuccessTerminateSession;
+                }
+                DebuggerStatus::ErrorTerminateSession => {
+                    if debug_adapter.adapter_type == DebugAdapterType::DapClient {
+                        debug_adapter
+                            .send_event("terminated", Some(TerminatedEventBody { restart: None }));
+                        debug_adapter.send_event("exited", Some(ExitedEventBody { exit_code: 1 }));
+                        // Keep the process alive for a bit, so that VSCode doesn't complain about broken pipes.
+                        for _loop_count in 0..10 {
+                            thread::sleep(Duration::from_millis(50));
+                        }
+                    }
+                    return DebuggerStatus::SuccessTerminateSession;
+                }
             }
         }
-        // Exiting this function means the debug_session is complete and we are done. End of process.
     }
 }
 
@@ -1295,9 +1384,9 @@ pub fn debug(debugger_options: DebuggerOptions, dap: bool) {
         let adapter = DebugAdapter::new(io::stdin(), io::stdout(), DebugAdapterType::CommandLine);
         debugger.debug_session(adapter);
     } else {
-        log::info!("Starting {:?} as a DAP Protocol server", &program_name);
-        // It is usually too early for logging to the client to show up, so use println also.
-        println!("Starting {:?} as a DAP Protocol server", &program_name);
+        let message = format!("{}: Starting as a DAP Protocol server", &program_name);
+        log::info!("{}", &message);
+        println!("{}", &message);
         match &debugger.debugger_options.port.clone() {
             Some(port) => {
                 let addr = format!("{}:{:?}", Ipv4Addr::LOCALHOST.to_string(), port)
@@ -1306,49 +1395,84 @@ pub fn debug(debugger_options: DebuggerOptions, dap: bool) {
                     .next()
                     .unwrap(); // TODO: Implement multi-core and multi-session.
 
-                let listener = match TcpListener::bind(addr) {
-                    Ok(listener) => listener,
-                    Err(error) => {
-                        log::error!("{:?}", error);
-                        return;
-                    }
-                };
+                loop {
+                    let listener = match TcpListener::bind(addr) {
+                        Ok(listener) => listener,
+                        Err(error) => {
+                            println!("{:?}", error);
+                            log::error!("{:?}", error);
+                            return;
+                        }
+                    };
 
-                log::info!("Listening for requests on :{}", addr);
-                println!(
-                    "probe-rs-debugger Listening for requests on port {}",
-                    addr.port()
-                );
+                    let message = format!(
+                        "{}: Listening for requests on port {}",
+                        &program_name,
+                        addr.port()
+                    );
+                    log::info!("{}", &message);
+                    println!("{}", &message);
 
-                listener.set_nonblocking(false).ok();
-                match listener.accept() {
-                    Ok((socket, addr)) => {
-                        match socket.set_nonblocking(true) {
-                            Ok(_) => {
-                                log::info!("..Starting session from   :{}", addr);
+                    listener.set_nonblocking(false).ok();
+                    match listener.accept() {
+                        Ok((socket, addr)) => {
+                            match socket.set_nonblocking(true) {
+                                Ok(_) => {
+                                    let message = format!(
+                                        "{}: ..Starting session from   :{}",
+                                        &program_name, addr
+                                    );
+                                    log::info!("{}", &message);
+                                    println!("{}", &message);
+                                }
+                                Err(_) => {
+                                    let message = format!("Failed to negotiate non-blocking socket with request from :{}", addr);
+                                    log::error!("{}", &message);
+                                    println!("ERROR: {}", &message);
+                                }
                             }
-                            Err(_) => {
-                                log::error!(
-                                    "ERROR: Failed to negotiate non-blocking socket with request from :{}",
-                                    addr
-                                );
+
+                            let reader = socket.try_clone().unwrap();
+                            let writer = socket;
+
+                            let debug_adapter =
+                                DebugAdapter::new(reader, writer, DebugAdapterType::DapClient);
+
+                            match debugger.debug_session(debug_adapter) {
+                                DebuggerStatus::ErrorTerminateSession
+                                | DebuggerStatus::SuccessTerminateSession => {
+                                    drop(listener);
+                                    let message = format!(
+                                        "{}: ....Closing session from  :{}",
+                                        &program_name, addr
+                                    );
+                                    log::info!("{}", &message);
+                                    println!("{}", &message);
+                                }
+                                DebuggerStatus::SuccessTerminateDebugger => {
+                                    drop(listener);
+                                    let message = format!(
+                                        "{}: ....Closing session from  :{}",
+                                        &program_name, addr
+                                    );
+                                    log::info!("{}", &message);
+                                    println!("{}", &message);
+                                    break;
+                                }
+                                DebuggerStatus::SuccessResetTarget => todo!(),
+                                DebuggerStatus::SuccessContinueSession => {}
                             }
                         }
-
-                        let reader = socket.try_clone().unwrap();
-                        let writer = socket;
-
-                        let adapter =
-                            DebugAdapter::new(reader, writer, DebugAdapterType::DapClient);
-                        // TODO: When running in server mode, we want to stay open for new sessions. Implement intelligent restart in `debug_session`.
-                        debugger.debug_session(adapter);
-                    }
-                    Err(error) => {
-                        log::error!("probe-rs-debugger failed to establish a socket connection. Reason: {:?}", error)
+                        Err(error) => {
+                            let message = format!("probe-rs-debugger failed to establish a socket connection. Reason: {:?}", error);
+                            log::info!("{}", &message);
+                            println!("{}", &message)
+                        }
                     }
                 }
-                drop(listener);
-                log::info!("....Closing session from  :{}", addr);
+                let message = format!("{} : DAP Protocol server exiting", &program_name);
+                log::info!("{}", &message);
+                println!("{}", &message);
             }
             None => {
                 log::error!("Using the `--dap` option requires the use of the `--port` option. Please use the `--help` option for additional information");
