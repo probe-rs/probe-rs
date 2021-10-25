@@ -322,7 +322,12 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
         //     .expect("Failed to write dump file");
         // true
     }
-    pub(crate) fn restart(&mut self, core_data: &mut CoreData, request: &Request) -> bool {
+    pub(crate) fn restart(
+        &mut self,
+        core_data: &mut CoreData,
+        request: &Request,
+        user_requested: bool,
+    ) -> bool {
         match core_data.target_core.halt(Duration::from_millis(500)) {
             Ok(_) => {}
             Err(error) => {
@@ -330,7 +335,25 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
                     .send_response::<()>(request, Err(DebuggerError::Other(anyhow!("{}", error))))
             }
         }
-        if self.halt_after_reset || self.adapter_type == DebugAdapterType::DapClient
+        if user_requested || self.adapter_type == DebugAdapterType::CommandLine {
+            match core_data.target_core.reset() {
+                Ok(_) => {
+                    self.last_known_status = CoreStatus::Running;
+                    let event_body = Some(ContinuedEventBody {
+                        all_threads_continued: Some(true),
+                        thread_id: core_data.target_core.id() as i64,
+                    });
+                    self.send_event("continued", event_body);
+                    true
+                }
+                Err(error) => {
+                    return self.send_response::<()>(
+                        request,
+                        Err(DebuggerError::Other(anyhow!("{}", error))),
+                    )
+                }
+            }
+        } else if self.halt_after_reset || self.adapter_type == DebugAdapterType::DapClient
         // The DAP Client will always do a `reset_and_halt`, and then will consider `halt_after_reset` value after the `configuration_done` request.
         // Otherwise the probe will run past the `main()` before the DAP Client has had a chance to set breakpoints in `main()`.
         {
@@ -364,24 +387,6 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
                         self.send_event("stopped", event_body);
                         self.last_known_status = CoreStatus::Halted(HaltReason::External);
                     }
-                    true
-                }
-                Err(error) => {
-                    return self.send_response::<()>(
-                        request,
-                        Err(DebuggerError::Other(anyhow!("{}", error))),
-                    )
-                }
-            }
-        } else if self.adapter_type == DebugAdapterType::CommandLine {
-            match core_data.target_core.reset() {
-                Ok(_) => {
-                    self.last_known_status = CoreStatus::Running;
-                    let event_body = Some(ContinuedEventBody {
-                        all_threads_continued: Some(true),
-                        thread_id: core_data.target_core.id() as i64,
-                    });
-                    self.send_event("continued", event_body);
                     true
                 }
                 Err(error) => {
@@ -438,30 +443,6 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
                 false
             }
         }
-    }
-    pub(crate) fn disconnect(&mut self, _core_data: &mut CoreData, request: &Request) -> bool {
-        let arguments: DisconnectArguments = match get_arguments(request) {
-            Ok(arguments) => arguments,
-            Err(error) => return self.send_response::<()>(request, Err(error)),
-        };
-        self.send_response::<()>(request, Ok(None));
-        let terminate_debugee = arguments.terminate_debuggee.unwrap_or(false);
-        let restart = arguments.restart.unwrap_or(false);
-
-        if terminate_debugee {
-            false
-        } else {
-            restart
-        }
-    }
-    pub(crate) fn terminate(&mut self, _core_data: &mut CoreData, request: &Request) -> bool {
-        let arguments: TerminateArguments = match get_arguments(request) {
-            Ok(arguments) => arguments,
-            Err(error) => return self.send_response::<()>(request, Err(error)),
-        };
-        self.send_response::<()>(request, Ok(None));
-
-        arguments.restart.unwrap_or(false)
     }
     pub(crate) fn threads(&mut self, core_data: &mut CoreData, request: &Request) -> bool {
         // TODO: Implement actual thread resolution. For now, we just use the core id as the thread id.

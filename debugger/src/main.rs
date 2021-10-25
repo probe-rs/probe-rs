@@ -109,6 +109,10 @@ enum CliCommands {
         /// This option requires the user to specify the `port` option, along with a valid IP port number on which the server will listen for incoming connections.
         #[structopt(long)]
         dap: bool,
+
+        /// The debug adapter processed was launched by VSCode, and should terminate itself at the end of every debug session (when receiving `Disconnect` or `Terminate` Request from VSCode). The "false"(default) state of this option implies that the process was launched (and will be managed) by the user.
+        #[structopt(long, hidden = true, requires("dap"))]
+        vscode: bool,
     },
     /// Dump memory from attached target
     #[structopt(name = "dump")]
@@ -161,10 +165,9 @@ fn main() -> Result<()> {
         } => reset_target_of_device(debugger_options, assert)?,
         CliCommands::Debug {
             debugger_options,
-            // program_binary,
-            // port,
             dap,
-        } => debug(debugger_options, dap),
+            vscode,
+        } => debug(debugger_options, dap, vscode),
         CliCommands::Dump {
             debugger_options,
             loc,

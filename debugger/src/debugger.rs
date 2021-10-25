@@ -160,12 +160,7 @@ pub struct DebuggerOptions {
     pub(crate) flashing_enabled: bool,
 
     /// Reset the target after flashing
-    #[structopt(
-        long,
-        hidden = true,
-        required_if("flashing_enabled", "true"),
-        conflicts_with("dap")
-    )]
+    #[structopt(long, required_if("flashing_enabled", "true"), conflicts_with("dap"))]
     #[serde(default)]
     pub(crate) reset_after_flashing: bool,
 
@@ -309,7 +304,7 @@ pub fn start_session(debugger_options: &DebuggerOptions) -> Result<SessionData, 
         }
     }
 
-    // Attach a Session to the probe.
+    // Attach to the probe.
     let target_session = if debugger_options.connect_under_reset {
         target_probe.attach_under_reset(target_selector)?
     } else {
@@ -374,7 +369,6 @@ pub(crate) enum DebuggerStatus {
     SuccessContinueSession,
     SuccessTerminateSession,
     SuccessTerminateDebugger,
-    SuccessResetTarget,
     ErrorTerminateSession,
 }
 
@@ -461,7 +455,7 @@ impl Debugger {
                 //     function_name: "dump_cpu_state",
                 // },
                 DebugCommand {
-                    dap_cmd: "",
+                    dap_cmd: "restart",
                     cli_cmd: "reset",
                     help_text: "Reset the device attached to the debug probe",
                     function_name: "restart",
@@ -471,18 +465,6 @@ impl Debugger {
                     cli_cmd: "",
                     help_text: "",
                     function_name: "configuration_done",
-                },
-                DebugCommand {
-                    dap_cmd: "disconnect",
-                    cli_cmd: "quit",
-                    help_text: "Disconnect from the probe and end the debug session",
-                    function_name: "disconnect",
-                },
-                DebugCommand {
-                    dap_cmd: "terminate",
-                    cli_cmd: "",
-                    help_text: "Disconnect from the probe and end the debug session",
-                    function_name: "terminate",
                 },
                 DebugCommand {
                     dap_cmd: "threads",
@@ -655,9 +637,25 @@ impl Debugger {
                 }
             }
             "error" => DebuggerStatus::ErrorTerminateSession,
-            "quit" => {
-                // The listen_for_request would have reported this, so we just have to exit.
+            "disconnect" => {
+                debug_adapter.send_response::<()>(&request, Ok(None));
                 DebuggerStatus::SuccessTerminateSession
+            }
+            "terminate" => {
+                let mut core_data =
+                    match attach_core(&mut session_data.session, &self.debugger_options) {
+                        Ok(core_data) => core_data,
+                        Err(error) => {
+                            debug_adapter.send_response::<()>(&request, Err(error));
+                            return DebuggerStatus::ErrorTerminateSession;
+                        }
+                    };
+                debug_adapter.pause(&mut core_data, &request);
+                DebuggerStatus::SuccessTerminateSession
+            }
+            "quit" => {
+                debug_adapter.send_response::<()>(&request, Ok(None));
+                DebuggerStatus::SuccessTerminateDebugger
             }
             "help" => {
                 println!("The following commands are available:");
@@ -748,10 +746,8 @@ impl Debugger {
                             "configuration_done" => {
                                 debug_adapter.configuration_done(&mut core_data, &request)
                             }
-                            "disconnect" => debug_adapter.disconnect(&mut core_data, &request),
-                            "terminate" => debug_adapter.terminate(&mut core_data, &request),
                             "threads" => debug_adapter.threads(&mut core_data, &request),
-                            "restart" => debug_adapter.restart(&mut core_data, &request),
+                            "restart" => debug_adapter.restart(&mut core_data, &request, true),
                             "set_breakpoints" => {
                                 debug_adapter.set_breakpoints(&mut core_data, &request)
                             }
@@ -802,7 +798,7 @@ impl Debugger {
                                     )
                                         )),
                                     );
-                            DebuggerStatus::SuccessContinueSession
+                            DebuggerStatus::ErrorTerminateSession
                         } else {
                             debug_adapter.send_response::<()>(
                                 &request,
@@ -904,7 +900,7 @@ impl Debugger {
             let capabilities = Capabilities {
                 supports_configuration_done_request: Some(true),
                 supports_read_memory_request: Some(true),
-                supports_restart_request: Some(false),
+                supports_restart_request: Some(true),
                 supports_terminate_request: Some(true),
                 // supports_value_formatting_options: Some(true),
                 // supports_function_breakpoints: Some(true),
@@ -917,7 +913,7 @@ impl Debugger {
 
             // Process either the Launch or Attach request.
             request.command = "error".to_owned();
-            let mut requested_target_session_type: Option<TargetSessionType> = None;
+            let requested_target_session_type: Option<TargetSessionType>;
             loop {
                 request = debug_adapter.listen_for_request();
                 match request.command.as_str() {
@@ -1126,7 +1122,7 @@ impl Debugger {
 
             if self.debugger_options.flashing_enabled
                 && self.debugger_options.reset_after_flashing
-                && !debug_adapter.restart(&mut core_data, &custom_request)
+                && !debug_adapter.restart(&mut core_data, &custom_request, false)
             {
                 return DebuggerStatus::ErrorTerminateSession;
             }
@@ -1196,28 +1192,11 @@ impl Debugger {
                         }
                     }
                 }
-                DebuggerStatus::SuccessResetTarget => todo!(),
                 DebuggerStatus::SuccessTerminateSession => {
-                    if debug_adapter.adapter_type == DebugAdapterType::DapClient {
-                        debug_adapter
-                            .send_event("terminated", Some(TerminatedEventBody { restart: None }));
-                        // Keep the process alive for a bit, so that VSCode doesn't complain about broken pipes.
-                        for _loop_count in 0..10 {
-                            thread::sleep(Duration::from_millis(50));
-                        }
-                    }
                     return DebuggerStatus::SuccessTerminateSession;
                 }
                 DebuggerStatus::SuccessTerminateDebugger => {
-                    if debug_adapter.adapter_type == DebugAdapterType::DapClient {
-                        debug_adapter
-                            .send_event("terminated", Some(TerminatedEventBody { restart: None }));
-                        // Keep the process alive for a bit, so that VSCode doesn't complain about broken pipes.
-                        for _loop_count in 0..10 {
-                            thread::sleep(Duration::from_millis(50));
-                        }
-                    }
-                    return DebuggerStatus::SuccessTerminateSession;
+                    return DebuggerStatus::SuccessTerminateDebugger;
                 }
                 DebuggerStatus::ErrorTerminateSession => {
                     if debug_adapter.adapter_type == DebugAdapterType::DapClient {
@@ -1229,7 +1208,7 @@ impl Debugger {
                             thread::sleep(Duration::from_millis(50));
                         }
                     }
-                    return DebuggerStatus::SuccessTerminateSession;
+                    return DebuggerStatus::ErrorTerminateSession;
                 }
             }
         }
@@ -1371,7 +1350,7 @@ pub fn trace_u32_on_target(debugger_options: DebuggerOptions, loc: u32) -> Resul
     }
 }
 
-pub fn debug(debugger_options: DebuggerOptions, dap: bool) {
+pub fn debug(debugger_options: DebuggerOptions, dap: bool, vscode: bool) {
     let program_name = structopt::clap::crate_name!();
 
     let mut debugger = Debugger::new(debugger_options);
@@ -1399,7 +1378,7 @@ pub fn debug(debugger_options: DebuggerOptions, dap: bool) {
                     let listener = match TcpListener::bind(addr) {
                         Ok(listener) => listener,
                         Err(error) => {
-                            println!("{:?}", error);
+                            eprintln!("{:?}", error);
                             log::error!("{:?}", error);
                             return;
                         }
@@ -1428,7 +1407,7 @@ pub fn debug(debugger_options: DebuggerOptions, dap: bool) {
                                 Err(_) => {
                                     let message = format!("Failed to negotiate non-blocking socket with request from :{}", addr);
                                     log::error!("{}", &message);
-                                    println!("ERROR: {}", &message);
+                                    eprintln!("ERROR: {}", &message);
                                 }
                             }
 
@@ -1449,24 +1428,23 @@ pub fn debug(debugger_options: DebuggerOptions, dap: bool) {
                                     log::info!("{}", &message);
                                     println!("{}", &message);
                                 }
-                                DebuggerStatus::SuccessTerminateDebugger => {
-                                    drop(listener);
-                                    let message = format!(
-                                        "{}: ....Closing session from  :{}",
-                                        &program_name, addr
-                                    );
-                                    log::info!("{}", &message);
-                                    println!("{}", &message);
-                                    break;
+                                DebuggerStatus::SuccessTerminateDebugger => break,
+                                // This is handled in process_next_request() and should never show up here
+                                DebuggerStatus::SuccessContinueSession => {
+                                    let message = "probe-rs-debugger enountered unexpected `DebuggerStatus` in debug() execution. Please report this as a bug.".to_owned();
+                                    log::error!("{}", &message);
+                                    eprintln!("{}", &message)
                                 }
-                                DebuggerStatus::SuccessResetTarget => todo!(),
-                                DebuggerStatus::SuccessContinueSession => {}
+                            }
+                            // Terminate this process if it was started by VSCode
+                            if vscode {
+                                break;
                             }
                         }
                         Err(error) => {
                             let message = format!("probe-rs-debugger failed to establish a socket connection. Reason: {:?}", error);
-                            log::info!("{}", &message);
-                            println!("{}", &message)
+                            log::error!("{}", &message);
+                            eprintln!("{}", &message)
                         }
                     }
                 }

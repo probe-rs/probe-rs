@@ -8,6 +8,22 @@ use std::convert::TryFrom;
 
 schemafy!(root: debugserver_types "src/debugProtocol.json");
 
+/// Custom 'quit' request, so that VSCode can tell the `probe-rs-debugger` to terminate its own process.
+#[derive(Clone, PartialEq, Debug, Deserialize, Serialize)]
+pub struct QuitRequest {
+    #[doc = " Object containing arguments for the command."]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub arguments: Option<TerminateArguments>,
+    #[doc = " The command to execute."]
+    pub command: String,
+    #[doc = " Sequence number (also known as message ID). For protocol messages of type \'request\' this ID "]
+    #[doc = " can be used to cancel the request."]
+    pub seq: i64,
+    #[doc = " Message type."]
+    #[serde(rename = "type")]
+    pub type_: String,
+}
+
 #[derive(Clone, PartialEq, Debug, Deserialize, Serialize)]
 pub struct RttChannelEventBody {
     pub channel_number: usize,
