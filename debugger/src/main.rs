@@ -7,8 +7,8 @@ mod rtt;
 
 use anyhow::Result;
 use debugger::{
-    debug, download_program_fast, dump_memory, list_connected_devices, reset_target_of_device,
-    trace_u32_on_target, DebuggerOptions,
+    debug, download_program_fast, dump_memory, list_connected_devices, list_supported_chips,
+    reset_target_of_device, trace_u32_on_target, DebuggerOptions,
 };
 use probe_rs::architecture::arm::ap::AccessPortError;
 use probe_rs::flashing::FileDownloadError;
@@ -83,6 +83,9 @@ enum CliCommands {
     /// List all connected debug probes
     #[structopt(name = "list")]
     List {},
+    /// List all probe-rs supported chips
+    #[structopt(name = "list-chips")]
+    ListChips {},
     /// Gets infos about the selected debug probe and connected target
     #[structopt(name = "info")]
     Info {
@@ -156,6 +159,7 @@ fn main() -> Result<()> {
 
     match matches {
         CliCommands::List {} => list_connected_devices()?,
+        CliCommands::ListChips {} => list_supported_chips()?,
         CliCommands::Info { debugger_options } => {
             crate::info::show_info_of_device(&debugger_options)?
         }

@@ -1257,6 +1257,21 @@ pub fn list_connected_devices() -> Result<()> {
     Ok(())
 }
 
+pub fn list_supported_chips() -> Result<()> {
+    println!("Available chips:");
+    for family in
+        probe_rs::config::families().map_err(|e| anyhow!("Families could not be read: {:?}", e))?
+    {
+        println!("{}", &family.name);
+        println!("    Variants:");
+        for variant in family.variants() {
+            println!("        {}", variant.name);
+        }
+    }
+
+    Ok(())
+}
+
 // TODO: Implement assert functionality for true, false & unspecified
 pub fn reset_target_of_device(
     debugger_options: DebuggerOptions,
