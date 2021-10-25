@@ -1380,11 +1380,7 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
                         std::error::Error::source(&debugger_error);
                     while let Some(source_error) = child_error {
                         offset_iterations += 1;
-                        response_message = format!(
-                            "{}\n{:?}",
-                            response_message,
-                            <dyn std::error::Error>::to_string(source_error)
-                        );
+                        response_message = format!("{}\n", response_message,);
                         for _offset_counter in 0..offset_iterations {
                             response_message = format!("{}\t", response_message);
                         }
