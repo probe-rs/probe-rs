@@ -53,12 +53,10 @@ fn main() -> Result<(), &'static str> {
         .map_err(|_| "Failed to select SWD as the transport protocol")?;
 
     let protocol_speed = if let Some(speed) = matches.speed {
-        
         probe
             .set_speed(speed)
             .map_err(|_| "Failed to set probe speed")?
     } else {
-        
         probe
             .set_speed(10000)
             .map_err(|_| "Failed to set probe speed")?
