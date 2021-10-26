@@ -9,7 +9,7 @@ use std::{
 use crate::{architecture::arm::DapError, core::CoreRegister, DebugProbeError, Memory};
 
 use super::{
-    communication_interface::{DapProbe, Initialized, SwdSequence},
+    communication_interface::{DapProbe, Initialized},
     dp::{Abort, Ctrl, DpAccess, Select, DPIDR},
     ArmCommunicationInterface, DpAddress, Pins, PortType, Register,
 };
@@ -45,7 +45,7 @@ pub trait ArmDebugSequence: Send + Sync {
     /// [ARM SVD Debug Description]: http://www.keil.com/pack/doc/cmsis/Pack/html/debug_description.html#resetHardwareDeassert
     #[doc(alias = "ResetHardwareDeassert")]
     fn reset_hardware_deassert(&self, memory: &mut Memory) -> Result<(), crate::Error> {
-        let interface = memory.get_arm_interface()?;
+        let interface = memory.get_arm_probe();
 
         let mut n_reset = Pins(0);
         n_reset.set_nreset(true);

@@ -1,6 +1,7 @@
 use super::super::ap::{
     AccessPortError, AddressIncrement, ApAccess, ApRegister, DataSize, MemoryAp, CSW, DRW, TAR,
 };
+use crate::architecture::arm::communication_interface::SwdSequence;
 use crate::architecture::arm::ArmCommunicationInterface;
 use crate::architecture::arm::{
     communication_interface::Initialized, dp::DpAccess, MemoryApInformation,
@@ -15,7 +16,7 @@ use std::{
 
 use bitfield::bitfield;
 
-pub trait ArmProbe {
+pub trait ArmProbe: SwdSequence {
     fn read_core_reg(&mut self, ap: MemoryAp, addr: CoreRegisterAddress) -> Result<u32, Error>;
     fn write_core_reg(
         &mut self,
@@ -588,6 +589,21 @@ where
         self.write_32(access_port, aligned.start, &buf32)?;
 
         Ok(())
+    }
+}
+
+impl<AP> SwdSequence for ADIMemoryInterface<'_, AP>
+where
+    AP: CommunicationInterface + ApAccess + DpAccess,
+{
+    fn swj_sequence(&mut self, bit_len: u8, bits: u64) -> Result<(), Error> {
+        self.get_arm_communication_interface()?
+            .swj_sequence(bit_len, bits)
+    }
+
+    fn swj_pins(&mut self, pin_out: u32, pin_select: u32, pin_wait: u32) -> Result<u32, Error> {
+        self.get_arm_communication_interface()?
+            .swj_pins(pin_out, pin_select, pin_wait)
     }
 }
 
