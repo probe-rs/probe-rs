@@ -212,6 +212,10 @@ impl<'probe> Memory<'probe> {
         self.inner.get_arm_communication_interface()
     }
 
+    pub fn get_arm_probe(&mut self) -> &mut dyn ArmProbe {
+        self.inner.as_mut()
+    }
+
     pub fn get_ap(&mut self) -> ApAddress {
         self.ap_sel.ap_address()
     }

@@ -312,15 +312,15 @@ impl StLink<StLinkUsbDevice> {
     ) -> Result<u32, ProbeRsError> {
         let mut nreset = Pins(0);
         nreset.set_nreset(true);
-        let nreset_mask = !(nreset.0 as u32);
+        let nreset_mask = nreset.0 as u32;
 
         // If only the reset pin is selected we perform the reset.
         // If something else is selected return an error as this is not supported on ST-Links.
-        if pin_select & nreset_mask != 0 {
+        if pin_select == nreset_mask {
             if Pins(pin_out as u8).nreset() {
-                self.target_reset_assert()?;
-            } else {
                 self.target_reset_deassert()?;
+            } else {
+                self.target_reset_assert()?;
             }
 
             // Normally this would be the timeout we pass to the probe to settle the pins.
@@ -1372,6 +1372,21 @@ impl SwoAccess for StlinkArmDebug {
 #[derive(Debug)]
 struct StLinkMemoryInterface<'probe> {
     probe: &'probe mut StlinkArmDebug,
+}
+
+impl SwdSequence for StLinkMemoryInterface<'_> {
+    fn swj_sequence(&mut self, bit_len: u8, bits: u64) -> Result<(), ProbeRsError> {
+        self.probe.swj_sequence(bit_len, bits)
+    }
+
+    fn swj_pins(
+        &mut self,
+        pin_out: u32,
+        pin_select: u32,
+        pin_wait: u32,
+    ) -> Result<u32, ProbeRsError> {
+        self.probe.swj_pins(pin_out, pin_select, pin_wait)
+    }
 }
 
 impl ArmProbe for StLinkMemoryInterface<'_> {
