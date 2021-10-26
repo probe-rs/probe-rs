@@ -2,7 +2,7 @@
 name = "probe-rs-rtt"
 description = "Host side implementation of the RTT (Real-Time Transfer) I/O protocol over probe-rs"
 version = "0.11.0"
-edition = "2018"
+edition = "2021"
 readme = "../README.md"
 keywords = ["embedded", "debugging", "rtt"]
 license = "MIT"
