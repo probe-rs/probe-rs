@@ -2,7 +2,7 @@
 authors = ["The Knurling-rs developers"]
 categories = ["command-line-utilities", "embedded", "no-std"]
 description = "Runs embedded programs just like native ones"
-edition = "2018"
+edition = "2021"
 keywords = ["knurling", "cargo-runner"]
 license = "MIT OR Apache-2.0"
 name = "probe-run"
