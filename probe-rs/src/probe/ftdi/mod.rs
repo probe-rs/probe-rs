@@ -354,7 +354,7 @@ impl JtagAdapter {
 
     fn get_chain_params(&self) -> io::Result<ChainParams> {
         match &self.chain_params {
-            Some(params) => Ok(params.clone()),
+            Some(params) => Ok(*params),
             None => Err(io::Error::new(
                 io::ErrorKind::Other,
                 "target is not selected",
@@ -387,13 +387,11 @@ impl JtagAdapter {
 
         let drbits = params.drpre + len_bits + params.drpost;
         let request = if let Some(data_slice) = data {
-            let data = BitSlice::<Lsb0, u8>::from_slice(data_slice).or_else(|_| {
-                Err(io::Error::new(
+            let data = BitSlice::<Lsb0, u8>::from_slice(data_slice).map_err(|_| io::Error::new(
                     io::ErrorKind::InvalidData,
                     "could not create bitslice",
-                ))
-            })?;
-            let mut data = BitVec::<Lsb0, u8>::from_bitslice(&data);
+                ))?;
+            let mut data = BitVec::<Lsb0, u8>::from_bitslice(data);
             data.truncate(len_bits);
 
             let mut buf = BitVec::<Lsb0, u8>::new();

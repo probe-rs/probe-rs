@@ -86,13 +86,11 @@ impl TargetTransferCommand {
 
         let drbits = params.drpre + len + params.drpost;
         let request = {
-            let data = BitSlice::<Lsb0, u8>::from_slice(&data).or_else(|_| {
-                Err(io::Error::new(
+            let data = BitSlice::<Lsb0, u8>::from_slice(&data).map_err(|_| io::Error::new(
                     io::ErrorKind::InvalidData,
                     "could not create bitslice",
-                ))
-            })?;
-            let mut data = BitVec::<Lsb0, u8>::from_bitslice(&data);
+                ))?;
+            let mut data = BitVec::<Lsb0, u8>::from_bitslice(data);
             data.truncate(len);
 
             let mut buf = BitVec::<Lsb0, u8>::new();
@@ -110,7 +108,7 @@ impl TargetTransferCommand {
             data,
             len,
             chain_params,
-            shift_ir_cmd: shift_ir_cmd,
+            shift_ir_cmd,
             transfer_dr_cmd: transfer_dr,
         })
     }
@@ -182,7 +180,7 @@ impl JtagCommand for ShiftIrCommand {
         for subcommand in &self.subcommands {
             let end = start + subcommand.bytes_to_read();
             let cmd_data = data[start..end].to_vec();
-            &subcommand.process_output(&cmd_data); // TODO check if ok
+            let _ = subcommand.process_output(&cmd_data); // TODO check if ok
             start += subcommand.bytes_to_read();
         }
 
@@ -419,7 +417,7 @@ impl JtagCommand for TransferTdiCommand {
         }
 
         let mut reply = Vec::<u8>::new();
-        reply.extend_from_slice(&data);
+        reply.extend_from_slice(data);
         reply.push(last_byte);
         Ok(CommandResult::VecU8(reply))
     }

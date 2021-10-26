@@ -53,15 +53,15 @@ fn main() -> Result<(), &'static str> {
         .map_err(|_| "Failed to select SWD as the transport protocol")?;
 
     let protocol_speed = if let Some(speed) = matches.speed {
-        let protocol_speed = probe
+        
+        probe
             .set_speed(speed)
-            .map_err(|_| "Failed to set probe speed")?;
-        protocol_speed
+            .map_err(|_| "Failed to set probe speed")?
     } else {
-        let protocol_speed = probe
+        
+        probe
             .set_speed(10000)
-            .map_err(|_| "Failed to set probe speed")?;
-        protocol_speed
+            .map_err(|_| "Failed to set probe speed")?
     } as i32;
 
     if ![100, 1000, 10000, 50000].contains(&protocol_speed) {
@@ -181,7 +181,7 @@ fn main() -> Result<(), &'static str> {
                 chip: chip_name,
                 os: env::consts::OS.to_string(),
                 protocol: protocol_name,
-                protocol_speed: protocol_speed,
+                protocol_speed,
                 commit_hash: commit_name,
                 timestamp: NaiveDateTime::from_timestamp(since_the_epoch as i64, 0),
                 kind: "ram".into(),

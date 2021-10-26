@@ -1670,7 +1670,7 @@ mod test {
     fn parse_valid_header() {
         let header = "Content-Length: 234\r\n";
 
-        assert_eq!(234, get_content_len(&header).unwrap());
+        assert_eq!(234, get_content_len(header).unwrap());
     }
 }
 
