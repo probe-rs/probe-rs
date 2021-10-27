@@ -30,7 +30,7 @@ fn breakpoint_location_absolute() {
 
         assert_eq!(
             Some(*addr),
-            di.get_breakpoint_location(&path, *line, col)
+            di.get_breakpoint_location(path, *line, col)
                 .expect("Failed to find breakpoint location."),
             "Addresses do not match for data path={:?}, line={:?}, col={:?}",
             &path,
@@ -59,7 +59,7 @@ fn breakpoint_location_inexact() {
 
         assert_eq!(
             Some(*addr),
-            di.get_breakpoint_location(&path, *line, col)
+            di.get_breakpoint_location(path, *line, col)
                 .expect("Failed to find breakpoint location."),
             "Addresses do not match for data path={:?}, line={:?}, col={:?}",
             &path,
@@ -95,7 +95,7 @@ fn find_non_existing_unit_by_path() {
     let debug_info = DebugInfo::from_file("tests/gpio_hal_blinky").unwrap();
 
     assert!(debug_info
-        .get_breakpoint_location(&unit_path, 14, None)
+        .get_breakpoint_location(unit_path, 14, None)
         .unwrap()
         .is_none());
 }

@@ -2,7 +2,7 @@
 name = "probe-rs"
 version = "0.11.0"
 authors = ["Noah Hüsser <yatekii@yatekii.ch>", "Dominik Boehi <dominik.boehi@gmail.ch>"]
-edition = "2018"
+edition = "2021"
 description = "A collection of on chip debugging tools to communicate with microchips."
 documentation = "https://docs.rs/probe-rs/"
 homepage = "https://github.com/probe-rs/probe-rs"
