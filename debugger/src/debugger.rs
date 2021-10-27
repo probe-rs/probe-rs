@@ -1150,7 +1150,7 @@ impl Debugger {
                         && self.target_rtt.is_none()
                         && !(debug_adapter.last_known_status == CoreStatus::Unknown
                             || debug_adapter.last_known_status.is_halted())
-                    //Do not attempt this until we have processed the MSDAP request for "configuration_done" ...
+                    // Do not attempt this until we have processed the MSDAP request for "configuration_done" ...
                     {
                         let target_memory_map = session_data.session.target().memory_map.clone();
                         let mut core_data =
