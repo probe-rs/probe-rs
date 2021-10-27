@@ -7,8 +7,8 @@ mod rtt;
 
 use anyhow::Result;
 use debugger::{
-    debug, download_program_fast, dump_memory, list_connected_devices, reset_target_of_device,
-    trace_u32_on_target, DebuggerOptions,
+    debug, download_program_fast, dump_memory, list_connected_devices, list_supported_chips,
+    reset_target_of_device, trace_u32_on_target, DebuggerOptions,
 };
 use probe_rs::architecture::arm::ap::AccessPortError;
 use probe_rs::flashing::FileDownloadError;
@@ -83,6 +83,9 @@ enum CliCommands {
     /// List all connected debug probes
     #[structopt(name = "list")]
     List {},
+    /// List all probe-rs supported chips
+    #[structopt(name = "list-chips")]
+    ListChips {},
     /// Gets infos about the selected debug probe and connected target
     #[structopt(name = "info")]
     Info {
@@ -105,10 +108,14 @@ enum CliCommands {
         #[structopt(flatten)]
         debugger_options: DebuggerOptions,
 
-        // TODO: Implement multi-session --server choices
-        /// Switch from using CLI to DAP Protocol debug commands. By default, the DAP communication for the first session is via STDIN and STDOUT. Adding the additional --port property will run as an IP server, listening to connections on the specified port.
+        /// Switch from using the CLI(command line interface) to using DAP Protocol debug commands (enables connections from clients such as Microsoft Visual Studio Code).
+        /// This option requires the user to specify the `port` option, along with a valid IP port number on which the server will listen for incoming connections.
         #[structopt(long)]
         dap: bool,
+
+        /// The debug adapter processed was launched by VSCode, and should terminate itself at the end of every debug session (when receiving `Disconnect` or `Terminate` Request from VSCode). The "false"(default) state of this option implies that the process was launched (and will be managed) by the user.
+        #[structopt(long, hidden = true, requires("dap"))]
+        vscode: bool,
     },
     /// Dump memory from attached target
     #[structopt(name = "dump")]
@@ -152,6 +159,7 @@ fn main() -> Result<()> {
 
     match matches {
         CliCommands::List {} => list_connected_devices()?,
+        CliCommands::ListChips {} => list_supported_chips()?,
         CliCommands::Info { debugger_options } => {
             crate::info::show_info_of_device(&debugger_options)?
         }
@@ -161,10 +169,9 @@ fn main() -> Result<()> {
         } => reset_target_of_device(debugger_options, assert)?,
         CliCommands::Debug {
             debugger_options,
-            // program_binary,
-            // port,
             dap,
-        } => debug(debugger_options, dap),
+            vscode,
+        } => debug(debugger_options, dap, vscode),
         CliCommands::Dump {
             debugger_options,
             loc,

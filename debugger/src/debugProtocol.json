@@ -691,6 +691,38 @@
 			}]
 		},
 
+		"MemoryEvent": {
+			"allOf": [ { "$ref": "#/definitions/Event" }, {
+				"type": "object",
+				"description": "This event indicates that some memory range has been updated. It should only be sent if the debug adapter has received a value true for the `supportsMemoryEvent` capability of the `initialize` request.\nClients typically react to the event by re-issuing a `readMemory` request if they show the memory identified by the `memoryReference` and if the updated memory range overlaps the displayed range. Clients should not make assumptions how individual memory references relate to each other, so they should not assume that they are part of a single continuous address range and might overlap.\nDebug adapters can use this event to indicate that the contents of a memory range has changed due to some other DAP request like `setVariable` or `setExpression`. Debug adapters are not expected to emit this event for each and every memory change of a running program, because that information is typically not available from debuggers and it would flood clients with too many events.",
+				"properties": {
+					"event": {
+						"type": "string",
+						"enum": [ "memory" ]
+					},
+					"body": {
+						"type": "object",
+						"properties": {
+							"memoryReference": {
+								"type": "string",
+								"description": "Memory reference of a memory range that has been updated."
+							},
+							"offset": {
+								"type": "integer",
+								"description": "Starting offset in bytes where memory has been updated. Can be negative."
+							},
+							"count": {
+								"type": "integer",
+								"description": "Number of bytes updated."
+							}
+						},
+						"required": [ "memoryReference", "offset", "count" ]
+					}
+				},
+				"required": [ "event", "body" ]
+			}]
+		},
+
 		"RunInTerminalRequest": {
 			"allOf": [ { "$ref": "#/definitions/Request" }, {
 				"type": "object",
@@ -839,6 +871,10 @@
 				"supportsInvalidatedEvent": {
 					"type": "boolean",
 					"description": "Client supports the invalidated event."
+				},
+				"supportsMemoryEvent": {
+					"type": "boolean",
+					"description": "Client supports the memory event."
 				}
 			},
 			"required": [ "adapterID" ]

@@ -145,22 +145,28 @@ impl RttActiveChannel {
     /// Processes all the new data into the channel internal buffer and returns the number of bytes that was read.
     pub fn poll_rtt(&mut self, core: &mut Core) -> Option<usize> {
         if let Some(channel) = self.up_channel.as_mut() {
-            match channel.read(core, self.rtt_buffer.0.as_mut()) {
-                Ok(count) => {
-                    if count.is_zero() {
-                        None
-                    } else {
-                        Some(count)
+            // Retry loop, in case the probe is temporarily unavailable, e.g. user pressed the `reset` button.
+            for _loop_count in 0..10 {
+                match channel.read(core, self.rtt_buffer.0.as_mut()) {
+                    Ok(count) => {
+                        if count.is_zero() {
+                            return None;
+                        } else {
+                            return Some(count);
+                        }
+                    }
+                    Err(err) => {
+                        if matches!(err, probe_rs_rtt::Error::Probe(_)) {
+                            std::thread::sleep(std::time::Duration::from_millis(50));
+                        } else {
+                            log::error!("\nError reading from RTT: {}", err);
+                            return None;
+                        }
                     }
                 }
-                Err(err) => {
-                    log::error!("\nError reading from RTT: {}", err);
-                    None
-                }
             }
-        } else {
-            None
         }
+        None
     }
 
     pub fn _push_rtt(&mut self, core: &mut Core) {
