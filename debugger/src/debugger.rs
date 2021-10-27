@@ -1378,9 +1378,10 @@ pub fn debug(debugger_options: DebuggerOptions, dap: bool, vscode: bool) {
         let adapter = DebugAdapter::new(io::stdin(), io::stdout(), DebugAdapterType::CommandLine);
         debugger.debug_session(adapter);
     } else {
-        let message = format!("{}: Starting as a DAP Protocol server", &program_name);
-        log::info!("{}", &message);
-        println!("{}", &message);
+        println!(
+            "{} CONSOLE: Starting as a DAP Protocol server",
+            &program_name
+        );
         match &debugger.debugger_options.port.clone() {
             Some(port) => {
                 let addr = format!("{}:{:?}", Ipv4Addr::LOCALHOST.to_string(), port)
@@ -1398,14 +1399,11 @@ pub fn debug(debugger_options: DebuggerOptions, dap: bool, vscode: bool) {
                             return;
                         }
                     };
-
-                    let message = format!(
-                        "{}: Listening for requests on port {}",
+                    println!(
+                        "{} CONSOLE: Listening for requests on port {}",
                         &program_name,
                         addr.port()
                     );
-                    log::info!("{}", &message);
-                    println!("{}", &message);
 
                     listener.set_nonblocking(false).ok();
                     match listener.accept() {
@@ -1420,9 +1418,7 @@ pub fn debug(debugger_options: DebuggerOptions, dap: bool, vscode: bool) {
                                     println!("{}", &message);
                                 }
                                 Err(_) => {
-                                    let message = format!("Failed to negotiate non-blocking socket with request from :{}", addr);
-                                    log::error!("{}", &message);
-                                    eprintln!("ERROR: {}", &message);
+                                    log::error!("Failed to negotiate non-blocking socket with request from :{}", addr);
                                 }
                             }
 
@@ -1436,19 +1432,15 @@ pub fn debug(debugger_options: DebuggerOptions, dap: bool, vscode: bool) {
                                 DebuggerStatus::ErrorTerminateSession
                                 | DebuggerStatus::SuccessTerminateSession => {
                                     drop(listener);
-                                    let message = format!(
-                                        "{}: ....Closing session from  :{}",
+                                    println!(
+                                        "{} CONSOLE: ....Closing session from  :{}",
                                         &program_name, addr
                                     );
-                                    log::info!("{}", &message);
-                                    println!("{}", &message);
                                 }
                                 DebuggerStatus::SuccessTerminateDebugger => break,
                                 // This is handled in process_next_request() and should never show up here
                                 DebuggerStatus::SuccessContinueSession => {
-                                    let message = "probe-rs-debugger enountered unexpected `DebuggerStatus` in debug() execution. Please report this as a bug.".to_owned();
-                                    log::error!("{}", &message);
-                                    eprintln!("{}", &message)
+                                    log::error!("probe-rs-debugger enountered unexpected `DebuggerStatus` in debug() execution. Please report this as a bug.");
                                 }
                             }
                             // Terminate this process if it was started by VSCode
@@ -1457,15 +1449,11 @@ pub fn debug(debugger_options: DebuggerOptions, dap: bool, vscode: bool) {
                             }
                         }
                         Err(error) => {
-                            let message = format!("probe-rs-debugger failed to establish a socket connection. Reason: {:?}", error);
-                            log::error!("{}", &message);
-                            eprintln!("{}", &message)
+                            log::error!("probe-rs-debugger failed to establish a socket connection. Reason: {:?}", error);
                         }
                     }
                 }
-                let message = format!("{} : DAP Protocol server exiting", &program_name);
-                log::info!("{}", &message);
-                println!("{}", &message);
+                println!("{} CONSOLE: DAP Protocol server exiting", &program_name);
             }
             None => {
                 log::error!("Using the `--dap` option requires the use of the `--port` option. Please use the `--help` option for additional information");
