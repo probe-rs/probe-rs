@@ -1,6 +1,10 @@
 mod protocol;
 
-use std::iter;
+use std::{
+    convert::TryInto,
+    iter,
+    time::{Duration, Instant},
+};
 
 use crate::{
     architecture::{
@@ -43,7 +47,7 @@ impl EspUsbJtag {
 
         let tms_enter_shift = [true, false, false];
 
-        // Last bit of data is shifted out when we exi the SHIFT-DR State
+        // Last bit of data is shifted out when we exit the SHIFT-DR State.
         let tms_shift_out_value = iter::repeat(false).take(register_bits - 1);
 
         let tms_enter_idle = [true, true, false];
@@ -59,7 +63,7 @@ impl EspUsbJtag {
         // We have to stay in the idle cycle a bit
         tms.extend(iter::repeat(false).take(self.idle_cycles() as usize));
 
-        let mut response = self.protocol.jtag_io(tms, tdi)?;
+        let mut response = self.protocol.jtag_io(tms, tdi, true)?;
 
         log::trace!("Response: {:?}", response);
 
@@ -86,7 +90,7 @@ impl EspUsbJtag {
     }
 
     /// Write IR register with the specified data. The
-    /// IR register might have an odd length, so the dta
+    /// IR register might have an odd length, so the data
     /// will be truncated to `len` bits. If data has less
     /// than `len` bits, an error will be returned.
     fn write_ir(&mut self, data: &[u8], len: usize) -> Result<(), DebugProbeError> {
@@ -106,13 +110,13 @@ impl EspUsbJtag {
         let tms_enter_ir_shift = [true, true, false, false];
 
         // The last bit will be transmitted when exiting the shift state,
-        // so we need to stay in the shift stay for one period less than
-        // we have bits to transmit
+        // so we need to stay in the shift state for one period less than
+        // we have bits to transmit.
         let tms_data = iter::repeat(false).take(len - 1);
 
         let tms_enter_idle = [true, true, false];
 
-        let mut tms = Vec::with_capacity(tms_enter_ir_shift.len() + len + tms_enter_ir_shift.len());
+        let mut tms = Vec::with_capacity(tms_enter_ir_shift.len() + len + tms_enter_idle.len());
 
         tms.extend_from_slice(&tms_enter_ir_shift);
         tms.extend(tms_data);
@@ -124,7 +128,7 @@ impl EspUsbJtag {
         // the last bit is transmitted when exiting the IR shift state
         let tdi_enter_idle = [false, false];
 
-        let mut tdi = Vec::with_capacity(tdi_enter_ir_shift.len() + tdi_enter_idle.len() + len);
+        let mut tdi = Vec::with_capacity(tdi_enter_ir_shift.len() + len + tdi_enter_idle.len());
 
         tdi.extend_from_slice(&tdi_enter_ir_shift);
 
@@ -156,7 +160,7 @@ impl EspUsbJtag {
         log::trace!("tms: {:?}", tms);
         log::trace!("tdi: {:?}", tdi);
 
-        let response = self.protocol.jtag_io(tms, tdi)?;
+        let response = self.protocol.jtag_io(tms, tdi, true)?;
 
         log::trace!("Response: {:?}", response);
 
@@ -166,6 +170,7 @@ impl EspUsbJtag {
             ));
         }
 
+        // TODO: Why only store the first 8 bits?
         self.current_ir_reg = data[0] as u32;
 
         // Maybe we could return the previous state of the IR register here...
@@ -228,7 +233,7 @@ impl EspUsbJtag {
         tms.extend(iter::repeat(false).take(self.idle_cycles() as usize));
         tdi.extend(iter::repeat(false).take(self.idle_cycles() as usize));
 
-        let mut response = self.protocol.jtag_io(tms, tdi)?;
+        let mut response = self.protocol.jtag_io(tms, tdi, true)?;
 
         log::trace!("Response: {:?}", response);
 
@@ -350,6 +355,34 @@ impl DebugProbe for EspUsbJtag {
         log::debug!("Attaching to ESP USB JTAG");
 
         // TODO: Maybe can be left in protocol altogether.
+
+        // try some JTAG stuff
+
+        log::debug!("Resetting JTAG chain using trst");
+        // self.protocol.set_reset(true, true)?;
+
+        log::debug!("Resetting JTAG chain by setting tms high for 5 bits");
+
+        // Reset JTAG chain (5 times TMS high), and enter idle state afterwards
+        let tms = vec![true, true, true, true, true, false];
+        let tdi = iter::repeat(false).take(6);
+
+        let response: Vec<_> = self.protocol.jtag_io(tms, tdi, false)?.collect();
+
+        log::debug!("Response to reset: {:?}", response);
+
+        // try to read the idcode until we have some non-zero bytes
+        let start = Instant::now();
+        let idcode = loop {
+            let idcode_bytes = self.read_dr(32)?;
+            if idcode_bytes.iter().any(|&x| x != 0)
+                || Instant::now().duration_since(start) > Duration::from_secs(1)
+            {
+                break u32::from_le_bytes((&idcode_bytes[..]).try_into().unwrap());
+            }
+        };
+
+        log::info!("JTAG IDCODE: {:#010x}", idcode);
 
         Ok(())
     }

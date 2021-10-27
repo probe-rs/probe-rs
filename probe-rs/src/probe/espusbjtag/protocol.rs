@@ -227,14 +227,17 @@ impl ProtocolHandler {
         &mut self,
         tms: impl IntoIterator<Item = bool>,
         tdi: impl IntoIterator<Item = bool>,
+        cap: bool,
     ) -> Result<BitIter, DebugProbeError> {
         for (tms, tdi) in tms.into_iter().zip(tdi.into_iter()) {
             self.push_command(Command::Clock {
-                cap: true,
+                cap,
                 tdi: tdi,
                 tms: tms,
             })?;
-            self.pending_in_bits += 1;
+            if cap {
+                self.pending_in_bits += 1;
+            }
         }
 
         self.flush()
@@ -299,16 +302,20 @@ impl ProtocolHandler {
         }
 
         // Send the actual command.
-        self.add_raw_command(command)?;
-        // We already sent the command once so we need to do one less repetition.
-        repetitions -= 1;
-
-        // Send repetitions as many times as required.
-        // We only send 2 bits with each repetition command as per the protocol.
-        while repetitions > 0 {
-            self.add_raw_command(Command::Repetitions(repetitions as u8 & 3))?;
-            repetitions >>= 2;
+        for _ in 0..repetitions {
+            self.add_raw_command(command)?;
         }
+
+        // TODO:
+        // // We already sent the command once so we need to do one less repetition.
+        // repetitions -= 1;
+
+        // // Send repetitions as many times as required.
+        // // We only send 2 bits with each repetition command as per the protocol.
+        // while repetitions > 0 {
+        //     self.add_raw_command(Command::Repetitions(repetitions as u8 & 3))?;
+        //     repetitions >>= 2;
+        // }
 
         Ok(())
     }
@@ -338,8 +345,8 @@ impl ProtocolHandler {
             .chunks(2)
             .map(|chunk| {
                 if chunk.len() == 2 {
-                    let unibble: u8 = chunk[1].into();
-                    let lnibble: u8 = chunk[0].into();
+                    let unibble: u8 = chunk[0].into();
+                    let lnibble: u8 = chunk[1].into();
                     (unibble << 4) | lnibble
                 } else {
                     chunk[0].into()
@@ -555,9 +562,9 @@ pub fn list_espjtag_devices() -> Vec<DebugProbeInfo> {
                             // is not installed. In this case we can still list the probe,
                             // just without serial number.
                             log::debug!(
-                                "Failed to read serial number of device {:#06x}:{:#06x} : {}",
-                                descriptor.product_id(),
+                                "Failed to read serial number of device {:04x}:{:04x} : {}",
                                 descriptor.vendor_id(),
+                                descriptor.product_id(),
                                 e
                             );
                             log::debug!("This might be happening because of a missing driver.");

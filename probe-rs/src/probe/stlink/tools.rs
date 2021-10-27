@@ -34,9 +34,9 @@ pub fn list_stlink_devices() -> Vec<DebugProbeInfo> {
                             // is not installed. In this case we can still list the probe,
                             // just without serial number.
                             log::debug!(
-                                "Failed to read serial number of device {:#06x}:{:#06x} : {}",
-                                descriptor.product_id(),
+                                "Failed to read serial number of device {:04x}:{:04x} : {}",
                                 descriptor.vendor_id(),
+                                descriptor.product_id(),
                                 e
                             );
                             log::debug!("This might be happening because of a missing driver.");
