@@ -103,7 +103,7 @@ dependencies = [
  "cfg-if 1.0.0",
  "libc",
  "miniz_oxide",
- "object",
+ "object 0.26.2",
  "rustc-demangle",
 ]
 
@@ -1345,6 +1345,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "object"
+version = "0.27.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "67ac1d3f9a1d3616fd9a60c8d74296f22406a238b6a72f5cc1e6f314df4ffbf9"
+dependencies = [
+ "memchr",
+]
+
+[[package]]
 name = "once_cell"
 version = "1.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1520,7 +1529,7 @@ dependencies = [
 [[package]]
 name = "probe-rs"
 version = "0.11.0"
-source = "git+https://github.com/probe-rs/probe-rs.git?branch=validation#c5a0ab88f649ba595b9e7c50c7c71057151fd129"
+source = "git+https://github.com/probe-rs/probe-rs.git#d2b13bf47507c85fbccdb170a4c3bcac86985613"
 dependencies = [
  "anyhow",
  "base64 0.13.0",
@@ -1535,7 +1544,7 @@ dependencies = [
  "jep106",
  "log",
  "num-traits",
- "object",
+ "object 0.27.1",
  "once_cell",
  "probe-rs-target",
  "rusb",
@@ -1551,7 +1560,7 @@ dependencies = [
 [[package]]
 name = "probe-rs-target"
 version = "0.11.0"
-source = "git+https://github.com/probe-rs/probe-rs.git?branch=validation#c5a0ab88f649ba595b9e7c50c7c71057151fd129"
+source = "git+https://github.com/probe-rs/probe-rs.git#d2b13bf47507c85fbccdb170a4c3bcac86985613"
 dependencies = [
  "base64 0.13.0",
  "jep106",

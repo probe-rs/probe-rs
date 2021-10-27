@@ -140,7 +140,10 @@ fn create_core(processor: &Processor) -> Result<ProbeCore> {
             .unwrap_or_else(|| "main".to_string()),
         core_type,
         core_access_options: match core_type.architecture() {
-            Architecture::Arm => CoreAccessOptions::Arm(ArmCoreAccessOptions { ap: 0, psel: 0 }),
+            Architecture::Arm => CoreAccessOptions::Arm(ArmCoreAccessOptions {
+                ap: processor.ap,
+                psel: 0,
+            }),
             Architecture::Riscv => CoreAccessOptions::Riscv(RiscvCoreAccessOptions {}),
         },
     })
