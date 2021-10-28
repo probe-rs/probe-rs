@@ -236,7 +236,7 @@ impl<'debuginfo, 'probe, 'core> Iterator for StackFrameIterator<'debuginfo, 'pro
 
     fn next(&mut self) -> Option<Self::Item> {
         use gimli::UnwindSection;
-        let mut ctx = gimli::UninitializedUnwindContext::new();
+        let mut ctx = Box::new(gimli::UnwindContext::new());
         let bases = gimli::BaseAddresses::default();
 
         let pc = match self.pc {
