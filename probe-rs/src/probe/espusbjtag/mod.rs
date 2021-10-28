@@ -359,7 +359,8 @@ impl DebugProbe for EspUsbJtag {
         // try some JTAG stuff
 
         log::debug!("Resetting JTAG chain using trst");
-        // self.protocol.set_reset(true, true)?;
+        self.protocol.set_reset(true, true)?;
+        self.protocol.set_reset(false, false)?;
 
         log::debug!("Resetting JTAG chain by setting tms high for 5 bits");
 
@@ -396,11 +397,13 @@ impl DebugProbe for EspUsbJtag {
     }
 
     fn target_reset_assert(&mut self) -> Result<(), DebugProbeError> {
+        log::info!("reset_assert!");
         self.protocol.set_reset(false, false)?;
         Ok(())
     }
 
     fn target_reset_deassert(&mut self) -> Result<(), DebugProbeError> {
+        log::info!("reset_deassert!");
         self.protocol.set_reset(true, true)?;
         Ok(())
     }

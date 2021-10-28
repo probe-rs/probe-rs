@@ -229,6 +229,7 @@ impl ProtocolHandler {
         tdi: impl IntoIterator<Item = bool>,
         cap: bool,
     ) -> Result<BitIter, DebugProbeError> {
+        log::debug!("JTAG IO! {} ", cap);
         for (tms, tdi) in tms.into_iter().zip(tdi.into_iter()) {
             self.push_command(Command::Clock {
                 cap,
@@ -278,6 +279,10 @@ impl ProtocolHandler {
         }
 
         log::debug!("Flushing ...");
+
+        // https://github.com/espressif/openocd-esp32/blob/a28f71785066722f49494e0d946fdc56966dcc0d/src/jtag/drivers/esp_usb_jtag.c#L423
+        self.add_raw_command(Command::Flush)?;
+
         // Make sure we add an additional nibble to the command buffer if the number of nibbles is odd,
         // as we cannot send a standalone nibble.
         if self.output_buffer.len() % 2 == 1 {
@@ -294,28 +299,28 @@ impl ProtocolHandler {
     fn write_stream(
         &mut self,
         command: Command,
-        mut repetitions: usize,
+        repetitions: usize,
     ) -> Result<(), DebugProbeError> {
+        let mut repetitions = repetitions;
+        log::trace!("add raw cmd {:?} reps={}", command, repetitions);
+
         // Make sure we send flush commands only once and not repeated (Could make the target unhapy).
         if command == Command::Flush {
             repetitions = 1;
         }
 
         // Send the actual command.
-        for _ in 0..repetitions {
-            self.add_raw_command(command)?;
+        self.add_raw_command(command)?;
+
+        // We already sent the command once so we need to do one less repetition.
+        repetitions -= 1;
+
+        // Send repetitions as many times as required.
+        // We only send 2 bits with each repetition command as per the protocol.
+        while repetitions > 0 {
+            self.add_raw_command(Command::Repetitions((repetitions & 3) as u8))?;
+            repetitions >>= 2;
         }
-
-        // TODO:
-        // // We already sent the command once so we need to do one less repetition.
-        // repetitions -= 1;
-
-        // // Send repetitions as many times as required.
-        // // We only send 2 bits with each repetition command as per the protocol.
-        // while repetitions > 0 {
-        //     self.add_raw_command(Command::Repetitions(repetitions as u8 & 3))?;
-        //     repetitions >>= 2;
-        // }
 
         Ok(())
     }
@@ -382,14 +387,32 @@ impl ProtocolHandler {
             }
 
             let offset = bits_read / 8;
-            let read_bytes = self
+
+            let mut tries = 3;
+            let mut read_bytes = 0usize;
+            loop {
+                read_bytes = self
                 .device_handle
                 .read_bulk(
                     self.ep_in,
                     &mut self.buffer[offset..offset + count],
                     USB_TIMEOUT,
                 )
-                .map_err(|e| DebugProbeError::Usb(Some(Box::new(e))))?;
+                .map_err(|e| { log::warn!("Something went wrong in read_bulk {:?}", e); DebugProbeError::Usb(Some(Box::new(e))) })?;
+
+                log::trace!("Read bytes: {} bytes. On try {}", read_bytes, 4-tries);
+
+                if read_bytes!=0 {
+                    break;
+                }
+
+                tries -= 1;
+                
+                if tries == 0 {
+                    break;
+                }
+
+            }
 
             if read_bytes == 0 {
                 // Sometimes the hardware returns 0 bytes instead of NAKing the transaction. Ignore this.
@@ -397,6 +420,8 @@ impl ProtocolHandler {
                     "Transaction not acknowledged.".into(),
                 ));
             }
+
+            log::trace!("Received {} bytes.", count);
 
             let bits_in_buffer = self.pending_in_bits.min(count * 8);
             bits_read += bits_in_buffer;
