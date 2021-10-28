@@ -4,6 +4,8 @@ use serde::{Deserialize, Serialize};
 /// Represents a region in non-volatile memory (e.g. flash or EEPROM).
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct NvmRegion {
+    /// A name to describe the region
+    pub name: Option<String>,
     /// Address range of the region
     pub range: Range<u32>,
     /// True if the chip boots from this memory
@@ -24,6 +26,8 @@ impl NvmRegion {
 /// Represents a region in RAM.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct RamRegion {
+    /// A name to describe the region
+    pub name: Option<String>,
     /// Address range of the region
     pub range: Range<u32>,
     /// True if the chip boots from this memory
@@ -35,6 +39,8 @@ pub struct RamRegion {
 /// Represents a generic region.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct GenericRegion {
+    /// A name to describe the region
+    pub name: Option<String>,
     /// Address range of the region
     pub range: Range<u32>,
     /// List of cores that can access this region
