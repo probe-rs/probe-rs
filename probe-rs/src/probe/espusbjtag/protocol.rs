@@ -392,26 +392,28 @@ impl ProtocolHandler {
             let mut read_bytes = 0usize;
             loop {
                 read_bytes = self
-                .device_handle
-                .read_bulk(
-                    self.ep_in,
-                    &mut self.buffer[offset..offset + count],
-                    USB_TIMEOUT,
-                )
-                .map_err(|e| { log::warn!("Something went wrong in read_bulk {:?}", e); DebugProbeError::Usb(Some(Box::new(e))) })?;
+                    .device_handle
+                    .read_bulk(
+                        self.ep_in,
+                        &mut self.buffer[offset..offset + count],
+                        USB_TIMEOUT,
+                    )
+                    .map_err(|e| {
+                        log::warn!("Something went wrong in read_bulk {:?}", e);
+                        DebugProbeError::Usb(Some(Box::new(e)))
+                    })?;
 
-                log::trace!("Read bytes: {} bytes. On try {}", read_bytes, 4-tries);
+                log::trace!("Read bytes: {} bytes. On try {}", read_bytes, 4 - tries);
 
-                if read_bytes!=0 {
+                if read_bytes != 0 {
                     break;
                 }
 
                 tries -= 1;
-                
+
                 if tries == 0 {
                     break;
                 }
-
             }
 
             if read_bytes == 0 {
