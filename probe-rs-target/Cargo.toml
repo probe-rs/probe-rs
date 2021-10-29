@@ -19,6 +19,6 @@ license = "MIT OR Apache-2.0"
 bincode = []
 
 [dependencies]
-jep106 = "0.2.4"
+jep106 = "0.2.6"
 serde = { version = "1.0.104", features = ["derive"] }
 base64 = "0.13.0"
