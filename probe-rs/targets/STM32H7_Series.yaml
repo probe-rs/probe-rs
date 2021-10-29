@@ -10,18 +10,18 @@ variants:
             psel: 0x0
     memory_map:
       - Ram:
-          name: DTCM
-          range:
-            start: 0x20000000
-            end: 0x20020000
-          is_boot_memory: false
-          cores:
-            - main
-      - Ram:
           name: AXI-SRAM
           range:
             start: 0x24000000
             end: 0x24060000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: DTCM
+          range:
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
           cores:
             - main
@@ -84,18 +84,18 @@ variants:
             psel: 0x0
     memory_map:
       - Ram:
-          name: DTCM
-          range:
-            start: 0x20000000
-            end: 0x20020000
-          is_boot_memory: false
-          cores:
-            - main
-      - Ram:
           name: AXI-SRAM
           range:
             start: 0x24000000
             end: 0x24060000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: DTCM
+          range:
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
           cores:
             - main
@@ -158,18 +158,18 @@ variants:
             psel: 0x0
     memory_map:
       - Ram:
-          name: DTCM
-          range:
-            start: 0x20000000
-            end: 0x20020000
-          is_boot_memory: false
-          cores:
-            - main
-      - Ram:
           name: AXI-SRAM
           range:
             start: 0x24000000
             end: 0x24060000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: DTCM
+          range:
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
           cores:
             - main
@@ -232,18 +232,18 @@ variants:
             psel: 0x0
     memory_map:
       - Ram:
-          name: DTCM
-          range:
-            start: 0x20000000
-            end: 0x20020000
-          is_boot_memory: false
-          cores:
-            - main
-      - Ram:
           name: AXI-SRAM
           range:
             start: 0x24000000
             end: 0x24060000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: DTCM
+          range:
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
           cores:
             - main
@@ -306,18 +306,18 @@ variants:
             psel: 0x0
     memory_map:
       - Ram:
-          name: DTCM
-          range:
-            start: 0x20000000
-            end: 0x20020000
-          is_boot_memory: false
-          cores:
-            - main
-      - Ram:
           name: AXI-SRAM
           range:
             start: 0x24000000
             end: 0x24060000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: DTCM
+          range:
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
           cores:
             - main
@@ -380,18 +380,18 @@ variants:
             psel: 0x0
     memory_map:
       - Ram:
-          name: DTCM
-          range:
-            start: 0x20000000
-            end: 0x20020000
-          is_boot_memory: false
-          cores:
-            - main
-      - Ram:
           name: AXI-SRAM
           range:
             start: 0x24000000
             end: 0x24060000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: DTCM
+          range:
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
           cores:
             - main
@@ -454,18 +454,18 @@ variants:
             psel: 0x0
     memory_map:
       - Ram:
-          name: DTCM
-          range:
-            start: 0x20000000
-            end: 0x20020000
-          is_boot_memory: false
-          cores:
-            - main
-      - Ram:
           name: AXI-SRAM
           range:
             start: 0x24000000
             end: 0x24060000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: DTCM
+          range:
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
           cores:
             - main
@@ -528,18 +528,18 @@ variants:
             psel: 0x0
     memory_map:
       - Ram:
-          name: DTCM
-          range:
-            start: 0x20000000
-            end: 0x20020000
-          is_boot_memory: false
-          cores:
-            - main
-      - Ram:
           name: AXI-SRAM
           range:
             start: 0x24000000
             end: 0x24060000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: DTCM
+          range:
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
           cores:
             - main
@@ -602,18 +602,18 @@ variants:
             psel: 0x0
     memory_map:
       - Ram:
-          name: DTCM
-          range:
-            start: 0x20000000
-            end: 0x20020000
-          is_boot_memory: false
-          cores:
-            - main
-      - Ram:
           name: AXI-SRAM
           range:
             start: 0x24000000
             end: 0x24060000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: DTCM
+          range:
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
           cores:
             - main
@@ -676,18 +676,18 @@ variants:
             psel: 0x0
     memory_map:
       - Ram:
-          name: DTCM
-          range:
-            start: 0x20000000
-            end: 0x20020000
-          is_boot_memory: false
-          cores:
-            - main
-      - Ram:
           name: AXI-SRAM
           range:
             start: 0x24000000
             end: 0x24060000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: DTCM
+          range:
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
           cores:
             - main
@@ -750,18 +750,18 @@ variants:
             psel: 0x0
     memory_map:
       - Ram:
-          name: DTCM
-          range:
-            start: 0x20000000
-            end: 0x20020000
-          is_boot_memory: false
-          cores:
-            - main
-      - Ram:
           name: AXI-SRAM
           range:
             start: 0x24000000
             end: 0x24060000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: DTCM
+          range:
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
           cores:
             - main
@@ -824,18 +824,18 @@ variants:
             psel: 0x0
     memory_map:
       - Ram:
-          name: DTCM
-          range:
-            start: 0x20000000
-            end: 0x20020000
-          is_boot_memory: false
-          cores:
-            - main
-      - Ram:
           name: AXI-SRAM
           range:
             start: 0x24000000
             end: 0x24060000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: DTCM
+          range:
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
           cores:
             - main
@@ -898,18 +898,18 @@ variants:
             psel: 0x0
     memory_map:
       - Ram:
-          name: DTCM
-          range:
-            start: 0x20000000
-            end: 0x20020000
-          is_boot_memory: false
-          cores:
-            - main
-      - Ram:
           name: AXI-SRAM
           range:
             start: 0x24000000
             end: 0x24060000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: DTCM
+          range:
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
           cores:
             - main
@@ -972,18 +972,18 @@ variants:
             psel: 0x0
     memory_map:
       - Ram:
-          name: DTCM
-          range:
-            start: 0x20000000
-            end: 0x20020000
-          is_boot_memory: false
-          cores:
-            - main
-      - Ram:
           name: AXI-SRAM
           range:
             start: 0x24000000
             end: 0x24060000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: DTCM
+          range:
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
           cores:
             - main
@@ -1046,18 +1046,18 @@ variants:
             psel: 0x0
     memory_map:
       - Ram:
-          name: DTCM
-          range:
-            start: 0x20000000
-            end: 0x20020000
-          is_boot_memory: false
-          cores:
-            - main
-      - Ram:
           name: AXI-SRAM
           range:
             start: 0x24000000
             end: 0x24060000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: DTCM
+          range:
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
           cores:
             - main
@@ -1120,18 +1120,18 @@ variants:
             psel: 0x0
     memory_map:
       - Ram:
-          name: DTCM
-          range:
-            start: 0x20000000
-            end: 0x20020000
-          is_boot_memory: false
-          cores:
-            - main
-      - Ram:
           name: AXI-SRAM
           range:
             start: 0x24000000
             end: 0x24060000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: DTCM
+          range:
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
           cores:
             - main
@@ -1194,18 +1194,18 @@ variants:
             psel: 0x0
     memory_map:
       - Ram:
-          name: DTCM
-          range:
-            start: 0x20000000
-            end: 0x20020000
-          is_boot_memory: false
-          cores:
-            - main
-      - Ram:
           name: AXI-SRAM
           range:
             start: 0x24000000
             end: 0x24080000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: DTCM
+          range:
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
           cores:
             - main
@@ -1276,18 +1276,18 @@ variants:
             psel: 0x0
     memory_map:
       - Ram:
-          name: DTCM
-          range:
-            start: 0x20000000
-            end: 0x20020000
-          is_boot_memory: false
-          cores:
-            - main
-      - Ram:
           name: AXI-SRAM
           range:
             start: 0x24000000
             end: 0x24080000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: DTCM
+          range:
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
           cores:
             - main
@@ -1358,18 +1358,18 @@ variants:
             psel: 0x0
     memory_map:
       - Ram:
-          name: DTCM
-          range:
-            start: 0x20000000
-            end: 0x20020000
-          is_boot_memory: false
-          cores:
-            - main
-      - Ram:
           name: AXI-SRAM
           range:
             start: 0x24000000
             end: 0x24080000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: DTCM
+          range:
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
           cores:
             - main
@@ -1440,18 +1440,18 @@ variants:
             psel: 0x0
     memory_map:
       - Ram:
-          name: DTCM
-          range:
-            start: 0x20000000
-            end: 0x20020000
-          is_boot_memory: false
-          cores:
-            - main
-      - Ram:
           name: AXI-SRAM
           range:
             start: 0x24000000
             end: 0x24080000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: DTCM
+          range:
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
           cores:
             - main
@@ -1522,18 +1522,18 @@ variants:
             psel: 0x0
     memory_map:
       - Ram:
-          name: DTCM
-          range:
-            start: 0x20000000
-            end: 0x20020000
-          is_boot_memory: false
-          cores:
-            - main
-      - Ram:
           name: AXI-SRAM
           range:
             start: 0x24000000
             end: 0x24080000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: DTCM
+          range:
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
           cores:
             - main
@@ -1604,18 +1604,18 @@ variants:
             psel: 0x0
     memory_map:
       - Ram:
-          name: DTCM
-          range:
-            start: 0x20000000
-            end: 0x20020000
-          is_boot_memory: false
-          cores:
-            - main
-      - Ram:
           name: AXI-SRAM
           range:
             start: 0x24000000
             end: 0x24080000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: DTCM
+          range:
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
           cores:
             - main
@@ -1686,18 +1686,18 @@ variants:
             psel: 0x0
     memory_map:
       - Ram:
-          name: DTCM
-          range:
-            start: 0x20000000
-            end: 0x20020000
-          is_boot_memory: false
-          cores:
-            - main
-      - Ram:
           name: AXI-SRAM
           range:
             start: 0x24000000
             end: 0x24080000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: DTCM
+          range:
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
           cores:
             - main
@@ -1768,18 +1768,18 @@ variants:
             psel: 0x0
     memory_map:
       - Ram:
-          name: DTCM
-          range:
-            start: 0x20000000
-            end: 0x20020000
-          is_boot_memory: false
-          cores:
-            - main
-      - Ram:
           name: AXI-SRAM
           range:
             start: 0x24000000
             end: 0x24080000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: DTCM
+          range:
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
           cores:
             - main
@@ -1850,18 +1850,18 @@ variants:
             psel: 0x0
     memory_map:
       - Ram:
-          name: DTCM
-          range:
-            start: 0x20000000
-            end: 0x20020000
-          is_boot_memory: false
-          cores:
-            - main
-      - Ram:
           name: AXI-SRAM
           range:
             start: 0x24000000
             end: 0x24080000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: DTCM
+          range:
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
           cores:
             - main
@@ -1932,18 +1932,18 @@ variants:
             psel: 0x0
     memory_map:
       - Ram:
-          name: DTCM
-          range:
-            start: 0x20000000
-            end: 0x20020000
-          is_boot_memory: false
-          cores:
-            - main
-      - Ram:
           name: AXI-SRAM
           range:
             start: 0x24000000
             end: 0x24080000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: DTCM
+          range:
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
           cores:
             - main
@@ -2014,18 +2014,18 @@ variants:
             psel: 0x0
     memory_map:
       - Ram:
-          name: DTCM
-          range:
-            start: 0x20000000
-            end: 0x20020000
-          is_boot_memory: false
-          cores:
-            - main
-      - Ram:
           name: AXI-SRAM
           range:
             start: 0x24000000
             end: 0x24080000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: DTCM
+          range:
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
           cores:
             - main
@@ -2096,18 +2096,18 @@ variants:
             psel: 0x0
     memory_map:
       - Ram:
-          name: DTCM
-          range:
-            start: 0x20000000
-            end: 0x20020000
-          is_boot_memory: false
-          cores:
-            - main
-      - Ram:
           name: AXI-SRAM
           range:
             start: 0x24000000
             end: 0x24080000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: DTCM
+          range:
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
           cores:
             - main
@@ -2178,18 +2178,18 @@ variants:
             psel: 0x0
     memory_map:
       - Ram:
-          name: DTCM
-          range:
-            start: 0x20000000
-            end: 0x20020000
-          is_boot_memory: false
-          cores:
-            - main
-      - Ram:
           name: AXI-SRAM
           range:
             start: 0x24000000
             end: 0x24080000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: DTCM
+          range:
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
           cores:
             - main
@@ -2260,18 +2260,18 @@ variants:
             psel: 0x0
     memory_map:
       - Ram:
-          name: DTCM
-          range:
-            start: 0x20000000
-            end: 0x20020000
-          is_boot_memory: false
-          cores:
-            - main
-      - Ram:
           name: AXI-SRAM
           range:
             start: 0x24000000
             end: 0x24080000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: DTCM
+          range:
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
           cores:
             - main
@@ -2342,18 +2342,18 @@ variants:
             psel: 0x0
     memory_map:
       - Ram:
-          name: DTCM
-          range:
-            start: 0x20000000
-            end: 0x20020000
-          is_boot_memory: false
-          cores:
-            - main
-      - Ram:
           name: AXI-SRAM
           range:
             start: 0x24000000
             end: 0x24080000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: DTCM
+          range:
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
           cores:
             - main
@@ -2424,18 +2424,18 @@ variants:
             psel: 0x0
     memory_map:
       - Ram:
-          name: DTCM
-          range:
-            start: 0x20000000
-            end: 0x20020000
-          is_boot_memory: false
-          cores:
-            - main
-      - Ram:
           name: AXI-SRAM
           range:
             start: 0x24000000
             end: 0x24080000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: DTCM
+          range:
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
           cores:
             - main
@@ -2506,18 +2506,18 @@ variants:
             psel: 0x0
     memory_map:
       - Ram:
-          name: DTCM
-          range:
-            start: 0x20000000
-            end: 0x20020000
-          is_boot_memory: false
-          cores:
-            - main
-      - Ram:
           name: AXI-SRAM
           range:
             start: 0x24000000
             end: 0x24080000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: DTCM
+          range:
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
           cores:
             - main
@@ -2588,18 +2588,18 @@ variants:
             psel: 0x0
     memory_map:
       - Ram:
-          name: DTCM
-          range:
-            start: 0x20000000
-            end: 0x20020000
-          is_boot_memory: false
-          cores:
-            - main
-      - Ram:
           name: AXI-SRAM
           range:
             start: 0x24000000
             end: 0x24080000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: DTCM
+          range:
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
           cores:
             - main
@@ -2670,18 +2670,18 @@ variants:
             psel: 0x0
     memory_map:
       - Ram:
-          name: DTCM
-          range:
-            start: 0x20000000
-            end: 0x20020000
-          is_boot_memory: false
-          cores:
-            - main
-      - Ram:
           name: AXI-SRAM
           range:
             start: 0x24000000
             end: 0x24080000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: DTCM
+          range:
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
           cores:
             - main
@@ -2752,18 +2752,18 @@ variants:
             psel: 0x0
     memory_map:
       - Ram:
-          name: DTCM
-          range:
-            start: 0x20000000
-            end: 0x20020000
-          is_boot_memory: false
-          cores:
-            - main
-      - Ram:
           name: AXI-SRAM
           range:
             start: 0x24000000
             end: 0x24080000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: DTCM
+          range:
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
           cores:
             - main
@@ -2834,18 +2834,18 @@ variants:
             psel: 0x0
     memory_map:
       - Ram:
-          name: DTCM
-          range:
-            start: 0x20000000
-            end: 0x20020000
-          is_boot_memory: false
-          cores:
-            - main
-      - Ram:
           name: AXI-SRAM
           range:
             start: 0x24000000
             end: 0x24080000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: DTCM
+          range:
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
           cores:
             - main
@@ -2916,18 +2916,18 @@ variants:
             psel: 0x0
     memory_map:
       - Ram:
-          name: DTCM
-          range:
-            start: 0x20000000
-            end: 0x20020000
-          is_boot_memory: false
-          cores:
-            - main
-      - Ram:
           name: AXI-SRAM
           range:
             start: 0x24000000
             end: 0x24080000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: DTCM
+          range:
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
           cores:
             - main
@@ -2998,18 +2998,18 @@ variants:
             psel: 0x0
     memory_map:
       - Ram:
-          name: DTCM
-          range:
-            start: 0x20000000
-            end: 0x20020000
-          is_boot_memory: false
-          cores:
-            - main
-      - Ram:
           name: AXI-SRAM
           range:
             start: 0x24000000
             end: 0x24080000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: DTCM
+          range:
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
           cores:
             - main
@@ -3080,18 +3080,18 @@ variants:
             psel: 0x0
     memory_map:
       - Ram:
-          name: DTCM
-          range:
-            start: 0x20000000
-            end: 0x20020000
-          is_boot_memory: false
-          cores:
-            - main
-      - Ram:
           name: AXI-SRAM
           range:
             start: 0x24000000
             end: 0x24080000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: DTCM
+          range:
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
           cores:
             - main
@@ -3162,18 +3162,18 @@ variants:
             psel: 0x0
     memory_map:
       - Ram:
-          name: DTCM
-          range:
-            start: 0x20000000
-            end: 0x20020000
-          is_boot_memory: false
-          cores:
-            - main
-      - Ram:
           name: AXI-SRAM
           range:
             start: 0x24000000
             end: 0x24080000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: DTCM
+          range:
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
           cores:
             - main
@@ -3244,18 +3244,18 @@ variants:
             psel: 0x0
     memory_map:
       - Ram:
-          name: DTCM
-          range:
-            start: 0x20000000
-            end: 0x20020000
-          is_boot_memory: false
-          cores:
-            - main
-      - Ram:
           name: AXI-SRAM
           range:
             start: 0x24000000
             end: 0x24080000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: DTCM
+          range:
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
           cores:
             - main
@@ -3326,18 +3326,18 @@ variants:
             psel: 0x0
     memory_map:
       - Ram:
-          name: DTCM
-          range:
-            start: 0x20000000
-            end: 0x20020000
-          is_boot_memory: false
-          cores:
-            - main
-      - Ram:
           name: AXI-SRAM
           range:
             start: 0x24000000
             end: 0x24080000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: DTCM
+          range:
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
           cores:
             - main
@@ -3408,18 +3408,18 @@ variants:
             psel: 0x0
     memory_map:
       - Ram:
-          name: DTCM
-          range:
-            start: 0x20000000
-            end: 0x20020000
-          is_boot_memory: false
-          cores:
-            - main
-      - Ram:
           name: AXI-SRAM
           range:
             start: 0x24000000
             end: 0x24080000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: DTCM
+          range:
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
           cores:
             - main
@@ -3490,18 +3490,18 @@ variants:
             psel: 0x0
     memory_map:
       - Ram:
-          name: DTCM
-          range:
-            start: 0x20000000
-            end: 0x20020000
-          is_boot_memory: false
-          cores:
-            - main
-      - Ram:
           name: AXI-SRAM
           range:
             start: 0x24000000
             end: 0x24080000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: DTCM
+          range:
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
           cores:
             - main
@@ -3572,18 +3572,18 @@ variants:
             psel: 0x0
     memory_map:
       - Ram:
-          name: DTCM
-          range:
-            start: 0x20000000
-            end: 0x20020000
-          is_boot_memory: false
-          cores:
-            - main
-      - Ram:
           name: AXI-SRAM
           range:
             start: 0x24000000
             end: 0x24080000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: DTCM
+          range:
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
           cores:
             - main
@@ -3654,18 +3654,18 @@ variants:
             psel: 0x0
     memory_map:
       - Ram:
-          name: DTCM
-          range:
-            start: 0x20000000
-            end: 0x20020000
-          is_boot_memory: false
-          cores:
-            - main
-      - Ram:
           name: AXI-SRAM
           range:
             start: 0x24000000
             end: 0x24080000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: DTCM
+          range:
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
           cores:
             - main
@@ -3736,18 +3736,18 @@ variants:
             psel: 0x0
     memory_map:
       - Ram:
-          name: DTCM
-          range:
-            start: 0x20000000
-            end: 0x20020000
-          is_boot_memory: false
-          cores:
-            - main
-      - Ram:
           name: AXI-SRAM
           range:
             start: 0x24000000
             end: 0x24080000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: DTCM
+          range:
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
           cores:
             - main
@@ -3818,18 +3818,18 @@ variants:
             psel: 0x0
     memory_map:
       - Ram:
-          name: DTCM
-          range:
-            start: 0x20000000
-            end: 0x20020000
-          is_boot_memory: false
-          cores:
-            - main
-      - Ram:
           name: AXI-SRAM
           range:
             start: 0x24000000
             end: 0x24080000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: DTCM
+          range:
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
           cores:
             - main
@@ -3900,18 +3900,18 @@ variants:
             psel: 0x0
     memory_map:
       - Ram:
-          name: DTCM
-          range:
-            start: 0x20000000
-            end: 0x20020000
-          is_boot_memory: false
-          cores:
-            - main
-      - Ram:
           name: AXI-SRAM
           range:
             start: 0x24000000
             end: 0x24080000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: DTCM
+          range:
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
           cores:
             - main
@@ -3982,18 +3982,18 @@ variants:
             psel: 0x0
     memory_map:
       - Ram:
-          name: DTCM
-          range:
-            start: 0x20000000
-            end: 0x20020000
-          is_boot_memory: false
-          cores:
-            - main
-      - Ram:
           name: AXI-SRAM
           range:
             start: 0x24000000
             end: 0x24080000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: DTCM
+          range:
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
           cores:
             - main
@@ -4064,18 +4064,18 @@ variants:
             psel: 0x0
     memory_map:
       - Ram:
-          name: DTCM
-          range:
-            start: 0x20000000
-            end: 0x20020000
-          is_boot_memory: false
-          cores:
-            - main
-      - Ram:
           name: AXI-SRAM
           range:
             start: 0x24000000
             end: 0x24080000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: DTCM
+          range:
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
           cores:
             - main
@@ -4146,18 +4146,18 @@ variants:
             psel: 0x0
     memory_map:
       - Ram:
-          name: DTCM
-          range:
-            start: 0x20000000
-            end: 0x20020000
-          is_boot_memory: false
-          cores:
-            - main
-      - Ram:
           name: AXI-SRAM
           range:
             start: 0x24000000
             end: 0x24080000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: DTCM
+          range:
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
           cores:
             - main
@@ -4228,18 +4228,18 @@ variants:
             psel: 0x0
     memory_map:
       - Ram:
-          name: DTCM
-          range:
-            start: 0x20000000
-            end: 0x20020000
-          is_boot_memory: false
-          cores:
-            - main
-      - Ram:
           name: AXI-SRAM
           range:
             start: 0x24000000
             end: 0x24080000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: DTCM
+          range:
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
           cores:
             - main
@@ -4310,18 +4310,18 @@ variants:
             psel: 0x0
     memory_map:
       - Ram:
-          name: DTCM
-          range:
-            start: 0x20000000
-            end: 0x20020000
-          is_boot_memory: false
-          cores:
-            - main
-      - Ram:
           name: AXI-SRAM
           range:
             start: 0x24000000
             end: 0x24080000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: DTCM
+          range:
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
           cores:
             - main
@@ -4392,18 +4392,18 @@ variants:
             psel: 0x0
     memory_map:
       - Ram:
-          name: DTCM
-          range:
-            start: 0x20000000
-            end: 0x20020000
-          is_boot_memory: false
-          cores:
-            - main
-      - Ram:
           name: AXI-SRAM
           range:
             start: 0x24000000
             end: 0x24080000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: DTCM
+          range:
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
           cores:
             - main
@@ -4474,18 +4474,18 @@ variants:
             psel: 0x0
     memory_map:
       - Ram:
-          name: DTCM
-          range:
-            start: 0x20000000
-            end: 0x20020000
-          is_boot_memory: false
-          cores:
-            - main
-      - Ram:
           name: AXI-SRAM
           range:
             start: 0x24000000
             end: 0x24080000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: DTCM
+          range:
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
           cores:
             - main
@@ -4556,18 +4556,18 @@ variants:
             psel: 0x0
     memory_map:
       - Ram:
-          name: DTCM
-          range:
-            start: 0x20000000
-            end: 0x20020000
-          is_boot_memory: false
-          cores:
-            - main
-      - Ram:
           name: AXI-SRAM
           range:
             start: 0x24000000
             end: 0x24080000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: DTCM
+          range:
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
           cores:
             - main
@@ -4638,18 +4638,18 @@ variants:
             psel: 0x0
     memory_map:
       - Ram:
-          name: DTCM
-          range:
-            start: 0x20000000
-            end: 0x20020000
-          is_boot_memory: false
-          cores:
-            - main
-      - Ram:
           name: AXI-SRAM
           range:
             start: 0x24000000
             end: 0x24080000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: DTCM
+          range:
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
           cores:
             - main
@@ -4720,18 +4720,18 @@ variants:
             psel: 0x0
     memory_map:
       - Ram:
-          name: DTCM
-          range:
-            start: 0x20000000
-            end: 0x20020000
-          is_boot_memory: false
-          cores:
-            - main
-      - Ram:
           name: AXI-SRAM
           range:
             start: 0x24000000
             end: 0x24080000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: DTCM
+          range:
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
           cores:
             - main
@@ -4802,18 +4802,18 @@ variants:
             psel: 0x0
     memory_map:
       - Ram:
-          name: DTCM
-          range:
-            start: 0x20000000
-            end: 0x20020000
-          is_boot_memory: false
-          cores:
-            - main
-      - Ram:
           name: AXI-SRAM
           range:
             start: 0x24000000
             end: 0x24080000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: DTCM
+          range:
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
           cores:
             - main
@@ -4884,18 +4884,18 @@ variants:
             psel: 0x0
     memory_map:
       - Ram:
-          name: DTCM
-          range:
-            start: 0x20000000
-            end: 0x20020000
-          is_boot_memory: false
-          cores:
-            - main
-      - Ram:
           name: AXI-SRAM
           range:
             start: 0x24000000
             end: 0x24080000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: DTCM
+          range:
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
           cores:
             - main
@@ -4966,18 +4966,18 @@ variants:
             psel: 0x0
     memory_map:
       - Ram:
-          name: DTCM
-          range:
-            start: 0x20000000
-            end: 0x20020000
-          is_boot_memory: false
-          cores:
-            - main
-      - Ram:
           name: AXI-SRAM
           range:
             start: 0x24000000
             end: 0x24080000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: DTCM
+          range:
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
           cores:
             - main
@@ -5048,18 +5048,18 @@ variants:
             psel: 0x0
     memory_map:
       - Ram:
-          name: DTCM
-          range:
-            start: 0x20000000
-            end: 0x20020000
-          is_boot_memory: false
-          cores:
-            - main
-      - Ram:
           name: AXI-SRAM
           range:
             start: 0x24000000
             end: 0x24080000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: DTCM
+          range:
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
           cores:
             - main
@@ -5130,18 +5130,18 @@ variants:
             psel: 0x0
     memory_map:
       - Ram:
-          name: DTCM
-          range:
-            start: 0x20000000
-            end: 0x20020000
-          is_boot_memory: false
-          cores:
-            - main
-      - Ram:
           name: AXI-SRAM
           range:
             start: 0x24000000
             end: 0x24080000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: DTCM
+          range:
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
           cores:
             - main
@@ -5212,18 +5212,18 @@ variants:
             psel: 0x0
     memory_map:
       - Ram:
-          name: DTCM
-          range:
-            start: 0x20000000
-            end: 0x20020000
-          is_boot_memory: false
-          cores:
-            - main
-      - Ram:
           name: AXI-SRAM
           range:
             start: 0x24000000
             end: 0x24080000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: DTCM
+          range:
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
           cores:
             - main
@@ -5294,18 +5294,18 @@ variants:
             psel: 0x0
     memory_map:
       - Ram:
-          name: DTCM
-          range:
-            start: 0x20000000
-            end: 0x20020000
-          is_boot_memory: false
-          cores:
-            - main
-      - Ram:
           name: AXI-SRAM
           range:
             start: 0x24000000
             end: 0x24080000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: DTCM
+          range:
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
           cores:
             - main
@@ -5376,18 +5376,18 @@ variants:
             psel: 0x0
     memory_map:
       - Ram:
-          name: DTCM
-          range:
-            start: 0x20000000
-            end: 0x20020000
-          is_boot_memory: false
-          cores:
-            - main
-      - Ram:
           name: AXI-SRAM
           range:
             start: 0x24000000
             end: 0x24080000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: DTCM
+          range:
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
           cores:
             - main
@@ -5458,18 +5458,18 @@ variants:
             psel: 0x0
     memory_map:
       - Ram:
-          name: DTCM
-          range:
-            start: 0x20000000
-            end: 0x20020000
-          is_boot_memory: false
-          cores:
-            - main
-      - Ram:
           name: AXI-SRAM
           range:
             start: 0x24000000
             end: 0x24080000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: DTCM
+          range:
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
           cores:
             - main
@@ -5540,18 +5540,18 @@ variants:
             psel: 0x0
     memory_map:
       - Ram:
-          name: DTCM
-          range:
-            start: 0x20000000
-            end: 0x20020000
-          is_boot_memory: false
-          cores:
-            - main
-      - Ram:
           name: AXI-SRAM
           range:
             start: 0x24000000
             end: 0x24080000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: DTCM
+          range:
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
           cores:
             - main
@@ -5622,18 +5622,18 @@ variants:
             psel: 0x0
     memory_map:
       - Ram:
-          name: DTCM
-          range:
-            start: 0x20000000
-            end: 0x20020000
-          is_boot_memory: false
-          cores:
-            - main
-      - Ram:
           name: AXI-SRAM
           range:
             start: 0x24000000
             end: 0x24080000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: DTCM
+          range:
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
           cores:
             - main
@@ -5704,18 +5704,18 @@ variants:
             psel: 0x0
     memory_map:
       - Ram:
-          name: DTCM
-          range:
-            start: 0x20000000
-            end: 0x20020000
-          is_boot_memory: false
-          cores:
-            - main
-      - Ram:
           name: AXI-SRAM
           range:
             start: 0x24000000
             end: 0x24080000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: DTCM
+          range:
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
           cores:
             - main
@@ -5786,18 +5786,18 @@ variants:
             psel: 0x0
     memory_map:
       - Ram:
-          name: DTCM
-          range:
-            start: 0x20000000
-            end: 0x20020000
-          is_boot_memory: false
-          cores:
-            - main
-      - Ram:
           name: AXI-SRAM
           range:
             start: 0x24000000
             end: 0x24080000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: DTCM
+          range:
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
           cores:
             - main
@@ -5868,18 +5868,18 @@ variants:
             psel: 0x0
     memory_map:
       - Ram:
-          name: DTCM
-          range:
-            start: 0x20000000
-            end: 0x20020000
-          is_boot_memory: false
-          cores:
-            - main
-      - Ram:
           name: AXI-SRAM
           range:
             start: 0x24000000
             end: 0x24080000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: DTCM
+          range:
+            start: 0x20000000
+            end: 0x20020000
           is_boot_memory: false
           cores:
             - main
