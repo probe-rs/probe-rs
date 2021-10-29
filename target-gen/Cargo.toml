@@ -9,7 +9,7 @@ edition = "2018"
 [dependencies]
 probe-rs = { git = "https://github.com/probe-rs/probe-rs.git", default-features = false }
 probe-rs-target = { git = "https://github.com/probe-rs/probe-rs.git", default-features = false }
-cmsis-pack = { git = "https://github.com/probe-rs/cmsis-pack-manager.git" }
+cmsis-pack = { git = "https://github.com/pyocd/cmsis-pack-manager.git" }
 
 # , path = "../cmsis-pack-manager/rust/cmsis-pack"
 # , git = "https://github.com/probe-rs/cmsis-pack-manager.git"
@@ -20,16 +20,16 @@ serde_yaml = "0.8.11"
 log = "0.4.8"
 zip = "0.5.9"
 structopt = "0.3.2"
-base64 = "0.12.3"
-simplelog = "0.8.0"
+base64 = "0.13.0"
+simplelog = "0.10.0"
 anyhow = "1.0.28"
-reqwest = { version = "0.10.4", features = ["json", "blocking"] }
+reqwest = { version = "0.11.6", default-features = false, features = ["rustls-tls", "json", "blocking"] }
 serde = { version = "1.0.106", features = ["derive"] }
 # chrono = { version = "0.4.0", features = ["serde"] }
-futures = "0.3.5"
-tokio = { version = "0.2.22", features = ["rt-core", "macros", "rt-threaded", "blocking"] }
+futures = "0.3.8"
+tokio = { version = "1.0", features = ["macros", "rt"] }
 
 [dev-dependencies]
-assert_cmd = "1.0.1"
-predicates = "1"
+assert_cmd = "2"
+predicates = "2"
 assert_fs = "1.0.0"

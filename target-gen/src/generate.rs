@@ -221,14 +221,13 @@ pub(crate) fn visit_file(path: &Path, families: &mut Vec<ChipFamily>) -> Result<
 
 pub(crate) fn visit_arm_files(families: &mut Vec<ChipFamily>) -> Result<()> {
     let packs = crate::fetch::get_vidx()?;
-    Builder::new()
-        .threaded_scheduler()
+    Builder::new_current_thread()
         .enable_all()
         .build()
         .unwrap()
         .block_on(async move {
-            let mut stream =
-                tokio::stream::iter(packs.pdsc_index.iter().enumerate().filter_map(|(i, pack)| {
+            let mut stream = futures::stream::iter(packs.pdsc_index.iter().enumerate().filter_map(
+                |(i, pack)| {
                     if pack.deprecated.is_none() {
                         log::info!("Working PACK {}/{} ...", i, packs.pdsc_index.len());
                         Some(visit_arm_file(&pack))
@@ -236,8 +235,9 @@ pub(crate) fn visit_arm_files(families: &mut Vec<ChipFamily>) -> Result<()> {
                         log::warn!("Pack {} is deprecated. Skipping ...", pack.name);
                         None
                     }
-                }))
-                .buffer_unordered(32);
+                },
+            ))
+            .buffer_unordered(32);
             while let Some(result) = stream.next().await {
                 families.extend(result);
             }

@@ -68,7 +68,12 @@ enum TargetGen {
 }
 
 fn main() -> Result<()> {
-    let logger = TermLogger::init(LevelFilter::Info, Config::default(), TerminalMode::Mixed);
+    let logger = TermLogger::init(
+        LevelFilter::Info,
+        Config::default(),
+        TerminalMode::Mixed,
+        ColorChoice::Auto,
+    );
     if logger.is_err() {
         eprintln!("Logging backend could not be initialized.");
     }
