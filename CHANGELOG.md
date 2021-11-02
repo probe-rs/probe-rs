@@ -24,6 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added STM32WL55JCIx target. (#835)
 - Add esp32.yaml with esp32c3 variant. (#846)
 - Added target definition validation to make handling inside probe-rs easier by making some basic assumptions about the validity of the used `ChipFamily` without always checking again. (#848)
+- Added STM32U5 series target.
 
 ### Removed
 
