@@ -9,17 +9,17 @@ use probe_rs::{
     debug::{ColumnType, VariableKind},
     CoreStatus, HaltReason, MemoryInterface,
 };
-use rustyline::{error::ReadlineError, Editor};
 use serde::{de::DeserializeOwned, Serialize};
-use serde_json::json;
+
 use std::{collections::HashMap, string::ToString};
 use std::{
     convert::TryInto,
-    io::{BufRead, BufReader, Read, Write},
     path::{Path, PathBuf},
     str, thread,
     time::Duration,
 };
+
+use crate::protocol::ProtocolAdapter;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum DebugAdapterType {
@@ -30,21 +30,14 @@ pub enum DebugAdapterType {
 /// Progress ID used for progress reporting when the debug adapter protocol is used.
 type ProgressId = i64;
 
-pub struct DebugAdapter<R: Read, W: Write> {
-    seq: i64,
-    input: BufReader<R>,
-    output: W,
+pub struct DebugAdapter<P: ProtocolAdapter> {
     /// Track the last_known_status of the probe.
     /// The debug client needs to be notified when the probe changes state,
     /// and the only way is to poll the probe status periodically.
     /// For instance, when the client sets the probe running,
     /// and the probe halts because of a breakpoint, we need to notify the client.
     pub(crate) last_known_status: CoreStatus,
-    pub(crate) adapter_type: DebugAdapterType,
     pub(crate) halt_after_reset: bool,
-    pub(crate) console_log_level: ConsoleLog,
-    /// `rl` is the optional rustyline command line processor instance.
-    rl: Option<Editor<()>>,
     /// `scope_map` stores a list of all MS DAP Scopes with a each stack frame's unique id as key.
     /// It is cleared by `threads()`, populated by stack_trace(), for later re-use by `scopes()`.
     scope_map: HashMap<i64, Vec<Scope>>,
@@ -57,28 +50,25 @@ pub struct DebugAdapter<R: Read, W: Write> {
 
     /// Flag to indicate if the connected client supports progress reporting.
     pub(crate) supports_progress_reporting: bool,
+    adapter: P,
 }
 
-impl<R: Read, W: Write> DebugAdapter<R, W> {
-    pub fn new(input: R, output: W, adapter_type: DebugAdapterType) -> DebugAdapter<R, W> {
+impl<P: ProtocolAdapter> DebugAdapter<P> {
+    pub fn new(adapter: P) -> DebugAdapter<P> {
         DebugAdapter {
-            seq: 1,
-            input: BufReader::new(input),
-            output,
             last_known_status: CoreStatus::Unknown,
-            adapter_type,
             halt_after_reset: false,
-            console_log_level: ConsoleLog::Error,
-            rl: match adapter_type {
-                DebugAdapterType::CommandLine => Some(Editor::<()>::new()),
-                DebugAdapterType::DapClient => None,
-            },
             scope_map: HashMap::new(),
             variable_map: HashMap::new(),
             variable_map_key_seq: -1,
             progress_id: 0,
             supports_progress_reporting: false,
+            adapter,
         }
+    }
+
+    pub(crate) fn adapter_type(&self) -> DebugAdapterType {
+        P::ADAPTER_TYPE
     }
 
     pub(crate) fn status(&mut self, core_data: &mut CoreData, request: &Request) -> bool {
@@ -176,7 +166,7 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
     }
 
     pub(crate) fn read_memory(&mut self, core_data: &mut CoreData, request: &Request) -> bool {
-        let arguments: ReadMemoryArguments = match self.adapter_type {
+        let arguments: ReadMemoryArguments = match self.adapter_type() {
             DebugAdapterType::CommandLine => match request.arguments.as_ref().unwrap().try_into() {
                 Ok(arguments) => arguments,
                 Err(error) => return self.send_response::<()>(request, Err(error)),
@@ -345,7 +335,7 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
                     .send_response::<()>(request, Err(DebuggerError::Other(anyhow!("{}", error))))
             }
         }
-        if user_requested || self.adapter_type == DebugAdapterType::CommandLine {
+        if user_requested || self.adapter_type() == DebugAdapterType::CommandLine {
             match core_data.target_core.reset() {
                 Ok(_) => {
                     self.last_known_status = CoreStatus::Running;
@@ -363,7 +353,7 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
                     )
                 }
             }
-        } else if self.halt_after_reset || self.adapter_type == DebugAdapterType::DapClient
+        } else if self.halt_after_reset || self.adapter_type() == DebugAdapterType::DapClient
         // The DAP Client will always do a `reset_and_halt`, and then will consider `halt_after_reset` value after the `configuration_done` request.
         // Otherwise the probe will run past the `main()` before the DAP Client has had a chance to set breakpoints in `main()`.
         {
@@ -372,7 +362,7 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
                 .reset_and_halt(Duration::from_millis(500))
             {
                 Ok(_) => {
-                    match self.adapter_type {
+                    match self.adapter_type() {
                         DebugAdapterType::CommandLine => {}
                         DebugAdapterType::DapClient => {
                             self.send_response::<()>(request, Ok(None));
@@ -598,7 +588,7 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
             }
         };
 
-        let _arguments: StackTraceArguments = match self.adapter_type {
+        let _arguments: StackTraceArguments = match self.adapter_type() {
             DebugAdapterType::CommandLine => StackTraceArguments {
                 format: None,
                 levels: None,
@@ -640,7 +630,7 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
             let current_stackframes =
                 debug_info.try_unwind(&mut core_data.target_core, u64::from(pc));
 
-            match self.adapter_type {
+            match self.adapter_type() {
                 DebugAdapterType::CommandLine => {
                     let mut body = "".to_string();
                     // TODO: Update the code to include static variables.
@@ -920,6 +910,7 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
 
         self.send_response(request, result)
     }
+
     pub(crate) fn variables(&mut self, _core_data: &mut CoreData, request: &Request) -> bool {
         let arguments: VariablesArguments = match get_arguments(request) {
             Ok(arguments) => arguments,
@@ -969,7 +960,7 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
                     .target_core
                     .status()
                     .unwrap_or(CoreStatus::Unknown);
-                match self.adapter_type {
+                match self.adapter_type() {
                     DebugAdapterType::CommandLine => self.send_response(
                         request,
                         Ok(Some(self.last_known_status.short_long_status().1)),
@@ -1061,8 +1052,8 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
         }
     }
 
-    pub fn peek_seq(&self) -> i64 {
-        self.seq
+    pub(crate) fn peek_seq(&self) -> i64 {
+        self.adapter.peek_seq()
     }
 
     /// return a newly allocated id for a register scope reference
@@ -1125,250 +1116,10 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
         }
     }
 
-    /// Call readline until a non-empty line is entered.
-    fn get_line(&mut self) -> Result<String, ReadlineError> {
-        loop {
-            match self.rl.as_mut().unwrap().readline(">> ") {
-                // Ignore empty lines
-                Ok(line) if line.trim().is_empty() => continue,
-
-                // Return non-empty lines
-                Ok(line) => return Ok(line),
-
-                // Handle errors
-                Err(error) => {
-                    match error {
-                        // For end of file and ctrl-c, we just quit
-                        ReadlineError::Eof | ReadlineError::Interrupted => {
-                            return Ok("quit".to_string())
-                        }
-                        // Propagate other errors
-                        actual_error => return Err(actual_error),
-                    }
-                }
-            }
-        }
-    }
-
-    /// Returns one of the standard DAP Requests if all goes well, or a "error"
-    /// request, which should indicate that the calling function should return.
-    ///
-    /// When preparing to return an "error" request, we will send a Response
-    /// containing the DebuggerError encountered.
+    /// Returns one of the standard DAP Requests if all goes well, or a "error" request, which should indicate that the calling function should return.
+    /// When preparing to return an "error" request, we will send a Response containing the DebuggerError encountered.
     pub fn listen_for_request(&mut self) -> Request {
-        if self.adapter_type == DebugAdapterType::CommandLine {
-            let line = match self.get_line() {
-                Ok(line) => line,
-                Err(e) => {
-                    let request = Request {
-                        seq: self.seq,
-                        arguments: None,
-                        command: "error".to_owned(),
-                        type_: "request".to_owned(),
-                    };
-                    self.send_response::<Request>(
-                        &request,
-                        Err(DebuggerError::Other(anyhow!(
-                            "Error handling input: {:?}",
-                            e
-                        ))),
-                    );
-                    return request;
-                }
-            };
-            let history_entry: &str = line.as_ref();
-            self.rl.as_mut().unwrap().add_history_entry(history_entry);
-
-            let mut command_arguments: Vec<&str> = line.split_whitespace().collect();
-            let command_name = command_arguments.remove(0);
-            let arguments = if !command_arguments.is_empty() {
-                Some(json!(command_arguments))
-            } else {
-                None
-            };
-            Request {
-                arguments,
-                command: command_name.to_string(),
-                seq: self.seq,
-                type_: "request".to_string(),
-            }
-        } else {
-            // DebugAdapterType::DapClient
-            match self.receive_data() {
-                Ok(message_content) => {
-                    // Extract protocol message
-                    match serde_json::from_slice::<ProtocolMessage>(&message_content) {
-                        Ok(protocol_message) => {
-                            match protocol_message.type_.as_str() {
-                                "request" => {
-                                    match serde_json::from_slice::<Request>(&message_content) {
-                                        Ok(request) => {
-                                            // This is the SUCCESS request for new requests from the client.
-                                            match self.console_log_level {
-                                                ConsoleLog::Error => {}
-                                                ConsoleLog::Info | ConsoleLog::Warn => {
-                                                    self.log_to_console(format!(
-                                                        "\nReceived DAP Request sequence #{} : {}",
-                                                        request.seq, request.command
-                                                    ));
-                                                }
-                                                ConsoleLog::Debug | ConsoleLog::Trace => {
-                                                    self.log_to_console(format!(
-                                                        "\nReceived DAP Request: {:#?}",
-                                                        request
-                                                    ));
-                                                }
-                                            }
-                                            request
-                                        }
-                                        Err(error) => {
-                                            let request = Request {
-                                                seq: self.seq,
-                                                arguments: None,
-                                                command: "error".to_owned(),
-                                                type_: "request".to_owned(),
-                                            };
-                                            self.send_response::<Request>( &request, Err(DebuggerError::Other(anyhow!("Error encoding ProtocolMessage to Request: {:?}", error))));
-                                            request
-                                        }
-                                    }
-                                }
-                                other => {
-                                    let request = Request {
-                                        seq: self.seq,
-                                        arguments: None,
-                                        command: "error".to_owned(),
-                                        type_: "request".to_owned(),
-                                    };
-                                    self.send_response::<Request>(
-                                        &request,
-                                        Err(DebuggerError::Other(anyhow!(
-                                            "Received an unexpected message type: '{}'",
-                                            other
-                                        ))),
-                                    );
-                                    request
-                                }
-                            }
-                        }
-                        Err(error) => {
-                            let request = Request {
-                                seq: self.seq,
-                                arguments: None,
-                                command: "error".to_owned(),
-                                type_: "request".to_owned(),
-                            };
-                            self.send_response::<Request>(
-                                &request,
-                                Err(DebuggerError::Other(anyhow!("{}", error))),
-                            );
-                            request
-                        }
-                    }
-                }
-                Err(error) => {
-                    let request = Request {
-                        seq: self.seq,
-                        arguments: None,
-                        command: "error".to_owned(),
-                        type_: "request".to_owned(),
-                    };
-                    match error {
-                        DebuggerError::NonBlockingReadError {
-                            os_error_number: _,
-                            original_error,
-                        } => {
-                            if original_error.kind() == std::io::ErrorKind::WouldBlock {
-                                // Non-blocking read is waiting for incoming data that is not ready yet.
-                                // This is not a real error, so use this opportunity to check on probe status and notify the debug client if required.
-                                return Request {
-                                    arguments: None,
-                                    command: "process_next_request".to_owned(),
-                                    seq: self.seq,
-                                    type_: "request".to_owned(),
-                                };
-                            } else {
-                                // This is a legitimate error. Tell the client about it.
-                                self.send_response::<Request>(
-                                    &request,
-                                    Err(DebuggerError::StdIO(original_error)),
-                                );
-                            }
-                        }
-                        _ => {
-                            // This is a legitimate error. Tell the client about it.
-                            self.send_response::<Request>(
-                                &request,
-                                Err(DebuggerError::Other(anyhow!("{}", error))),
-                            );
-                        }
-                    }
-                    request
-                }
-            }
-        }
-    }
-
-    pub fn receive_data(&mut self) -> Result<Vec<u8>, DebuggerError> {
-        if self.adapter_type == DebugAdapterType::CommandLine {
-            Err(DebuggerError::Other(anyhow!(
-                "Please use the `listen_for_request` method to retrieve data from the CLI"
-            )))
-        } else {
-            let mut header = String::new();
-
-            match self.input.read_line(&mut header) {
-                Ok(_data_length) => {}
-                Err(error) => {
-                    // There is no data available, so do something else (like checking the probe status) or try again.
-                    return Err(DebuggerError::NonBlockingReadError {
-                        os_error_number: error.raw_os_error().unwrap_or(0),
-                        original_error: error,
-                    });
-                }
-            }
-
-            // We should read an empty line here.
-            let mut buff = String::new();
-            match self.input.read_line(&mut buff) {
-                Ok(_data_length) => {}
-                Err(error) => {
-                    // There is no data available, so do something else (like checking the probe status) or try again.
-                    return Err(DebuggerError::NonBlockingReadError {
-                        os_error_number: error.raw_os_error().unwrap_or(0),
-                        original_error: error,
-                    });
-                }
-            }
-
-            let data_length = get_content_len(&header).ok_or_else(|| {
-                DebuggerError::Other(anyhow!(
-                    "Failed to read content length from header '{}'",
-                    header
-                ))
-            })?;
-
-            let mut content = vec![0u8; data_length];
-            let bytes_read = match self.input.read(&mut content) {
-                Ok(len) => len,
-                Err(error) => {
-                    // There is no data available, so do something else (like checking the probe status) or try again.
-                    return Err(DebuggerError::NonBlockingReadError {
-                        os_error_number: error.raw_os_error().unwrap_or(0),
-                        original_error: error,
-                    });
-                }
-            };
-
-            if bytes_read == data_length {
-                Ok(content)
-            } else {
-                Err(DebuggerError::Other(anyhow!(
-                    "Failed to read the expected {} bytes from incoming data",
-                    data_length
-                )))
-            }
-        }
+        self.adapter.listen_for_request()
     }
 
     /// Sends either the success response or an error response if passed a
@@ -1380,183 +1131,17 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
         request: &Request,
         response: Result<Option<S>, DebuggerError>,
     ) -> bool {
-        let mut resp = Response {
-            command: request.command.clone(),
-            request_seq: request.seq,
-            seq: request.seq,
-            success: false,
-            body: None,
-            type_: "response".to_owned(),
-            message: None,
-        };
-
-        match response {
-            Ok(value) => {
-                let body_value = match value {
-                    Some(value) => Some(match serde_json::to_value(value) {
-                        Ok(value) => value,
-                        Err(_) => {
-                            return false;
-                        }
-                    }),
-                    None => None,
-                };
-                resp.success = true;
-                resp.body = body_value;
-            }
-            Err(debugger_error) => {
-                resp.success = false;
-                resp.message = {
-                    let mut response_message = debugger_error.to_string();
-                    let mut offset_iterations = 0;
-                    let mut child_error: Option<&dyn std::error::Error> =
-                        std::error::Error::source(&debugger_error);
-                    while let Some(source_error) = child_error {
-                        offset_iterations += 1;
-                        response_message = format!("{}\n", response_message,);
-                        for _offset_counter in 0..offset_iterations {
-                            response_message = format!("{}\t", response_message);
-                        }
-                        response_message = format!(
-                            "{}{:?}",
-                            response_message,
-                            <dyn std::error::Error>::to_string(source_error)
-                        );
-                        child_error = std::error::Error::source(source_error);
-                    }
-                    Some(response_message)
-                };
-            }
-        };
-        if self.adapter_type == DebugAdapterType::DapClient {
-            let encoded_resp = match serde_json::to_vec(&resp) {
-                Ok(encoded_resp) => encoded_resp,
-                Err(_) => return false,
-            };
-            self.send_data(&encoded_resp);
-            if !resp.success {
-                self.log_to_console(&resp.clone().message.unwrap());
-                self.show_message(MessageSeverity::Error, &resp.message.unwrap());
-            } else {
-                match self.console_log_level {
-                    ConsoleLog::Error => {}
-                    ConsoleLog::Info | ConsoleLog::Warn => {
-                        self.log_to_console(format!(
-                            "   Sent DAP Response sequence #{} : {}",
-                            resp.seq, resp.command
-                        ));
-                    }
-                    ConsoleLog::Debug | ConsoleLog::Trace => {
-                        self.log_to_console(format!("\nSent DAP Response: {:#?}", resp));
-                    }
-                }
-            }
-        } else if resp.success {
-            if let Some(body) = resp.body {
-                println!("{}", body.as_str().unwrap());
-            }
-        } else {
-            println!("ERROR: {}", resp.message.unwrap());
-        }
-        true
-    }
-
-    fn send_data(&mut self, raw_data: &[u8]) -> bool {
-        let response_body = raw_data;
-
-        let response_header = format!("Content-Length: {}\r\n\r\n", response_body.len());
-
-        match self.output.write_all(response_header.as_bytes()) {
-            Ok(_) => {}
-            Err(error) => {
-                log::error!("send_data - header: {:?}", error);
-                return false;
-            }
-        }
-        match self.output.write_all(response_body) {
-            Ok(_) => {}
-            Err(error) => {
-                log::error!("send_data - body: {:?}", error);
-                self.output.flush().ok();
-                return false;
-            }
-        }
-
-        self.output.flush().ok();
-
-        self.seq += 1;
-
-        true
+        self.adapter.send_response(request, response)
     }
 
     pub fn send_event<S: Serialize>(&mut self, event_type: &str, event_body: Option<S>) -> bool {
-        if self.adapter_type == DebugAdapterType::DapClient {
-            let new_event = Event {
-                seq: self.seq,
-                type_: "event".to_string(),
-                event: event_type.to_string(),
-                body: event_body
-                    .map(|event_body| serde_json::to_value(event_body).unwrap_or_default()),
-            };
-
-            let encoded_event = match serde_json::to_vec(&new_event) {
-                Ok(encoded_event) => encoded_event,
-                Err(_) => {
-                    return false;
-                }
-            };
-            self.send_data(&encoded_event);
-            if new_event.event != "output" {
-                // This would result in an endless loop.
-                match self.console_log_level {
-                    ConsoleLog::Error => {}
-                    ConsoleLog::Info | ConsoleLog::Warn => {
-                        self.log_to_console(format!("\nTriggered DAP Event: {}", new_event.event));
-                    }
-                    ConsoleLog::Debug | ConsoleLog::Trace => {
-                        self.log_to_console(format!("INFO: Triggered DAP Event: {:#?}", new_event));
-                    }
-                }
-            }
-        } else {
-            // Only report on continued or stopped events, so the user knows when the core halts.
-            match event_type {
-                "stopped" => {
-                    if let Some(event_body) = event_body {
-                        let event_body_struct: StoppedEventBody = serde_json::from_value(
-                            serde_json::to_value(event_body).unwrap_or_default(),
-                        )
-                        .unwrap();
-                        let description = event_body_struct.description.unwrap_or_else(|| {
-                            "Received and unknown event from the debugger".to_owned()
-                        });
-                        println!("{}", description);
-                    }
-                }
-                "continued" => {
-                    println!(
-                        "{}",
-                        self.last_known_status.short_long_status().1.to_owned()
-                    );
-                }
-                other => match self.console_log_level {
-                    ConsoleLog::Error => {}
-                    ConsoleLog::Info | ConsoleLog::Warn => {
-                        self.log_to_console(format!("Triggered Event: {}", other));
-                    }
-                    ConsoleLog::Debug | ConsoleLog::Trace => {
-                        self.log_to_console(format!(
-                            "Triggered Event: {:#?}",
-                            serde_json::to_value(event_body).unwrap_or_default()
-                        ));
-                    }
-                },
-            }
-        }
-        true
+        self.adapter.send_event(event_type, event_body)
     }
 
     pub fn log_to_console<S: Into<String>>(&mut self, message: S) -> bool {
+        self.adapter.log_to_console(message)
+
+        /*
         if self.adapter_type == DebugAdapterType::DapClient {
             let event_body = match serde_json::to_value(OutputEventBody {
                 output: format!("{}\n", message.into()),
@@ -1578,26 +1163,13 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
             println!("{}", message.into());
             true
         }
+        */
     }
 
     /// Send a custom "probe-rs-show-message" event to the MS DAP Client.
     /// The `severity` field can be one of `information`, `warning`, or `error`.
     pub fn show_message(&mut self, severity: MessageSeverity, message: impl Into<String>) -> bool {
-        if self.adapter_type == DebugAdapterType::DapClient {
-            let event_body = match serde_json::to_value(ShowMessageEventBody {
-                severity,
-                message: format!("{}\n", message.into()),
-            }) {
-                Ok(event_body) => event_body,
-                Err(_) => {
-                    return false;
-                }
-            };
-            self.send_event("probe-rs-show-message", Some(event_body))
-        } else {
-            println!("{:?}: {}", severity, message.into());
-            true
-        }
+        self.adapter.show_message(severity, message)
     }
 
     /// Send a custom `probe-rs-rtt-channel-config` event to the MS DAP Client, to create a window for a specific RTT channel.
@@ -1607,7 +1179,7 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
         channel_name: String,
         data_format: DataFormat,
     ) -> bool {
-        if self.adapter_type == DebugAdapterType::DapClient {
+        if self.adapter_type() == DebugAdapterType::DapClient {
             let event_body = match serde_json::to_value(RttChannelEventBody {
                 channel_number,
                 channel_name,
@@ -1626,7 +1198,7 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
 
     /// Send a custom `probe-rs-rtt-data` event to the MS DAP Client, to
     pub fn rtt_output(&mut self, channel_number: usize, rtt_data: String) -> bool {
-        if self.adapter_type == DebugAdapterType::DapClient {
+        if self.adapter_type() == DebugAdapterType::DapClient {
             let event_body = match serde_json::to_value(RttDataEventBody {
                 channel_number,
                 data: rtt_data,
@@ -1698,6 +1270,10 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
             Err(anyhow!("Failed to send event."))
         }
     }
+
+    pub(crate) fn set_console_log_level(&mut self, error: ConsoleLog) {
+        self.adapter.set_console_log_level(error)
+    }
 }
 
 /// Provides halt functionality that is re-used elsewhere, in context of multiple DAP Requests
@@ -1717,27 +1293,6 @@ pub fn get_arguments<T: DeserializeOwned>(req: &Request) -> Result<T, crate::Deb
         .ok_or(crate::DebuggerError::InvalidRequest)?;
 
     serde_json::from_value(value.to_owned()).map_err(|e| e.into())
-}
-
-fn get_content_len(header: &str) -> Option<usize> {
-    let mut parts = header.trim_end().split_ascii_whitespace();
-
-    // discard first part
-    parts.next()?;
-
-    parts.next()?.parse::<usize>().ok()
-}
-
-#[cfg(test)]
-mod test {
-    use super::*;
-
-    #[test]
-    fn parse_valid_header() {
-        let header = "Content-Length: 234\r\n";
-
-        assert_eq!(234, get_content_len(header).unwrap());
-    }
 }
 
 pub(crate) trait DapStatus {

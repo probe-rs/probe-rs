@@ -1,4 +1,5 @@
 use crate::debug_adapter::*;
+use crate::protocol::{CliAdapter, DapAdapter, ProtocolAdapter};
 use crate::{dap_types::*, rtt::*};
 
 use crate::DebuggerError;
@@ -19,8 +20,6 @@ use serde::Deserialize;
 use std::{
     env::{current_dir, set_current_dir},
     fs::File,
-    io,
-    io::{Read, Write},
     net::{Ipv4Addr, TcpListener, ToSocketAddrs},
     path::PathBuf,
     str::FromStr,
@@ -504,10 +503,10 @@ impl Debugger {
         }
     }
 
-    pub(crate) fn process_next_request<R: Read, W: Write>(
+    pub(crate) fn process_next_request<P: ProtocolAdapter>(
         &mut self,
         session_data: &mut SessionData,
-        debug_adapter: &mut DebugAdapter<R, W>,
+        debug_adapter: &mut DebugAdapter<P>,
     ) -> DebuggerStatus {
         let request = debug_adapter.listen_for_request();
         match request.command.as_ref() {
@@ -774,7 +773,7 @@ impl Debugger {
                     }
                     None => {
                         // Unimplemented command.
-                        if debug_adapter.adapter_type == DebugAdapterType::DapClient {
+                        if debug_adapter.adapter_type() == DebugAdapterType::DapClient {
                             debug_adapter.log_to_console(format!(
                                 "ERROR: Received unsupported request '{}'\n",
                                 command_lookup
@@ -808,12 +807,12 @@ impl Debugger {
     /// [`debug_session`] is where the primary _debug processing_ for the DAP (Debug Adapter Protocol) adapter happens.
     /// All requests are interpreted, actions taken, and responses formulated here. This function is self contained and returns nothing.
     /// The [`debug_adapter::DebugAdapter`] takes care of _implementing the DAP Base Protocol_ and _communicating with the DAP client_ and _probe_.
-    pub(crate) fn debug_session<R: Read, W: Write>(
+    pub(crate) fn debug_session<P: ProtocolAdapter>(
         &mut self,
-        mut debug_adapter: DebugAdapter<R, W>,
+        mut debug_adapter: DebugAdapter<P>,
     ) -> DebuggerStatus {
         // Filter out just the set of commands that will work for this session.
-        self.supported_commands = if debug_adapter.adapter_type == DebugAdapterType::DapClient {
+        self.supported_commands = if debug_adapter.adapter_type() == DebugAdapterType::DapClient {
             self.all_commands
                 .iter()
                 .filter(|x| !x.dap_cmd.is_empty())
@@ -837,7 +836,7 @@ impl Debugger {
 
         // The DapClient startup process has a specific sequence.
         // Handle it here before starting a probe-rs session and looping through user generated requests.
-        if debug_adapter.adapter_type == DebugAdapterType::DapClient {
+        if debug_adapter.adapter_type() == DebugAdapterType::DapClient {
             // Handling the initialize, and Attach/Launch requests here in this method,
             // before entering the iterative loop that processes requests through the process_request method.
 
@@ -960,10 +959,11 @@ impl Debugger {
                             }
                         }
                     }
-                    debug_adapter.console_log_level = self
-                        .debugger_options
-                        .console_log_level
-                        .unwrap_or(ConsoleLog::Error);
+                    debug_adapter.set_console_log_level(
+                        self.debugger_options
+                            .console_log_level
+                            .unwrap_or(ConsoleLog::Error),
+                    );
                     // Update the `cwd` and `program_binary`.
                     self.debugger_options
                         .validate_and_update_cwd(self.debugger_options.cwd.clone());
@@ -1005,6 +1005,14 @@ impl Debugger {
                 }
             };
         } else {
+            // Create a custom request to use in responses for errors, etc. where no specific incoming request applies.
+            let custom_request = Request {
+                arguments: None,
+                command: "probe_rs_setup_during_initialize".to_owned(),
+                seq: debug_adapter.peek_seq(),
+                type_: "request".to_owned(),
+            };
+
             // Update the `cwd` and `program_binary`.
             self.debugger_options
                 .validate_and_update_cwd(self.debugger_options.cwd.clone());
@@ -1147,7 +1155,7 @@ impl Debugger {
             match self.process_next_request(&mut session_data, &mut debug_adapter) {
                 DebuggerStatus::SuccessContinueSession => {
                     // Validate and if necessary, initialize the RTT structure.
-                    if debug_adapter.adapter_type == DebugAdapterType::DapClient
+                    if debug_adapter.adapter_type() == DebugAdapterType::DapClient
                         && self.debugger_options.rtt.enabled
                         && self.target_rtt.is_none()
                         && !(debug_adapter.last_known_status == CoreStatus::Unknown
@@ -1201,7 +1209,7 @@ impl Debugger {
                     return DebuggerStatus::SuccessTerminateDebugger;
                 }
                 DebuggerStatus::ErrorTerminateSession => {
-                    if debug_adapter.adapter_type == DebugAdapterType::DapClient {
+                    if debug_adapter.adapter_type() == DebugAdapterType::DapClient {
                         debug_adapter
                             .send_event("terminated", Some(TerminatedEventBody { restart: None }));
                         debug_adapter.send_event("exited", Some(ExitedEventBody { exit_code: 1 }));
@@ -1377,7 +1385,12 @@ pub fn debug(debugger_options: DebuggerOptions, dap: bool, vscode: bool) {
             "Welcome to {:?}. Use the 'help' command for more",
             &program_name
         );
-        let adapter = DebugAdapter::new(io::stdin(), io::stdout(), DebugAdapterType::CommandLine);
+
+        // input: io::stdin, output: io::stdout
+
+        let cli_adapter = CliAdapter::new();
+
+        let adapter = DebugAdapter::new(cli_adapter);
         debugger.debug_session(adapter);
     } else {
         println!(
@@ -1427,8 +1440,9 @@ pub fn debug(debugger_options: DebuggerOptions, dap: bool, vscode: bool) {
                             let reader = socket.try_clone().unwrap();
                             let writer = socket;
 
-                            let debug_adapter =
-                                DebugAdapter::new(reader, writer, DebugAdapterType::DapClient);
+                            let dap_adapter = DapAdapter::new(reader, writer);
+
+                            let debug_adapter = DebugAdapter::new(dap_adapter);
 
                             match debugger.debug_session(debug_adapter) {
                                 DebuggerStatus::ErrorTerminateSession
