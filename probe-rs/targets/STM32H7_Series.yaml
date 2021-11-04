@@ -10,9 +10,58 @@ variants:
             psel: 0x0
     memory_map:
       - Ram:
+          name: AXI-SRAM
           range:
             start: 0x24000000
             end: 0x24060000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: DTCM
+          range:
+            start: 0x20000000
+            end: 0x20020000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM1
+          range:
+            start: 0x30000000
+            end: 0x30008000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM2
+          range:
+            start: 0x30020000
+            end: 0x30020000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM4
+          range:
+            start: 0x38000000
+            end: 0x38010000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: BSRAM
+          range:
+            start: 0x38800000
+            end: 0x38801000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: ITCM
+          range:
+            start: 0x00000000
+            end: 0x00010000
           is_boot_memory: false
           cores:
             - main
@@ -35,9 +84,58 @@ variants:
             psel: 0x0
     memory_map:
       - Ram:
+          name: AXI-SRAM
           range:
             start: 0x24000000
             end: 0x24060000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: DTCM
+          range:
+            start: 0x20000000
+            end: 0x20020000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM1
+          range:
+            start: 0x30000000
+            end: 0x30008000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM2
+          range:
+            start: 0x30020000
+            end: 0x30020000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM4
+          range:
+            start: 0x38000000
+            end: 0x38010000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: BSRAM
+          range:
+            start: 0x38800000
+            end: 0x38801000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: ITCM
+          range:
+            start: 0x00000000
+            end: 0x00010000
           is_boot_memory: false
           cores:
             - main
@@ -60,9 +158,58 @@ variants:
             psel: 0x0
     memory_map:
       - Ram:
+          name: AXI-SRAM
           range:
             start: 0x24000000
             end: 0x24060000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: DTCM
+          range:
+            start: 0x20000000
+            end: 0x20020000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM1
+          range:
+            start: 0x30000000
+            end: 0x30008000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM2
+          range:
+            start: 0x30020000
+            end: 0x30020000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM4
+          range:
+            start: 0x38000000
+            end: 0x38010000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: BSRAM
+          range:
+            start: 0x38800000
+            end: 0x38801000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: ITCM
+          range:
+            start: 0x00000000
+            end: 0x00010000
           is_boot_memory: false
           cores:
             - main
@@ -85,9 +232,58 @@ variants:
             psel: 0x0
     memory_map:
       - Ram:
+          name: AXI-SRAM
           range:
             start: 0x24000000
             end: 0x24060000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: DTCM
+          range:
+            start: 0x20000000
+            end: 0x20020000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM1
+          range:
+            start: 0x30000000
+            end: 0x30008000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM2
+          range:
+            start: 0x30020000
+            end: 0x30020000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM4
+          range:
+            start: 0x38000000
+            end: 0x38010000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: BSRAM
+          range:
+            start: 0x38800000
+            end: 0x38801000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: ITCM
+          range:
+            start: 0x00000000
+            end: 0x00010000
           is_boot_memory: false
           cores:
             - main
@@ -110,9 +306,58 @@ variants:
             psel: 0x0
     memory_map:
       - Ram:
+          name: AXI-SRAM
           range:
             start: 0x24000000
             end: 0x24060000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: DTCM
+          range:
+            start: 0x20000000
+            end: 0x20020000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM1
+          range:
+            start: 0x30000000
+            end: 0x30008000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM2
+          range:
+            start: 0x30020000
+            end: 0x30020000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM4
+          range:
+            start: 0x38000000
+            end: 0x38010000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: BSRAM
+          range:
+            start: 0x38800000
+            end: 0x38801000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: ITCM
+          range:
+            start: 0x00000000
+            end: 0x00010000
           is_boot_memory: false
           cores:
             - main
@@ -135,9 +380,58 @@ variants:
             psel: 0x0
     memory_map:
       - Ram:
+          name: AXI-SRAM
           range:
             start: 0x24000000
             end: 0x24060000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: DTCM
+          range:
+            start: 0x20000000
+            end: 0x20020000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM1
+          range:
+            start: 0x30000000
+            end: 0x30008000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM2
+          range:
+            start: 0x30020000
+            end: 0x30020000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM4
+          range:
+            start: 0x38000000
+            end: 0x38010000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: BSRAM
+          range:
+            start: 0x38800000
+            end: 0x38801000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: ITCM
+          range:
+            start: 0x00000000
+            end: 0x00010000
           is_boot_memory: false
           cores:
             - main
@@ -160,9 +454,58 @@ variants:
             psel: 0x0
     memory_map:
       - Ram:
+          name: AXI-SRAM
           range:
             start: 0x24000000
             end: 0x24060000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: DTCM
+          range:
+            start: 0x20000000
+            end: 0x20020000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM1
+          range:
+            start: 0x30000000
+            end: 0x30008000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM2
+          range:
+            start: 0x30020000
+            end: 0x30020000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM4
+          range:
+            start: 0x38000000
+            end: 0x38010000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: BSRAM
+          range:
+            start: 0x38800000
+            end: 0x38801000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: ITCM
+          range:
+            start: 0x00000000
+            end: 0x00010000
           is_boot_memory: false
           cores:
             - main
@@ -185,9 +528,58 @@ variants:
             psel: 0x0
     memory_map:
       - Ram:
+          name: AXI-SRAM
           range:
             start: 0x24000000
             end: 0x24060000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: DTCM
+          range:
+            start: 0x20000000
+            end: 0x20020000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM1
+          range:
+            start: 0x30000000
+            end: 0x30008000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM2
+          range:
+            start: 0x30020000
+            end: 0x30020000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM4
+          range:
+            start: 0x38000000
+            end: 0x38010000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: BSRAM
+          range:
+            start: 0x38800000
+            end: 0x38801000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: ITCM
+          range:
+            start: 0x00000000
+            end: 0x00010000
           is_boot_memory: false
           cores:
             - main
@@ -210,9 +602,58 @@ variants:
             psel: 0x0
     memory_map:
       - Ram:
+          name: AXI-SRAM
           range:
             start: 0x24000000
             end: 0x24060000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: DTCM
+          range:
+            start: 0x20000000
+            end: 0x20020000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM1
+          range:
+            start: 0x30000000
+            end: 0x30008000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM2
+          range:
+            start: 0x30020000
+            end: 0x30020000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM4
+          range:
+            start: 0x38000000
+            end: 0x38010000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: BSRAM
+          range:
+            start: 0x38800000
+            end: 0x38801000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: ITCM
+          range:
+            start: 0x00000000
+            end: 0x00010000
           is_boot_memory: false
           cores:
             - main
@@ -235,9 +676,58 @@ variants:
             psel: 0x0
     memory_map:
       - Ram:
+          name: AXI-SRAM
           range:
             start: 0x24000000
             end: 0x24060000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: DTCM
+          range:
+            start: 0x20000000
+            end: 0x20020000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM1
+          range:
+            start: 0x30000000
+            end: 0x30008000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM2
+          range:
+            start: 0x30020000
+            end: 0x30020000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM4
+          range:
+            start: 0x38000000
+            end: 0x38010000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: BSRAM
+          range:
+            start: 0x38800000
+            end: 0x38801000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: ITCM
+          range:
+            start: 0x00000000
+            end: 0x00010000
           is_boot_memory: false
           cores:
             - main
@@ -260,9 +750,58 @@ variants:
             psel: 0x0
     memory_map:
       - Ram:
+          name: AXI-SRAM
           range:
             start: 0x24000000
             end: 0x24060000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: DTCM
+          range:
+            start: 0x20000000
+            end: 0x20020000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM1
+          range:
+            start: 0x30000000
+            end: 0x30008000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM2
+          range:
+            start: 0x30020000
+            end: 0x30020000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM4
+          range:
+            start: 0x38000000
+            end: 0x38010000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: BSRAM
+          range:
+            start: 0x38800000
+            end: 0x38801000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: ITCM
+          range:
+            start: 0x00000000
+            end: 0x00010000
           is_boot_memory: false
           cores:
             - main
@@ -285,9 +824,58 @@ variants:
             psel: 0x0
     memory_map:
       - Ram:
+          name: AXI-SRAM
           range:
             start: 0x24000000
             end: 0x24060000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: DTCM
+          range:
+            start: 0x20000000
+            end: 0x20020000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM1
+          range:
+            start: 0x30000000
+            end: 0x30008000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM2
+          range:
+            start: 0x30020000
+            end: 0x30020000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM4
+          range:
+            start: 0x38000000
+            end: 0x38010000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: BSRAM
+          range:
+            start: 0x38800000
+            end: 0x38801000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: ITCM
+          range:
+            start: 0x00000000
+            end: 0x00010000
           is_boot_memory: false
           cores:
             - main
@@ -310,9 +898,58 @@ variants:
             psel: 0x0
     memory_map:
       - Ram:
+          name: AXI-SRAM
           range:
             start: 0x24000000
             end: 0x24060000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: DTCM
+          range:
+            start: 0x20000000
+            end: 0x20020000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM1
+          range:
+            start: 0x30000000
+            end: 0x30008000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM2
+          range:
+            start: 0x30020000
+            end: 0x30020000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM4
+          range:
+            start: 0x38000000
+            end: 0x38010000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: BSRAM
+          range:
+            start: 0x38800000
+            end: 0x38801000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: ITCM
+          range:
+            start: 0x00000000
+            end: 0x00010000
           is_boot_memory: false
           cores:
             - main
@@ -335,9 +972,58 @@ variants:
             psel: 0x0
     memory_map:
       - Ram:
+          name: AXI-SRAM
           range:
             start: 0x24000000
             end: 0x24060000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: DTCM
+          range:
+            start: 0x20000000
+            end: 0x20020000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM1
+          range:
+            start: 0x30000000
+            end: 0x30008000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM2
+          range:
+            start: 0x30020000
+            end: 0x30020000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM4
+          range:
+            start: 0x38000000
+            end: 0x38010000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: BSRAM
+          range:
+            start: 0x38800000
+            end: 0x38801000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: ITCM
+          range:
+            start: 0x00000000
+            end: 0x00010000
           is_boot_memory: false
           cores:
             - main
@@ -360,9 +1046,58 @@ variants:
             psel: 0x0
     memory_map:
       - Ram:
+          name: AXI-SRAM
           range:
             start: 0x24000000
             end: 0x24060000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: DTCM
+          range:
+            start: 0x20000000
+            end: 0x20020000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM1
+          range:
+            start: 0x30000000
+            end: 0x30008000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM2
+          range:
+            start: 0x30020000
+            end: 0x30020000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM4
+          range:
+            start: 0x38000000
+            end: 0x38010000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: BSRAM
+          range:
+            start: 0x38800000
+            end: 0x38801000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: ITCM
+          range:
+            start: 0x00000000
+            end: 0x00010000
           is_boot_memory: false
           cores:
             - main
@@ -385,9 +1120,58 @@ variants:
             psel: 0x0
     memory_map:
       - Ram:
+          name: AXI-SRAM
           range:
             start: 0x24000000
             end: 0x24060000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: DTCM
+          range:
+            start: 0x20000000
+            end: 0x20020000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM1
+          range:
+            start: 0x30000000
+            end: 0x30008000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM2
+          range:
+            start: 0x30020000
+            end: 0x30020000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM4
+          range:
+            start: 0x38000000
+            end: 0x38010000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: BSRAM
+          range:
+            start: 0x38800000
+            end: 0x38801000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: ITCM
+          range:
+            start: 0x00000000
+            end: 0x00010000
           is_boot_memory: false
           cores:
             - main
@@ -410,9 +1194,66 @@ variants:
             psel: 0x0
     memory_map:
       - Ram:
+          name: AXI-SRAM
           range:
             start: 0x24000000
             end: 0x24080000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: DTCM
+          range:
+            start: 0x20000000
+            end: 0x20020000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM1
+          range:
+            start: 0x30000000
+            end: 0x30020000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM2
+          range:
+            start: 0x30020000
+            end: 0x30040000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM3
+          range:
+            start: 0x30040000
+            end: 0x30048000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM4
+          range:
+            start: 0x38000000
+            end: 0x38010000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: BSRAM
+          range:
+            start: 0x38800000
+            end: 0x38801000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: ITCM
+          range:
+            start: 0x00000000
+            end: 0x00010000
           is_boot_memory: false
           cores:
             - main
@@ -435,9 +1276,66 @@ variants:
             psel: 0x0
     memory_map:
       - Ram:
+          name: AXI-SRAM
           range:
             start: 0x24000000
             end: 0x24080000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: DTCM
+          range:
+            start: 0x20000000
+            end: 0x20020000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM1
+          range:
+            start: 0x30000000
+            end: 0x30020000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM2
+          range:
+            start: 0x30020000
+            end: 0x30040000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM3
+          range:
+            start: 0x30040000
+            end: 0x30048000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM4
+          range:
+            start: 0x38000000
+            end: 0x38010000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: BSRAM
+          range:
+            start: 0x38800000
+            end: 0x38801000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: ITCM
+          range:
+            start: 0x00000000
+            end: 0x00010000
           is_boot_memory: false
           cores:
             - main
@@ -460,9 +1358,66 @@ variants:
             psel: 0x0
     memory_map:
       - Ram:
+          name: AXI-SRAM
           range:
             start: 0x24000000
             end: 0x24080000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: DTCM
+          range:
+            start: 0x20000000
+            end: 0x20020000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM1
+          range:
+            start: 0x30000000
+            end: 0x30020000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM2
+          range:
+            start: 0x30020000
+            end: 0x30040000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM3
+          range:
+            start: 0x30040000
+            end: 0x30048000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM4
+          range:
+            start: 0x38000000
+            end: 0x38010000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: BSRAM
+          range:
+            start: 0x38800000
+            end: 0x38801000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: ITCM
+          range:
+            start: 0x00000000
+            end: 0x00010000
           is_boot_memory: false
           cores:
             - main
@@ -485,9 +1440,66 @@ variants:
             psel: 0x0
     memory_map:
       - Ram:
+          name: AXI-SRAM
           range:
             start: 0x24000000
             end: 0x24080000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: DTCM
+          range:
+            start: 0x20000000
+            end: 0x20020000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM1
+          range:
+            start: 0x30000000
+            end: 0x30020000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM2
+          range:
+            start: 0x30020000
+            end: 0x30040000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM3
+          range:
+            start: 0x30040000
+            end: 0x30048000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM4
+          range:
+            start: 0x38000000
+            end: 0x38010000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: BSRAM
+          range:
+            start: 0x38800000
+            end: 0x38801000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: ITCM
+          range:
+            start: 0x00000000
+            end: 0x00010000
           is_boot_memory: false
           cores:
             - main
@@ -510,9 +1522,66 @@ variants:
             psel: 0x0
     memory_map:
       - Ram:
+          name: AXI-SRAM
           range:
             start: 0x24000000
             end: 0x24080000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: DTCM
+          range:
+            start: 0x20000000
+            end: 0x20020000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM1
+          range:
+            start: 0x30000000
+            end: 0x30020000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM2
+          range:
+            start: 0x30020000
+            end: 0x30040000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM3
+          range:
+            start: 0x30040000
+            end: 0x30048000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM4
+          range:
+            start: 0x38000000
+            end: 0x38010000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: BSRAM
+          range:
+            start: 0x38800000
+            end: 0x38801000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: ITCM
+          range:
+            start: 0x00000000
+            end: 0x00010000
           is_boot_memory: false
           cores:
             - main
@@ -535,9 +1604,66 @@ variants:
             psel: 0x0
     memory_map:
       - Ram:
+          name: AXI-SRAM
           range:
             start: 0x24000000
             end: 0x24080000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: DTCM
+          range:
+            start: 0x20000000
+            end: 0x20020000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM1
+          range:
+            start: 0x30000000
+            end: 0x30020000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM2
+          range:
+            start: 0x30020000
+            end: 0x30040000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM3
+          range:
+            start: 0x30040000
+            end: 0x30048000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM4
+          range:
+            start: 0x38000000
+            end: 0x38010000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: BSRAM
+          range:
+            start: 0x38800000
+            end: 0x38801000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: ITCM
+          range:
+            start: 0x00000000
+            end: 0x00010000
           is_boot_memory: false
           cores:
             - main
@@ -560,9 +1686,66 @@ variants:
             psel: 0x0
     memory_map:
       - Ram:
+          name: AXI-SRAM
           range:
             start: 0x24000000
             end: 0x24080000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: DTCM
+          range:
+            start: 0x20000000
+            end: 0x20020000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM1
+          range:
+            start: 0x30000000
+            end: 0x30020000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM2
+          range:
+            start: 0x30020000
+            end: 0x30040000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM3
+          range:
+            start: 0x30040000
+            end: 0x30048000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM4
+          range:
+            start: 0x38000000
+            end: 0x38010000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: BSRAM
+          range:
+            start: 0x38800000
+            end: 0x38801000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: ITCM
+          range:
+            start: 0x00000000
+            end: 0x00010000
           is_boot_memory: false
           cores:
             - main
@@ -585,9 +1768,66 @@ variants:
             psel: 0x0
     memory_map:
       - Ram:
+          name: AXI-SRAM
           range:
             start: 0x24000000
             end: 0x24080000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: DTCM
+          range:
+            start: 0x20000000
+            end: 0x20020000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM1
+          range:
+            start: 0x30000000
+            end: 0x30020000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM2
+          range:
+            start: 0x30020000
+            end: 0x30040000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM3
+          range:
+            start: 0x30040000
+            end: 0x30048000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM4
+          range:
+            start: 0x38000000
+            end: 0x38010000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: BSRAM
+          range:
+            start: 0x38800000
+            end: 0x38801000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: ITCM
+          range:
+            start: 0x00000000
+            end: 0x00010000
           is_boot_memory: false
           cores:
             - main
@@ -610,9 +1850,66 @@ variants:
             psel: 0x0
     memory_map:
       - Ram:
+          name: AXI-SRAM
           range:
             start: 0x24000000
             end: 0x24080000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: DTCM
+          range:
+            start: 0x20000000
+            end: 0x20020000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM1
+          range:
+            start: 0x30000000
+            end: 0x30020000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM2
+          range:
+            start: 0x30020000
+            end: 0x30040000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM3
+          range:
+            start: 0x30040000
+            end: 0x30048000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM4
+          range:
+            start: 0x38000000
+            end: 0x38010000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: BSRAM
+          range:
+            start: 0x38800000
+            end: 0x38801000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: ITCM
+          range:
+            start: 0x00000000
+            end: 0x00010000
           is_boot_memory: false
           cores:
             - main
@@ -635,9 +1932,66 @@ variants:
             psel: 0x0
     memory_map:
       - Ram:
+          name: AXI-SRAM
           range:
             start: 0x24000000
             end: 0x24080000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: DTCM
+          range:
+            start: 0x20000000
+            end: 0x20020000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM1
+          range:
+            start: 0x30000000
+            end: 0x30020000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM2
+          range:
+            start: 0x30020000
+            end: 0x30040000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM3
+          range:
+            start: 0x30040000
+            end: 0x30048000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM4
+          range:
+            start: 0x38000000
+            end: 0x38010000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: BSRAM
+          range:
+            start: 0x38800000
+            end: 0x38801000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: ITCM
+          range:
+            start: 0x00000000
+            end: 0x00010000
           is_boot_memory: false
           cores:
             - main
@@ -660,9 +2014,66 @@ variants:
             psel: 0x0
     memory_map:
       - Ram:
+          name: AXI-SRAM
           range:
             start: 0x24000000
             end: 0x24080000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: DTCM
+          range:
+            start: 0x20000000
+            end: 0x20020000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM1
+          range:
+            start: 0x30000000
+            end: 0x30020000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM2
+          range:
+            start: 0x30020000
+            end: 0x30040000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM3
+          range:
+            start: 0x30040000
+            end: 0x30048000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM4
+          range:
+            start: 0x38000000
+            end: 0x38010000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: BSRAM
+          range:
+            start: 0x38800000
+            end: 0x38801000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: ITCM
+          range:
+            start: 0x00000000
+            end: 0x00010000
           is_boot_memory: false
           cores:
             - main
@@ -685,9 +2096,66 @@ variants:
             psel: 0x0
     memory_map:
       - Ram:
+          name: AXI-SRAM
           range:
             start: 0x24000000
             end: 0x24080000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: DTCM
+          range:
+            start: 0x20000000
+            end: 0x20020000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM1
+          range:
+            start: 0x30000000
+            end: 0x30020000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM2
+          range:
+            start: 0x30020000
+            end: 0x30040000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM3
+          range:
+            start: 0x30040000
+            end: 0x30048000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM4
+          range:
+            start: 0x38000000
+            end: 0x38010000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: BSRAM
+          range:
+            start: 0x38800000
+            end: 0x38801000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: ITCM
+          range:
+            start: 0x00000000
+            end: 0x00010000
           is_boot_memory: false
           cores:
             - main
@@ -710,9 +2178,66 @@ variants:
             psel: 0x0
     memory_map:
       - Ram:
+          name: AXI-SRAM
           range:
             start: 0x24000000
             end: 0x24080000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: DTCM
+          range:
+            start: 0x20000000
+            end: 0x20020000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM1
+          range:
+            start: 0x30000000
+            end: 0x30020000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM2
+          range:
+            start: 0x30020000
+            end: 0x30040000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM3
+          range:
+            start: 0x30040000
+            end: 0x30048000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM4
+          range:
+            start: 0x38000000
+            end: 0x38010000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: BSRAM
+          range:
+            start: 0x38800000
+            end: 0x38801000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: ITCM
+          range:
+            start: 0x00000000
+            end: 0x00010000
           is_boot_memory: false
           cores:
             - main
@@ -735,9 +2260,66 @@ variants:
             psel: 0x0
     memory_map:
       - Ram:
+          name: AXI-SRAM
           range:
             start: 0x24000000
             end: 0x24080000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: DTCM
+          range:
+            start: 0x20000000
+            end: 0x20020000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM1
+          range:
+            start: 0x30000000
+            end: 0x30020000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM2
+          range:
+            start: 0x30020000
+            end: 0x30040000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM3
+          range:
+            start: 0x30040000
+            end: 0x30048000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM4
+          range:
+            start: 0x38000000
+            end: 0x38010000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: BSRAM
+          range:
+            start: 0x38800000
+            end: 0x38801000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: ITCM
+          range:
+            start: 0x00000000
+            end: 0x00010000
           is_boot_memory: false
           cores:
             - main
@@ -760,9 +2342,66 @@ variants:
             psel: 0x0
     memory_map:
       - Ram:
+          name: AXI-SRAM
           range:
             start: 0x24000000
             end: 0x24080000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: DTCM
+          range:
+            start: 0x20000000
+            end: 0x20020000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM1
+          range:
+            start: 0x30000000
+            end: 0x30020000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM2
+          range:
+            start: 0x30020000
+            end: 0x30040000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM3
+          range:
+            start: 0x30040000
+            end: 0x30048000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM4
+          range:
+            start: 0x38000000
+            end: 0x38010000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: BSRAM
+          range:
+            start: 0x38800000
+            end: 0x38801000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: ITCM
+          range:
+            start: 0x00000000
+            end: 0x00010000
           is_boot_memory: false
           cores:
             - main
@@ -785,9 +2424,66 @@ variants:
             psel: 0x0
     memory_map:
       - Ram:
+          name: AXI-SRAM
           range:
             start: 0x24000000
             end: 0x24080000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: DTCM
+          range:
+            start: 0x20000000
+            end: 0x20020000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM1
+          range:
+            start: 0x30000000
+            end: 0x30020000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM2
+          range:
+            start: 0x30020000
+            end: 0x30040000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM3
+          range:
+            start: 0x30040000
+            end: 0x30048000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM4
+          range:
+            start: 0x38000000
+            end: 0x38010000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: BSRAM
+          range:
+            start: 0x38800000
+            end: 0x38801000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: ITCM
+          range:
+            start: 0x00000000
+            end: 0x00010000
           is_boot_memory: false
           cores:
             - main
@@ -810,9 +2506,66 @@ variants:
             psel: 0x0
     memory_map:
       - Ram:
+          name: AXI-SRAM
           range:
             start: 0x24000000
             end: 0x24080000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: DTCM
+          range:
+            start: 0x20000000
+            end: 0x20020000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM1
+          range:
+            start: 0x30000000
+            end: 0x30020000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM2
+          range:
+            start: 0x30020000
+            end: 0x30040000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM3
+          range:
+            start: 0x30040000
+            end: 0x30048000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM4
+          range:
+            start: 0x38000000
+            end: 0x38010000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: BSRAM
+          range:
+            start: 0x38800000
+            end: 0x38801000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: ITCM
+          range:
+            start: 0x00000000
+            end: 0x00010000
           is_boot_memory: false
           cores:
             - main
@@ -835,9 +2588,66 @@ variants:
             psel: 0x0
     memory_map:
       - Ram:
+          name: AXI-SRAM
           range:
             start: 0x24000000
             end: 0x24080000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: DTCM
+          range:
+            start: 0x20000000
+            end: 0x20020000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM1
+          range:
+            start: 0x30000000
+            end: 0x30020000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM2
+          range:
+            start: 0x30020000
+            end: 0x30040000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM3
+          range:
+            start: 0x30040000
+            end: 0x30048000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM4
+          range:
+            start: 0x38000000
+            end: 0x38010000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: BSRAM
+          range:
+            start: 0x38800000
+            end: 0x38801000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: ITCM
+          range:
+            start: 0x00000000
+            end: 0x00010000
           is_boot_memory: false
           cores:
             - main
@@ -860,9 +2670,66 @@ variants:
             psel: 0x0
     memory_map:
       - Ram:
+          name: AXI-SRAM
           range:
             start: 0x24000000
             end: 0x24080000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: DTCM
+          range:
+            start: 0x20000000
+            end: 0x20020000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM1
+          range:
+            start: 0x30000000
+            end: 0x30020000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM2
+          range:
+            start: 0x30020000
+            end: 0x30040000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM3
+          range:
+            start: 0x30040000
+            end: 0x30048000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM4
+          range:
+            start: 0x38000000
+            end: 0x38010000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: BSRAM
+          range:
+            start: 0x38800000
+            end: 0x38801000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: ITCM
+          range:
+            start: 0x00000000
+            end: 0x00010000
           is_boot_memory: false
           cores:
             - main
@@ -885,9 +2752,66 @@ variants:
             psel: 0x0
     memory_map:
       - Ram:
+          name: AXI-SRAM
           range:
             start: 0x24000000
             end: 0x24080000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: DTCM
+          range:
+            start: 0x20000000
+            end: 0x20020000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM1
+          range:
+            start: 0x30000000
+            end: 0x30020000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM2
+          range:
+            start: 0x30020000
+            end: 0x30040000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM3
+          range:
+            start: 0x30040000
+            end: 0x30048000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM4
+          range:
+            start: 0x38000000
+            end: 0x38010000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: BSRAM
+          range:
+            start: 0x38800000
+            end: 0x38801000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: ITCM
+          range:
+            start: 0x00000000
+            end: 0x00010000
           is_boot_memory: false
           cores:
             - main
@@ -910,9 +2834,66 @@ variants:
             psel: 0x0
     memory_map:
       - Ram:
+          name: AXI-SRAM
           range:
             start: 0x24000000
             end: 0x24080000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: DTCM
+          range:
+            start: 0x20000000
+            end: 0x20020000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM1
+          range:
+            start: 0x30000000
+            end: 0x30020000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM2
+          range:
+            start: 0x30020000
+            end: 0x30040000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM3
+          range:
+            start: 0x30040000
+            end: 0x30048000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM4
+          range:
+            start: 0x38000000
+            end: 0x38010000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: BSRAM
+          range:
+            start: 0x38800000
+            end: 0x38801000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: ITCM
+          range:
+            start: 0x00000000
+            end: 0x00010000
           is_boot_memory: false
           cores:
             - main
@@ -935,9 +2916,66 @@ variants:
             psel: 0x0
     memory_map:
       - Ram:
+          name: AXI-SRAM
           range:
             start: 0x24000000
             end: 0x24080000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: DTCM
+          range:
+            start: 0x20000000
+            end: 0x20020000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM1
+          range:
+            start: 0x30000000
+            end: 0x30020000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM2
+          range:
+            start: 0x30020000
+            end: 0x30040000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM3
+          range:
+            start: 0x30040000
+            end: 0x30048000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM4
+          range:
+            start: 0x38000000
+            end: 0x38010000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: BSRAM
+          range:
+            start: 0x38800000
+            end: 0x38801000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: ITCM
+          range:
+            start: 0x00000000
+            end: 0x00010000
           is_boot_memory: false
           cores:
             - main
@@ -960,9 +2998,66 @@ variants:
             psel: 0x0
     memory_map:
       - Ram:
+          name: AXI-SRAM
           range:
             start: 0x24000000
             end: 0x24080000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: DTCM
+          range:
+            start: 0x20000000
+            end: 0x20020000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM1
+          range:
+            start: 0x30000000
+            end: 0x30020000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM2
+          range:
+            start: 0x30020000
+            end: 0x30040000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM3
+          range:
+            start: 0x30040000
+            end: 0x30048000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM4
+          range:
+            start: 0x38000000
+            end: 0x38010000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: BSRAM
+          range:
+            start: 0x38800000
+            end: 0x38801000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: ITCM
+          range:
+            start: 0x00000000
+            end: 0x00010000
           is_boot_memory: false
           cores:
             - main
@@ -985,9 +3080,66 @@ variants:
             psel: 0x0
     memory_map:
       - Ram:
+          name: AXI-SRAM
           range:
             start: 0x24000000
             end: 0x24080000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: DTCM
+          range:
+            start: 0x20000000
+            end: 0x20020000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM1
+          range:
+            start: 0x30000000
+            end: 0x30020000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM2
+          range:
+            start: 0x30020000
+            end: 0x30040000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM3
+          range:
+            start: 0x30040000
+            end: 0x30048000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM4
+          range:
+            start: 0x38000000
+            end: 0x38010000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: BSRAM
+          range:
+            start: 0x38800000
+            end: 0x38801000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: ITCM
+          range:
+            start: 0x00000000
+            end: 0x00010000
           is_boot_memory: false
           cores:
             - main
@@ -1010,9 +3162,66 @@ variants:
             psel: 0x0
     memory_map:
       - Ram:
+          name: AXI-SRAM
           range:
             start: 0x24000000
             end: 0x24080000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: DTCM
+          range:
+            start: 0x20000000
+            end: 0x20020000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM1
+          range:
+            start: 0x30000000
+            end: 0x30020000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM2
+          range:
+            start: 0x30020000
+            end: 0x30040000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM3
+          range:
+            start: 0x30040000
+            end: 0x30048000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM4
+          range:
+            start: 0x38000000
+            end: 0x38010000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: BSRAM
+          range:
+            start: 0x38800000
+            end: 0x38801000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: ITCM
+          range:
+            start: 0x00000000
+            end: 0x00010000
           is_boot_memory: false
           cores:
             - main
@@ -1035,9 +3244,66 @@ variants:
             psel: 0x0
     memory_map:
       - Ram:
+          name: AXI-SRAM
           range:
             start: 0x24000000
             end: 0x24080000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: DTCM
+          range:
+            start: 0x20000000
+            end: 0x20020000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM1
+          range:
+            start: 0x30000000
+            end: 0x30020000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM2
+          range:
+            start: 0x30020000
+            end: 0x30040000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM3
+          range:
+            start: 0x30040000
+            end: 0x30048000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM4
+          range:
+            start: 0x38000000
+            end: 0x38010000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: BSRAM
+          range:
+            start: 0x38800000
+            end: 0x38801000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: ITCM
+          range:
+            start: 0x00000000
+            end: 0x00010000
           is_boot_memory: false
           cores:
             - main
@@ -1060,9 +3326,66 @@ variants:
             psel: 0x0
     memory_map:
       - Ram:
+          name: AXI-SRAM
           range:
             start: 0x24000000
             end: 0x24080000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: DTCM
+          range:
+            start: 0x20000000
+            end: 0x20020000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM1
+          range:
+            start: 0x30000000
+            end: 0x30020000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM2
+          range:
+            start: 0x30020000
+            end: 0x30040000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM3
+          range:
+            start: 0x30040000
+            end: 0x30048000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM4
+          range:
+            start: 0x38000000
+            end: 0x38010000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: BSRAM
+          range:
+            start: 0x38800000
+            end: 0x38801000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: ITCM
+          range:
+            start: 0x00000000
+            end: 0x00010000
           is_boot_memory: false
           cores:
             - main
@@ -1085,9 +3408,66 @@ variants:
             psel: 0x0
     memory_map:
       - Ram:
+          name: AXI-SRAM
           range:
             start: 0x24000000
             end: 0x24080000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: DTCM
+          range:
+            start: 0x20000000
+            end: 0x20020000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM1
+          range:
+            start: 0x30000000
+            end: 0x30020000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM2
+          range:
+            start: 0x30020000
+            end: 0x30040000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM3
+          range:
+            start: 0x30040000
+            end: 0x30048000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM4
+          range:
+            start: 0x38000000
+            end: 0x38010000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: BSRAM
+          range:
+            start: 0x38800000
+            end: 0x38801000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: ITCM
+          range:
+            start: 0x00000000
+            end: 0x00010000
           is_boot_memory: false
           cores:
             - main
@@ -1110,9 +3490,66 @@ variants:
             psel: 0x0
     memory_map:
       - Ram:
+          name: AXI-SRAM
           range:
             start: 0x24000000
             end: 0x24080000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: DTCM
+          range:
+            start: 0x20000000
+            end: 0x20020000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM1
+          range:
+            start: 0x30000000
+            end: 0x30020000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM2
+          range:
+            start: 0x30020000
+            end: 0x30040000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM3
+          range:
+            start: 0x30040000
+            end: 0x30048000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM4
+          range:
+            start: 0x38000000
+            end: 0x38010000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: BSRAM
+          range:
+            start: 0x38800000
+            end: 0x38801000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: ITCM
+          range:
+            start: 0x00000000
+            end: 0x00010000
           is_boot_memory: false
           cores:
             - main
@@ -1135,9 +3572,66 @@ variants:
             psel: 0x0
     memory_map:
       - Ram:
+          name: AXI-SRAM
           range:
             start: 0x24000000
             end: 0x24080000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: DTCM
+          range:
+            start: 0x20000000
+            end: 0x20020000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM1
+          range:
+            start: 0x30000000
+            end: 0x30020000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM2
+          range:
+            start: 0x30020000
+            end: 0x30040000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM3
+          range:
+            start: 0x30040000
+            end: 0x30048000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM4
+          range:
+            start: 0x38000000
+            end: 0x38010000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: BSRAM
+          range:
+            start: 0x38800000
+            end: 0x38801000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: ITCM
+          range:
+            start: 0x00000000
+            end: 0x00010000
           is_boot_memory: false
           cores:
             - main
@@ -1160,9 +3654,66 @@ variants:
             psel: 0x0
     memory_map:
       - Ram:
+          name: AXI-SRAM
           range:
             start: 0x24000000
             end: 0x24080000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: DTCM
+          range:
+            start: 0x20000000
+            end: 0x20020000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM1
+          range:
+            start: 0x30000000
+            end: 0x30020000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM2
+          range:
+            start: 0x30020000
+            end: 0x30040000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM3
+          range:
+            start: 0x30040000
+            end: 0x30048000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM4
+          range:
+            start: 0x38000000
+            end: 0x38010000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: BSRAM
+          range:
+            start: 0x38800000
+            end: 0x38801000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: ITCM
+          range:
+            start: 0x00000000
+            end: 0x00010000
           is_boot_memory: false
           cores:
             - main
@@ -1185,9 +3736,66 @@ variants:
             psel: 0x0
     memory_map:
       - Ram:
+          name: AXI-SRAM
           range:
             start: 0x24000000
             end: 0x24080000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: DTCM
+          range:
+            start: 0x20000000
+            end: 0x20020000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM1
+          range:
+            start: 0x30000000
+            end: 0x30020000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM2
+          range:
+            start: 0x30020000
+            end: 0x30040000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM3
+          range:
+            start: 0x30040000
+            end: 0x30048000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM4
+          range:
+            start: 0x38000000
+            end: 0x38010000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: BSRAM
+          range:
+            start: 0x38800000
+            end: 0x38801000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: ITCM
+          range:
+            start: 0x00000000
+            end: 0x00010000
           is_boot_memory: false
           cores:
             - main
@@ -1210,9 +3818,66 @@ variants:
             psel: 0x0
     memory_map:
       - Ram:
+          name: AXI-SRAM
           range:
             start: 0x24000000
             end: 0x24080000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: DTCM
+          range:
+            start: 0x20000000
+            end: 0x20020000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM1
+          range:
+            start: 0x30000000
+            end: 0x30020000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM2
+          range:
+            start: 0x30020000
+            end: 0x30040000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM3
+          range:
+            start: 0x30040000
+            end: 0x30048000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM4
+          range:
+            start: 0x38000000
+            end: 0x38010000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: BSRAM
+          range:
+            start: 0x38800000
+            end: 0x38801000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: ITCM
+          range:
+            start: 0x00000000
+            end: 0x00010000
           is_boot_memory: false
           cores:
             - main
@@ -1235,9 +3900,66 @@ variants:
             psel: 0x0
     memory_map:
       - Ram:
+          name: AXI-SRAM
           range:
             start: 0x24000000
             end: 0x24080000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: DTCM
+          range:
+            start: 0x20000000
+            end: 0x20020000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM1
+          range:
+            start: 0x30000000
+            end: 0x30020000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM2
+          range:
+            start: 0x30020000
+            end: 0x30040000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM3
+          range:
+            start: 0x30040000
+            end: 0x30048000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM4
+          range:
+            start: 0x38000000
+            end: 0x38010000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: BSRAM
+          range:
+            start: 0x38800000
+            end: 0x38801000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: ITCM
+          range:
+            start: 0x00000000
+            end: 0x00010000
           is_boot_memory: false
           cores:
             - main
@@ -1260,9 +3982,66 @@ variants:
             psel: 0x0
     memory_map:
       - Ram:
+          name: AXI-SRAM
           range:
             start: 0x24000000
             end: 0x24080000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: DTCM
+          range:
+            start: 0x20000000
+            end: 0x20020000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM1
+          range:
+            start: 0x30000000
+            end: 0x30020000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM2
+          range:
+            start: 0x30020000
+            end: 0x30040000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM3
+          range:
+            start: 0x30040000
+            end: 0x30048000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM4
+          range:
+            start: 0x38000000
+            end: 0x38010000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: BSRAM
+          range:
+            start: 0x38800000
+            end: 0x38801000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: ITCM
+          range:
+            start: 0x00000000
+            end: 0x00010000
           is_boot_memory: false
           cores:
             - main
@@ -1285,9 +4064,66 @@ variants:
             psel: 0x0
     memory_map:
       - Ram:
+          name: AXI-SRAM
           range:
             start: 0x24000000
             end: 0x24080000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: DTCM
+          range:
+            start: 0x20000000
+            end: 0x20020000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM1
+          range:
+            start: 0x30000000
+            end: 0x30020000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM2
+          range:
+            start: 0x30020000
+            end: 0x30040000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM3
+          range:
+            start: 0x30040000
+            end: 0x30048000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM4
+          range:
+            start: 0x38000000
+            end: 0x38010000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: BSRAM
+          range:
+            start: 0x38800000
+            end: 0x38801000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: ITCM
+          range:
+            start: 0x00000000
+            end: 0x00010000
           is_boot_memory: false
           cores:
             - main
@@ -1310,9 +4146,66 @@ variants:
             psel: 0x0
     memory_map:
       - Ram:
+          name: AXI-SRAM
           range:
             start: 0x24000000
             end: 0x24080000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: DTCM
+          range:
+            start: 0x20000000
+            end: 0x20020000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM1
+          range:
+            start: 0x30000000
+            end: 0x30020000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM2
+          range:
+            start: 0x30020000
+            end: 0x30040000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM3
+          range:
+            start: 0x30040000
+            end: 0x30048000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM4
+          range:
+            start: 0x38000000
+            end: 0x38010000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: BSRAM
+          range:
+            start: 0x38800000
+            end: 0x38801000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: ITCM
+          range:
+            start: 0x00000000
+            end: 0x00010000
           is_boot_memory: false
           cores:
             - main
@@ -1335,9 +4228,66 @@ variants:
             psel: 0x0
     memory_map:
       - Ram:
+          name: AXI-SRAM
           range:
             start: 0x24000000
             end: 0x24080000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: DTCM
+          range:
+            start: 0x20000000
+            end: 0x20020000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM1
+          range:
+            start: 0x30000000
+            end: 0x30020000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM2
+          range:
+            start: 0x30020000
+            end: 0x30040000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM3
+          range:
+            start: 0x30040000
+            end: 0x30048000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM4
+          range:
+            start: 0x38000000
+            end: 0x38010000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: BSRAM
+          range:
+            start: 0x38800000
+            end: 0x38801000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: ITCM
+          range:
+            start: 0x00000000
+            end: 0x00010000
           is_boot_memory: false
           cores:
             - main
@@ -1360,9 +4310,66 @@ variants:
             psel: 0x0
     memory_map:
       - Ram:
+          name: AXI-SRAM
           range:
             start: 0x24000000
             end: 0x24080000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: DTCM
+          range:
+            start: 0x20000000
+            end: 0x20020000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM1
+          range:
+            start: 0x30000000
+            end: 0x30020000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM2
+          range:
+            start: 0x30020000
+            end: 0x30040000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM3
+          range:
+            start: 0x30040000
+            end: 0x30048000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM4
+          range:
+            start: 0x38000000
+            end: 0x38010000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: BSRAM
+          range:
+            start: 0x38800000
+            end: 0x38801000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: ITCM
+          range:
+            start: 0x00000000
+            end: 0x00010000
           is_boot_memory: false
           cores:
             - main
@@ -1385,9 +4392,66 @@ variants:
             psel: 0x0
     memory_map:
       - Ram:
+          name: AXI-SRAM
           range:
             start: 0x24000000
             end: 0x24080000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: DTCM
+          range:
+            start: 0x20000000
+            end: 0x20020000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM1
+          range:
+            start: 0x30000000
+            end: 0x30020000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM2
+          range:
+            start: 0x30020000
+            end: 0x30040000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM3
+          range:
+            start: 0x30040000
+            end: 0x30048000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM4
+          range:
+            start: 0x38000000
+            end: 0x38010000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: BSRAM
+          range:
+            start: 0x38800000
+            end: 0x38801000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: ITCM
+          range:
+            start: 0x00000000
+            end: 0x00010000
           is_boot_memory: false
           cores:
             - main
@@ -1410,9 +4474,66 @@ variants:
             psel: 0x0
     memory_map:
       - Ram:
+          name: AXI-SRAM
           range:
             start: 0x24000000
             end: 0x24080000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: DTCM
+          range:
+            start: 0x20000000
+            end: 0x20020000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM1
+          range:
+            start: 0x30000000
+            end: 0x30020000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM2
+          range:
+            start: 0x30020000
+            end: 0x30040000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM3
+          range:
+            start: 0x30040000
+            end: 0x30048000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM4
+          range:
+            start: 0x38000000
+            end: 0x38010000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: BSRAM
+          range:
+            start: 0x38800000
+            end: 0x38801000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: ITCM
+          range:
+            start: 0x00000000
+            end: 0x00010000
           is_boot_memory: false
           cores:
             - main
@@ -1435,9 +4556,66 @@ variants:
             psel: 0x0
     memory_map:
       - Ram:
+          name: AXI-SRAM
           range:
             start: 0x24000000
             end: 0x24080000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: DTCM
+          range:
+            start: 0x20000000
+            end: 0x20020000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM1
+          range:
+            start: 0x30000000
+            end: 0x30020000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM2
+          range:
+            start: 0x30020000
+            end: 0x30040000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM3
+          range:
+            start: 0x30040000
+            end: 0x30048000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM4
+          range:
+            start: 0x38000000
+            end: 0x38010000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: BSRAM
+          range:
+            start: 0x38800000
+            end: 0x38801000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: ITCM
+          range:
+            start: 0x00000000
+            end: 0x00010000
           is_boot_memory: false
           cores:
             - main
@@ -1460,9 +4638,66 @@ variants:
             psel: 0x0
     memory_map:
       - Ram:
+          name: AXI-SRAM
           range:
             start: 0x24000000
             end: 0x24080000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: DTCM
+          range:
+            start: 0x20000000
+            end: 0x20020000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM1
+          range:
+            start: 0x30000000
+            end: 0x30020000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM2
+          range:
+            start: 0x30020000
+            end: 0x30040000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM3
+          range:
+            start: 0x30040000
+            end: 0x30048000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM4
+          range:
+            start: 0x38000000
+            end: 0x38010000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: BSRAM
+          range:
+            start: 0x38800000
+            end: 0x38801000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: ITCM
+          range:
+            start: 0x00000000
+            end: 0x00010000
           is_boot_memory: false
           cores:
             - main
@@ -1485,9 +4720,66 @@ variants:
             psel: 0x0
     memory_map:
       - Ram:
+          name: AXI-SRAM
           range:
             start: 0x24000000
             end: 0x24080000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: DTCM
+          range:
+            start: 0x20000000
+            end: 0x20020000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM1
+          range:
+            start: 0x30000000
+            end: 0x30020000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM2
+          range:
+            start: 0x30020000
+            end: 0x30040000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM3
+          range:
+            start: 0x30040000
+            end: 0x30048000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM4
+          range:
+            start: 0x38000000
+            end: 0x38010000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: BSRAM
+          range:
+            start: 0x38800000
+            end: 0x38801000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: ITCM
+          range:
+            start: 0x00000000
+            end: 0x00010000
           is_boot_memory: false
           cores:
             - main
@@ -1510,9 +4802,66 @@ variants:
             psel: 0x0
     memory_map:
       - Ram:
+          name: AXI-SRAM
           range:
             start: 0x24000000
             end: 0x24080000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: DTCM
+          range:
+            start: 0x20000000
+            end: 0x20020000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM1
+          range:
+            start: 0x30000000
+            end: 0x30020000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM2
+          range:
+            start: 0x30020000
+            end: 0x30040000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM3
+          range:
+            start: 0x30040000
+            end: 0x30048000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM4
+          range:
+            start: 0x38000000
+            end: 0x38010000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: BSRAM
+          range:
+            start: 0x38800000
+            end: 0x38801000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: ITCM
+          range:
+            start: 0x00000000
+            end: 0x00010000
           is_boot_memory: false
           cores:
             - main
@@ -1535,9 +4884,66 @@ variants:
             psel: 0x0
     memory_map:
       - Ram:
+          name: AXI-SRAM
           range:
             start: 0x24000000
             end: 0x24080000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: DTCM
+          range:
+            start: 0x20000000
+            end: 0x20020000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM1
+          range:
+            start: 0x30000000
+            end: 0x30020000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM2
+          range:
+            start: 0x30020000
+            end: 0x30040000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM3
+          range:
+            start: 0x30040000
+            end: 0x30048000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM4
+          range:
+            start: 0x38000000
+            end: 0x38010000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: BSRAM
+          range:
+            start: 0x38800000
+            end: 0x38801000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: ITCM
+          range:
+            start: 0x00000000
+            end: 0x00010000
           is_boot_memory: false
           cores:
             - main
@@ -1560,9 +4966,66 @@ variants:
             psel: 0x0
     memory_map:
       - Ram:
+          name: AXI-SRAM
           range:
             start: 0x24000000
             end: 0x24080000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: DTCM
+          range:
+            start: 0x20000000
+            end: 0x20020000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM1
+          range:
+            start: 0x30000000
+            end: 0x30020000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM2
+          range:
+            start: 0x30020000
+            end: 0x30040000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM3
+          range:
+            start: 0x30040000
+            end: 0x30048000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM4
+          range:
+            start: 0x38000000
+            end: 0x38010000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: BSRAM
+          range:
+            start: 0x38800000
+            end: 0x38801000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: ITCM
+          range:
+            start: 0x00000000
+            end: 0x00010000
           is_boot_memory: false
           cores:
             - main
@@ -1585,9 +5048,66 @@ variants:
             psel: 0x0
     memory_map:
       - Ram:
+          name: AXI-SRAM
           range:
             start: 0x24000000
             end: 0x24080000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: DTCM
+          range:
+            start: 0x20000000
+            end: 0x20020000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM1
+          range:
+            start: 0x30000000
+            end: 0x30020000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM2
+          range:
+            start: 0x30020000
+            end: 0x30040000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM3
+          range:
+            start: 0x30040000
+            end: 0x30048000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM4
+          range:
+            start: 0x38000000
+            end: 0x38010000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: BSRAM
+          range:
+            start: 0x38800000
+            end: 0x38801000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: ITCM
+          range:
+            start: 0x00000000
+            end: 0x00010000
           is_boot_memory: false
           cores:
             - main
@@ -1610,9 +5130,66 @@ variants:
             psel: 0x0
     memory_map:
       - Ram:
+          name: AXI-SRAM
           range:
             start: 0x24000000
             end: 0x24080000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: DTCM
+          range:
+            start: 0x20000000
+            end: 0x20020000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM1
+          range:
+            start: 0x30000000
+            end: 0x30020000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM2
+          range:
+            start: 0x30020000
+            end: 0x30040000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM3
+          range:
+            start: 0x30040000
+            end: 0x30048000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM4
+          range:
+            start: 0x38000000
+            end: 0x38010000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: BSRAM
+          range:
+            start: 0x38800000
+            end: 0x38801000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: ITCM
+          range:
+            start: 0x00000000
+            end: 0x00010000
           is_boot_memory: false
           cores:
             - main
@@ -1635,9 +5212,66 @@ variants:
             psel: 0x0
     memory_map:
       - Ram:
+          name: AXI-SRAM
           range:
             start: 0x24000000
             end: 0x24080000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: DTCM
+          range:
+            start: 0x20000000
+            end: 0x20020000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM1
+          range:
+            start: 0x30000000
+            end: 0x30020000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM2
+          range:
+            start: 0x30020000
+            end: 0x30040000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM3
+          range:
+            start: 0x30040000
+            end: 0x30048000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM4
+          range:
+            start: 0x38000000
+            end: 0x38010000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: BSRAM
+          range:
+            start: 0x38800000
+            end: 0x38801000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: ITCM
+          range:
+            start: 0x00000000
+            end: 0x00010000
           is_boot_memory: false
           cores:
             - main
@@ -1660,9 +5294,66 @@ variants:
             psel: 0x0
     memory_map:
       - Ram:
+          name: AXI-SRAM
           range:
             start: 0x24000000
             end: 0x24080000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: DTCM
+          range:
+            start: 0x20000000
+            end: 0x20020000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM1
+          range:
+            start: 0x30000000
+            end: 0x30020000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM2
+          range:
+            start: 0x30020000
+            end: 0x30040000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM3
+          range:
+            start: 0x30040000
+            end: 0x30048000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM4
+          range:
+            start: 0x38000000
+            end: 0x38010000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: BSRAM
+          range:
+            start: 0x38800000
+            end: 0x38801000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: ITCM
+          range:
+            start: 0x00000000
+            end: 0x00010000
           is_boot_memory: false
           cores:
             - main
@@ -1685,9 +5376,66 @@ variants:
             psel: 0x0
     memory_map:
       - Ram:
+          name: AXI-SRAM
           range:
             start: 0x24000000
             end: 0x24080000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: DTCM
+          range:
+            start: 0x20000000
+            end: 0x20020000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM1
+          range:
+            start: 0x30000000
+            end: 0x30020000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM2
+          range:
+            start: 0x30020000
+            end: 0x30040000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM3
+          range:
+            start: 0x30040000
+            end: 0x30048000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM4
+          range:
+            start: 0x38000000
+            end: 0x38010000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: BSRAM
+          range:
+            start: 0x38800000
+            end: 0x38801000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: ITCM
+          range:
+            start: 0x00000000
+            end: 0x00010000
           is_boot_memory: false
           cores:
             - main
@@ -1710,9 +5458,66 @@ variants:
             psel: 0x0
     memory_map:
       - Ram:
+          name: AXI-SRAM
           range:
             start: 0x24000000
             end: 0x24080000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: DTCM
+          range:
+            start: 0x20000000
+            end: 0x20020000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM1
+          range:
+            start: 0x30000000
+            end: 0x30020000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM2
+          range:
+            start: 0x30020000
+            end: 0x30040000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM3
+          range:
+            start: 0x30040000
+            end: 0x30048000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM4
+          range:
+            start: 0x38000000
+            end: 0x38010000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: BSRAM
+          range:
+            start: 0x38800000
+            end: 0x38801000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: ITCM
+          range:
+            start: 0x00000000
+            end: 0x00010000
           is_boot_memory: false
           cores:
             - main
@@ -1735,9 +5540,66 @@ variants:
             psel: 0x0
     memory_map:
       - Ram:
+          name: AXI-SRAM
           range:
             start: 0x24000000
             end: 0x24080000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: DTCM
+          range:
+            start: 0x20000000
+            end: 0x20020000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM1
+          range:
+            start: 0x30000000
+            end: 0x30020000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM2
+          range:
+            start: 0x30020000
+            end: 0x30040000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM3
+          range:
+            start: 0x30040000
+            end: 0x30048000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM4
+          range:
+            start: 0x38000000
+            end: 0x38010000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: BSRAM
+          range:
+            start: 0x38800000
+            end: 0x38801000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: ITCM
+          range:
+            start: 0x00000000
+            end: 0x00010000
           is_boot_memory: false
           cores:
             - main
@@ -1760,9 +5622,66 @@ variants:
             psel: 0x0
     memory_map:
       - Ram:
+          name: AXI-SRAM
           range:
             start: 0x24000000
             end: 0x24080000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: DTCM
+          range:
+            start: 0x20000000
+            end: 0x20020000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM1
+          range:
+            start: 0x30000000
+            end: 0x30020000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM2
+          range:
+            start: 0x30020000
+            end: 0x30040000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM3
+          range:
+            start: 0x30040000
+            end: 0x30048000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM4
+          range:
+            start: 0x38000000
+            end: 0x38010000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: BSRAM
+          range:
+            start: 0x38800000
+            end: 0x38801000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: ITCM
+          range:
+            start: 0x00000000
+            end: 0x00010000
           is_boot_memory: false
           cores:
             - main
@@ -1785,9 +5704,66 @@ variants:
             psel: 0x0
     memory_map:
       - Ram:
+          name: AXI-SRAM
           range:
             start: 0x24000000
             end: 0x24080000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: DTCM
+          range:
+            start: 0x20000000
+            end: 0x20020000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM1
+          range:
+            start: 0x30000000
+            end: 0x30020000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM2
+          range:
+            start: 0x30020000
+            end: 0x30040000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM3
+          range:
+            start: 0x30040000
+            end: 0x30048000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM4
+          range:
+            start: 0x38000000
+            end: 0x38010000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: BSRAM
+          range:
+            start: 0x38800000
+            end: 0x38801000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: ITCM
+          range:
+            start: 0x00000000
+            end: 0x00010000
           is_boot_memory: false
           cores:
             - main
@@ -1810,9 +5786,66 @@ variants:
             psel: 0x0
     memory_map:
       - Ram:
+          name: AXI-SRAM
           range:
             start: 0x24000000
             end: 0x24080000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: DTCM
+          range:
+            start: 0x20000000
+            end: 0x20020000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM1
+          range:
+            start: 0x30000000
+            end: 0x30020000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM2
+          range:
+            start: 0x30020000
+            end: 0x30040000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM3
+          range:
+            start: 0x30040000
+            end: 0x30048000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM4
+          range:
+            start: 0x38000000
+            end: 0x38010000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: BSRAM
+          range:
+            start: 0x38800000
+            end: 0x38801000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: ITCM
+          range:
+            start: 0x00000000
+            end: 0x00010000
           is_boot_memory: false
           cores:
             - main
@@ -1835,9 +5868,66 @@ variants:
             psel: 0x0
     memory_map:
       - Ram:
+          name: AXI-SRAM
           range:
             start: 0x24000000
             end: 0x24080000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: DTCM
+          range:
+            start: 0x20000000
+            end: 0x20020000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM1
+          range:
+            start: 0x30000000
+            end: 0x30020000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM2
+          range:
+            start: 0x30020000
+            end: 0x30040000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM3
+          range:
+            start: 0x30040000
+            end: 0x30048000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: SRAM4
+          range:
+            start: 0x38000000
+            end: 0x38010000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: BSRAM
+          range:
+            start: 0x38800000
+            end: 0x38801000
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          name: ITCM
+          range:
+            start: 0x00000000
+            end: 0x00010000
           is_boot_memory: false
           cores:
             - main
