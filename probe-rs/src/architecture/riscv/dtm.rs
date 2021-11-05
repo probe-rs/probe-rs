@@ -212,7 +212,8 @@ impl Dtm {
                 Err(DmiOperationStatus::RequestInProgress) => {
                     // Operation still in progress, reset dmi status and try again.
                     self.reset()?;
-                    self.probe.set_idle_cycles(self.probe.get_idle_cycles() + 1);
+                    self.probe
+                        .set_idle_cycles(self.probe.get_idle_cycles().saturating_add(1));
                 }
                 Err(e) => return Err(RiscvError::DmiTransfer(e)),
             }
