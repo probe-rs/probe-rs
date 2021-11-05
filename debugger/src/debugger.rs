@@ -29,20 +29,8 @@ use std::{
 };
 use structopt::StructOpt;
 
-fn parse_protocol(src: &str) -> Result<WireProtocol, String> {
-    WireProtocol::from_str(src)
-}
-
-fn default_wire_protocol() -> Option<WireProtocol> {
-    Some(WireProtocol::Swd)
-}
-
 fn default_console_log() -> Option<ConsoleLog> {
     Some(ConsoleLog::Error)
-}
-
-fn parse_console_log(src: &str) -> Result<ConsoleLog, String> {
-    ConsoleLog::from_str(src)
 }
 
 fn parse_probe_selector(src: &str) -> Result<DebugProbeSelector, String> {
@@ -137,8 +125,8 @@ pub struct DebuggerOptions {
     pub(crate) chip: Option<String>,
 
     /// Protocol to use for target connection
-    #[structopt(short, long, parse(try_from_str = parse_protocol))]
-    #[serde(default = "default_wire_protocol")]
+    #[structopt(short, long)]
+    #[serde(rename = "wire_protocol")]
     pub(crate) protocol: Option<WireProtocol>,
 
     /// Protocol speed in kHz
@@ -180,7 +168,7 @@ pub struct DebuggerOptions {
     pub(crate) restore_unwritten_bytes: bool,
 
     /// Level of information to be logged to the debugger console (Error, Info or Debug )
-    #[structopt(long, conflicts_with("dap"), parse(try_from_str = parse_console_log))]
+    #[structopt(long, conflicts_with("dap"))]
     #[serde(default = "default_console_log")]
     pub(crate) console_log_level: Option<ConsoleLog>,
 
@@ -289,8 +277,10 @@ pub fn start_session(debugger_options: &DebuggerOptions) -> Result<SessionData, 
         None => TargetSelector::Auto,
     };
 
-    // Set the protocol.
-    target_probe.select_protocol(debugger_options.protocol.unwrap_or(WireProtocol::Swd))?;
+    // Set the protocol, if the user explicitly selected a protocol. Otherwise, use the default protocol of the probe.
+    if let Some(protocol) = debugger_options.protocol {
+        target_probe.select_protocol(protocol)?;
+    }
 
     // Set the speed.
     if let Some(speed) = debugger_options.speed {
