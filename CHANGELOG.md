@@ -27,7 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added STM32U5 series target.
 - Added all RAM regions to most STM32H7 parts. (#864)
 - Added name field to memory regions. (#864)
-- debugger: Show progress notification while device is being flashed. (#xxx)
+- debugger: Show progress notification while device is being flashed. (#871)
 
 ### Removed
 
