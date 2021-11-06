@@ -867,7 +867,7 @@ impl Debugger {
                     }
                 };
             }
-            let _arguments: InitializeRequestArguments = match get_arguments::<
+            let initialize_arguments: InitializeRequestArguments = match get_arguments::<
                 InitializeRequestArguments,
             >(&request)
             {
@@ -885,6 +885,10 @@ impl Debugger {
                     return DebuggerStatus::ErrorTerminateSession;
                 }
             };
+
+            if let Some(progress_support) = initialize_arguments.supports_progress_reporting {
+                debug_adapter.supports_progress_reporting = progress_support;
+            }
 
             // Reply to Initialize with `Capabilities`.
             let capabilities = Capabilities {
@@ -1057,6 +1061,8 @@ impl Debugger {
                     &path_to_elf
                 ));
 
+                let progress_id = debug_adapter.start_progress("Flashing device", None).ok();
+
                 let mut download_options = DownloadOptions::default();
 
                 download_options.keep_unwritten_bytes =
@@ -1064,12 +1070,18 @@ impl Debugger {
 
                 download_options.do_chip_erase = self.debugger_options.full_chip_erase;
 
-                match download_file_with_options(
+                let flash_result = download_file_with_options(
                     &mut session_data.session,
                     path_to_elf,
                     Format::Elf,
                     download_options,
-                ) {
+                );
+
+                if let Some(id) = progress_id {
+                    let _ = debug_adapter.end_progress(id);
+                }
+
+                match flash_result {
                     Ok(_) => {
                         debug_adapter.log_to_console(format!(
                             "INFO: FLASHING: Completed write of {:?} to device memory",

@@ -27,6 +27,9 @@ pub enum DebugAdapterType {
     DapClient,
 }
 
+/// Progress ID used for progress reporting when the debug adapter protocol is used.
+type ProgressId = i64;
+
 pub struct DebugAdapter<R: Read, W: Write> {
     seq: i64,
     input: BufReader<R>,
@@ -49,6 +52,11 @@ pub struct DebugAdapter<R: Read, W: Write> {
     /// It is cleared by `threads()`, populated by stack_trace(), for later nested re-use by `variables()`.
     variable_map_key_seq: i64, // Used to create unique values for `self.variable_map` keys.
     variable_map: HashMap<i64, Vec<Variable>>,
+
+    progress_id: ProgressId,
+
+    /// Flag to indicate if the connected client supports progress reporting.
+    pub(crate) supports_progress_reporting: bool,
 }
 
 impl<R: Read, W: Write> DebugAdapter<R, W> {
@@ -68,6 +76,8 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
             scope_map: HashMap::new(),
             variable_map: HashMap::new(),
             variable_map_key_seq: -1,
+            progress_id: 0,
+            supports_progress_reporting: false,
         }
     }
 
@@ -1607,6 +1617,62 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
         } else {
             println!("RTT Channel {}: {}", channel_number, rtt_data);
             true
+        }
+    }
+
+    fn new_progress_id(&mut self) -> ProgressId {
+        let id = self.progress_id;
+
+        self.progress_id += 1;
+
+        id
+    }
+
+    pub fn start_progress(&mut self, title: &str, request_id: Option<i64>) -> Result<ProgressId> {
+        anyhow::ensure!(
+            self.supports_progress_reporting,
+            "Progress reporting is not supported by client."
+        );
+
+        let progress_id = self.new_progress_id();
+
+        let ok = self.send_event(
+            "progressStart",
+            Some(ProgressStartEventBody {
+                cancellable: Some(false),
+                message: None,
+                percentage: None,
+                progress_id: progress_id.to_string(),
+                request_id,
+                title: title.to_owned(),
+            }),
+        );
+
+        if ok {
+            Ok(progress_id)
+        } else {
+            Err(anyhow!("Failed to send event."))
+        }
+    }
+
+    pub fn end_progress(&mut self, progress_id: ProgressId) -> Result<()> {
+        anyhow::ensure!(
+            self.supports_progress_reporting,
+            "Progress reporting is not supported by client."
+        );
+
+        let ok = self.send_event(
+            "progressEnd",
+            Some(ProgressEndEventBody {
+                message: None,
+                progress_id: progress_id.to_string(),
+            }),
+        );
+
+        if ok {
+            Ok(())
+        } else {
+            Err(anyhow!("Failed to send event."))
         }
     }
 }
