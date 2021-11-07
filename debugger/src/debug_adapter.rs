@@ -213,11 +213,11 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
         }
     }
     pub(crate) fn write(&mut self, core_data: &mut CoreData, request: &Request) -> bool {
-        let address = match get_int_argument(request.arguments.as_ref().unwrap(), "address", 0) {
+        let address = match get_int_argument(request.arguments.as_ref(), "address", 0) {
             Ok(address) => address,
             Err(error) => return self.send_response::<()>(request, Err(error)),
         };
-        let data = match get_int_argument(request.arguments.as_ref().unwrap(), "data", 1) {
+        let data = match get_int_argument(request.arguments.as_ref(), "data", 1) {
             Ok(data) => data,
             Err(error) => return self.send_response::<()>(request, Err(error)),
         };
@@ -232,7 +232,7 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
         }
     }
     pub(crate) fn set_breakpoint(&mut self, core_data: &mut CoreData, request: &Request) -> bool {
-        let address = match get_int_argument(request.arguments.as_ref().unwrap(), "address", 0) {
+        let address = match get_int_argument(request.arguments.as_ref(), "address", 0) {
             Ok(address) => address,
             Err(error) => return self.send_response::<()>(request, Err(error)),
         };
@@ -255,7 +255,7 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
         }
     }
     pub(crate) fn clear_breakpoint(&mut self, core_data: &mut CoreData, request: &Request) -> bool {
-        let address = match get_int_argument(request.arguments.as_ref().unwrap(), "address", 0) {
+        let address = match get_int_argument(request.arguments.as_ref(), "address", 0) {
             Ok(address) => address,
             Err(error) => return self.send_response::<()>(request, Err(error)),
         };
@@ -1371,7 +1371,10 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
         }
     }
 
-    /// Sends either the success response or an error response if passed a DebuggerError. For the DAP Client, it forwards the response, while for the CLI, it will print the body for success, or the message for failure.
+    /// Sends either the success response or an error response if passed a
+    /// DebuggerError. For the DAP Client, it forwards the response, while for
+    /// the CLI, it will print the body for success, or the message for
+    /// failure.
     pub fn send_response<S: Serialize>(
         &mut self,
         request: &Request,
