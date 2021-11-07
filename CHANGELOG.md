@@ -69,6 +69,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Use a more reliable JTAG IR length detection when there's only a single target in the chain. Fixes an issue with the esp32c3. (#796, #823).
 - Replaced `unreachable!` induced panic with logic to fix `probe-rs-debugger` failures. (#847)
 - Fixed logic errors and timing of RTT initialization in `probe-rs-debugger`. (#847)
+- Debugger: Do not crash the CLI when pressing enter without a command. (#875)
 
 ## [0.11.0]
 
