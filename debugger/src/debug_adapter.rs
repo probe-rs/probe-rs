@@ -9,7 +9,7 @@ use probe_rs::{
     debug::{ColumnType, VariableKind},
     CoreStatus, HaltReason, MemoryInterface,
 };
-use rustyline::Editor;
+use rustyline::{error::ReadlineError, Editor};
 use serde::{de::DeserializeOwned, Serialize};
 use serde_json::json;
 use std::{collections::HashMap, string::ToString};
@@ -1125,35 +1125,55 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
         }
     }
 
-    /// Returns one of the standard DAP Requests if all goes well, or a "error" request, which should indicate that the calling function should return.
-    /// When preparing to return an "error" request, we will send a Response containing the DebuggerError encountered.
-    pub fn listen_for_request(&mut self) -> Request {
-        if self.adapter_type == DebugAdapterType::CommandLine {
-            let readline = self.rl.as_mut().unwrap().readline(">> ");
-            let line = match readline {
-                Ok(line) => line,
+    /// Call readline until a non-empty line is entered.
+    fn get_line(&mut self) -> Result<String, ReadlineError> {
+        loop {
+            match self.rl.as_mut().unwrap().readline(">> ") {
+                // Ignore empty lines
+                Ok(line) if line.trim().is_empty() => continue,
+
+                // Return non-empty lines
+                Ok(line) => return Ok(line),
+
+                // Handle errors
                 Err(error) => {
-                    use rustyline::error::ReadlineError;
                     match error {
                         // For end of file and ctrl-c, we just quit
-                        ReadlineError::Eof | ReadlineError::Interrupted => "quit".to_string(),
-                        actual_error => {
-                            let request = Request {
-                                seq: self.seq,
-                                arguments: None,
-                                command: "error".to_owned(),
-                                type_: "request".to_owned(),
-                            };
-                            self.send_response::<Request>(
-                                &request,
-                                Err(DebuggerError::Other(anyhow!(
-                                    "Error handling input: {:?}",
-                                    actual_error
-                                ))),
-                            );
-                            return request;
+                        ReadlineError::Eof | ReadlineError::Interrupted => {
+                            return Ok("quit".to_string())
                         }
+                        // Propagate other errors
+                        actual_error => return Err(actual_error),
                     }
+                }
+            }
+        }
+    }
+
+    /// Returns one of the standard DAP Requests if all goes well, or a "error"
+    /// request, which should indicate that the calling function should return.
+    ///
+    /// When preparing to return an "error" request, we will send a Response
+    /// containing the DebuggerError encountered.
+    pub fn listen_for_request(&mut self) -> Request {
+        if self.adapter_type == DebugAdapterType::CommandLine {
+            let line = match self.get_line() {
+                Ok(line) => line,
+                Err(e) => {
+                    let request = Request {
+                        seq: self.seq,
+                        arguments: None,
+                        command: "error".to_owned(),
+                        type_: "request".to_owned(),
+                    };
+                    self.send_response::<Request>(
+                        &request,
+                        Err(DebuggerError::Other(anyhow!(
+                            "Error handling input: {:?}",
+                            e
+                        ))),
+                    );
+                    return request;
                 }
             };
             let history_entry: &str = line.as_ref();
