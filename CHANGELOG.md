@@ -70,6 +70,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Replaced `unreachable!` induced panic with logic to fix `probe-rs-debugger` failures. (#847)
 - Fixed logic errors and timing of RTT initialization in `probe-rs-debugger`. (#847)
 - Debugger: Do not crash the CLI when pressing enter without a command. (#875)
+- Fixed panic in CLI debugger when using a command without arguments. (#873)
 
 ## [0.11.0]
 
