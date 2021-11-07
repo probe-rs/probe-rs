@@ -324,7 +324,7 @@ impl StLink<StLinkUsbDevice> {
             }
 
             // Normally this would be the timeout we pass to the probe to settle the pins.
-            // The J-Link is not capable of this, so we just wait for this time on the host
+            // The ST-Link is not capable of this, so we just wait for this time on the host
             // and assume it has settled until then.
             std::thread::sleep(Duration::from_micros(pin_wait as u64));
 

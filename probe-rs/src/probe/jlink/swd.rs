@@ -1102,7 +1102,7 @@ impl<Probe: DebugProbe + RawSwdIo + 'static> RawDapAccess for Probe {
         let nreset_mask = nreset.0 as u32;
 
         // If only the reset pin is selected we perform the reset.
-        // If something else is selected return an error as this is not supported on ST-Links.
+        // If something else is selected return an error as this is not supported on J-Links.
         if pin_select == nreset_mask {
             if Pins(pin_out as u8).nreset() {
                 self.target_reset_deassert()?;
@@ -1118,7 +1118,7 @@ impl<Probe: DebugProbe + RawSwdIo + 'static> RawDapAccess for Probe {
             // We signal that we cannot read the pin state.
             Ok(0xFFFF_FFFF)
         } else {
-            // This is not supported for ST-Links, unfortunately.
+            // This is not supported for J-Links, unfortunately.
             Err(DebugProbeError::CommandNotSupportedByProbe("swj_pins").into())
         }
     }
