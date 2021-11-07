@@ -224,7 +224,7 @@ impl DebugCli {
 
         cli.add_command(Command {
             name: "break",
-            help_text: "Set a breakpoint at a specifc address",
+            help_text: "Set a breakpoint at a specific address",
 
             function: |cli_data, args| {
                 let address = get_int_argument(args, 0)?;

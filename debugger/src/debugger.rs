@@ -422,7 +422,7 @@ impl Debugger {
                 DebugCommand {
                     dap_cmd: "",
                     cli_cmd: "set_breakpoint",
-                    help_text: "Set a breakpoint at a specifc address",
+                    help_text: "Set a breakpoint at a specific address",
                     function_name: "set_breakpoint",
                 },
                 DebugCommand {
