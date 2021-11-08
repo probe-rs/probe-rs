@@ -7,6 +7,8 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/) and this p
 ## [Unreleased]
 
 - [#]
+- [#273]: Update to Rust 2021 🎉
+- [#267]: Minimize dependencies by disabling default-features
 - [#266]: Recover from decoding-errors
 - [#247]: Print troubleshooting information on "probe not found" error
 - [#264]: Use new stream decoder API
@@ -21,6 +23,8 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/) and this p
 - [#251]: Removes call to fill in user survey from readme.
 - [#246]: Enable deactivated tests for Windows
 
+[#273]: https://github.com/knurling-rs/probe-run/pull/273
+[#267]: https://github.com/knurling-rs/probe-run/pull/267
 [#266]: https://github.com/knurling-rs/probe-run/pull/266
 [#247]: https://github.com/knurling-rs/probe-run/pull/247
 [#264]: https://github.com/knurling-rs/probe-run/pull/264
