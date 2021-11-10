@@ -25,6 +25,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add esp32.yaml with esp32c3 variant. (#846)
 - Added target definition validation to make handling inside probe-rs easier by making some basic assumptions about the validity of the used `ChipFamily` without always checking again. (#848)
 - Added support for the built in JTAG on the ESP32C3 and other ESP32 devices (#863).
+- Added STM32U5 series target.
+- Added all RAM regions to most STM32H7 parts. (#864)
+- Added name field to memory regions. (#864)
+- debugger: Show progress notification while device is being flashed. (#871)
 
 ### Removed
 
@@ -66,6 +70,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Use a more reliable JTAG IR length detection when there's only a single target in the chain. Fixes an issue with the esp32c3. (#796, #823).
 - Replaced `unreachable!` induced panic with logic to fix `probe-rs-debugger` failures. (#847)
 - Fixed logic errors and timing of RTT initialization in `probe-rs-debugger`. (#847)
+- Debugger: Do not crash the CLI when pressing enter without a command. (#875)
+- Fixed panic in CLI debugger when using a command without arguments. (#873)
 
 ## [0.11.0]
 

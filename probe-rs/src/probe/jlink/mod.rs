@@ -433,6 +433,7 @@ impl DebugProbe for JLink {
                 return Err(DebugProbeError::UnsupportedSpeed(speed_khz));
             }
         };
+        let actual_speed_khz = speed_khz;
 
         let actual_speed_khz = speed_khz;
 

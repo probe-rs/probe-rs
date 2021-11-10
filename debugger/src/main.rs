@@ -3,6 +3,7 @@ mod dap_types;
 mod debug_adapter;
 mod debugger;
 mod info;
+mod protocol;
 mod rtt;
 
 use anyhow::Result;
@@ -50,10 +51,7 @@ pub enum DebuggerError {
         original_error: std::io::Error,
     },
     #[error("IO error: '{original_error}'.")]
-    NonBlockingReadError {
-        os_error_number: i32,
-        original_error: std::io::Error,
-    },
+    NonBlockingReadError { original_error: std::io::Error },
     #[error(transparent)]
     StdIO(#[from] std::io::Error),
     #[error("Unable to open probe{}", .0.map(|s| format!(": {}", s)).as_deref().unwrap_or("."))]

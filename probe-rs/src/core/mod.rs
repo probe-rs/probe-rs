@@ -69,11 +69,11 @@ pub(crate) enum RegisterKind {
 }
 
 /// Register description for a core.
-
 #[derive(Debug)]
 pub struct RegisterFile {
     pub(crate) platform_registers: &'static [RegisterDescription],
 
+    /// Register description for the program counter
     pub(crate) program_counter: &'static RegisterDescription,
 
     pub(crate) stack_pointer: &'static RegisterDescription,
