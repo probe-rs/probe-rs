@@ -1288,11 +1288,7 @@ mod test {
     }
 
     impl RawSwdIo for MockJaylink {
-        fn swd_io<'a, D, S>(
-            &'a mut self,
-            dir: D,
-            swdio: S,
-        ) -> Result<Vec<bool>, crate::DebugProbeError>
+        fn swd_io<D, S>(&mut self, dir: D, swdio: S) -> Result<Vec<bool>, crate::DebugProbeError>
         where
             D: IntoIterator<Item = bool>,
             S: IntoIterator<Item = bool>,

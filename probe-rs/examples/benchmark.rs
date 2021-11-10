@@ -10,7 +10,7 @@ use rand::prelude::*;
 use structopt::StructOpt;
 
 #[derive(StructOpt)]
-struct CLI {
+struct Cli {
     #[structopt(long = "chip")]
     chip: Option<String>,
     #[structopt(long = "address", parse(try_from_str = parse_hex))]
@@ -32,7 +32,7 @@ const SIZE: usize = 0x1000;
 fn main() -> Result<(), &'static str> {
     pretty_env_logger::init();
 
-    let matches = CLI::from_args();
+    let matches = Cli::from_args();
 
     let mut probe = open_probe(None)?;
 
