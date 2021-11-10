@@ -49,7 +49,7 @@ fn extract_flash_device(elf: &goblin::elf::Elf, buffer: &[u8]) -> Result<FlashDe
         if let "FlashDevice" = name {
             // This struct contains information about the FLM file structure.
             let address = sym.st_value as u32;
-            return FlashDevice::new(&elf, buffer, address);
+            return FlashDevice::new(elf, buffer, address);
         }
     }
 
@@ -68,7 +68,7 @@ pub fn extract_flash_algo(
 
     let mut algo = RawFlashAlgorithm::default();
 
-    let elf = goblin::elf::Elf::parse(&buffer.as_slice())?;
+    let elf = goblin::elf::Elf::parse(buffer.as_slice())?;
 
     let flash_device = extract_flash_device(&elf, &buffer).context(format!(
         "Failed to extract flash information from ELF file '{}'.",

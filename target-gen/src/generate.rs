@@ -221,7 +221,7 @@ pub(crate) fn visit_file(path: &Path, families: &mut Vec<ChipFamily>) -> Result<
 
 pub(crate) fn visit_arm_files(families: &mut Vec<ChipFamily>) -> Result<()> {
     let packs = crate::fetch::get_vidx()?;
-    Builder::new_current_thread()
+    Builder::new_multi_thread()
         .enable_all()
         .build()
         .unwrap()
@@ -230,7 +230,7 @@ pub(crate) fn visit_arm_files(families: &mut Vec<ChipFamily>) -> Result<()> {
                 |(i, pack)| {
                     if pack.deprecated.is_none() {
                         log::info!("Working PACK {}/{} ...", i, packs.pdsc_index.len());
-                        Some(visit_arm_file(&pack))
+                        Some(visit_arm_file(pack))
                     } else {
                         log::warn!("Pack {} is deprecated. Skipping ...", pack.name);
                         None
@@ -376,6 +376,7 @@ pub(crate) fn get_ram(device: &Device) -> Option<RamRegion> {
                 range: memory.start as u32..memory.start as u32 + memory.size as u32,
                 is_boot_memory: memory.startup,
                 cores: vec!["main".to_owned()],
+                name: None,
             });
         }
     }
@@ -412,6 +413,7 @@ pub(crate) fn get_flash(device: &Device) -> Option<NvmRegion> {
                 range: memory.start as u32..memory.start as u32 + memory.size as u32,
                 is_boot_memory: memory.startup,
                 cores: vec!["main".to_owned()],
+                name: None,
             });
         }
     }

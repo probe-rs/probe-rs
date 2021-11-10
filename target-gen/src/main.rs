@@ -171,11 +171,13 @@ fn cmd_elf(
                         is_boot_memory: false,
                         range: 0..0x2000,
                         cores: vec!["main".to_owned()],
+                        name: None,
                     }),
                     MemoryRegion::Ram(RamRegion {
                         is_boot_memory: true,
                         range: 0x1_0000..0x2_0000,
                         cores: vec!["main".to_owned()],
+                        name: None,
                     }),
                 ],
                 flash_algorithms: vec![algorithm_name],
@@ -228,11 +230,11 @@ fn cmd_pack(input: &Path, out_dir: &Path) -> Result<()> {
     let mut families = Vec::<ChipFamily>::new();
 
     if input.is_file() {
-        generate::visit_file(&input, &mut families)
+        generate::visit_file(input, &mut families)
             .context(format!("Failed to process file {}.", input.display()))?;
     } else {
         // Look for the .pdsc file in the given dir and it's child directories.
-        generate::visit_dirs(&input, &mut families)
+        generate::visit_dirs(input, &mut families)
             .context("Failed to generate target configuration.")?;
 
         // Check that we found at least a single .pdsc file
