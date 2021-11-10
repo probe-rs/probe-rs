@@ -7,6 +7,10 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/) and this p
 ## [Unreleased]
 
 - [#]
+
+
+## [v0.3.0] - 2021-11-09
+
 - [#273]: Update to Rust 2021 🎉
 - [#267]: Minimize dependencies by disabling default-features
 - [#266]: Recover from decoding-errors
@@ -334,7 +338,8 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/) and this p
 
 Initial release
 
-[Unreleased]: https://github.com/knurling-rs/probe-run/compare/v0.2.5...main
+[Unreleased]: https://github.com/knurling-rs/probe-run/compare/v0.3.0...main
+[v0.3.0]: https://github.com/knurling-rs/probe-run/compare/v0.2.5...v0.3.0
 [v0.2.4]: https://github.com/knurling-rs/probe-run/compare/v0.2.4...v0.2.5
 [v0.2.3]: https://github.com/knurling-rs/probe-run/compare/v0.2.3...v0.2.4
 [v0.2.3]: https://github.com/knurling-rs/probe-run/compare/v0.2.2...v0.2.3
