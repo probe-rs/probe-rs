@@ -33,14 +33,16 @@ pub(super) struct ProtocolHandler {
     // The command in the queue and their repetitions.
     // For now we do one command at a time.
     command_queue: Option<(Command, usize)>,
+    // The buffer for all commands to be sent to the target. This already contains `repeated` commands which are basically
+    // a mechanism to compress the datastream by adding a `Repeat` command to repeat the previous command `n` times instead of
+    // actually putting the command into the queue `n` times.
     output_buffer: Vec<Command>,
+    // A store for all the read bits (from the traget) such that the BitIter the methods return can borrow and iterate over it.
     input_buffer: Vec<u8>,
     pending_in_bits: usize,
 
     ep_out: u8,
     ep_in: u8,
-
-    buffer: Vec<u8>,
 }
 
 impl Debug for ProtocolHandler {
@@ -179,7 +181,7 @@ impl ProtocolHandler {
 
         let mut p = 2usize;
         while p < length {
-            let typ = buffer[p + 0];
+            let typ = buffer[p];
             let length = buffer[p + 1];
 
             if typ == JTAG_PROTOCOL_CAPABILITIES_SPEED_APB_TYPE {
@@ -208,7 +210,6 @@ impl ProtocolHandler {
             ep_out: ep_out.expect("This is a bug. Please report it."),
             ep_in: ep_in.expect("This is a bug. Please report it."),
             pending_in_bits: 0,
-            buffer: Vec::new(),
         })
     }
 
@@ -221,11 +222,7 @@ impl ProtocolHandler {
     ) -> Result<BitIter, DebugProbeError> {
         log::debug!("JTAG IO! {} ", cap);
         for (tms, tdi) in tms.into_iter().zip(tdi.into_iter()) {
-            self.push_command(Command::Clock {
-                cap,
-                tdi: tdi,
-                tms: tms,
-            })?;
+            self.push_command(Command::Clock { cap, tdi, tms })?;
             if cap {
                 self.pending_in_bits += 1;
             }
@@ -251,7 +248,7 @@ impl ProtocolHandler {
                 *repetitions += 1;
                 return Ok(());
             } else {
-                let command = command_in_queue.clone();
+                let command = *command_in_queue;
                 let repetitions = *repetitions;
                 self.write_stream(command, repetitions)?;
             }
@@ -288,9 +285,10 @@ impl ProtocolHandler {
     /// or if the out buffer reaches a limit of `OUT_BUFFER_SIZE`.
     fn write_stream(
         &mut self,
-        command: Command,
+        command: impl Into<Command>,
         repetitions: usize,
     ) -> Result<(), DebugProbeError> {
+        let command = command.into();
         let mut repetitions = repetitions;
         log::trace!("add raw cmd {:?} reps={}", command, repetitions);
 
@@ -316,7 +314,7 @@ impl ProtocolHandler {
     }
 
     /// Adds a single command to the output buffer and writes it to the USB EP if the buffer reaches a limit of `OUT_BUFFER_SIZE`.
-    fn add_raw_command(&mut self, command: Command) -> Result<(), DebugProbeError> {
+    fn add_raw_command(&mut self, command: impl Into<Command>) -> Result<(), DebugProbeError> {
         let command = command.into();
         self.output_buffer.push(command);
 
@@ -364,7 +362,7 @@ impl ProtocolHandler {
 
     /// Tries to receive pending in bits from the USB EP.
     fn receive_buffer(&mut self) -> Result<BitIter, DebugProbeError> {
-        self.buffer = vec![0; (self.pending_in_bits + 7) / 8];
+        self.input_buffer = vec![0; (self.pending_in_bits + 7) / 8];
 
         let mut bits_read = 0;
 
@@ -379,13 +377,13 @@ impl ProtocolHandler {
             let offset = bits_read / 8;
 
             let mut tries = 3;
-            let mut read_bytes = 0usize;
+            let mut read_bytes;
             loop {
                 read_bytes = self
                     .device_handle
                     .read_bulk(
                         self.ep_in,
-                        &mut self.buffer[offset..offset + count],
+                        &mut self.input_buffer[offset..offset + count],
                         USB_TIMEOUT,
                     )
                     .map_err(|e| {
@@ -419,10 +417,10 @@ impl ProtocolHandler {
             bits_read += bits_in_buffer;
         }
 
-        log::trace!("Read: {:?}, length = {}", self.buffer, bits_read);
+        log::trace!("Read: {:?}, length = {}", self.input_buffer, bits_read);
         self.pending_in_bits -= bits_read;
 
-        Ok(BitIter::new(&self.buffer, bits_read))
+        Ok(BitIter::new(&self.input_buffer, bits_read))
     }
 }
 
@@ -436,16 +434,16 @@ pub(super) enum Command {
     Repetitions(u8),
 }
 
-impl Into<u8> for Command {
-    fn into(self) -> u8 {
-        match self {
-            Self::Clock { cap, tdi, tms } => {
+impl From<Command> for u8 {
+    fn from(command: Command) -> Self {
+        match command {
+            Command::Clock { cap, tdi, tms } => {
                 (if cap { 4 } else { 0 } | if tms { 2 } else { 0 } | if tdi { 1 } else { 0 })
             }
-            Self::Reset(srst) => 8 | if srst { 1 } else { 0 },
-            Self::Flush => 0xA,
-            Self::_Rsvd => 0xB,
-            Self::Repetitions(repetitions) => 0xC + repetitions,
+            Command::Reset(srst) => 8 | if srst { 1 } else { 0 },
+            Command::Flush => 0xA,
+            Command::_Rsvd => 0xB,
+            Command::Repetitions(repetitions) => 0xC + repetitions,
         }
     }
 }
@@ -488,11 +486,6 @@ impl<'a> BitIter<'a> {
             next_bit: 0,
             bits_left: total_bits,
         }
-    }
-
-    /// Returns the number of bits left in `self`.
-    pub fn bits_left(&self) -> usize {
-        self.bits_left
     }
 
     /// Splits off another `BitIter` from `self`s current position that will return `count` bits.
@@ -590,7 +583,7 @@ pub fn list_espjtag_devices() -> Vec<DebugProbeInfo> {
                     };
 
                     Some(DebugProbeInfo::new(
-                        format!("ESP JTAG"),
+                        "ESP JTAG".to_string(),
                         descriptor.vendor_id(),
                         descriptor.product_id(),
                         sn_str,

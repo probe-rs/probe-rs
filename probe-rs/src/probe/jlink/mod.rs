@@ -424,7 +424,7 @@ impl DebugProbe for JLink {
             return Err(DebugProbeError::UnsupportedSpeed(speed_khz));
         }
 
-        let actual_speed_khz = if let Ok(speeds) = self.handle.read_speeds() {
+        if let Ok(speeds) = self.handle.read_speeds() {
             log::debug!("Supported speeds: {:?}", speeds);
 
             let max_speed_khz = speeds.max_speed_hz() / 1000;
@@ -432,11 +432,9 @@ impl DebugProbe for JLink {
             if max_speed_khz < speed_khz {
                 return Err(DebugProbeError::UnsupportedSpeed(speed_khz));
             }
-
-            speed_khz
-        } else {
-            speed_khz
         };
+
+        let actual_speed_khz = speed_khz;
 
         self.handle
             .set_speed(SpeedConfig::khz(actual_speed_khz as u16).unwrap())?;
