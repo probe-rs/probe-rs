@@ -1,0 +1,35 @@
+[package]
+name = "target-gen"
+version = "0.5.0"
+authors = ["Noah Huesser <yatekii@yatekii.ch>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+probe-rs = { path = "../probe-rs", version = "0.11.0", default-features = false }
+probe-rs-target = { path = "../probe-rs-target", version = "0.11.0", default-features = false }
+cmsis-pack = { git = "https://github.com/probe-rs/cmsis-pack-manager.git" }
+
+# , path = "../cmsis-pack-manager/rust/cmsis-pack"
+# , git = "https://github.com/probe-rs/cmsis-pack-manager.git"
+
+goblin = "0.4.3"
+scroll = "0.10.1"
+serde_yaml = "0.8.11"
+log = "0.4.8"
+zip = "0.5.9"
+structopt = "0.3.2"
+base64 = "0.13.0"
+simplelog = "0.10.2"
+anyhow = "1.0.28"
+reqwest = { version = "0.11.6", features = ["json", "blocking"] }
+serde = { version = "1.0.106", features = ["derive"] }
+# chrono = { version = "0.4.0", features = ["serde"] }
+futures = "0.3.5"
+tokio = { version = "1.13.0", features = ["macros", "rt", "rt-multi-thread"] }
+
+[dev-dependencies]
+assert_cmd = "2.0.2"
+predicates = "2.0.3"
+assert_fs = "1.0.0"
