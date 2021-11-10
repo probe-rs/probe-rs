@@ -219,45 +219,6 @@ impl Registers {
     }
 }
 
-/*
-impl<'a> IntoIterator for &'a Registers {
-    type Item = &'a Option<u32>;
-    type IntoIter = std::slice::Iter<'a, Option<u32>>;
-
-    fn into_iter(self) -> std::slice::Iter<'a, Option<u32>> {
-        self.values.values()
-    }
-}
-
-impl std::ops::Index<usize> for Registers {
-    type Output = Option<u32>;
-
-    fn index(&self, index: usize) -> &Self::Output {
-        &self.values[index]
-    }
-}
-
-impl std::ops::IndexMut<usize> for Registers {
-    fn index_mut(&mut self, index: usize) -> &mut Self::Output {
-        &mut self.values[index]
-    }
-}
-
-impl std::ops::Index<std::ops::Range<usize>> for Registers {
-    type Output = [Option<u32>];
-
-    fn index(&self, index: std::ops::Range<usize>) -> &Self::Output {
-        &self.values[index]
-    }
-}
-
-impl std::ops::IndexMut<std::ops::Range<usize>> for Registers {
-    fn index_mut(&mut self, index: std::ops::Range<usize>) -> &mut Self::Output {
-        &mut self.values[index]
-    }
-}
-*/
-
 #[derive(Debug, PartialEq)]
 pub struct SourceLocation {
     pub line: Option<u64>,
