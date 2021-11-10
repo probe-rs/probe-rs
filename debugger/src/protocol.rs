@@ -441,24 +441,22 @@ impl ProtocolAdapter for CliAdapter {
     fn listen_for_request(&mut self) -> Request {
         let line = match self.get_line() {
             Ok(line) => line,
-            Err(error) => match error {
-                actual_error => {
-                    let request = Request {
-                        seq: self.seq,
-                        arguments: None,
-                        command: "error".to_owned(),
-                        type_: "request".to_owned(),
-                    };
-                    self.send_response::<Request>(
-                        &request,
-                        Err(DebuggerError::Other(anyhow!(
-                            "Error handling input: {:?}",
-                            actual_error
-                        ))),
-                    );
-                    return request;
-                }
-            },
+            Err(error) => {
+                let request = Request {
+                    seq: self.seq,
+                    arguments: None,
+                    command: "error".to_owned(),
+                    type_: "request".to_owned(),
+                };
+                self.send_response::<Request>(
+                    &request,
+                    Err(DebuggerError::Other(anyhow!(
+                        "Error handling input: {:?}",
+                        error
+                    ))),
+                );
+                return request;
+            }
         };
 
         let history_entry: &str = line.as_ref();
@@ -619,7 +617,7 @@ fn get_content_len(header: &str) -> Option<usize> {
 mod test {
     use std::io::{self, ErrorKind, Read};
 
-    use insta;
+    
 
     use crate::protocol::{get_content_len, ProtocolAdapter};
 

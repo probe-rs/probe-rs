@@ -5,13 +5,18 @@
 
 mod variable;
 
-use crate::{core::Core, MemoryInterface};
+use crate::{
+    core::{Core, RegisterFile},
+    MemoryInterface,
+};
 use num_traits::Zero;
+use probe_rs_target::Architecture;
 pub use variable::{Variable, VariableInclusion, VariableKind, VariantRole};
 
-// use std::{borrow, intrinsics::variant_count, io, path::{Path, PathBuf}, rc::Rc, str::{from_utf8, Utf8Error}};
 use std::{
-    borrow, io,
+    borrow,
+    collections::HashMap,
+    io,
     num::NonZeroU64,
     path::{Path, PathBuf},
     rc::Rc,
@@ -120,36 +125,107 @@ fn variable_recurse(
     ret
 }
 #[derive(Debug, Clone)]
-pub struct Registers([Option<u32>; 16]);
+pub struct Registers {
+    register_description: &'static RegisterFile,
+
+    values: HashMap<u32, u32>,
+
+    architecture: Architecture,
+}
 
 impl Registers {
+    /// Read all registers from the given core.
     pub fn from_core(core: &mut Core) -> Self {
-        let mut registers = Registers([None; 16]);
-        for i in 0..16 {
-            registers[i as usize] = core.read_core_reg(i).ok();
+        let register_file = core.registers();
+
+        let num_platform_registers = register_file.platform_registers.len();
+
+        let mut registers = Registers {
+            register_description: register_file,
+            values: HashMap::new(),
+            architecture: core.architecture(),
+        };
+
+        for i in 0..num_platform_registers {
+            match core.read_core_reg(register_file.platform_register(i)) {
+                Ok(value) => registers.values.insert(i as u32, value),
+                Err(e) => {
+                    log::debug!("Failed to read value for register {}: {}", i, e);
+                    None
+                }
+            };
         }
         registers
     }
 
-    pub fn get_call_frame_address(&self) -> Option<u32> {
-        self.0[13]
+    /// Get the canonical frame address, as specified in the [DWARF] specification, section 6.4.
+    ///
+    /// For ARM, this is the value of the stack pointer at the call site in the previous frame.
+    ///
+    /// [DWARF]: https://dwarfstd.org
+    pub fn get_canonical_frame_address(&self) -> Option<u32> {
+        match self.architecture {
+            Architecture::Arm => self.values.get(&13).copied(),
+            Architecture::Riscv => self.values.get(&2).copied(),
+        }
     }
 
-    pub fn set_call_frame_address(&mut self, value: Option<u32>) {
-        self.0[13] = value;
+    /// Set the canonical frame address, as specified in the [DWARF] specification, section 6.4.
+    ///
+    /// For ARM, this is the value of the stack pointer at the call site in the previous frame.
+    ///
+    /// [DWARF]: https://dwarfstd.org
+    pub fn set_canonical_frame_address(&mut self, value: Option<u32>) {
+        let register_address = match self.architecture {
+            Architecture::Arm => 13,
+            Architecture::Riscv => 2,
+        };
+
+        if let Some(value) = value {
+            self.values.insert(register_address, value);
+        } else {
+            self.values.remove(&register_address);
+        }
     }
 
-    pub fn get_frame_program_counter(&self) -> Option<u32> {
-        self.0[15]
+    pub fn get_program_counter(&self) -> Option<u32> {
+        match self.architecture {
+            Architecture::Arm => self.values.get(&14).copied(),
+            Architecture::Riscv => self.values.get(&1).copied(),
+        }
+    }
+
+    pub fn get_return_address(&self) -> Option<u32> {
+        match self.architecture {
+            Architecture::Arm => self.values.get(&15).copied(),
+            Architecture::Riscv => self.values.get(&1).copied(),
+        }
+    }
+
+    pub fn get_by_dwarf_register_number(&self, register_number: u32) -> Option<u32> {
+        self.values.get(&register_number).copied()
+    }
+
+    pub fn set_by_dwarf_register_number(&mut self, register_number: u32, value: Option<u32>) {
+        if let Some(value) = value {
+            self.values.insert(register_number, value);
+        } else {
+            self.values.remove(&register_number);
+        }
+    }
+
+    pub fn registers(&self) -> impl Iterator<Item = (&u32, &u32)> {
+        self.values.iter()
     }
 }
 
+/*
 impl<'a> IntoIterator for &'a Registers {
     type Item = &'a Option<u32>;
     type IntoIter = std::slice::Iter<'a, Option<u32>>;
 
     fn into_iter(self) -> std::slice::Iter<'a, Option<u32>> {
-        self.0.iter()
+        self.values.values()
     }
 }
 
@@ -157,13 +233,13 @@ impl std::ops::Index<usize> for Registers {
     type Output = Option<u32>;
 
     fn index(&self, index: usize) -> &Self::Output {
-        &self.0[index]
+        &self.values[index]
     }
 }
 
 impl std::ops::IndexMut<usize> for Registers {
     fn index_mut(&mut self, index: usize) -> &mut Self::Output {
-        &mut self.0[index]
+        &mut self.values[index]
     }
 }
 
@@ -171,15 +247,16 @@ impl std::ops::Index<std::ops::Range<usize>> for Registers {
     type Output = [Option<u32>];
 
     fn index(&self, index: std::ops::Range<usize>) -> &Self::Output {
-        &self.0[index]
+        &self.values[index]
     }
 }
 
 impl std::ops::IndexMut<std::ops::Range<usize>> for Registers {
     fn index_mut(&mut self, index: std::ops::Range<usize>) -> &mut Self::Output {
-        &mut self.0[index]
+        &mut self.values[index]
     }
 }
+*/
 
 #[derive(Debug, PartialEq)]
 pub struct SourceLocation {
@@ -363,7 +440,9 @@ impl<'debuginfo, 'probe, 'core> Iterator for StackFrameIterator<'debuginfo, 'pro
 
         let current_cfa = match unwind_info.cfa() {
             gimli::CfaRule::RegisterAndOffset { register, offset } => {
-                let reg_val = self.registers[register.0 as usize];
+                let reg_val = self
+                    .registers
+                    .get_by_dwarf_register_number(register.0 as u32);
 
                 match reg_val {
                     Some(reg_val) => Some((i64::from(reg_val) + offset) as u32),
@@ -385,17 +464,22 @@ impl<'debuginfo, 'probe, 'core> Iterator for StackFrameIterator<'debuginfo, 'pro
 
         if !in_inlined_function {
             // generate previous registers
+
+            // TODO: This is only valid for ARM right now, this should be more general.
             for i in 0..16 {
+                // Register 13 is the stack pointer / canonical frame address in ARM.
+                // There is a separate rule for this register, see above.
                 if i == 13 {
                     continue;
                 }
+
                 use gimli::read::RegisterRule::*;
 
                 let register_rule = unwind_info.register(gimli::Register(i as u16));
 
                 log::trace!("Register {}: {:?}", i, &register_rule);
 
-                self.registers[i] = match register_rule {
+                let new_value = match register_rule {
                     Undefined => {
                         // If we get undefined for the LR register (register 14) or any callee saved register,
                         // we assume that it is unchanged. Gimli doesn't allow us
@@ -403,12 +487,14 @@ impl<'debuginfo, 'probe, 'core> Iterator for StackFrameIterator<'debuginfo, 'pro
                         // in the call frame information.
 
                         match i {
-                            4 | 5 | 6 | 7 | 8 | 10 | 11 | 14 => self.registers[i],
+                            4 | 5 | 6 | 7 | 8 | 10 | 11 | 14 => {
+                                self.registers.get_by_dwarf_register_number(i)
+                            }
                             15 => Some(pc as u32),
                             _ => None,
                         }
                     }
-                    SameValue => self.registers[i],
+                    SameValue => self.registers.get_by_dwarf_register_number(i),
                     Offset(o) => {
                         let addr = i64::from(current_cfa.unwrap()) + o;
 
@@ -436,10 +522,12 @@ impl<'debuginfo, 'probe, 'core> Iterator for StackFrameIterator<'debuginfo, 'pro
                         Some(val)
                     }
                     _ => unimplemented!(),
-                }
+                };
+
+                self.registers.set_by_dwarf_register_number(i, new_value);
             }
 
-            self.registers.set_call_frame_address(current_cfa);
+            self.registers.set_canonical_frame_address(current_cfa);
         }
 
         let return_frame = match self.debug_info.get_stackframe_info(
@@ -490,7 +578,12 @@ impl<'debuginfo, 'probe, 'core> Iterator for StackFrameIterator<'debuginfo, 'pro
             //
             // We also have to subtract one, as we want the calling instruction for
             // a backtrace, not the next instruction to be executed.
-            self.pc = self.registers[14].map(|pc| u64::from(pc & !1));
+
+            // TODO: Setting bit to zero is only necessary on ARM, but probably doesn't hurt on other architectures.
+            self.pc = self
+                .registers
+                .get_program_counter()
+                .map(|pc| u64::from(pc & !1));
 
             log::debug!("Called from pc={:#010x?}", self.pc);
         }
@@ -719,14 +812,14 @@ impl DebugInfo {
                 let variables = unit_info.get_function_variables(
                     core,
                     die_cursor_state,
-                    u64::from(registers.get_call_frame_address().unwrap_or(0)),
-                    u64::from(registers.get_frame_program_counter().unwrap_or(0)),
+                    u64::from(registers.get_canonical_frame_address().unwrap_or(0)),
+                    u64::from(registers.get_return_address().unwrap_or(0)),
                 )?;
 
                 // Ready to go ...
                 return Ok(StackFrame {
                     // MS DAP Specification requires the id to be unique accross all threads, so using the frame pointer as the id.
-                    id: registers.get_call_frame_address().unwrap_or(0) as u64,
+                    id: registers.get_canonical_frame_address().unwrap_or(0) as u64,
                     function_name,
                     source_location: self.get_source_location(address),
                     registers,
@@ -1657,7 +1750,8 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
     }
 
     /// Compute the type (base to complex) of a variable. Only base types have values.
-    /// Complex types are references to node trees, that require traversal in similar ways to other DIE's like functions. This means both `get_function_variables()` and `extract_type()` will call the recursive `process_tree()` method to build an integrated `tree` of variables with types and values.
+    /// Complex types are references to node trees, that require traversal in similar ways to other DIE's like functions.
+    /// This means both [`get_function_variables()`] and [`extract_type()`] will call the recursive [`process_tree()`] method to build an integrated `tree` of variables with types and values.
     fn extract_type(
         &self,
         node: gimli::EntriesTreeNode<GimliReader>,
@@ -1676,14 +1770,25 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                 format!("ERROR: evaluating name: {:?} ", error)
             }
         };
+
         child_variable.byte_size = extract_byte_size(self.debug_info, node.entry());
         match node.entry().tag() {
             gimli::DW_TAG_base_type => {
                 child_variable.children = None;
+
                 if let Some(child_member_index) = child_variable.member_index {
                     // This is a member of an array type, and needs special handling.
-                    child_variable.memory_location +=
-                        child_member_index as u64 * child_variable.byte_size;
+                    let (location, has_overflowed) = child_variable
+                        .memory_location
+                        .overflowing_add(child_member_index as u64 * child_variable.byte_size);
+
+                    if has_overflowed {
+                        return Err(DebugError::Other(anyhow::anyhow!(
+                            "Overflow calculating variable address"
+                        )));
+                    } else {
+                        child_variable.memory_location = location;
+                    }
                 }
                 Ok(())
             }
