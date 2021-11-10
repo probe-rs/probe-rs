@@ -3,12 +3,10 @@ source: debugger/src/protocol.rs
 expression: output_str
 
 ---
-Content-Length: 136
+Content-Length: 156
 
-{"command":"error","message":"EOF while parsing a string at line 1 column 49","request_seq":1,"seq":1,"success":false,"type":"response"}Content-Length: 156
+{"body":{"category":"console","group":"probe-rs-debug","output":"EOF while parsing a string at line 1 column 49\n"},"event":"output","seq":1,"type":"event"}Content-Length: 145
 
-{"body":{"category":"console","group":"probe-rs-debug","output":"EOF while parsing a string at line 1 column 49\n"},"event":"output","seq":2,"type":"event"}Content-Length: 145
+{"body":{"message":"EOF while parsing a string at line 1 column 49\n","severity":"error"},"event":"probe-rs-show-message","seq":2,"type":"event"}Content-Length: 154
 
-{"body":{"message":"EOF while parsing a string at line 1 column 49\n","severity":"error"},"event":"probe-rs-show-message","seq":3,"type":"event"}Content-Length: 154
-
-{"body":{"category":"console","group":"probe-rs-debug","output":"\nTriggered DAP Event: probe-rs-show-message\n"},"event":"output","seq":4,"type":"event"}
+{"body":{"category":"console","group":"probe-rs-debug","output":"\nTriggered DAP Event: probe-rs-show-message\n"},"event":"output","seq":3,"type":"event"}

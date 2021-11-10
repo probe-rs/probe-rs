@@ -6,6 +6,7 @@ use rustyline::error::ReadlineError;
 use rustyline::Editor;
 use serde::Serialize;
 use serde_json::json;
+use std::collections::HashMap;
 use std::string::ToString;
 use std::{
     io::{BufRead, BufReader, Read, Write},
@@ -21,10 +22,15 @@ use anyhow::anyhow;
 
 pub trait ProtocolAdapter {
     /// Listen for a request. This call should be non-blocking, and if not request is available, it should
-    /// return a [`Request`] with the `command` field set to "process_next_request".
-    fn listen_for_request(&mut self) -> Request;
+    /// return None.
+    fn listen_for_request(&mut self) -> anyhow::Result<Option<Request>>;
 
-    fn send_event<S: Serialize>(&mut self, event_type: &str, event_body: Option<S>) -> bool;
+    fn send_event<S: Serialize>(
+        &mut self,
+        event_type: &str,
+        event_body: Option<S>,
+    ) -> anyhow::Result<()>;
+
     fn show_message(&mut self, severity: MessageSeverity, message: impl Into<String>) -> bool;
     fn log_to_console<S: Into<String>>(&mut self, message: S) -> bool;
     fn set_console_log_level(&mut self, log_level: ConsoleLog);
@@ -33,9 +39,7 @@ pub trait ProtocolAdapter {
         &mut self,
         request: &Request,
         response: Result<Option<S>, DebuggerError>,
-    ) -> bool;
-
-    fn peek_seq(&self) -> i64;
+    ) -> anyhow::Result<()>;
 
     const ADAPTER_TYPE: DebugAdapterType;
 }
@@ -45,6 +49,8 @@ pub struct DapAdapter<R: Read, W: Write> {
     output: W,
     console_log_level: ConsoleLog,
     seq: i64,
+
+    pending_requests: HashMap<i64, String>,
 }
 
 impl<R: Read, W: Write> DapAdapter<R, W> {
@@ -54,6 +60,7 @@ impl<R: Read, W: Write> DapAdapter<R, W> {
             output: writer,
             seq: 1,
             console_log_level: ConsoleLog::Warn,
+            pending_requests: HashMap::new(),
         }
     }
 
@@ -135,52 +142,50 @@ impl<R: Read, W: Write> DapAdapter<R, W> {
         }
     }
 
-    fn listen_for_request_and_respond(&mut self) -> Request {
+    fn listen_for_request_and_respond(&mut self) -> anyhow::Result<Option<Request>> {
         match self.receive_msg_content() {
-            Ok(request) => {
-                if request.command != "process_next_request" {
-                    log::debug!("Received request: {:?}", request);
+            Ok(Some(request)) => {
+                log::debug!("Received request: {:?}", request);
 
-                    // This is the SUCCESS request for new requests from the client.
-                    match self.console_log_level {
-                        ConsoleLog::Error => {}
-                        ConsoleLog::Info | ConsoleLog::Warn => {
-                            self.log_to_console(format!(
-                                "\nReceived DAP Request sequence #{} : {}",
-                                request.seq, request.command
-                            ));
-                        }
-                        ConsoleLog::Debug | ConsoleLog::Trace => {
-                            self.log_to_console(format!("\nReceived DAP Request: {:#?}", request));
-                        }
+                // This is the SUCCESS request for new requests from the client.
+                match self.console_log_level {
+                    ConsoleLog::Error => {}
+                    ConsoleLog::Info | ConsoleLog::Warn => {
+                        self.log_to_console(format!(
+                            "\nReceived DAP Request sequence #{} : {}",
+                            request.seq, request.command
+                        ));
+                    }
+                    ConsoleLog::Debug | ConsoleLog::Trace => {
+                        self.log_to_console(format!("\nReceived DAP Request: {:#?}", request));
                     }
                 }
 
-                request
+                // Store pending request for debugging purposes
+                self.pending_requests
+                    .insert(request.seq, request.command.clone());
+
+                Ok(Some(request))
             }
+            Ok(None) => Ok(None),
             Err(e) => {
-                let request = Request {
-                    seq: self.seq,
-                    arguments: None,
-                    command: "error".to_owned(),
-                    type_: "request".to_owned(),
-                };
+                log::warn!("Error while listening to request: {:?}", e);
+                self.log_to_console(e.to_string());
+                self.show_message(MessageSeverity::Error, e.to_string());
 
-                self.send_response::<Request>(&request, Err(e));
-
-                request
+                Err(anyhow!(e))
             }
         }
     }
 
-    fn receive_msg_content(&mut self) -> Result<Request, DebuggerError> {
+    fn receive_msg_content(&mut self) -> Result<Option<Request>, DebuggerError> {
         match self.receive_data() {
             Ok(message_content) => {
                 // Extract protocol message
                 match serde_json::from_slice::<ProtocolMessage>(&message_content) {
                     Ok(protocol_message) if protocol_message.type_ == "request" => {
                         match serde_json::from_slice::<Request>(&message_content) {
-                            Ok(request) => Ok(request),
+                            Ok(request) => Ok(Some(request)),
                             Err(error) => Err(DebuggerError::Other(anyhow!(
                                 "Error encoding ProtocolMessage to Request: {:?}",
                                 error
@@ -200,12 +205,7 @@ impl<R: Read, W: Write> DapAdapter<R, W> {
                         if original_error.kind() == std::io::ErrorKind::WouldBlock {
                             // Non-blocking read is waiting for incoming data that is not ready yet.
                             // This is not a real error, so use this opportunity to check on probe status and notify the debug client if required.
-                            Ok(Request {
-                                arguments: None,
-                                command: "process_next_request".to_owned(),
-                                seq: self.seq,
-                                type_: "request".to_owned(),
-                            })
+                            Ok(None)
                         } else {
                             // This is a legitimate error. Tell the client about it.
                             Err(DebuggerError::StdIO(original_error))
@@ -222,11 +222,15 @@ impl<R: Read, W: Write> DapAdapter<R, W> {
 }
 
 impl<R: Read, W: Write> ProtocolAdapter for DapAdapter<R, W> {
-    fn listen_for_request(&mut self) -> Request {
+    fn listen_for_request(&mut self) -> anyhow::Result<Option<Request>> {
         self.listen_for_request_and_respond()
     }
 
-    fn send_event<S: Serialize>(&mut self, event_type: &str, event_body: Option<S>) -> bool {
+    fn send_event<S: Serialize>(
+        &mut self,
+        event_type: &str,
+        event_body: Option<S>,
+    ) -> anyhow::Result<()> {
         let new_event = Event {
             seq: self.seq,
             type_: "event".to_string(),
@@ -234,16 +238,9 @@ impl<R: Read, W: Write> ProtocolAdapter for DapAdapter<R, W> {
             body: event_body.map(|event_body| serde_json::to_value(event_body).unwrap_or_default()),
         };
 
-        let encoded_event = match serde_json::to_vec(&new_event) {
-            Ok(encoded_event) => encoded_event,
-            Err(_) => {
-                return false;
-            }
-        };
+        let encoded_event = serde_json::to_vec(&new_event)?;
 
-        if self.send_data(&encoded_event).is_err() {
-            return false;
-        }
+        self.send_data(&encoded_event)?;
 
         if new_event.event != "output" {
             // This would result in an endless loop.
@@ -258,11 +255,12 @@ impl<R: Read, W: Write> ProtocolAdapter for DapAdapter<R, W> {
             }
         }
 
-        true
+        Ok(())
     }
 
     fn show_message(&mut self, severity: MessageSeverity, message: impl Into<String>) -> bool {
         log::debug!("show_message");
+
         let event_body = match serde_json::to_value(ShowMessageEventBody {
             severity,
             message: format!("{}\n", message.into()),
@@ -273,6 +271,7 @@ impl<R: Read, W: Write> ProtocolAdapter for DapAdapter<R, W> {
             }
         };
         self.send_event("probe-rs-show-message", Some(event_body))
+            .is_ok()
     }
 
     fn log_to_console<S: Into<String>>(&mut self, message: S) -> bool {
@@ -292,14 +291,14 @@ impl<R: Read, W: Write> ProtocolAdapter for DapAdapter<R, W> {
                 return false;
             }
         };
-        self.send_event("output", Some(event_body))
+        self.send_event("output", Some(event_body)).is_ok()
     }
 
     fn send_response<S: Serialize>(
         &mut self,
         request: &Request,
         response: Result<Option<S>, DebuggerError>,
-    ) -> bool {
+    ) -> anyhow::Result<()> {
         let mut resp = Response {
             command: request.command.clone(),
             request_seq: request.seq,
@@ -313,12 +312,7 @@ impl<R: Read, W: Write> ProtocolAdapter for DapAdapter<R, W> {
         match response {
             Ok(value) => {
                 let body_value = match value {
-                    Some(value) => Some(match serde_json::to_value(value) {
-                        Ok(value) => value,
-                        Err(_) => {
-                            return false;
-                        }
-                    }),
+                    Some(value) => Some(serde_json::to_value(value)?),
                     None => None,
                 };
                 resp.success = true;
@@ -351,14 +345,16 @@ impl<R: Read, W: Write> ProtocolAdapter for DapAdapter<R, W> {
 
         log::debug!("send_response: {:?}", resp);
 
-        let encoded_resp = match serde_json::to_vec(&resp) {
-            Ok(encoded_resp) => encoded_resp,
-            Err(_) => return false,
-        };
-
-        if self.send_data(&encoded_resp).is_err() {
-            return false;
+        // Check if we got a request for this response
+        if let Some(request_command) = self.pending_requests.remove(&resp.request_seq) {
+            assert_eq!(request_command, resp.command);
+        } else {
+            panic!("Trying to send a response to non-existing request! Response {:?} has no pending request", resp);
         }
+
+        let encoded_resp = serde_json::to_vec(&resp)?;
+
+        self.send_data(&encoded_resp)?;
 
         if !resp.success {
             self.log_to_console(&resp.clone().message.unwrap());
@@ -378,11 +374,7 @@ impl<R: Read, W: Write> ProtocolAdapter for DapAdapter<R, W> {
             }
         }
 
-        true
-    }
-
-    fn peek_seq(&self) -> i64 {
-        self.seq
+        Ok(())
     }
 
     const ADAPTER_TYPE: DebugAdapterType = DebugAdapterType::DapClient;
@@ -438,7 +430,7 @@ impl CliAdapter {
 }
 
 impl ProtocolAdapter for CliAdapter {
-    fn listen_for_request(&mut self) -> Request {
+    fn listen_for_request(&mut self) -> anyhow::Result<Option<Request>> {
         let line = match self.get_line() {
             Ok(line) => line,
             Err(error) => {
@@ -448,14 +440,16 @@ impl ProtocolAdapter for CliAdapter {
                     command: "error".to_owned(),
                     type_: "request".to_owned(),
                 };
-                self.send_response::<Request>(
+
+                // Ignore errors here, we return an error anyway.
+                let _ = self.send_response::<Request>(
                     &request,
                     Err(DebuggerError::Other(anyhow!(
                         "Error handling input: {:?}",
                         error
                     ))),
                 );
-                return request;
+                return Err(anyhow!(error));
             }
         };
 
@@ -470,15 +464,19 @@ impl ProtocolAdapter for CliAdapter {
             None
         };
 
-        Request {
+        Ok(Some(Request {
             arguments,
             command: command_name.to_string(),
             seq: self.seq,
             type_: "request".to_string(),
-        }
+        }))
     }
 
-    fn send_event<S: Serialize>(&mut self, event_type: &str, event_body: Option<S>) -> bool {
+    fn send_event<S: Serialize>(
+        &mut self,
+        event_type: &str,
+        event_body: Option<S>,
+    ) -> anyhow::Result<()> {
         // Only report on continued or stopped events, so the user knows when the core halts.
         match event_type {
             "stopped" => {
@@ -512,7 +510,7 @@ impl ProtocolAdapter for CliAdapter {
                 }
             },
         }
-        true
+        Ok(())
     }
 
     fn show_message(&mut self, severity: MessageSeverity, message: impl Into<String>) -> bool {
@@ -529,7 +527,7 @@ impl ProtocolAdapter for CliAdapter {
         &mut self,
         request: &Request,
         response: Result<Option<S>, DebuggerError>,
-    ) -> bool {
+    ) -> anyhow::Result<()> {
         let mut resp = Response {
             command: request.command.clone(),
             request_seq: request.seq,
@@ -543,12 +541,7 @@ impl ProtocolAdapter for CliAdapter {
         match response {
             Ok(value) => {
                 let body_value = match value {
-                    Some(value) => Some(match serde_json::to_value(value) {
-                        Ok(value) => value,
-                        Err(_) => {
-                            return false;
-                        }
-                    }),
+                    Some(value) => Some(serde_json::to_value(value)?),
                     None => None,
                 };
                 resp.success = true;
@@ -586,11 +579,7 @@ impl ProtocolAdapter for CliAdapter {
         } else {
             println!("ERROR: {}", resp.message.unwrap());
         }
-        true
-    }
-
-    fn peek_seq(&self) -> i64 {
-        self.seq
+        Ok(())
     }
 
     const ADAPTER_TYPE: DebugAdapterType = DebugAdapterType::CommandLine;
@@ -648,7 +637,7 @@ mod test {
 
         let mut adapter = DapAdapter::new(input.as_bytes(), &mut output);
 
-        let request = adapter.listen_for_request();
+        let request = adapter.listen_for_request().unwrap().unwrap();
 
         let output_str = String::from_utf8(output).unwrap();
 
@@ -668,15 +657,11 @@ mod test {
 
         let mut adapter = DapAdapter::new(input.as_bytes(), &mut output);
 
-        let request = adapter.listen_for_request();
+        let _request = adapter.listen_for_request().unwrap_err();
 
         let output_str = String::from_utf8(output).unwrap();
 
         insta::assert_snapshot!(output_str);
-
-        assert_eq!(request.command, "error");
-        // assert_eq!(request.seq, 1); -- not relevant
-        assert_eq!(request.type_, "request");
     }
 
     #[test]
@@ -689,14 +674,11 @@ mod test {
 
         let mut adapter = DapAdapter::new(input.as_bytes(), &mut output);
 
-        let request = adapter.listen_for_request();
+        let _request = adapter.listen_for_request().unwrap_err();
 
         let output_str = String::from_utf8(output).unwrap();
 
         insta::assert_snapshot!(output_str);
-
-        assert_eq!(request.command, "error");
-        assert_eq!(request.type_, "request");
     }
 
     #[test]
@@ -712,15 +694,13 @@ mod test {
 
         let mut adapter = DapAdapter::new(input, &mut output);
 
-        let request = adapter.listen_for_request();
+        let request = adapter.listen_for_request().unwrap();
 
         let output_str = String::from_utf8(output).unwrap();
 
         insta::assert_snapshot!(output_str);
 
-        assert_eq!(request.command, "process_next_request");
-        assert_eq!(request.seq, 1);
-        assert_eq!(request.type_, "request");
+        assert!(request.is_none());
     }
 
     #[test]

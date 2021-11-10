@@ -78,13 +78,15 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                 status
             }
             Err(error) => {
-                return self.send_response::<()>(
-                    request,
-                    Err(DebuggerError::Other(anyhow!(
-                        "Could not read core status. {:?}",
-                        error
-                    ))),
-                )
+                return self
+                    .send_response::<()>(
+                        request,
+                        Err(DebuggerError::Other(anyhow!(
+                            "Could not read core status. {:?}",
+                            error
+                        ))),
+                    )
+                    .is_ok()
             }
         };
         if status.is_halted() {
@@ -92,19 +94,23 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                 .target_core
                 .read_core_reg(core_data.target_core.registers().program_counter());
             match pc {
-                Ok(pc) => self.send_response(
-                    request,
-                    Ok(Some(format!(
-                        "Status: {:?} at address {:#010x}",
-                        status.short_long_status().1,
-                        pc
-                    ))),
-                ),
+                Ok(pc) => self
+                    .send_response(
+                        request,
+                        Ok(Some(format!(
+                            "Status: {:?} at address {:#010x}",
+                            status.short_long_status().1,
+                            pc
+                        ))),
+                    )
+                    .is_ok(),
                 Err(error) => self
-                    .send_response::<()>(request, Err(DebuggerError::Other(anyhow!("{}", error)))),
+                    .send_response::<()>(request, Err(DebuggerError::Other(anyhow!("{}", error))))
+                    .is_ok(),
             }
         } else {
             self.send_response(request, Ok(Some(status.short_long_status().1.to_string())))
+                .is_ok()
         }
     }
 
@@ -134,9 +140,9 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
 
                 true
             }
-            Err(error) => {
-                self.send_response::<()>(request, Err(DebuggerError::Other(anyhow!("{}", error))))
-            }
+            Err(error) => self
+                .send_response::<()>(request, Err(DebuggerError::Other(anyhow!("{}", error))))
+                .is_ok(),
         }
 
         // TODO: This is from original probe_rs_cli 'halt' function ... disasm code at memory location
@@ -169,11 +175,11 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         let arguments: ReadMemoryArguments = match self.adapter_type() {
             DebugAdapterType::CommandLine => match request.arguments.as_ref().unwrap().try_into() {
                 Ok(arguments) => arguments,
-                Err(error) => return self.send_response::<()>(request, Err(error)),
+                Err(error) => return self.send_response::<()>(request, Err(error)).is_ok(),
             },
             DebugAdapterType::DapClient => match get_arguments(request) {
                 Ok(arguments) => arguments,
-                Err(error) => return self.send_response::<()>(request, Err(error)),
+                Err(error) => return self.send_response::<()>(request, Err(error)).is_ok(),
             },
         };
         let address: u32 = parse(arguments.memory_reference.as_ref()).unwrap();
@@ -192,6 +198,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                 );
             }
             self.send_response::<String>(request, Ok(Some(response)))
+                .is_ok()
         } else {
             self.send_response::<()>(
                 request,
@@ -200,16 +207,17 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                     address
                 ))),
             )
+            .is_ok()
         }
     }
     pub(crate) fn write(&mut self, core_data: &mut CoreData, request: &Request) -> bool {
         let address = match get_int_argument(request.arguments.as_ref(), "address", 0) {
             Ok(address) => address,
-            Err(error) => return self.send_response::<()>(request, Err(error)),
+            Err(error) => return self.send_response::<()>(request, Err(error)).is_ok(),
         };
         let data = match get_int_argument(request.arguments.as_ref(), "data", 1) {
             Ok(data) => data,
-            Err(error) => return self.send_response::<()>(request, Err(error)),
+            Err(error) => return self.send_response::<()>(request, Err(error)).is_ok(),
         };
 
         match core_data
@@ -218,13 +226,13 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             .map_err(DebuggerError::ProbeRs)
         {
             Ok(_) => true,
-            Err(error) => self.send_response::<()>(request, Err(error)),
+            Err(error) => self.send_response::<()>(request, Err(error)).is_ok(),
         }
     }
     pub(crate) fn set_breakpoint(&mut self, core_data: &mut CoreData, request: &Request) -> bool {
         let address = match get_int_argument(request.arguments.as_ref(), "address", 0) {
             Ok(address) => address,
-            Err(error) => return self.send_response::<()>(request, Err(error)),
+            Err(error) => return self.send_response::<()>(request, Err(error)).is_ok(),
         };
 
         match core_data
@@ -233,21 +241,23 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             .map_err(DebuggerError::ProbeRs)
         {
             Ok(_) => {
-                return self.send_response(
-                    request,
-                    Ok(Some(format!(
-                        "Set new breakpoint at address {:#08x}",
-                        address
-                    ))),
-                );
+                return self
+                    .send_response(
+                        request,
+                        Ok(Some(format!(
+                            "Set new breakpoint at address {:#08x}",
+                            address
+                        ))),
+                    )
+                    .is_ok();
             }
-            Err(error) => self.send_response::<()>(request, Err(error)),
+            Err(error) => self.send_response::<()>(request, Err(error)).is_ok(),
         }
     }
     pub(crate) fn clear_breakpoint(&mut self, core_data: &mut CoreData, request: &Request) -> bool {
         let address = match get_int_argument(request.arguments.as_ref(), "address", 0) {
             Ok(address) => address,
-            Err(error) => return self.send_response::<()>(request, Err(error)),
+            Err(error) => return self.send_response::<()>(request, Err(error)).is_ok(),
         };
 
         match core_data
@@ -256,7 +266,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             .map_err(DebuggerError::ProbeRs)
         {
             Ok(_) => true,
-            Err(error) => self.send_response::<()>(request, Err(error)),
+            Err(error) => self.send_response::<()>(request, Err(error)).is_ok(),
         }
     }
 
@@ -322,20 +332,26 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         //     .expect("Failed to write dump file");
         // true
     }
-    pub(crate) fn restart(
-        &mut self,
-        core_data: &mut CoreData,
-        request: &Request,
-        user_requested: bool,
-    ) -> bool {
+    pub(crate) fn restart(&mut self, core_data: &mut CoreData, request: Option<&Request>) -> bool {
         match core_data.target_core.halt(Duration::from_millis(500)) {
             Ok(_) => {}
             Err(error) => {
-                return self
-                    .send_response::<()>(request, Err(DebuggerError::Other(anyhow!("{}", error))))
+                if let Some(request) = request {
+                    return self
+                        .send_response::<()>(
+                            request,
+                            Err(DebuggerError::Other(anyhow!("{}", error))),
+                        )
+                        .is_ok();
+                } else {
+                    return self
+                        .send_error_response(&DebuggerError::Other(anyhow!("{}", error)))
+                        .is_ok();
+                }
             }
         }
-        if user_requested || self.adapter_type() == DebugAdapterType::CommandLine {
+
+        if request.is_some() || self.adapter_type() == DebugAdapterType::CommandLine {
             match core_data.target_core.reset() {
                 Ok(_) => {
                     self.last_known_status = CoreStatus::Running;
@@ -343,14 +359,16 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                         all_threads_continued: Some(true),
                         thread_id: core_data.target_core.id() as i64,
                     });
-                    self.send_event("continued", event_body);
-                    true
+
+                    self.send_event("continued", event_body).is_ok()
                 }
                 Err(error) => {
-                    return self.send_response::<()>(
-                        request,
-                        Err(DebuggerError::Other(anyhow!("{}", error))),
-                    )
+                    return self
+                        .send_response::<()>(
+                            request.unwrap(), // Checked above
+                            Err(DebuggerError::Other(anyhow!("{}", error))),
+                        )
+                        .is_ok();
                 }
             }
         } else if self.halt_after_reset || self.adapter_type() == DebugAdapterType::DapClient
@@ -365,7 +383,9 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                     match self.adapter_type() {
                         DebugAdapterType::CommandLine => {}
                         DebugAdapterType::DapClient => {
-                            self.send_response::<()>(request, Ok(None));
+                            if let Some(request) = request {
+                                return self.send_response::<()>(request, Ok(None)).is_ok();
+                            }
                         }
                     }
                     // Only notify the DAP client if we are NOT in initialization stage (`CoreStatus::Unknown`).
@@ -390,10 +410,18 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                     true
                 }
                 Err(error) => {
-                    return self.send_response::<()>(
-                        request,
-                        Err(DebuggerError::Other(anyhow!("{}", error))),
-                    )
+                    if let Some(request) = request {
+                        return self
+                            .send_response::<()>(
+                                request,
+                                Err(DebuggerError::Other(anyhow!("{}", error))),
+                            )
+                            .is_ok();
+                    } else {
+                        return self
+                            .send_error_response(&DebuggerError::Other(anyhow!("{}", error)))
+                            .is_ok();
+                    }
                 }
             }
         } else {
@@ -424,12 +452,12 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                             all_threads_stopped: Some(true),
                             hit_breakpoint_ids: None,
                         });
-                        self.send_event("stopped", event_body)
+                        self.send_event("stopped", event_body).is_ok()
                     } else {
                         self.r#continue(core_data, request)
                     }
                 } else {
-                    self.send_response::<()>(request, Ok(None))
+                    self.send_response::<()>(request, Ok(None)).is_ok()
                 }
             }
             Err(error) => {
@@ -457,18 +485,21 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         self.variable_map.clear();
         self.variable_map_key_seq = -1;
         self.send_response(request, Ok(Some(ThreadsResponseBody { threads })))
+            .is_ok()
     }
     pub(crate) fn set_breakpoints(&mut self, core_data: &mut CoreData, request: &Request) -> bool {
         let args: SetBreakpointsArguments = match get_arguments(request) {
             Ok(arguments) => arguments,
             Err(error) => {
-                return self.send_response::<()>(
-                    request,
-                    Err(DebuggerError::Other(anyhow!(
-                        "Could not read arguments : {}",
-                        error
-                    ))),
-                )
+                return self
+                    .send_response::<()>(
+                        request,
+                        Err(DebuggerError::Other(anyhow!(
+                            "Could not read arguments : {}",
+                            error
+                        ))),
+                    )
+                    .is_ok()
             }
         };
 
@@ -480,13 +511,15 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         match core_data.target_core.clear_all_hw_breakpoints() {
             Ok(_) => {}
             Err(error) => {
-                return self.send_response::<()>(
-                    request,
-                    Err(DebuggerError::Other(anyhow!(
-                        "Failed to clear existing breakpoints before setting new ones : {}",
-                        error
-                    ))),
-                )
+                return self
+                    .send_response::<()>(
+                        request,
+                        Err(DebuggerError::Other(anyhow!(
+                            "Failed to clear existing breakpoints before setting new ones : {}",
+                            error
+                        ))),
+                    )
+                    .is_ok()
             }
         }
 
@@ -560,22 +593,27 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             breakpoints: created_breakpoints,
         };
         self.send_response(request, Ok(Some(breakpoint_body)))
+            .is_ok()
     }
 
     pub(crate) fn stack_trace(&mut self, core_data: &mut CoreData, request: &Request) -> bool {
         let _status = match core_data.target_core.status() {
             Ok(status) => {
                 if !status.is_halted() {
-                    return self.send_response::<()>(
-                        request,
-                        Err(DebuggerError::Other(anyhow!(
-                            "Core must be halted before requesting a stack trace"
-                        ))),
-                    );
+                    return self
+                        .send_response::<()>(
+                            request,
+                            Err(DebuggerError::Other(anyhow!(
+                                "Core must be halted before requesting a stack trace"
+                            ))),
+                        )
+                        .is_ok();
                 }
             }
             Err(error) => {
-                return self.send_response::<()>(request, Err(DebuggerError::ProbeRs(error)))
+                return self
+                    .send_response::<()>(request, Err(DebuggerError::ProbeRs(error)))
+                    .is_ok()
             }
         };
 
@@ -584,7 +622,9 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         let pc = match core_data.target_core.read_core_reg(regs.program_counter()) {
             Ok(pc) => pc,
             Err(error) => {
-                return self.send_response::<()>(request, Err(DebuggerError::ProbeRs(error)))
+                return self
+                    .send_response::<()>(request, Err(DebuggerError::ProbeRs(error)))
+                    .is_ok()
             }
         };
 
@@ -598,13 +638,15 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             DebugAdapterType::DapClient => match get_arguments(request) {
                 Ok(arguments) => arguments,
                 Err(error) => {
-                    return self.send_response::<()>(
-                        request,
-                        Err(DebuggerError::Other(anyhow!(
-                            "Could not read arguments : {}",
-                            error
-                        ))),
-                    )
+                    return self
+                        .send_response::<()>(
+                            request,
+                            Err(DebuggerError::Other(anyhow!(
+                                "Could not read arguments : {}",
+                                error
+                            ))),
+                        )
+                        .is_ok()
                 }
             },
         };
@@ -637,7 +679,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                     for frame in current_stackframes {
                         body.push_str(format!("{}\n", frame).as_str());
                     }
-                    self.send_response(request, Ok(Some(body)))
+                    self.send_response(request, Ok(Some(body))).is_ok()
                 }
                 DebugAdapterType::DapClient => {
                     let mut frame_list: Vec<StackFrame> = current_stackframes
@@ -833,7 +875,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                         stack_frames: frame_list,
                         total_frames: Some(frame_len as i64),
                     };
-                    self.send_response(request, Ok(Some(body)))
+                    self.send_response(request, Ok(Some(body))).is_ok()
                 }
             }
         } else {
@@ -842,6 +884,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                 request,
                 Err(DebuggerError::Other(anyhow!("No debug information found!"))),
             )
+            .is_ok()
         }
     }
     /// Retrieve available scopes  
@@ -851,28 +894,32 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
     pub(crate) fn scopes(&mut self, _core_data: &mut CoreData, request: &Request) -> bool {
         let arguments: ScopesArguments = match get_arguments(request) {
             Ok(arguments) => arguments,
-            Err(error) => return self.send_response::<()>(request, Err(error)),
+            Err(error) => return self.send_response::<()>(request, Err(error)).is_ok(),
         };
 
         match self.scope_map.clone().get(&(arguments.frame_id)) {
-            Some(dap_scopes) => self.send_response(
-                request,
-                Ok(Some(ScopesResponseBody {
-                    scopes: dap_scopes.clone(),
-                })),
-            ),
-            None => self.send_response::<()>(
-                request,
-                Err(DebuggerError::Other(anyhow!(
-                    "No variable information available"
-                ))),
-            ),
+            Some(dap_scopes) => self
+                .send_response(
+                    request,
+                    Ok(Some(ScopesResponseBody {
+                        scopes: dap_scopes.clone(),
+                    })),
+                )
+                .is_ok(),
+            None => self
+                .send_response::<()>(
+                    request,
+                    Err(DebuggerError::Other(anyhow!(
+                        "No variable information available"
+                    ))),
+                )
+                .is_ok(),
         }
     }
     pub(crate) fn source(&mut self, _core_data: &mut CoreData, request: &Request) -> bool {
         let arguments: SourceArguments = match get_arguments(request) {
             Ok(arguments) => arguments,
-            Err(error) => return self.send_response::<()>(request, Err(error)),
+            Err(error) => return self.send_response::<()>(request, Err(error)).is_ok(),
         };
 
         let result = if let Some(path) = arguments.source.and_then(|s| s.path) {
@@ -887,65 +934,71 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                     mime_type: None,
                 })),
                 Err(error) => {
-                    return self.send_response::<()>(
-                        request,
-                        Err(DebuggerError::ReadSourceError {
-                            source_file_name: (&source_path.to_string_lossy()).to_string(),
-                            original_error: error,
-                        }),
-                    )
+                    return self
+                        .send_response::<()>(
+                            request,
+                            Err(DebuggerError::ReadSourceError {
+                                source_file_name: (&source_path.to_string_lossy()).to_string(),
+                                original_error: error,
+                            }),
+                        )
+                        .is_ok()
                 }
             }
         } else {
-            return self.send_response::<()>(
-                request,
-                Err(DebuggerError::Other(anyhow!("Unable to open resource"))),
-            );
+            return self
+                .send_response::<()>(
+                    request,
+                    Err(DebuggerError::Other(anyhow!("Unable to open resource"))),
+                )
+                .is_ok();
         };
 
-        self.send_response(request, result)
+        self.send_response(request, result).is_ok()
     }
 
     pub(crate) fn variables(&mut self, _core_data: &mut CoreData, request: &Request) -> bool {
         let arguments: VariablesArguments = match get_arguments(request) {
             Ok(arguments) => arguments,
-            Err(error) => return self.send_response::<()>(request, Err(error)),
+            Err(error) => return self.send_response::<()>(request, Err(error)).is_ok(),
         };
-        return self.send_response(
-            request,
-            match self
-                .variable_map
-                .clone()
-                .get(&(arguments.variables_reference))
-            {
-                Some(dap_variables) => {
-                    match arguments.filter {
-                        Some(filter) => {
-                            match filter.as_str() {
-                                // TODO: Use `probe_rs::Variables` for the `variable_map`, and then transform them here before serving them up.
-                                // That way we can actually track indexed versus named variables (The DAP protocol doesn't have Variable fields to do so).
-                                "indexed" => Ok(Some(VariablesResponseBody {
-                                    variables: dap_variables.clone(),
-                                })),
-                                "named" => Ok(Some(VariablesResponseBody {
-                                    variables: dap_variables.clone(),
-                                })),
-                                other => Err(DebuggerError::Other(anyhow!(
-                                    "ERROR: Received invalid variable filter: {}",
-                                    other
-                                ))),
+        return self
+            .send_response(
+                request,
+                match self
+                    .variable_map
+                    .clone()
+                    .get(&(arguments.variables_reference))
+                {
+                    Some(dap_variables) => {
+                        match arguments.filter {
+                            Some(filter) => {
+                                match filter.as_str() {
+                                    // TODO: Use `probe_rs::Variables` for the `variable_map`, and then transform them here before serving them up.
+                                    // That way we can actually track indexed versus named variables (The DAP protocol doesn't have Variable fields to do so).
+                                    "indexed" => Ok(Some(VariablesResponseBody {
+                                        variables: dap_variables.clone(),
+                                    })),
+                                    "named" => Ok(Some(VariablesResponseBody {
+                                        variables: dap_variables.clone(),
+                                    })),
+                                    other => Err(DebuggerError::Other(anyhow!(
+                                        "ERROR: Received invalid variable filter: {}",
+                                        other
+                                    ))),
+                                }
                             }
+                            None => Ok(Some(VariablesResponseBody {
+                                variables: dap_variables.clone(),
+                            })),
                         }
-                        None => Ok(Some(VariablesResponseBody {
-                            variables: dap_variables.clone(),
-                        })),
                     }
-                }
-                None => Err(DebuggerError::Other(anyhow!(
-                    "No variable information found!"
-                ))),
-            },
-        );
+                    None => Err(DebuggerError::Other(anyhow!(
+                        "No variable information found!"
+                    ))),
+                },
+            )
+            .is_ok();
     }
 
     pub(crate) fn r#continue(&mut self, core_data: &mut CoreData, request: &Request) -> bool {
@@ -956,10 +1009,12 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                     .status()
                     .unwrap_or(CoreStatus::Unknown);
                 match self.adapter_type() {
-                    DebugAdapterType::CommandLine => self.send_response(
-                        request,
-                        Ok(Some(self.last_known_status.short_long_status().1)),
-                    ),
+                    DebugAdapterType::CommandLine => self
+                        .send_response(
+                            request,
+                            Ok(Some(self.last_known_status.short_long_status().1)),
+                        )
+                        .is_ok(),
                     DebugAdapterType::DapClient => {
                         self.send_response(
                             request,
@@ -1006,6 +1061,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             Err(error) => {
                 self.last_known_status = CoreStatus::Halted(HaltReason::Unknown);
                 self.send_response::<()>(request, Err(DebuggerError::Other(anyhow!("{}", error))))
+                    .is_ok()
             }
         }
     }
@@ -1039,16 +1095,12 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                     all_threads_stopped: Some(true),
                     hit_breakpoint_ids: None,
                 });
-                self.send_event("stopped", event_body)
+                self.send_event("stopped", event_body).is_ok()
             }
-            Err(error) => {
-                self.send_response::<()>(request, Err(DebuggerError::Other(anyhow!("{}", error))))
-            }
+            Err(error) => self
+                .send_response::<()>(request, Err(DebuggerError::Other(anyhow!("{}", error))))
+                .is_ok(),
         }
-    }
-
-    pub(crate) fn peek_seq(&self) -> i64 {
-        self.adapter.peek_seq()
     }
 
     /// return a newly allocated id for a register scope reference
@@ -1113,7 +1165,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
 
     /// Returns one of the standard DAP Requests if all goes well, or a "error" request, which should indicate that the calling function should return.
     /// When preparing to return an "error" request, we will send a Response containing the DebuggerError encountered.
-    pub fn listen_for_request(&mut self) -> Request {
+    pub fn listen_for_request(&mut self) -> anyhow::Result<Option<Request>> {
         self.adapter.listen_for_request()
     }
 
@@ -1125,11 +1177,26 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         &mut self,
         request: &Request,
         response: Result<Option<S>, DebuggerError>,
-    ) -> bool {
+    ) -> Result<()> {
         self.adapter.send_response(request, response)
     }
 
-    pub fn send_event<S: Serialize>(&mut self, event_type: &str, event_body: Option<S>) -> bool {
+    pub fn send_error_response(&mut self, response: &DebuggerError) -> Result<()> {
+        if self
+            .adapter
+            .show_message(MessageSeverity::Error, response.to_string())
+        {
+            Ok(())
+        } else {
+            Err(anyhow!("Failed to send error response"))
+        }
+    }
+
+    pub fn send_event<S: Serialize>(
+        &mut self,
+        event_type: &str,
+        event_body: Option<S>,
+    ) -> Result<()> {
         self.adapter.send_event(event_type, event_body)
     }
 
@@ -1186,6 +1253,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                 }
             };
             self.send_event("probe-rs-rtt-channel-config", Some(event_body))
+                .is_ok()
         } else {
             true
         }
@@ -1204,6 +1272,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                 }
             };
             self.send_event("probe-rs-rtt-data", Some(event_body))
+                .is_ok()
         } else {
             println!("RTT Channel {}: {}", channel_number, rtt_data);
             true
@@ -1226,7 +1295,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
 
         let progress_id = self.new_progress_id();
 
-        let ok = self.send_event(
+        self.send_event(
             "progressStart",
             Some(ProgressStartEventBody {
                 cancellable: Some(false),
@@ -1236,13 +1305,9 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                 request_id,
                 title: title.to_owned(),
             }),
-        );
+        )?;
 
-        if ok {
-            Ok(progress_id)
-        } else {
-            Err(anyhow!("Failed to send event."))
-        }
+        Ok(progress_id)
     }
 
     pub fn end_progress(&mut self, progress_id: ProgressId) -> Result<()> {
@@ -1251,19 +1316,13 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             "Progress reporting is not supported by client."
         );
 
-        let ok = self.send_event(
+        self.send_event(
             "progressEnd",
             Some(ProgressEndEventBody {
                 message: None,
                 progress_id: progress_id.to_string(),
             }),
-        );
-
-        if ok {
-            Ok(())
-        } else {
-            Err(anyhow!("Failed to send event."))
-        }
+        )
     }
 
     pub(crate) fn set_console_log_level(&mut self, error: ConsoleLog) {
