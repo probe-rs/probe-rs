@@ -1,9 +1,9 @@
-use std::iter;
+use std::{iter, time::Duration};
 
 use crate::{
     architecture::arm::{
         dp::{Abort, Ctrl, RdBuff, DPIDR},
-        DapError, DpAddress, PortType, RawDapAccess, Register,
+        DapError, DpAddress, Pins, PortType, RawDapAccess, Register,
     },
     DebugProbe, DebugProbeError,
 };
@@ -1093,11 +1093,34 @@ impl<Probe: DebugProbe + RawSwdIo + 'static> RawDapAccess for Probe {
 
     fn swj_pins(
         &mut self,
-        _pin_out: u32,
-        _pin_select: u32,
-        _pin_wait: u32,
+        pin_out: u32,
+        pin_select: u32,
+        pin_wait: u32,
     ) -> Result<u32, DebugProbeError> {
-        todo!()
+        let mut nreset = Pins(0);
+        nreset.set_nreset(true);
+        let nreset_mask = nreset.0 as u32;
+
+        // If only the reset pin is selected we perform the reset.
+        // If something else is selected return an error as this is not supported on J-Links.
+        if pin_select == nreset_mask {
+            if Pins(pin_out as u8).nreset() {
+                self.target_reset_deassert()?;
+            } else {
+                self.target_reset_assert()?;
+            }
+
+            // Normally this would be the timeout we pass to the probe to settle the pins.
+            // The J-Link is not capable of this, so we just wait for this time on the host
+            // and assume it has settled until then.
+            std::thread::sleep(Duration::from_micros(pin_wait as u64));
+
+            // We signal that we cannot read the pin state.
+            Ok(0xFFFF_FFFF)
+        } else {
+            // This is not supported for J-Links, unfortunately.
+            Err(DebugProbeError::CommandNotSupportedByProbe("swj_pins"))
+        }
     }
 
     fn into_probe(self: Box<Self>) -> Box<dyn DebugProbe> {
