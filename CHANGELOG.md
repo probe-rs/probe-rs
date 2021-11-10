@@ -20,10 +20,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Improved number parsing on all the `probe-rs-cli` commands. They now all accept normal (`01234`), hex (`0x1234`), octal (`0o1234`) and binary (`0b1`) formats. (#774)
 - Added progress bars to the probe-rs-cli download command. (#776)
 - Improve reliability of communication with the RISCV debug module by recovering from busy errors in batch operations. (#802)
-- Add optional ability to load fixed address flashing algorithms (non PIC). (#822)
+- Added optional ability to load fixed address flashing algorithms (non PIC). (#822)
 - Added STM32WL55JCIx target. (#835)
 - Add esp32.yaml with esp32c3 variant. (#846)
 - Added target definition validation to make handling inside probe-rs easier by making some basic assumptions about the validity of the used `ChipFamily` without always checking again. (#848)
+- Added support for the built in JTAG on the ESP32C3 and other ESP32 devices (#863).
 - Added STM32U5 series target.
 - Added all RAM regions to most STM32H7 parts. (#864)
 - Added name field to memory regions. (#864)

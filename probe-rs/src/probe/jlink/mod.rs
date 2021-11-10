@@ -435,6 +435,8 @@ impl DebugProbe for JLink {
         };
         let actual_speed_khz = speed_khz;
 
+        let actual_speed_khz = speed_khz;
+
         self.handle
             .set_speed(SpeedConfig::khz(actual_speed_khz as u16).unwrap())?;
         self.speed_khz = actual_speed_khz;

@@ -1,3 +1,5 @@
+use std::error::Error;
+
 use probe_rs::{
     architecture::{
         arm::{
@@ -97,7 +99,14 @@ fn try_show_info(
 
                 probe = interface.close();
             }
-            Err((interface_probe, _e)) => {
+            Err((interface_probe, e)) => {
+                let mut source = Some(&e as &dyn Error);
+
+                while let Some(parent) = source {
+                    log::error!("Error: {}", parent);
+                    source = parent.source();
+                }
+
                 probe = interface_probe;
             }
         }
