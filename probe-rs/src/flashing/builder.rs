@@ -376,14 +376,16 @@ mod tests {
             address: 0,
         };
 
-        let mut flash_algorithm = FlashAlgorithm::default();
-        flash_algorithm.flash_properties = FlashProperties {
-            address_range: 0..1 << 16,
-            page_size: 1024,
-            erased_byte_value: 255,
-            program_page_timeout: 200,
-            erase_sector_timeout: 200,
-            sectors: vec![sd],
+        let flash_algorithm = FlashAlgorithm {
+            flash_properties: FlashProperties {
+                address_range: 0..1 << 16,
+                page_size: 1024,
+                erased_byte_value: 255,
+                program_page_timeout: 200,
+                erase_sector_timeout: 200,
+                sectors: vec![sd],
+            },
+            ..Default::default()
         };
 
         let region = NvmRegion {
@@ -402,14 +404,16 @@ mod tests {
             address: 0,
         };
 
-        let mut flash_algorithm = FlashAlgorithm::default();
-        flash_algorithm.flash_properties = FlashProperties {
-            address_range: 0..1 << 16,
-            page_size: 1024,
-            erased_byte_value: 255,
-            program_page_timeout: 200,
-            erase_sector_timeout: 200,
-            sectors: vec![sd],
+        let flash_algorithm = FlashAlgorithm {
+            flash_properties: FlashProperties {
+                address_range: 0..1 << 16,
+                page_size: 1024,
+                erased_byte_value: 255,
+                program_page_timeout: 200,
+                erase_sector_timeout: 200,
+                sectors: vec![sd],
+            },
+            ..Default::default()
         };
 
         let region = NvmRegion {

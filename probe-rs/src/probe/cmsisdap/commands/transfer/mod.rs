@@ -53,8 +53,8 @@ impl InnerTransferRequest {
 fn creating_inner_transfer_request() {
     let req = InnerTransferRequest::new(PortType::DebugPort, RW::W, 0x8, None);
 
-    assert_eq!(true, req.A3);
-    assert_eq!(false, req.A2);
+    assert!(req.A3);
+    assert!(!req.A2);
 }
 
 impl InnerTransferRequest {

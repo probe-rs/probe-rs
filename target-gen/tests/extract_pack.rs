@@ -1,7 +1,6 @@
 use assert_cmd::Command;
-use predicates;
 
-const NORDIC_SAMPLE_PACK: &'static str =
+const NORDIC_SAMPLE_PACK: &str =
     "tests/test_data/NordicSemiconductor.nRF_DeviceFamilyPack.8.32.1.pack";
 
 #[test]

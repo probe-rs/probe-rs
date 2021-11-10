@@ -433,15 +433,14 @@ impl DebugProbe for JLink {
                 return Err(DebugProbeError::UnsupportedSpeed(speed_khz));
             }
         };
-        let actual_speed_khz = speed_khz;
 
         let actual_speed_khz = speed_khz;
 
         self.handle
-            .set_speed(SpeedConfig::khz(actual_speed_khz as u16).unwrap())?;
-        self.speed_khz = actual_speed_khz;
+            .set_speed(SpeedConfig::khz(speed_khz as u16).unwrap())?;
+        self.speed_khz = speed_khz;
 
-        Ok(actual_speed_khz)
+        Ok(speed_khz)
     }
 
     fn attach(&mut self) -> Result<(), super::DebugProbeError> {
