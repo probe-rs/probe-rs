@@ -1119,7 +1119,7 @@ impl<Probe: DebugProbe + RawSwdIo + 'static> RawDapAccess for Probe {
             Ok(0xFFFF_FFFF)
         } else {
             // This is not supported for J-Links, unfortunately.
-            Err(DebugProbeError::CommandNotSupportedByProbe("swj_pins").into())
+            Err(DebugProbeError::CommandNotSupportedByProbe("swj_pins"))
         }
     }
 
