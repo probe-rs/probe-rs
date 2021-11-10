@@ -8,15 +8,16 @@ license = "MIT OR Apache-2.0"
 name = "probe-run"
 readme = "README.md"
 repository = "https://github.com/knurling-rs/probe-run"
-version = "0.2.5"
+version = "0.3.0"
 
 [dependencies]
 addr2line = { version = "0.15", default-features = false, features = [
     "fallible-iterator",
     "std-object",
 ] }
-anyhow = "1.0"
-colored = "2.0"
+anyhow = "1"
+colored = "2"
+defmt-decoder = { version = "=0.3.0", features = ["unstable"] }
 either = "1.6"
 gimli = { version = "0.24", default-features = false }
 git-version = "0.3"
@@ -27,17 +28,11 @@ probe-rs-rtt = "0.11"
 signal-hook = "0.3"
 structopt = "0.3"
 
-[dependencies.defmt-decoder]
-branch = "main"
-features = ['unstable']
-git = "https://github.com/knurling-rs/defmt"
-# version = "0.3.0" # uncomment when defmt-decoder 0.3.0 is released
-
 [dev-dependencies]
-dirs = "4.0"
-insta = "1.7"
+dirs = "4"
+insta = "1.8"
 os_pipe = "0.9"
-pretty_assertions = "1.0"
+pretty_assertions = "1"
 rstest = "0.11"
 nix = "0.23"
 serial_test = "0.5"
