@@ -26,16 +26,6 @@ const USB_PID: u16 = 0x1001;
 
 const VENDOR_DESCRIPTOR_JTAG_CAPABILITIES: u16 = 0x2000;
 
-// const VENDOR_JTAG_SETDIV: u16 = 0;
-// const VENDOR_JTAG_SETIO: u16 = 1;
-// const VENDOR_JTAG_GETTDO: u16 = 2;
-
-// const VENDOR_JTAG_SETIO_TDI: u16 = 1 << 0;
-// const VENDOR_JTAG_SETIO_TMS: u16 = 1 << 1;
-// const VENDOR_JTAG_SETIO_TCK: u16 = 1 << 2;
-// const VENDOR_JTAG_SETIO_TRST: u16 = 1 << 3;
-// const VENDOR_JTAG_SETIO_SRST: u16 = 1 << 4;
-
 pub(super) struct ProtocolHandler {
     // The USB device handle.
     device_handle: rusb::DeviceHandle<rusb::Context>,
