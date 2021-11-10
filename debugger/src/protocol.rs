@@ -617,8 +617,6 @@ fn get_content_len(header: &str) -> Option<usize> {
 mod test {
     use std::io::{self, ErrorKind, Read};
 
-    
-
     use crate::protocol::{get_content_len, ProtocolAdapter};
 
     use super::DapAdapter;
