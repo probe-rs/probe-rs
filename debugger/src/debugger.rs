@@ -1196,8 +1196,8 @@ impl Debugger {
                                     flash_progress.fill_size_done += size as usize;
                                     debug_adapter
                                         .update_progress(
-                                            flash_progress.total_fill_size as f64
-                                                / flash_progress.fill_size_done as f64,
+                                            flash_progress.fill_size_done as f64
+                                                / flash_progress.total_fill_size as f64,
                                             Some("Reading Old Pages Pages ..."),
                                             id,
                                         )
@@ -1228,8 +1228,8 @@ impl Debugger {
                                     flash_progress.sector_size_done += size as usize;
                                     debug_adapter
                                         .update_progress(
-                                            flash_progress.total_sector_size as f64
-                                                / flash_progress.sector_size_done as f64,
+                                            flash_progress.sector_size_done as f64
+                                                / flash_progress.total_sector_size as f64,
                                             Some("Erasing Sectors ..."),
                                             id,
                                         )
@@ -1256,8 +1256,8 @@ impl Debugger {
                                     flash_progress.page_size_done += size as usize;
                                     debug_adapter
                                         .update_progress(
-                                            flash_progress.total_page_size as f64
-                                                / flash_progress.page_size_done as f64,
+                                            flash_progress.page_size_done as f64
+                                                / flash_progress.total_page_size as f64,
                                             Some("Programming Pages ..."),
                                             id,
                                         )

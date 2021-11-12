@@ -1311,7 +1311,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         );
 
         let ok = self.send_event(
-            "progressStart",
+            "progressUpdate",
             Some(ProgressUpdateEventBody {
                 message: message.map(|v| v.to_owned()),
                 percentage: Some(progress * 100.0),
