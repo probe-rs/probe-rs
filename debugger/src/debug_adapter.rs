@@ -1302,7 +1302,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
     pub fn update_progress(
         &mut self,
         progress: f64,
-        message: Option<&str>,
+        message: Option<impl Into<String>>,
         progress_id: i64,
     ) -> Result<ProgressId> {
         anyhow::ensure!(
@@ -1313,7 +1313,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         let ok = self.send_event(
             "progressUpdate",
             Some(ProgressUpdateEventBody {
-                message: message.map(|v| v.to_owned()),
+                message: message.map(|v| v.into()),
                 percentage: Some(progress * 100.0),
                 progress_id: progress_id.to_string(),
             }),

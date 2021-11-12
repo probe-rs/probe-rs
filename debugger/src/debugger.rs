@@ -1194,11 +1194,12 @@ impl Debugger {
                                 }
                                 probe_rs::flashing::ProgressEvent::PageFilled { size, .. } => {
                                     flash_progress.fill_size_done += size as usize;
+                                    let progress = flash_progress.fill_size_done as f64
+                                        / flash_progress.total_fill_size as f64;
                                     debug_adapter
                                         .update_progress(
-                                            flash_progress.fill_size_done as f64
-                                                / flash_progress.total_fill_size as f64,
-                                            Some("Reading Old Pages Pages ..."),
+                                            progress,
+                                            Some(format!("Reading Old Pages Pages ({})", progress)),
                                             id,
                                         )
                                         .ok();
@@ -1226,11 +1227,12 @@ impl Debugger {
                                     size, ..
                                 } => {
                                     flash_progress.sector_size_done += size as usize;
+                                    let progress = flash_progress.sector_size_done as f64
+                                        / flash_progress.total_sector_size as f64;
                                     debug_adapter
                                         .update_progress(
-                                            flash_progress.sector_size_done as f64
-                                                / flash_progress.total_sector_size as f64,
-                                            Some("Erasing Sectors ..."),
+                                            progress,
+                                            Some(format!("Erasing Sectors ({})", progress)),
                                             id,
                                         )
                                         .ok();
@@ -1254,11 +1256,12 @@ impl Debugger {
                                     size, ..
                                 } => {
                                     flash_progress.page_size_done += size as usize;
+                                    let progress = flash_progress.page_size_done as f64
+                                        / flash_progress.total_page_size as f64;
                                     debug_adapter
                                         .update_progress(
-                                            flash_progress.page_size_done as f64
-                                                / flash_progress.total_page_size as f64,
-                                            Some("Programming Pages ..."),
+                                            progress,
+                                            Some(format!("Programming Pages ({})", progress)),
                                             id,
                                         )
                                         .ok();
