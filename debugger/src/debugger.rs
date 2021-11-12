@@ -90,6 +90,7 @@ impl std::str::FromStr for TargetSessionType {
 
 /// Shared options for all commands which use a specific probe
 #[derive(StructOpt, Clone, Deserialize, Debug, Default)]
+#[serde(rename_all="camelCase")]
 pub struct DebuggerOptions {
     /// Will be set when the DAP client issues a `launch` or `attach` request
     #[structopt(long, requires("dap"))]
