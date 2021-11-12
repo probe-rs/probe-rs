@@ -60,7 +60,7 @@ pub struct RttConfig {
 
 /// The User specified configuration for each active RTT Channel. The configuration is passed via a DAP Client configuration (`launch.json`). If no configuration is specified, the defaults will be `Dataformat::String` and `show_timestamps=false`.
 #[derive(StructOpt, Debug, Clone, serde::Deserialize, Default)]
-#[serde(rename_all="camelCase")]
+#[serde(rename_all = "camelCase")]
 pub struct RttChannelConfig {
     pub channel_number: Option<usize>,
     pub channel_name: Option<String>,
