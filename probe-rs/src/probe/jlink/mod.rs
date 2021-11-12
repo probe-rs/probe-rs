@@ -434,11 +434,12 @@ impl DebugProbe for JLink {
             }
         };
 
-        let actual_speed_khz = speed_khz;
-
-        self.handle
-            .set_speed(SpeedConfig::khz(speed_khz as u16).unwrap())?;
-        self.speed_khz = speed_khz;
+        if let Some(expected_speed) = SpeedConfig::khz(speed_khz as u16) {
+            self.handle.set_speed(expected_speed)?;
+            self.speed_khz = speed_khz;
+        } else {
+            return Err(DebugProbeError::UnsupportedSpeed(speed_khz));
+        }
 
         Ok(speed_khz)
     }

@@ -198,18 +198,26 @@ impl DebuggerOptions {
     pub(crate) fn qualify_and_update_program_binary(
         &mut self,
         new_program_binary: Option<PathBuf>,
-    ) {
+    ) -> Result<(), DebuggerError> {
         self.program_binary = match new_program_binary {
             Some(temp_path) => {
                 let mut new_path = PathBuf::new();
                 if temp_path.is_relative() {
-                    new_path.push(self.cwd.clone().unwrap());
+                    if let Some(cwd_path) = self.cwd.clone() {
+                        new_path.push(cwd_path);
+                    } else {
+                        return Err(DebuggerError::Other(anyhow!(
+                            "Invalid value {:?} for `cwd`",
+                            self.cwd
+                        )));
+                    }
                 }
                 new_path.push(temp_path);
                 Some(new_path)
             }
             None => None,
         };
+        Ok(())
     }
 }
 
@@ -284,7 +292,7 @@ pub fn start_session(debugger_options: &DebuggerOptions) -> Result<SessionData, 
 
     // Set the speed.
     if let Some(speed) = debugger_options.speed {
-        let actual_speed = target_probe.set_speed(speed).unwrap();
+        let actual_speed = target_probe.set_speed(speed)?;
         if actual_speed != speed {
             log::warn!(
                 "Protocol speed {} kHz not supported, actual speed is {} kHz",
@@ -322,7 +330,7 @@ pub fn start_session(debugger_options: &DebuggerOptions) -> Result<SessionData, 
         .mode(ArchMode::Thumb)
         .endian(Endian::Little)
         .build()
-        .unwrap();
+        .map_err(|err| anyhow!("Error creating Capstone disassembler: {:?}", err))?;
 
     Ok(SessionData {
         session: target_session,
@@ -872,9 +880,9 @@ impl Debugger {
             >(&request)
             {
                 Ok(arguments) => {
-                    if arguments.columns_start_at_1.unwrap() && arguments.lines_start_at_1.unwrap()
+                    if !(arguments.columns_start_at_1.unwrap_or(true)
+                        && arguments.lines_start_at_1.unwrap_or(true))
                     {
-                    } else {
                         debug_adapter.send_response::<()>(&request, Err(DebuggerError::Other(anyhow!("Unsupported Capability: Client requested column and row numbers start at 0."))));
                         return DebuggerStatus::ErrorTerminateSession;
                     }
@@ -968,9 +976,21 @@ impl Debugger {
                     // Update the `cwd` and `program_binary`.
                     self.debugger_options
                         .validate_and_update_cwd(self.debugger_options.cwd.clone());
-                    self.debugger_options.qualify_and_update_program_binary(
+                    match self.debugger_options.qualify_and_update_program_binary(
                         self.debugger_options.program_binary.clone(),
-                    );
+                    ) {
+                        Ok(_) => {}
+                        Err(error) => {
+                            debug_adapter.send_response::<()>(
+                                &request,
+                                Err(DebuggerError::Other(anyhow!(
+                                    "Unable to validate the program_binary path '{:?}'",
+                                    error
+                                ))),
+                            );
+                            return DebuggerStatus::ErrorTerminateSession;
+                        }
+                    }
                     match self.debugger_options.program_binary.clone() {
                         Some(program_binary) => {
                             if !program_binary.is_file() {
@@ -1017,8 +1037,22 @@ impl Debugger {
             // Update the `cwd` and `program_binary`.
             self.debugger_options
                 .validate_and_update_cwd(self.debugger_options.cwd.clone());
-            self.debugger_options
-                .qualify_and_update_program_binary(self.debugger_options.program_binary.clone());
+            match self
+                .debugger_options
+                .qualify_and_update_program_binary(self.debugger_options.program_binary.clone())
+            {
+                Ok(_) => {}
+                Err(error) => {
+                    debug_adapter.send_response::<()>(
+                        &custom_request,
+                        Err(DebuggerError::Other(anyhow!(
+                            "Unable to validate the program_binary path '{:?}'",
+                            error
+                        ))),
+                    );
+                    return DebuggerStatus::ErrorTerminateSession;
+                }
+            }
             match self.debugger_options.program_binary.clone() {
                 Some(program_binary) => {
                     if !program_binary.is_file() {
@@ -1064,7 +1098,18 @@ impl Debugger {
         // Do the flashing.
         {
             if self.debugger_options.flashing_enabled {
-                let path_to_elf = self.debugger_options.program_binary.clone().unwrap();
+                let path_to_elf = match self.debugger_options.program_binary.clone() {
+                    Some(program_binary) => program_binary,
+                    None => {
+                        debug_adapter.send_response::<()>(
+                            &custom_request,
+                            Err(DebuggerError::Other(anyhow!(
+                                "Please use the --program-binary option to specify an executable"
+                            ))),
+                        );
+                        return DebuggerStatus::ErrorTerminateSession;
+                    }
+                };
                 debug_adapter.log_to_console(format!(
                     "INFO: FLASHING: Starting write of {:?} to device memory",
                     &path_to_elf
@@ -1081,7 +1126,7 @@ impl Debugger {
 
                 let flash_result = download_file_with_options(
                     &mut session_data.session,
-                    path_to_elf,
+                    path_to_elf.clone(),
                     Format::Elf,
                     download_options,
                 );
@@ -1094,7 +1139,7 @@ impl Debugger {
                     Ok(_) => {
                         debug_adapter.log_to_console(format!(
                             "INFO: FLASHING: Completed write of {:?} to device memory",
-                            &self.debugger_options.program_binary.clone().unwrap()
+                            &path_to_elf
                         ));
                     }
                     Err(error) => {
@@ -1231,25 +1276,30 @@ pub fn attach_to_rtt(
     memory_map: &[MemoryRegion],
     debugger_options: &DebuggerOptions,
 ) -> Result<crate::rtt::RttActiveTarget, anyhow::Error> {
-    let rtt_header_address = if let Ok(mut file) =
-        File::open(debugger_options.program_binary.clone().unwrap().as_path())
-    {
-        if let Some(address) = RttActiveTarget::get_rtt_symbol(&mut file) {
-            ScanRegion::Exact(address as u32)
+    if let Some(program_binary) = debugger_options.program_binary.clone() {
+        let rtt_header_address = if let Ok(mut file) = File::open(program_binary.as_path()) {
+            if let Some(address) = RttActiveTarget::get_rtt_symbol(&mut file) {
+                ScanRegion::Exact(address as u32)
+            } else {
+                ScanRegion::Ram
+            }
         } else {
             ScanRegion::Ram
+        };
+
+        match Rtt::attach_region(core, memory_map, &rtt_header_address) {
+            Ok(rtt) => {
+                log::info!("RTT initialized.");
+                let app = RttActiveTarget::new(rtt, debugger_options)?;
+                Ok(app)
+            }
+            Err(err) => Err(anyhow!("Error attempting to attach to RTT: {}", err)),
         }
     } else {
-        ScanRegion::Ram
-    };
-
-    match Rtt::attach_region(core, memory_map, &rtt_header_address) {
-        Ok(rtt) => {
-            log::info!("RTT initialized.");
-            let app = RttActiveTarget::new(rtt, debugger_options)?;
-            Ok(app)
-        }
-        Err(err) => Err(anyhow!("Error attempting to attach to RTT: {}", err)),
+        Err(anyhow!(
+            "RTT Initialization failed due to invalid `program_binary` option: {:?}",
+            debugger_options.program_binary
+        ))
     }
 }
 
@@ -1289,8 +1339,7 @@ pub fn reset_target_of_device(
     _assert: Option<bool>,
 ) -> Result<()> {
     let mut session_data = start_session(&debugger_options)?;
-    attach_core(&mut session_data.session, &debugger_options)
-        .unwrap()
+    attach_core(&mut session_data.session, &debugger_options)?
         .target_core
         .reset()?;
     Ok(())
@@ -1298,9 +1347,7 @@ pub fn reset_target_of_device(
 
 pub fn dump_memory(debugger_options: DebuggerOptions, loc: u32, words: u32) -> Result<()> {
     let mut session_data = start_session(&debugger_options)?;
-    let mut target_core = attach_core(&mut session_data.session, &debugger_options)
-        .unwrap()
-        .target_core;
+    let mut target_core = attach_core(&mut session_data.session, &debugger_options)?.target_core;
 
     let mut data = vec![0_u32; words as usize];
 
@@ -1343,9 +1390,7 @@ pub fn trace_u32_on_target(debugger_options: DebuggerOptions, loc: u32) -> Resul
     let start = Instant::now();
 
     let mut session_data = start_session(&debugger_options)?;
-    let mut target_core = attach_core(&mut session_data.session, &debugger_options)
-        .unwrap()
-        .target_core;
+    let mut target_core = attach_core(&mut session_data.session, &debugger_options)?.target_core;
 
     loop {
         // Prepare read.
@@ -1360,9 +1405,8 @@ pub fn trace_u32_on_target(debugger_options: DebuggerOptions, loc: u32) -> Resul
 
         // Send value to plot.py.
         let mut buf = [0_u8; 8];
-        // Unwrap is safe!
-        buf.pwrite_with(instant, 0, LE).unwrap();
-        buf.pwrite_with(value, 4, LE).unwrap();
+        buf.pwrite_with(instant, 0, LE)?;
+        buf.pwrite_with(value, 4, LE)?;
         std::io::stdout().write_all(&buf)?;
 
         std::io::stdout().flush()?;
@@ -1400,17 +1444,31 @@ pub fn debug(debugger_options: DebuggerOptions, dap: bool, vscode: bool) {
         );
         match &debugger.debugger_options.port.clone() {
             Some(port) => {
-                let addr = format!("{}:{:?}", Ipv4Addr::LOCALHOST.to_string(), port)
+                let addr = match format!("{}:{:?}", Ipv4Addr::LOCALHOST.to_string(), port)
                     .to_socket_addrs()
-                    .unwrap()
-                    .next()
-                    .unwrap(); // TODO: Implement multi-core and multi-session.
+                {
+                    Ok(mut socket_addr) => {
+                        if let Some(addr) = socket_addr.next() {
+                            addr
+                        } else {
+                            log::error!(
+                                "Unable to create a socket address from {}:{:?}",
+                                Ipv4Addr::LOCALHOST.to_string(),
+                                port
+                            );
+                            return;
+                        }
+                    }
+                    Err(error) => {
+                        log::error!("{:?}", error);
+                        return;
+                    }
+                };
 
                 loop {
                     let listener = match TcpListener::bind(addr) {
                         Ok(listener) => listener,
                         Err(error) => {
-                            eprintln!("{:?}", error);
                             log::error!("{:?}", error);
                             return;
                         }
@@ -1435,10 +1493,20 @@ pub fn debug(debugger_options: DebuggerOptions, dap: bool, vscode: bool) {
                                 }
                                 Err(_) => {
                                     log::error!("Failed to negotiate non-blocking socket with request from :{}", addr);
+                                    return;
                                 }
                             }
 
-                            let reader = socket.try_clone().unwrap();
+                            let reader = match socket.try_clone() {
+                                Ok(reader) => reader,
+                                Err(error) => {
+                                    log::error!(
+                                        "Failed to establish a bi-directional Tcp connection: {:?}",
+                                        error
+                                    );
+                                    return;
+                                }
+                            };
                             let writer = socket;
 
                             let dap_adapter = DapAdapter::new(reader, writer);
