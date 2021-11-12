@@ -50,16 +50,17 @@ impl Default for DataFormat {
 #[derive(StructOpt, Debug, Clone, Deserialize, Default)]
 pub struct RttConfig {
     #[structopt(skip)]
-    #[serde(default, rename = "rtt_enabled")]
+    #[serde(default, rename = "rttEnabled")]
     pub enabled: bool,
     /// Configure data_format and show_timestamps for select channels
     #[structopt(skip)]
-    #[serde(default = "default_channel_formats", rename = "rtt_channel_formats")]
+    #[serde(default = "default_channel_formats", rename = "rttChannelFormats")]
     pub channels: Vec<RttChannelConfig>,
 }
 
 /// The User specified configuration for each active RTT Channel. The configuration is passed via a DAP Client configuration (`launch.json`). If no configuration is specified, the defaults will be `Dataformat::String` and `show_timestamps=false`.
 #[derive(StructOpt, Debug, Clone, serde::Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
 pub struct RttChannelConfig {
     pub channel_number: Option<usize>,
     pub channel_name: Option<String>,

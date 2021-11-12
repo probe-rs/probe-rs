@@ -25,6 +25,7 @@ pub struct QuitRequest {
 }
 
 #[derive(Clone, PartialEq, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct RttChannelEventBody {
     pub channel_number: usize,
     pub channel_name: String,
@@ -32,6 +33,7 @@ pub struct RttChannelEventBody {
 }
 
 #[derive(Clone, PartialEq, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct RttDataEventBody {
     pub channel_number: usize,
     /// RTT output
