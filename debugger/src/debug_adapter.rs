@@ -1303,14 +1303,12 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         &mut self,
         progress: f64,
         message: Option<&str>,
-        request_id: i64,
+        progress_id: i64,
     ) -> Result<ProgressId> {
         anyhow::ensure!(
             self.supports_progress_reporting,
             "Progress reporting is not supported by client."
         );
-
-        let progress_id = self.new_progress_id();
 
         let ok = self.send_event(
             "progressStart",
