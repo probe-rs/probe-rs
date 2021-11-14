@@ -20,7 +20,7 @@ use serde::Deserialize;
 use std::{
     env::{current_dir, set_current_dir},
     fs::File,
-    net::{Ipv4Addr, TcpListener, ToSocketAddrs},
+    net::{Ipv4Addr, TcpListener},
     path::PathBuf,
     str::FromStr,
     thread,
@@ -1444,26 +1444,10 @@ pub fn debug(debugger_options: DebuggerOptions, dap: bool, vscode: bool) {
         );
         match &debugger.debugger_options.port.clone() {
             Some(port) => {
-                let addr =  SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), port);
-                    .to_socket_addrs()
-                {
-                    Ok(mut socket_addr) => {
-                        if let Some(addr) = socket_addr.next() {
-                            addr
-                        } else {
-                            log::error!(
-                                "Unable to create a socket address from {}:{:?}",
-                                Ipv4Addr::LOCALHOST.to_string(),
-                                port
-                            );
-                            return;
-                        }
-                    }
-                    Err(error) => {
-                        log::error!("{:?}", error);
-                        return;
-                    }
-                };
+                let addr = std::net::SocketAddr::new(
+                    std::net::IpAddr::V4(Ipv4Addr::LOCALHOST),
+                    port.to_owned(),
+                );
 
                 loop {
                     let listener = match TcpListener::bind(addr) {
