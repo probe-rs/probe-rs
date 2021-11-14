@@ -37,7 +37,7 @@ pub trait ProtocolAdapter {
 
     fn send_response<S: Serialize>(
         &mut self,
-        request: &Request,
+        request: Request,
         response: Result<Option<S>, DebuggerError>,
     ) -> anyhow::Result<()>;
 
@@ -296,7 +296,7 @@ impl<R: Read, W: Write> ProtocolAdapter for DapAdapter<R, W> {
 
     fn send_response<S: Serialize>(
         &mut self,
-        request: &Request,
+        request: Request,
         response: Result<Option<S>, DebuggerError>,
     ) -> anyhow::Result<()> {
         let mut resp = Response {
@@ -443,7 +443,7 @@ impl ProtocolAdapter for CliAdapter {
 
                 // Ignore errors here, we return an error anyway.
                 let _ = self.send_response::<Request>(
-                    &request,
+                    request,
                     Err(DebuggerError::Other(anyhow!(
                         "Error handling input: {:?}",
                         error
@@ -525,7 +525,7 @@ impl ProtocolAdapter for CliAdapter {
 
     fn send_response<S: Serialize>(
         &mut self,
-        request: &Request,
+        request: Request,
         response: Result<Option<S>, DebuggerError>,
     ) -> anyhow::Result<()> {
         let mut resp = Response {
