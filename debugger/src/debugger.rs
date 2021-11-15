@@ -540,7 +540,7 @@ impl Debugger {
                             match attach_core(&mut session_data.session, &self.debugger_options) {
                                 Ok(core_data) => core_data,
                                 Err(error) => {
-                                    let _ = debug_adapter.send_error_response(&error);
+                                    let _ = debug_adapter.send_error_response(&error)?;
                                     return Err(error);
                                 }
                             };
@@ -674,7 +674,7 @@ impl Debugger {
                             ) {
                                 Ok(core_data) => core_data,
                                 Err(error) => {
-                                    debug_adapter.send_response::<()>(request, Err(error));
+                                    debug_adapter.send_response::<()>(request, Err(error))?;
                                     return Err(DebuggerError::Other(anyhow!(
                                         "Failed to attach to core"
                                     )));
@@ -708,7 +708,7 @@ impl Debugger {
                                                             Err(DebuggerError::Other(anyhow!(
                                                                 "{}", error
                                                             ))),
-                                                        );
+                                                        )?;
                                                         return Err(error.into());
                                                     }
                                                 }
@@ -717,7 +717,7 @@ impl Debugger {
                                         Err(error) => {
                                             let wrapped_err = DebuggerError::ProbeRs(error);
                                             debug_adapter
-                                                .send_response::<()>(request, Err(wrapped_err));
+                                                .send_response::<()>(request, Err(wrapped_err))?;
 
                                             // TODO: Nicer response here
                                             return Err(DebuggerError::Other(anyhow!(
@@ -763,7 +763,7 @@ impl Debugger {
                                     debug_adapter.send_response::<()>(
                                     request,
                                     Err(DebuggerError::Other(anyhow!("Received request '{}', which is not supported or not implemented yet", other))),
-                                );
+                                )?;
                                     Ok(())
                                 }
                             };
@@ -772,9 +772,9 @@ impl Debugger {
                                 match core_data.target_core.run() {
                                     Ok(_) => debug_adapter.last_known_status = CoreStatus::Running,
                                     Err(error) => {
-                                        debug_adapter.send_error_response(&DebuggerError::Other(
-                                            anyhow!("{}", error),
-                                        ));
+                                        debug_adapter.send_error_response(
+                                            &DebuggerError::Other(anyhow!("{}", error)),
+                                        )?;
                                         return Err(error.into());
                                     }
                                 }
@@ -804,7 +804,7 @@ impl Debugger {
                                         command
                                     )
                                         )),
-                                    );
+                                    )?;
                                 Err(DebuggerError::Other(anyhow!(
                                         "ERROR: Received request '{}', which is not supported or not implemented yet",
                                         command
@@ -817,7 +817,7 @@ impl Debugger {
                                         "Unknown command '{}'. Enter 'help' for a list of commands",
                                         command
                                     ))),
-                                );
+                                )?;
                                 Ok(DebuggerStatus::ContinueSession)
                             }
                         }
@@ -851,251 +851,256 @@ impl Debugger {
 
         // The DapClient startup process has a specific sequence.
         // Handle it here before starting a probe-rs session and looping through user generated requests.
-        if debug_adapter.adapter_type() == DebugAdapterType::DapClient {
-            // Handling the initialize, and Attach/Launch requests here in this method,
-            // before entering the iterative loop that processes requests through the process_request method.
+        match debug_adapter.adapter_type() {
+            DebugAdapterType::DapClient => {
+                // Handling the initialize, and Attach/Launch requests here in this method,
+                // before entering the iterative loop that processes requests through the process_request method.
 
-            // Initialize request.
-            let initialize_request = loop {
-                let current_request = if let Some(request) = debug_adapter.listen_for_request()? {
-                    request
-                } else {
-                    continue;
-                };
+                // Initialize request.
+                let initialize_request = loop {
+                    let current_request =
+                        if let Some(request) = debug_adapter.listen_for_request()? {
+                            request
+                        } else {
+                            continue;
+                        };
 
-                match current_request.command.as_str() {
-                    "initialize" => break current_request, // We have lift off.
-                    other => {
-                        let command = other.to_string();
+                    match current_request.command.as_str() {
+                        "initialize" => break current_request, // We have lift off.
+                        other => {
+                            let command = other.to_string();
 
-                        debug_adapter.send_response::<()>(
-                            current_request,
-                            Err(anyhow!(
+                            debug_adapter.send_response::<()>(
+                                current_request,
+                                Err(anyhow!(
+                                    "Initial command was '{}', expected 'initialize'",
+                                    command
+                                )
+                                .into()),
+                            )?;
+                            return Err(DebuggerError::Other(anyhow!(
                                 "Initial command was '{}', expected 'initialize'",
                                 command
-                            )
-                            .into()),
-                        );
+                            )));
+                        }
+                    };
+                };
+
+                let initialize_arguments: InitializeRequestArguments = match get_arguments::<
+                    InitializeRequestArguments,
+                >(
+                    &initialize_request
+                ) {
+                    Ok(arguments) => {
+                        if !(arguments.columns_start_at_1.unwrap_or(true)
+                            && arguments.lines_start_at_1.unwrap_or(true))
+                        {
+                            debug_adapter.send_response::<()>(initialize_request, Err(DebuggerError::Other(anyhow!("Unsupported Capability: Client requested column and row numbers start at 0."))))?;
+                            return Err(DebuggerError::Other(anyhow!("Unsupported Capability: Client requested column and row numbers start at 0.")));
+                        }
+                        arguments
+                    }
+                    Err(error) => {
+                        debug_adapter.send_response::<()>(initialize_request, Err(error))?;
                         return Err(DebuggerError::Other(anyhow!(
-                            "Initial command was '{}', expected 'initialize'",
-                            command
+                            "Failed to get initialize arguments"
                         )));
                     }
                 };
-            };
 
-            let initialize_arguments: InitializeRequestArguments = match get_arguments::<
-                InitializeRequestArguments,
-            >(
-                &initialize_request
-            ) {
-                Ok(arguments) => {
-                    if !(arguments.columns_start_at_1.unwrap_or(true)
-                        && arguments.lines_start_at_1.unwrap_or(true))
-                    {
-                    } else {
-                        debug_adapter.send_response::<()>(initialize_request, Err(DebuggerError::Other(anyhow!("Unsupported Capability: Client requested column and row numbers start at 0."))));
-                        return Err(DebuggerError::Other(anyhow!("Unsupported Capability: Client requested column and row numbers start at 0.")));
-                    }
-                    arguments
+                if let Some(progress_support) = initialize_arguments.supports_progress_reporting {
+                    debug_adapter.supports_progress_reporting = progress_support;
                 }
-                Err(error) => {
-                    debug_adapter.send_response::<()>(initialize_request, Err(error));
-                    return Err(DebuggerError::Other(anyhow!(
-                        "Failed to get initialize arguments"
-                    )));
-                }
-            };
 
-            if let Some(progress_support) = initialize_arguments.supports_progress_reporting {
-                debug_adapter.supports_progress_reporting = progress_support;
-            }
-
-            // Reply to Initialize with `Capabilities`.
-            let capabilities = Capabilities {
-                supports_configuration_done_request: Some(true),
-                supports_read_memory_request: Some(true),
-                supports_restart_request: Some(true),
-                supports_terminate_request: Some(true),
-                // supports_value_formatting_options: Some(true),
-                // supports_function_breakpoints: Some(true),
-                // TODO: Use DEMCR register to implement exception breakpoints
-                // supports_exception_options: Some(true),
-                // supports_exception_filter_options: Some (true),
-                ..Default::default()
-            };
-            debug_adapter.send_response(initialize_request, Ok(Some(capabilities)));
-
-            // Process either the Launch or Attach request.
-            let requested_target_session_type: Option<TargetSessionType>;
-            let la_request = loop {
-                let current_request = if let Some(request) = debug_adapter.listen_for_request()? {
-                    request
-                } else {
-                    continue;
+                // Reply to Initialize with `Capabilities`.
+                let capabilities = Capabilities {
+                    supports_configuration_done_request: Some(true),
+                    supports_read_memory_request: Some(true),
+                    supports_restart_request: Some(true),
+                    supports_terminate_request: Some(true),
+                    // supports_value_formatting_options: Some(true),
+                    // supports_function_breakpoints: Some(true),
+                    // TODO: Use DEMCR register to implement exception breakpoints
+                    // supports_exception_options: Some(true),
+                    // supports_exception_filter_options: Some (true),
+                    ..Default::default()
                 };
+                debug_adapter.send_response(initialize_request, Ok(Some(capabilities)))?;
 
-                match current_request.command.as_str() {
-                    "attach" => {
-                        requested_target_session_type = Some(TargetSessionType::AttachRequest);
-                        break current_request;
-                    }
-                    "launch" => {
-                        requested_target_session_type = Some(TargetSessionType::LaunchRequest);
-                        break current_request;
-                    }
-                    other => {
-                        let error_msg = format!(
-                            "Expected request 'launch' or 'attach', but received' {}'",
-                            other
-                        );
-
-                        debug_adapter.send_response::<()>(
-                            current_request,
-                            Err(DebuggerError::Other(anyhow!(error_msg.clone()))),
-                        );
-                        return Err(DebuggerError::Other(anyhow!(error_msg)));
-                    }
-                };
-            };
-
-            match get_arguments(&la_request) {
-                Ok(arguments) => {
-                    if requested_target_session_type.is_some() {
-                        self.debugger_options = DebuggerOptions {
-                            target_session_type: requested_target_session_type,
-                            ..arguments
+                // Process either the Launch or Attach request.
+                let requested_target_session_type: Option<TargetSessionType>;
+                let la_request = loop {
+                    let current_request =
+                        if let Some(request) = debug_adapter.listen_for_request()? {
+                            request
+                        } else {
+                            continue;
                         };
-                        if matches!(
-                            requested_target_session_type,
-                            Some(TargetSessionType::AttachRequest)
-                        ) {
-                            // Since VSCode doesn't do field validation checks for relationships in launch.json request types, check it here.
-                            if self.debugger_options.flashing_enabled
-                                || self.debugger_options.reset_after_flashing
-                                || self.debugger_options.halt_after_reset
-                                || self.debugger_options.full_chip_erase
-                                || self.debugger_options.restore_unwritten_bytes
-                            {
-                                debug_adapter.send_response::<()>(
+
+                    match current_request.command.as_str() {
+                        "attach" => {
+                            requested_target_session_type = Some(TargetSessionType::AttachRequest);
+                            break current_request;
+                        }
+                        "launch" => {
+                            requested_target_session_type = Some(TargetSessionType::LaunchRequest);
+                            break current_request;
+                        }
+                        other => {
+                            let error_msg = format!(
+                                "Expected request 'launch' or 'attach', but received' {}'",
+                                other
+                            );
+
+                            debug_adapter.send_response::<()>(
+                                current_request,
+                                Err(DebuggerError::Other(anyhow!(error_msg.clone()))),
+                            )?;
+                            return Err(DebuggerError::Other(anyhow!(error_msg)));
+                        }
+                    };
+                };
+
+                match get_arguments(&la_request) {
+                    Ok(arguments) => {
+                        if requested_target_session_type.is_some() {
+                            self.debugger_options = DebuggerOptions {
+                                target_session_type: requested_target_session_type,
+                                ..arguments
+                            };
+                            if matches!(
+                                requested_target_session_type,
+                                Some(TargetSessionType::AttachRequest)
+                            ) {
+                                // Since VSCode doesn't do field validation checks for relationships in launch.json request types, check it here.
+                                if self.debugger_options.flashing_enabled
+                                    || self.debugger_options.reset_after_flashing
+                                    || self.debugger_options.halt_after_reset
+                                    || self.debugger_options.full_chip_erase
+                                    || self.debugger_options.restore_unwritten_bytes
+                                {
+                                    debug_adapter.send_response::<()>(
                                         la_request,
                                         Err(DebuggerError::Other(anyhow!(
                                             "Please do not use any of the `flashing_enabled`, `reset_after_flashing`, halt_after_reset`, `full_chip_erase`, or `restore_unwritten_bytes` options when using `attach` request type."))),
-                                    );
+                                    )?;
 
-                                return Err(DebuggerError::Other(anyhow!(
+                                    return Err(DebuggerError::Other(anyhow!(
                                             "Please do not use any of the `flashing_enabled`, `reset_after_flashing`, halt_after_reset`, `full_chip_erase`, or `restore_unwritten_bytes` options when using `attach` request type.")));
+                                }
                             }
                         }
-                    }
-                    debug_adapter.set_console_log_level(
+                        debug_adapter.set_console_log_level(
+                            self.debugger_options
+                                .console_log_level
+                                .unwrap_or(ConsoleLog::Error),
+                        );
+                        // Update the `cwd` and `program_binary`.
                         self.debugger_options
-                            .console_log_level
-                            .unwrap_or(ConsoleLog::Error),
-                    );
-                    // Update the `cwd` and `program_binary`.
-                    self.debugger_options
-                        .validate_and_update_cwd(self.debugger_options.cwd.clone());
-                    match self.debugger_options.qualify_and_update_program_binary(
-                        self.debugger_options.program_binary.clone(),
-                    ) {
-                        Ok(_) => {}
-                        Err(error) => {
-                            let err = DebuggerError::Other(anyhow!(
-                                "Unable to validate the program_binary path '{:?}'",
-                                error
-                            ));
+                            .validate_and_update_cwd(self.debugger_options.cwd.clone());
+                        match self.debugger_options.qualify_and_update_program_binary(
+                            self.debugger_options.program_binary.clone(),
+                        ) {
+                            Ok(_) => {}
+                            Err(error) => {
+                                let err = DebuggerError::Other(anyhow!(
+                                    "Unable to validate the program_binary path '{:?}'",
+                                    error
+                                ));
 
-                            debug_adapter.send_error_response(&err);
-                            return Err(err);
+                                debug_adapter.send_error_response(&err)?;
+                                return Err(err);
+                            }
                         }
-                    }
-                    match self.debugger_options.program_binary.clone() {
-                        Some(program_binary) => {
-                            if !program_binary.is_file() {
+                        match self.debugger_options.program_binary.clone() {
+                            Some(program_binary) => {
+                                if !program_binary.is_file() {
+                                    debug_adapter.send_response::<()>(
+                                        la_request,
+                                        Err(DebuggerError::Other(anyhow!(
+                                            "Invalid program binary file specified '{:?}'",
+                                            program_binary
+                                        ))),
+                                    )?;
+                                    return Err(DebuggerError::Other(anyhow!(
+                                        "Invalid program binary file specified '{:?}'",
+                                        program_binary
+                                    )));
+                                }
+                            }
+                            None => {
                                 debug_adapter.send_response::<()>(
                                     la_request,
                                     Err(DebuggerError::Other(anyhow!(
-                                        "Invalid program binary file specified '{:?}'",
-                                        program_binary
-                                    ))),
-                                );
-                                return Err(DebuggerError::Other(anyhow!(
-                                    "Invalid program binary file specified '{:?}'",
-                                    program_binary
-                                )));
-                            }
-                        }
-                        None => {
-                            debug_adapter.send_response::<()>(
-                                la_request,
-                                Err(DebuggerError::Other(anyhow!(
                                 "Please use the --program-binary option to specify an executable"
                             ))),
-                            );
+                                )?;
 
-                            return Err(DebuggerError::Other(anyhow!(
+                                return Err(DebuggerError::Other(anyhow!(
                                 "Please use the --program-binary option to specify an executable"
                             )));
+                            }
                         }
+                        debug_adapter.send_response::<()>(la_request, Ok(None))?;
                     }
-                    debug_adapter.send_response::<()>(la_request, Ok(None));
-                }
-                Err(error) => {
-                    let err_1 = anyhow!(
+                    Err(error) => {
+                        let err_1 = anyhow!(
 
                         "Could not derive DebuggerOptions from request '{}', with arguments {:?}\n{:?} ", la_request.command, la_request.arguments, error
 
                         );
-                    let err_2 =anyhow!(
+                        let err_2 =anyhow!(
 
                         "Could not derive DebuggerOptions from request '{}', with arguments {:?}\n{:?} ", la_request.command, la_request.arguments, error
 
                         );
 
-                    debug_adapter.send_response::<()>(la_request, Err(DebuggerError::Other(err_1)));
+                        debug_adapter
+                            .send_response::<()>(la_request, Err(DebuggerError::Other(err_1)))?;
 
-                    return Err(DebuggerError::Other(err_2));
-                }
-            };
-        } else {
-            // Update the `cwd` and `program_binary`.
-            self.debugger_options
-                .validate_and_update_cwd(self.debugger_options.cwd.clone());
-            match self
-                .debugger_options
-                .qualify_and_update_program_binary(self.debugger_options.program_binary.clone())
-            {
-                Ok(_) => {}
-                Err(error) => {
-                    let err = DebuggerError::Other(anyhow!(
-                        "Unable to validate the program_binary path '{:?}'",
-                        error
-                    ));
-                    debug_adapter.send_error_response(&err);
-
-                    return Err(err);
-                }
+                        return Err(DebuggerError::Other(err_2));
+                    }
+                };
             }
-            match self.debugger_options.program_binary.clone() {
-                Some(program_binary) => {
-                    if !program_binary.is_file() {
+            DebugAdapterType::CommandLine => {
+                // Update the `cwd` and `program_binary`.
+                self.debugger_options
+                    .validate_and_update_cwd(self.debugger_options.cwd.clone());
+                match self
+                    .debugger_options
+                    .qualify_and_update_program_binary(self.debugger_options.program_binary.clone())
+                {
+                    Ok(_) => {}
+                    Err(error) => {
                         let err = DebuggerError::Other(anyhow!(
-                            "Invalid program binary file specified '{:?}'",
-                            program_binary
+                            "Unable to validate the program_binary path '{:?}'",
+                            error
                         ));
+                        debug_adapter.send_error_response(&err)?;
 
-                        debug_adapter.send_error_response(&err);
                         return Err(err);
                     }
                 }
-                None => {
-                    let err = DebuggerError::Other(anyhow!(
-                        "Please use the --program-binary option to specify an executable"
-                    ));
+                match self.debugger_options.program_binary.clone() {
+                    Some(program_binary) => {
+                        if !program_binary.is_file() {
+                            let err = DebuggerError::Other(anyhow!(
+                                "Invalid program binary file specified '{:?}'",
+                                program_binary
+                            ));
 
-                    debug_adapter.send_error_response(&err);
-                    return Err(err);
+                            debug_adapter.send_error_response(&err)?;
+                            return Err(err);
+                        }
+                    }
+                    None => {
+                        let err = DebuggerError::Other(anyhow!(
+                            "Please use the --program-binary option to specify an executable"
+                        ));
+
+                        debug_adapter.send_error_response(&err)?;
+                        return Err(err);
+                    }
                 }
             }
         }
@@ -1103,7 +1108,7 @@ impl Debugger {
         let mut session_data = match start_session(&self.debugger_options) {
             Ok(session_data) => session_data,
             Err(error) => {
-                debug_adapter.send_error_response(&error);
+                debug_adapter.send_error_response(&error)?;
                 return Err(error);
             }
         };
@@ -1118,7 +1123,7 @@ impl Debugger {
                         let err = DebuggerError::Other(anyhow!(
                             "Please use the --program-binary option to specify an executable"
                         ));
-                        debug_adapter.send_error_response(&err);
+                        debug_adapter.send_error_response(&err)?;
                         return Err(err);
                     }
                 };
@@ -1156,7 +1161,7 @@ impl Debugger {
                     }
                     Err(error) => {
                         let error = DebuggerError::FileDownload(error);
-                        debug_adapter.send_error_response(&error);
+                        debug_adapter.send_error_response(&error)?;
                         return Err(error);
                     }
                 }
@@ -1174,14 +1179,14 @@ impl Debugger {
                     match halt_core(&mut core_data.target_core) {
                         Ok(_) => {}
                         Err(error) => {
-                            debug_adapter.send_error_response(&error);
+                            debug_adapter.send_error_response(&error)?;
                             return Err(error);
                         }
                     }
                     core_data
                 }
                 Err(error) => {
-                    debug_adapter.send_error_response(&error);
+                    debug_adapter.send_error_response(&error)?;
                     return Err(error);
                 }
             };
@@ -1203,7 +1208,7 @@ impl Debugger {
             let error =
                 DebuggerError::Other(anyhow!("Failed sending 'initialized' event to DAP Client"));
 
-            debug_adapter.send_error_response(&error);
+            debug_adapter.send_error_response(&error)?;
 
             return Err(error);
         }
@@ -1225,7 +1230,7 @@ impl Debugger {
                             match attach_core(&mut session_data.session, &self.debugger_options) {
                                 Ok(core_data) => core_data,
                                 Err(error) => {
-                                    debug_adapter.send_error_response(&error);
+                                    debug_adapter.send_error_response(&error)?;
                                     return Err(error);
                                 }
                             };
@@ -1268,9 +1273,12 @@ impl Debugger {
                 }
                 Err(e) => {
                     if debug_adapter.adapter_type() == DebugAdapterType::DapClient {
+                        debug_adapter.send_event(
+                            "terminated",
+                            Some(TerminatedEventBody { restart: None }),
+                        )?;
                         debug_adapter
-                            .send_event("terminated", Some(TerminatedEventBody { restart: None }));
-                        debug_adapter.send_event("exited", Some(ExitedEventBody { exit_code: 1 }));
+                            .send_event("exited", Some(ExitedEventBody { exit_code: 1 }))?;
                         // Keep the process alive for a bit, so that VSCode doesn't complain about broken pipes.
                         for _loop_count in 0..10 {
                             thread::sleep(Duration::from_millis(50));
