@@ -1032,7 +1032,8 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             }
             Err(error) => {
                 self.last_known_status = CoreStatus::Halted(HaltReason::Unknown);
-                self.send_response::<()>(request, Err(DebuggerError::Other(anyhow!("{}", error))))
+                self.send_response::<()>(request, Err(DebuggerError::Other(anyhow!("{}", error))))?;
+                Err(error.into())
             }
         }
     }
