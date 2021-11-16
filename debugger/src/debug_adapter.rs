@@ -71,7 +71,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         P::ADAPTER_TYPE
     }
 
-    pub(crate) fn status(&mut self, core_data: &mut CoreData, request: &Request) -> bool {
+    pub(crate) fn status(&mut self, core_data: &mut CoreData, request: Request) -> Result<()> {
         let status = match core_data.target_core.status() {
             Ok(status) => {
                 self.last_known_status = status;
@@ -100,6 +100,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                         pc
                     ))),
                 ),
+
                 Err(error) => self
                     .send_response::<()>(request, Err(DebuggerError::Other(anyhow!("{}", error)))),
             }
@@ -108,7 +109,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         }
     }
 
-    pub(crate) fn pause(&mut self, core_data: &mut CoreData, request: &Request) -> bool {
+    pub(crate) fn pause(&mut self, core_data: &mut CoreData, request: Request) -> Result<()> {
         // let args: PauseArguments = get_arguments(&request)?;
 
         match core_data.target_core.halt(Duration::from_millis(500)) {
@@ -122,17 +123,17 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                     all_threads_stopped: Some(true),
                     hit_breakpoint_ids: None,
                 });
-                self.send_event("stopped", event_body);
+                self.send_event("stopped", event_body)?;
                 self.send_response(
                     request,
                     Ok(Some(format!(
                         "Core stopped at address 0x{:08x}",
                         cpu_info.pc
                     ))),
-                );
+                )?;
                 self.last_known_status = CoreStatus::Halted(HaltReason::Request);
 
-                true
+                Ok(())
             }
             Err(error) => {
                 self.send_response::<()>(request, Err(DebuggerError::Other(anyhow!("{}", error))))
@@ -165,13 +166,13 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             */
     }
 
-    pub(crate) fn read_memory(&mut self, core_data: &mut CoreData, request: &Request) -> bool {
+    pub(crate) fn read_memory(&mut self, core_data: &mut CoreData, request: Request) -> Result<()> {
         let arguments: ReadMemoryArguments = match self.adapter_type() {
             DebugAdapterType::CommandLine => match request.arguments.as_ref().unwrap().try_into() {
                 Ok(arguments) => arguments,
                 Err(error) => return self.send_response::<()>(request, Err(error)),
             },
-            DebugAdapterType::DapClient => match get_arguments(request) {
+            DebugAdapterType::DapClient => match get_arguments(&request) {
                 Ok(arguments) => arguments,
                 Err(error) => return self.send_response::<()>(request, Err(error)),
             },
@@ -202,7 +203,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             )
         }
     }
-    pub(crate) fn write(&mut self, core_data: &mut CoreData, request: &Request) -> bool {
+    pub(crate) fn write(&mut self, core_data: &mut CoreData, request: Request) -> Result<()> {
         let address = match get_int_argument(request.arguments.as_ref(), "address", 0) {
             Ok(address) => address,
             Err(error) => return self.send_response::<()>(request, Err(error)),
@@ -217,11 +218,15 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             .write_word_32(address, data)
             .map_err(DebuggerError::ProbeRs)
         {
-            Ok(_) => true,
+            Ok(_) => Ok(()),
             Err(error) => self.send_response::<()>(request, Err(error)),
         }
     }
-    pub(crate) fn set_breakpoint(&mut self, core_data: &mut CoreData, request: &Request) -> bool {
+    pub(crate) fn set_breakpoint(
+        &mut self,
+        core_data: &mut CoreData,
+        request: Request,
+    ) -> Result<()> {
         let address = match get_int_argument(request.arguments.as_ref(), "address", 0) {
             Ok(address) => address,
             Err(error) => return self.send_response::<()>(request, Err(error)),
@@ -244,7 +249,11 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             Err(error) => self.send_response::<()>(request, Err(error)),
         }
     }
-    pub(crate) fn clear_breakpoint(&mut self, core_data: &mut CoreData, request: &Request) -> bool {
+    pub(crate) fn clear_breakpoint(
+        &mut self,
+        core_data: &mut CoreData,
+        request: Request,
+    ) -> Result<()> {
         let address = match get_int_argument(request.arguments.as_ref(), "address", 0) {
             Ok(address) => address,
             Err(error) => return self.send_response::<()>(request, Err(error)),
@@ -255,7 +264,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             .clear_hw_breakpoint(address)
             .map_err(DebuggerError::ProbeRs)
         {
-            Ok(_) => true,
+            Ok(_) => Ok(()),
             Err(error) => self.send_response::<()>(request, Err(error)),
         }
     }
@@ -264,7 +273,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         &mut self,
         _core_data: &mut CoreData,
         _request: &Request,
-    ) -> bool {
+    ) -> Result<()> {
         todo!();
         // let register_file = core_data.target_core.registers();
 
@@ -282,7 +291,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         &mut self,
         _core_data: &mut CoreData,
         _requestt: &Request,
-    ) -> bool {
+    ) -> Result<()> {
         todo!();
         // dump all relevant data, stack and regs for now..
         //
@@ -325,17 +334,23 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
     pub(crate) fn restart(
         &mut self,
         core_data: &mut CoreData,
-        request: &Request,
-        user_requested: bool,
-    ) -> bool {
+        request: Option<Request>,
+    ) -> Result<()> {
         match core_data.target_core.halt(Duration::from_millis(500)) {
             Ok(_) => {}
             Err(error) => {
-                return self
-                    .send_response::<()>(request, Err(DebuggerError::Other(anyhow!("{}", error))))
+                if let Some(request) = request {
+                    return self.send_response::<()>(
+                        request,
+                        Err(DebuggerError::Other(anyhow!("{}", error))),
+                    );
+                } else {
+                    return self.send_error_response(&DebuggerError::Other(anyhow!("{}", error)));
+                }
             }
         }
-        if user_requested || self.adapter_type() == DebugAdapterType::CommandLine {
+
+        if request.is_some() || self.adapter_type() == DebugAdapterType::CommandLine {
             match core_data.target_core.reset() {
                 Ok(_) => {
                     self.last_known_status = CoreStatus::Running;
@@ -343,14 +358,14 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                         all_threads_continued: Some(true),
                         thread_id: core_data.target_core.id() as i64,
                     });
-                    self.send_event("continued", event_body);
-                    true
+
+                    self.send_event("continued", event_body)
                 }
                 Err(error) => {
                     return self.send_response::<()>(
-                        request,
+                        request.unwrap(), // Checked above
                         Err(DebuggerError::Other(anyhow!("{}", error))),
-                    )
+                    );
                 }
             }
         } else if self.halt_after_reset || self.adapter_type() == DebugAdapterType::DapClient
@@ -365,7 +380,9 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                     match self.adapter_type() {
                         DebugAdapterType::CommandLine => {}
                         DebugAdapterType::DapClient => {
-                            self.send_response::<()>(request, Ok(None));
+                            if let Some(request) = request {
+                                return self.send_response::<()>(request, Ok(None));
+                            }
                         }
                     }
                     // Only notify the DAP client if we are NOT in initialization stage (`CoreStatus::Unknown`).
@@ -384,28 +401,33 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                             all_threads_stopped: Some(true),
                             hit_breakpoint_ids: None,
                         });
-                        self.send_event("stopped", event_body);
+                        self.send_event("stopped", event_body)?;
                         self.last_known_status = CoreStatus::Halted(HaltReason::External);
                     }
-                    true
+                    Ok(())
                 }
                 Err(error) => {
-                    return self.send_response::<()>(
-                        request,
-                        Err(DebuggerError::Other(anyhow!("{}", error))),
-                    )
+                    if let Some(request) = request {
+                        return self.send_response::<()>(
+                            request,
+                            Err(DebuggerError::Other(anyhow!("{}", error))),
+                        );
+                    } else {
+                        return self
+                            .send_error_response(&DebuggerError::Other(anyhow!("{}", error)));
+                    }
                 }
             }
         } else {
-            true
+            Ok(())
         }
     }
 
     pub(crate) fn configuration_done(
         &mut self,
         core_data: &mut CoreData,
-        request: &Request,
-    ) -> bool {
+        request: Request,
+    ) -> Result<()> {
         // Make sure the DAP Client and the DAP Server are in sync with the status of the core.
         match core_data.target_core.status() {
             Ok(core_status) => {
@@ -414,7 +436,8 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                     if self.halt_after_reset
                         || core_status == CoreStatus::Halted(HaltReason::Breakpoint)
                     {
-                        self.send_response::<()>(request, Ok(None));
+                        self.send_response::<()>(request, Ok(None))?;
+
                         let event_body = Some(StoppedEventBody {
                             reason: core_status.short_long_status().0.to_owned(),
                             description: Some(core_status.short_long_status().1.to_string()),
@@ -439,12 +462,12 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                         "Could not read core status to synchronize the client and the probe. {:?}",
                         error
                     ))),
-                );
-                false
+                )?;
+                Err(anyhow!("Failed to get core status."))
             }
         }
     }
-    pub(crate) fn threads(&mut self, core_data: &mut CoreData, request: &Request) -> bool {
+    pub(crate) fn threads(&mut self, core_data: &mut CoreData, request: Request) -> Result<()> {
         // TODO: Implement actual thread resolution. For now, we just use the core id as the thread id.
 
         let single_thread = Thread {
@@ -458,8 +481,12 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         self.variable_map_key_seq = -1;
         self.send_response(request, Ok(Some(ThreadsResponseBody { threads })))
     }
-    pub(crate) fn set_breakpoints(&mut self, core_data: &mut CoreData, request: &Request) -> bool {
-        let args: SetBreakpointsArguments = match get_arguments(request) {
+    pub(crate) fn set_breakpoints(
+        &mut self,
+        core_data: &mut CoreData,
+        request: Request,
+    ) -> Result<()> {
+        let args: SetBreakpointsArguments = match get_arguments(&request) {
             Ok(arguments) => arguments,
             Err(error) => {
                 return self.send_response::<()>(
@@ -562,7 +589,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         self.send_response(request, Ok(Some(breakpoint_body)))
     }
 
-    pub(crate) fn stack_trace(&mut self, core_data: &mut CoreData, request: &Request) -> bool {
+    pub(crate) fn stack_trace(&mut self, core_data: &mut CoreData, request: Request) -> Result<()> {
         let _status = match core_data.target_core.status() {
             Ok(status) => {
                 if !status.is_halted() {
@@ -595,7 +622,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                 start_frame: None,
                 thread_id: core_data.target_core.id() as i64,
             },
-            DebugAdapterType::DapClient => match get_arguments(request) {
+            DebugAdapterType::DapClient => match get_arguments(&request) {
                 Ok(arguments) => arguments,
                 Err(error) => {
                     return self.send_response::<()>(
@@ -848,8 +875,8 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
     /// - local scope   : Variables defined between start of current frame, and the current pc (program counter)
     /// - static scope  : Variables with `static` modifier
     /// - registers     : Currently supports core registers 0-15
-    pub(crate) fn scopes(&mut self, _core_data: &mut CoreData, request: &Request) -> bool {
-        let arguments: ScopesArguments = match get_arguments(request) {
+    pub(crate) fn scopes(&mut self, _core_data: &mut CoreData, request: Request) -> Result<()> {
+        let arguments: ScopesArguments = match get_arguments(&request) {
             Ok(arguments) => arguments,
             Err(error) => return self.send_response::<()>(request, Err(error)),
         };
@@ -869,8 +896,8 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             ),
         }
     }
-    pub(crate) fn source(&mut self, _core_data: &mut CoreData, request: &Request) -> bool {
-        let arguments: SourceArguments = match get_arguments(request) {
+    pub(crate) fn source(&mut self, _core_data: &mut CoreData, request: Request) -> Result<()> {
+        let arguments: SourceArguments = match get_arguments(&request) {
             Ok(arguments) => arguments,
             Err(error) => return self.send_response::<()>(request, Err(error)),
         };
@@ -906,8 +933,8 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         self.send_response(request, result)
     }
 
-    pub(crate) fn variables(&mut self, _core_data: &mut CoreData, request: &Request) -> bool {
-        let arguments: VariablesArguments = match get_arguments(request) {
+    pub(crate) fn variables(&mut self, _core_data: &mut CoreData, request: Request) -> Result<()> {
+        let arguments: VariablesArguments = match get_arguments(&request) {
             Ok(arguments) => arguments,
             Err(error) => return self.send_response::<()>(request, Err(error)),
         };
@@ -948,7 +975,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         );
     }
 
-    pub(crate) fn r#continue(&mut self, core_data: &mut CoreData, request: &Request) -> bool {
+    pub(crate) fn r#continue(&mut self, core_data: &mut CoreData, request: Request) -> Result<()> {
         match core_data.target_core.run() {
             Ok(_) => {
                 self.last_known_status = core_data
@@ -972,7 +999,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                                     Some(false)
                                 },
                             })),
-                        );
+                        )?;
                         // We have to consider the fact that sometimes the `run()` is successfull,
                         // but "immediately" after the MCU hits a breakpoint or exception.
                         // So we have to check the status again to be sure.
@@ -991,7 +1018,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                                         all_threads_stopped: Some(true),
                                         hit_breakpoint_ids: None,
                                     });
-                                    self.send_event("stopped", event_body);
+                                    self.send_event("stopped", event_body)?;
                                     new_status
                                 }
                                 other => other,
@@ -999,19 +1026,20 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                             Err(_) => CoreStatus::Unknown,
                         };
                         self.last_known_status = core_status;
-                        true
+                        Ok(())
                     }
                 }
             }
             Err(error) => {
                 self.last_known_status = CoreStatus::Halted(HaltReason::Unknown);
-                self.send_response::<()>(request, Err(DebuggerError::Other(anyhow!("{}", error))))
+                self.send_response::<()>(request, Err(DebuggerError::Other(anyhow!("{}", error))))?;
+                Err(error.into())
             }
         }
     }
 
     /// Steps at 'instruction' granularity ONLY.
-    pub(crate) fn next(&mut self, core_data: &mut CoreData, request: &Request) -> bool {
+    pub(crate) fn next(&mut self, core_data: &mut CoreData, request: Request) -> Result<()> {
         // TODO: Implement 'statement' granularity, then update DAP `Capabilities` and read `NextArguments`.
         // let args: NextArguments = get_arguments(&request)?;
 
@@ -1020,12 +1048,12 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                 let new_status = match core_data.target_core.status() {
                     Ok(new_status) => new_status,
                     Err(error) => {
-                        self.send_response::<()>(request, Err(DebuggerError::ProbeRs(error)));
-                        return false;
+                        self.send_response::<()>(request, Err(DebuggerError::ProbeRs(error)))?;
+                        return Err(anyhow!("Failed to retrieve core status"));
                     }
                 };
                 self.last_known_status = new_status;
-                self.send_response::<()>(request, Ok(None));
+                self.send_response::<()>(request, Ok(None))?;
                 let event_body = Some(StoppedEventBody {
                     reason: "step".to_owned(),
                     description: Some(format!(
@@ -1045,10 +1073,6 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                 self.send_response::<()>(request, Err(DebuggerError::Other(anyhow!("{}", error))))
             }
         }
-    }
-
-    pub(crate) fn peek_seq(&self) -> i64 {
-        self.adapter.peek_seq()
     }
 
     /// return a newly allocated id for a register scope reference
@@ -1113,7 +1137,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
 
     /// Returns one of the standard DAP Requests if all goes well, or a "error" request, which should indicate that the calling function should return.
     /// When preparing to return an "error" request, we will send a Response containing the DebuggerError encountered.
-    pub fn listen_for_request(&mut self) -> Request {
+    pub fn listen_for_request(&mut self) -> anyhow::Result<Option<Request>> {
         self.adapter.listen_for_request()
     }
 
@@ -1123,13 +1147,28 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
     /// failure.
     pub fn send_response<S: Serialize>(
         &mut self,
-        request: &Request,
+        request: Request,
         response: Result<Option<S>, DebuggerError>,
-    ) -> bool {
+    ) -> Result<()> {
         self.adapter.send_response(request, response)
     }
 
-    pub fn send_event<S: Serialize>(&mut self, event_type: &str, event_body: Option<S>) -> bool {
+    pub fn send_error_response(&mut self, response: &DebuggerError) -> Result<()> {
+        if self
+            .adapter
+            .show_message(MessageSeverity::Error, response.to_string())
+        {
+            Ok(())
+        } else {
+            Err(anyhow!("Failed to send error response"))
+        }
+    }
+
+    pub fn send_event<S: Serialize>(
+        &mut self,
+        event_type: &str,
+        event_body: Option<S>,
+    ) -> Result<()> {
         self.adapter.send_event(event_type, event_body)
     }
 
@@ -1186,6 +1225,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                 }
             };
             self.send_event("probe-rs-rtt-channel-config", Some(event_body))
+                .is_ok()
         } else {
             true
         }
@@ -1204,6 +1244,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                 }
             };
             self.send_event("probe-rs-rtt-data", Some(event_body))
+                .is_ok()
         } else {
             println!("RTT Channel {}: {}", channel_number, rtt_data);
             true
@@ -1226,7 +1267,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
 
         let progress_id = self.new_progress_id();
 
-        let ok = self.send_event(
+        self.send_event(
             "progressStart",
             Some(ProgressStartEventBody {
                 cancellable: Some(false),
@@ -1236,13 +1277,9 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                 request_id,
                 title: title.to_owned(),
             }),
-        );
+        )?;
 
-        if ok {
-            Ok(progress_id)
-        } else {
-            Err(anyhow!("Failed to send event."))
-        }
+        Ok(progress_id)
     }
 
     pub fn end_progress(&mut self, progress_id: ProgressId) -> Result<()> {
@@ -1251,19 +1288,13 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             "Progress reporting is not supported by client."
         );
 
-        let ok = self.send_event(
+        self.send_event(
             "progressEnd",
             Some(ProgressEndEventBody {
                 message: None,
                 progress_id: progress_id.to_string(),
             }),
-        );
-
-        if ok {
-            Ok(())
-        } else {
-            Err(anyhow!("Failed to send event."))
-        }
+        )
     }
 
     pub(crate) fn set_console_log_level(&mut self, error: ConsoleLog) {

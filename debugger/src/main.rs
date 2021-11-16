@@ -169,7 +169,7 @@ fn main() -> Result<()> {
             debugger_options,
             dap,
             vscode,
-        } => debug(debugger_options, dap, vscode),
+        } => debug(debugger_options, dap, vscode)?,
         CliCommands::Dump {
             debugger_options,
             loc,
