@@ -319,7 +319,9 @@ where
         )?;
 
         remaining_data_len -= first_chunk_size_words;
-        address += (4 * first_chunk_size_words) as u32;
+        address = address
+            .checked_add((4 * first_chunk_size_words) as u32)
+            .ok_or(AccessPortError::OutOfBoundsError)?;
         data_offset += first_chunk_size_words;
 
         while remaining_data_len > 0 {
