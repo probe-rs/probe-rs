@@ -245,6 +245,8 @@ pub struct StackFrameIterator<'debuginfo, 'probe, 'core> {
     debug_info: &'debuginfo DebugInfo,
     core: &'core mut Core<'probe>,
     frame_count: u64,
+
+    /// Current program counter. If set to `None`, this indicates that no further stack frame can be determined.
     pc: Option<u64>,
     registers: Registers,
     inlining_state: InlineFunctionState,
@@ -273,17 +275,17 @@ impl<'debuginfo, 'probe, 'core> Iterator for StackFrameIterator<'debuginfo, 'pro
     type Item = StackFrame;
 
     fn next(&mut self) -> Option<Self::Item> {
-        use gimli::UnwindSection;
-        let mut ctx = Box::new(gimli::UnwindContext::new());
-        let bases = gimli::BaseAddresses::default();
-
         let pc = match self.pc {
             Some(pc) => pc,
             None => {
-                log::debug!("Unable to determine next frame, program counter is zero");
+                log::debug!("Unable to determine next frame, program counter is unknown");
                 return None;
             }
         };
+
+        use gimli::UnwindSection;
+        let mut ctx = Box::new(gimli::UnwindContext::new());
+        let bases = gimli::BaseAddresses::default();
 
         log::debug!("StackFrame: Unwinding at address {:#010x}", pc);
 
@@ -375,9 +377,10 @@ impl<'debuginfo, 'probe, 'core> Iterator for StackFrameIterator<'debuginfo, 'pro
                 }
             }
         } else {
-            inline_call_site_info = Some(self.inlining_state.clone());
-            // Reset inlining state
-            self.inlining_state = InlineFunctionState::NoInlining;
+            inline_call_site_info = Some(std::mem::replace(
+                &mut self.inlining_state,
+                InlineFunctionState::NoInlining,
+            ));
         };
 
         let unwind_info = self.debug_info.frame_section.unwind_info_for_address(
@@ -547,6 +550,15 @@ impl<'debuginfo, 'probe, 'core> Iterator for StackFrameIterator<'debuginfo, 'pro
                 .map(|pc| u64::from(pc & !1));
 
             log::debug!("Called from pc={:#010x?}", self.pc);
+
+            // We need to ensure that the program counter changed, otherwise we are caught in an endless loop
+
+            if let Some(new_pc) = self.pc {
+                if new_pc == pc {
+                    log::debug!("Program counter did not change while unwinding, aborting.");
+                    self.pc = None;
+                }
+            }
         }
 
         return_frame

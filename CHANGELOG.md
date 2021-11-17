@@ -74,6 +74,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Debugger: Do not crash the CLI when pressing enter without a command. (#875)
 - Fixed panic in CLI debugger when using a command without arguments. (#873)
 - Debugger: Reduce panics caused by `unwrap()` usage. (#886) 
+- probe-rs: When unwinding, detect if the program counter does not change anymore and stop. (#893)
 
 ## [0.11.0]
 
