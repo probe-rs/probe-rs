@@ -70,6 +70,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Breaking change: `probe-rs-debugger` and the associated [VSCode extension PR #21](https://github.com/probe-rs/vscode/pull/21) now uses camelCase for all `launch.json` properties (#885)
 - Publicly export `core::RegisterFile` type.
 - The trait surface for DAP/AP/DP access was cleaned up and more clarity around the access level of the API was added by properly putting `Raw` or not in the name.
+- `probe-rs-debugger` Fix stack overflow when unwinding circular references in data structures. (#895)
 
 ### Fixed
 - Detect proper USB HID interface to use for CMSIS-DAP v1 probes. Without this, CMSIS-DAP probes with multiple HID interfaces, e.g. MCUlink, were not working properly on MacOS (#722).
