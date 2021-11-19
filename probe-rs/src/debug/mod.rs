@@ -1767,52 +1767,56 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                             Some(data_type_attribute) => {
                                 match data_type_attribute.value() {
                                     gimli::AttributeValue::UnitRef(unit_ref) => {
-                                        // Reference to a type, or an node.entry() to another type or a type modifier which will point to another type.
-                                        let mut referenced_variable = Variable::new();
-                                        let mut type_tree = self.unit.header.entries_tree(
-                                            &self.unit.abbreviations,
-                                            Some(unit_ref),
-                                        )?;
-                                        let referenced_node = type_tree.root()?;
-                                        referenced_variable.name = match node
-                                            .entry()
-                                            .attr(gimli::DW_AT_name)
-                                        {
-                                            Ok(optional_name_attr) => match optional_name_attr {
-                                                Some(name_attr) => {
-                                                    extract_name(self.debug_info, name_attr.value())
-                                                }
-                                                None => "".to_owned(),
-                                            },
-                                            Err(error) => {
-                                                format!("ERROR: evaluating name: {:?} ", error)
-                                            }
-                                        };
-                                        // Now, retrieve the location by reading the adddress pointed to by the parent variable.
-                                        let mut buff = [0u8; 4];
-                                        core.read(
-                                            child_variable.memory_location as u32,
-                                            &mut buff,
-                                        )?;
-                                        referenced_variable.memory_location =
-                                            u32::from_le_bytes(buff) as u64;
-                                        self.extract_type(
-                                            referenced_node,
-                                            parent_variable,
-                                            &mut referenced_variable,
-                                            core,
-                                            frame_base,
-                                            program_counter,
-                                        )?;
-                                        if !referenced_variable.type_name.eq("()") {
-                                            // Halt further processing of unit types.
-                                            referenced_variable.kind = VariableKind::Referenced;
-                                            // Now add the referenced_variable as a child.
-                                            referenced_variable.inclusion =
-                                                VariableInclusion::Include;
-                                            child_variable
-                                                .add_child_variable(&mut referenced_variable, core);
-                                        }
+                                        child_variable.kind = VariableKind::Pointer;
+                                        /*
+
+                                           // Reference to a type, or an node.entry() to another type or a type modifier which will point to another type.
+                                           let mut referenced_variable = Variable::new();
+                                           let mut type_tree = self.unit.header.entries_tree(
+                                               &self.unit.abbreviations,
+                                               Some(unit_ref),
+                                           )?;
+                                           let referenced_node = type_tree.root()?;
+                                           referenced_variable.name = match node
+                                               .entry()
+                                               .attr(gimli::DW_AT_name)
+                                           {
+                                               Ok(optional_name_attr) => match optional_name_attr {
+                                                   Some(name_attr) => {
+                                                       extract_name(self.debug_info, name_attr.value())
+                                                   }
+                                                   None => "".to_owned(),
+                                               },
+                                               Err(error) => {
+                                                   format!("ERROR: evaluating name: {:?} ", error)
+                                               }
+                                           };
+                                           // Now, retrieve the location by reading the adddress pointed to by the parent variable.
+                                           let mut buff = [0u8; 4];
+                                           core.read(
+                                               child_variable.memory_location as u32,
+                                               &mut buff,
+                                           )?;
+                                           referenced_variable.memory_location =
+                                               u32::from_le_bytes(buff) as u64;
+                                           self.extract_type(
+                                               referenced_node,
+                                               parent_variable,
+                                               &mut referenced_variable,
+                                               core,
+                                               frame_base,
+                                               program_counter,
+                                           )?;
+                                           if !referenced_variable.type_name.eq("()") {
+                                               // Halt further processing of unit types.
+                                               referenced_variable.kind = VariableKind::Referenced;
+                                               // Now add the referenced_variable as a child.
+                                               referenced_variable.inclusion =
+                                                   VariableInclusion::Include;
+                                               child_variable
+                                                   .add_child_variable(&mut referenced_variable, core);
+                                           }
+                                        */
                                     }
                                     other_attribute_value => {
                                         child_variable.set_value(format!(

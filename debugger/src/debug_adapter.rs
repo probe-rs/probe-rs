@@ -969,7 +969,8 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                     }
                 }
                 None => Err(DebuggerError::Other(anyhow!(
-                    "No variable information found!"
+                    "No variable information found for {}!",
+                    arguments.variables_reference
                 ))),
             },
         );
@@ -1100,7 +1101,15 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                 let (variables_reference, named_variables_cnt, indexed_variables_cnt) =
                     match &variable.children {
                         Some(children) => self.create_variable_map(children),
-                        None => (0, 0, 0),
+                        None => {
+                            if variable.kind == VariableKind::Pointer {
+                                // Provide DAP Client with a reference so that it will explicitly ask for children when the user expands it.
+                                (self.new_variable_map_key(), 0, 0)
+                            } else {
+                                // Returning 0's allows VSCode DAP Client to behave correctly for frames that have no variables, and variables that have no children.
+                                (0, 0, 0)
+                            }
+                        }
                     };
                 Variable {
                     name: variable.name.clone(),

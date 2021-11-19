@@ -11,6 +11,8 @@ pub enum VariableKind {
     Indexed,
     /// A variable that is identified by it's name, and is not bound to a specific ordinal position.
     Named,
+    /// A variable that points to another variable
+    Pointer,
     /// A variable that is the target of a pointer variable
     Referenced,
     /// As the default, his should never be the final value for a Variable
@@ -108,12 +110,19 @@ impl Variable {
 
     /// Evaluate the variable's result if possible and set self.value, or else set self.value as the error String.
     pub fn extract_value(&mut self, core: &mut Core<'_>) {
-        // Since extract_value is called very late in the decoding process, we can defer setting of the VariableKind until this point.
-        if self.name.starts_with("__") {
-            self.kind = VariableKind::Indexed
+        if self.kind == VariableKind::Pointer {
+            self.inclusion = VariableInclusion::Include;
+            self.value = self.type_name.clone();
+            return;
         } else {
-            self.kind = VariableKind::Named
+            // Since extract_value is called very late in the decoding process, we can defer setting of the VariableKind until this point.
+            if self.name.starts_with("__") {
+                self.kind = VariableKind::Indexed;
+            } else {
+                self.kind = VariableKind::Named;
+            }
         }
+
         // Quick exit if we don't really need to do much more.
         // The value was set by get_location(), so just leave it as is.
         if self.memory_location == u64::MAX
