@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 - Added support for `chip-erase` flag under the `probe-rs-cli download` command. (#898)
+- Added support for `disable-progressbars` flag under the `probe-rs-cli download` command. (#898)
+- Fixed bug in `FlashLoader` not emitting `ProgressEvent::FinishedErasing` when using `do_chip_erase`. (#898)
 
 ### Added
 
