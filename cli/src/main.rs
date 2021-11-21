@@ -110,6 +110,10 @@ enum Cli {
         /// Whether to erase the entire chip before downloading
         #[structopt(long)]
         chip_erase: bool,
+
+        /// Whether to disable fancy progress reporting
+        #[structopt(long)]
+        disable_progressbars: bool,
     },
     /// Erase all nonvolatile memory of attached target
     #[structopt(name = "erase")]
@@ -170,11 +174,13 @@ fn main() -> Result<()> {
             skip_bytes,
             path,
             chip_erase,
+            disable_progressbars,
         } => download_program_fast(
             common,
             format.into(base_address, skip_bytes),
             &path,
             chip_erase,
+            disable_progressbars,
         ),
         Cli::Erase { common } => erase(&common),
         Cli::Trace {
@@ -241,6 +247,7 @@ fn download_program_fast(
     format: Format,
     path: &str,
     do_chip_erase: bool,
+    disable_progressbars: bool,
 ) -> Result<()> {
     let mut session = common.simple_attach()?;
 
@@ -264,7 +271,7 @@ fn download_program_fast(
             version: false,
             list_chips: false,
             list_probes: false,
-            disable_progressbars: false,
+            disable_progressbars,
             reset_halt: false,
             log: None,
             restore_unwritten: false,
