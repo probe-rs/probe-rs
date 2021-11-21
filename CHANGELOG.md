@@ -5,7 +5,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-- Added support for `erase` flag under the `probe-rs-cli download` command. (#898)
+- Added support for `chip-erase` flag under the `probe-rs-cli download` command. (#898)
 
 ### Added
 
