@@ -106,6 +106,10 @@ enum Cli {
 
         /// The path to the file to be downloaded to the flash
         path: String,
+
+        /// Whether to erase before downloading
+        #[structopt(short, long)]
+        erase: bool,
     },
     /// Erase all nonvolatile memory of attached target
     #[structopt(name = "erase")]
@@ -165,8 +169,14 @@ fn main() -> Result<()> {
             base_address,
             skip_bytes,
             path,
-        } => download_program_fast(common, format.into(base_address, skip_bytes), &path),
-        Cli::Erase { common } => erase(&common),
+            erase,
+        } => {
+            if erase {
+                erase_device(&common)?;
+            }
+            download_program_fast(common, format.into(base_address, skip_bytes), &path)
+        }
+        Cli::Erase { common } => erase_device(&common),
         Cli::Trace {
             shared,
             common,
@@ -265,7 +275,7 @@ fn download_program_fast(common: ProbeOptions, format: Format, path: &str) -> Re
     Ok(())
 }
 
-fn erase(common: &ProbeOptions) -> Result<()> {
+fn erase_device(common: &ProbeOptions) -> Result<()> {
     let mut session = common.simple_attach()?;
 
     erase_all(&mut session)?;
