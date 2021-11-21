@@ -107,9 +107,9 @@ enum Cli {
         /// The path to the file to be downloaded to the flash
         path: String,
 
-        /// Whether to erase before downloading
-        #[structopt(short, long)]
-        erase: bool,
+        /// Whether to erase the entire chip before downloading
+        #[structopt(long)]
+        chip_erase: bool,
     },
     /// Erase all nonvolatile memory of attached target
     #[structopt(name = "erase")]
@@ -169,14 +169,14 @@ fn main() -> Result<()> {
             base_address,
             skip_bytes,
             path,
-            erase,
-        } => {
-            if erase {
-                erase_device(&common)?;
-            }
-            download_program_fast(common, format.into(base_address, skip_bytes), &path)
-        }
-        Cli::Erase { common } => erase_device(&common),
+            chip_erase,
+        } => download_program_fast(
+            common,
+            format.into(base_address, skip_bytes),
+            &path,
+            chip_erase,
+        ),
+        Cli::Erase { common } => erase(&common),
         Cli::Trace {
             shared,
             common,
@@ -236,7 +236,12 @@ fn dump_memory(
     Ok(())
 }
 
-fn download_program_fast(common: ProbeOptions, format: Format, path: &str) -> Result<()> {
+fn download_program_fast(
+    common: ProbeOptions,
+    format: Format,
+    path: &str,
+    do_chip_erase: bool,
+) -> Result<()> {
     let mut session = common.simple_attach()?;
 
     let mut file = match File::open(path) {
@@ -270,12 +275,13 @@ fn download_program_fast(common: ProbeOptions, format: Format, path: &str) -> Re
             probe_options: common,
         },
         loader,
+        do_chip_erase,
     )?;
 
     Ok(())
 }
 
-fn erase_device(common: &ProbeOptions) -> Result<()> {
+fn erase(common: &ProbeOptions) -> Result<()> {
     let mut session = common.simple_attach()?;
 
     erase_all(&mut session)?;

@@ -19,6 +19,7 @@ pub fn run_flash_download(
     path: &Path,
     opt: &FlashOptions,
     loader: FlashLoader,
+    do_chip_erase: bool,
 ) -> Result<(), OperationError> {
     // Start timer.
     let instant = Instant::now();
@@ -26,6 +27,7 @@ pub fn run_flash_download(
     let mut download_option = DownloadOptions::default();
     download_option.keep_unwritten_bytes = opt.restore_unwritten;
     download_option.dry_run = opt.probe_options.dry_run;
+    download_option.do_chip_erase = do_chip_erase;
 
     if !opt.disable_progressbars {
         // Create progress bars.
