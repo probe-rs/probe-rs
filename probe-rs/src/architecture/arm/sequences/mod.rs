@@ -1,4 +1,5 @@
 pub mod nxp;
+pub mod ambiq;
 
 use std::{
     sync::Arc,

@@ -3,6 +3,7 @@ use probe_rs_target::{Architecture, ChipFamily};
 use super::{Core, MemoryRegion, RawFlashAlgorithm, RegistryError, TargetDescriptionSource};
 
 use crate::architecture::arm::sequences::nxp::LPC55S69;
+use crate::architecture::arm::sequences::ambiq::AMA3B;
 use crate::architecture::arm::sequences::ArmDebugSequence;
 use crate::architecture::riscv::sequences::esp32c3::ESP32C3;
 use crate::architecture::riscv::sequences::{DefaultRiscvSequence, RiscvDebugSequence};
@@ -95,6 +96,9 @@ impl Target {
         } else if chip.name.starts_with("esp32c3") {
             log::warn!("Using custom sequence for ESP32c3");
             debug_sequence = DebugSequence::Riscv(ESP32C3::create());
+        } else if chip.name.starts_with("AMA3B") {
+            log::warn!("Using custom sequence for Ambiq Apollo3");
+            debug_sequence = DebugSequence::Arm(AMA3B::create());
         }
 
         Ok(Target {
@@ -200,9 +204,9 @@ impl From<Target> for TargetSelector {
     }
 }
 
-/// This is the type to denote a general debug sequence.  
-/// It can differentiate between ARM and RISC-V for now.  
-/// Currently, only the ARM variant does something sensible;  
+/// This is the type to denote a general debug sequence.
+/// It can differentiate between ARM and RISC-V for now.
+/// Currently, only the ARM variant does something sensible;
 /// RISC-V will be ignored when encountered.
 #[derive(Clone)]
 pub enum DebugSequence {
