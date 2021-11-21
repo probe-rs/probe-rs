@@ -433,19 +433,10 @@ impl<'probe> CoreInterface for Armv6m<'probe> {
     }
 
     fn reset_and_halt(&mut self, _timeout: Duration) -> Result<CoreInformation, Error> {
-        self.sequence.reset_catch_set(&mut self.memory)?;
-        self.sequence.reset_system(&mut self.memory)?;
+        self.sequence.reset_and_halt(&mut self.memory)?;
 
         // Update core status
         let _ = self.status()?;
-
-        const XPSR_THUMB: u32 = 1 << 24;
-        let xpsr_value = self.read_core_reg(XPSR.address)?;
-        if xpsr_value & XPSR_THUMB == 0 {
-            self.write_core_reg(XPSR.address, xpsr_value | XPSR_THUMB)?;
-        }
-
-        self.sequence.reset_catch_clear(&mut self.memory)?;
 
         // try to read the program counter
         let pc_value = self.read_core_reg(PC.address)?;
