@@ -106,6 +106,14 @@ enum Cli {
 
         /// The path to the file to be downloaded to the flash
         path: String,
+
+        /// Whether to erase the entire chip before downloading
+        #[structopt(long)]
+        chip_erase: bool,
+
+        /// Whether to disable fancy progress reporting
+        #[structopt(long)]
+        disable_progressbars: bool,
     },
     /// Erase all nonvolatile memory of attached target
     #[structopt(name = "erase")]
@@ -165,7 +173,15 @@ fn main() -> Result<()> {
             base_address,
             skip_bytes,
             path,
-        } => download_program_fast(common, format.into(base_address, skip_bytes), &path),
+            chip_erase,
+            disable_progressbars,
+        } => download_program_fast(
+            common,
+            format.into(base_address, skip_bytes),
+            &path,
+            chip_erase,
+            disable_progressbars,
+        ),
         Cli::Erase { common } => erase(&common),
         Cli::Trace {
             shared,
@@ -226,7 +242,13 @@ fn dump_memory(
     Ok(())
 }
 
-fn download_program_fast(common: ProbeOptions, format: Format, path: &str) -> Result<()> {
+fn download_program_fast(
+    common: ProbeOptions,
+    format: Format,
+    path: &str,
+    do_chip_erase: bool,
+    disable_progressbars: bool,
+) -> Result<()> {
     let mut session = common.simple_attach()?;
 
     let mut file = match File::open(path) {
@@ -249,7 +271,7 @@ fn download_program_fast(common: ProbeOptions, format: Format, path: &str) -> Re
             version: false,
             list_chips: false,
             list_probes: false,
-            disable_progressbars: false,
+            disable_progressbars,
             reset_halt: false,
             log: None,
             restore_unwritten: false,
@@ -260,6 +282,7 @@ fn download_program_fast(common: ProbeOptions, format: Format, path: &str) -> Re
             probe_options: common,
         },
         loader,
+        do_chip_erase,
     )?;
 
     Ok(())

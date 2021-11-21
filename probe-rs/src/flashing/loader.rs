@@ -316,6 +316,10 @@ impl FlashLoader {
             if do_chip_erase {
                 log::debug!("    Doing chip erase...");
                 flasher.run_erase(|active| active.erase_all())?;
+
+                if let Some(progress) = options.progress {
+                    progress.finished_erasing();
+                }
             }
 
             for region in regions {
