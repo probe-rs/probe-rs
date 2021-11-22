@@ -7,7 +7,11 @@ use std::{
 use anyhow::Result;
 
 use super::ArmDebugSequence;
-use crate::{architecture::arm::core::register, core::CoreRegister, DebugProbeError, Memory};
+use crate::{
+    architecture::arm::core::{self, register},
+    core::CoreRegister,
+    DebugProbeError, Memory,
+};
 
 pub struct AMA3B(());
 
@@ -18,6 +22,15 @@ impl AMA3B {
 }
 
 impl ArmDebugSequence for AMA3B {
+    fn debug_device_unlock(&self, interface: &mut crate::Memory) -> Result<(), crate::Error> {
+        // set C runtime environment
+        //
+        // From: https://github.com/sparkfun/SparkFun_Apollo3_AmbiqSuite_BSPs/blob/6398086a1a87ddea78274521683ba3ad817bee82/common/tools_sfe/embedded/jlink-prog-combined.txt
+        log::info!("ambiq: set C runtime");
+        interface.write_core_reg(core::armv7m::MSP, 0x10000100)?;
+        Ok(())
+    }
+
     fn reset_and_halt(&self, interface: &mut Memory) -> Result<(), crate::Error> {
         // Based on:
         //
