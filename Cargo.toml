@@ -14,6 +14,8 @@ version = "0.3.0"
 addr2line = { version = "0.15", default-features = false, features = [
     "fallible-iterator",
     "std-object",
+    "rustc-demangle",
+    "cpp_demangle",
 ] }
 anyhow = "1"
 colored = "2"

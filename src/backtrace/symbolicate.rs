@@ -102,7 +102,16 @@ impl Subroutine {
             let demangled_name = frame
                 .function
                 .as_ref()
-                .and_then(|function| function.demangle().ok())
+                .and_then(|function| {
+                    let demangled = function.demangle();
+                    log::trace!(
+                        "demangle {:?} (language={:X?}) -> {:?}",
+                        function.raw_name(),
+                        function.language,
+                        demangled,
+                    );
+                    demangled.ok()
+                })
                 .map(|cow| cow.into_owned());
 
             // XXX if there was inlining AND there's no function name info we'll report several
@@ -159,7 +168,7 @@ fn name_from_symtab(pc: u32, symtab: &SymbolMap<SymbolMapName>) -> Either<String
 
     symtab
         .get(address)
-        .map(|symbol| symbol.name().to_owned())
+        .map(|symbol| addr2line::demangle_auto(symbol.name().into(), None).into_owned())
         .map(Either::Left)
         .unwrap_or(Either::Right(pc))
 }
