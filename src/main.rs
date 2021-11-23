@@ -88,13 +88,27 @@ fn run_target_program(elf_path: &Path, chip_name: &str, opts: &cli::Opts) -> any
                     let pages = flash_layout.pages();
                     let num_pages = pages.len();
                     let num_bytes: u64 = pages.iter().map(|x| x.size() as u64).sum();
-                    log::info!("flashing program ({} pages / {:.02} KiB)", num_pages, num_bytes as f64 / 1024.0);
+                    log::info!(
+                        "flashing program ({} pages / {:.02} KiB)",
+                        num_pages,
+                        num_bytes as f64 / 1024.0
+                    );
                 }
+                // A sector has been erased. Sectors (usually) contain multiple pages.
                 flashing::ProgressEvent::SectorErased { size, time } => {
-                    log::debug!("Erased sector of size {} bytes in {} ms", size, time.as_millis());
+                    log::debug!(
+                        "Erased sector of size {} bytes in {} ms",
+                        size,
+                        time.as_millis()
+                    );
                 }
+                // A page has been programmed.
                 flashing::ProgressEvent::PageProgrammed { size, time } => {
-                    log::debug!("Programmed page of size {} bytes in {} ms", size, time.as_millis());
+                    log::debug!(
+                        "Programmed page of size {} bytes in {} ms",
+                        size,
+                        time.as_millis()
+                    );
                 }
                 _ => {
                     // Ignore other events
