@@ -1,26 +1,85 @@
+use super::*;
+use crate::Error;
+use anyhow::anyhow;
+use gimli::UnitOffset;
 use num_traits::Zero;
+use std::{convert::TryInto, fmt};
 use thousands::Separable;
 
-use super::*;
-use std::{convert::TryInto, fmt};
-
-/// VariableKind is a tag used to differentiate the nature of a variable. The DAP protocol requires a differentiation between 'Named' and 'Indexed'. We've added some flags to control when variables require unique handling or decoding the value during runtimeprocessing.
-#[derive(Debug, Clone, PartialEq)]
-pub enum VariableKind {
-    /// An Indexed variable (bound to an ordinal position), such as the sequenced members of an Array or Vector
-    Indexed,
-    /// A variable that is identified by it's name, and is not bound to a specific ordinal position.
-    Named,
-    /// A variable that points to another variable
-    Pointer,
-    /// A variable that is the target of a pointer variable
-    Referenced,
-    /// As the default, his should never be the final value for a Variable
-    Undetermined,
+/// VariableCache stores every available Variable, and provides methods to create and navigate the parent-child relationships of the Variables.
+pub struct VariableCache {
+    variable_cache_key: i64,
+    variable_cache: HashMap<i64, Variable>,
 }
-impl Default for VariableKind {
-    fn default() -> Self {
-        VariableKind::Undetermined
+
+impl VariableCache {
+    pub fn new() -> Self {
+        Self {
+            variable_cache_key: 0,
+            variable_cache: HashMap::new(),
+        }
+    }
+
+    /// Add a `probe_rs::debug::Variable` to the cache. If a Variable already exists, it will be replaced with the new `Variable`. This also validates that the supplied `Variable::parent_key` is a valid entry in the cache.
+    pub fn add_variable(&mut self, mut variable: Variable) -> Result<(), Error> {
+        if variable.parent_key > 0 && (!self.variable_cache.contains_key(&variable.parent_key)) {
+            return Err(anyhow!("VariableCache: Attempted to add a new variable: {} with non existent `parent_key`: {}.", variable.name, variable.parent_key).into());
+        }
+        if variable.variable_key == 0 {
+            // The caller is telling us this is definitely a new `Variable`
+            let new_cache_key: i64 = self.variable_cache_key + 1;
+            variable.variable_key = new_cache_key;
+            match self
+                .variable_cache
+                .insert(variable.variable_key, variable.clone())
+            {
+                Some(old_variable) => {
+                    log::warn!("VariableCache: Attempted to add a new variable: {} at position: {}, which contains an existing variable: {}.", variable.name, old_variable.variable_key, old_variable.name);
+                }
+                None => {
+                    self.variable_cache_key = new_cache_key;
+                }
+            }
+        } else {
+            // Attempt to update an existing `Variable` in the cache
+            if self
+                .variable_cache
+                .insert(variable.variable_key, variable.clone())
+                .is_none()
+            {
+                log::warn!("VariableCache: Attempted to update an existing variable: {} at position: {}, but it does not exist in the cache", variable.name, variable.variable_key);
+            }
+        }
+        Ok(())
+    }
+
+    /// Retrieve all the children of a `Variable`. This also validates that the parent exists in the cache, before attempting to retrieve children.
+    pub fn get_children(&mut self, parent_variable: &Variable) -> Result<Vec<Variable>, Error> {
+        if parent_variable.variable_key == 0
+            && (!self
+                .variable_cache
+                .contains_key(&parent_variable.variable_key))
+        {
+            return Err(anyhow!("VariableCache: Attempted to retrieve children for a non existent variable: {} with `variable_key`: {}.", parent_variable.name, parent_variable.parent_key).into());
+        } else {
+            Ok(self
+                .variable_cache
+                .values()
+                .filter(|child_variable| child_variable.parent_key == parent_variable.variable_key)
+                .cloned()
+                .collect::<Vec<Variable>>())
+        }
+    }
+
+    // Check if a `Variable` has any children. This also validates that the parent exists in the cache, before attempting to check for children.
+    pub fn has_children(&mut self, parent_variable: &Variable) -> Result<bool, Error> {
+        self.get_children(parent_variable).and_then(|children| {
+            if children.len() > 0 {
+                Ok(true)
+            } else {
+                Ok(false)
+            }
+        })
     }
 }
 
@@ -59,35 +118,39 @@ impl Default for VariantRole {
 
 #[derive(Debug, Default, Clone)]
 pub struct Variable {
+    /// Every variable must have a unique key value assigned to it. The value will be zero until it is stored in VariableCache, at which time its value will be set to the same as the VariableCache::variable_cache_key
+    pub variable_key: i64,
+    /// Every variable must have a unique parent assigned to it when stored in the VariableCache A parent_key of 0 in the cache means it is the root of a variable tree.
+    pub parent_key: i64,
     pub name: String,
-    value: String,
+    pub value: String,
     pub file: String,
     pub line: u64,
     pub type_name: String,
+    /// Instead of parsing the type_name to infer if this variable is a pointer to another data type, we set this to true explicitly during ELF parsing.
+    pub is_pointer: bool,
+    /// The header_offset and entries_offset are cached to allow on-demand access to the DIE, through functions like:
+    ///   `gimli::Read::DebugInfo.header_at_offset()`, and   
+    ///   `gimli::Read::UnitHeader.entries_at_tree()`
+    pub header_offset: Option<UnitOffset>,
+    pub entries_offset: Option<UnitOffset>,
     /// The starting location/address in memory where this Variable's value is stored.
     pub memory_location: u64,
     pub byte_size: u64,
     /// If  this is a subrange (array, vector, etc.), is the ordinal position of this variable in that range
-    pub(crate) member_index: Option<i64>,
+    pub member_index: Option<i64>,
     /// If this is a subrange (array, vector, etc.), we need to temporarily store the lower bound.
-    pub(crate) range_lower_bound: i64,
+    pub range_lower_bound: i64,
     /// If this is a subrange (array, vector, etc.), we need to temporarily store the the upper bound of the range.
-    pub(crate) range_upper_bound: i64,
-    pub kind: VariableKind,
+    pub range_upper_bound: i64,
     pub role: VariantRole,
-    pub(crate) inclusion: VariableInclusion,
+    pub inclusion: VariableInclusion,
     pub children: Option<Vec<Variable>>,
 }
 
 impl Variable {
     pub fn new() -> Variable {
         Variable {
-            name: String::new(),
-            value: String::new(),
-            file: String::new(),
-            /// There are instances when extract_location() will encounter a value in the DWARF definition, rather than a memory location where the value can be read.
-            /// In those cases it will set Variable.value, and set Variable.location to u64::MAX, which tells the Variable.extract_value() to NOT overwrite it.
-            memory_location: 0,
             ..Default::default()
         }
     }
@@ -110,19 +173,11 @@ impl Variable {
 
     /// Evaluate the variable's result if possible and set self.value, or else set self.value as the error String.
     pub fn extract_value(&mut self, core: &mut Core<'_>) {
-        if self.kind == VariableKind::Pointer {
+        if self.is_pointer {
             self.inclusion = VariableInclusion::Include;
             self.value = self.type_name.clone();
             return;
-        } else {
-            // Since extract_value is called very late in the decoding process, we can defer setting of the VariableKind until this point.
-            if self.name.starts_with("__") {
-                self.kind = VariableKind::Indexed;
-            } else {
-                self.kind = VariableKind::Named;
-            }
         }
-
         // Quick exit if we don't really need to do much more.
         // The value was set by get_location(), so just leave it as is.
         if self.memory_location == u64::MAX
@@ -286,7 +341,8 @@ impl fmt::Display for Variable {
                 } else {
                     // Generic handling of other structured types.
                     // TODO: This is 'ok' for most, but could benefit from some custom formatting, e.g. Unions.
-                    if self.kind == VariableKind::Named {
+                    if self.name.starts_with("__") {
+                        // Indexed variables look different ...
                         write!(f, "{}:{{", self.name)?;
                     } else {
                         write!(f, "{{")?;

@@ -8,7 +8,7 @@ mod variable;
 use crate::{core::Core, MemoryInterface};
 use num_traits::Zero;
 use probe_rs_target::Architecture;
-pub use variable::{Variable, VariableInclusion, VariableKind, VariantRole};
+pub use variable::{Variable, VariableCache, VariableInclusion, VariantRole};
 
 use std::{
     borrow,
@@ -1767,7 +1767,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                             Some(data_type_attribute) => {
                                 match data_type_attribute.value() {
                                     gimli::AttributeValue::UnitRef(unit_ref) => {
-                                        child_variable.kind = VariableKind::Pointer;
+                                        child_variable.is_pointer = true;
                                         /*
 
                                            // Reference to a type, or an node.entry() to another type or a type modifier which will point to another type.
@@ -1942,7 +1942,6 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                                 Some(array_member_index);
                                             array_member_variable.name =
                                                 format!("__{}", array_member_index);
-                                            array_member_variable.kind = VariableKind::Indexed;
                                             array_member_variable.file =
                                                 child_variable.file.clone();
                                             array_member_variable.line = child_variable.line;

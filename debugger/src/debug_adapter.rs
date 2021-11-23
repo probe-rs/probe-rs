@@ -1,12 +1,12 @@
-use crate::debugger::ConsoleLog;
-use crate::debugger::CoreData;
+use crate::debugger::{ConsoleLog, CoreData};
 use crate::DebuggerError;
 use crate::{dap_types, rtt::DataFormat};
 use anyhow::{anyhow, Result};
 use dap_types::*;
 use parse_int::parse;
+use probe_rs::debug::VariableCache;
 use probe_rs::{
-    debug::{ColumnType, VariableKind},
+    debug::{ColumnType, Variable},
     CoreStatus, HaltReason, MemoryInterface,
 };
 use serde::{de::DeserializeOwned, Serialize};
@@ -29,7 +29,6 @@ pub enum DebugAdapterType {
 
 /// Progress ID used for progress reporting when the debug adapter protocol is used.
 type ProgressId = i64;
-
 pub struct DebugAdapter<P: ProtocolAdapter> {
     /// Track the last_known_status of the probe.
     /// The debug client needs to be notified when the probe changes state,
@@ -41,11 +40,9 @@ pub struct DebugAdapter<P: ProtocolAdapter> {
     /// `scope_map` stores a list of all MS DAP Scopes with a each stack frame's unique id as key.
     /// It is cleared by `threads()`, populated by stack_trace(), for later re-use by `scopes()`.
     scope_map: HashMap<i64, Vec<Scope>>,
-    /// `variable_map` stores a list of all MS DAP Variables with a unique per-level reference.
+    /// A cache of all program variables that are in scope for the current PC (program counter).
     /// It is cleared by `threads()`, populated by stack_trace(), for later nested re-use by `variables()`.
-    variable_map_key_seq: i64, // Used to create unique values for `self.variable_map` keys.
-    variable_map: HashMap<i64, Vec<Variable>>,
-
+    variable_cache: VariableCache,
     progress_id: ProgressId,
 
     /// Flag to indicate if the connected client supports progress reporting.
@@ -59,8 +56,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             last_known_status: CoreStatus::Unknown,
             halt_after_reset: false,
             scope_map: HashMap::new(),
-            variable_map: HashMap::new(),
-            variable_map_key_seq: -1,
+            variable_cache: VariableCache::new(),
             progress_id: 0,
             supports_progress_reporting: false,
             adapter,
@@ -477,8 +473,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
 
         let threads = vec![single_thread];
         self.scope_map.clear();
-        self.variable_map.clear();
-        self.variable_map_key_seq = -1;
+        self.variable_cache = VariableCache::new();
         self.send_response(request, Ok(Some(ThreadsResponseBody { threads })))
     }
     pub(crate) fn set_breakpoints(
@@ -1076,12 +1071,6 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         }
     }
 
-    /// return a newly allocated id for a register scope reference
-    fn new_variable_map_key(&mut self) -> i64 {
-        self.variable_map_key_seq += 1;
-        self.variable_map_key_seq
-    }
-
     /// recurse through each variable and add children with parent reference to self.variables_map
     /// returns a tuple containing the parent's  (variables_map_key, named_child_variables_cnt, indexed_child_variables_cnt)
     fn create_variable_map(&mut self, variables: &[probe_rs::debug::Variable]) -> (i64, i64, i64) {
@@ -1092,7 +1081,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             .map(|variable| {
                 // TODO: The DAP Protocol doesn't seem to have an easy way to indicate if a variable is `Named` or `Indexed`.
                 // Figure out what needs to be done to improve this.
-                if variable.kind == VariableKind::Indexed {
+                if variable.name.starts_with("__") {
                     indexed_child_variables_cnt += 1;
                 } else {
                     named_child_variables_cnt += 1;
@@ -1102,7 +1091,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                     match &variable.children {
                         Some(children) => self.create_variable_map(children),
                         None => {
-                            if variable.kind == VariableKind::Pointer {
+                            if variable.is_pointer {
                                 // Provide DAP Client with a reference so that it will explicitly ask for children when the user expands it.
                                 (self.new_variable_map_key(), 0, 0)
                             } else {
