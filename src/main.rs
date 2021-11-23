@@ -81,10 +81,32 @@ fn run_target_program(elf_path: &Path, chip_name: &str, opts: &cli::Opts) -> any
     if opts.no_flash {
         log::info!("skipped flashing");
     } else {
-        let size = elf.program_flash_size();
-        log::info!("flashing program ({:.02} KiB)", size as f64 / 1024.0);
+        let fp = flashing::FlashProgress::new(|evt| {
+            match evt {
+                // The flash layout has been built and the flashing procedure was initialized.
+                flashing::ProgressEvent::Initialized { flash_layout, .. } => {
+                    let pages = flash_layout.pages();
+                    let num_pages = pages.len();
+                    let num_bytes: u64 = pages.iter().map(|x| x.size() as u64).sum();
+                    log::info!("flashing program ({} pages / {:.02} KiB)", num_pages, num_bytes as f64 / 1024.0);
+                }
+                flashing::ProgressEvent::SectorErased { size, time } => {
+                    log::debug!("Erased sector of size {} bytes in {} ms", size, time.as_millis());
+                }
+                flashing::ProgressEvent::PageProgrammed { size, time } => {
+                    log::debug!("Programmed page of size {} bytes in {} ms", size, time.as_millis());
+                }
+                _ => {
+                    // Ignore other events
+                }
+            }
+        });
 
-        flashing::download_file(&mut sess, elf_path, Format::Elf)?;
+        let mut options = flashing::DownloadOptions::default();
+        options.dry_run = false;
+        options.progress = Some(&fp);
+
+        flashing::download_file_with_options(&mut sess, elf_path, Format::Elf, options)?;
         log::info!("success!");
     }
 
