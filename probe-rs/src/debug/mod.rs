@@ -236,7 +236,7 @@ enum InlineFunctionState {
 }
 
 pub struct StackFrameIterator<'debuginfo, 'probe, 'core> {
-    debug_info: &'debuginfo DebugInfo,
+    debug_info: &'debuginfo mut DebugInfo,
     core: &'core mut Core<'probe>,
     frame_count: u64,
 
@@ -248,7 +248,7 @@ pub struct StackFrameIterator<'debuginfo, 'probe, 'core> {
 
 impl<'debuginfo, 'probe, 'core> StackFrameIterator<'debuginfo, 'probe, 'core> {
     pub fn new(
-        debug_info: &'debuginfo DebugInfo,
+        debug_info: &'debuginfo mut DebugInfo,
         core: &'core mut Core<'probe>,
         address: u64,
     ) -> Self {
@@ -549,7 +549,7 @@ impl<'debuginfo, 'probe, 'core> Iterator for StackFrameIterator<'debuginfo, 'pro
 
             if let Some(new_pc) = self.pc {
                 if new_pc == pc {
-                    log::debug!("Program counter did not change while unwinding, aborting.");
+                    log::debug!("Program counter did not change while unwinding. This will be the last frame processed.");
                     self.pc = None;
                 }
             }
@@ -574,6 +574,9 @@ type UnitIter =
 pub struct DebugInfo {
     dwarf: gimli::Dwarf<DwarfReader>,
     frame_section: gimli::DebugFrame<DwarfReader>,
+    /// A cache of all program variables that are in scope for the current PC (program counter).
+    /// It is initialized by `try_unwind()` and populated whenever `UnitInfo::process_tree_node() is called to resove DWARF variables and runtime values.
+    variable_cache: VariableCache,
 }
 
 impl DebugInfo {
@@ -614,6 +617,7 @@ impl DebugInfo {
         Ok(DebugInfo {
             dwarf: dwarf_cow,
             frame_section,
+            variable_cache: VariableCache::new(),
         })
     }
 
@@ -807,10 +811,11 @@ impl DebugInfo {
     }
 
     pub fn try_unwind<'probe, 'core>(
-        &self,
+        &mut self,
         core: &'core mut Core<'probe>,
         address: u64,
     ) -> StackFrameIterator<'_, 'probe, 'core> {
+        self.variable_cache = VariableCache::new();
         StackFrameIterator::new(self, core, address)
     }
 

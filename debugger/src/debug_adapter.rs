@@ -1,4 +1,4 @@
-use crate::debugger::{ConsoleLog, CoreData};
+use crate::debugger::{ConsoleLog, CoreData, SessionData};
 use crate::DebuggerError;
 use crate::{dap_types, rtt::DataFormat};
 use anyhow::{anyhow, Result};
@@ -40,9 +40,6 @@ pub struct DebugAdapter<P: ProtocolAdapter> {
     /// `scope_map` stores a list of all MS DAP Scopes with a each stack frame's unique id as key.
     /// It is cleared by `threads()`, populated by stack_trace(), for later re-use by `scopes()`.
     scope_map: HashMap<i64, Vec<Scope>>,
-    /// A cache of all program variables that are in scope for the current PC (program counter).
-    /// It is cleared by `threads()`, populated by stack_trace(), for later nested re-use by `variables()`.
-    variable_cache: VariableCache,
     progress_id: ProgressId,
 
     /// Flag to indicate if the connected client supports progress reporting.
@@ -56,7 +53,6 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             last_known_status: CoreStatus::Unknown,
             halt_after_reset: false,
             scope_map: HashMap::new(),
-            variable_cache: VariableCache::new(),
             progress_id: 0,
             supports_progress_reporting: false,
             adapter,
@@ -476,8 +472,10 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         self.variable_cache = VariableCache::new();
         self.send_response(request, Ok(Some(ThreadsResponseBody { threads })))
     }
+
     pub(crate) fn set_breakpoints(
         &mut self,
+        session_data: &mut SessionData,
         core_data: &mut CoreData,
         request: Request,
     ) -> Result<()> {
@@ -516,14 +514,15 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             for bp in requested_breakpoints {
                 // Try to find source code location
 
-                let source_location: Option<u64> = core_data.debug_info.as_ref().and_then(|di| {
-                    di.get_breakpoint_location(
-                        source_path.unwrap(),
-                        bp.line as u64,
-                        bp.column.map(|c| c as u64),
-                    )
-                    .unwrap_or(None)
-                });
+                let source_location: Option<u64> =
+                    session_data.debug_info.as_ref().and_then(|di| {
+                        di.get_breakpoint_location(
+                            source_path.unwrap(),
+                            bp.line as u64,
+                            bp.column.map(|c| c as u64),
+                        )
+                        .unwrap_or(None)
+                    });
 
                 if let Some(location) = source_location {
                     let (verified, reason_msg) =
@@ -584,7 +583,12 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         self.send_response(request, Ok(Some(breakpoint_body)))
     }
 
-    pub(crate) fn stack_trace(&mut self, core_data: &mut CoreData, request: Request) -> Result<()> {
+    pub(crate) fn stack_trace(
+        &mut self,
+        session_data: &mut SessionData,
+        core_data: &mut CoreData,
+        request: Request,
+    ) -> Result<()> {
         let _status = match core_data.target_core.status() {
             Ok(status) => {
                 if !status.is_halted() {
@@ -631,7 +635,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             },
         };
 
-        if let Some(debug_info) = core_data.debug_info.as_ref() {
+        if let Some(debug_info) = session_data.debug_info.as_mut() {
             // Evaluate the static scoped variables.
             let static_variables =
                 match debug_info.get_stack_statics(&mut core_data.target_core, u64::from(pc)) {

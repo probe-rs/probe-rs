@@ -224,12 +224,12 @@ pub struct SessionData {
     pub(crate) session: Session,
     #[allow(dead_code)]
     pub(crate) capstone: Capstone,
+    pub(crate) debug_info: Option<DebugInfo>,
 }
 
 pub struct CoreData<'p> {
     pub(crate) target_core: Core<'p>,
     pub(crate) target_name: String,
-    pub(crate) debug_info: Option<DebugInfo>,
 }
 
 /// Definition of commands that have been implemented in Debugger.
@@ -331,9 +331,16 @@ pub fn start_session(debugger_options: &DebuggerOptions) -> Result<SessionData, 
         .build()
         .map_err(|err| anyhow!("Error creating Capstone disassembler: {:?}", err))?;
 
+    // Configure the `DebugInfo`.
+    let debug_info = debugger_options
+        .program_binary
+        .as_ref()
+        .and_then(|path| DebugInfo::from_file(path).ok());
+
     Ok(SessionData {
         session: target_session,
         capstone,
+        debug_info,
     })
 }
 
@@ -341,18 +348,12 @@ pub fn attach_core<'p>(
     session: &'p mut Session,
     debugger_options: &DebuggerOptions,
 ) -> Result<CoreData<'p>, DebuggerError> {
-    // Configure the `DebugInfo`.
-    let debug_info = debugger_options
-        .program_binary
-        .as_ref()
-        .and_then(|path| DebugInfo::from_file(path).ok());
     let target_name = session.target().name.clone();
     // Do no-op attach to the core and return it.
     match session.core(debugger_options.core_index) {
         Ok(target_core) => Ok(CoreData {
             target_core,
             target_name: format!("{}-{}", debugger_options.core_index, target_name),
-            debug_info,
         }),
         Err(_) => Err(DebuggerError::UnableToOpenProbe(Some(
             "No core at the specified index.",
@@ -750,10 +751,16 @@ impl Debugger {
                                 }
                                 "threads" => debug_adapter.threads(&mut core_data, request),
                                 "restart" => debug_adapter.restart(&mut core_data, Some(request)),
-                                "set_breakpoints" => {
-                                    debug_adapter.set_breakpoints(&mut core_data, request)
-                                }
-                                "stack_trace" => debug_adapter.stack_trace(&mut core_data, request),
+                                "set_breakpoints" => debug_adapter.set_breakpoints(
+                                    &mut session_data,
+                                    &mut core_data,
+                                    request,
+                                ),
+                                "stack_trace" => debug_adapter.stack_trace(
+                                    &mut session_data,
+                                    &mut core_data,
+                                    request,
+                                ),
                                 "scopes" => debug_adapter.scopes(&mut core_data, request),
                                 "source" => debug_adapter.source(&mut core_data, request),
                                 "variables" => debug_adapter.variables(&mut core_data, request),

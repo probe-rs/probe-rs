@@ -261,7 +261,7 @@ impl DebugCli {
                     let regs = cli_data.core.registers();
                     let program_counter = cli_data.core.read_core_reg(regs.program_counter())?;
 
-                    if let Some(di) = &cli_data.debug_info {
+                    if let Some(di) = &mut cli_data.debug_info {
                         let frames = di.try_unwind(&mut cli_data.core, u64::from(program_counter));
 
                         for frame in frames {
