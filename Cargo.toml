@@ -20,7 +20,6 @@ addr2line = { version = "0.15", default-features = false, features = [
 anyhow = "1"
 colored = "2"
 defmt-decoder = { version = "=0.3.0", features = ["unstable"] }
-either = "1.6"
 gimli = { version = "0.24", default-features = false }
 git-version = "0.3"
 log = "0.4"

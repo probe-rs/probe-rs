@@ -1,6 +1,6 @@
 //! Pretty printing the backtrace
 
-use std::borrow::Cow;
+use std::{borrow::Cow, fmt::Write};
 
 use colored::Colorize as _;
 
@@ -20,18 +20,23 @@ pub(crate) fn backtrace(frames: &[Frame], settings: &Settings) {
             }
 
             Frame::Subroutine(subroutine) => {
-                let name = match &subroutine.name_or_pc {
-                    either::Either::Left(name) => Cow::Borrowed(name),
-                    either::Either::Right(pc) => Cow::Owned(format!("??? (PC={:#010x})", pc)),
-                };
-
                 let is_local_function = subroutine
                     .location
                     .as_ref()
                     .map(|location| location.path_is_relative)
                     .unwrap_or(false);
 
-                let line = format!("{:>4}: {}", frame_index, name);
+                let mut line = format!("{:>4}:", frame_index);
+                if settings.include_addresses || subroutine.name.is_none() {
+                    write!(line, " {:#010x} @", subroutine.pc).unwrap();
+                }
+                write!(
+                    line,
+                    " {}",
+                    subroutine.name.as_deref().unwrap_or("<unknown>")
+                )
+                .unwrap();
+
                 let colorized_line = if is_local_function {
                     line.bold()
                 } else {

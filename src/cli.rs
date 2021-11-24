@@ -47,9 +47,9 @@ pub(crate) struct Opts {
     #[structopt(long)]
     pub(crate) connect_under_reset: bool,
 
-    /// Enable more verbose logging.
+    /// Enable more verbose output.
     #[structopt(short, long, parse(from_occurrences))]
-    verbose: u32,
+    pub(crate) verbose: u32,
 
     /// Prints version information
     #[structopt(short = "V", long)]

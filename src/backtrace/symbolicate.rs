@@ -7,7 +7,6 @@ use std::{
 };
 
 use addr2line::fallible_iterator::FallibleIterator as _;
-use either::Either;
 use gimli::{EndianReader, RunTimeEndian};
 use object::{Object as _, SymbolMap, SymbolMapName};
 
@@ -52,7 +51,8 @@ pub(crate) enum Frame {
 /// "Symbolicated" and de-inlined subroutine frame
 #[derive(Debug)]
 pub(crate) struct Subroutine {
-    pub(crate) name_or_pc: Either<String, u32>,
+    pub(crate) name: Option<String>,
+    pub(crate) pc: u32,
     pub(crate) location: Option<Location>,
 }
 
@@ -116,9 +116,7 @@ impl Subroutine {
 
             // XXX if there was inlining AND there's no function name info we'll report several
             // frames with the same PC
-            let name_or_pc = demangled_name
-                .map(Either::Left)
-                .unwrap_or_else(|| name_from_symtab(pc, symtab));
+            let name = demangled_name.or_else(|| name_from_symtab(pc, symtab));
 
             let location = if let Some((file, line, column)) =
                 frame.location.as_ref().and_then(|loc| {
@@ -142,10 +140,7 @@ impl Subroutine {
                 None
             };
 
-            subroutines.push(Subroutine {
-                name_or_pc,
-                location,
-            })
+            subroutines.push(Subroutine { name, pc, location })
         }
 
         Some(subroutines)
@@ -153,13 +148,14 @@ impl Subroutine {
 
     fn from_symtab(pc: u32, symtab: &SymbolMap<SymbolMapName>) -> Subroutine {
         Subroutine {
-            name_or_pc: name_from_symtab(pc, symtab),
+            name: name_from_symtab(pc, symtab),
+            pc,
             location: None,
         }
     }
 }
 
-fn name_from_symtab(pc: u32, symtab: &SymbolMap<SymbolMapName>) -> Either<String, u32> {
+fn name_from_symtab(pc: u32, symtab: &SymbolMap<SymbolMapName>) -> Option<String> {
     // the .symtab appears to use address ranges that have their thumb bits set (e.g.
     // `0x101..0x200`). Passing the `pc` with the thumb bit cleared (e.g. `0x100`) to the
     // lookup function sometimes returns the *previous* symbol. Work around the issue by
@@ -169,8 +165,6 @@ fn name_from_symtab(pc: u32, symtab: &SymbolMap<SymbolMapName>) -> Either<String
     symtab
         .get(address)
         .map(|symbol| addr2line::demangle_auto(symbol.name().into(), None).into_owned())
-        .map(Either::Left)
-        .unwrap_or(Either::Right(pc))
 }
 
 #[derive(Debug)]

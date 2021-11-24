@@ -33,6 +33,7 @@ pub(crate) struct Settings<'p> {
     pub(crate) panic_present: bool,
     pub(crate) backtrace_limit: u32,
     pub(crate) shorten_paths: bool,
+    pub(crate) include_addresses: bool,
 }
 
 /// (virtually) unwinds the target's program and prints its backtrace

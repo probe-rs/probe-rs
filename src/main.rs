@@ -153,6 +153,7 @@ fn run_target_program(elf_path: &Path, chip_name: &str, opts: &cli::Opts) -> any
         backtrace: (&opts.backtrace).into(),
         panic_present,
         shorten_paths: opts.shorten_paths,
+        include_addresses: opts.verbose > 0,
     };
 
     let mut outcome = backtrace::print(
