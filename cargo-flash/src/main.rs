@@ -121,18 +121,21 @@ fn main_try() -> Result<(), OperationError> {
         path.into()
     } else {
         // Build the project, and extract the path of the built artifact.
-        build_artifact(&work_dir, &args).map_err(|error| {
-            if let Some(ref work_dir) = opt.work_dir {
-                OperationError::FailedToBuildExternalCargoProject {
-                    source: error,
-                    // This unwrap is okay, because if we get this error, the path was properly canonicalized on the internal
-                    // `cargo build` step.
-                    path: work_dir.canonicalize().unwrap(),
+        build_artifact(&work_dir, &args)
+            .map_err(|error| {
+                if let Some(ref work_dir) = opt.work_dir {
+                    OperationError::FailedToBuildExternalCargoProject {
+                        source: error,
+                        // This unwrap is okay, because if we get this error, the path was properly canonicalized on the internal
+                        // `cargo build` step.
+                        path: work_dir.canonicalize().unwrap(),
+                    }
+                } else {
+                    OperationError::FailedToBuildCargoProject(error)
                 }
-            } else {
-                OperationError::FailedToBuildCargoProject(error)
-            }
-        })?.path().into()
+            })?
+            .path()
+            .into()
     };
 
     logging::println(format!(
