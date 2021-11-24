@@ -1297,6 +1297,31 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         )
     }
 
+    /// Update the progress report in VSCode.
+    /// The progress has the range [0..1].
+    pub fn update_progress(
+        &mut self,
+        progress: f64,
+        message: Option<impl Into<String>>,
+        progress_id: i64,
+    ) -> Result<ProgressId> {
+        anyhow::ensure!(
+            self.supports_progress_reporting,
+            "Progress reporting is not supported by client."
+        );
+
+        let ok = self.send_event(
+            "progressUpdate",
+            Some(ProgressUpdateEventBody {
+                message: message.map(|v| v.into()),
+                percentage: Some(progress * 100.0),
+                progress_id: progress_id.to_string(),
+            }),
+        )?;
+
+        Ok(progress_id)
+    }
+
     pub(crate) fn set_console_log_level(&mut self, error: ConsoleLog) {
         self.adapter.set_console_log_level(error)
     }

@@ -6,7 +6,9 @@ use crate::DebuggerError;
 use anyhow::{anyhow, Context, Result};
 use capstone::{arch::arm::ArchMode, prelude::*, Capstone, Endian};
 use probe_rs::debug::DebugInfo;
-use probe_rs::flashing::{download_file, download_file_with_options, DownloadOptions, Format};
+use probe_rs::flashing::{
+    download_file, download_file_with_options, DownloadOptions, FlashProgress, Format,
+};
 use probe_rs::{
     config::{MemoryRegion, TargetSelector},
     ProbeCreationError,
@@ -17,6 +19,8 @@ use probe_rs::{
 };
 use probe_rs_rtt::{Rtt, ScanRegion};
 use serde::Deserialize;
+use std::cell::RefCell;
+use std::rc::Rc;
 use std::{
     env::{current_dir, set_current_dir},
     fs::File,
@@ -830,7 +834,7 @@ impl Debugger {
     /// [`debug_session`] is where the primary _debug processing_ for the DAP (Debug Adapter Protocol) adapter happens.
     /// All requests are interpreted, actions taken, and responses formulated here. This function is self contained and returns nothing.
     /// The [`debug_adapter::DebugAdapter`] takes care of _implementing the DAP Base Protocol_ and _communicating with the DAP client_ and _probe_.
-    pub(crate) fn debug_session<P: ProtocolAdapter>(
+    pub(crate) fn debug_session<P: ProtocolAdapter + 'static>(
         &mut self,
         mut debug_adapter: DebugAdapter<P>,
     ) -> Result<DebuggerStatus, DebuggerError> {
@@ -1135,18 +1139,161 @@ impl Debugger {
                 let progress_id = debug_adapter.start_progress("Flashing device", None).ok();
 
                 let mut download_options = DownloadOptions::default();
-
                 download_options.keep_unwritten_bytes =
                     self.debugger_options.restore_unwritten_bytes;
-
                 download_options.do_chip_erase = self.debugger_options.full_chip_erase;
+                let rc_debug_adapter = Rc::new(RefCell::new(debug_adapter));
+                let rc_debug_adapter_clone = rc_debug_adapter.clone();
+                let flash_result = {
+                    struct ProgressState {
+                        total_page_size: usize,
+                        total_sector_size: usize,
+                        total_fill_size: usize,
+                        page_size_done: usize,
+                        sector_size_done: usize,
+                        fill_size_done: usize,
+                    }
 
-                let flash_result = download_file_with_options(
-                    &mut session_data.session,
-                    path_to_elf.clone(),
-                    Format::Elf,
-                    download_options,
-                );
+                    let flash_progress = Rc::new(RefCell::new(ProgressState {
+                        total_page_size: 0,
+                        total_sector_size: 0,
+                        total_fill_size: 0,
+                        page_size_done: 0,
+                        sector_size_done: 0,
+                        fill_size_done: 0,
+                    }));
+
+                    let flash_progress = if let Some(id) = progress_id {
+                        FlashProgress::new(move |event| {
+                            let mut flash_progress = flash_progress.borrow_mut();
+                            let mut debug_adapter = rc_debug_adapter_clone.borrow_mut();
+                            match event {
+                                probe_rs::flashing::ProgressEvent::Initialized { flash_layout } => {
+                                    flash_progress.total_page_size = flash_layout
+                                        .pages()
+                                        .iter()
+                                        .map(|s| s.size() as usize)
+                                        .sum();
+
+                                    flash_progress.total_sector_size = flash_layout
+                                        .sectors()
+                                        .iter()
+                                        .map(|s| s.size() as usize)
+                                        .sum();
+
+                                    flash_progress.total_fill_size = flash_layout
+                                        .fills()
+                                        .iter()
+                                        .map(|s| s.size() as usize)
+                                        .sum();
+                                }
+                                probe_rs::flashing::ProgressEvent::StartedFilling => {
+                                    debug_adapter
+                                        .update_progress(0.0, Some("Reading Old Pages ..."), id)
+                                        .ok();
+                                }
+                                probe_rs::flashing::ProgressEvent::PageFilled { size, .. } => {
+                                    flash_progress.fill_size_done += size as usize;
+                                    let progress = flash_progress.fill_size_done as f64
+                                        / flash_progress.total_fill_size as f64;
+                                    debug_adapter
+                                        .update_progress(
+                                            progress,
+                                            Some(format!("Reading Old Pages ({})", progress)),
+                                            id,
+                                        )
+                                        .ok();
+                                }
+                                probe_rs::flashing::ProgressEvent::FailedFilling => {
+                                    debug_adapter
+                                        .update_progress(1.0, Some("Reading Old Pages Failed!"), id)
+                                        .ok();
+                                }
+                                probe_rs::flashing::ProgressEvent::FinishedFilling => {
+                                    debug_adapter
+                                        .update_progress(
+                                            1.0,
+                                            Some("Reading Old Pages Complete!"),
+                                            id,
+                                        )
+                                        .ok();
+                                }
+                                probe_rs::flashing::ProgressEvent::StartedErasing => {
+                                    debug_adapter
+                                        .update_progress(0.0, Some("Erasing Sectors ..."), id)
+                                        .ok();
+                                }
+                                probe_rs::flashing::ProgressEvent::SectorErased {
+                                    size, ..
+                                } => {
+                                    flash_progress.sector_size_done += size as usize;
+                                    let progress = flash_progress.sector_size_done as f64
+                                        / flash_progress.total_sector_size as f64;
+                                    debug_adapter
+                                        .update_progress(
+                                            progress,
+                                            Some(format!("Erasing Sectors ({})", progress)),
+                                            id,
+                                        )
+                                        .ok();
+                                }
+                                probe_rs::flashing::ProgressEvent::FailedErasing => {
+                                    debug_adapter
+                                        .update_progress(1.0, Some("Erasing Sectors Failed!"), id)
+                                        .ok();
+                                }
+                                probe_rs::flashing::ProgressEvent::FinishedErasing => {
+                                    debug_adapter
+                                        .update_progress(1.0, Some("Erasing Sectors Complete!"), id)
+                                        .ok();
+                                }
+                                probe_rs::flashing::ProgressEvent::StartedProgramming => {
+                                    debug_adapter
+                                        .update_progress(0.0, Some("Programming Pages ..."), id)
+                                        .ok();
+                                }
+                                probe_rs::flashing::ProgressEvent::PageProgrammed {
+                                    size, ..
+                                } => {
+                                    flash_progress.page_size_done += size as usize;
+                                    let progress = flash_progress.page_size_done as f64
+                                        / flash_progress.total_page_size as f64;
+                                    debug_adapter
+                                        .update_progress(
+                                            progress,
+                                            Some(format!("Programming Pages ({})", progress)),
+                                            id,
+                                        )
+                                        .ok();
+                                }
+                                probe_rs::flashing::ProgressEvent::FailedProgramming => {
+                                    debug_adapter
+                                        .update_progress(1.0, Some("Flashing Pages Failed!"), id)
+                                        .ok();
+                                }
+                                probe_rs::flashing::ProgressEvent::FinishedProgramming => {
+                                    debug_adapter
+                                        .update_progress(1.0, Some("Flashing Pages Complete!"), id)
+                                        .ok();
+                                }
+                            }
+                        })
+                    } else {
+                        FlashProgress::new(|_event| {})
+                    };
+                    download_options.progress = Some(&flash_progress);
+                    download_file_with_options(
+                        &mut session_data.session,
+                        &path_to_elf,
+                        Format::Elf,
+                        download_options,
+                    )
+                };
+                debug_adapter = if let Ok(v) = Rc::try_unwrap(rc_debug_adapter) {
+                    v.into_inner()
+                } else {
+                    panic!("This is a bug. Please report it.")
+                };
 
                 if let Some(id) = progress_id {
                     let _ = debug_adapter.end_progress(id);
