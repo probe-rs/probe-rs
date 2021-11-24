@@ -6,8 +6,7 @@ use std::{env, path::PathBuf, process, sync::Arc};
 use std::{panic, sync::Mutex};
 use structopt::StructOpt;
 
-use probe_rs_cli_util::argument_handling;
-use probe_rs_cli_util::common_options::{self, cargo_help_message, FlashOptions, OperationError};
+use probe_rs_cli_util::common_options::{CargoOptions, FlashOptions, OperationError};
 use probe_rs_cli_util::flash;
 
 #[cfg(feature = "sentry")]
@@ -75,7 +74,7 @@ fn main_try() -> Result<(), OperationError> {
     // Parse the commandline options with structopt.
     let matches = FlashOptions::clap()
         .bin_name("cargo flash")
-        .after_help(cargo_help_message("cargo flash").as_str())
+        .after_help(CargoOptions::help_message("cargo flash").as_str())
         .get_matches_from(&args);
     let opt = FlashOptions::from_clap(&matches);
 
@@ -116,27 +115,27 @@ fn main_try() -> Result<(), OperationError> {
     })?;
     log::debug!("Changed working directory to {}", work_dir.display());
 
-    args.remove(0); // remove executable name
-    argument_handling::remove_arguments(&common_options::common_arguments(), &mut args);
-
     // Get the path to the ELF binary we want to flash.
     // This can either be give from the arguments or can be a cargo build artifact.
     let path: PathBuf = if let Some(path) = &opt.elf {
         path.into()
     } else {
         // Build the project, and extract the path of the built artifact.
-        build_artifact(&work_dir, &args).map_err(|error| {
-            if let Some(ref work_dir) = opt.work_dir {
-                OperationError::FailedToBuildExternalCargoProject {
-                    source: error,
-                    // This unwrap is okay, because if we get this error, the path was properly canonicalized on the internal
-                    // `cargo build` step.
-                    path: work_dir.canonicalize().unwrap(),
+        build_artifact(&work_dir, &opt.cargo_options.to_cargo_options())
+            .map_err(|error| {
+                if let Some(ref work_dir) = opt.work_dir {
+                    OperationError::FailedToBuildExternalCargoProject {
+                        source: error,
+                        // This unwrap is okay, because if we get this error, the path was properly canonicalized on the internal
+                        // `cargo build` step.
+                        path: work_dir.canonicalize().unwrap(),
+                    }
+                } else {
+                    OperationError::FailedToBuildCargoProject(error)
                 }
-            } else {
-                OperationError::FailedToBuildCargoProject(error)
-            }
-        })?
+            })?
+            .path()
+            .into()
     };
 
     logging::println(format!(
@@ -175,7 +174,7 @@ fn main_try() -> Result<(), OperationError> {
 
     // Flash the binary
     let flashloader = opt.probe_options.build_flashloader(&mut session, &path)?;
-    flash::run_flash_download(&mut session, &path, &opt, flashloader)?;
+    flash::run_flash_download(&mut session, &path, &opt, flashloader, false)?;
 
     // Reset target according to CLI options
     {
