@@ -1,6 +1,6 @@
 [package]
 name = "cargo-embed"
-version = "0.11.0"
+version = "0.12.0"
 authors = ["Noah Hüsser <yatekii@yatekii.ch>"]
 edition = "2018"
 description = "A utility to develop software for embedded ARM and RISC-V cores."
@@ -18,9 +18,10 @@ ftdi = ["probe-rs/ftdi"]
 sentry = ["probe-rs-cli-util/sentry"]
 
 [dependencies]
-probe-rs = { version = "0.11.0", git = "https://github.com/probe-rs/probe-rs" }
-gdb-server = { version = "0.11.0", git = "https://github.com/probe-rs/probe-rs"  }
-probe-rs-cli-util = { version = "0.11.0", git = "https://github.com/probe-rs/probe-rs", default-features = false, features=["anyhow"] }
+probe-rs = { version = "0.12.0", git = "https://github.com/probe-rs/probe-rs" }
+gdb-server = { version = "0.12.0", git = "https://github.com/probe-rs/probe-rs"  }
+probe-rs-cli-util = { version = "0.12.0", git = "https://github.com/probe-rs/probe-rs", default-features = false, features=["anyhow"] }
+probe-rs-rtt = { version = "0.12.0", git = "https://github.com/probe-rs/probe-rs" }
 
 structopt = "0.3.25"
 git-version = "0.3.5"
@@ -31,7 +32,6 @@ colored = "2.0.0"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = { version = "1.0.71" }
 figment = { version = "0.10", features = ["toml", "json", "yaml", "env"] }
-probe-rs-rtt = { version = "0.11.0", git = "https://github.com/probe-rs/probe-rs-rtt" }
 chrono = "0.4"
 crossterm = "<= 0.22.2"
 goblin = "0.4.2"
