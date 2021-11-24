@@ -5,40 +5,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.12.0]
+
 - Added support for `chip-erase` flag under the `probe-rs-cli download` command. (#898)
 - Added support for `disable-progressbars` flag under the `probe-rs-cli download` command. (#898)
 - Fixed bug in `FlashLoader` not emitting `ProgressEvent::FinishedErasing` when using `do_chip_erase`. (#898)
 
 ### Added
 
-- Added LPC5516 targets. (#853)
-- Added LPC552x and LPC55S2x targets. (#742)
-- Added SAM3U targets. (#833)
 - Added initial multicore support. (#565)
 - probe-rs-cli-util: added common option structures and logic pertaining to probes and target attachment from cargo-flash. (#723)
 - probe-rs-cli-util: escape hatch via `--` for extra cargo options not declared by `common_options::CargoOptions`.
 - Added SWDv2 multidrop support for multi-DP chips. (#720)
-- Added RP2040 target (Raspberry Pi Pico). (#720)
 - Added The possibility to use `--connect-under-reset` for the `probe-rs-cli info` command. (#775)
 - Added support for flashing `bin` format binaries with the `probe-rs-cli download` command. (#774)
 - Improved number parsing on all the `probe-rs-cli` commands. They now all accept normal (`01234`), hex (`0x1234`), octal (`0o1234`) and binary (`0b1`) formats. (#774)
 - Added progress bars to the probe-rs-cli download command. (#776)
 - Improve reliability of communication with the RISCV debug module by recovering from busy errors in batch operations. (#802)
 - Added optional ability to load fixed address flashing algorithms (non PIC). (#822)
-- Added STM32WL55JCIx target. (#835)
-- Add esp32.yaml with esp32c3 variant. (#846)
 - Added target definition validation to make handling inside probe-rs easier by making some basic assumptions about the validity of the used `ChipFamily` without always checking again. (#848)
 - Added support for the built in JTAG on the ESP32C3 and other ESP32 devices (#863).
-- Added STM32U5 series target.
-- Added all RAM regions to most STM32H7 parts. (#864)
 - Added name field to memory regions. (#864)
 - debugger: Show progress notification while device is being flashed. (#871, #884)
 
 ### Removed
 
 - probe-rs-cli-util: unused module `argument_handling`. (#760)
-
-### Target Support
 
 ### Changed
 - Enabled the generation of global timestamps and exception traces for ARM targets on `Session::setup_swv`.
@@ -65,6 +57,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Refactor `probe-rs-debugger` code as per `launch` vs. `attach` changes documented in [VS Code extension PR # 12](https://github.com/probe-rs/vscode/pull/12) (#854)
 - Breaking change: `probe-rs-debugger` and the associated [VSCode extension PR #21](https://github.com/probe-rs/vscode/pull/21) now uses camelCase for all `launch.json` properties (#885)
 - Publicly export `core::RegisterFile` type.
+- The trait surface for DAP/AP/DP access was cleaned up and more clarity around the access level of the API was added by properly putting `Raw` or not in the name.
 
 ### Fixed
 - Detect proper USB HID interface to use for CMSIS-DAP v1 probes. Without this, CMSIS-DAP probes with multiple HID interfaces, e.g. MCUlink, were not working properly on MacOS (#722).
@@ -80,6 +73,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed panic in CLI debugger when using a command without arguments. (#873)
 - Debugger: Reduce panics caused by `unwrap()` usage. (#886) 
 - probe-rs: When unwinding, detect if the program counter does not change anymore and stop. (#893)
+
+### Target Support
+
+- Added LPC5516 targets. (#853)
+- Added LPC552x and LPC55S2x targets. (#742)
+- Added SAM3U targets. (#833)
+- Added RP2040 target (Raspberry Pi Pico). (#720)
+- Added STM32WL55JCIx target. (#835)
+- Add esp32.yaml with esp32c3 variant. (#846)
+- Added STM32U5 series target.
+- Added all RAM regions to most STM32H7 parts. (#864)
 
 ## [0.11.0]
 
@@ -472,7 +476,8 @@ Initial release on crates.io
 - Working basic flash downloader with nRF51.
 - Introduce cargo-flash which can automatically build & flash the target elf file.
 
-[Unreleased]: https://github.com/probe-rs/probe-rs/compare/0.11.0...master
+[Unreleased]: https://github.com/probe-rs/probe-rs/compare/0.12.0...master
+[0.12.0]: https://github.com/probe-rs/probe-rs/compare/0.11.0...0.12.0
 [0.11.0]: https://github.com/probe-rs/probe-rs/compare/v0.10.1...0.11.0
 [0.11.0-alpha.1]: https://github.com/probe-rs/probe-rs/compare/v0.10.1...0.11.0-alpha.1
 [0.10.1]: https://github.com/probe-rs/probe-rs/compare/v0.10.0...v0.10.1
