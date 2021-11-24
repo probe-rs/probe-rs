@@ -16,8 +16,8 @@ license = "MIT OR Apache-2.0"
 ftdi = ["probe-rs/ftdi"]
 
 [dependencies]
-probe-rs = { path = "../probe-rs"}
-probe-rs-rtt = { path = "../rtt"}
+probe-rs = { version = "0.12.0", path = "../probe-rs"}
+probe-rs-rtt = { version = "0.12.0", path = "../rtt"}
 
 env_logger = "0.9.0"
 log = "0.4.6"
