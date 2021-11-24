@@ -1,5 +1,5 @@
-pub mod nxp;
 pub mod ambiq;
+pub mod nxp;
 
 use std::{
     sync::Arc,
@@ -11,9 +11,9 @@ use crate::{architecture::arm::DapError, core::CoreRegister, DebugProbeError, Me
 
 use super::{
     communication_interface::{DapProbe, Initialized},
+    core::register,
     dp::{Abort, Ctrl, DpAccess, Select, DPIDR},
     ArmCommunicationInterface, DpAddress, Pins, PortType, Register,
-    core::register,
 };
 
 pub struct DefaultArmSequence(pub(crate) ());
@@ -265,7 +265,6 @@ pub trait ArmDebugSequence: Send + Sync {
         Err(crate::Error::Probe(DebugProbeError::Timeout))
     }
 
-
     fn reset_and_halt(&self, interface: &mut Memory) -> Result<(), crate::Error> {
         // Set the vc_corereset bit in the DEMCR register.
         // This will halt the core after reset.
@@ -283,7 +282,6 @@ pub trait ArmDebugSequence: Send + Sync {
 
         Ok(())
     }
-
 
     /// Check if the device is in a locked state and unlock it.
     /// Use query command elements for user confirmation.

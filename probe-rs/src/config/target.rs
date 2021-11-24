@@ -2,8 +2,8 @@ use probe_rs_target::{Architecture, ChipFamily};
 
 use super::{Core, MemoryRegion, RawFlashAlgorithm, RegistryError, TargetDescriptionSource};
 
-use crate::architecture::arm::sequences::nxp::LPC55S69;
 use crate::architecture::arm::sequences::ambiq::AMA3B;
+use crate::architecture::arm::sequences::nxp::LPC55S69;
 use crate::architecture::arm::sequences::ArmDebugSequence;
 use crate::architecture::riscv::sequences::esp32c3::ESP32C3;
 use crate::architecture::riscv::sequences::{DefaultRiscvSequence, RiscvDebugSequence};
