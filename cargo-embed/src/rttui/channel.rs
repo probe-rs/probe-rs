@@ -1,6 +1,7 @@
 use std::fmt;
 
 use chrono::Local;
+use probe_rs::Core;
 use probe_rs_rtt::{DownChannel, UpChannel};
 
 #[derive(Debug, Copy, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
@@ -117,10 +118,10 @@ impl ChannelState {
     /// Polls the RTT target for new data on the specified channel.
     ///
     /// Processes all the new data and adds it to the linebuffer of the respective channel.
-    pub fn poll_rtt(&mut self) {
+    pub fn poll_rtt(&mut self, core: &mut Core) {
         // TODO: Proper error handling.
         let count = if let Some(channel) = self.up_channel.as_mut() {
-            match channel.read(self.rtt_buffer.0.as_mut()) {
+            match channel.read(core, self.rtt_buffer.0.as_mut()) {
                 Ok(count) => count,
                 Err(err) => {
                     log::error!("\nError reading from RTT: {}", err);
@@ -176,10 +177,10 @@ impl ChannelState {
         };
     }
 
-    pub fn push_rtt(&mut self) {
+    pub fn push_rtt(&mut self, core: &mut Core) {
         if let Some(down_channel) = self.down_channel.as_mut() {
             self.input += "\n";
-            down_channel.write(self.input.as_bytes()).unwrap();
+            down_channel.write(core, self.input.as_bytes()).unwrap();
             self.input.clear();
         }
     }

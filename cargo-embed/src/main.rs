@@ -529,8 +529,14 @@ fn main_try() -> Result<()> {
                 ScanRegion::Ram
             };
 
-            match Rtt::attach_region(session.clone(), &rtt_header_address) {
+            let mut session_handle = session.lock().unwrap();
+            let memory_map = session_handle.target().memory_map.clone();
+            let mut core = session_handle.core(0)?;
+
+            match Rtt::attach_region(&mut core, &memory_map, &rtt_header_address) {
                 Ok(rtt) => {
+                    drop(core);
+                    drop(session_handle);
                     log::info!("RTT initialized.");
 
                     // `App` puts the terminal into a special state, as required
@@ -553,9 +559,11 @@ fn main_try() -> Result<()> {
                     let logname = format!("{}_{}_{}", name, chip_name, Local::now().to_rfc3339());
                     let mut app = rttui::app::App::new(rtt, &config, logname)?;
                     loop {
-                        app.poll_rtt();
+                        let mut session_handle = session.lock().unwrap();
+                        let mut core = session_handle.core(0)?;
+                        app.poll_rtt(&mut core);
                         app.render(&defmt_state);
-                        if app.handle_event() {
+                        if app.handle_event(&mut core) {
                             logging::println("Shutting down.");
                             return Ok(());
                         };
