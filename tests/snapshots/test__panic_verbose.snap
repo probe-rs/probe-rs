@@ -15,13 +15,13 @@ expression: run_result.output
 (HOST) INFO  flashing program (6.57 KiB)
 (HOST) INFO  success!
 (HOST) DEBUG 261062 bytes of stack available (0x20000000 ..= 0x2003FBC7), using 1024 byte canary
-(HOST) TRACE setting up canary took 0.012s (83.61 KiB/s)
+(HOST) TRACE setting up canary took 0.014s (71.21 KiB/s)
 (HOST) DEBUG starting device
 (HOST) DEBUG Successfully attached RTT
 ────────────────────────────────────────────────────────────────────────────────
 ERROR panicked at 'explicit panic'
 ────────────────────────────────────────────────────────────────────────────────
-(HOST) TRACE reading canary took 0.011s (92.16 KiB/s)
+(HOST) TRACE reading canary took 0.014s (72.39 KiB/s)
 (HOST) DEBUG stack canary intact
 (HOST) DEBUG LR=0xFFFFFFF9 PC=0x000015B0
 (HOST) DEBUG LR=0x000001C9 PC=0x000008DE
@@ -37,26 +37,35 @@ ERROR panicked at 'explicit panic'
 (HOST) DEBUG LR=0x0000018B PC=0x000001DC
 (HOST) DEBUG update_cfa: CFA changed Some(2003fbc0) -> 2003fbc8
 (HOST) DEBUG LR=0xFFFFFFFF PC=0x0000018A
+(HOST) TRACE demangle Ok("_ZN3lib6inline5__udf17h4878bf20408765ceE") (language=Some(DwLang(1C))) -> Ok("lib::inline::__udf")
+(HOST) TRACE demangle Ok("__udf") (language=Some(DwLang(1C))) -> Ok("__udf")
+(HOST) TRACE demangle Ok("_ZN8cortex_m3asm3udf17h4c0f9f15c9bfd7bfE") (language=Some(DwLang(1C))) -> Ok("cortex_m::asm::udf")
+(HOST) TRACE demangle Ok("_defmt_panic") (language=Some(DwLang(1C))) -> Ok("_defmt_panic")
+(HOST) TRACE demangle Ok("_ZN5defmt6export5panic17h3fabd155b5d3f035E") (language=Some(DwLang(1C))) -> Ok("defmt::export::panic")
+(HOST) TRACE demangle Ok("_ZN5panic18__cortex_m_rt_main17hdf4a9d08e66ae2a1E") (language=Some(DwLang(1C))) -> Ok("panic::__cortex_m_rt_main")
+(HOST) TRACE demangle Ok("main") (language=Some(DwLang(1C))) -> Ok("main")
+(HOST) TRACE demangle Ok("ResetTrampoline") (language=Some(DwLang(1C))) -> Ok("ResetTrampoline")
+(HOST) TRACE demangle Ok("Reset") (language=Some(DwLang(1C))) -> Ok("Reset")
 stack backtrace:
-   0: HardFaultTrampoline
+   0: 0x000015b0 @ HardFaultTrampoline
       <exception entry>
-   1: lib::inline::__udf
+   1: 0x000008de @ lib::inline::__udf
         at ./asm/inline.rs:172:5
-   2: __udf
+   2: 0x000008de @ __udf
         at ./asm/lib.rs:49:17
-   3: cortex_m::asm::udf
+   3: 0x000001c8 @ cortex_m::asm::udf
         at [cortex-m-0.7.3]/src/asm.rs:43:5
-   4: _defmt_panic
+   4: 0x000001d2 @ _defmt_panic
         at /tmp/app/src/lib.rs:11:5
-   5: defmt::export::panic
+   5: 0x000001be @ defmt::export::panic
         at /home/japaric/.cargo/git/checkouts/defmt-52fbd7917982cfac/e021e7d/src/export.rs:266:14
-   6: panic::__cortex_m_rt_main
+   6: 0x000001be @ panic::__cortex_m_rt_main
         at /tmp/app/src/bin/panic.rs:8:5
-   7: main
+   7: 0x00000194 @ main
         at /tmp/app/src/bin/panic.rs:6:1
-   8: ResetTrampoline
+   8: 0x000001dc @ ResetTrampoline
         at [cortex-m-rt-0.6.14]/src/lib.rs:547:26
-   9: Reset
+   9: 0x0000018a @ Reset
         at [cortex-m-rt-0.6.14]/src/lib.rs:550:13
 (HOST) ERROR the program panicked
 
