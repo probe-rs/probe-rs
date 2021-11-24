@@ -3,8 +3,7 @@ use std::{collections::HashSet, convert::TryInto, env, ops::Deref};
 use anyhow::{anyhow, bail};
 use defmt_decoder::{Locations, Table};
 use object::{
-    read::File as ObjectFile, Object as _, ObjectSection as _, ObjectSegment as _,
-    ObjectSymbol as _, SymbolSection,
+    read::File as ObjectFile, Object as _, ObjectSection as _, ObjectSymbol as _, SymbolSection,
 };
 
 use crate::cortexm;
@@ -54,13 +53,6 @@ impl<'file> Elf<'file> {
 
     pub(crate) fn rtt_buffer_address(&self) -> Option<u32> {
         self.symbols.rtt_buffer_address
-    }
-
-    /// Returns the size of the part of the program allocated in Flash
-    pub(crate) fn program_flash_size(&self) -> u64 {
-        // `segments` iterates only over *loadable* segments,
-        // which are the segments that will be loaded to Flash by probe-rs
-        self.elf.segments().map(|segment| segment.size()).sum()
     }
 }
 
