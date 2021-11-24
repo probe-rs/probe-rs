@@ -1199,7 +1199,7 @@ impl Debugger {
                                     debug_adapter
                                         .update_progress(
                                             progress,
-                                            Some(format!("Reading Old Pages Pages ({})", progress)),
+                                            Some(format!("Reading Old Pages ({})", progress)),
                                             id,
                                         )
                                         .ok();

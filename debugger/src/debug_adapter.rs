@@ -1317,13 +1317,9 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                 percentage: Some(progress * 100.0),
                 progress_id: progress_id.to_string(),
             }),
-        );
+        )?;
 
-        if ok.is_ok() {
-            Ok(progress_id)
-        } else {
-            Err(anyhow!("Failed to send event."))
-        }
+        Ok(progress_id)
     }
 
     pub(crate) fn set_console_log_level(&mut self, error: ConsoleLog) {
