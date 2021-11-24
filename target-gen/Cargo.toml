@@ -26,7 +26,7 @@ anyhow = "1.0.48"
 reqwest = { version = "0.11.6", features = ["json", "blocking"] }
 serde = { version = "1.0.106", features = ["derive"] }
 # chrono = { version = "0.4.0", features = ["serde"] }
-futures = "0.3.5"
+futures = "0.3.18"
 tokio = { version = "1.14.0", features = ["macros", "rt", "rt-multi-thread"] }
 
 [dev-dependencies]
