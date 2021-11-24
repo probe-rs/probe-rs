@@ -12,16 +12,20 @@ expression: run_result.output
 (HOST) DEBUG found 1 probes
 (HOST) DEBUG opened probe
 (HOST) DEBUG started session
-(HOST) INFO  flashing program (6.57 KiB)
+(HOST) INFO  flashing program (2 pages / 8.00 KiB)
+(HOST) DEBUG Erased sector of size 4096 bytes in 129 ms
+(HOST) DEBUG Erased sector of size 4096 bytes in 102 ms
+(HOST) DEBUG Programmed page of size 4096 bytes in 84 ms
+(HOST) DEBUG Programmed page of size 4096 bytes in 76 ms
 (HOST) INFO  success!
 (HOST) DEBUG 261062 bytes of stack available (0x20000000 ..= 0x2003FBC7), using 1024 byte canary
-(HOST) TRACE setting up canary took 0.014s (71.21 KiB/s)
+(HOST) TRACE setting up canary took 0.010s (100.69 KiB/s)
 (HOST) DEBUG starting device
 (HOST) DEBUG Successfully attached RTT
 ────────────────────────────────────────────────────────────────────────────────
 ERROR panicked at 'explicit panic'
 ────────────────────────────────────────────────────────────────────────────────
-(HOST) TRACE reading canary took 0.014s (72.39 KiB/s)
+(HOST) TRACE reading canary took 0.014s (73.24 KiB/s)
 (HOST) DEBUG stack canary intact
 (HOST) DEBUG LR=0xFFFFFFF9 PC=0x000015B0
 (HOST) DEBUG LR=0x000001C9 PC=0x000008DE
