@@ -5,6 +5,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.12.0]
+
 - Added support for `chip-erase` flag under the `probe-rs-cli download` command. (#898)
 - Added support for `disable-progressbars` flag under the `probe-rs-cli download` command. (#898)
 - Fixed bug in `FlashLoader` not emitting `ProgressEvent::FinishedErasing` when using `do_chip_erase`. (#898)
@@ -474,7 +476,8 @@ Initial release on crates.io
 - Working basic flash downloader with nRF51.
 - Introduce cargo-flash which can automatically build & flash the target elf file.
 
-[Unreleased]: https://github.com/probe-rs/probe-rs/compare/0.11.0...master
+[Unreleased]: https://github.com/probe-rs/probe-rs/compare/0.12.0...master
+[0.12.0]: https://github.com/probe-rs/probe-rs/compare/0.11.0...0.12.0
 [0.11.0]: https://github.com/probe-rs/probe-rs/compare/v0.10.1...0.11.0
 [0.11.0-alpha.1]: https://github.com/probe-rs/probe-rs/compare/v0.10.1...0.11.0-alpha.1
 [0.10.1]: https://github.com/probe-rs/probe-rs/compare/v0.10.0...v0.10.1
