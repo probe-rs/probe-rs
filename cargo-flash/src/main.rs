@@ -121,7 +121,7 @@ fn main_try() -> Result<(), OperationError> {
         path.into()
     } else {
         // Build the project, and extract the path of the built artifact.
-        build_artifact(&work_dir, &args[1..])
+        build_artifact(&work_dir, &opt.cargo_options.to_cargo_options())
             .map_err(|error| {
                 if let Some(ref work_dir) = opt.work_dir {
                     OperationError::FailedToBuildExternalCargoProject {
