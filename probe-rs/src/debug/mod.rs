@@ -426,6 +426,46 @@ impl<'debuginfo, 'probe, 'core> Iterator for StackFrameIterator<'debuginfo, 'pro
             log::debug!("Current CFA: {:#x}", cfa);
         }
 
+        let return_frame = match self.debug_info.get_stackframe_info(
+            &mut self.core,
+            pc,
+            self.frame_count,
+            self.registers.clone(),
+            in_inlined_function,
+        ) {
+            Ok(mut frame) => {
+                if let Some(InlineFunctionState::InlinedCallSite {
+                    call_line,
+                    call_column,
+                    call_file,
+                    call_directory,
+                }) = inline_call_site_info
+                {
+                    // Update location to match call site
+
+                    frame.source_location = Some(SourceLocation {
+                        line: call_line,
+                        column: call_column.map(|c| {
+                            if c == 0 {
+                                ColumnType::LeftEdge
+                            } else {
+                                ColumnType::Column(c)
+                            }
+                        }),
+                        file: call_file,
+                        directory: call_directory,
+                    })
+                }
+
+                Some(frame)
+            }
+
+            Err(e) => {
+                log::warn!("Unable to get stack frame information: {}", e);
+                None
+            }
+        };
+
         if !in_inlined_function {
             // generate previous registers
 
@@ -493,46 +533,6 @@ impl<'debuginfo, 'probe, 'core> Iterator for StackFrameIterator<'debuginfo, 'pro
 
             self.registers.set_canonical_frame_address(current_cfa);
         }
-
-        let return_frame = match self.debug_info.get_stackframe_info(
-            &mut self.core,
-            pc,
-            self.frame_count,
-            self.registers.clone(),
-            in_inlined_function,
-        ) {
-            Ok(mut frame) => {
-                if let Some(InlineFunctionState::InlinedCallSite {
-                    call_line,
-                    call_column,
-                    call_file,
-                    call_directory,
-                }) = inline_call_site_info
-                {
-                    // Update location to match call site
-
-                    frame.source_location = Some(SourceLocation {
-                        line: call_line,
-                        column: call_column.map(|c| {
-                            if c == 0 {
-                                ColumnType::LeftEdge
-                            } else {
-                                ColumnType::Column(c)
-                            }
-                        }),
-                        file: call_file,
-                        directory: call_directory,
-                    })
-                }
-
-                Some(frame)
-            }
-
-            Err(e) => {
-                log::warn!("Unable to get stack frame information: {}", e);
-                None
-            }
-        };
 
         self.frame_count += 1;
 
