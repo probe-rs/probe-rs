@@ -15,7 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Update to probe-rs 0.11.0.
+- Update to probe-rs 0.12.0.
 
 ## [0.11.0]
 
