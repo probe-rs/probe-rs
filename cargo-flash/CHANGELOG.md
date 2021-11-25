@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Fix broken URLs to probe setup help page.
+
 ## [0.12.0]
 
 ### Changed
