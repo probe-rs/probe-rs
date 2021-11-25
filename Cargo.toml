@@ -24,8 +24,8 @@ gimli = { version = "0.24", default-features = false }
 git-version = "0.3"
 log = "0.4"
 object = { version = "0.24", default-features = false }
-probe-rs = "0.11"
-probe-rs-rtt = "0.11"
+probe-rs = "0.12"
+probe-rs-rtt = "0.12"
 signal-hook = "0.3"
 structopt = "0.3"
 
