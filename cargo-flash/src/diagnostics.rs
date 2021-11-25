@@ -29,9 +29,9 @@ pub(crate) fn render_diagnostics(error: OperationError) {
         OperationError::NoProbesFound => (
             error.to_string(),
             vec![
-                "If you are on Linux, you most likely need to install the udev rules for your probe.\nSee https://probe.rs/guide/2_probes/udev/ if you do not know how to install them.".into(),
+                "If you are on Linux, you most likely need to install the udev rules for your probe.\nSee https://probe.rs/docs/getting-started/probe-setup/#udev-rules if you do not know how to install them.".into(),
                 "If you are on Windows, make sure to install the correct driver. For J-Link usage you will need the https://zadig.akeo.ie/ driver.".into(),
-                "For a guide on how to set up your probes, see https://probe.rs/guide/2_probes/.".into(),
+                "For a guide on how to set up your probes, see https://probe.rs/docs/getting-started/probe-setup".into(),
             ],
         ),
         OperationError::FailedToReadFamilies(_e) => (
@@ -77,7 +77,7 @@ pub(crate) fn render_diagnostics(error: OperationError) {
         OperationError::FailedToOpenProbe(_e) => (
             error.to_string(),
             vec![
-                "This could be a permission issue. Check our guide on how to make all probes work properly on your system: https://probe.rs/guide/2_probes/.".into()
+                "This could be a permission issue. Check our guide on how to make all probes work properly on your system: https://probe.rs/docs/getting-started/probe-setup".into()
             ],
         ),
         OperationError::MultipleProbesFound { .. } => (
