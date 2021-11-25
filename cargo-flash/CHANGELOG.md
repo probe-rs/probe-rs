@@ -11,7 +11,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- Fix broken URLs to probe setup help page.
+## [0.12.1]
+
+### Fixed
+
+- Fixed the probe-setup URLs in the helptexts (#208).
 
 ## [0.12.0]
 
@@ -153,7 +157,8 @@ Improved flashing for `cargo-flash` considering speed and useability.
 ## [0.2.0]
 - Introduce cargo-flash which can automatically build & flash the target elf file.
 
-[Unreleased]: https://github.com/probe-rs/cargo-flash/compare/v0.12.0...master
+[Unreleased]: https://github.com/probe-rs/cargo-flash/compare/v0.12.1...master
+[0.12.1]: https://github.com/probe-rs/cargo-flash/releases/tag/v0.12.0..v0.12.1
 [0.12.0]: https://github.com/probe-rs/cargo-flash/releases/tag/v0.11.0..v0.12.0
 [0.11.0]: https://github.com/probe-rs/cargo-flash/releases/tag/v0.10.1..v0.11.0
 [0.10.1]: https://github.com/probe-rs/cargo-flash/releases/tag/v0.10.0..v0.10.1
