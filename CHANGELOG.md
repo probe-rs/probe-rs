@@ -6,8 +6,9 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/) and this p
 
 ## [Unreleased]
 
-- [#]
+- [#285]: Update `probe-rs` and `probe-rs-rtt` to `0.12`
 
+[#285]: https://github.com/knurling-rs/probe-run/pull/285
 
 ## [v0.3.0] - 2021-11-09
 

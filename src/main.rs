@@ -15,7 +15,7 @@ use std::{
     path::Path,
     process,
     sync::atomic::{AtomicBool, Ordering},
-    sync::{Arc, Mutex},
+    sync::Arc,
     time::Duration,
 };
 
@@ -23,6 +23,7 @@ use anyhow::{anyhow, bail};
 use colored::Colorize as _;
 use defmt_decoder::{DecodeError, Frame, Locations, StreamDecoder};
 use probe_rs::{
+    config::MemoryRegion,
     flashing::{self, Format},
     Core,
     DebugProbeError::ProbeSpecific,
@@ -130,15 +131,15 @@ fn run_target_program(elf_path: &Path, chip_name: &str, opts: &cli::Opts) -> any
     }
     start_program(&mut sess, elf)?;
 
-    let sess = Arc::new(Mutex::new(sess));
     let current_dir = &env::current_dir()?;
 
-    let halted_due_to_signal = extract_and_print_logs(elf, &sess, opts, current_dir)?;
+    let memory_map = sess.target().memory_map.clone();
+    let mut core = sess.core(0)?;
+
+    let halted_due_to_signal =
+        extract_and_print_logs(elf, &mut core, &memory_map, opts, current_dir)?;
 
     print_separator();
-
-    let mut sess = sess.lock().unwrap();
-    let mut core = sess.core(0)?;
 
     let canary_touched = canary
         .map(|canary| canary.touched(&mut core, elf))
@@ -231,7 +232,8 @@ fn set_rtt_to_blocking(
 
 fn extract_and_print_logs(
     elf: &Elf,
-    sess: &Arc<Mutex<Session>>,
+    core: &mut probe_rs::Core,
+    memory_map: &[MemoryRegion],
     opts: &cli::Opts,
     current_dir: &Path,
 ) -> anyhow::Result<bool> {
@@ -239,7 +241,7 @@ fn extract_and_print_logs(
     let sig_id = signal_hook::flag::register(signal::SIGINT, exit.clone())?;
 
     let mut logging_channel = if let Some(address) = elf.rtt_buffer_address() {
-        Some(setup_logging_channel(address, sess.clone())?)
+        Some(setup_logging_channel(address, core, memory_map)?)
     } else {
         eprintln!("RTT logs not available; blocking until the device halts..");
         None
@@ -273,7 +275,7 @@ fn extract_and_print_logs(
     let mut was_halted = false;
     while !exit.load(Ordering::Relaxed) {
         if let Some(logging_channel) = &mut logging_channel {
-            let num_bytes_read = match logging_channel.read(&mut read_buf) {
+            let num_bytes_read = match logging_channel.read(core, &mut read_buf) {
                 Ok(n) => n,
                 Err(e) => {
                     eprintln!("RTT error: {}", e);
@@ -303,8 +305,6 @@ fn extract_and_print_logs(
             }
         }
 
-        let mut sess = sess.lock().unwrap();
-        let mut core = sess.core(0)?;
         let is_halted = core.core_halted()?;
 
         if is_halted && was_halted {
@@ -321,9 +321,6 @@ fn extract_and_print_logs(
     // TODO refactor: a printing fucntion shouldn't stop the MC as a side effect
     // Ctrl-C was pressed; stop the microcontroller.
     if exit.load(Ordering::Relaxed) {
-        let mut sess = sess.lock().unwrap();
-        let mut core = sess.core(0)?;
-
         core.halt(TIMEOUT)?;
     }
 
@@ -394,13 +391,14 @@ fn location_info(
 
 fn setup_logging_channel(
     rtt_buffer_address: u32,
-    sess: Arc<Mutex<Session>>,
+    core: &mut probe_rs::Core,
+    memory_map: &[MemoryRegion],
 ) -> anyhow::Result<UpChannel> {
     const NUM_RETRIES: usize = 10; // picked at random, increase if necessary
 
     let scan_region = ScanRegion::Exact(rtt_buffer_address);
     for _ in 0..NUM_RETRIES {
-        match Rtt::attach_region(sess.clone(), &scan_region) {
+        match Rtt::attach_region(core, memory_map, &scan_region) {
             Ok(mut rtt) => {
                 log::debug!("Successfully attached RTT");
 
