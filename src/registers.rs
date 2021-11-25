@@ -67,7 +67,15 @@ impl<'c, 'probe> Registers<'c, 'probe> {
             RegisterRule::Offset(offset) => {
                 let cfa = self.get(SP)?;
                 let addr = (cfa as i64 + offset) as u32;
-                self.cache.insert(reg.0, self.core.read_word_32(addr)?);
+                let value = self.core.read_word_32(addr)?;
+                log::trace!(
+                    "update reg={:?}, rule={:?}, abs={:#010x} -> value={:#010x}",
+                    reg,
+                    rule,
+                    addr,
+                    value
+                );
+                self.cache.insert(reg.0, value);
             }
             RegisterRule::Undefined => unreachable!(),
             _ => unimplemented!(),

@@ -1,7 +1,10 @@
 //! unwind target's program
 
 use anyhow::{anyhow, Context as _};
-use gimli::{BaseAddresses, DebugFrame, UnwindContext, UnwindSection as _};
+use gimli::{
+    BaseAddresses, CieOrFde, DebugFrame, FrameDescriptionEntry, Reader, UnwindContext,
+    UnwindSection as _,
+};
 use probe_rs::{config::RamRegion, Core};
 
 use crate::{
@@ -61,15 +64,18 @@ pub(crate) fn target(core: &mut Core, elf: &Elf, active_ram_region: &Option<RamR
 
         output.raw_frames.push(RawFrame::Subroutine { pc });
 
-        let uwt_row = unwrap_or_return_output!(elf
-            .debug_frame
+        let fde = unwrap_or_return_output!(find_fde(&elf.debug_frame, &base_addresses, pc));
+
+        let uwt_row = unwrap_or_return_output!(fde
             .unwind_info_for_address(
+                &elf.debug_frame,
                 &base_addresses,
                 &mut unwind_context,
-                pc.into(),
-                DebugFrame::cie_from_offset,
+                pc.into()
             )
             .with_context(|| missing_debug_info(pc)));
+
+        log::trace!("uwt row for pc {:#010x}: {:?}", pc, uwt_row);
 
         let cfa_changed = unwrap_or_return_output!(registers.update_cfa(uwt_row.cfa()));
 
@@ -193,5 +199,54 @@ fn overflowed_stack(sp: u32, active_ram_region: &Option<RamRegion>) -> bool {
     } else {
         log::warn!("no RAM region appears to contain the stack; cannot determine if this was a stack overflow");
         false
+    }
+}
+
+/// FDEs can never overlap. Unfortunately, computers. It looks like FDEs for dead code might still
+/// end up in the final ELF, but get their offset reset to 0, so there can be overlapping FDEs at
+/// low addresses.
+///
+/// This function finds the FDE that applies to `addr`, skipping any FDEs with a start address of 0.
+/// Since there's no code at address 0, this should never skip legitimate FDEs.
+fn find_fde<R: Reader>(
+    debug_frame: &DebugFrame<R>,
+    bases: &BaseAddresses,
+    addr: u32,
+) -> anyhow::Result<FrameDescriptionEntry<R>> {
+    let mut entries = debug_frame.entries(bases);
+    let mut fdes = Vec::new();
+    while let Some(entry) = entries.next()? {
+        match entry {
+            CieOrFde::Cie(_) => {}
+            CieOrFde::Fde(partial) => {
+                let fde = partial.parse(DebugFrame::cie_from_offset)?;
+                if fde.initial_address() == 0 {
+                    continue;
+                }
+
+                if fde.contains(addr.into()) {
+                    log::trace!(
+                        "{:#010x}: found FDE for {:#010x} .. {:#010x} at offset {:?}",
+                        addr,
+                        fde.initial_address(),
+                        fde.initial_address() + fde.len(),
+                        fde.offset(),
+                    );
+                    fdes.push(fde);
+                }
+            }
+        }
+    }
+
+    match fdes.len() {
+        0 => Err(anyhow!(gimli::Error::NoUnwindInfoForAddress))
+            .with_context(|| missing_debug_info(addr)),
+        1 => Ok(fdes.pop().unwrap()),
+        n => Err(anyhow!(
+            "found {} frame description entries for address {:#010x}, there should only be 1; \
+             this is likely a bug in your compiler toolchain; unwinding will stop here",
+            n,
+            addr
+        )),
     }
 }
