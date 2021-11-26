@@ -2,7 +2,7 @@
 
 use anyhow::{anyhow, Context as _};
 use gimli::{
-    BaseAddresses, CieOrFde, DebugFrame, FrameDescriptionEntry, Reader, UninitializedUnwindContext,
+    BaseAddresses, CieOrFde, DebugFrame, FrameDescriptionEntry, Reader, UnwindContext,
     UnwindSection as _,
 };
 use probe_rs::{config::RamRegion, Core};
@@ -52,7 +52,7 @@ pub(crate) fn target(core: &mut Core, elf: &Elf, active_ram_region: &Option<RamR
     let sp = unwrap_or_return_output!(core.read_core_reg(registers::SP));
     let lr = unwrap_or_return_output!(core.read_core_reg(registers::LR));
     let base_addresses = BaseAddresses::default();
-    let mut unwind_context = UninitializedUnwindContext::new();
+    let mut unwind_context = UnwindContext::new();
     let mut registers = Registers::new(lr, sp, core);
 
     loop {
