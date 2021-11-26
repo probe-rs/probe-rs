@@ -6,9 +6,23 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/) and this p
 
 ## [Unreleased]
 
-- [#285]: Update `probe-rs` and `probe-rs-rtt` to `0.12`
+- None
 
+# [v0.3.1] - 2021-11-26
+
+- [#287]: unwind: skip FDEs with initial address of 0 
+- [#286]: Update dependencies
+- [#285]: Update `probe-rs` and `probe-rs-rtt` to `0.12`
+- [#282]: Include program counter value in backtrace when -v is passed 
+- [#281]: Report flashing size using probe-rs's FlashProgress system
+- [#280]: Turn symbol demangling back on
+
+[#287]: https://github.com/knurling-rs/probe-run/pull/287
+[#286]: https://github.com/knurling-rs/probe-run/pull/286
 [#285]: https://github.com/knurling-rs/probe-run/pull/285
+[#282]: https://github.com/knurling-rs/probe-run/pull/282
+[#281]: https://github.com/knurling-rs/probe-run/pull/281
+[#280]: https://github.com/knurling-rs/probe-run/pull/280
 
 ## [v0.3.0] - 2021-11-09
 
