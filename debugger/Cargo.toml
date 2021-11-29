@@ -37,7 +37,7 @@ serde = { version = "^1.0", features = ["derive"] }
 schemafy = "^0.6"
 chrono = { version = "0.4", features = ["serde"] }
 goblin = "0.4.1"
-defmt-decoder = { version = "0.2.1", features = ["unstable"] }
+defmt-decoder = { version = "0.3.1", features = ["unstable"] }
 
 [dev-dependencies]
 insta = "1.8.0"
