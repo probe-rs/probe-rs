@@ -230,6 +230,7 @@ pub struct SessionData {
 pub struct CoreData<'p> {
     pub(crate) target_core: Core<'p>,
     pub(crate) target_name: String,
+    pub(crate) debug_info: &'p mut Option<DebugInfo>,
 }
 
 /// Definition of commands that have been implemented in Debugger.
@@ -345,15 +346,16 @@ pub fn start_session(debugger_options: &DebuggerOptions) -> Result<SessionData, 
 }
 
 pub fn attach_core<'p>(
-    session: &'p mut Session,
+    session_data: &'p mut SessionData,
     debugger_options: &DebuggerOptions,
 ) -> Result<CoreData<'p>, DebuggerError> {
-    let target_name = session.target().name.clone();
+    let target_name = session_data.session.target().name.clone();
     // Do no-op attach to the core and return it.
-    match session.core(debugger_options.core_index) {
+    match session_data.session.core(debugger_options.core_index) {
         Ok(target_core) => Ok(CoreData {
             target_core,
             target_name: format!("{}-{}", debugger_options.core_index, target_name),
+            debug_info: &mut session_data.debug_info,
         }),
         Err(_) => Err(DebuggerError::UnableToOpenProbe(Some(
             "No core at the specified index.",
@@ -536,14 +538,14 @@ impl Debugger {
                         Ok(DebuggerStatus::ContinueSession)
                     }
                     _other => {
-                        let mut core_data =
-                            match attach_core(&mut session_data.session, &self.debugger_options) {
-                                Ok(core_data) => core_data,
-                                Err(error) => {
-                                    let _ = debug_adapter.send_error_response(&error)?;
-                                    return Err(error);
-                                }
-                            };
+                        let mut core_data = match attach_core(session_data, &self.debugger_options)
+                        {
+                            Ok(core_data) => core_data,
+                            Err(error) => {
+                                let _ = debug_adapter.send_error_response(&error)?;
+                                return Err(error);
+                            }
+                        };
 
                         // Use every opportunity to poll the RTT channels for data
                         let mut received_rtt_data = false;
@@ -633,19 +635,16 @@ impl Debugger {
                     Ok(DebuggerStatus::TerminateSession)
                 }
                 "terminate" => {
-                    let mut core_data =
-                        match attach_core(&mut session_data.session, &self.debugger_options) {
-                            Ok(core_data) => core_data,
-                            Err(error) => {
-                                let error = Err(error);
-                                debug_adapter.send_response::<()>(request, error)?;
+                    let mut core_data = match attach_core(session_data, &self.debugger_options) {
+                        Ok(core_data) => core_data,
+                        Err(error) => {
+                            let error = Err(error);
+                            debug_adapter.send_response::<()>(request, error)?;
 
-                                // TODO: Nicer response
-                                return Err(DebuggerError::Other(anyhow!(
-                                    "Failed to attach to core"
-                                )));
-                            }
-                        };
+                            // TODO: Nicer response
+                            return Err(DebuggerError::Other(anyhow!("Failed to attach to core")));
+                        }
+                    };
                     debug_adapter.pause(&mut core_data, request)?;
                     Ok(DebuggerStatus::TerminateSession)
                 }
@@ -668,18 +667,16 @@ impl Debugger {
                     match valid_command {
                         Some(valid_command) => {
                             // First, attach to the core.
-                            let mut core_data = match attach_core(
-                                &mut session_data.session,
-                                &self.debugger_options,
-                            ) {
-                                Ok(core_data) => core_data,
-                                Err(error) => {
-                                    debug_adapter.send_response::<()>(request, Err(error))?;
-                                    return Err(DebuggerError::Other(anyhow!(
-                                        "Failed to attach to core"
-                                    )));
-                                }
-                            };
+                            let mut core_data =
+                                match attach_core(session_data, &self.debugger_options) {
+                                    Ok(core_data) => core_data,
+                                    Err(error) => {
+                                        debug_adapter.send_response::<()>(request, Err(error))?;
+                                        return Err(DebuggerError::Other(anyhow!(
+                                            "Failed to attach to core"
+                                        )));
+                                    }
+                                };
                             // For some operations, we need to make sure the core isn't sleeping, by calling `Core::halt()`.
                             // When we do this, we need to flag it (`unhalt_me = true`), and later call `Core::run()` again.
                             // NOTE: The target will exit sleep mode as a result of this command.
@@ -751,16 +748,10 @@ impl Debugger {
                                 }
                                 "threads" => debug_adapter.threads(&mut core_data, request),
                                 "restart" => debug_adapter.restart(&mut core_data, Some(request)),
-                                "set_breakpoints" => debug_adapter.set_breakpoints(
-                                    &mut session_data,
-                                    &mut core_data,
-                                    request,
-                                ),
-                                "stack_trace" => debug_adapter.stack_trace(
-                                    &mut session_data,
-                                    &mut core_data,
-                                    request,
-                                ),
+                                "set_breakpoints" => {
+                                    debug_adapter.set_breakpoints(&mut core_data, request)
+                                }
+                                "stack_trace" => debug_adapter.stack_trace(&mut core_data, request),
                                 "scopes" => debug_adapter.scopes(&mut core_data, request),
                                 "source" => debug_adapter.source(&mut core_data, request),
                                 "variables" => debug_adapter.variables(&mut core_data, request),
@@ -1317,8 +1308,7 @@ impl Debugger {
         // This is the first attach to the requested core. If this one works, all subsequent ones will be no-op requests for a Core reference. Do NOT hold onto this reference for the duration of the session ... that is why this code is in a block of its own.
         {
             // First, attach to the core
-            let mut core_data = match attach_core(&mut session_data.session, &self.debugger_options)
-            {
+            let mut core_data = match attach_core(&mut session_data, &self.debugger_options) {
                 Ok(mut core_data) => {
                     // Immediately after attaching, halt the core, so that we can finish initalization without bumping into user code.
                     // Depending on supplied `debugger_options`, the core will be restarted at the end of initialization in the `configuration_done` request.
@@ -1373,7 +1363,7 @@ impl Debugger {
                     {
                         let target_memory_map = session_data.session.target().memory_map.clone();
                         let mut core_data =
-                            match attach_core(&mut session_data.session, &self.debugger_options) {
+                            match attach_core(&mut session_data, &self.debugger_options) {
                                 Ok(core_data) => core_data,
                                 Err(error) => {
                                     debug_adapter.send_error_response(&error)?;
@@ -1505,7 +1495,7 @@ pub fn reset_target_of_device(
     _assert: Option<bool>,
 ) -> Result<()> {
     let mut session_data = start_session(&debugger_options)?;
-    attach_core(&mut session_data.session, &debugger_options)?
+    attach_core(&mut session_data, &debugger_options)?
         .target_core
         .reset()?;
     Ok(())
@@ -1513,7 +1503,7 @@ pub fn reset_target_of_device(
 
 pub fn dump_memory(debugger_options: DebuggerOptions, loc: u32, words: u32) -> Result<()> {
     let mut session_data = start_session(&debugger_options)?;
-    let mut target_core = attach_core(&mut session_data.session, &debugger_options)?.target_core;
+    let mut target_core = attach_core(&mut session_data, &debugger_options)?.target_core;
 
     let mut data = vec![0_u32; words as usize];
 
@@ -1556,7 +1546,7 @@ pub fn trace_u32_on_target(debugger_options: DebuggerOptions, loc: u32) -> Resul
     let start = Instant::now();
 
     let mut session_data = start_session(&debugger_options)?;
-    let mut target_core = attach_core(&mut session_data.session, &debugger_options)?.target_core;
+    let mut target_core = attach_core(&mut session_data, &debugger_options)?.target_core;
 
     loop {
         // Prepare read.

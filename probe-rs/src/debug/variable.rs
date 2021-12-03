@@ -3,99 +3,206 @@ use crate::Error;
 use anyhow::anyhow;
 use gimli::UnitOffset;
 use num_traits::Zero;
-use std::{convert::TryInto, fmt};
+use std::{
+    cell::{Cell, RefCell},
+    convert::TryInto,
+    fmt,
+};
 use thousands::Separable;
 
-/// VariableCache stores every available Variable, and provides methods to create and navigate the parent-child relationships of the Variables.
+/// VariableCache stores every available `Variable`, and provides methods to create and navigate the parent-child relationships of the Variables.
+/// There should be ONLY ONE `VariableCache` per `DebugInfo`. Because of the multiple ways in which it is updated, all references to `VariableCache` are *immutable*, and can only be updated through its methods, which provide *interior mutability"
+///
+/// There are four 'dummy' `Variables`, named `<statics>`, `stackframe`, `<registers>`, and `<locals>`. These are used to provide the header structure of how variables relate to different scopes in a particular stacktrace. This 'dummy' structure looks as follows
+/// - `<statics>`: The parent variable for all static coped variables in the stack
+///   - A recursive `Variable` structure as described for `<locals>` below.
+/// - `<stackframe>`: Every `StackFrame` will have one of these, with its function name captured in the `value` field of this dummy variable.
+///   - `<registers>`: Every `StackFrame` will have a collection of `Variable` registers.
+///     - A `Variable` for each available register
+///   - `<locals>`: Every `StackFrame` (function) will have a collection of locally scoped `Variable`s.
+///     - A `Variable` for each in-scope variable. Complex variables and pointers will have additional children.
+///       - Child `Variable`s that make up a complex parent variable.
+///         - This structure is recursive until a base type is encountered.
 pub struct VariableCache {
-    variable_cache_key: i64,
-    variable_cache: HashMap<i64, Variable>,
+    variable_cache_key: Cell<i64>,
+    variable_hash_map: RefCell<HashMap<i64, Variable>>,
+}
+impl Default for VariableCache {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl VariableCache {
     pub fn new() -> Self {
         Self {
-            variable_cache_key: 0,
-            variable_cache: HashMap::new(),
+            variable_cache_key: Cell::new(0),
+            variable_hash_map: RefCell::new(HashMap::new()),
         }
     }
 
-    /// Add a `probe_rs::debug::Variable` to the cache. If a Variable already exists, it will be replaced with the new `Variable`. This also validates that the supplied `Variable::parent_key` is a valid entry in the cache.
-    pub fn add_variable(&mut self, mut variable: Variable) -> Result<(), Error> {
-        if variable.parent_key > 0 && (!self.variable_cache.contains_key(&variable.parent_key)) {
-            return Err(anyhow!("VariableCache: Attempted to add a new variable: {} with non existent `parent_key`: {}.", variable.name, variable.parent_key).into());
+    /// Performs an *add* or *update* of a `probe_rs::debug::Variable` to the cache, consuming the input and returning a Clone.
+    /// - *Add* operation: If the `Variable::variable_key` is 0, then assign a key and store it in the cache.
+    ///   - Return an updated Clone of the stored variable
+    /// - *Update* operation: If the `Variable::variable_key` is > 0
+    ///   - If the key value exists in the cache, update it, Return an updated Clone of the variable.
+    ///   - If the key value doesn't exist in the cache, Return an error.
+    /// - For all operations, update the `parent_key`. A value of 0 means there are no parents for this variable.
+    ///   - Validate that the supplied `Variable::parent_key` is a valid entry in the cache.
+    /// - If appropriate, the `Variable::value` is updated from the core memory, and can be used by the calling function.
+    pub fn insert(
+        &self,
+        parent_key: i64,
+        cache_variable: Variable,
+        core: &mut Core<'_>,
+    ) -> Result<Variable, Error> {
+        let mut variable_to_add = cache_variable.clone();
+
+        // Validate that the parent_key exists ...
+        variable_to_add.parent_key = parent_key;
+        if variable_to_add.parent_key > 0
+            && (!self
+                .variable_hash_map
+                .borrow()
+                .contains_key(&variable_to_add.parent_key))
+        {
+            return Err(anyhow!("VariableCache: Attempted to add a new variable: {} with non existent `parent_key`: {}. Please report this as a bug", variable_to_add.name, variable_to_add.parent_key).into());
         }
-        if variable.variable_key == 0 {
+
+        // Is this an *add* or *update* operation?
+        let stored_key = if variable_to_add.variable_key == 0 {
             // The caller is telling us this is definitely a new `Variable`
-            let new_cache_key: i64 = self.variable_cache_key + 1;
-            variable.variable_key = new_cache_key;
+            let new_cache_key: i64 = self.variable_cache_key.get() + 1;
+            variable_to_add.variable_key = new_cache_key;
             match self
-                .variable_cache
-                .insert(variable.variable_key, variable.clone())
+                .variable_hash_map
+                .borrow_mut()
+                .insert(variable_to_add.variable_key, variable_to_add)
             {
                 Some(old_variable) => {
-                    log::warn!("VariableCache: Attempted to add a new variable: {} at position: {}, which contains an existing variable: {}.", variable.name, old_variable.variable_key, old_variable.name);
+                    return Err(anyhow!("Attempt to insert a new `Variable`:{:?} with a duplicate cache key: {}. Please report this as a bug.", cache_variable.name, old_variable.variable_key).into());
                 }
                 None => {
-                    self.variable_cache_key = new_cache_key;
+                    self.variable_cache_key.set(new_cache_key);
                 }
             }
+            self.variable_cache_key.get()
         } else {
             // Attempt to update an existing `Variable` in the cache
+            let reused_cache_key = variable_to_add.variable_key;
             if self
-                .variable_cache
-                .insert(variable.variable_key, variable.clone())
+                .variable_hash_map
+                .borrow_mut()
+                .insert(variable_to_add.variable_key, variable_to_add)
                 .is_none()
             {
-                log::warn!("VariableCache: Attempted to update an existing variable: {} at position: {}, but it does not exist in the cache", variable.name, variable.variable_key);
+                return Err(anyhow!("Attempt to update and existing `Variable`:{:?} with a non-existent cache key: {}. Please report this as a bug.", cache_variable.name, reused_cache_key).into());
             }
+            reused_cache_key
+        };
+        match self.variable_hash_map.borrow_mut().get_mut(&stored_key) {
+            Some(stored_variable) => {
+                // As the final act, update the variable with an appropriate value
+                stored_variable.extract_value(core, self);
+
+                Ok(stored_variable.clone())
+            }
+            None => Err(anyhow!(
+                "Failed to store variable at variable_cache_key: {}. Please report this as a bug.",
+                stored_key
+            )
+            .into()),
         }
-        Ok(())
     }
 
-    /// Retrieve all the children of a `Variable`. This also validates that the parent exists in the cache, before attempting to retrieve children.
-    pub fn get_children(&mut self, parent_variable: &Variable) -> Result<Vec<Variable>, Error> {
-        if parent_variable.variable_key == 0
-            && (!self
-                .variable_cache
-                .contains_key(&parent_variable.variable_key))
-        {
-            return Err(anyhow!("VariableCache: Attempted to retrieve children for a non existent variable: {} with `variable_key`: {}.", parent_variable.name, parent_variable.parent_key).into());
+    /// Retrieve a clone of a specific `Variable`, using the `variable_key`.
+    pub fn get_cloned_variable_by_key(&self, variable_key: i64) -> Option<Variable> {
+        self.variable_hash_map.borrow().get(&variable_key).cloned()
+    }
+
+    /// Retrieve a clone of a specific `Variable`, using the `name` and `parent_key`.
+    /// If there is more than one, it will be logged (log::warn!), and only the last will be returned.
+    pub fn get_variable_by_name_and_parent(
+        &self,
+        variable_name: String,
+        parent_key: i64,
+    ) -> Option<Variable> {
+        self.variable_hash_map
+            .borrow()
+            .values()
+            .filter(|child_variable| {
+                child_variable.name == variable_name && child_variable.parent_key == parent_key
+            })
+            .last()
+            .cloned()
+    }
+
+    /// Retrieve `clone`d version of all the children of a `Variable`.
+    /// This also validates that the parent exists in the cache, before attempting to retrieve children.
+    pub fn get_cloned_children(&self, parent_key: i64) -> Result<Vec<Variable>, Error> {
+        if parent_key == 0 && (!self.variable_hash_map.borrow().contains_key(&parent_key)) {
+            return Err(anyhow!("VariableCache: Attempted to retrieve children for a non existent `variable_key`: {}.", parent_key).into());
         } else {
             Ok(self
-                .variable_cache
+                .variable_hash_map
+                .borrow()
                 .values()
-                .filter(|child_variable| child_variable.parent_key == parent_variable.variable_key)
+                .filter(|child_variable| child_variable.parent_key == parent_key)
                 .cloned()
                 .collect::<Vec<Variable>>())
         }
     }
 
     // Check if a `Variable` has any children. This also validates that the parent exists in the cache, before attempting to check for children.
-    pub fn has_children(&mut self, parent_variable: &Variable) -> Result<bool, Error> {
-        self.get_children(parent_variable).and_then(|children| {
-            if children.len() > 0 {
-                Ok(true)
-            } else {
-                Ok(false)
-            }
-        })
+    pub fn has_children(&self, parent_variable: &Variable) -> Result<bool, Error> {
+        self.get_cloned_children(parent_variable.variable_key)
+            .map(|children| !children.is_empty())
     }
-}
 
-/// VariableInclusion is a tag used to control when a variable should be included in the final result tree, or if it is simply an artifact of decoding the DWARF structure
-#[derive(Debug, Clone, PartialEq)]
-pub enum VariableInclusion {
-    /// Exclude nodes that are encountered as 'structural' during the evaluation of other variables. e.g. DW_AT_artificial
-    Exclude,
-    /// When a variable is set to Include, all parents in the tree will be included also
-    Include,
-    /// As the default, this should never be the final value for a Variable
-    Undetermined,
-}
-impl Default for VariableInclusion {
-    fn default() -> Self {
-        VariableInclusion::Undetermined
+    /// Sometimes DWARF uses intermediate nodes that are not part of the coded variable structure.
+    /// When we encounter them, the children of such intermediate nodes are assigned to the parent of the intermediate node, and we discard the intermediate nodes from the `DebugInfo::VariableCache`
+    pub fn adopt_grand_children(
+        &self,
+        parent_variable: &Variable,
+        obsolete_child_variable: &Variable,
+    ) -> Result<(), Error> {
+        // If the `obsolete_child_variable` has a type, then silently do nothing.
+        if obsolete_child_variable.type_name.is_empty() {
+            // Make sure we pass children up, past any intermediate nodes.
+            self.variable_hash_map
+                .borrow_mut()
+                .values_mut()
+                .filter(|search_variable| {
+                    search_variable.parent_key == obsolete_child_variable.variable_key
+                })
+                .for_each(|grand_child| grand_child.parent_key = parent_variable.variable_key);
+            // Remove the intermediate variable from the cache
+            self.remove_cache_entry(obsolete_child_variable.variable_key)?;
+        }
+        Ok(())
+    }
+
+    /// Removing an entry's children from the `VariableCache` will recursively remove all their children
+    pub fn remove_cache_entry_children(&self, parent_variable_key: i64) -> Result<(), Error> {
+        let children: Vec<Variable> = self
+            .variable_hash_map
+            .borrow()
+            .values()
+            .filter(|search_variable| search_variable.parent_key == parent_variable_key)
+            .cloned()
+            .collect();
+        for child in children {
+            self.variable_hash_map
+                .borrow_mut()
+                .remove(&child.variable_key);
+        }
+        Ok(())
+    }
+    /// Removing an entry from the `VariableCache` will recursively remove all its children
+    pub fn remove_cache_entry(&self, variable_key: i64) -> Result<(), Error> {
+        self.remove_cache_entry_children(variable_key)?;
+        self.variable_hash_map.borrow_mut().remove(&variable_key);
+        Ok(())
     }
 }
 
@@ -116,6 +223,10 @@ impl Default for VariantRole {
     }
 }
 
+/// The `Variable` struct is used in conjunction with `VariableCache` to cache data about variables.
+///
+/// Any modifications to the `Variable` value will be transient (lost when it goes out of scope),
+/// unless it is updated through one of the available methods on `VariableCache`.
 #[derive(Debug, Default, Clone)]
 pub struct Variable {
     /// Every variable must have a unique key value assigned to it. The value will be zero until it is stored in VariableCache, at which time its value will be set to the same as the VariableCache::variable_cache_key
@@ -123,9 +234,9 @@ pub struct Variable {
     /// Every variable must have a unique parent assigned to it when stored in the VariableCache A parent_key of 0 in the cache means it is the root of a variable tree.
     pub parent_key: i64,
     pub name: String,
-    pub value: String,
-    pub file: String,
-    pub line: u64,
+    /// The value will always be an empty string unless the variable is a base type. For all Variables that are complex types or references, the value will be a "fmt::Display" representation that attempts to assemble the base types into human readable form. Use `Variable::set_value()` and `Variable::get_value()` to correctly process this `value`
+    pub(crate) value: String,
+    pub source_location: Option<SourceLocation>,
     pub type_name: String,
     /// Instead of parsing the type_name to infer if this variable is a pointer to another data type, we set this to true explicitly during ELF parsing.
     pub is_pointer: bool,
@@ -144,12 +255,10 @@ pub struct Variable {
     /// If this is a subrange (array, vector, etc.), we need to temporarily store the the upper bound of the range.
     pub range_upper_bound: i64,
     pub role: VariantRole,
-    pub inclusion: VariableInclusion,
-    pub children: Option<Vec<Variable>>,
 }
 
 impl Variable {
-    pub fn new() -> Variable {
+    pub(crate) fn new() -> Variable {
         Variable {
             ..Default::default()
         }
@@ -157,7 +266,7 @@ impl Variable {
 
     /// Implementing set_value(), because the library passes errors into the value of the variable.
     /// This ensures debug front ends can see the errors, but doesn't fail because of a single variable not being able to decode correctly.
-    pub fn set_value(&mut self, new_value: String) {
+    pub(crate) fn set_value(&mut self, new_value: String) {
         if self.value.is_empty() {
             self.value = new_value;
         } else {
@@ -167,14 +276,43 @@ impl Variable {
     }
 
     /// Implementing get_value(), because Variable.value has to be private (a requirement of updating the value without overriding earlier values ... see set_value()).
-    pub fn get_value(&self) -> String {
-        self.value.clone()
+    pub fn get_value(&self, variable_cache: &VariableCache) -> String {
+        if self.value.is_empty() {
+            // We need to construct a 'human readable' value using `fmt::Display` to represent the values of complex types and pointers.
+            match variable_cache.has_children(self) {
+                Ok(has_children) => {
+                    if has_children {
+                        //TODO: Recurse through all descendants ... change {:?} to {}
+                        format!("{:?}", self)
+                    } else if self.type_name.is_empty() {
+                        "ERROR: This is a bug! Attempted to evaluate an empty Type".to_string()
+                    } else if self.is_pointer {
+                        // If a pointer does not have children, it means we have not resolved it yet, so
+                        //    report the value as the name of the data type, until the user chooses to resolve it.
+                        self.type_name.clone()
+                    } else {
+                        format!(
+                            "UNIMPLEMENTED: Evaluate type {} of ({} bytes) at location 0x{:08x}",
+                            self.type_name, self.byte_size, self.memory_location
+                        )
+                    }
+                }
+                Err(error) => format!(
+                    "Failed to determine children for `Variable`:{}. {:?}",
+                    self.name, error
+                ),
+            }
+        } else {
+            // The `value` for this `Variable` is non empty because it is either:
+            // - A base data type for which a value was determined based on the core runtime
+            // - Contains an error that was encountered while resolving the `Variable`'s `DebugInfo`
+            self.value.clone()
+        }
     }
 
     /// Evaluate the variable's result if possible and set self.value, or else set self.value as the error String.
-    pub fn extract_value(&mut self, core: &mut Core<'_>) {
+    fn extract_value(&mut self, core: &mut Core<'_>, variable_cache: &VariableCache) {
         if self.is_pointer {
-            self.inclusion = VariableInclusion::Include;
             self.value = self.type_name.clone();
             return;
         }
@@ -192,193 +330,149 @@ impl Variable {
         let string_value = match self.type_name.as_str() {
             "!" => "<Never returns>".to_string(),
             "()" => "()".to_string(),
-            "bool" => bool::get_value(self, core)
+            "bool" => bool::get_value(self, core, variable_cache)
                 .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.to_string()),
-            "char" => char::get_value(self, core)
+            "char" => char::get_value(self, core, variable_cache)
                 .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.to_string()),
-            "&str" => {
-                let string_value = String::get_value(self, core)
-                    .map_or_else(|err| format!("ERROR: {:?}", err), |value| value);
-                // We don't need these for debugging purposes ... unless we get the ERROR below.
-                self.children = None;
-                string_value
-            }
-            "i8" => i8::get_value(self, core)
+            "&str" => String::get_value(self, core, variable_cache)
+                .map_or_else(|err| format!("ERROR: {:?}", err), |value| value),
+            "i8" => i8::get_value(self, core, variable_cache)
                 .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.to_string()),
-            "i16" => i16::get_value(self, core).map_or_else(
+            "i16" => i16::get_value(self, core, variable_cache).map_or_else(
                 |err| format!("ERROR: {:?}", err),
                 |value| value.separate_with_underscores(),
             ),
-            "i32" => i32::get_value(self, core).map_or_else(
+            "i32" => i32::get_value(self, core, variable_cache).map_or_else(
                 |err| format!("ERROR: {:?}", err),
                 |value| value.separate_with_underscores(),
             ),
-            "i64" => i64::get_value(self, core).map_or_else(
+            "i64" => i64::get_value(self, core, variable_cache).map_or_else(
                 |err| format!("ERROR: {:?}", err),
                 |value| value.separate_with_underscores(),
             ),
-            "i128" => i128::get_value(self, core).map_or_else(
+            "i128" => i128::get_value(self, core, variable_cache).map_or_else(
                 |err| format!("ERROR: {:?}", err),
                 |value| value.separate_with_underscores(),
             ),
-            "isize" => isize::get_value(self, core).map_or_else(
+            "isize" => isize::get_value(self, core, variable_cache).map_or_else(
                 |err| format!("ERROR: {:?}", err),
                 |value| value.separate_with_underscores(),
             ),
-            "u8" => u8::get_value(self, core)
+            "u8" => u8::get_value(self, core, variable_cache)
                 .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.to_string()),
-            "u16" => u16::get_value(self, core).map_or_else(
+            "u16" => u16::get_value(self, core, variable_cache).map_or_else(
                 |err| format!("ERROR: {:?}", err),
                 |value| value.separate_with_underscores(),
             ),
-            "u32" => u32::get_value(self, core).map_or_else(
+            "u32" => u32::get_value(self, core, variable_cache).map_or_else(
                 |err| format!("ERROR: {:?}", err),
                 |value| value.separate_with_underscores(),
             ),
-            "u64" => u64::get_value(self, core).map_or_else(
+            "u64" => u64::get_value(self, core, variable_cache).map_or_else(
                 |err| format!("ERROR: {:?}", err),
                 |value| value.separate_with_underscores(),
             ),
-            "u128" => u128::get_value(self, core).map_or_else(
+            "u128" => u128::get_value(self, core, variable_cache).map_or_else(
                 |err| format!("ERROR: {:?}", err),
                 |value| value.separate_with_underscores(),
             ),
-            "usize" => usize::get_value(self, core).map_or_else(
+            "usize" => usize::get_value(self, core, variable_cache).map_or_else(
                 |err| format!("ERROR: {:?}", err),
                 |value| value.separate_with_underscores(),
             ),
-            "f32" => f32::get_value(self, core).map_or_else(
+            "f32" => f32::get_value(self, core, variable_cache).map_or_else(
                 |err| format!("ERROR: {:?}", err),
                 |value| value.separate_with_underscores(),
             ),
-            "f64" => f64::get_value(self, core).map_or_else(
+            "f64" => f64::get_value(self, core, variable_cache).map_or_else(
                 |err| format!("ERROR: {:?}", err),
                 |value| value.separate_with_underscores(),
             ),
             "None" => "None".to_string(),
-            oops => match &self.children {
-                Some(_children) => {
-                    if oops.is_empty() {
-                        "ERROR: This is a bug! Attempted to evaluate an empty Type".to_string()
-                    } else {
-                        format!("{}", self)
-                    }
-                }
-                None => {
-                    format!(
-                        "UNIMPLEMENTED: Evaluate type {} of ({} bytes) at location 0x{:08x}",
-                        oops, self.byte_size, self.memory_location
-                    )
-                }
-            },
+            _undetermined_value => "".to_owned(),
         };
         self.value = string_value;
     }
-
-    /// Instead of just pushing to Variable.children, do some intelligent selection/addition of new Variables.
-    /// Primarily this is to force late-as-possible(before parent) call of `extract_value()` on child variables,
-    /// and to determine which of the processed DWARF nodes are included in the final variable tree.
-    pub fn add_child_variable(&mut self, child_variable: &mut Variable, core: &mut Core<'_>) {
-        if !(child_variable.inclusion == VariableInclusion::Undetermined
-            || child_variable.inclusion == VariableInclusion::Exclude)
-        {
-            // Just-in-Time creation of Vec to store the children.
-            let children: &mut Vec<Variable> = match &mut self.children {
-                Some(children) => children,
-                None => {
-                    self.children = Some(vec![]);
-                    self.children.as_mut().unwrap()
-                }
-            };
-            // Warning, child_variable's VariableInclusion might have changed after this line.
-            // Ensure parent inclusion setting honours the child inclusion.
-            child_variable.extract_value(core);
-            self.inclusion = VariableInclusion::Include;
-            if child_variable.inclusion == VariableInclusion::Include {
-                // Check to see if this child already exists - We need to do this,
-                // because cargo's `codegen-units` sometimes spread and/or repeat namespace children between them.
-                if let Some(existing_child) = children.iter_mut().find(|current_child| {
-                    current_child.name == child_variable.name
-                        && current_child.type_name == child_variable.type_name
-                }) {
-                    // Just add the children (if there are any) from the new child to the existing child
-                    if let Some(new_children) = child_variable.children.clone() {
-                        for mut new_child in new_children {
-                            existing_child.add_child_variable(&mut new_child, core);
-                        }
-                    }
-                } else {
-                    children.push(child_variable.clone());
-                }
-            }
-        }
-    }
 }
 
-impl fmt::Display for Variable {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        if self.value.is_empty() {
-            // Only do this if we do not already have a value assigned.
-            if let Some(children) = self.children.clone() {
-                // Make sure we can safely unwrap() children.
-                if self.type_name.starts_with('&') {
-                    // Pointers
-                    write!(f, "{}", children.first().unwrap())
-                } else if self.type_name.starts_with('(') {
-                    // Tuples
-                    write!(f, "(")?;
-                    for child in children {
-                        write!(f, "{}, ", child)?;
-                    }
-                    write!(f, ")")
-                } else if self.type_name.starts_with('[') {
-                    // Arrays
-                    write!(f, "[")?;
-                    for child in children {
-                        write!(f, "{}, ", child)?;
-                    }
-                    write!(f, "]")
-                } else {
-                    // Generic handling of other structured types.
-                    // TODO: This is 'ok' for most, but could benefit from some custom formatting, e.g. Unions.
-                    if self.name.starts_with("__") {
-                        // Indexed variables look different ...
-                        write!(f, "{}:{{", self.name)?;
-                    } else {
-                        write!(f, "{{")?;
-                    }
-                    for child in children {
-                        write!(f, "{}, ", child)?;
-                    }
-                    write!(f, "}}")
-                }
-            } else {
-                // Unknown.
-                write!(f, "{}", self.type_name)
-            }
-        } else {
-            // Use the supplied value.
-            write!(f, "{}", self.value)
-        }
-    }
-}
+// TODO: Fix this
+// impl fmt::Display for Variable {
+//     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+//         if self.value.is_empty() {
+//             // Only do this if we do not already have a value assigned.
+//             if let Some(children) = self.children.clone() {
+//                 // Make sure we can safely unwrap() children.
+//                 if self.type_name.starts_with('&') {
+//                     // Pointers
+//                     write!(f, "{}", children.first().unwrap())
+//                 } else if self.type_name.starts_with('(') {
+//                     // Tuples
+//                     write!(f, "(")?;
+//                     for child in children {
+//                         write!(f, "{}, ", child)?;
+//                     }
+//                     write!(f, ")")
+//                 } else if self.type_name.starts_with('[') {
+//                     // Arrays
+//                     write!(f, "[")?;
+//                     for child in children {
+//                         write!(f, "{}, ", child)?;
+//                     }
+//                     write!(f, "]")
+//                 } else {
+//                     // Generic handling of other structured types.
+//                     // TODO: This is 'ok' for most, but could benefit from some custom formatting, e.g. Unions.
+//                     if self.name.starts_with("__") {
+//                         // Indexed variables look different ...
+//                         write!(f, "{}:{{", self.name)?;
+//                     } else {
+//                         write!(f, "{{")?;
+//                     }
+//                     for child in children {
+//                         write!(f, "{}, ", child)?;
+//                     }
+//                     write!(f, "}}")
+//                 }
+//             } else {
+//                 // Unknown.
+//                 write!(f, "{}", self.type_name)
+//             }
+//         } else {
+//             // Use the supplied value.
+//             write!(f, "{}", self.value)
+//         }
+//     }
+// }
+
 /// Traits and Impl's to read from memory and decode the Variable value based on Variable::typ and Variable::location.
 /// The MS DAP protocol passes the value as a string, so these are here only to provide the memory read logic before returning it as a string.
 trait Value {
-    fn get_value(variable: &Variable, core: &mut Core<'_>) -> Result<Self, DebugError>
+    fn get_value(
+        variable: &Variable,
+        core: &mut Core<'_>,
+        _variable_cache: &VariableCache,
+    ) -> Result<Self, DebugError>
     where
         Self: Sized;
 }
 
 impl Value for bool {
-    fn get_value(variable: &Variable, core: &mut Core<'_>) -> Result<Self, DebugError> {
+    fn get_value(
+        variable: &Variable,
+        core: &mut Core<'_>,
+        _variable_cache: &VariableCache,
+    ) -> Result<Self, DebugError> {
         let mem_data = core.read_word_8(variable.memory_location as u32)?;
         let ret_value: bool = mem_data != 0;
         Ok(ret_value)
     }
 }
 impl Value for char {
-    fn get_value(variable: &Variable, core: &mut Core<'_>) -> Result<Self, DebugError> {
+    fn get_value(
+        variable: &Variable,
+        core: &mut Core<'_>,
+        _variable_cache: &VariableCache,
+    ) -> Result<Self, DebugError> {
         let mem_data = core.read_word_32(variable.memory_location as u32)?;
         // TODO: Use char::from_u32 once it stabilizes.
         let ret_value: char = mem_data.try_into()?;
@@ -387,10 +481,14 @@ impl Value for char {
 }
 
 impl Value for String {
-    fn get_value(variable: &Variable, core: &mut Core<'_>) -> Result<Self, DebugError> {
-        let str_value: String;
-        match variable.clone().children {
-            Some(children) => {
+    fn get_value(
+        variable: &Variable,
+        core: &mut Core<'_>,
+        variable_cache: &VariableCache,
+    ) -> Result<Self, DebugError> {
+        let mut str_value: String = "".to_owned();
+        if let Ok(children) = variable_cache.get_cloned_children(variable.variable_key) {
+            if !children.is_empty() {
                 let string_length = match children
                     .clone()
                     .into_iter()
@@ -404,7 +502,9 @@ impl Value for String {
                     .find(|child_variable| child_variable.name == *"data_ptr")
                 {
                     Some(location_value) => {
-                        if let Some(child_variables) = location_value.children {
+                        if let Ok(child_variables) =
+                            variable_cache.get_cloned_children(location_value.variable_key)
+                        {
                             if let Some(first_child) = child_variables.first() {
                                 first_child.memory_location as u32
                             } else {
@@ -423,8 +523,7 @@ impl Value for String {
                     core.read(string_location as u32, &mut buff)?;
                     str_value = core::str::from_utf8(&buff)?.to_owned();
                 }
-            }
-            None => {
+            } else {
                 str_value = "ERROR: Failed to evaluate &str value".to_string();
             }
         };
@@ -432,7 +531,11 @@ impl Value for String {
     }
 }
 impl Value for i8 {
-    fn get_value(variable: &Variable, core: &mut Core<'_>) -> Result<Self, DebugError> {
+    fn get_value(
+        variable: &Variable,
+        core: &mut Core<'_>,
+        _variable_cache: &VariableCache,
+    ) -> Result<Self, DebugError> {
         let mut buff = [0u8; 1];
         core.read(variable.memory_location as u32, &mut buff)?;
         let ret_value = i8::from_le_bytes(buff);
@@ -440,7 +543,11 @@ impl Value for i8 {
     }
 }
 impl Value for i16 {
-    fn get_value(variable: &Variable, core: &mut Core<'_>) -> Result<Self, DebugError> {
+    fn get_value(
+        variable: &Variable,
+        core: &mut Core<'_>,
+        _variable_cache: &VariableCache,
+    ) -> Result<Self, DebugError> {
         let mut buff = [0u8; 2];
         core.read(variable.memory_location as u32, &mut buff)?;
         let ret_value = i16::from_le_bytes(buff);
@@ -448,7 +555,11 @@ impl Value for i16 {
     }
 }
 impl Value for i32 {
-    fn get_value(variable: &Variable, core: &mut Core<'_>) -> Result<Self, DebugError> {
+    fn get_value(
+        variable: &Variable,
+        core: &mut Core<'_>,
+        _variable_cache: &VariableCache,
+    ) -> Result<Self, DebugError> {
         let mut buff = [0u8; 4];
         core.read(variable.memory_location as u32, &mut buff)?;
         let ret_value = i32::from_le_bytes(buff);
@@ -456,7 +567,11 @@ impl Value for i32 {
     }
 }
 impl Value for i64 {
-    fn get_value(variable: &Variable, core: &mut Core<'_>) -> Result<Self, DebugError> {
+    fn get_value(
+        variable: &Variable,
+        core: &mut Core<'_>,
+        _variable_cache: &VariableCache,
+    ) -> Result<Self, DebugError> {
         let mut buff = [0u8; 8];
         core.read(variable.memory_location as u32, &mut buff)?;
         let ret_value = i64::from_le_bytes(buff);
@@ -464,7 +579,11 @@ impl Value for i64 {
     }
 }
 impl Value for i128 {
-    fn get_value(variable: &Variable, core: &mut Core<'_>) -> Result<Self, DebugError> {
+    fn get_value(
+        variable: &Variable,
+        core: &mut Core<'_>,
+        _variable_cache: &VariableCache,
+    ) -> Result<Self, DebugError> {
         let mut buff = [0u8; 16];
         core.read(variable.memory_location as u32, &mut buff)?;
         let ret_value = i128::from_le_bytes(buff);
@@ -472,7 +591,11 @@ impl Value for i128 {
     }
 }
 impl Value for isize {
-    fn get_value(variable: &Variable, core: &mut Core<'_>) -> Result<Self, DebugError> {
+    fn get_value(
+        variable: &Variable,
+        core: &mut Core<'_>,
+        _variable_cache: &VariableCache,
+    ) -> Result<Self, DebugError> {
         let mut buff = [0u8; 4];
         core.read(variable.memory_location as u32, &mut buff)?;
         // TODO: how to get the MCU isize calculated for all platforms.
@@ -482,7 +605,11 @@ impl Value for isize {
 }
 
 impl Value for u8 {
-    fn get_value(variable: &Variable, core: &mut Core<'_>) -> Result<Self, DebugError> {
+    fn get_value(
+        variable: &Variable,
+        core: &mut Core<'_>,
+        _variable_cache: &VariableCache,
+    ) -> Result<Self, DebugError> {
         let mut buff = [0u8; 1];
         core.read(variable.memory_location as u32, &mut buff)?;
         let ret_value = u8::from_le_bytes(buff);
@@ -490,7 +617,11 @@ impl Value for u8 {
     }
 }
 impl Value for u16 {
-    fn get_value(variable: &Variable, core: &mut Core<'_>) -> Result<Self, DebugError> {
+    fn get_value(
+        variable: &Variable,
+        core: &mut Core<'_>,
+        _variable_cache: &VariableCache,
+    ) -> Result<Self, DebugError> {
         let mut buff = [0u8; 2];
         core.read(variable.memory_location as u32, &mut buff)?;
         let ret_value = u16::from_le_bytes(buff);
@@ -498,7 +629,11 @@ impl Value for u16 {
     }
 }
 impl Value for u32 {
-    fn get_value(variable: &Variable, core: &mut Core<'_>) -> Result<Self, DebugError> {
+    fn get_value(
+        variable: &Variable,
+        core: &mut Core<'_>,
+        _variable_cache: &VariableCache,
+    ) -> Result<Self, DebugError> {
         let mut buff = [0u8; 4];
         core.read(variable.memory_location as u32, &mut buff)?;
         let ret_value = u32::from_le_bytes(buff);
@@ -506,7 +641,11 @@ impl Value for u32 {
     }
 }
 impl Value for u64 {
-    fn get_value(variable: &Variable, core: &mut Core<'_>) -> Result<Self, DebugError> {
+    fn get_value(
+        variable: &Variable,
+        core: &mut Core<'_>,
+        _variable_cache: &VariableCache,
+    ) -> Result<Self, DebugError> {
         let mut buff = [0u8; 8];
         core.read(variable.memory_location as u32, &mut buff)?;
         let ret_value = u64::from_le_bytes(buff);
@@ -514,7 +653,11 @@ impl Value for u64 {
     }
 }
 impl Value for u128 {
-    fn get_value(variable: &Variable, core: &mut Core<'_>) -> Result<Self, DebugError> {
+    fn get_value(
+        variable: &Variable,
+        core: &mut Core<'_>,
+        _variable_cache: &VariableCache,
+    ) -> Result<Self, DebugError> {
         let mut buff = [0u8; 16];
         core.read(variable.memory_location as u32, &mut buff)?;
         let ret_value = u128::from_le_bytes(buff);
@@ -522,7 +665,11 @@ impl Value for u128 {
     }
 }
 impl Value for usize {
-    fn get_value(variable: &Variable, core: &mut Core<'_>) -> Result<Self, DebugError> {
+    fn get_value(
+        variable: &Variable,
+        core: &mut Core<'_>,
+        _variable_cache: &VariableCache,
+    ) -> Result<Self, DebugError> {
         let mut buff = [0u8; 4];
         core.read(variable.memory_location as u32, &mut buff)?;
         // TODO: how to get the MCU usize calculated for all platforms.
@@ -531,7 +678,11 @@ impl Value for usize {
     }
 }
 impl Value for f32 {
-    fn get_value(variable: &Variable, core: &mut Core<'_>) -> Result<Self, DebugError> {
+    fn get_value(
+        variable: &Variable,
+        core: &mut Core<'_>,
+        _variable_cache: &VariableCache,
+    ) -> Result<Self, DebugError> {
         let mut buff = [0u8; 4];
         core.read(variable.memory_location as u32, &mut buff)?;
         let ret_value = f32::from_le_bytes(buff);
@@ -539,7 +690,11 @@ impl Value for f32 {
     }
 }
 impl Value for f64 {
-    fn get_value(variable: &Variable, core: &mut Core<'_>) -> Result<Self, DebugError> {
+    fn get_value(
+        variable: &Variable,
+        core: &mut Core<'_>,
+        _variable_cache: &VariableCache,
+    ) -> Result<Self, DebugError> {
         let mut buff = [0u8; 8];
         core.read(variable.memory_location as u32, &mut buff)?;
         let ret_value = f64::from_le_bytes(buff);

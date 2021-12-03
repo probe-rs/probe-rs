@@ -265,7 +265,8 @@ impl DebugCli {
                         let frames = di.try_unwind(&mut cli_data.core, u64::from(program_counter));
 
                         for frame in frames {
-                            println!("{}", frame);
+                            //TODO: Fix this
+                            // println!("{}", frame);
                         }
                     } else {
                         println!("No debug information present!");

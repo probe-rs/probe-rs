@@ -1,17 +1,14 @@
-use crate::debugger::{ConsoleLog, CoreData, SessionData};
+use crate::debugger::{ConsoleLog, CoreData};
 use crate::DebuggerError;
 use crate::{dap_types, rtt::DataFormat};
 use anyhow::{anyhow, Result};
 use dap_types::*;
 use parse_int::parse;
-use probe_rs::debug::VariableCache;
-use probe_rs::{
-    debug::{ColumnType, Variable},
-    CoreStatus, HaltReason, MemoryInterface,
-};
+use probe_rs::debug::DebugInfo;
+use probe_rs::{debug::ColumnType, CoreStatus, HaltReason, MemoryInterface};
 use serde::{de::DeserializeOwned, Serialize};
 
-use std::{collections::HashMap, string::ToString};
+use std::string::ToString;
 use std::{
     convert::TryInto,
     path::{Path, PathBuf},
@@ -37,11 +34,7 @@ pub struct DebugAdapter<P: ProtocolAdapter> {
     /// and the probe halts because of a breakpoint, we need to notify the client.
     pub(crate) last_known_status: CoreStatus,
     pub(crate) halt_after_reset: bool,
-    /// `scope_map` stores a list of all MS DAP Scopes with a each stack frame's unique id as key.
-    /// It is cleared by `threads()`, populated by stack_trace(), for later re-use by `scopes()`.
-    scope_map: HashMap<i64, Vec<Scope>>,
     progress_id: ProgressId,
-
     /// Flag to indicate if the connected client supports progress reporting.
     pub(crate) supports_progress_reporting: bool,
     adapter: P,
@@ -52,7 +45,6 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         DebugAdapter {
             last_known_status: CoreStatus::Unknown,
             halt_after_reset: false,
-            scope_map: HashMap::new(),
             progress_id: 0,
             supports_progress_reporting: false,
             adapter,
@@ -468,14 +460,11 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         };
 
         let threads = vec![single_thread];
-        self.scope_map.clear();
-        self.variable_cache = VariableCache::new();
         self.send_response(request, Ok(Some(ThreadsResponseBody { threads })))
     }
 
     pub(crate) fn set_breakpoints(
         &mut self,
-        session_data: &mut SessionData,
         core_data: &mut CoreData,
         request: Request,
     ) -> Result<()> {
@@ -514,15 +503,14 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             for bp in requested_breakpoints {
                 // Try to find source code location
 
-                let source_location: Option<u64> =
-                    session_data.debug_info.as_ref().and_then(|di| {
-                        di.get_breakpoint_location(
-                            source_path.unwrap(),
-                            bp.line as u64,
-                            bp.column.map(|c| c as u64),
-                        )
-                        .unwrap_or(None)
-                    });
+                let source_location: Option<u64> = core_data.debug_info.as_ref().and_then(|di| {
+                    di.get_breakpoint_location(
+                        source_path.unwrap(),
+                        bp.line as u64,
+                        bp.column.map(|c| c as u64),
+                    )
+                    .unwrap_or(None)
+                });
 
                 if let Some(location) = source_location {
                     let (verified, reason_msg) =
@@ -583,12 +571,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         self.send_response(request, Ok(Some(breakpoint_body)))
     }
 
-    pub(crate) fn stack_trace(
-        &mut self,
-        session_data: &mut SessionData,
-        core_data: &mut CoreData,
-        request: Request,
-    ) -> Result<()> {
+    pub(crate) fn stack_trace(&mut self, core_data: &mut CoreData, request: Request) -> Result<()> {
         let _status = match core_data.target_core.status() {
             Ok(status) => {
                 if !status.is_halted() {
@@ -600,15 +583,6 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                     );
                 }
             }
-            Err(error) => {
-                return self.send_response::<()>(request, Err(DebuggerError::ProbeRs(error)))
-            }
-        };
-
-        let regs = core_data.target_core.registers();
-
-        let pc = match core_data.target_core.read_core_reg(regs.program_counter()) {
-            Ok(pc) => pc,
             Err(error) => {
                 return self.send_response::<()>(request, Err(DebuggerError::ProbeRs(error)))
             }
@@ -635,24 +609,16 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             },
         };
 
-        if let Some(debug_info) = session_data.debug_info.as_mut() {
-            // Evaluate the static scoped variables.
-            let static_variables =
-                match debug_info.get_stack_statics(&mut core_data.target_core, u64::from(pc)) {
-                    Ok(static_variables) => static_variables,
-                    Err(err) => {
-                        let mut error_variable = probe_rs::debug::Variable::new();
-                        error_variable.name = "ERROR".to_string();
-                        error_variable
-                            .set_value(format!("Failed to retrieve static variables: {:?}", err));
-                        vec![error_variable]
-                    }
-                };
+        let regs = core_data.target_core.registers();
 
-            // Store the static variables for later calls to `variables()` to retrieve.
-            let (static_scope_reference, named_static_variables_cnt, indexed_static_variables_cnt) =
-                self.create_variable_map(&static_variables);
+        let pc = match core_data.target_core.read_core_reg(regs.program_counter()) {
+            Ok(pc) => pc,
+            Err(error) => {
+                return self.send_response::<()>(request, Err(DebuggerError::ProbeRs(error)))
+            }
+        };
 
+        if let Some(debug_info) = core_data.debug_info.as_mut() {
             let current_stackframes =
                 debug_info.try_unwind(&mut core_data.target_core, u64::from(pc));
 
@@ -661,7 +627,8 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                     let mut body = "".to_string();
                     // TODO: Update the code to include static variables.
                     for frame in current_stackframes {
-                        body.push_str(format!("{}\n", frame).as_str());
+                        //TODO: Fix this
+                        // body.push_str(format!("{}\n", frame).as_str());
                     }
                     self.send_response(request, Ok(Some(body)))
                 }
@@ -714,112 +681,13 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                                 .and_then(|sl| sl.line)
                                 .unwrap_or(0) as i64;
 
-                            // MS DAP requests happen in the order Threads -> StackFrames -> Scopes -> Variables (recursive).
-                            // We build & extract all the info during this `stack_trace()` method, and re-use it when MS DAP requests come in.
-                            let mut scopes = vec![];
-
-                            // Build the locals scope.
-                            // Extract all the variables from the `StackFrame` for later MS DAP calls to retrieve.
-                            let (variables_reference, named_variables_cnt, indexed_variables_cnt) =
-                                self.create_variable_map(&frame.variables);
-
-                            scopes.push(Scope {
-                                line: Some(line),
-                                column: frame.source_location.as_ref().and_then(|l| {
-                                    l.column.map(|c| match c {
-                                        ColumnType::LeftEdge => 0,
-                                        ColumnType::Column(c) => c as i64,
-                                    })
-                                }),
-                                end_column: None,
-                                end_line: None,
-                                expensive: false,
-                                indexed_variables: Some(indexed_variables_cnt),
-                                name: "Locals".to_string(),
-                                presentation_hint: Some("locals".to_string()),
-                                named_variables: Some(named_variables_cnt),
-                                source: source.clone(),
-                                variables_reference,
-                            });
-
-                            // The static variables are mapped and stored before iterating the frames. Store a reference to them here.
-                            scopes.push(Scope {
-                                line: None,
-                                column: None,
-                                end_column: None,
-                                end_line: None,
-                                expensive: true, // VSCode won't open this tree by default.
-                                indexed_variables: Some(indexed_static_variables_cnt),
-                                name: "Static".to_string(),
-                                presentation_hint: Some("statics".to_string()),
-                                named_variables: Some(named_static_variables_cnt),
-                                source: None,
-                                variables_reference: if indexed_static_variables_cnt
-                                    + named_variables_cnt
-                                    == 0
-                                {
-                                    0
-                                } else {
-                                    static_scope_reference
-                                },
-                            });
-
-                            // Build the registers scope and add its variables.
-                            // TODO: Consider expanding beyond core registers to add other architectue registers.
-                            let register_scope_reference = self.new_variable_map_key();
-
-                            // TODO: This is ARM specific, but should be generalized
-                            let variables: Vec<Variable> = frame
-                                .registers
-                                .registers()
-                                .map(|(register_number, value)| Variable {
-                                    name: match register_number {
-                                        7 => "R7: THUMB Frame Pointer".to_owned(),
-                                        11 => "R11: ARM Frame Pointer".to_owned(),
-                                        13 => "SP".to_owned(),
-                                        14 => "LR".to_owned(),
-                                        15 => "PC".to_owned(),
-                                        other => format!("R{}", other),
-                                    },
-                                    value: format!("0x{:08x}", value),
-                                    type_: Some("Core Register".to_owned()),
-                                    presentation_hint: None,
-                                    evaluate_name: None,
-                                    variables_reference: 0,
-                                    named_variables: None,
-                                    indexed_variables: None,
-                                    memory_reference: None,
-                                })
-                                .collect();
-
-                            let register_count = variables.len();
-
-                            self.variable_map
-                                .insert(register_scope_reference, variables);
-                            scopes.push(Scope {
-                                line: None,
-                                column: None,
-                                end_column: None,
-                                end_line: None,
-                                expensive: true, // VSCode won't open this tree by default.
-                                indexed_variables: Some(0),
-                                name: "Registers".to_string(),
-                                presentation_hint: Some("registers".to_string()),
-                                named_variables: Some(register_count as i64),
-                                source: None,
-                                variables_reference: if register_count > 0 {
-                                    register_scope_reference
-                                } else {
-                                    0
-                                },
-                            });
-
-                            // Finally, store the scopes for this frame.
-                            self.scope_map.insert(frame.id as i64, scopes);
-
                             // TODO: Can we add more meaningful info to `module_id`, etc.
                             StackFrame {
-                                id: frame.id as i64,
+                                id: if frame.id == u64::MAX {
+                                    -1 // VS Code will not attempt to retrieve variables for this frame
+                                } else {
+                                    frame.id as i64
+                                },
                                 name: frame.function_name.clone(),
                                 source,
                                 line,
@@ -871,30 +739,190 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         }
     }
     /// Retrieve available scopes  
-    /// - local scope   : Variables defined between start of current frame, and the current pc (program counter)
     /// - static scope  : Variables with `static` modifier
     /// - registers     : Currently supports core registers 0-15
-    pub(crate) fn scopes(&mut self, _core_data: &mut CoreData, request: Request) -> Result<()> {
+    /// - local scope   : Variables defined between start of current frame, and the current pc (program counter)
+    pub(crate) fn scopes(&mut self, core_data: &mut CoreData, request: Request) -> Result<()> {
         let arguments: ScopesArguments = match get_arguments(&request) {
             Ok(arguments) => arguments,
             Err(error) => return self.send_response::<()>(request, Err(error)),
         };
 
-        match self.scope_map.clone().get(&(arguments.frame_id)) {
-            Some(dap_scopes) => self.send_response(
-                request,
-                Ok(Some(ScopesResponseBody {
-                    scopes: dap_scopes.clone(),
-                })),
-            ),
-            None => self.send_response::<()>(
-                request,
-                Err(DebuggerError::Other(anyhow!(
-                    "No variable information available"
-                ))),
-            ),
+        let debug_info = if let Some(debug_info) = core_data.debug_info {
+            debug_info
+        } else {
+            return Err(anyhow!("This is a bug. The program tried to create `Scopes` before calling `DebugAdapter::stack_trace()`"));
+        };
+
+        let mut dap_scopes: Vec<Scope> = vec![];
+
+        if let Some(static_root_variable) = debug_info.variable_cache.get_cloned_variable_by_key(0)
+        {
+            let (static_variables_reference, static_named_variables, static_indexed_variables) =
+                self.get_variable_reference(debug_info, &static_root_variable);
+            dap_scopes.push(Scope {
+                line: None,
+                column: None,
+                end_column: None,
+                end_line: None,
+                expensive: true, // VSCode won't open this tree by default.
+                indexed_variables: Some(static_indexed_variables),
+                name: "Static".to_string(),
+                presentation_hint: Some("statics".to_string()),
+                named_variables: Some(static_named_variables),
+                source: None,
+                variables_reference: static_variables_reference,
+            });
+        };
+
+        if arguments.frame_id > 0 {
+            if let Some(stackframe_root_variable) = debug_info
+                .variable_cache
+                .get_cloned_variable_by_key(arguments.frame_id)
+            {
+                if let Some(register_root_variable) =
+                    debug_info.variable_cache.get_variable_by_name_and_parent(
+                        "<registers>".to_owned(),
+                        stackframe_root_variable.variable_key,
+                    )
+                {
+                    let (
+                        register_variables_reference,
+                        register_named_variables,
+                        register_indexed_variables,
+                    ) = self.get_variable_reference(debug_info, &register_root_variable);
+                    dap_scopes.push(Scope {
+                        line: None,
+                        column: None,
+                        end_column: None,
+                        end_line: None,
+                        expensive: true, // VSCode won't open this tree by default.
+                        indexed_variables: Some(register_indexed_variables),
+                        name: "Registers".to_string(),
+                        presentation_hint: Some("registers".to_string()),
+                        named_variables: Some(register_named_variables),
+                        source: None,
+                        variables_reference: register_variables_reference,
+                    });
+                };
+                if let Some(locals_root_variable) =
+                    debug_info.variable_cache.get_variable_by_name_and_parent(
+                        "<locals>".to_owned(),
+                        stackframe_root_variable.variable_key,
+                    )
+                {
+                    let (
+                        locals_variables_reference,
+                        locals_named_variables,
+                        locals_indexed_variables,
+                    ) = self.get_variable_reference(debug_info, &locals_root_variable);
+                    dap_scopes.push(Scope {
+                        line: stackframe_root_variable
+                            .source_location
+                            .as_ref()
+                            .and_then(|location| location.line.map(|line| line as i64)),
+                        column: stackframe_root_variable
+                            .source_location
+                            .as_ref()
+                            .and_then(|l| {
+                                l.column.map(|c| match c {
+                                    ColumnType::LeftEdge => 0,
+                                    ColumnType::Column(c) => c as i64,
+                                })
+                            }),
+                        end_column: None,
+                        end_line: None,
+                        expensive: false, // VSCode will open this tree by default.
+                        indexed_variables: Some(locals_indexed_variables),
+                        name: "Variables".to_string(),
+                        presentation_hint: Some("locals".to_string()),
+                        named_variables: Some(locals_named_variables),
+                        source: None,
+                        variables_reference: locals_variables_reference,
+                    });
+                };
+            }
         }
+
+        //////
+        //
+        // // Build the locals scope.
+        // // Extract all the variables from the `StackFrame` for later MS DAP calls to retrieve.
+        // let (variables_reference, named_variables_cnt, indexed_variables_cnt) =
+        //     self.create_variable_map(&frame.variables);
+        // scopes.push(Scope {
+        //     line: Some(line),
+        // column: frame.source_location.as_ref().and_then(|l| {
+        //     l.column.map(|c| match c {
+        //         ColumnType::LeftEdge => 0,
+        //         ColumnType::Column(c) => c as i64,
+        //     })
+        // }),
+        //     end_column: None,
+        //     end_line: None,
+        //     expensive: false,
+        //     indexed_variables: Some(indexed_variables_cnt),
+        //     name: "Locals".to_string(),
+        //     presentation_hint: Some("locals".to_string()),
+        //     named_variables: Some(named_variables_cnt),
+        //     source: source.clone(),
+        //     variables_reference,
+        // });
+        // // Build the registers scope and add its variables.
+        // // TODO: Consider expanding beyond core registers to add other architectue registers.
+        // let register_scope_reference = self.new_variable_map_key();
+        // // TODO: This is ARM specific, but should be generalized
+        // let variables: Vec<Variable> = frame
+        //     .registers
+        //     .registers()
+        //     .map(|(register_number, value)| Variable {
+        //         name: match register_number {
+        //             7 => "R7: THUMB Frame Pointer".to_owned(),
+        //             11 => "R11: ARM Frame Pointer".to_owned(),
+        //             13 => "SP".to_owned(),
+        //             14 => "LR".to_owned(),
+        //             15 => "PC".to_owned(),
+        //             other => format!("R{}", other),
+        //         },
+        //         value: format!("0x{:08x}", value),
+        //         type_: Some("Core Register".to_owned()),
+        //         presentation_hint: None,
+        //         evaluate_name: None,
+        //         variables_reference: 0,
+        //         named_variables: None,
+        //         indexed_variables: None,
+        //         memory_reference: None,
+        //     })
+        //     .collect();
+        // let register_count = variables.len();
+        // self.variable_map
+        //     .insert(register_scope_reference, variables);
+        // scopes.push(Scope {
+        //     line: None,
+        //     column: None,
+        //     end_column: None,
+        //     end_line: None,
+        //     expensive: true, // VSCode won't open this tree by default.
+        //     indexed_variables: Some(0),
+        //     name: "Registers".to_string(),
+        //     presentation_hint: Some("registers".to_string()),
+        //     named_variables: Some(register_count as i64),
+        //     source: None,
+        //     variables_reference: if register_count > 0 {
+        //         register_scope_reference
+        //     } else {
+        //         0
+        //     },
+        // });
+        //////
+        self.send_response(
+            request,
+            Ok(Some(ScopesResponseBody {
+                scopes: dap_scopes.clone(),
+            })),
+        )
     }
+
     pub(crate) fn source(&mut self, _core_data: &mut CoreData, request: Request) -> Result<()> {
         let arguments: SourceArguments = match get_arguments(&request) {
             Ok(arguments) => arguments,
@@ -932,47 +960,67 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         self.send_response(request, result)
     }
 
-    pub(crate) fn variables(&mut self, _core_data: &mut CoreData, request: Request) -> Result<()> {
+    pub(crate) fn variables(&mut self, core_data: &mut CoreData, request: Request) -> Result<()> {
         let arguments: VariablesArguments = match get_arguments(&request) {
             Ok(arguments) => arguments,
             Err(error) => return self.send_response::<()>(request, Err(error)),
         };
-        return self.send_response(
-            request,
-            match self
-                .variable_map
-                .clone()
-                .get(&(arguments.variables_reference))
-            {
-                Some(dap_variables) => {
-                    match arguments.filter {
-                        Some(filter) => {
-                            match filter.as_str() {
-                                // TODO: Use `probe_rs::Variables` for the `variable_map`, and then transform them here before serving them up.
-                                // That way we can actually track indexed versus named variables (The DAP protocol doesn't have Variable fields to do so).
-                                "indexed" => Ok(Some(VariablesResponseBody {
-                                    variables: dap_variables.clone(),
-                                })),
-                                "named" => Ok(Some(VariablesResponseBody {
-                                    variables: dap_variables.clone(),
-                                })),
-                                other => Err(DebuggerError::Other(anyhow!(
-                                    "ERROR: Received invalid variable filter: {}",
-                                    other
-                                ))),
-                            }
+
+        let response = if let Some(debug_info) = core_data.debug_info {
+            let dap_variables: Vec<Variable> = debug_info
+                .variable_cache
+                .get_cloned_children(arguments.variables_reference)
+                .unwrap()
+                .iter()
+                // Filter out requested children, then map them as DAP variables
+                .filter(|variable| match &arguments.filter {
+                    Some(filter) => match filter.as_str() {
+                        "indexed" => variable.name.starts_with("__"),
+                        "named" => !variable.name.starts_with("__"),
+                        other => {
+                            // This will yield an empty Vec, which will result in a user facing error as well as the log below.
+                            log::error!("Received invalid variable filter: {}", other);
+                            false
                         }
-                        None => Ok(Some(VariablesResponseBody {
-                            variables: dap_variables.clone(),
-                        })),
+                    },
+                    None => true,
+                })
+                // Convert the `probe_rs::debug::Variable` to `probe_rs_debugger::dap_types::Variable`
+                .map(|variable| {
+                    let (
+                        variables_reference,
+                        named_child_variables_cnt,
+                        indexed_child_variables_cnt,
+                    ) = self.get_variable_reference(debug_info, variable);
+                    Variable {
+                        name: variable.name.clone(),
+                        evaluate_name: None,
+                        memory_reference: Some(format!("0x{:08x}", variable.memory_location)),
+                        indexed_variables: Some(indexed_child_variables_cnt),
+                        named_variables: Some(named_child_variables_cnt),
+                        presentation_hint: None,
+                        type_: Some(variable.type_name.clone()),
+                        value: variable.get_value(&debug_info.variable_cache),
+                        variables_reference,
                     }
-                }
-                None => Err(DebuggerError::Other(anyhow!(
+                })
+                .collect();
+            match dap_variables.len() {
+                0 => Err(DebuggerError::Other(anyhow!(
                     "No variable information found for {}!",
                     arguments.variables_reference
                 ))),
-            },
-        );
+                _ => Ok(Some(VariablesResponseBody {
+                    variables: dap_variables,
+                })),
+            }
+        } else {
+            Err(DebuggerError::Other(anyhow!(
+                "No `DebugInfo` available. Please report this as a bug."
+            )))
+        };
+
+        self.send_response(request, response)
     }
 
     pub(crate) fn r#continue(&mut self, core_data: &mut CoreData, request: Request) -> Result<()> {
@@ -1075,66 +1123,99 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         }
     }
 
-    /// recurse through each variable and add children with parent reference to self.variables_map
-    /// returns a tuple containing the parent's  (variables_map_key, named_child_variables_cnt, indexed_child_variables_cnt)
-    fn create_variable_map(&mut self, variables: &[probe_rs::debug::Variable]) -> (i64, i64, i64) {
+    /// The DAP protocol uses thee related values to determine how to invoke the `Variables` request.
+    /// This function retrieves that information from the `DebugInfo::VariableCache` and returns it as
+    /// (`variable_reference`, `named_child_variables_cnt`, `indexed_child_variables_cnt`)
+    fn get_variable_reference(
+        &mut self,
+        debug_info: &DebugInfo,
+        parent_variable: &probe_rs::debug::Variable,
+    ) -> (i64, i64, i64) {
         let mut named_child_variables_cnt = 0;
         let mut indexed_child_variables_cnt = 0;
-        let dap_variables: Vec<Variable> = variables
-            .iter()
-            .map(|variable| {
-                // TODO: The DAP Protocol doesn't seem to have an easy way to indicate if a variable is `Named` or `Indexed`.
-                // Figure out what needs to be done to improve this.
-                if variable.name.starts_with("__") {
+
+        if let Ok(children) = debug_info
+            .variable_cache
+            .get_cloned_children(parent_variable.variable_key)
+        {
+            for child_variable in children {
+                if child_variable.name.starts_with("__") {
                     indexed_child_variables_cnt += 1;
                 } else {
                     named_child_variables_cnt += 1;
                 }
-
-                let (variables_reference, named_variables_cnt, indexed_variables_cnt) =
-                    match &variable.children {
-                        Some(children) => self.create_variable_map(children),
-                        None => {
-                            if variable.is_pointer {
-                                // Provide DAP Client with a reference so that it will explicitly ask for children when the user expands it.
-                                (self.new_variable_map_key(), 0, 0)
-                            } else {
-                                // Returning 0's allows VSCode DAP Client to behave correctly for frames that have no variables, and variables that have no children.
-                                (0, 0, 0)
-                            }
-                        }
-                    };
-                Variable {
-                    name: variable.name.clone(),
-                    value: variable.get_value(),
-                    type_: Some(variable.type_name.clone()),
-                    presentation_hint: None,
-                    evaluate_name: None,
-                    variables_reference,
-                    named_variables: Some(named_variables_cnt),
-                    indexed_variables: Some(indexed_variables_cnt),
-                    memory_reference: Some(format!("0x{:08x}", variable.memory_location)),
-                }
-            })
-            .collect();
+            }
+        };
 
         if named_child_variables_cnt > 0 || indexed_child_variables_cnt > 0 {
-            let variable_map_key = self.new_variable_map_key();
-            match self.variable_map.insert(variable_map_key, dap_variables) {
-                Some(_) => {
-                    log::warn!("Failed to create a unique `variable_map_key`. Variables shown in this frame may be incomplete or corrupted. Please report this as a bug!");
-                    (0, 0, 0)
-                }
-                None => (
-                    variable_map_key,
-                    named_child_variables_cnt,
-                    indexed_child_variables_cnt,
-                ),
-            }
+            (
+                parent_variable.variable_key,
+                named_child_variables_cnt,
+                indexed_child_variables_cnt,
+            )
+        } else if parent_variable.is_pointer {
+            // We have not yet cached the children for this reference.
+            // Provide DAP Client with a reference so that it will explicitly ask for children when the user expands it.
+            (parent_variable.variable_key, 0, 0)
         } else {
             // Returning 0's allows VSCode DAP Client to behave correctly for frames that have no variables, and variables that have no children.
             (0, 0, 0)
         }
+
+        // .get_cloned_children(parent_variable_key)
+        // .unwrap_or_else(vec![])
+        // .for_
+        // .iter()
+        // .map(|variable| {
+        //     if variable.name.starts_with("__") {
+        //         indexed_child_variables_cnt += 1;
+        //     } else {
+        //         named_child_variables_cnt += 1;
+        //     }
+        //     let (variables_reference, named_variables_cnt, indexed_variables_cnt) =
+        //         if variable {
+        //             Some(children) => self.create_variable_map(children),
+        //             None => {
+        //                 if variable.is_pointer {
+        //                     // Provide DAP Client with a reference so that it will explicitly ask for children when the user expands it.
+        //                     (self.new_variable_map_key(), 0, 0)
+        //                 } else {
+        //                     // Returning 0's allows VSCode DAP Client to behave correctly for frames that have no variables, and variables that have no children.
+        //                     (0, 0, 0)
+        //                 }
+        //             }
+        //         };
+        //     Variable {
+        //         name: variable.name.clone(),
+        //         value: variable.get_value(),
+        //         type_: Some(variable.type_name.clone()),
+        //         presentation_hint: None,
+        //         evaluate_name: None,
+        //         variables_reference,
+        //         named_variables: Some(named_variables_cnt),
+        //         indexed_variables: Some(indexed_variables_cnt),
+        //         memory_reference: Some(format!("0x{:08x}", variable.memory_location)),
+        //     }
+        // })
+        // .collect();
+
+        // if named_child_variables_cnt > 0 || indexed_child_variables_cnt > 0 {
+        //     let variable_map_key = self.new_variable_map_key();
+        //     match self.variable_map.insert(variable_map_key, dap_variables) {
+        //         Some(_) => {
+        //             log::warn!("Failed to create a unique `variable_map_key`. Variables shown in this frame may be incomplete or corrupted. Please report this as a bug!");
+        //             (0, 0, 0)
+        //         }
+        //         None => (
+        //             variable_map_key,
+        //             named_child_variables_cnt,
+        //             indexed_child_variables_cnt,
+        //         ),
+        //     }
+        // } else {
+        //     // Returning 0's allows VSCode DAP Client to behave correctly for frames that have no variables, and variables that have no children.
+        //     (0, 0, 0)
+        // }
     }
 
     /// Returns one of the standard DAP Requests if all goes well, or a "error" request, which should indicate that the calling function should return.
