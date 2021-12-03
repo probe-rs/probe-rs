@@ -5,6 +5,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- ARM: added `Session::swo_reader` that returns a wrapping implementation of `std::io::Read` around `Session::read_swo`. (#916)
+
 ## [0.12.0]
 
 - Added support for `chip-erase` flag under the `probe-rs-cli download` command. (#898)
@@ -71,7 +73,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed logic errors and timing of RTT initialization in `probe-rs-debugger`. (#847)
 - Debugger: Do not crash the CLI when pressing enter without a command. (#875)
 - Fixed panic in CLI debugger when using a command without arguments. (#873)
-- Debugger: Reduce panics caused by `unwrap()` usage. (#886) 
+- Debugger: Reduce panics caused by `unwrap()` usage. (#886)
 - probe-rs: When unwinding, detect if the program counter does not change anymore and stop. (#893)
 
 ### Target Support
