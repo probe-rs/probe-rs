@@ -96,11 +96,6 @@ impl std::str::FromStr for TargetSessionType {
 #[derive(StructOpt, Clone, Deserialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct DebuggerOptions {
-    /// Will be set when the DAP client issues a `launch` or `attach` request
-    #[structopt(long, requires("dap"))]
-    #[serde(default)]
-    pub(crate) target_session_type: Option<TargetSessionType>,
-
     /// Path to the requested working directory for the debugger
     #[structopt(long, parse(from_os_str), conflicts_with("dap"))]
     pub(crate) cwd: Option<PathBuf>,
@@ -968,10 +963,7 @@ impl Debugger {
                 match get_arguments(&la_request) {
                     Ok(arguments) => {
                         if requested_target_session_type.is_some() {
-                            self.debugger_options = DebuggerOptions {
-                                target_session_type: requested_target_session_type,
-                                ..arguments
-                            };
+                            self.debugger_options = DebuggerOptions { ..arguments };
                             if matches!(
                                 requested_target_session_type,
                                 Some(TargetSessionType::AttachRequest)

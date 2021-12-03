@@ -302,7 +302,7 @@ impl Request for TransferBlockRequest {
         }
 
         Ok(TransferBlockResponse {
-            transfer_count,
+            _transfer_count: transfer_count,
             transfer_response,
             transfer_data: data,
         })
@@ -363,7 +363,7 @@ impl InnerTransferBlockRequest {
 
 #[derive(Debug)]
 pub(crate) struct TransferBlockResponse {
-    transfer_count: u16,
+    _transfer_count: u16,
     pub transfer_response: u8,
     pub transfer_data: Vec<u32>,
 }

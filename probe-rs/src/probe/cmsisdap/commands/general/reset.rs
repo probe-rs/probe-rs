@@ -14,8 +14,8 @@ impl Request for ResetRequest {
 
     fn from_bytes(&self, buffer: &[u8]) -> Result<Self::Response, SendError> {
         Ok(ResetResponse {
-            status: Status::from_byte(buffer[0])?,
-            execute: Execute::from_byte(buffer[1])?,
+            _status: Status::from_byte(buffer[0])?,
+            _execute: Execute::from_byte(buffer[1])?,
         })
     }
 }
@@ -39,6 +39,6 @@ impl Execute {
 
 #[derive(Debug)]
 pub(crate) struct ResetResponse {
-    pub status: Status,
-    pub execute: Execute,
+    pub _status: Status,
+    pub _execute: Execute,
 }

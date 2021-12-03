@@ -120,7 +120,7 @@ impl ArmDebugState for Initialized {}
 
 #[derive(Debug)]
 pub(crate) struct DpState {
-    pub debug_port_version: DebugPortVersion,
+    pub _debug_port_version: DebugPortVersion,
 
     pub current_dpbanksel: u8,
 
@@ -135,7 +135,7 @@ pub(crate) struct DpState {
 impl DpState {
     pub fn new() -> Self {
         Self {
-            debug_port_version: DebugPortVersion::Unsupported(0xFF),
+            _debug_port_version: DebugPortVersion::Unsupported(0xFF),
             current_dpbanksel: 0,
             current_apsel: 0,
             current_apbanksel: 0,

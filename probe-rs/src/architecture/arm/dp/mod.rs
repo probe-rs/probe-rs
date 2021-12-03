@@ -60,7 +60,7 @@ pub trait DpRegister: Register {
 }
 
 bitfield! {
-    #[derive(Clone)]
+    #[derive(Clone, Default)]
     pub struct Abort(u32);
     impl Debug;
     pub _, set_orunerrclr: 4;
@@ -68,12 +68,6 @@ bitfield! {
     pub _, set_stkerrclr: 2;
     pub _, set_stkcmpclr: 1;
     pub _, set_dapabort: 0;
-}
-
-impl Default for Abort {
-    fn default() -> Self {
-        Abort(0)
-    }
 }
 
 impl From<u32> for Abort {
@@ -98,7 +92,7 @@ impl Register for Abort {
 }
 
 bitfield! {
-    #[derive(Clone)]
+    #[derive(Clone, Default)]
     pub struct Ctrl(u32);
     impl Debug;
     pub csyspwrupack, _: 31;
@@ -116,12 +110,6 @@ bitfield! {
     pub u8, trn_mode, _: 3, 2;
     pub sticky_orun, _: 1;
     pub orun_detect, set_orun_detect: 0;
-}
-
-impl Default for Ctrl {
-    fn default() -> Self {
-        Ctrl(0)
-    }
 }
 
 impl From<u32> for Ctrl {
