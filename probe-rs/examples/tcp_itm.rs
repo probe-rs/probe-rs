@@ -1,5 +1,5 @@
 use probe_rs::architecture::arm::swo::SwoConfig;
-use probe_rs::Error;
+use probe_rs::{Error, Permissions};
 
 use itm_decode::{Decoder, DecoderOptions, TracePacket};
 
@@ -21,7 +21,7 @@ fn main() -> Result<(), Error> {
     let probe = probes[0].open()?;
 
     // Attach to a chip.
-    let mut session = probe.attach("stm32f407")?;
+    let mut session = probe.attach("stm32f407", Permissions::default())?;
 
     // Create a new SwoConfig with a system clock frequency of 16MHz
     let cfg = SwoConfig::new(16_000_000)

@@ -14,8 +14,8 @@ use probe_rs::{
     ProbeCreationError,
 };
 use probe_rs::{
-    Core, CoreStatus, DebugProbeError, DebugProbeSelector, MemoryInterface, Probe, Session,
-    WireProtocol,
+    Core, CoreStatus, DebugProbeError, DebugProbeSelector, MemoryInterface, Permissions, Probe,
+    Session, WireProtocol,
 };
 use probe_rs_rtt::{Rtt, ScanRegion};
 use serde::Deserialize;
@@ -141,6 +141,11 @@ pub struct DebuggerOptions {
     #[structopt(long, conflicts_with("dap"))]
     #[serde(default)]
     pub(crate) connect_under_reset: bool,
+
+    /// Allow the chip to be fully erased
+    #[structopt(long, conflicts_with("dap"))]
+    #[serde(default)]
+    pub(crate) allow_erase_all: bool,
 
     /// IP port number to listen for incoming DAP connections, e.g. "50000"
     #[structopt(long, requires("dap"), required_if("dap", "true"))]
@@ -306,16 +311,23 @@ pub fn start_session(debugger_options: &DebuggerOptions) -> Result<SessionData, 
         }
     }
 
+    let mut permissions = Permissions::new();
+    if debugger_options.allow_erase_all {
+        permissions = permissions.allow_erase_all();
+    }
+
     // Attach to the probe.
     let target_session = if debugger_options.connect_under_reset {
-        target_probe.attach_under_reset(target_selector)?
+        target_probe.attach_under_reset(target_selector, permissions)?
     } else {
-        target_probe.attach(target_selector).map_err(|err| {
-            anyhow!(
-                "Error attaching to the probe: {:?}.\nTry the --connect-under-reset option",
-                err
-            )
-        })?
+        target_probe
+            .attach(target_selector, permissions)
+            .map_err(|err| {
+                anyhow!(
+                    "Error attaching to the probe: {:?}.\nTry the --connect-under-reset option",
+                    err
+                )
+            })?
     };
 
     // Change the current working directory if `debugger_options.cwd` is `Some(T)`.

@@ -1,3 +1,4 @@
+use probe_rs::Permissions;
 use probe_rs::{config::TargetSelector, DebugProbeInfo, Probe};
 use probe_rs_rtt::{Channels, Rtt, RttChannel, ScanRegion};
 use std::io::prelude::*;
@@ -140,7 +141,7 @@ fn run() -> i32 {
         .map(TargetSelector::Unspecified)
         .unwrap_or(TargetSelector::Auto);
 
-    let mut session = match probe.attach(target_selector) {
+    let mut session = match probe.attach(target_selector, Permissions::default()) {
         Ok(session) => session,
         Err(err) => {
             eprintln!("Error creating debug session: {}", err);

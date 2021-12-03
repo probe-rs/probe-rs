@@ -38,7 +38,8 @@ use std::{fs::File, io::Write, path::Path, path::PathBuf};
 use probe_rs::{
     config::{RegistryError, TargetSelector},
     flashing::{FileDownloadError, FlashError, FlashLoader},
-    DebugProbeError, DebugProbeSelector, FakeProbe, Probe, Session, Target, WireProtocol,
+    DebugProbeError, DebugProbeSelector, FakeProbe, Permissions, Probe, Session, Target,
+    WireProtocol,
 };
 use structopt::StructOpt;
 
@@ -149,6 +150,12 @@ pub struct ProbeOptions {
     pub speed: Option<u32>,
     #[structopt(long = "dry-run")]
     pub dry_run: bool,
+    #[structopt(
+        long = "allow-erase-all",
+        help = "Use this flag to allow all memory, including security keys and 3rd party firmware, to be erased \
+        even when it has read-only protection."
+    )]
+    pub allow_erase_all: bool,
 }
 
 impl ProbeOptions {
@@ -246,10 +253,15 @@ impl ProbeOptions {
         probe: Probe,
         target: TargetSelector,
     ) -> Result<Session, OperationError> {
+        let mut permissions = Permissions::new();
+        if self.allow_erase_all {
+            permissions = permissions.allow_erase_all();
+        }
+
         let session = if self.connect_under_reset {
-            probe.attach_under_reset(target)
+            probe.attach_under_reset(target, permissions)
         } else {
-            probe.attach(target)
+            probe.attach(target, permissions)
         }
         .map_err(|error| OperationError::AttachingFailed {
             source: error,

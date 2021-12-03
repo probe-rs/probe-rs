@@ -1,3 +1,4 @@
+use probe_rs::Permissions;
 use probe_rs::{config::TargetSelector, MemoryInterface, Probe, WireProtocol};
 
 use std::{env, num::ParseIntError, time::SystemTime};
@@ -69,7 +70,7 @@ fn main() -> Result<(), &'static str> {
     let probe_name = probe.get_name();
 
     let mut session = probe
-        .attach(target_selector)
+        .attach(target_selector, Permissions::default())
         .map_err(|_| "Failed to attach probe to target")?;
 
     let chip_name = session.target().name.clone();

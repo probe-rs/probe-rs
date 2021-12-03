@@ -379,6 +379,7 @@ impl DapAccess for FakeArmInterface<Initialized> {
 #[cfg(test)]
 mod test {
     use super::FakeProbe;
+    use crate::Permissions;
 
     #[test]
     fn create_session_with_fake_probe() {
@@ -386,6 +387,8 @@ mod test {
 
         let probe = fake_probe.into_probe();
 
-        probe.attach("nrf51822_xxAC").unwrap();
+        probe
+            .attach("nrf51822_xxAC", Permissions::default())
+            .unwrap();
     }
 }

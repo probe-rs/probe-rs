@@ -1,3 +1,4 @@
+pub mod nrf53;
 pub mod nxp;
 
 use std::{
@@ -270,7 +271,11 @@ pub trait ArmDebugSequence: Send + Sync {
     ///
     /// [ARM SVD Debug Description]: http://www.keil.com/pack/doc/cmsis/Pack/html/debug_description.html#debugDeviceUnlock
     #[doc(alias = "DebugDeviceUnlock")]
-    fn debug_device_unlock(&self, _interface: &mut crate::Memory) -> Result<(), crate::Error> {
+    fn debug_device_unlock(
+        &self,
+        _interface: &mut crate::Memory,
+        _permissions: &crate::Permissions,
+    ) -> Result<(), crate::Error> {
         // Empty by default
         Ok(())
     }
