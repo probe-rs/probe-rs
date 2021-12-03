@@ -1523,7 +1523,7 @@ pub fn dump_memory(debugger_options: DebuggerOptions, loc: u32, words: u32) -> R
 
     // let loc = 220 * 1024;
 
-    target_core.read_32(loc, &mut data.as_mut_slice())?;
+    target_core.read_32(loc, data.as_mut_slice())?;
     // Stop timer.
     let elapsed = instant.elapsed();
 

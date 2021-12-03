@@ -427,7 +427,7 @@ impl<'debuginfo, 'probe, 'core> Iterator for StackFrameIterator<'debuginfo, 'pro
         }
 
         let return_frame = match self.debug_info.get_stackframe_info(
-            &mut self.core,
+            self.core,
             pc,
             self.frame_count,
             self.registers.clone(),
