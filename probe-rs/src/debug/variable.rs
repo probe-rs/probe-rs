@@ -1,10 +1,11 @@
 use super::*;
 use crate::Error;
 use anyhow::anyhow;
-use gimli::UnitOffset;
+use gimli::{DebugInfoOffset, UnitOffset};
 use num_traits::Zero;
 use std::{
     cell::{Cell, RefCell},
+    cmp::Ordering,
     convert::TryInto,
     fmt,
 };
@@ -16,7 +17,7 @@ use thousands::Separable;
 /// There are four 'dummy' `Variables`, named `<statics>`, `stackframe`, `<registers>`, and `<locals>`. These are used to provide the header structure of how variables relate to different scopes in a particular stacktrace. This 'dummy' structure looks as follows
 /// - `<statics>`: The parent variable for all static coped variables in the stack
 ///   - A recursive `Variable` structure as described for `<locals>` below.
-/// - `<stackframe>`: Every `StackFrame` will have one of these, with its function name captured in the `value` field of this dummy variable.
+/// - `<stack_frame>`: Every `StackFrame` will have one of these, with its function name captured in the `value` field of this dummy variable.
 ///   - `<registers>`: Every `StackFrame` will have a collection of `Variable` registers.
 ///     - A `Variable` for each available register
 ///   - `<locals>`: Every `StackFrame` (function) will have a collection of locally scoped `Variable`s.
@@ -50,7 +51,7 @@ impl VariableCache {
     /// - For all operations, update the `parent_key`. A value of 0 means there are no parents for this variable.
     ///   - Validate that the supplied `Variable::parent_key` is a valid entry in the cache.
     /// - If appropriate, the `Variable::value` is updated from the core memory, and can be used by the calling function.
-    pub fn insert(
+    pub fn cache_variable(
         &self,
         parent_key: i64,
         cache_variable: Variable,
@@ -100,23 +101,30 @@ impl VariableCache {
             }
             reused_cache_key
         };
-        match self.variable_hash_map.borrow_mut().get_mut(&stored_key) {
-            Some(stored_variable) => {
-                // As the final act, update the variable with an appropriate value
-                stored_variable.extract_value(core, self);
-
-                Ok(stored_variable.clone())
-            }
-            None => Err(anyhow!(
+        // As the final act, we need to update the variable with an appropriate value.
+        // This requires distinct steps to ensure we don't get `borrow` conflicts on the variable cache.
+        if let Some(mut stored_variable) = self.get_variable_by_key(stored_key) {
+            stored_variable.extract_value(core, self);
+            self.variable_hash_map
+                .borrow_mut()
+                .insert(stored_variable.variable_key, stored_variable)
+                .ok_or(
+                    anyhow!(
+                "Failed to store variable at variable_cache_key: {}. Please report this as a bug.",
+                stored_key)
+                    .into(),
+                )
+        } else {
+            Err(anyhow!(
                 "Failed to store variable at variable_cache_key: {}. Please report this as a bug.",
                 stored_key
             )
-            .into()),
+            .into())
         }
     }
 
     /// Retrieve a clone of a specific `Variable`, using the `variable_key`.
-    pub fn get_cloned_variable_by_key(&self, variable_key: i64) -> Option<Variable> {
+    pub fn get_variable_by_key(&self, variable_key: i64) -> Option<Variable> {
         self.variable_hash_map.borrow().get(&variable_key).cloned()
     }
 
@@ -139,23 +147,26 @@ impl VariableCache {
 
     /// Retrieve `clone`d version of all the children of a `Variable`.
     /// This also validates that the parent exists in the cache, before attempting to retrieve children.
-    pub fn get_cloned_children(&self, parent_key: i64) -> Result<Vec<Variable>, Error> {
+    pub fn get_children(&self, parent_key: i64) -> Result<Vec<Variable>, Error> {
         if parent_key == 0 && (!self.variable_hash_map.borrow().contains_key(&parent_key)) {
             return Err(anyhow!("VariableCache: Attempted to retrieve children for a non existent `variable_key`: {}.", parent_key).into());
         } else {
-            Ok(self
+            let mut children: Vec<Variable> = self
                 .variable_hash_map
                 .borrow()
                 .values()
                 .filter(|child_variable| child_variable.parent_key == parent_key)
                 .cloned()
-                .collect::<Vec<Variable>>())
+                .collect::<Vec<Variable>>();
+            // We have to incur the overhead of sort(), or else the variables in the UI are not in the same order as they appear in the source code.
+            children.sort();
+            Ok(children)
         }
     }
 
     // Check if a `Variable` has any children. This also validates that the parent exists in the cache, before attempting to check for children.
     pub fn has_children(&self, parent_variable: &Variable) -> Result<bool, Error> {
-        self.get_cloned_children(parent_variable.variable_key)
+        self.get_children(parent_variable.variable_key)
             .map(|children| !children.is_empty())
     }
 
@@ -206,6 +217,135 @@ impl VariableCache {
     }
 }
 
+impl std::fmt::Display for VariableCache {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        if let Some(static_root_variable) =
+            self.get_variable_by_name_and_parent("<statics>".to_owned(), 0)
+        {
+            // Write the static variable data
+            writeln!(
+                f,
+                "Static Variables for StackFrame {:?}",
+                static_root_variable
+            )?;
+            fmt_recurse_variables(self, &static_root_variable, 0, f)?;
+        } else {
+            writeln!(
+                f,
+                "`DebugInfo::VariableCache` contains no data. Please report this as a bug."
+            )?;
+        }
+
+        let mut stack_frames = self
+            .variable_hash_map
+            .borrow()
+            .values()
+            .cloned()
+            .filter(|child_variable| {
+                child_variable.name == "<stack_frame>".to_owned() && child_variable.parent_key == 0
+            })
+            .collect::<Vec<Variable>>();
+        stack_frames.sort();
+        if stack_frames.is_empty() {
+            writeln!(
+                f,
+                "`DebugInfo::VariableCache` contains no `StackFrame` data."
+            )?;
+        }
+
+        for stackframe_root_variable in stack_frames {
+            // Header info for the StackFrame
+            writeln!(f)?;
+            writeln!(f, "StackFrame data for {}", stackframe_root_variable.value)?;
+            if let Some(si) = stackframe_root_variable.source_location {
+                write!(
+                    f,
+                    "\t{}/{}",
+                    si.directory
+                        .as_ref()
+                        .map(|p| p.to_string_lossy())
+                        .unwrap_or_else(|| std::borrow::Cow::from("<unknown dir>")),
+                    si.file.as_ref().unwrap_or(&"<unknown file>".to_owned())
+                )?;
+
+                if let (Some(column), Some(line)) = (si.column, si.line) {
+                    match column {
+                        ColumnType::Column(c) => write!(f, ":{}:{}", line, c)?,
+                        ColumnType::LeftEdge => write!(f, ":{}", line)?,
+                    }
+                }
+
+                writeln!(f)?;
+            }
+
+            // Write the register variable data
+            if let Some(register_root_variable) = self.get_variable_by_name_and_parent(
+                "<registers>".to_owned(),
+                stackframe_root_variable.variable_key,
+            ) {
+                writeln!(f)?;
+                writeln!(
+                    f,
+                    "Registers for StackFrame {}",
+                    stackframe_root_variable.value
+                )?;
+                fmt_recurse_variables(self, &register_root_variable, 0, f)?;
+            } else {
+                writeln!(
+                    f,
+                    "`DebugInfo::VariableCache` contains no `Register` data for `StackFrame` {}.",
+                    stackframe_root_variable.value
+                )?;
+            }
+
+            // Write the function variable data
+            if let Some(function_root_variable) = self.get_variable_by_name_and_parent(
+                "<locals>".to_owned(),
+                stackframe_root_variable.variable_key,
+            ) {
+                writeln!(f)?;
+                writeln!(
+                    f,
+                    "Function variables for StackFrame {}",
+                    stackframe_root_variable.value
+                )?;
+                fmt_recurse_variables(self, &function_root_variable, 0, f)?;
+            } else {
+                writeln!(
+                    f,
+                    "`DebugInfo::VariableCache` contains no `Variable` data for `StackFrame` {}.",
+                    stackframe_root_variable.value
+                )?;
+            }
+        }
+
+        writeln!(f)
+    }
+}
+
+fn fmt_recurse_variables(
+    variable_cache: &VariableCache,
+    parent_variable: &Variable,
+    level: u32,
+    f: &mut std::fmt::Formatter,
+) -> std::fmt::Result {
+    for _depth in 0..level {
+        write!(f, "   ")?;
+    }
+    let new_level = level + 1;
+    let ret = writeln!(
+        f,
+        "|-> {} \t= {} \t({})",
+        parent_variable.name, parent_variable.value, parent_variable.type_name
+    ); // ... or if we want human readable values for complex variables, use `get_value())`;
+    if let Ok(children) = variable_cache.get_children(parent_variable.variable_key) {
+        for variable in &children {
+            fmt_recurse_variables(variable_cache, variable, new_level, f)?;
+        }
+    }
+    ret
+}
+
 /// Define the role that a variable plays in a Variant relationship. See section '5.7.10 Variant Entries' of the DWARF 5 specification
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum VariantRole {
@@ -239,11 +379,17 @@ pub struct Variable {
     pub source_location: Option<SourceLocation>,
     pub type_name: String,
     /// Instead of parsing the type_name to infer if this variable is a pointer to another data type, we set this to true explicitly during ELF parsing.
+    /// This will later be used to determine if we need to recurse the children of pointer types.
+    /// By default:
+    /// - Pointers to `struct` `Variable`s WILL NOT BE recursed, because  this may lead to infinite loops/stack overflows in `struct`s that self-reference.
+    /// - Pointers to `const` `Variable`s WILL BE recursed, because they provide essential information, for example about the length of strings, or the size of arrays.
+    /// - Pointers to "base" datatypes WILL BE resolved, because it keeps things simple.
+    /// - Pointers to `unit` datatypes WILL NOT BE resolved, because it doesn't make sense.
     pub is_pointer: bool,
     /// The header_offset and entries_offset are cached to allow on-demand access to the DIE, through functions like:
-    ///   `gimli::Read::DebugInfo.header_at_offset()`, and   
-    ///   `gimli::Read::UnitHeader.entries_at_tree()`
-    pub header_offset: Option<UnitOffset>,
+    ///   `gimli::Read::DebugInfo.header_from_offset()`, and   
+    ///   `gimli::Read::UnitHeader.entries_at_offset()`
+    pub header_offset: Option<DebugInfoOffset>,
     pub entries_offset: Option<UnitOffset>,
     /// The starting location/address in memory where this Variable's value is stored.
     pub memory_location: u64,
@@ -257,9 +403,36 @@ pub struct Variable {
     pub role: VariantRole,
 }
 
+impl PartialEq for Variable {
+    fn eq(&self, other: &Self) -> bool {
+        self.variable_key == other.variable_key
+            || (self.parent_key == other.parent_key && self.name == other.name)
+    }
+}
+
+impl Eq for Variable {}
+
+impl Ord for Variable {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.variable_key.cmp(&other.variable_key)
+    }
+}
+
+impl PartialOrd for Variable {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
 impl Variable {
-    pub(crate) fn new() -> Variable {
+    /// In most cases, Variables will be initialized with their ELF references, so that we resolve their data types and values on demand.
+    pub(crate) fn new(
+        header_offset: Option<DebugInfoOffset>,
+        entries_offset: Option<UnitOffset>,
+    ) -> Variable {
         Variable {
+            header_offset,
+            entries_offset,
             ..Default::default()
         }
     }
@@ -284,12 +457,13 @@ impl Variable {
                     if has_children {
                         //TODO: Recurse through all descendants ... change {:?} to {}
                         format!("{:?}", self)
-                    } else if self.type_name.is_empty() {
-                        "ERROR: This is a bug! Attempted to evaluate an empty Type".to_string()
                     } else if self.is_pointer {
                         // If a pointer does not have children, it means we have not resolved it yet, so
                         //    report the value as the name of the data type, until the user chooses to resolve it.
                         self.type_name.clone()
+                    } else if self.type_name.is_empty() || self.memory_location.is_zero() {
+                        // Intermediate nodes from DWARF. These should not show up in the final `VariableCache`
+                        "ERROR: This is a bug! Attempted to evaluate a Variable with no type or no memory location5".to_string()
                     } else {
                         format!(
                             "UNIMPLEMENTED: Evaluate type {} of ({} bytes) at location 0x{:08x}",
@@ -312,15 +486,18 @@ impl Variable {
 
     /// Evaluate the variable's result if possible and set self.value, or else set self.value as the error String.
     fn extract_value(&mut self, core: &mut Core<'_>, variable_cache: &VariableCache) {
-        if self.is_pointer {
-            self.value = self.type_name.clone();
-            return;
-        }
+        // TODO: Fix this!!
+        // if self.is_pointer {
+        //     self.value = self.type_name.clone();
+        //     return;
+        // }
         // Quick exit if we don't really need to do much more.
         // The value was set by get_location(), so just leave it as is.
         if self.memory_location == u64::MAX
         // The value was set elsewhere in this library - probably because of an error - so just leave it as is.
         || !self.value.is_empty()
+        // Early on in the process of `Variable` evaluation
+        || self.type_name.is_empty()
         // Templates, Phantoms, etc.
         || self.memory_location.is_zero()
         {
@@ -487,7 +664,7 @@ impl Value for String {
         variable_cache: &VariableCache,
     ) -> Result<Self, DebugError> {
         let mut str_value: String = "".to_owned();
-        if let Ok(children) = variable_cache.get_cloned_children(variable.variable_key) {
+        if let Ok(children) = variable_cache.get_children(variable.variable_key) {
             if !children.is_empty() {
                 let string_length = match children
                     .clone()
@@ -503,7 +680,7 @@ impl Value for String {
                 {
                     Some(location_value) => {
                         if let Ok(child_variables) =
-                            variable_cache.get_cloned_children(location_value.variable_key)
+                            variable_cache.get_children(location_value.variable_key)
                         {
                             if let Some(first_child) = child_variables.first() {
                                 first_child.memory_location as u32

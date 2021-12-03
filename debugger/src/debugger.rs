@@ -915,6 +915,8 @@ impl Debugger {
                     supports_read_memory_request: Some(true),
                     supports_restart_request: Some(true),
                     supports_terminate_request: Some(true),
+                    // TODO: In order to supports_delayed_stack_trace_loading: Some(false), we need to honor the `levels` parameter of the `stacktrace` request from VSCode - see https://github.com/Microsoft/vscode/issues/62908. However, despite setting this to `false`, VSCode still sends duplicate `StackTrace` requests for each halt.
+                    supports_delayed_stack_trace_loading: Some(false),
                     // supports_value_formatting_options: Some(true),
                     // supports_function_breakpoints: Some(true),
                     // TODO: Use DEMCR register to implement exception breakpoints

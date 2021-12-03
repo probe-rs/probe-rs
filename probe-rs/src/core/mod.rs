@@ -80,6 +80,8 @@ pub struct RegisterFile {
 
     pub(crate) return_address: &'static RegisterDescription,
 
+    pub(crate) frame_pointer: &'static RegisterDescription,
+
     pub(crate) argument_registers: &'static [RegisterDescription],
 
     pub(crate) result_registers: &'static [RegisterDescription],
@@ -95,6 +97,10 @@ pub struct RegisterFile {
 impl RegisterFile {
     pub fn registers(&self) -> impl Iterator<Item = &RegisterDescription> {
         self.platform_registers.iter()
+    }
+
+    pub fn frame_pointer(&self) -> &RegisterDescription {
+        self.frame_pointer
     }
 
     pub fn program_counter(&self) -> &RegisterDescription {

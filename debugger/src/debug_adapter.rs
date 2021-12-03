@@ -626,10 +626,10 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                 DebugAdapterType::CommandLine => {
                     let mut body = "".to_string();
                     // TODO: Update the code to include static variables.
-                    for frame in current_stackframes {
-                        //TODO: Fix this
-                        // body.push_str(format!("{}\n", frame).as_str());
+                    for _stack_frame in current_stackframes {
+                        // Iterate all the stack frames, so thta `debug_info.variable_cache` gets populated.
                     }
+                    body.push_str(format!("{}\n", debug_info.variable_cache).as_str());
                     self.send_response(request, Ok(Some(body)))
                 }
                 DebugAdapterType::DapClient => {
@@ -756,8 +756,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
 
         let mut dap_scopes: Vec<Scope> = vec![];
 
-        if let Some(static_root_variable) = debug_info.variable_cache.get_cloned_variable_by_key(0)
-        {
+        if let Some(static_root_variable) = debug_info.variable_cache.get_variable_by_key(0) {
             let (static_variables_reference, static_named_variables, static_indexed_variables) =
                 self.get_variable_reference(debug_info, &static_root_variable);
             dap_scopes.push(Scope {
@@ -778,7 +777,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         if arguments.frame_id > 0 {
             if let Some(stackframe_root_variable) = debug_info
                 .variable_cache
-                .get_cloned_variable_by_key(arguments.frame_id)
+                .get_variable_by_key(arguments.frame_id)
             {
                 if let Some(register_root_variable) =
                     debug_info.variable_cache.get_variable_by_name_and_parent(
@@ -969,7 +968,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         let response = if let Some(debug_info) = core_data.debug_info {
             let dap_variables: Vec<Variable> = debug_info
                 .variable_cache
-                .get_cloned_children(arguments.variables_reference)
+                .get_children(arguments.variables_reference)
                 .unwrap()
                 .iter()
                 // Filter out requested children, then map them as DAP variables
@@ -1136,7 +1135,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
 
         if let Ok(children) = debug_info
             .variable_cache
-            .get_cloned_children(parent_variable.variable_key)
+            .get_children(parent_variable.variable_key)
         {
             for child_variable in children {
                 if child_variable.name.starts_with("__") {

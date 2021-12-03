@@ -77,6 +77,11 @@ pub(crate) mod register {
     };
 
     // TODO: Floating point support
+    pub const FP: RegisterDescription = RegisterDescription {
+        name: "FP",
+        kind: RegisterKind::General,
+        address: CoreRegisterAddress(7),
+    };
 }
 
 static ARM_REGISTER_FILE: RegisterFile = RegisterFile {
@@ -166,6 +171,7 @@ static ARM_REGISTER_FILE: RegisterFile = RegisterFile {
     program_counter: &register::PC,
     stack_pointer: &register::SP,
     return_address: &register::LR,
+    frame_pointer: &register::FP,
 
     argument_registers: &[
         RegisterDescription {
