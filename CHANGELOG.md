@@ -5,6 +5,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Added a permissions system that allows the user to specify if a full chip erase is allowed (#918)
+- Added debug sequence for the nRF5340 that turns on the network core can unlock both cores by erasing them if that is permitted (#918)
+
 ## [0.12.0]
 
 - Added support for `chip-erase` flag under the `probe-rs-cli download` command. (#898)

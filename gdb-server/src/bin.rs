@@ -1,5 +1,6 @@
 use anyhow::{anyhow, Result};
 use colored::*;
+use probe_rs::Permissions;
 use std::sync::Mutex;
 use std::{
     process::{self},
@@ -118,7 +119,7 @@ fn main_try() -> Result<()> {
         None => TargetSelector::Auto,
     };
 
-    let session = Mutex::new(probe.attach(target_selector)?);
+    let session = Mutex::new(probe.attach(target_selector, Permissions::default())?);
 
     if opt.reset_halt {
         session

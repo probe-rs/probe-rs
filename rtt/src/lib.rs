@@ -12,12 +12,12 @@
 //!
 //! ```no_run
 //! use std::sync::{Arc, Mutex};
-//! use probe_rs::Probe;
+//! use probe_rs::{Probe, Permissions};
 //! use probe_rs_rtt::Rtt;
 //!
 //! // First obtain a probe-rs session (see probe-rs documentation for details)
 //! let probe = Probe::list_all()[0].open()?;
-//! let mut session = probe.attach("somechip")?;
+//! let mut session = probe.attach("somechip", Permissions::default())?;
 //! let memory_map = session.target().memory_map.clone();
 //! // Select a core.
 //! let mut core = session.core(0)?;
