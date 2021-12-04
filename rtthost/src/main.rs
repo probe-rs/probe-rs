@@ -289,7 +289,7 @@ fn list_channels(channels: &Channels<impl RttChannel>) {
         println!(
             "  {}: {} (buffer size {})",
             chan.number(),
-            chan.name().as_deref().unwrap_or("(no name)"),
+            chan.name().unwrap_or("(no name)"),
             chan.buffer_size(),
         );
     }

@@ -56,8 +56,6 @@ impl JtagCommand for WriteRegisterCommand {
 
 #[derive(Debug)]
 struct TargetTransferCommand {
-    address: u32,
-    data: Vec<u8>,
     len: usize,
     chain_params: ChainParams,
     shift_ir_cmd: ShiftIrCommand,
@@ -103,8 +101,6 @@ impl TargetTransferCommand {
         let transfer_dr = TransferDrCommand::new(request.to_vec(), drbits);
 
         Ok(TargetTransferCommand {
-            address,
-            data,
             len,
             chain_params,
             shift_ir_cmd,

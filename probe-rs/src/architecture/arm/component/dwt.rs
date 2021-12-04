@@ -89,7 +89,7 @@ impl<'probe: 'core, 'core> Dwt<'probe, 'core> {
 }
 
 bitfield! {
-    #[derive(Clone)]
+    #[derive(Clone, Default)]
     pub struct Ctrl(u32);
     impl Debug;
     pub u8, numcomp, _: 31, 28;
@@ -117,12 +117,6 @@ bitfield! {
 
 }
 
-impl Default for Ctrl {
-    fn default() -> Self {
-        Ctrl(0)
-    }
-}
-
 impl From<u32> for Ctrl {
     fn from(raw: u32) -> Self {
         Ctrl(raw)
@@ -141,15 +135,9 @@ impl DebugRegister for Ctrl {
 }
 
 bitfield! {
-    #[derive(Clone)]
+    #[derive(Clone, Default)]
     pub struct Cyccnt(u32);
     impl Debug;
-}
-
-impl Default for Cyccnt {
-    fn default() -> Self {
-        Cyccnt(0)
-    }
 }
 
 impl From<u32> for Cyccnt {
@@ -170,15 +158,9 @@ impl DebugRegister for Cyccnt {
 }
 
 bitfield! {
-    #[derive(Clone)]
+    #[derive(Clone, Default)]
     pub struct Cpicnt(u32);
     impl Debug;
-}
-
-impl Default for Cpicnt {
-    fn default() -> Self {
-        Cpicnt(0)
-    }
 }
 
 impl From<u32> for Cpicnt {
@@ -199,15 +181,9 @@ impl DebugRegister for Cpicnt {
 }
 
 bitfield! {
-    #[derive(Clone)]
+    #[derive(Clone, Default)]
     pub struct Exccnt(u32);
     impl Debug;
-}
-
-impl Default for Exccnt {
-    fn default() -> Self {
-        Exccnt(0)
-    }
 }
 
 impl From<u32> for Exccnt {
@@ -228,16 +204,10 @@ impl DebugRegister for Exccnt {
 }
 
 bitfield! {
-    #[derive(Clone)]
+    #[derive(Clone, Default)]
     pub struct Comp(u32);
     impl Debug;
     pub u32, comp, set_comp: 31, 0;
-}
-
-impl Default for Comp {
-    fn default() -> Self {
-        Comp(0)
-    }
 }
 
 impl From<u32> for Comp {
@@ -258,16 +228,10 @@ impl DebugRegister for Comp {
 }
 
 bitfield! {
-    #[derive(Clone)]
+    #[derive(Clone, Default)]
     pub struct Mask(u32);
     impl Debug;
     pub u32, mask, set_mask: 4, 0;
-}
-
-impl Default for Mask {
-    fn default() -> Self {
-        Mask(0)
-    }
 }
 
 impl From<u32> for Mask {
@@ -288,7 +252,7 @@ impl DebugRegister for Mask {
 }
 
 bitfield! {
-    #[derive(Clone)]
+    #[derive(Clone, Default)]
     pub struct Function(u32);
     impl Debug;
     pub matched, _: 24;
@@ -303,12 +267,6 @@ bitfield! {
     pub cycmatch, set_cycmatch: 7;
     pub emitrange, set_emitrange: 5;
     pub function, set_function: 3, 0;
-}
-
-impl Default for Function {
-    fn default() -> Self {
-        Function(0)
-    }
 }
 
 impl From<u32> for Function {

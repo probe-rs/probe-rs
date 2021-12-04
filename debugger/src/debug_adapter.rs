@@ -1310,7 +1310,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             "Progress reporting is not supported by client."
         );
 
-        let ok = self.send_event(
+        let _ok = self.send_event(
             "progressUpdate",
             Some(ProgressUpdateEventBody {
                 message: message.map(|v| v.into()),

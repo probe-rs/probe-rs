@@ -79,7 +79,7 @@ pub struct RttActiveChannel {
     pub channel_name: String,
     pub data_format: DataFormat,
     /// Data that will be written to the down_channel (host to target)
-    input_data: String,
+    _input_data: String,
     rtt_buffer: RttBuffer,
     show_timestamps: bool,
 }
@@ -131,7 +131,7 @@ impl RttActiveChannel {
             down_channel,
             channel_name: name,
             data_format,
-            input_data: String::new(),
+            _input_data: String::new(),
             rtt_buffer: RttBuffer::new(buffer_size),
             show_timestamps: full_config.show_timestamps,
         }
@@ -172,11 +172,11 @@ impl RttActiveChannel {
 
     pub fn _push_rtt(&mut self, core: &mut Core) {
         if let Some(down_channel) = self.down_channel.as_mut() {
-            self.input_data += "\n";
+            self._input_data += "\n";
             down_channel
-                .write(core, self.input_data.as_bytes())
+                .write(core, self._input_data.as_bytes())
                 .unwrap();
-            self.input_data.clear();
+            self._input_data.clear();
         }
     }
 }

@@ -131,31 +131,34 @@ impl Request for StatusRequest {
                 .try_into()
                 .map_err(|_| SendError::NotEnoughData)?,
         );
-        Ok(StatusResponse { status, count })
+        Ok(StatusResponse {
+            _status: status,
+            _count: count,
+        })
     }
 }
 
 #[derive(Copy, Clone, Debug)]
 pub struct TraceStatus {
-    pub(crate) active: bool,
+    pub(crate) _active: bool,
     pub(crate) error: bool,
-    pub(crate) overrun: bool,
+    pub(crate) _overrun: bool,
 }
 
 impl From<u8> for TraceStatus {
     fn from(value: u8) -> Self {
         Self {
-            active: value & (1 << 0) != 0,
+            _active: value & (1 << 0) != 0,
             error: value & (1 << 6) != 0,
-            overrun: value & (1 << 7) != 0,
+            _overrun: value & (1 << 7) != 0,
         }
     }
 }
 
 #[derive(Debug)]
 pub struct StatusResponse {
-    pub(crate) status: TraceStatus,
-    pub(crate) count: u32,
+    pub(crate) _status: TraceStatus,
+    pub(crate) _count: u32,
 }
 
 #[derive(Debug)]
@@ -200,20 +203,20 @@ impl Request for ExtendedStatusRequest {
                 .map_err(|_| SendError::NotEnoughData)?,
         );
         Ok(ExtendedStatusResponse {
-            status,
-            count,
-            index,
-            timestamp,
+            _status: status,
+            _count: count,
+            _index: index,
+            _timestamp: timestamp,
         })
     }
 }
 
 #[derive(Debug)]
 pub struct ExtendedStatusResponse {
-    pub(crate) status: TraceStatus,
-    pub(crate) count: u32,
-    pub(crate) index: u32,
-    pub(crate) timestamp: u32,
+    pub(crate) _status: TraceStatus,
+    pub(crate) _count: u32,
+    pub(crate) _index: u32,
+    pub(crate) _timestamp: u32,
 }
 
 #[derive(Debug)]

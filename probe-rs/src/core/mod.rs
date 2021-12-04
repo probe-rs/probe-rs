@@ -40,7 +40,7 @@ pub struct CoreInformation {
 #[derive(Debug, Clone)]
 pub struct RegisterDescription {
     pub(crate) name: &'static str,
-    pub(crate) kind: RegisterKind,
+    pub(crate) _kind: RegisterKind,
     pub(crate) address: CoreRegisterAddress,
 }
 
@@ -527,12 +527,6 @@ impl BreakpointId {
     pub fn new(id: usize) -> Self {
         BreakpointId(id)
     }
-}
-
-#[derive(Clone, Debug)]
-pub struct Breakpoint {
-    address: u32,
-    register_hw: usize,
 }
 
 #[derive(Debug, PartialEq, Copy, Clone)]

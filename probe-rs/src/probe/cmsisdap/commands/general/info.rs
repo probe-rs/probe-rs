@@ -126,14 +126,14 @@ impl ParseFromResponse for u32 {
 
 #[derive(Copy, Clone, Debug, Default)]
 pub struct Capabilities {
-    pub(crate) swd_implemented: bool,
-    pub(crate) jtag_implemented: bool,
+    pub(crate) _swd_implemented: bool,
+    pub(crate) _jtag_implemented: bool,
     pub(crate) swo_uart_implemented: bool,
     pub(crate) swo_manchester_implemented: bool,
-    pub(crate) atomic_commands_implemented: bool,
-    pub(crate) test_domain_timer_implemented: bool,
+    pub(crate) _atomic_commands_implemented: bool,
+    pub(crate) _test_domain_timer_implemented: bool,
     pub(crate) swo_streaming_trace_implemented: bool,
-    pub(crate) uart_communication_port_implemented: bool,
+    pub(crate) _uart_communication_port_implemented: bool,
     pub(crate) uart_com_port_implemented: bool,
 }
 
@@ -143,14 +143,14 @@ impl ParseFromResponse for Capabilities {
         // In the docs only the first byte is described, so for now we always will only parse that specific byte.
         if buffer[0] > 0 {
             let mut capabilites = Capabilities {
-                swd_implemented: buffer[1] & 0x01 > 0,
-                jtag_implemented: buffer[1] & 0x02 > 0,
+                _swd_implemented: buffer[1] & 0x01 > 0,
+                _jtag_implemented: buffer[1] & 0x02 > 0,
                 swo_uart_implemented: buffer[1] & 0x04 > 0,
                 swo_manchester_implemented: buffer[1] & 0x08 > 0,
-                atomic_commands_implemented: buffer[1] & 0x10 > 0,
-                test_domain_timer_implemented: buffer[1] & 0x20 > 0,
+                _atomic_commands_implemented: buffer[1] & 0x10 > 0,
+                _test_domain_timer_implemented: buffer[1] & 0x20 > 0,
                 swo_streaming_trace_implemented: buffer[1] & 0x40 > 0,
-                uart_communication_port_implemented: buffer[1] & 0x80 > 0,
+                _uart_communication_port_implemented: buffer[1] & 0x80 > 0,
                 uart_com_port_implemented: false,
             };
 
