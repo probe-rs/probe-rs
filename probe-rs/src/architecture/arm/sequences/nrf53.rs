@@ -90,7 +90,11 @@ impl ArmDebugSequence for Nrf5340 {
                 "Core {} is locked. Erase procedure will be started to unlock it.",
                 core_ahb_ap
             );
-            self.unlock_core(interface.get_arm_interface()?, core_ctrl_ap_address, permissions)?;
+            self.unlock_core(
+                interface.get_arm_interface()?,
+                core_ctrl_ap_address,
+                permissions,
+            )?;
 
             if !self.is_core_unlocked(interface.get_arm_interface()?, core_ahb_ap_address)? {
                 return Err(crate::Error::ArchitectureSpecific(
