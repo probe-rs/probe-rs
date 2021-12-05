@@ -623,8 +623,12 @@ impl Permissions {
         }
     }
 
-    pub(crate) fn erase_all(&self) -> bool {
-        self.erase_all
+    pub(crate) fn erase_all(&self) -> Result<(), crate::Error> {
+        if self.erase_all {
+            Ok(())
+        } else {
+            Err(crate::Error::MissingPermissions("erase_all".into()))
+        }
     }
 }
 

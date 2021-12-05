@@ -36,7 +36,10 @@ impl Nrf5340 {
         &self,
         arm_interface: &mut ArmCommunicationInterface<Initialized>,
         ap_address: ApAddress,
+        permissions: &crate::Permissions,
     ) -> Result<(), crate::Error> {
+        permissions.erase_all()?;
+
         arm_interface.write_raw_ap_register(ap_address, Self::ERASEALL, 1)?;
         while arm_interface.read_raw_ap_register(ap_address, Self::ERASEALLSTATUS)? != 0 {}
         Ok(())
@@ -63,10 +66,6 @@ impl ArmDebugSequence for Nrf5340 {
         // TODO: Approtect and Secure Approtect are not considered. If enabled, the debugger must set up the same keys as the firmware does
         // These keys should be queried from the user if required and once that mechanism is implemented
 
-        if !permissions.erase_all() {
-            return Err(crate::Error::MissingPermissions(String::from("erase_all")));
-        }
-
         let ap_address = interface.get_ap();
 
         let core_aps = [(0, 2), (1, 3)];
@@ -91,7 +90,7 @@ impl ArmDebugSequence for Nrf5340 {
                 "Core {} is locked. Erase procedure will be started to unlock it.",
                 core_ahb_ap
             );
-            self.unlock_core(interface.get_arm_interface()?, core_ctrl_ap_address)?;
+            self.unlock_core(interface.get_arm_interface()?, core_ctrl_ap_address, permissions)?;
 
             if !self.is_core_unlocked(interface.get_arm_interface()?, core_ahb_ap_address)? {
                 return Err(crate::Error::ArchitectureSpecific(
