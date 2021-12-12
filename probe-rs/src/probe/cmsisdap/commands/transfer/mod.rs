@@ -166,7 +166,14 @@ impl Request for TransferRequest {
     }
 
     fn from_bytes(&self, mut buffer: &[u8]) -> Result<Self::Response, SendError> {
+        if buffer.len() < 2 {
+            return Err(SendError::NotEnoughData);
+        }
         let transfer_count = buffer[0];
+        if transfer_count as usize > self.transfers.len() {
+            log::error!("Transfer count larger than requested number of transfers");
+            return Err(SendError::UnexpectedAnswer);
+        }
 
         let last_transfer_response = LastTransferResponse {
             ack: match buffer[1] & 0x7 {
