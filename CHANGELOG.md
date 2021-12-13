@@ -5,6 +5,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Fixed a panic when cmsisdap probes return more transfers than requested (#922, #923)
+
 ## [0.12.0]
 
 - Added support for `chip-erase` flag under the `probe-rs-cli download` command. (#898)
