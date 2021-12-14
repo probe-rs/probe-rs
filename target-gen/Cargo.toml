@@ -24,7 +24,7 @@ cmsis-pack = { version = "0.5.0" }
 
 goblin = "0.4.3"
 scroll = "0.10.1"
-serde_yaml = "0.8.11"
+serde_yaml = "0.8.23"
 log = "0.4.8"
 zip = "0.5.9"
 structopt = "0.3.2"
