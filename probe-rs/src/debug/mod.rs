@@ -5,10 +5,7 @@
 
 mod variable;
 
-use crate::{
-    core::{Core, RegisterFile},
-    MemoryInterface,
-};
+use crate::{core::Core, MemoryInterface};
 use num_traits::Zero;
 use probe_rs_target::Architecture;
 pub use variable::{Variable, VariableInclusion, VariableKind, VariantRole};
@@ -126,8 +123,6 @@ fn variable_recurse(
 }
 #[derive(Debug, Clone)]
 pub struct Registers {
-    register_description: &'static RegisterFile,
-
     values: HashMap<u32, u32>,
 
     architecture: Architecture,
@@ -141,7 +136,6 @@ impl Registers {
         let num_platform_registers = register_file.platform_registers.len();
 
         let mut registers = Registers {
-            register_description: register_file,
             values: HashMap::new(),
             architecture: core.architecture(),
         };
@@ -427,7 +421,7 @@ impl<'debuginfo, 'probe, 'core> Iterator for StackFrameIterator<'debuginfo, 'pro
         }
 
         let return_frame = match self.debug_info.get_stackframe_info(
-            &mut self.core,
+            self.core,
             pc,
             self.frame_count,
             self.registers.clone(),

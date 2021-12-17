@@ -115,7 +115,7 @@ where
         let cores = device
             .processors
             .iter()
-            .map(|processor| create_core(processor))
+            .map(create_core)
             .collect::<Result<Vec<_>>>()?;
 
         family.variants.push(Chip {

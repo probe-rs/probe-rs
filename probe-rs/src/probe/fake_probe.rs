@@ -196,7 +196,7 @@ struct FakeArmInterface<S: ArmDebugState> {
 
     memory_ap: MockMemoryAp,
 
-    state: S,
+    _state: S,
 }
 
 impl<'interface> FakeArmInterface<Uninitialized> {
@@ -208,7 +208,7 @@ impl<'interface> FakeArmInterface<Uninitialized> {
 
         Self {
             probe,
-            state,
+            _state: state,
             memory_ap,
         }
     }
@@ -231,7 +231,7 @@ impl FakeArmInterface<Initialized> {
         let memory_ap = MockMemoryAp::with_pattern();
         FakeArmInterface::<Initialized> {
             probe: interface.probe,
-            state: Initialized::new(sequence, false),
+            _state: Initialized::new(sequence, false),
             memory_ap,
         }
     }

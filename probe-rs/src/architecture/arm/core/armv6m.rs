@@ -266,13 +266,13 @@ pub const PSP: CoreRegisterAddress = CoreRegisterAddress(0b01010);
 
 const PC: RegisterDescription = RegisterDescription {
     name: "PC",
-    kind: RegisterKind::PC,
+    _kind: RegisterKind::PC,
     address: CoreRegisterAddress(0b0_1111),
 };
 
 const XPSR: RegisterDescription = RegisterDescription {
     name: "XPSR",
-    kind: RegisterKind::General,
+    _kind: RegisterKind::General,
     address: CoreRegisterAddress(0b1_0000),
 };
 

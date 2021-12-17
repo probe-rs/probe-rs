@@ -224,7 +224,7 @@ fn dump_memory(
 
     let mut core = session.core(shared_options.core)?;
 
-    core.read_32(loc, &mut data.as_mut_slice())?;
+    core.read_32(loc, data.as_mut_slice())?;
     // Stop timer.
     let elapsed = instant.elapsed();
 

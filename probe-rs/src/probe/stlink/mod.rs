@@ -1594,7 +1594,7 @@ mod test {
         swim_version: u8,
 
         target_voltage_a0: f32,
-        target_voltage_a1: f32,
+        _target_voltage_a1: f32,
     }
 
     impl MockUsb {
@@ -1677,7 +1677,7 @@ mod test {
             swim_version: 0,
 
             target_voltage_a0: 1.0,
-            target_voltage_a1: 2.0,
+            _target_voltage_a1: 2.0,
         };
 
         let mut probe = usb_mock.build();
@@ -1700,7 +1700,7 @@ mod test {
             jtag_version: 26,
             swim_version: 0,
             target_voltage_a0: 1.0,
-            target_voltage_a1: 2.0,
+            _target_voltage_a1: 2.0,
         };
 
         let mut probe = usb_mock.build();
@@ -1725,7 +1725,7 @@ mod test {
             jtag_version: 30,
             swim_version: 0,
             target_voltage_a0: 1.0,
-            target_voltage_a1: 2.0,
+            _target_voltage_a1: 2.0,
         };
 
         let mut probe = usb_mock.build();

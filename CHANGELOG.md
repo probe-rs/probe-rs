@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Added a permissions system that allows the user to specify if a full chip erase is allowed (#918)
 - Added debug sequence for the nRF5340 that turns on the network core can unlock both cores by erasing them if that is permitted (#918)
+### Fixed
+
+- Fixed a panic when cmsisdap probes return more transfers than requested (#922, #923)
 
 ## [0.12.0]
 

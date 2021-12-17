@@ -15,12 +15,6 @@ struct Opt {
     #[structopt(name = "chip", long = "chip")]
     chip: Option<String>,
     #[structopt(
-        name = "chip description file path",
-        short = "c",
-        long = "chip-description-path"
-    )]
-    chip_description_path: Option<String>,
-    #[structopt(
         name = "reset-halt",
         long = "reset-halt",
         help = "Use this flag to reset and halt (instead of just a halt) the attached core after attaching to the target."
