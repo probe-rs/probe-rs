@@ -86,10 +86,16 @@ cargo-flash depends on the [libusb](https://libusb.info/) and optionally on [lib
 
 #### Linux
 
-On Ubuntu, the following packages need to be installed:
+On Debian and derived distros (e.g. Ubuntu), the following packages need to be installed:
 
+```bash
+# apt install -y pkg-config libusb-1.0-0-dev libftdi1-dev
 ```
-> sudo apt install -y pkg-config libusb-1.0-0-dev libftdi1-dev
+
+n.b. If the libusb v0.1 dev package (`libusb-dev`) is installed when dependant crates are built, you may get link failures at the end of the build.  Remove with:
+
+```bash
+# apt purge libusb-dev
 ```
 
 #### Windows
