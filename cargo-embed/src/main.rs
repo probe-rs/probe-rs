@@ -556,7 +556,8 @@ fn main_try() -> Result<()> {
                     }));
 
                     let chip_name = config.general.chip.as_deref().unwrap_or_default();
-                    let logname = format!("{}_{}_{}", name, chip_name, Local::now().timestamp_millis());
+                    let logname =
+                        format!("{}_{}_{}", name, chip_name, Local::now().timestamp_millis());
                     let mut app = rttui::app::App::new(rtt, &config, logname)?;
                     loop {
                         let mut session_handle = session.lock().unwrap();
