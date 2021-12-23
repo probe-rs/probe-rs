@@ -1,5 +1,7 @@
 use super::memory::MemoryRegion;
 use serde::{Deserialize, Serialize};
+use super::device_data::DeviceData;
+
 
 /// A single chip variant.
 ///
@@ -27,4 +29,11 @@ pub struct Chip {
     ///
     /// [`ChipFamily::flash_algorithms`]: crate::ChipFamily::flash_algorithms
     pub flash_algorithms: Vec<String>,
+
+    /// Architecture spesific data requered for debuging
+    #[cfg_attr(
+        not(feature = "bincode"),
+        serde(skip_serializing_if = "Option::is_none")
+    )]
+    pub device_data: Option<DeviceData>
 }

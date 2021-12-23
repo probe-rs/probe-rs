@@ -147,6 +147,7 @@ enum AddressSize {
     Size24bit = 0x01,
     Size16bit = 0x00,
 }
+
 #[derive(Copy, Clone, Debug)]
 struct TinyXDeviceData {
     prog_base: u32,

@@ -61,6 +61,7 @@ pub struct ChipFamily {
     /// This vector holds all available algorithms.
     #[serde(deserialize_with = "deserialize")]
     #[serde(serialize_with = "serialize")]
+    #[serde(default)]
     pub flash_algorithms: Vec<RawFlashAlgorithm>,
     /// The name of the core type.
     /// E.g. `M0` or `M4`.
