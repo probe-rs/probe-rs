@@ -522,9 +522,9 @@ dependencies = [
 
 [[package]]
 name = "defmt-decoder"
-version = "0.3.0"
+version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "326d55129bb42c2459efc5c4c890e772bb1c0ae219db9bab379765643ebc39d9"
+checksum = "a7d5765366c461413e5b2966b89f14bbdb3f5d785fd03f1cfe8261fcfcac6844"
 dependencies = [
  "anyhow",
  "byteorder",
@@ -532,9 +532,9 @@ dependencies = [
  "colored",
  "defmt-parser",
  "difference",
- "gimli 0.24.0",
+ "gimli 0.26.1",
  "log",
- "object 0.25.3",
+ "object 0.27.1",
  "ryu",
  "serde",
  "serde_json",
@@ -820,16 +820,6 @@ dependencies = [
  "cfg-if",
  "libc",
  "wasi",
-]
-
-[[package]]
-name = "gimli"
-version = "0.24.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0e4075386626662786ddb0ec9081e7c7eeb1ba31951f447ca780ef9f5d568189"
-dependencies = [
- "fallible-iterator",
- "stable_deref_trait",
 ]
 
 [[package]]
@@ -1349,15 +1339,6 @@ name = "number_prefix"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "830b246a0e5f20af87141b25c173cd1b609bd7779a4617d6ec582abaf90870f3"
-
-[[package]]
-name = "object"
-version = "0.25.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a38f2be3697a57b4060074ff41b44c16870d916ad7877c17696e063257482bc7"
-dependencies = [
- "memchr",
-]
 
 [[package]]
 name = "object"
