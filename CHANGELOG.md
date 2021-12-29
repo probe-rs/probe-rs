@@ -5,6 +5,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Support for core registers `msp`, `psp` and `extra`, extra containing:
+  - Bits[31:24] CONTROL.
+  - Bits[23:16] FAULTMASK.
+  - Bits[15:8]  BASEPRI.
+  - Bits[7:0]   PRIMASK.
+
 ### Fixed
 
 - Fixed a panic when cmsisdap probes return more transfers than requested (#922, #923)

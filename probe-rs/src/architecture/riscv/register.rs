@@ -310,4 +310,8 @@ pub(super) static RISCV_REGISTERS: RegisterFile = RegisterFile {
             address: CoreRegisterAddress(0x100B),
         },
     ],
+
+    psp: None,
+    msp: None,
+    extra: None,
 };
