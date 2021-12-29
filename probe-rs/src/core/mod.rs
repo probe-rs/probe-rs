@@ -81,7 +81,15 @@ pub struct RegisterFile {
     pub(crate) return_address: &'static RegisterDescription,
 
     pub(crate) argument_registers: &'static [RegisterDescription],
+
     pub(crate) result_registers: &'static [RegisterDescription],
+
+    pub(crate) msp: Option<&'static RegisterDescription>,
+
+    pub(crate) psp: Option<&'static RegisterDescription>,
+
+    pub(crate) extra: Option<&'static RegisterDescription>,
+    // TODO: floating point support
 }
 
 impl RegisterFile {
@@ -124,6 +132,34 @@ impl RegisterFile {
     pub fn get_platform_register(&self, index: usize) -> Option<&RegisterDescription> {
         self.platform_registers.get(index)
     }
+
+    pub fn msp(&self) -> Option<&RegisterDescription> {
+        self.msp
+    }
+
+    pub fn psp(&self) -> Option<&RegisterDescription> {
+        self.psp
+    }
+
+    // ARM DDI 0403E.d (ID070218)
+    // C1.6.3 Debug Core Register Selector Register, DCRSR
+    // Bits[31:24] CONTROL.
+    // Bits[23:16] FAULTMASK.
+    // Bits[15:8]  BASEPRI.
+    // Bits[7:0]   PRIMASK.
+    // In each field, the valid bits are packed with leading zeros. For example,
+    // FAULTMASK is always a single bit, DCRDR[16], and DCRDR[23:17] is 0b0000000.
+    pub fn extra(&self) -> Option<&RegisterDescription> {
+        self.extra
+    }
+
+    // TODO: support for floating point registers
+    // 0b0100001            Floating-point Status and Control Register, FPSCR.
+    // 0b1000000-0b1011111  FP registers S0-S31.
+    // For example, 0b1000000 specifies S0, and 0b1000101 specifies S5.
+    // All other values are Reserved.
+    // If the processor does not implement the FP extension the REGSEL field is bits[4:0], and
+    // bits[6:5] are Reserved, SBZ.
 }
 
 pub trait CoreInterface: MemoryInterface {

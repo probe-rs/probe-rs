@@ -55,6 +55,28 @@ pub(crate) mod register {
         _kind: RegisterKind::General,
         address: CoreRegisterAddress(14),
     };
+
+    pub const MSP: RegisterDescription = RegisterDescription {
+        name: "MSP",
+        _kind: RegisterKind::General,
+        address: CoreRegisterAddress(0b10001),
+    };
+
+    pub const PSP: RegisterDescription = RegisterDescription {
+        name: "PSP",
+        _kind: RegisterKind::General,
+        address: CoreRegisterAddress(0b10010),
+    };
+
+    // CONTROL bits [31:24], FAULTMASK bits [23:16],
+    // BASEPRI bits [15:8], and PRIMASK bits [7:0]
+    pub const EXTRA: RegisterDescription = RegisterDescription {
+        name: "EXTRA",
+        _kind: RegisterKind::General,
+        address: CoreRegisterAddress(0b10100),
+    };
+
+    // TODO: Floating point support
 }
 
 static ARM_REGISTER_FILE: RegisterFile = RegisterFile {
@@ -180,6 +202,11 @@ static ARM_REGISTER_FILE: RegisterFile = RegisterFile {
             address: CoreRegisterAddress(1),
         },
     ],
+
+    msp: Some(&register::MSP),
+    psp: Some(&register::PSP),
+    extra: Some(&register::EXTRA),
+    // TODO: Floating point support
 };
 
 bitfield! {
