@@ -584,7 +584,7 @@ checksum = "32401e89c6446dcd28185931a01b1093726d0356820ac744023e6850689bf926"
 dependencies = [
  "log",
  "plain",
- "scroll",
+ "scroll 0.10.2",
 ]
 
 [[package]]
@@ -1206,7 +1206,7 @@ dependencies = [
  "once_cell",
  "probe-rs-target",
  "rusb",
- "scroll",
+ "scroll 0.11.0",
  "serde",
  "serde_yaml",
  "static_assertions",
@@ -1513,6 +1513,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "scroll"
+version = "0.11.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "04c565b551bafbef4157586fa379538366e4385d42082f255bfd96e4fe8519da"
+
+[[package]]
 name = "scroll_derive"
 version = "0.10.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1754,7 +1760,7 @@ dependencies = [
  "probe-rs",
  "probe-rs-target",
  "reqwest",
- "scroll",
+ "scroll 0.11.0",
  "serde",
  "serde_yaml",
  "simplelog",
