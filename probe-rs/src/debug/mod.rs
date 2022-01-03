@@ -360,12 +360,14 @@ impl<'debuginfo, 'probe, 'core> Iterator for StackFrameIterator<'debuginfo, 'pro
         let frame_pc = if let Some(frame_pc) = self.unwind_registers.get_program_counter() {
             frame_pc as u64
         } else {
-            println!("UNWIND: No available PC (program counter). Cannot continue stack unwinding.");
+            log::error!(
+                "UNWIND: No available PC (program counter). Cannot continue stack unwinding."
+            );
             return None;
         };
 
         // PART 1: Construct the `StackFrame` for the current pc.
-        println!(
+        log::debug!(
             "\nUNWIND: Will generate `StackFrame` for function at address (PC) {:#010x}",
             frame_pc,
         );
@@ -373,7 +375,7 @@ impl<'debuginfo, 'probe, 'core> Iterator for StackFrameIterator<'debuginfo, 'pro
         // PART 1-a: Find function information, to check if we are in an inlined function, and update `StackFrameIterator::inlining_state` appropriately
         let inline_call_site_info = match self.inlining_state {
             InlineFunctionState::InlinedCallSite { .. } => {
-                println!("UNWIND: At call site of inlined function.");
+                log::debug!("UNWIND: At call site of inlined function.");
                 std::mem::replace(
                     // We will use the data currently stored in `inlining_state` ...
                     &mut self.inlining_state,
@@ -441,7 +443,7 @@ impl<'debuginfo, 'probe, 'core> Iterator for StackFrameIterator<'debuginfo, 'pro
                                 call_line,
                                 call_directory,
                             };
-                            println!(
+                            log::debug!(
                                 "UNWIND: Current function {:?} is inlined at: {:?}",
                                 die_cursor_state.function_name(&unit_info),
                                 self.inlining_state
@@ -466,7 +468,7 @@ impl<'debuginfo, 'probe, 'core> Iterator for StackFrameIterator<'debuginfo, 'pro
                 Some(frame)
             }
             Err(e) => {
-                println!("UNWIND: Unable to complete `StackFrame` information: {}", e);
+                log::error!("UNWIND: Unable to complete `StackFrame` information: {}", e);
                 // There is no point in continuing with the unwind, so let's get out of here.
                 self.unwind_registers.set_program_counter(None);
                 return None;
@@ -474,12 +476,12 @@ impl<'debuginfo, 'probe, 'core> Iterator for StackFrameIterator<'debuginfo, 'pro
         };
 
         // PART 2: Setup the registers for the `next()` iteration (a.k.a. unwind previous frame, a.k.a. "callee", in the call stack). There are different paths below, depending on whether we are currently in an inlined function or not.
-        println!("\nUNWIND Registers for previous function ...");
+        log::debug!("\nUNWIND Registers for previous function ...");
         if self.unwind_registers.get_return_address().is_some() {
             match inline_call_site_info {
                 InlineFunctionState::InlinedCallSite { .. } => {
                     // PART 2 - INLINED: TODO: Move this functionality to the `UnitInfo::process_tree`. There we can do it in an architecture independant way, and not have to worry about how different chips encode frame pointers and return addresses for inlined functions.
-                    println!(
+                    log::debug!(
                     "UNWIND - Preparing `StackFrameIterator` to INLINED inlined function {} at {:?}",
                     return_frame.clone().unwrap().function_name,
                     return_frame.clone().unwrap().source_location
@@ -487,7 +489,7 @@ impl<'debuginfo, 'probe, 'core> Iterator for StackFrameIterator<'debuginfo, 'pro
                 }
                 InlineFunctionState::NoInlining => {
                     // PART 2: Once the current `StackFrame is ready, we need to unwind the stack for the previous frame, and update `StackFrameIterator` to prepare for the next iteration.
-                    println!(
+                    log::debug!(
                     "UNWIND - Preparing `StackFrameIterator` to unwind NON-INLINED function {:?} at {:?}",
                     return_frame.clone().unwrap().function_name,
                     return_frame.clone().unwrap().source_location
@@ -552,7 +554,7 @@ impl<'debuginfo, 'probe, 'core> Iterator for StackFrameIterator<'debuginfo, 'pro
                                     match reg_val {
                                         Some(reg_val) => {
                                             let callee_cfa = (i64::from(reg_val) + offset) as u32;
-                                            println!(
+                                            log::debug!(
                                                     "UNWIND - CFA : Caller: 0x--------\tCallee: 0x{:08x}\tRule: {:?}",
                                                     callee_cfa,
                                                     unwind_info.cfa()
@@ -560,7 +562,7 @@ impl<'debuginfo, 'probe, 'core> Iterator for StackFrameIterator<'debuginfo, 'pro
                                             Some(callee_cfa)
                                         }
                                         None => {
-                                            println!(
+                                            log::error!(
                                                     "UNWIND: `StackFrameIterator` unable to unwind the previous CFA: Missing value of register {}",
                                                     register.0
                                                 );
@@ -649,15 +651,16 @@ impl<'debuginfo, 'probe, 'core> Iterator for StackFrameIterator<'debuginfo, 'pro
                                                 previous_frame_register_address as u32,
                                                 &mut buff,
                                             ) {
-                                                println!(
+                                                log::error!(
                                                         "UNWIND: Failed to read from address {:#010x} ({} bytes): {}",
                                                         previous_frame_register_address,
                                                         4,
                                                         e
                                                     );
-                                                println!(
+                                                log::error!(
                                                     "UNWIND: Rule: Offset {} from address {:#010x}",
-                                                    address_offset, callee_cfa
+                                                    address_offset,
+                                                    callee_cfa
                                                 );
                                                 self.unwind_registers.set_program_counter(None);
                                                 return return_frame;
@@ -666,7 +669,7 @@ impl<'debuginfo, 'probe, 'core> Iterator for StackFrameIterator<'debuginfo, 'pro
                                                 u32::from_le_bytes(buff);
                                             Some(previous_frame_register_value as u32)
                                         } else {
-                                            println!("UNWIND: Tried to unwind `RegisterRule` at CFA = None. Please report this as a bug.");
+                                            log::error!("UNWIND: Tried to unwind `RegisterRule` at CFA = None. Please report this as a bug.");
                                             self.unwind_registers.set_program_counter(None);
                                             return return_frame;
                                         }
@@ -693,7 +696,7 @@ impl<'debuginfo, 'probe, 'core> Iterator for StackFrameIterator<'debuginfo, 'pro
 
                                 self.unwind_registers
                                     .set_by_dwarf_register_number(register_number, new_value);
-                                println!(
+                                log::debug!(
                                     "UNWIND - {:04}: Caller: 0x{:08x}\tCallee: 0x{:08x}\tRule: {}",
                                     self.unwind_registers
                                         .get_name_by_dwarf_register_number(register_number),
@@ -708,7 +711,7 @@ impl<'debuginfo, 'probe, 'core> Iterator for StackFrameIterator<'debuginfo, 'pro
                             }
                         }
                         Err(error) => {
-                            println!(
+                            log::debug!(
                                     "UNWIND: Stack unwind complete. No available debug info for program counter {:#x}: {}",
                                     frame_pc, error
                                 );
@@ -719,7 +722,7 @@ impl<'debuginfo, 'probe, 'core> Iterator for StackFrameIterator<'debuginfo, 'pro
                 }
             }
         } else {
-            println!("UNWIND: We have reached the bottom of the stack. This will be the last `StackFrame` returned.");
+            log::debug!("UNWIND: We have reached the bottom of the stack. This will be the last `StackFrame` returned.");
             self.unwind_registers.set_program_counter(None);
         }
 
@@ -856,7 +859,7 @@ impl DebugInfo {
                                 .find_file_and_directory(&unit, header, row.file(header).unwrap())
                                 .unwrap();
 
-                            println!("0x{:4x} - {:?}", address, row.isa());
+                            log::debug!("0x{:4x} - {:?}", address, row.isa());
 
                             return Some(SourceLocation {
                                 line: row.line().map(NonZeroU64::get),
@@ -871,7 +874,7 @@ impl DebugInfo {
                                 .find_file_and_directory(&unit, header, row.file(header).unwrap())
                                 .unwrap();
 
-                            println!("0x{:4x} - {:?}", address, row.isa());
+                            log::debug!("0x{:4x} - {:?}", address, row.isa());
 
                             return Some(SourceLocation {
                                 line: row.line().map(NonZeroU64::get),
@@ -1067,7 +1070,7 @@ impl DebugInfo {
                     InlineFunctionState::NoInlining => self.get_source_location(address),
                 };
 
-                println!("UNWIND: Function name: {}", function_name);
+                log::debug!("UNWIND: Function name: {}", function_name);
 
                 // Now that we have the function_name and function_source_location, we can cache the in-scope `Variable`s (`<statics>` and `<locals>`) in `DebugInfo::VariableCache`
                 let mut stackframe_root_variable = Variable::new(
@@ -2149,7 +2152,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
 
         let _die_offset = child_variable.header_offset.unwrap_or(DebugInfoOffset(0)).0
             + child_variable.entries_offset.unwrap_or(UnitOffset(0)).0;
-        // println!(
+        // log::debug!(
         //     "0x{:08x}:\t{}:\t\t{}",
         //     child_variable.memory_location, //die_offset
         //     child_variable.type_name,
