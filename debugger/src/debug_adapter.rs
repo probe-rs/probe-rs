@@ -1132,7 +1132,6 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
     ) -> (i64, i64, i64) {
         let mut named_child_variables_cnt = 0;
         let mut indexed_child_variables_cnt = 0;
-
         if let Ok(children) = debug_info
             .variable_cache
             .get_children(parent_variable.variable_key)

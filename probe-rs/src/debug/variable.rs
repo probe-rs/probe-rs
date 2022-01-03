@@ -379,8 +379,8 @@ pub struct Variable {
     pub source_location: Option<SourceLocation>,
     pub type_name: String,
     /// Instead of parsing the type_name to infer if this variable is a pointer to another data type, we set this to true explicitly during ELF parsing.
-    /// This will later be used to determine if we need to recurse the children of pointer types.
-    /// By default:
+    /// This will later be used to determine if we need to **automatically** recurse the children of pointer types, or to wait until a user explicitly requests the children of such a pointer type.
+    /// By default, the automatic recursion follows these rules:
     /// - Pointers to `struct` `Variable`s WILL NOT BE recursed, because  this may lead to infinite loops/stack overflows in `struct`s that self-reference.
     /// - Pointers to `const` `Variable`s WILL BE recursed, because they provide essential information, for example about the length of strings, or the size of arrays.
     /// - Pointers to "base" datatypes WILL BE resolved, because it keeps things simple.
@@ -457,10 +457,6 @@ impl Variable {
                     if has_children {
                         //TODO: Recurse through all descendants ... change {:?} to {}
                         format!("{:?}", self)
-                    } else if self.is_pointer {
-                        // If a pointer does not have children, it means we have not resolved it yet, so
-                        //    report the value as the name of the data type, until the user chooses to resolve it.
-                        self.type_name.clone()
                     } else if self.type_name.is_empty() || self.memory_location.is_zero() {
                         // Intermediate nodes from DWARF. These should not show up in the final `VariableCache`
                         "ERROR: This is a bug! Attempted to evaluate a Variable with no type or no memory location5".to_string()
@@ -486,11 +482,6 @@ impl Variable {
 
     /// Evaluate the variable's result if possible and set self.value, or else set self.value as the error String.
     fn extract_value(&mut self, core: &mut Core<'_>, variable_cache: &VariableCache) {
-        // TODO: Fix this!!
-        // if self.is_pointer {
-        //     self.value = self.type_name.clone();
-        //     return;
-        // }
         // Quick exit if we don't really need to do much more.
         // The value was set by get_location(), so just leave it as is.
         if self.memory_location == u64::MAX
@@ -502,7 +493,16 @@ impl Variable {
         || self.memory_location.is_zero()
         {
             return;
+        } else if self.is_pointer {
+            // And we have not previously assigned the value, then assign the type and address as the value
+            self.value = format!(
+                "{} @ 0x{:08X}",
+                self.type_name.clone(),
+                self.memory_location
+            );
+            return;
         }
+
         // This is the primary logic for decoding a variable's value, once we know the type and memory_location.
         let string_value = match self.type_name.as_str() {
             "!" => "<Never returns>".to_string(),

@@ -2181,7 +2181,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                             Some(data_type_attribute) => {
                                 match data_type_attribute.value() {
                                     gimli::AttributeValue::UnitRef(unit_ref) => {
-                                        // TODO: Fix this!!!
+                                        // TODO: Fix this!!! Do NOT auto recurse
                                         child_variable.is_pointer = true;
                                         child_variable =
                                             self.debug_info.variable_cache.cache_variable(
@@ -2240,7 +2240,6 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                         )?;
                                         // Only use this, if it is NOT a unit datatype.
                                         if !referenced_variable.type_name.eq("()") {
-                                            referenced_variable.is_pointer = true;
                                             // Now add the referenced_variable as a child.
                                             self.debug_info.variable_cache.cache_variable(
                                                 child_variable.variable_key,
