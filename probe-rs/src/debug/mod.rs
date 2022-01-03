@@ -5,7 +5,10 @@
 
 mod variable;
 
-use crate::{core::Core, MemoryInterface};
+use crate::{
+    core::{Core, RegisterFile},
+    MemoryInterface,
+};
 use num_traits::Zero;
 use probe_rs_target::Architecture;
 pub use variable::{Variable, VariableCache, VariantRole};
@@ -125,6 +128,8 @@ pub struct StackFrame {
 
 #[derive(Debug, Clone)]
 pub struct Registers {
+    register_description: &'static RegisterFile,
+
     values: HashMap<u32, u32>,
 
     architecture: Architecture,
@@ -138,6 +143,7 @@ impl Registers {
         let num_platform_registers = register_file.platform_registers.len();
 
         let mut registers = Registers {
+            register_description: register_file,
             values: HashMap::new(),
             architecture: core.architecture(),
         };

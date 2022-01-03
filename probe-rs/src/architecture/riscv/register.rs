@@ -73,7 +73,7 @@ static SP: RegisterDescription = RegisterDescription {
 
 static FP: RegisterDescription = RegisterDescription {
     name: "fp",
-    kind: RegisterKind::General,
+    _kind: RegisterKind::General,
     /// This is a CSR register
     address: CoreRegisterAddress(0x1008),
 };

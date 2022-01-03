@@ -79,7 +79,7 @@ pub(crate) mod register {
     // TODO: Floating point support
     pub const FP: RegisterDescription = RegisterDescription {
         name: "FP",
-        kind: RegisterKind::General,
+        _kind: RegisterKind::General,
         address: CoreRegisterAddress(7),
     };
 }
