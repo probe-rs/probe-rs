@@ -40,7 +40,7 @@ log = "0.4.8"
 num-traits = "0.2.11"
 object = { version = "0.28.1", default-features = false, features = ["elf", "read_core", "std"] }
 rusb = "0.8.0"
-scroll = "0.10.1"
+scroll = "0.11.0"
 serde = { version = "1.0.104", features = ["derive"] }
 serde_yaml = "0.8.11"
 static_assertions = "1.1.0"
