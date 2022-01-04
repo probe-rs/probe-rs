@@ -1,6 +1,7 @@
 use crate::*;
 use anyhow::{anyhow, Result};
 use chrono::Local;
+use clap;
 use num_traits::Zero;
 use probe_rs::Core;
 use probe_rs_rtt::{DownChannel, UpChannel};
@@ -13,7 +14,6 @@ use std::{
     io::{Read, Seek},
     str::FromStr,
 };
-use structopt::StructOpt;
 
 /// Used by serde to provide defaults for `RttConfig`
 fn default_channel_formats() -> Vec<RttChannelConfig> {
@@ -47,7 +47,7 @@ impl Default for DataFormat {
 }
 
 /// The initial configuration for RTT (Real Time Transfer). This configuration is complimented with the additional information specified for each of the channels in `RttChannel`.
-#[derive(StructOpt, Debug, Clone, Deserialize, Default)]
+#[derive(clap::Parser, Debug, Clone, Deserialize, Default)]
 pub struct RttConfig {
     #[structopt(skip)]
     #[serde(default, rename = "rttEnabled")]
@@ -59,7 +59,7 @@ pub struct RttConfig {
 }
 
 /// The User specified configuration for each active RTT Channel. The configuration is passed via a DAP Client configuration (`launch.json`). If no configuration is specified, the defaults will be `Dataformat::String` and `show_timestamps=false`.
-#[derive(StructOpt, Debug, Clone, serde::Deserialize, Default)]
+#[derive(clap::Parser, Debug, Clone, serde::Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct RttChannelConfig {
     pub channel_number: Option<usize>,

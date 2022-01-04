@@ -11,6 +11,8 @@ use std::{
 };
 
 use anyhow::{bail, ensure, Context, Result};
+use clap;
+use clap::Parser;
 use probe_rs::{
     config::{
         Chip, ChipFamily, Core, MemoryRegion, NvmRegion, RamRegion,
@@ -20,21 +22,20 @@ use probe_rs::{
 };
 use probe_rs_target::{ArmCoreAccessOptions, CoreAccessOptions};
 use simplelog::*;
-use structopt::StructOpt;
 
 use parser::extract_flash_algo;
 
-#[derive(StructOpt)]
+#[derive(clap::Parser)]
 enum TargetGen {
     /// Generate target description from ARM CMSIS-Packs
     Pack {
-        #[structopt(
+        #[clap(
             name = "INPUT",
             parse(from_os_str),
             help = "A Pack file or the unziped Pack directory."
         )]
         input: PathBuf,
-        #[structopt(
+        #[clap(
             name = "OUTPUT",
             parse(from_os_str),
             help = "An output directory where all the generated .yaml files are put in."
@@ -43,7 +44,7 @@ enum TargetGen {
     },
     /// Generates all the target descriptions from the entries listed in the ARM root VIDX/PIDX at https://www.keil.com/pack/Keil.pidx.
     Arm {
-        #[structopt(
+        #[clap(
             name = "OUTPUT",
             parse(from_os_str),
             help = "An output directory where all the generated .yaml files are put in."
@@ -53,16 +54,16 @@ enum TargetGen {
     /// Extract a flash algorithm from an ELF file
     Elf {
         /// ELF file containing a flash algorithm
-        #[structopt(parse(from_os_str))]
+        #[clap(parse(from_os_str))]
         elf: PathBuf,
         /// Name of the extracted flash algorithm
-        #[structopt(long = "name", short = "n")]
+        #[clap(long = "name", short = 'n')]
         name: Option<String>,
         /// Update an existing flash algorithm
-        #[structopt(long = "update", short = "u", requires = "output")]
+        #[clap(long = "update", short = 'u', requires = "output")]
         update: bool,
         /// Output file, if provided, the generated target description will be written to this file.
-        #[structopt(parse(from_os_str))]
+        #[clap(parse(from_os_str))]
         output: Option<PathBuf>,
     },
 }
@@ -78,7 +79,7 @@ fn main() -> Result<()> {
         eprintln!("Logging backend could not be initialized.");
     }
 
-    let options = TargetGen::from_args();
+    let options = TargetGen::parse();
 
     match options {
         TargetGen::Pack { input, output_dir } => cmd_pack(&input, &output_dir)?,
