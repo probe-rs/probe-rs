@@ -11,7 +11,6 @@ use std::{
 };
 
 use anyhow::{bail, ensure, Context, Result};
-use clap;
 use clap::Parser;
 use probe_rs::{
     config::{

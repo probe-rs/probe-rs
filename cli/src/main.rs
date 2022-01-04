@@ -13,7 +13,7 @@ use probe_rs::{
 use probe_rs_cli_util::{
     clap,
     clap::Parser,
-    common_options::{CargoOptions, FlashOptions, ProbeOptions},
+    common_options::{print_chip_info, print_families, CargoOptions, FlashOptions, ProbeOptions},
     flash::run_flash_download,
 };
 
@@ -22,8 +22,8 @@ use rustyline::Editor;
 
 use anyhow::{anyhow, Context, Result};
 
-use std::time::Instant;
 use std::{fs::File, path::PathBuf};
+use std::{io, time::Instant};
 use std::{num::ParseIntError, path::Path};
 
 #[derive(clap::StructOpt)]
@@ -128,6 +128,22 @@ enum Cli {
         #[structopt(parse(try_from_str = parse_u32))]
         loc: u32,
     },
+    #[structopt(name = "chip")]
+    #[clap(subcommand)]
+    Chip(Chip),
+}
+
+#[derive(clap::StructOpt)]
+enum Chip {
+    /// Lists all the available families and their chips with their full.
+    #[structopt(name = "list")]
+    List,
+    /// Shows chip properties of a specific chip
+    #[structopt(name = "info")]
+    Info {
+        /// The name of the chip to display.
+        name: String,
+    },
 }
 
 /// Shared options for core selection, shared between commands
@@ -183,6 +199,8 @@ fn main() -> Result<()> {
             common,
             loc,
         } => trace_u32_on_target(&shared, &common, loc),
+        Cli::Chip(Chip::List) => print_families(io::stdout()).map_err(Into::into),
+        Cli::Chip(Chip::Info { name }) => print_chip_info(name, io::stdout()),
     }
 }
 

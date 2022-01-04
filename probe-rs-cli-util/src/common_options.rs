@@ -35,6 +35,7 @@ use crate::ArtifactError;
 
 use std::{fs::File, io::Write, path::Path, path::PathBuf};
 
+use byte_unit::Byte;
 use probe_rs::{
     config::{RegistryError, TargetSelector},
     flashing::{FileDownloadError, FlashError, FlashLoader},
@@ -523,6 +524,45 @@ pub fn print_families(mut f: impl Write) -> Result<(), OperationError> {
         for variant in family.variants() {
             writeln!(f, "        {}", variant.name)?;
         }
+    }
+    Ok(())
+}
+
+/// Print all the available families and their contained chips to the
+/// commandline.
+pub fn print_chip_info(name: impl AsRef<str>, mut f: impl Write) -> anyhow::Result<()> {
+    writeln!(f, "{}", name.as_ref())?;
+    let target = probe_rs::config::get_target_by_name(name)?;
+    writeln!(f, "Cores ({}):", target.cores.len())?;
+    for core in target.cores {
+        writeln!(
+            f,
+            "    - {} ({:?})",
+            core.name.to_ascii_lowercase(),
+            core.core_type
+        )?;
+    }
+    for memory in target.memory_map {
+        match memory {
+            probe_rs::config::MemoryRegion::Ram(region) => writeln!(
+                f,
+                "RAM: {:#010x?} ({})",
+                &region.range,
+                Byte::from_bytes(region.range.len() as u128).get_appropriate_unit(true)
+            )?,
+            probe_rs::config::MemoryRegion::Generic(region) => writeln!(
+                f,
+                "Generic: {:#010x?} ({})",
+                &region.range,
+                Byte::from_bytes(region.range.len() as u128).get_appropriate_unit(true)
+            )?,
+            probe_rs::config::MemoryRegion::Nvm(region) => writeln!(
+                f,
+                "NVM: {:#010x?} ({})",
+                &region.range,
+                Byte::from_bytes(region.range.len() as u128).get_appropriate_unit(true)
+            )?,
+        };
     }
     Ok(())
 }
