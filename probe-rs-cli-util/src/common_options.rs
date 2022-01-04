@@ -4,10 +4,10 @@
 //!
 //! Example usage:
 //! ```no_run
-//! use structopt::StructOpt;
+//! use clap::Parser;
 //! use probe_rs_cli_util::common_options::FlashOptions;
 //!
-//! #[derive(StructOpt)]
+//! #[derive(clap::Parser)]
 //! struct Opts {
 //!     #[structopt(long = "some-opt")]
 //!     opt: String,
@@ -329,7 +329,7 @@ impl CargoOptions {
     /// --help. Example usage:
     /// ```no_run
     /// use probe_rs_cli_util::common_options::{FlashOptions, CargoOptions};
-    /// use probe_rs_cli_util::structopt::StructOpt;
+    /// use probe_rs_cli_util::clap::Parser;
     ///
     /// let matches = FlashOptions::clap()
     ///     .bin_name("cargo flash")
