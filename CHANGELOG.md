@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Bits[23:16] FAULTMASK.
   - Bits[15:8]  BASEPRI.
   - Bits[7:0]   PRIMASK.
+- Debug port start sequence for LPC55S16 (#944)
 
 ### Fixed
 
