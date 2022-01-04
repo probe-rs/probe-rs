@@ -11,14 +11,14 @@ use probe_rs::{
 };
 
 use probe_rs_cli_util::{
+    clap,
+    clap::Parser,
     common_options::{CargoOptions, FlashOptions, ProbeOptions},
     flash::run_flash_download,
 };
 
 use capstone::{arch::arm::ArchMode, prelude::*, Capstone, Endian};
-use clap::arg_enum;
 use rustyline::Editor;
-use structopt::StructOpt;
 
 use anyhow::{anyhow, Context, Result};
 
@@ -26,7 +26,7 @@ use std::time::Instant;
 use std::{fs::File, path::PathBuf};
 use std::{num::ParseIntError, path::Path};
 
-#[derive(StructOpt)]
+#[derive(clap::StructOpt)]
 #[structopt(
     name = "Probe-rs CLI",
     about = "A CLI for on top of the debug probe capabilities provided by probe-rs",
@@ -89,12 +89,7 @@ enum Cli {
         common: ProbeOptions,
 
         /// Format of the file to be downloaded to the flash. Possible values are case-insensitive.
-        #[structopt(
-            possible_values = &DownloadFileType::variants(),
-            case_insensitive = true,
-            default_value = "elf",
-            long
-        )]
+        #[clap(arg_enum, ignore_case = true, default_value = "elf", long)]
         format: DownloadFileType,
 
         /// The address in memory where the binary will be put at. This is only considered when `bin` is selected as the format.
@@ -136,7 +131,7 @@ enum Cli {
 }
 
 /// Shared options for core selection, shared between commands
-#[derive(StructOpt)]
+#[derive(clap::StructOpt)]
 struct CoreOptions {
     #[structopt(long, default_value = "0")]
     core: usize,
@@ -146,7 +141,7 @@ fn main() -> Result<()> {
     // Initialize the logging backend.
     pretty_env_logger::init();
 
-    let matches = Cli::from_args();
+    let matches = Cli::parse();
 
     match matches {
         Cli::List {} => list_connected_devices(),
@@ -414,13 +409,11 @@ fn debug(shared_options: &CoreOptions, common: &ProbeOptions, exe: Option<PathBu
     Ok(())
 }
 
-arg_enum! {
-    #[derive(Debug, Clone, Copy)]
-    enum DownloadFileType {
-        Elf,
-        Hex,
-        Bin,
-    }
+#[derive(clap::ArgEnum, Debug, Clone, Copy)]
+enum DownloadFileType {
+    Elf,
+    Hex,
+    Bin,
 }
 
 impl DownloadFileType {
