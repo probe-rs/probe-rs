@@ -37,6 +37,7 @@ use crate::{backtrace::Outcome, canary::Canary, elf::Elf, target_info::TargetInf
 const TIMEOUT: Duration = Duration::from_secs(1);
 
 fn main() -> anyhow::Result<()> {
+    #[allow(clippy::redundant_closure)]
     cli::handle_arguments().map(|code| process::exit(code))
 }
 
