@@ -27,15 +27,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "ansi_term"
-version = "0.11.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ee49baf6cb617b853aa8d93bf420db2383fab46d314482ca2803b40d5fde979b"
-dependencies = [
- "winapi",
-]
-
-[[package]]
 name = "anyhow"
 version = "1.0.52"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -259,6 +250,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d9df67f7bf9ef8498769f994239c45613ef0c5899415fb58e9add412d2c1a538"
 
 [[package]]
+name = "byte-unit"
+version = "4.0.13"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "956ffc5b0ec7d7a6949e3f21fd63ba5af4cffdc2ba1e0b7bf62b481458c4ae7f"
+dependencies = [
+ "utf8-width",
+]
+
+[[package]]
 name = "byteorder"
 version = "1.4.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -291,6 +291,7 @@ version = "0.12.0"
 dependencies = [
  "anyhow",
  "chrono",
+ "clap",
  "colored",
  "crossterm 0.22.1",
  "defmt-decoder",
@@ -306,8 +307,7 @@ dependencies = [
  "probe-rs-rtt",
  "serde",
  "serde_json",
- "structopt",
- "textwrap 0.14.2",
+ "textwrap",
  "tui",
 ]
 
@@ -378,17 +378,32 @@ dependencies = [
 
 [[package]]
 name = "clap"
-version = "2.33.3"
+version = "3.0.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "37e58ac78573c40708d45522f0d80fa2f01cc4f9b4e2bf749807255454312002"
+checksum = "d01c9347757e131122b19cd19a05c85805b68c2352a97b623efdc3c295290299"
 dependencies = [
- "ansi_term",
  "atty",
  "bitflags",
+ "clap_derive",
+ "indexmap",
+ "lazy_static",
+ "os_str_bytes",
  "strsim",
- "textwrap 0.11.0",
- "unicode-width",
- "vec_map",
+ "termcolor",
+ "textwrap",
+]
+
+[[package]]
+name = "clap_derive"
+version = "3.0.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "448c8b00367288ad41804ac7a9e0fe58f2324a36901cb5d6b6db58be86d1db8f"
+dependencies = [
+ "heck",
+ "proc-macro-error",
+ "proc-macro2",
+ "quote",
+ "syn",
 ]
 
 [[package]]
@@ -798,7 +813,7 @@ dependencies = [
 [[package]]
 name = "gdb-server"
 version = "0.12.0"
-source = "git+https://github.com/probe-rs/probe-rs#451d9da11924fdd55f1faa5364ee2f2dae1b7254"
+source = "git+https://github.com/probe-rs/probe-rs#0b057449e2455f0b55aeac0be8e6807622e434c1"
 dependencies = [
  "anyhow",
  "async-std",
@@ -881,7 +896,7 @@ checksum = "32401e89c6446dcd28185931a01b1093726d0356820ac744023e6850689bf926"
 dependencies = [
  "log",
  "plain",
- "scroll",
+ "scroll 0.10.2",
 ]
 
 [[package]]
@@ -911,12 +926,9 @@ checksum = "ab5ef0d4909ef3724cc8cce6ccc8572c5c817592e9285f5464f8e86f8bd3726e"
 
 [[package]]
 name = "heck"
-version = "0.3.3"
+version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6d621efb26863f0e9924c6ac577e8275e5e6b77455db64ffa6c65c904e9e132c"
-dependencies = [
- "unicode-segmentation",
-]
+checksum = "2540771e65fc8cb83cd6e8a237f70c319bd5c29f78ed1084ba5d50eeac86f7f9"
 
 [[package]]
 name = "hermit-abi"
@@ -1359,6 +1371,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "object"
+version = "0.28.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7ce8b38d41f9f3618fc23f908faae61510f8d8ce2d99cbe910641e8f1971f084"
+dependencies = [
+ "memchr",
+]
+
+[[package]]
 name = "once_cell"
 version = "1.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1395,6 +1416,15 @@ dependencies = [
  "libc",
  "pkg-config",
  "vcpkg",
+]
+
+[[package]]
+name = "os_str_bytes"
+version = "6.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8e22443d1643a904602595ba1cd8f7d896afe56d26712531c5ff73a15b2fbf64"
+dependencies = [
+ "memchr",
 ]
 
 [[package]]
@@ -1503,7 +1533,7 @@ checksum = "ac74c624d6b2d21f425f752262f42188365d7b8ff1aff74c82e45136510a4857"
 [[package]]
 name = "probe-rs"
 version = "0.12.0"
-source = "git+https://github.com/probe-rs/probe-rs#451d9da11924fdd55f1faa5364ee2f2dae1b7254"
+source = "git+https://github.com/probe-rs/probe-rs#0b057449e2455f0b55aeac0be8e6807622e434c1"
 dependencies = [
  "anyhow",
  "base64",
@@ -1519,11 +1549,11 @@ dependencies = [
  "libftdi1-sys",
  "log",
  "num-traits",
- "object 0.27.1",
+ "object 0.28.1",
  "once_cell",
  "probe-rs-target",
  "rusb",
- "scroll",
+ "scroll 0.11.0",
  "serde",
  "serde_yaml",
  "static_assertions",
@@ -1535,11 +1565,13 @@ dependencies = [
 [[package]]
 name = "probe-rs-cli-util"
 version = "0.12.0"
-source = "git+https://github.com/probe-rs/probe-rs#451d9da11924fdd55f1faa5364ee2f2dae1b7254"
+source = "git+https://github.com/probe-rs/probe-rs#0b057449e2455f0b55aeac0be8e6807622e434c1"
 dependencies = [
  "anyhow",
+ "byte-unit",
  "cargo_metadata",
  "cargo_toml",
+ "clap",
  "colored",
  "dunce",
  "env_logger",
@@ -1550,7 +1582,6 @@ dependencies = [
  "sentry",
  "serde",
  "simplelog",
- "structopt",
  "terminal_size",
  "thiserror",
 ]
@@ -1558,18 +1589,18 @@ dependencies = [
 [[package]]
 name = "probe-rs-rtt"
 version = "0.12.0"
-source = "git+https://github.com/probe-rs/probe-rs#451d9da11924fdd55f1faa5364ee2f2dae1b7254"
+source = "git+https://github.com/probe-rs/probe-rs#0b057449e2455f0b55aeac0be8e6807622e434c1"
 dependencies = [
  "log",
  "probe-rs",
- "scroll",
+ "scroll 0.10.2",
  "thiserror",
 ]
 
 [[package]]
 name = "probe-rs-target"
 version = "0.12.0"
-source = "git+https://github.com/probe-rs/probe-rs#451d9da11924fdd55f1faa5364ee2f2dae1b7254"
+source = "git+https://github.com/probe-rs/probe-rs#0b057449e2455f0b55aeac0be8e6807622e434c1"
 dependencies = [
  "base64",
  "jep106",
@@ -1814,6 +1845,12 @@ checksum = "fda28d4b4830b807a8b43f7b0e6b5df875311b3e7621d84577188c175b6ec1ec"
 dependencies = [
  "scroll_derive",
 ]
+
+[[package]]
+name = "scroll"
+version = "0.11.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "04c565b551bafbef4157586fa379538366e4385d42082f255bfd96e4fe8519da"
 
 [[package]]
 name = "scroll_derive"
@@ -2089,33 +2126,9 @@ checksum = "a2eb9349b6444b326872e140eb1cf5e7c522154d69e7a0ffb0fb81c06b37543f"
 
 [[package]]
 name = "strsim"
-version = "0.8.0"
+version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8ea5119cdb4c55b55d432abb513a0429384878c15dde60cc77b1c99de1a95a6a"
-
-[[package]]
-name = "structopt"
-version = "0.3.25"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "40b9788f4202aa75c240ecc9c15c65185e6a39ccdeb0fd5d008b98825464c87c"
-dependencies = [
- "clap",
- "lazy_static",
- "structopt-derive",
-]
-
-[[package]]
-name = "structopt-derive"
-version = "0.4.18"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dcb5ae327f9cc13b68763b5749770cb9e048a99bd9dfdfa58d0cf05d5f64afe0"
-dependencies = [
- "heck",
- "proc-macro-error",
- "proc-macro2",
- "quote",
- "syn",
-]
+checksum = "73473c0e59e6d5812c5dfe2a064a6444949f089e20eec9a2e5506596494e4623"
 
 [[package]]
 name = "svg"
@@ -2171,15 +2184,6 @@ checksum = "633c1a546cee861a1a6d0dc69ebeca693bf4296661ba7852b9d21d159e0506df"
 dependencies = [
  "libc",
  "winapi",
-]
-
-[[package]]
-name = "textwrap"
-version = "0.11.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d326610f408c7a4eb6f51c37c330e496b08506c9457c9d34287ecc38809fb060"
-dependencies = [
- "unicode-width",
 ]
 
 [[package]]
@@ -2412,6 +2416,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "utf8-width"
+version = "0.1.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7cf7d77f457ef8dfa11e4cd5933c5ddb5dc52a94664071951219a97710f0a32b"
+
+[[package]]
 name = "uuid"
 version = "0.8.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2436,12 +2446,6 @@ name = "vcpkg"
 version = "0.2.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "accd4ea62f7bb7a82fe23066fb0957d48ef677f6eeb8215f372f52e48bb32426"
-
-[[package]]
-name = "vec_map"
-version = "0.8.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f1bddf1187be692e79c5ffeab891132dfb0f236ed36a43c7ed39f1165ee20191"
 
 [[package]]
 name = "version_check"
