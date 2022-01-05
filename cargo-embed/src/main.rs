@@ -4,6 +4,7 @@ mod rttui;
 
 use anyhow::{anyhow, Context, Result};
 use chrono::Local;
+use clap::Parser;
 use colored::*;
 use std::{
     env, fs,
@@ -15,7 +16,6 @@ use std::{
     sync::{Arc, Mutex},
     time::{Duration, Instant},
 };
-use structopt::StructOpt;
 
 use probe_rs::{
     config::TargetSelector,
@@ -50,9 +50,9 @@ const CARGO_NAME: &str = env!("CARGO_PKG_NAME");
 const CARGO_VERSION: &str = env!("CARGO_PKG_VERSION");
 const GIT_VERSION: &str = git_version::git_version!(fallback = "crates.io");
 
-#[derive(Debug, StructOpt)]
+#[derive(Debug, clap::StructOpt)]
 struct Opt {
-    #[structopt(short = "V", long = "version")]
+    #[structopt(short = 'V', long = "version")]
     pub version: bool,
     #[structopt(name = "config")]
     config: Option<String>,
@@ -138,7 +138,7 @@ fn main_try() -> Result<()> {
     let mut args: Vec<_> = args.collect();
 
     // Get commandline options.
-    let opt = Opt::from_iter(&args);
+    let opt = Opt::parse_from(&args);
 
     if opt.version {
         println!(
