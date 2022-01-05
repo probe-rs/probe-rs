@@ -1,7 +1,6 @@
 use probe_rs::{config::TargetSelector, DebugProbeInfo, Probe};
 use probe_rs_rtt::{Channels, Rtt, RttChannel, ScanRegion};
 
-use clap;
 use clap::Parser;
 use std::io::prelude::*;
 use std::io::{stdin, stdout};

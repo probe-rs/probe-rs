@@ -32,3 +32,4 @@ sentry = { version = "0.23.0", features = ["anyhow"], optional = true }
 simplelog = "0.11.0"
 terminal_size = "0.1.13"
 clap = { version = "3.0", features = ["derive"] }
+byte-unit = "4.0.13"

@@ -5,7 +5,6 @@ use crate::{dap_types::*, rtt::*};
 use crate::DebuggerError;
 use anyhow::{anyhow, Context, Result};
 use capstone::{arch::arm::ArchMode, prelude::*, Capstone, Endian};
-use clap;
 use probe_rs::debug::DebugInfo;
 use probe_rs::flashing::{
     download_file, download_file_with_options, DownloadOptions, FlashProgress, Format,

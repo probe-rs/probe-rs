@@ -1,7 +1,6 @@
 use crate::*;
 use anyhow::{anyhow, Result};
 use chrono::Local;
-use clap;
 use num_traits::Zero;
 use probe_rs::Core;
 use probe_rs_rtt::{DownChannel, UpChannel};
