@@ -909,6 +909,14 @@ impl Debugger {
                     debug_adapter.supports_progress_reporting = progress_support;
                 }
 
+                if let Some(lines_start_at_1) = initialize_arguments.lines_start_at_1 {
+                    debug_adapter.lines_start_at_1 = lines_start_at_1;
+                }
+
+                if let Some(columns_start_at_1) = initialize_arguments.columns_start_at_1 {
+                    debug_adapter.columns_start_at_1 = columns_start_at_1;
+                }
+
                 // Reply to Initialize with `Capabilities`.
                 let capabilities = Capabilities {
                     supports_configuration_done_request: Some(true),

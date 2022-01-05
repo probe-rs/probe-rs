@@ -9,7 +9,6 @@ use std::{
     convert::TryInto,
     fmt,
 };
-use thousands::Separable;
 
 /// VariableCache stores every available `Variable`, and provides methods to create and navigate the parent-child relationships of the Variables.
 /// There should be ONLY ONE `VariableCache` per `DebugInfo`. Because of the multiple ways in which it is updated, all references to `VariableCache` are *immutable*, and can only be updated through its methods, which provide *interior mutability"
@@ -105,15 +104,16 @@ impl VariableCache {
         // This requires distinct steps to ensure we don't get `borrow` conflicts on the variable cache.
         if let Some(mut stored_variable) = self.get_variable_by_key(stored_key) {
             stored_variable.extract_value(core, self);
-            self.variable_hash_map
+            if self
+                .variable_hash_map
                 .borrow_mut()
-                .insert(stored_variable.variable_key, stored_variable)
-                .ok_or(
-                    anyhow!(
-                "Failed to store variable at variable_cache_key: {}. Please report this as a bug.",
-                stored_key)
-                    .into(),
-                )
+                .insert(stored_variable.variable_key, stored_variable.clone())
+                .is_none()
+            {
+                Err(anyhow!("Failed to store variable at variable_cache_key: {}. Please report this as a bug.", stored_key).into())
+            } else {
+                Ok(stored_variable)
+            }
         } else {
             Err(anyhow!(
                 "Failed to store variable at variable_cache_key: {}. Please report this as a bug.",
@@ -203,16 +203,28 @@ impl VariableCache {
             .cloned()
             .collect();
         for child in children {
-            self.variable_hash_map
+            if self
+                .variable_hash_map
                 .borrow_mut()
-                .remove(&child.variable_key);
+                .remove(&child.variable_key)
+                .is_none()
+            {
+                return Err(anyhow!("Failed to remove a `VariableCache` entry with key: {}. Please report this as a bug.", child.variable_key).into());
+            };
         }
         Ok(())
     }
     /// Removing an entry from the `VariableCache` will recursively remove all its children
     pub fn remove_cache_entry(&self, variable_key: i64) -> Result<(), Error> {
         self.remove_cache_entry_children(variable_key)?;
-        self.variable_hash_map.borrow_mut().remove(&variable_key);
+        if self
+            .variable_hash_map
+            .borrow_mut()
+            .remove(&variable_key)
+            .is_none()
+        {
+            return Err(anyhow!("Failed to remove a `VariableCache` entry with key: {}. Please report this as a bug.", variable_key).into());
+        };
         Ok(())
     }
 }
@@ -459,7 +471,7 @@ impl Variable {
                         format!("{:?}", self)
                     } else if self.type_name.is_empty() || self.memory_location.is_zero() {
                         // Intermediate nodes from DWARF. These should not show up in the final `VariableCache`
-                        "ERROR: This is a bug! Attempted to evaluate a Variable with no type or no memory location5".to_string()
+                        "ERROR: This is a bug! Attempted to evaluate a Variable with no type or no memory location".to_string()
                     } else {
                         format!(
                             "UNIMPLEMENTED: Evaluate type {} of ({} bytes) at location 0x{:08x}",
@@ -515,56 +527,32 @@ impl Variable {
                 .map_or_else(|err| format!("ERROR: {:?}", err), |value| value),
             "i8" => i8::get_value(self, core, variable_cache)
                 .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.to_string()),
-            "i16" => i16::get_value(self, core, variable_cache).map_or_else(
-                |err| format!("ERROR: {:?}", err),
-                |value| value.separate_with_underscores(),
-            ),
-            "i32" => i32::get_value(self, core, variable_cache).map_or_else(
-                |err| format!("ERROR: {:?}", err),
-                |value| value.separate_with_underscores(),
-            ),
-            "i64" => i64::get_value(self, core, variable_cache).map_or_else(
-                |err| format!("ERROR: {:?}", err),
-                |value| value.separate_with_underscores(),
-            ),
-            "i128" => i128::get_value(self, core, variable_cache).map_or_else(
-                |err| format!("ERROR: {:?}", err),
-                |value| value.separate_with_underscores(),
-            ),
-            "isize" => isize::get_value(self, core, variable_cache).map_or_else(
-                |err| format!("ERROR: {:?}", err),
-                |value| value.separate_with_underscores(),
-            ),
+            "i16" => i16::get_value(self, core, variable_cache)
+                .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.to_string()),
+            "i32" => i32::get_value(self, core, variable_cache)
+                .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.to_string()),
+            "i64" => i64::get_value(self, core, variable_cache)
+                .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.to_string()),
+            "i128" => i128::get_value(self, core, variable_cache)
+                .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.to_string()),
+            "isize" => isize::get_value(self, core, variable_cache)
+                .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.to_string()),
             "u8" => u8::get_value(self, core, variable_cache)
                 .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.to_string()),
-            "u16" => u16::get_value(self, core, variable_cache).map_or_else(
-                |err| format!("ERROR: {:?}", err),
-                |value| value.separate_with_underscores(),
-            ),
-            "u32" => u32::get_value(self, core, variable_cache).map_or_else(
-                |err| format!("ERROR: {:?}", err),
-                |value| value.separate_with_underscores(),
-            ),
-            "u64" => u64::get_value(self, core, variable_cache).map_or_else(
-                |err| format!("ERROR: {:?}", err),
-                |value| value.separate_with_underscores(),
-            ),
-            "u128" => u128::get_value(self, core, variable_cache).map_or_else(
-                |err| format!("ERROR: {:?}", err),
-                |value| value.separate_with_underscores(),
-            ),
-            "usize" => usize::get_value(self, core, variable_cache).map_or_else(
-                |err| format!("ERROR: {:?}", err),
-                |value| value.separate_with_underscores(),
-            ),
-            "f32" => f32::get_value(self, core, variable_cache).map_or_else(
-                |err| format!("ERROR: {:?}", err),
-                |value| value.separate_with_underscores(),
-            ),
-            "f64" => f64::get_value(self, core, variable_cache).map_or_else(
-                |err| format!("ERROR: {:?}", err),
-                |value| value.separate_with_underscores(),
-            ),
+            "u16" => u16::get_value(self, core, variable_cache)
+                .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.to_string()),
+            "u32" => u32::get_value(self, core, variable_cache)
+                .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.to_string()),
+            "u64" => u64::get_value(self, core, variable_cache)
+                .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.to_string()),
+            "u128" => u128::get_value(self, core, variable_cache)
+                .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.to_string()),
+            "usize" => usize::get_value(self, core, variable_cache)
+                .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.to_string()),
+            "f32" => f32::get_value(self, core, variable_cache)
+                .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.to_string()),
+            "f64" => f64::get_value(self, core, variable_cache)
+                .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.to_string()),
             "None" => "None".to_string(),
             _undetermined_value => "".to_owned(),
         };

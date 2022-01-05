@@ -360,7 +360,7 @@ impl<'debuginfo, 'probe, 'core> Iterator for StackFrameIterator<'debuginfo, 'pro
         let frame_pc = if let Some(frame_pc) = self.unwind_registers.get_program_counter() {
             frame_pc as u64
         } else {
-            log::error!(
+            log::debug!(
                 "UNWIND: No available PC (program counter). Cannot continue stack unwinding."
             );
             return None;
@@ -496,46 +496,7 @@ impl<'debuginfo, 'probe, 'core> Iterator for StackFrameIterator<'debuginfo, 'pro
                 );
 
                     // PART 2-a: get the `gimli::FrameDescriptorEntry` for this address
-                    // TODO: We are currently ignoring special instructions in the CIE. Not sure which of those are relevant for RUST.
                     use gimli::UnwindSection;
-                    // TODO: Remove exploratory code in this block
-                    // match self.debug_info.frame_section.fde_for_address(
-                    //     &self.unwind_bases,
-                    //     frame_pc,
-                    //     gimli::DebugFrame::cie_from_offset,
-                    // ) {
-                    //     Ok(callee_fde) => {
-                    //         let cie = callee_fde.cie();
-                    //         println!("{:?}", cie.return_address_register());
-                    //         println!("");
-                    //         let mut frame_base = frame_pc;
-                    //         if let Ok(mut table) = callee_fde.rows(
-                    //             &self.debug_info.frame_section,
-                    //             &self.unwind_bases,
-                    //             &mut self.unwind_context,
-                    //         ) {
-                    //             while let Ok(Some(unwind_table_row)) = table.next_row() {
-                    //                 // Find the starting address of the first FDE that contains frame_pc
-                    //                 // if unwind_table_row.contains(frame_pc) {
-                    //                 //     frame_base = unwind_table_row.start_address();
-                    //                 //     break;
-                    //                 // }
-                    //                 println!(
-                    //                     "From 0x{:04X} to 0x{:04X}: CFARule - {:?}",
-                    //                     unwind_table_row.start_address(),
-                    //                     unwind_table_row.end_address(),
-                    //                     unwind_table_row.cfa()
-                    //                 );
-                    //                 // let mut registers = unwind_table_row.registers();
-                    //                 // while let Some(register_rule) = registers.next() {
-                    //                 //     println!("\tRegisterRule = {:?}", register_rule);
-                    //                 // }
-                    //             }
-                    //         }
-                    //         // frame_base
-                    //     }
-                    //     Err(_) => {}
-                    // };
                     match self.debug_info.frame_section.unwind_info_for_address(
                         &self.unwind_bases,
                         &mut self.unwind_context,
@@ -1724,9 +1685,8 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                     }
                 },
                 gimli::DW_AT_alignment => {
-                    // TODO: Implement this.
+                    // TODO: Figure out when (if at all) we need to do anything with DW_AT_alignment for the purposes of decoding data values.
                 }
-                // TODO: Figure out when (if at all) we need to do anything with DW_AT_alignment for the purposes of decoding data values.
                 gimli::DW_AT_artificial => {
                     // These are references for entries like discriminant values of `VariantParts`.
                     child_variable.name = "<artificial>".to_string();
@@ -1796,7 +1756,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                     // TODO: Implement globally visible variables.
                 }
                 gimli::DW_AT_declaration => {
-                    // Unimplemented. Setting this value ensure we do not add such variables to the variable tree.
+                    // Unimplemented.
                 }
                 gimli::DW_AT_encoding => {
                     // Ignore these. RUST data types handle this intrinsicly.
@@ -1912,8 +1872,10 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                     Some(child_node.entry().offset()),
                 ), core)?;
                     child_variable = self.process_tree_node_attributes(&mut child_node, &mut parent_variable, child_variable, core, stackframe_registers)?;
-                    // Do not keep or process PhantomData nodes.
-                    if child_variable.type_name.starts_with("PhantomData") {
+                    // Do not keep or process PhantomData nodes, or variant parts that we have already used.
+                    if child_variable.type_name.starts_with("PhantomData") 
+                        ||  child_variable.name == "<artificial>"
+                    {
                         self.debug_info.variable_cache.remove_cache_entry(child_variable.variable_key)?;
                     } else {
                         // Recursively process each child.
@@ -1929,15 +1891,17 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                     //          Level 3: --> Some DW_TAG_variant's that have discriminant values to be matched against the discriminant 
                     //              Level 4: --> The actual variables, with matching discriminant, which will be added to `parent_variable`
                     // TODO: Handle Level 3 nodes that belong to a DW_AT_discr_list, instead of having a discreet DW_AT_discr_value 
-                    let mut child_variable = self.debug_info.variable_cache.cache_variable(parent_variable.variable_key, Variable::new(
-                    self.unit.header.offset().as_debug_info_offset(),
-                    Some(child_node.entry().offset()),
-                ), core)?;
+                    let mut child_variable = self.debug_info.variable_cache.cache_variable(
+                        parent_variable.variable_key,
+                        Variable::new(self.unit.header.offset().as_debug_info_offset(),Some(child_node.entry().offset())),
+                        core
+                    )?;
                     // If there is a child with DW_AT_discr, the variable role will updated appropriately, otherwise we use 0 as the default ...
                     parent_variable.role = VariantRole::VariantPart(0);
                     child_variable = self.process_tree_node_attributes(&mut child_node, &mut parent_variable, child_variable, core, stackframe_registers)?;
-                    // Pass it along through intermediate nodes.
+                    // Pass some key values through intermediate nodes to valid desccendants.
                     child_variable.role = parent_variable.role.clone();
+                    child_variable.memory_location = parent_variable.memory_location;                    
                     // Recursively process each child.
                     child_variable = self.process_tree(child_node, child_variable, core, stackframe_registers)?;
                     // Eliminate intermediate DWARF nodes, but keep their children
@@ -1945,23 +1909,26 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                 }
                 gimli::DW_TAG_variant // variant is a child of a structure, and one of them should have a discriminant value to match the DW_TAG_variant_part 
                 => {
-                    let mut child_variable = self.debug_info.variable_cache.cache_variable(parent_variable.variable_key,Variable::new(
-                    self.unit.header.offset().as_debug_info_offset(),
-                    Some(child_node.entry().offset()),
-                ), core)?;
+                    let mut child_variable = self.debug_info.variable_cache.cache_variable(
+                        parent_variable.variable_key,
+                        Variable::new(self.unit.header.offset().as_debug_info_offset(), Some(child_node.entry().offset())),
+                        core
+                    )?;
                     // We need to do this here, to identify "default" variants for when the rust lang compiler doesn't encode them explicitly ... only by absence of a DW_AT_discr_value
                     self.extract_variant_discriminant(&child_node, &mut child_variable)?;
                     child_variable = self.process_tree_node_attributes(&mut child_node, &mut parent_variable, child_variable, core, stackframe_registers)?;
                     if let VariantRole::Variant(discriminant) = child_variable.role {
                         // Only process the discriminant variants.
                         if parent_variable.role == VariantRole::VariantPart(discriminant) {
+                            // Pass some key values through intermediate nodes to valid desccendants.
+                            child_variable.memory_location = parent_variable.memory_location;
                             // Recursively process each child.// Recursively process each relevant child.
                             child_variable = self.process_tree(child_node, child_variable, core, stackframe_registers)?;
                             // Eliminate intermediate DWARF nodes, but keep their children
                             self.debug_info.variable_cache.adopt_grand_children(&parent_variable, &child_variable)?;
+                        } else {
+                            self.debug_info.variable_cache.remove_cache_entry(child_variable.variable_key)?;
                         }
-                    } else {
-                        self.debug_info.variable_cache.remove_cache_entry(child_variable.variable_key)?;
                     }
                 }
                 gimli::DW_TAG_subrange_type => {
@@ -2057,8 +2024,6 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                         // This is IN scope.
                         // Recursively process each child, but pass the parent_variable, so that we don't create intermediate nodes for scope identifiers.
                         parent_variable = self.process_tree(child_node, parent_variable, core, stackframe_registers)?;
-                    } else {
-                        // Out of scope .
                     }
                 }
                 other => {
@@ -2111,6 +2076,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                         }
                         None => {
                             // In the case where the variable is a DW_TAG_variant, but has NO DW_AT_discr_value, then this is the "default" to be used.
+                            // TODO: Acctually, the RUST implementation sometimes puts a DW_AT_discr_value for the first variant, and then assumes implicit "+1" values for the additional DW_TAG_variant's.
                             VariantRole::Variant(0)
                         }
                     }
@@ -2149,21 +2115,12 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                 format!("ERROR: evaluating name: {:?} ", error)
             }
         };
-
-        let _die_offset = child_variable.header_offset.unwrap_or(DebugInfoOffset(0)).0
-            + child_variable.entries_offset.unwrap_or(UnitOffset(0)).0;
-        // log::debug!(
-        //     "0x{:08x}:\t{}:\t\t{}",
-        //     child_variable.memory_location, //die_offset
-        //     child_variable.type_name,
-        //     child_variable.name,
-        // );
         child_variable.byte_size = extract_byte_size(self.debug_info, node.entry());
         match node.entry().tag() {
             gimli::DW_TAG_base_type => {
                 if let Some(child_member_index) = child_variable.member_index {
                     // This is a member of an array type, and needs special handling.
-                    let (location, has_overflowed) = child_variable
+                    let (location, has_overflowed) = parent_variable
                         .memory_location
                         .overflowing_add(child_member_index as u64 * child_variable.byte_size);
 
@@ -2211,20 +2168,8 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                                 core,
                                             )?;
 
-                                        referenced_variable.name = match node
-                                            .entry()
-                                            .attr(gimli::DW_AT_name)
-                                        {
-                                            Ok(optional_name_attr) => match optional_name_attr {
-                                                Some(name_attr) => {
-                                                    extract_name(self.debug_info, name_attr.value())
-                                                }
-                                                None => "".to_owned(),
-                                            },
-                                            Err(error) => {
-                                                format!("ERROR: evaluating name: {:?} ", error)
-                                            }
-                                        };
+                                        referenced_variable.name =
+                                            format!("*{}", child_variable.name);
                                         // Now, retrieve the location by reading the adddress pointed to by the parent variable.
                                         let mut buff = [0u8; 4];
                                         core.read(
@@ -2242,12 +2187,9 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                             stackframe_registers,
                                         )?;
                                         // Only use this, if it is NOT a unit datatype.
-                                        if !referenced_variable.type_name.eq("()") {
-                                            // Now add the referenced_variable as a child.
-                                            self.debug_info.variable_cache.cache_variable(
-                                                child_variable.variable_key,
-                                                referenced_variable,
-                                                core,
+                                        if referenced_variable.type_name.eq("()") {
+                                            self.debug_info.variable_cache.remove_cache_entry(
+                                                referenced_variable.variable_key
                                             )?;
                                         }
                                     }
@@ -2407,17 +2349,12 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                                 format!("__{}", array_member_index);
                                             array_member_variable.source_location =
                                                 child_variable.source_location.clone();
-                                            array_member_variable = self.extract_type(
+                                            self.extract_type(
                                                 array_member_type_node,
                                                 &child_variable,
                                                 array_member_variable,
                                                 core,
                                                 stackframe_registers,
-                                            )?;
-                                            self.debug_info.variable_cache.cache_variable(
-                                                array_member_variable.variable_key,
-                                                array_member_variable,
-                                                core,
                                             )?;
                                         }
                                     }
@@ -2649,20 +2586,17 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                 gimli::DW_AT_address_class => {
                     match attr.value() {
                         gimli::AttributeValue::AddressClass(address_class) => {
-                            if address_class == gimli::DwAddr(0) {
-                                // If the `memory_location` is still 0 at this time, then we inherit from the parent.
-                                if child_variable.memory_location.is_zero()
-                                    && !(parent_variable.memory_location.is_zero()
-                                        || parent_variable.memory_location == u64::MAX)
-                                {
-                                    child_variable.memory_location =
-                                        parent_variable.memory_location;
-                                }
+                            // Nothing to do in this case where it is zero
+                            if address_class != gimli::DwAddr(0) {
+                                child_variable.set_value(format!(
+                                    "UNIMPLEMENTED: extract_location() found unsupported DW_AT_address_class(gimli::DwAddr({:?}))",
+                                    address_class
+                                ));
                             }
                         }
                         other_attribute_value => {
                             child_variable.set_value(format!(
-                                "UNIMPLEMENTED: extract_location() found a DW_AT_address_class: {:?}",
+                                "UNIMPLEMENTED: extract_location() found invalid DW_AT_address_class: {:?}",
                                 other_attribute_value
                             ));
                         }
@@ -2672,6 +2606,13 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                     // These will be handled elsewhere.
                 }
             }
+        }
+        // If the `memory_location` is still 0 at this time, then we inherit from the parent.
+        if child_variable.memory_location.is_zero()
+            && !(parent_variable.memory_location.is_zero()
+                || parent_variable.memory_location == u64::MAX)
+        {
+            child_variable.memory_location = parent_variable.memory_location;
         }
         self.debug_info
             .variable_cache

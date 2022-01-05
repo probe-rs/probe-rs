@@ -3,6 +3,7 @@ use crate::DebuggerError;
 use crate::{dap_types, rtt::DataFormat};
 use anyhow::{anyhow, Result};
 use dap_types::*;
+use num_traits::Zero;
 use parse_int::parse;
 use probe_rs::debug::DebugInfo;
 use probe_rs::{debug::ColumnType, CoreStatus, HaltReason, MemoryInterface};
@@ -37,6 +38,9 @@ pub struct DebugAdapter<P: ProtocolAdapter> {
     progress_id: ProgressId,
     /// Flag to indicate if the connected client supports progress reporting.
     pub(crate) supports_progress_reporting: bool,
+    /// Flags to improve breakpoint accuracy
+    pub(crate) lines_start_at_1: bool,
+    pub(crate) columns_start_at_1: bool,
     adapter: P,
 }
 
@@ -47,6 +51,8 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             halt_after_reset: false,
             progress_id: 0,
             supports_progress_reporting: false,
+            lines_start_at_1: true,
+            columns_start_at_1: false,
             adapter,
         }
     }
@@ -501,13 +507,26 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
 
         if let Some(requested_breakpoints) = args.breakpoints.as_ref() {
             for bp in requested_breakpoints {
-                // Try to find source code location
+                // Some overrides to improve breakpoint accuracy when `DebugInfo::get_breakpoint_location()` has to select the best from multiple options
+                let breakpoint_line = if self.lines_start_at_1 && bp.line.is_zero() {
+                    1
+                } else {
+                    bp.line as u64
+                };
+                let breakpoint_column = if self.columns_start_at_1
+                    && (bp.column.is_none() || bp.column.unwrap_or(0) == 0)
+                {
+                    Some(1)
+                } else {
+                    bp.column.map(|c| c as u64)
+                };
 
+                // Try to find source code location
                 let source_location: Option<u64> = core_data.debug_info.as_ref().and_then(|di| {
                     di.get_breakpoint_location(
                         source_path.unwrap(),
-                        bp.line as u64,
-                        bp.column.map(|c| c as u64),
+                        breakpoint_line,
+                        breakpoint_column,
                     )
                     .unwrap_or(None)
                 });
@@ -533,11 +552,11 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                         };
 
                     created_breakpoints.push(Breakpoint {
-                        column: bp.column,
+                        column: breakpoint_column.map(|c| c as i64),
                         end_column: None,
                         end_line: None,
                         id: None,
-                        line: Some(bp.line),
+                        line: Some(breakpoint_line as i64),
                         message: reason_msg,
                         source: None,
                         instruction_reference: Some(location.to_string()),
