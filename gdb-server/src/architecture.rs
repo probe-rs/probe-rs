@@ -144,7 +144,7 @@ impl GdbTargetExt for probe_rs::Target {
         // TODO: what if they're not all equal?
         let architecture = match self.cores[0].core_type {
             CoreType::Armv6m => "armv6-m",
-            CoreType::Armv7m => "armv7-m",
+            CoreType::Armv7m => "armv7",
             CoreType::Armv7em => "armv7e-m",
             CoreType::Armv8m => "armv8-m.main",
             CoreType::Riscv => "riscv:rv32",
@@ -162,5 +162,20 @@ impl GdbTargetExt for probe_rs::Target {
         target_description.push_str("</target>");
 
         target_description
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use crate::architecture::GdbTargetExt;
+    use insta;
+
+    #[test]
+    fn test_target_description_microbit() {
+        let target = probe_rs::config::get_target_by_name("nrf51822_xxAA").unwrap();
+
+        let description = target.target_description();
+
+        insta::assert_snapshot!(description);
     }
 }
