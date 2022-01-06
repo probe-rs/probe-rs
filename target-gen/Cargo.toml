@@ -23,19 +23,19 @@ cmsis-pack = { version = "0.5.0" }
 # , git = "https://github.com/probe-rs/cmsis-pack-manager.git"
 
 goblin = "0.4.3"
-scroll = "0.10.1"
-serde_yaml = "0.8.11"
+scroll = "0.11.0"
+serde_yaml = "0.8.23"
 log = "0.4.8"
 zip = "0.5.9"
-structopt = "0.3.2"
+clap = { version = "3.0", features = ["derive"] }
 base64 = "0.13.0"
-simplelog = "0.11.0"
-anyhow = "1.0.51"
-reqwest = { version = "0.11.7", features = ["json", "blocking"] }
-serde = { version = "1.0.106", features = ["derive"] }
+simplelog = "0.11.1"
+anyhow = "1.0.52"
+reqwest = { version = "0.11.8", features = ["json", "blocking"] }
+serde = { version = "1.0.133", features = ["derive"] }
 # chrono = { version = "0.4.0", features = ["serde"] }
-futures = "0.3.18"
-tokio = { version = "1.14.0", features = ["macros", "rt", "rt-multi-thread"] }
+futures = "0.3.19"
+tokio = { version = "1.15.0", features = ["macros", "rt", "rt-multi-thread"] }
 
 [dev-dependencies]
 assert_cmd = "2.0.2"

@@ -13,7 +13,6 @@ use std::{
     io::{Read, Seek},
     str::FromStr,
 };
-use structopt::StructOpt;
 
 /// Used by serde to provide defaults for `RttConfig`
 fn default_channel_formats() -> Vec<RttChannelConfig> {
@@ -47,7 +46,7 @@ impl Default for DataFormat {
 }
 
 /// The initial configuration for RTT (Real Time Transfer). This configuration is complimented with the additional information specified for each of the channels in `RttChannel`.
-#[derive(StructOpt, Debug, Clone, Deserialize, Default)]
+#[derive(clap::Parser, Debug, Clone, Deserialize, Default)]
 pub struct RttConfig {
     #[structopt(skip)]
     #[serde(default, rename = "rttEnabled")]
@@ -59,7 +58,7 @@ pub struct RttConfig {
 }
 
 /// The User specified configuration for each active RTT Channel. The configuration is passed via a DAP Client configuration (`launch.json`). If no configuration is specified, the defaults will be `Dataformat::String` and `show_timestamps=false`.
-#[derive(StructOpt, Debug, Clone, serde::Deserialize, Default)]
+#[derive(clap::Parser, Debug, Clone, serde::Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct RttChannelConfig {
     pub channel_number: Option<usize>,
@@ -79,7 +78,7 @@ pub struct RttActiveChannel {
     pub channel_name: String,
     pub data_format: DataFormat,
     /// Data that will be written to the down_channel (host to target)
-    input_data: String,
+    _input_data: String,
     rtt_buffer: RttBuffer,
     show_timestamps: bool,
 }
@@ -131,7 +130,7 @@ impl RttActiveChannel {
             down_channel,
             channel_name: name,
             data_format,
-            input_data: String::new(),
+            _input_data: String::new(),
             rtt_buffer: RttBuffer::new(buffer_size),
             show_timestamps: full_config.show_timestamps,
         }
@@ -172,11 +171,11 @@ impl RttActiveChannel {
 
     pub fn _push_rtt(&mut self, core: &mut Core) {
         if let Some(down_channel) = self.down_channel.as_mut() {
-            self.input_data += "\n";
+            self._input_data += "\n";
             down_channel
-                .write(core, self.input_data.as_bytes())
+                .write(core, self._input_data.as_bytes())
                 .unwrap();
-            self.input_data.clear();
+            self._input_data.clear();
         }
     }
 }

@@ -11,22 +11,22 @@ use probe_rs::{
 };
 
 use probe_rs_cli_util::{
-    common_options::{CargoOptions, FlashOptions, ProbeOptions},
+    clap,
+    clap::Parser,
+    common_options::{print_chip_info, print_families, CargoOptions, FlashOptions, ProbeOptions},
     flash::run_flash_download,
 };
 
 use capstone::{arch::arm::ArchMode, prelude::*, Capstone, Endian};
-use clap::arg_enum;
 use rustyline::Editor;
-use structopt::StructOpt;
 
 use anyhow::{anyhow, Context, Result};
 
-use std::time::Instant;
 use std::{fs::File, path::PathBuf};
+use std::{io, time::Instant};
 use std::{num::ParseIntError, path::Path};
 
-#[derive(StructOpt)]
+#[derive(clap::StructOpt)]
 #[structopt(
     name = "Probe-rs CLI",
     about = "A CLI for on top of the debug probe capabilities provided by probe-rs",
@@ -89,12 +89,7 @@ enum Cli {
         common: ProbeOptions,
 
         /// Format of the file to be downloaded to the flash. Possible values are case-insensitive.
-        #[structopt(
-            possible_values = &DownloadFileType::variants(),
-            case_insensitive = true,
-            default_value = "elf",
-            long
-        )]
+        #[clap(arg_enum, ignore_case = true, default_value = "elf", long)]
         format: DownloadFileType,
 
         /// The address in memory where the binary will be put at. This is only considered when `bin` is selected as the format.
@@ -133,10 +128,26 @@ enum Cli {
         #[structopt(parse(try_from_str = parse_u32))]
         loc: u32,
     },
+    #[structopt(name = "chip")]
+    #[clap(subcommand)]
+    Chip(Chip),
+}
+
+#[derive(clap::StructOpt)]
+enum Chip {
+    /// Lists all the available families and their chips with their full.
+    #[structopt(name = "list")]
+    List,
+    /// Shows chip properties of a specific chip
+    #[structopt(name = "info")]
+    Info {
+        /// The name of the chip to display.
+        name: String,
+    },
 }
 
 /// Shared options for core selection, shared between commands
-#[derive(StructOpt)]
+#[derive(clap::StructOpt)]
 struct CoreOptions {
     #[structopt(long, default_value = "0")]
     core: usize,
@@ -146,7 +157,7 @@ fn main() -> Result<()> {
     // Initialize the logging backend.
     pretty_env_logger::init();
 
-    let matches = Cli::from_args();
+    let matches = Cli::parse();
 
     match matches {
         Cli::List {} => list_connected_devices(),
@@ -188,6 +199,8 @@ fn main() -> Result<()> {
             common,
             loc,
         } => trace_u32_on_target(&shared, &common, loc),
+        Cli::Chip(Chip::List) => print_families(io::stdout()).map_err(Into::into),
+        Cli::Chip(Chip::Info { name }) => print_chip_info(name, io::stdout()),
     }
 }
 
@@ -224,7 +237,7 @@ fn dump_memory(
 
     let mut core = session.core(shared_options.core)?;
 
-    core.read_32(loc, &mut data.as_mut_slice())?;
+    core.read_32(loc, data.as_mut_slice())?;
     // Stop timer.
     let elapsed = instant.elapsed();
 
@@ -414,13 +427,11 @@ fn debug(shared_options: &CoreOptions, common: &ProbeOptions, exe: Option<PathBu
     Ok(())
 }
 
-arg_enum! {
-    #[derive(Debug, Clone, Copy)]
-    enum DownloadFileType {
-        Elf,
-        Hex,
-        Bin,
-    }
+#[derive(clap::ArgEnum, Debug, Clone, Copy)]
+enum DownloadFileType {
+    Elf,
+    Hex,
+    Bin,
 }
 
 impl DownloadFileType {

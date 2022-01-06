@@ -34,109 +34,131 @@ pub(crate) mod register {
 
     pub const PC: RegisterDescription = RegisterDescription {
         name: "PC",
-        kind: RegisterKind::PC,
+        _kind: RegisterKind::PC,
         address: CoreRegisterAddress(15),
     };
 
     pub const XPSR: RegisterDescription = RegisterDescription {
         name: "XPSR",
-        kind: RegisterKind::General,
+        _kind: RegisterKind::General,
         address: CoreRegisterAddress(0b1_0000),
     };
 
     pub const SP: RegisterDescription = RegisterDescription {
         name: "SP",
-        kind: RegisterKind::General,
+        _kind: RegisterKind::General,
         address: CoreRegisterAddress(13),
     };
 
     pub const LR: RegisterDescription = RegisterDescription {
         name: "LR",
-        kind: RegisterKind::General,
+        _kind: RegisterKind::General,
         address: CoreRegisterAddress(14),
     };
+
+    pub const MSP: RegisterDescription = RegisterDescription {
+        name: "MSP",
+        _kind: RegisterKind::General,
+        address: CoreRegisterAddress(0b10001),
+    };
+
+    pub const PSP: RegisterDescription = RegisterDescription {
+        name: "PSP",
+        _kind: RegisterKind::General,
+        address: CoreRegisterAddress(0b10010),
+    };
+
+    // CONTROL bits [31:24], FAULTMASK bits [23:16],
+    // BASEPRI bits [15:8], and PRIMASK bits [7:0]
+    pub const EXTRA: RegisterDescription = RegisterDescription {
+        name: "EXTRA",
+        _kind: RegisterKind::General,
+        address: CoreRegisterAddress(0b10100),
+    };
+
+    // TODO: Floating point support
 }
 
 static ARM_REGISTER_FILE: RegisterFile = RegisterFile {
     platform_registers: &[
         RegisterDescription {
             name: "R0",
-            kind: RegisterKind::General,
+            _kind: RegisterKind::General,
             address: CoreRegisterAddress(0),
         },
         RegisterDescription {
             name: "R1",
-            kind: RegisterKind::General,
+            _kind: RegisterKind::General,
             address: CoreRegisterAddress(1),
         },
         RegisterDescription {
             name: "R2",
-            kind: RegisterKind::General,
+            _kind: RegisterKind::General,
             address: CoreRegisterAddress(2),
         },
         RegisterDescription {
             name: "R3",
-            kind: RegisterKind::General,
+            _kind: RegisterKind::General,
             address: CoreRegisterAddress(3),
         },
         RegisterDescription {
             name: "R4",
-            kind: RegisterKind::General,
+            _kind: RegisterKind::General,
             address: CoreRegisterAddress(4),
         },
         RegisterDescription {
             name: "R5",
-            kind: RegisterKind::General,
+            _kind: RegisterKind::General,
             address: CoreRegisterAddress(5),
         },
         RegisterDescription {
             name: "R6",
-            kind: RegisterKind::General,
+            _kind: RegisterKind::General,
             address: CoreRegisterAddress(6),
         },
         RegisterDescription {
             name: "R7",
-            kind: RegisterKind::General,
+            _kind: RegisterKind::General,
             address: CoreRegisterAddress(7),
         },
         RegisterDescription {
             name: "R8",
-            kind: RegisterKind::General,
+            _kind: RegisterKind::General,
             address: CoreRegisterAddress(8),
         },
         RegisterDescription {
             name: "R9",
-            kind: RegisterKind::General,
+            _kind: RegisterKind::General,
             address: CoreRegisterAddress(9),
         },
         RegisterDescription {
             name: "R10",
-            kind: RegisterKind::General,
+            _kind: RegisterKind::General,
             address: CoreRegisterAddress(10),
         },
         RegisterDescription {
             name: "R11",
-            kind: RegisterKind::General,
+            _kind: RegisterKind::General,
             address: CoreRegisterAddress(11),
         },
         RegisterDescription {
             name: "R12",
-            kind: RegisterKind::General,
+            _kind: RegisterKind::General,
             address: CoreRegisterAddress(12),
         },
         RegisterDescription {
             name: "R13",
-            kind: RegisterKind::General,
+            _kind: RegisterKind::General,
             address: CoreRegisterAddress(13),
         },
         RegisterDescription {
             name: "R14",
-            kind: RegisterKind::General,
+            _kind: RegisterKind::General,
             address: CoreRegisterAddress(14),
         },
         RegisterDescription {
             name: "R15",
-            kind: RegisterKind::General,
+            _kind: RegisterKind::General,
             address: CoreRegisterAddress(15),
         },
     ],
@@ -148,22 +170,22 @@ static ARM_REGISTER_FILE: RegisterFile = RegisterFile {
     argument_registers: &[
         RegisterDescription {
             name: "a1",
-            kind: RegisterKind::General,
+            _kind: RegisterKind::General,
             address: CoreRegisterAddress(0),
         },
         RegisterDescription {
             name: "a2",
-            kind: RegisterKind::General,
+            _kind: RegisterKind::General,
             address: CoreRegisterAddress(1),
         },
         RegisterDescription {
             name: "a3",
-            kind: RegisterKind::General,
+            _kind: RegisterKind::General,
             address: CoreRegisterAddress(2),
         },
         RegisterDescription {
             name: "a4",
-            kind: RegisterKind::General,
+            _kind: RegisterKind::General,
             address: CoreRegisterAddress(3),
         },
     ],
@@ -171,15 +193,20 @@ static ARM_REGISTER_FILE: RegisterFile = RegisterFile {
     result_registers: &[
         RegisterDescription {
             name: "a1",
-            kind: RegisterKind::General,
+            _kind: RegisterKind::General,
             address: CoreRegisterAddress(0),
         },
         RegisterDescription {
             name: "a2",
-            kind: RegisterKind::General,
+            _kind: RegisterKind::General,
             address: CoreRegisterAddress(1),
         },
     ],
+
+    msp: Some(&register::MSP),
+    psp: Some(&register::PSP),
+    extra: Some(&register::EXTRA),
+    // TODO: Floating point support
 };
 
 bitfield! {

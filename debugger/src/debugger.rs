@@ -30,7 +30,6 @@ use std::{
     thread,
     time::{Duration, Instant},
 };
-use structopt::StructOpt;
 
 fn default_console_log() -> Option<ConsoleLog> {
     Some(ConsoleLog::Error)
@@ -71,7 +70,7 @@ impl std::str::FromStr for ConsoleLog {
     }
 }
 
-#[derive(StructOpt, Copy, Clone, Debug, Deserialize)]
+#[derive(clap::Parser, Copy, Clone, Debug, Deserialize)]
 pub(crate) enum TargetSessionType {
     AttachRequest,
     LaunchRequest,
@@ -93,24 +92,19 @@ impl std::str::FromStr for TargetSessionType {
 }
 
 /// Shared options for all commands which use a specific probe
-#[derive(StructOpt, Clone, Deserialize, Debug, Default)]
+#[derive(clap::Parser, Clone, Deserialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct DebuggerOptions {
-    /// Will be set when the DAP client issues a `launch` or `attach` request
-    #[structopt(long, requires("dap"))]
-    #[serde(default)]
-    pub(crate) target_session_type: Option<TargetSessionType>,
-
     /// Path to the requested working directory for the debugger
-    #[structopt(long, parse(from_os_str), conflicts_with("dap"))]
+    #[clap(long, parse(from_os_str), conflicts_with("dap"))]
     pub(crate) cwd: Option<PathBuf>,
 
     /// Binary to debug as a path. Relative to `cwd`, or fully qualified.
-    #[structopt(long, parse(from_os_str), conflicts_with("dap"))]
+    #[clap(long, parse(from_os_str), conflicts_with("dap"))]
     pub(crate) program_binary: Option<PathBuf>,
 
     /// The number associated with the debug probe to use. Use 'list' command to see available probes
-    #[structopt(
+    #[clap(
         long = "probe",
         parse(try_from_str = parse_probe_selector),
         help = "Use this flag to select a specific probe in the list.\n\
@@ -120,63 +114,75 @@ pub struct DebuggerOptions {
     pub(crate) probe_selector: Option<DebugProbeSelector>,
 
     /// The MCU Core to debug. Default is 0
-    #[structopt(long = "core-index", default_value)]
+    #[clap(long = "core-index", default_value_t)]
     #[serde(default)]
     pub(crate) core_index: usize,
 
     /// The target to be selected.
-    #[structopt(short, long, conflicts_with("dap"))]
+    #[clap(short, long, conflicts_with("dap"))]
     pub(crate) chip: Option<String>,
 
     /// Protocol to use for target connection
-    #[structopt(short, long)]
+    #[clap(short, long)]
     #[serde(rename = "wire_protocol")]
     pub(crate) protocol: Option<WireProtocol>,
 
     /// Protocol speed in kHz
-    #[structopt(short, long, conflicts_with("dap"))]
+    #[clap(short, long, conflicts_with("dap"))]
     pub(crate) speed: Option<u32>,
 
     /// Assert target's reset during connect
-    #[structopt(long, conflicts_with("dap"))]
+    #[clap(long, conflicts_with("dap"))]
     #[serde(default)]
     pub(crate) connect_under_reset: bool,
 
     /// IP port number to listen for incoming DAP connections, e.g. "50000"
-    #[structopt(long, requires("dap"), required_if("dap", "true"))]
+    #[clap(long, requires("dap"), required_if_eq("dap", "true"))]
     pub(crate) port: Option<u16>,
 
     /// Flash the target before debugging
-    #[structopt(long, conflicts_with("dap"))]
+    #[clap(long, conflicts_with("dap"))]
     #[serde(default)]
     pub(crate) flashing_enabled: bool,
 
     /// Reset the target after flashing
-    #[structopt(long, required_if("flashing_enabled", "true"), conflicts_with("dap"))]
+    #[clap(
+        long,
+        required_if_eq("flashing_enabled", "true"),
+        conflicts_with("dap")
+    )]
     #[serde(default)]
     pub(crate) reset_after_flashing: bool,
 
     /// Halt the target after reset
-    #[structopt(long, conflicts_with("dap"))]
+    #[clap(long, conflicts_with("dap"))]
     #[serde(default)]
     pub(crate) halt_after_reset: bool,
 
     /// Do a full chip erase, versus page-by-page erase
-    #[structopt(long, conflicts_with("dap"), required_if("flashing_enabled", "true"))]
+    #[clap(
+        long,
+        conflicts_with("dap"),
+        required_if_eq("flashing_enabled", "true")
+    )]
     #[serde(default)]
     pub(crate) full_chip_erase: bool,
 
     /// Restore erased bytes that will not be rewritten from ELF
-    #[structopt(long, conflicts_with("dap"), required_if("flashing_enabled", "true"))]
+    #[clap(
+        long,
+        conflicts_with("dap"),
+        required_if_eq("flashing_enabled", "true")
+    )]
     #[serde(default)]
     pub(crate) restore_unwritten_bytes: bool,
 
     /// Level of information to be logged to the debugger console (Error, Info or Debug )
-    #[structopt(long, conflicts_with("dap"))]
+    #[clap(long, conflicts_with("dap"))]
     #[serde(default = "default_console_log")]
     pub(crate) console_log_level: Option<ConsoleLog>,
 
-    #[structopt(flatten)]
+    #[clap(flatten)]
     #[serde(flatten)]
     pub(crate) rtt: RttConfig,
 }
@@ -968,10 +974,7 @@ impl Debugger {
                 match get_arguments(&la_request) {
                     Ok(arguments) => {
                         if requested_target_session_type.is_some() {
-                            self.debugger_options = DebuggerOptions {
-                                target_session_type: requested_target_session_type,
-                                ..arguments
-                            };
+                            self.debugger_options = DebuggerOptions { ..arguments };
                             if matches!(
                                 requested_target_session_type,
                                 Some(TargetSessionType::AttachRequest)
@@ -1523,7 +1526,7 @@ pub fn dump_memory(debugger_options: DebuggerOptions, loc: u32, words: u32) -> R
 
     // let loc = 220 * 1024;
 
-    target_core.read_32(loc, &mut data.as_mut_slice())?;
+    target_core.read_32(loc, data.as_mut_slice())?;
     // Stop timer.
     let elapsed = instant.elapsed();
 
@@ -1588,7 +1591,7 @@ pub fn trace_u32_on_target(debugger_options: DebuggerOptions, loc: u32) -> Resul
 }
 
 pub fn debug(debugger_options: DebuggerOptions, dap: bool, vscode: bool) -> Result<()> {
-    let program_name = structopt::clap::crate_name!();
+    let program_name = clap::crate_name!();
 
     let mut debugger = Debugger::new(debugger_options);
 

@@ -35,11 +35,11 @@ impl SectorInfo {
 #[derive(Clone, Debug)]
 pub(crate) struct FlashDevice {
     /// The flash algorithm version.
-    pub(crate) driver_version: u16,
+    pub(crate) _driver_version: u16,
     /// The name of the device.
     pub(crate) name: String, // Max 128 bytes in size
     /// The type of flash algorithm (MORE INFO REQUIRED).
-    pub(crate) typ: u16,
+    pub(crate) _typ: u16,
     /// The flash start address.
     pub(crate) start_address: u32,
     /// The flash size in bytes.
@@ -81,9 +81,9 @@ impl FlashDevice {
 
         // Finally parse the struct data and return the struct.
         Ok(Self {
-            driver_version: data.pread(0).unwrap(),
+            _driver_version: data.pread(0).unwrap(),
             name: String::from_utf8_lossy(&data[2..2 + sanitized_length]).to_string(),
-            typ: data.pread(130).unwrap(),
+            _typ: data.pread(130).unwrap(),
             start_address: data.pread(132).unwrap(),
             device_size: data.pread(136).unwrap(),
             page_size: data.pread(140).unwrap(),

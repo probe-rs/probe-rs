@@ -22,7 +22,7 @@ fn main() -> Result<()> {
 
     let app = App::new("smoke tester")
         .arg(
-            Arg::with_name("dut_definitions")
+            Arg::new("dut_definitions")
                 .long("dut-definitions")
                 .value_name("DIRECTORY")
                 .takes_value(true)
@@ -30,7 +30,7 @@ fn main() -> Result<()> {
                 .required(true),
         )
         .arg(
-            Arg::with_name("chip")
+            Arg::new("chip")
                 .long("chip")
                 .takes_value(true)
                 .value_name("CHIP")
@@ -38,14 +38,14 @@ fn main() -> Result<()> {
                 .required(true),
         )
         .arg(
-            Arg::with_name("probe")
+            Arg::new("probe")
                 .long("probe")
                 .takes_value(true)
                 .value_name("PROBE")
                 .required(false),
         )
         .arg(
-            Arg::with_name("single_dut")
+            Arg::new("single_dut")
                 .long("single-dut")
                 .value_name("FILE")
                 .takes_value(true)

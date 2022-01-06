@@ -5,7 +5,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-- ARM: added `Session::swo_reader` that returns a wrapping implementation of `std::io::Read` around `Session::read_swo`. (#916)
+### Added
+
+- Support for core registers `msp`, `psp` and `extra`, extra containing:
+  - Bits[31:24] CONTROL.
+  - Bits[23:16] FAULTMASK.
+  - Bits[15:8]  BASEPRI.
+  - Bits[7:0]   PRIMASK.
+- Debug port start sequence for LPC55S16. (#944)
+- Added a command to print the list of all supported chips. (#946)
+- Added a command to print info about a chip, such as RAM and the number of cores. (#946)
+- ARM:`Session::swo_reader` that returns a wrapping implementation of `std::io::Read` around `Session::read_swo`. (#916)
+
+### Fixed
+
+- Fixed a panic when cmsisdap probes return more transfers than requested (#922, #923)
 
 ## [0.12.0]
 

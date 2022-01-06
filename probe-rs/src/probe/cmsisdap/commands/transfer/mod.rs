@@ -166,7 +166,14 @@ impl Request for TransferRequest {
     }
 
     fn from_bytes(&self, mut buffer: &[u8]) -> Result<Self::Response, SendError> {
+        if buffer.len() < 2 {
+            return Err(SendError::NotEnoughData);
+        }
         let transfer_count = buffer[0];
+        if transfer_count as usize > self.transfers.len() {
+            log::error!("Transfer count larger than requested number of transfers");
+            return Err(SendError::UnexpectedAnswer);
+        }
 
         let last_transfer_response = LastTransferResponse {
             ack: match buffer[1] & 0x7 {
@@ -302,7 +309,7 @@ impl Request for TransferBlockRequest {
         }
 
         Ok(TransferBlockResponse {
-            transfer_count,
+            _transfer_count: transfer_count,
             transfer_response,
             transfer_data: data,
         })
@@ -363,7 +370,7 @@ impl InnerTransferBlockRequest {
 
 #[derive(Debug)]
 pub(crate) struct TransferBlockResponse {
-    transfer_count: u16,
+    _transfer_count: u16,
     pub transfer_response: u8,
     pub transfer_data: Vec<u32>,
 }
