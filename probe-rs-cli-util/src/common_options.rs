@@ -36,6 +36,7 @@ use crate::ArtifactError;
 use std::{fs::File, io::Write, path::Path, path::PathBuf};
 
 use byte_unit::Byte;
+use clap;
 use probe_rs::{
     config::{RegistryError, TargetSelector},
     flashing::{FileDownloadError, FlashError, FlashLoader},
@@ -490,6 +491,8 @@ pub enum OperationError {
     IOError(#[source] std::io::Error),
     #[error("probe-rs API was called in the wrong order.")]
     InvalidAPIOrder,
+    #[error("Failed to parse CLI arguments.")]
+    CliArgument(#[from] clap::Error),
 }
 
 impl From<std::io::Error> for OperationError {
