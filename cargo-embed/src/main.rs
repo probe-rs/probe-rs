@@ -4,7 +4,6 @@ mod rttui;
 
 use anyhow::{anyhow, Context, Result};
 use chrono::Local;
-use clap::Parser;
 use colored::*;
 use std::{
     env, fs,
@@ -26,7 +25,8 @@ use probe_rs::{
 use probe_rs_cli_util::logging::{ask_to_log_crash, capture_anyhow, capture_panic};
 
 use probe_rs_cli_util::{
-    build_artifact,
+    build_artifact, clap,
+    clap::Parser,
     common_options::CargoOptions,
     indicatif::{MultiProgress, ProgressBar, ProgressStyle},
     logging::{self, Metadata},
@@ -50,25 +50,25 @@ const CARGO_NAME: &str = env!("CARGO_PKG_NAME");
 const CARGO_VERSION: &str = env!("CARGO_PKG_VERSION");
 const GIT_VERSION: &str = git_version::git_version!(fallback = "crates.io");
 
-#[derive(Debug, clap::StructOpt)]
+#[derive(Debug, clap::Parser)]
 struct Opt {
-    #[structopt(short = 'V', long = "version")]
+    #[clap(short = 'V', long = "version")]
     pub version: bool,
-    #[structopt(name = "config")]
+    #[clap(name = "config")]
     config: Option<String>,
-    #[structopt(name = "chip", long = "chip")]
+    #[clap(name = "chip", long = "chip")]
     chip: Option<String>,
-    #[structopt(
+    #[clap(
         long = "probe",
         help = "Use this flag to select a specific probe in the list.\n\
         Use '--probe VID:PID' or '--probe VID:PID:Serial' if you have more than one probe with the same VID:PID."
     )]
     probe_selector: Option<DebugProbeSelector>,
-    #[structopt(name = "list-chips", long = "list-chips")]
+    #[clap(name = "list-chips", long = "list-chips")]
     list_chips: bool,
-    #[structopt(name = "disable-progressbars", long = "disable-progressbars")]
+    #[clap(name = "disable-progressbars", long = "disable-progressbars")]
     disable_progressbars: bool,
-    #[structopt(flatten)]
+    #[clap(flatten)]
     cargo_options: CargoOptions,
 }
 
