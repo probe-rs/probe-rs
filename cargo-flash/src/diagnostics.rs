@@ -206,6 +206,10 @@ pub(crate) fn render_diagnostics(error: OperationError) {
             error.to_string(),
             vec![],
         ),
+        OperationError::CliArgument(_e) => (
+            error.to_string(),
+            vec![],
+        ),
     };
 
     use std::io::Write;
