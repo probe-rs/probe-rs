@@ -4,8 +4,8 @@ use colored::*;
 use diagnostics::render_diagnostics;
 use std::{env, path::PathBuf, process, sync::Arc};
 use std::{panic, sync::Mutex};
-use structopt::StructOpt;
 
+use probe_rs_cli_util::clap::{FromArgMatches, IntoApp};
 use probe_rs_cli_util::common_options::{CargoOptions, FlashOptions, OperationError};
 use probe_rs_cli_util::flash;
 
@@ -72,11 +72,11 @@ fn main_try() -> Result<(), OperationError> {
     }
 
     // Parse the commandline options with structopt.
-    let matches = FlashOptions::clap()
+    let matches = FlashOptions::into_app()
         .bin_name("cargo flash")
         .after_help(CargoOptions::help_message("cargo flash").as_str())
         .get_matches_from(&args);
-    let opt = FlashOptions::from_clap(&matches);
+    let opt = FlashOptions::from_arg_matches(&matches)?;
 
     // If we get the version option, print the current version immediately and exit.
     if opt.version {
