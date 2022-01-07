@@ -1,3 +1,4 @@
+pub mod ambiq;
 pub mod nxp;
 
 use std::{
@@ -10,6 +11,7 @@ use crate::{architecture::arm::DapError, core::CoreRegister, DebugProbeError, Me
 
 use super::{
     communication_interface::{DapProbe, Initialized},
+    core::register,
     dp::{Abort, Ctrl, DpAccess, Select, DPIDR},
     ArmCommunicationInterface, DpAddress, Pins, PortType, Register,
 };
@@ -261,6 +263,24 @@ pub trait ArmDebugSequence: Send + Sync {
         }
 
         Err(crate::Error::Probe(DebugProbeError::Timeout))
+    }
+
+    fn reset_and_halt(&self, interface: &mut Memory) -> Result<(), crate::Error> {
+        // Set the vc_corereset bit in the DEMCR register.
+        // This will halt the core after reset.
+
+        self.reset_catch_set(interface)?;
+        self.reset_system(interface)?;
+
+        const XPSR_THUMB: u32 = 1 << 24;
+        let xpsr_value = interface.read_core_reg(register::XPSR.address)?;
+        if xpsr_value & XPSR_THUMB == 0 {
+            interface.write_core_reg(register::XPSR.address, xpsr_value | XPSR_THUMB)?;
+        }
+
+        self.reset_catch_clear(interface)?;
+
+        Ok(())
     }
 
     /// Check if the device is in a locked state and unlock it.
