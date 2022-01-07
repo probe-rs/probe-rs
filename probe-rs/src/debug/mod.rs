@@ -372,96 +372,25 @@ impl<'debuginfo, 'probe, 'core> Iterator for StackFrameIterator<'debuginfo, 'pro
             frame_pc,
         );
 
-        // PART 1-a: Find function information, to check if we are in an inlined function, and update `StackFrameIterator::inlining_state` appropriately
-        let inline_call_site_info = match self.inlining_state {
-            InlineFunctionState::InlinedCallSite { .. } => {
-                log::debug!("UNWIND: At call site of inlined function.");
-                std::mem::replace(
-                    // We will use the data currently stored in `inlining_state` ...
-                    &mut self.inlining_state,
-                    // ... and update the iterator so that the previous frame has to determine its own state.
-                    InlineFunctionState::NoInlining,
-                )
-            }
-            InlineFunctionState::NoInlining => {
-                let mut units = self.debug_info.get_units();
-                while let Some(unit_info) = self.debug_info.get_next_unit_info(&mut units) {
-                    if let Some(die_cursor_state) = &mut unit_info.get_function_die(frame_pc, true)
-                    {
-                        if die_cursor_state.is_inline {
-                            // Add a 'virtual' stack frame, for the inlined call.
-                            // For this, we need the following attributes:
-                            //
-                            // - DW_AT_call_file
-                            // - DW_AT_call_line
-                            // - DW_AT_call_column
-
-                            let call_column = die_cursor_state
-                                .get_attribute(gimli::DW_AT_call_column)
-                                .and_then(|attr| attr.udata_value());
-
-                            let call_file_index = die_cursor_state
-                                .get_attribute(gimli::DW_AT_call_file)
-                                .and_then(|attr| attr.udata_value());
-
-                            let call_line = die_cursor_state
-                                .get_attribute(gimli::DW_AT_call_line)
-                                .and_then(|attr| attr.udata_value());
-
-                            let (call_file, call_directory) = match call_file_index {
-                                Some(0) => (None, None),
-                                Some(n) => {
-                                    // Lookup source file in the line number information table.
-
-                                    if let Some(header) = unit_info
-                                        .unit
-                                        .line_program
-                                        .as_ref()
-                                        .map(|line_program| line_program.header())
-                                    {
-                                        if let Some(file_entry) = header.file(n) {
-                                            self.debug_info
-                                                .find_file_and_directory(
-                                                    &unit_info.unit,
-                                                    header,
-                                                    file_entry,
-                                                )
-                                                .unwrap()
-                                        } else {
-                                            (None, None)
-                                        }
-                                    } else {
-                                        (None, None)
-                                    }
-                                }
-                                None => (None, None),
-                            };
-
-                            self.inlining_state = InlineFunctionState::InlinedCallSite {
-                                call_column,
-                                call_file,
-                                call_line,
-                                call_directory,
-                            };
-                            log::debug!(
-                                "UNWIND: Current function {:?} is inlined at: {:?}",
-                                die_cursor_state.function_name(&unit_info),
-                                self.inlining_state
-                            );
-                        }
-                        break;
-                    }
+        // PART 1-a: Find function information, to check if we are in an inlined function
+        let mut in_inlined_function = false;
+        let mut units = self.debug_info.get_units();
+        while let Some(unit_info) = self.debug_info.get_next_unit_info(&mut units) {
+            if let Some(die_cursor_state) = &mut unit_info.get_function_die(frame_pc, true)
+            {
+                if die_cursor_state.is_inline {
+                    in_inlined_function = true;
+                    break;
                 }
-                self.inlining_state.clone()
             }
-        };
+        }
 
         // PART 1-b: Prepare the `StackFrame` that holds the current frame information
         let return_frame = match self.debug_info.get_stackframe_info(
             &mut self.core,
             frame_pc,
             &self.unwind_registers,
-            inline_call_site_info.clone(),
+            in_inlined_function,
         ) {
             Ok(frame) => {
                 // self.frame_count += 1;
@@ -485,20 +414,9 @@ impl<'debuginfo, 'probe, 'core> Iterator for StackFrameIterator<'debuginfo, 'pro
             }
         }
 
-        // PART 2: Setup the registers for the `next()` iteration (a.k.a. unwind previous frame, a.k.a. "callee", in the call stack). There are different paths below, depending on whether we are currently in an inlined function or not.
+        // PART 2: Setup the registers for the `next()` iteration (a.k.a. unwind previous frame, a.k.a. "callee", in the call stack). 
         log::debug!("\nUNWIND Registers for previous function ...");
         if self.unwind_registers.get_return_address().is_some() {
-            match inline_call_site_info {
-                InlineFunctionState::InlinedCallSite { .. } => {
-                    // PART 2 - INLINED: TODO: Move this functionality to the `UnitInfo::process_tree`. There we can do it in an architecture independant way, and not have to worry about how different chips encode frame pointers and return addresses for inlined functions.
-                    log::debug!(
-                    "UNWIND - Preparing `StackFrameIterator` to INLINED inlined function {} at {:?}",
-                    return_frame.clone().unwrap().function_name,
-                    return_frame.clone().unwrap().source_location
-                );
-                }
-                InlineFunctionState::NoInlining => {
-                    // PART 2: Once the current `StackFrame is ready, we need to unwind the stack for the previous frame, and update `StackFrameIterator` to prepare for the next iteration.
                     log::debug!(
                     "UNWIND - Preparing `StackFrameIterator` to unwind NON-INLINED function {:?} at {:?}",
                     return_frame.clone().unwrap().function_name,
@@ -823,8 +741,6 @@ impl<'debuginfo, 'probe, 'core> Iterator for StackFrameIterator<'debuginfo, 'pro
                         log::error!("UNWIND: Cannot read previous FrameDescriptorEntry without a valid PC");
                         return return_frame;
                     }
-                }
-            }
         } else {
             log::debug!("UNWIND: We have reached the bottom of the stack. This will be the last `StackFrame` returned.");
             self.unwind_registers.set_program_counter(None);
@@ -1135,7 +1051,7 @@ impl DebugInfo {
         core: &mut Core<'_>,
         address: u64,
         stackframe_registers: &Registers,
-        inline_call_site_info: InlineFunctionState,
+        in_inlined_function: bool,
     ) -> Result<StackFrame, DebugError> {
         let mut units = self.get_units();
 
@@ -1144,37 +1060,16 @@ impl DebugInfo {
         while let Some(unit_info) = self.get_next_unit_info(&mut units) {
             if let Some(die_cursor_state) = &mut unit_info.get_function_die(
                 address,
-                match inline_call_site_info {
-                    InlineFunctionState::InlinedCallSite { .. } => true,
-                    InlineFunctionState::NoInlining => false,
-                },
+                in_inlined_function,
             ) {
                 let function_name = die_cursor_state
                     .function_name(&unit_info)
                     .unwrap_or(unknown_function);
 
-                let function_source_location = match inline_call_site_info {
-                    InlineFunctionState::InlinedCallSite {
-                        call_line,
-                        call_file,
-                        call_directory,
-                        call_column,
-                    } => Some(SourceLocation {
-                        line: call_line,
-                        column: call_column.map(|c| {
-                            if c == 0 {
-                                ColumnType::LeftEdge
-                            } else {
-                                ColumnType::Column(c)
-                            }
-                        }),
-                        file: call_file,
-                        directory: call_directory,
-                    }),
-                    InlineFunctionState::NoInlining => self.get_source_location(address),
-                };
+                // To correctly show breakpoints, we use the source location where the function is declared, NOT the source location at the call site of any inlined_functions. 
+                let function_source_location = self.get_source_location(address);
 
-                log::debug!("UNWIND: Function name: {}", function_name);
+                println!("UNWIND: Function name: {}", function_name);
 
                 // Now that we have the function_name and function_source_location, we can cache the in-scope `Variable`s (`<statics>` and `<locals>`) in `DebugInfo::VariableCache`
                 let mut stackframe_root_variable = Variable::new(
