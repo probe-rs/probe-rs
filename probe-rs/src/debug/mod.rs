@@ -337,11 +337,18 @@ impl<'debuginfo, 'probe, 'core> Iterator for StackFrameIterator<'debuginfo, 'pro
     /// - Every iteration of the `::next()` method will update the `StackFrameIterator` fields as needed, to ensure that the subsequent calls / iterations know how to correctly unwind the **caller** `StackFrame` (where the current iteration was called from)
     /// - Iteration will continue until there are no more frames to unwind.
     ///
-    /// [DWARF](https://dwarfstd.org) 6.4.4 - CIE defines the return register address used in the `gimli::RegisterRule` tables for unwind operations. If we encounter a function that has `Undefined` `gimli::RegisterRule` for the return register address, it means we have reached the bottom of the stack OR the function is a 'no return' type of function. This will set clear the program_counter register from stored `current_registers` and no further iterations will be possible.
-    /// - Similarly, certain error conditions encountered in `StackFrameIterator` will also clear the stored program counter register, to prevent further (likely faulty) iterations.
+    /// [DWARF](https://dwarfstd.org) 6.4.4 - CIE defines the return register address used in the `gimli::RegisterRule` tables for unwind operations. Theoretically, if we encounter a function that has `Undefined` `gimli::RegisterRule` for the return register address, it means we have reached the bottom of the stack OR the function is a 'no return' type of function. I have found actual examples (e.g. local functions) where we get `Undefined` for register rule when we cannot apply this logic. Example 1: local functions in main.rs will have LR rule as `Undefined`. Example 2: main()-> ! that is called from a trampoline will have a valid LR rule.
+    /// The iterator will continue until we have an LR register value of `None`. This will be true under the following conditions:
+    /// - We encounter a LR register value of 0xFFFFFFFF which is the 'Reset` value for that register.
+    /// - We can not intelligently infer a valid LR register value from the other registers.
+    /// - We legitimately get an LR register value of 0x0, indicating the bottom of the stack.
+    /// - Similarly, certain error conditions encountered in `StackFrameIterator` will also clear the LR register, to prevent further (likely faulty) iterations.
     ///
     /// Note: In addition to populating the `StackFrame`s, this function will also populate the `DebugInfo::VariableCache` with `Variable`s for available Registers and function variables.
     fn next(&mut self) -> Option<Self::Item> {
+        if self.unwind_registers.get_return_address().is_none() {
+            return None;
+        }
         // PART 0: If we've encountered an error in the previous iteration, the `PC` will be `None`.
         let frame_pc = if let Some(frame_pc) = self.unwind_registers.get_program_counter() {
             frame_pc as u64
@@ -358,57 +365,72 @@ impl<'debuginfo, 'probe, 'core> Iterator for StackFrameIterator<'debuginfo, 'pro
             frame_pc,
         );
 
-        // PART 1-a: Find function information early in the process, so that we can behave appropriately when we encounter inlined functions.
-        let mut in_inlined_function = false;
-        let mut units = self.debug_info.get_units();
-        while let Some(unit_info) = self.debug_info.get_next_unit_info(&mut units) {
-            if let Some(die_cursor_state) = &mut unit_info.get_function_die(frame_pc, true) {
-                if die_cursor_state.is_inline {
-                    in_inlined_function = true;
-                    break;
-                }
-            }
-        }
-
-        // PART 1-b: Prepare the `StackFrame` that holds the current frame information
+        // PART 1-a: Prepare the `StackFrame` that holds the current frame information
         let return_frame = match self.debug_info.get_stackframe_info(
             &mut self.core,
             frame_pc,
             &self.unwind_registers,
-            in_inlined_function,
         ) {
             Ok(frame) => {
                 // self.frame_count += 1;
-                Some(frame)
+                frame
             }
             Err(e) => {
                 log::error!("UNWIND: Unable to complete `StackFrame` information: {}", e);
                 // There is no point in continuing with the unwind, so let's get out of here.
-                self.unwind_registers.set_program_counter(None);
+                self.unwind_registers.set_return_address(None);
                 return None;
             }
         };
 
-        // Part 1-c: When we encounter the starting (after reset) return address, we've reached the bottom of the stack, so no more unwinding after this ...
+        // Part 1-b: When we encounter the starting (after reset) return address, we've reached the bottom of the stack, so no more unwinding after this ...
         if let Some(check_return_address) = self.unwind_registers.get_return_address() {
             if check_return_address == u32::MAX {
-                self.unwind_registers.set_program_counter(None);
+                self.unwind_registers.set_return_address(None);
                 log::debug!(
                     "UNWIND: Stack unwind complete - Reached the 'Reset' value of the LR register."
                 );
-                return return_frame;
+                return Some(return_frame);
             }
         }
 
         // PART 2: Setup the registers for the `next()` iteration (a.k.a. unwind previous frame, a.k.a. "callee", in the call stack).
         log::debug!("\nUNWIND Registers for previous function ...");
-        if self.unwind_registers.get_return_address().is_some() {
-            log::debug!(
-                    "UNWIND - Preparing `StackFrameIterator` to unwind NON-INLINED function {:?} at {:?}",
-                    return_frame.clone().unwrap().function_name,
-                    return_frame.clone().unwrap().source_location
-                );
-            // PART 2-a: get the `gimli::FrameDescriptorEntry` for this address and then the unwind info associated with this row.
+        if let Some(unwind_return_address)  = self.unwind_registers.get_return_address() {
+            // Part2-a: we have to check if the `return_frame::registers` had the LR value modified. This would indicate that it processed an INLINED function, and the unwind process below will take a different path than the one for NON-INLINED functions.
+            if let Some(stackframe_return_address) = return_frame.registers.get_return_address() {
+                if unwind_return_address != stackframe_return_address {
+                    log::debug!("UNWIND - Preparing `StackFrameIterator` to unwind INLINED function {:?} at {:?}",return_frame.function_name,return_frame.source_location);
+                    // The only `unwind` we need to do, is to update the PC with the call site address of the inline function. The `StackFrameIterator::next()` iteration will then create a virtual `StackFrame` for the call-site.
+                    let register_number = self
+                                            .unwind_registers
+                                            .register_description
+                                            .program_counter()
+                                            .address
+                                            .0
+                                            as u32;
+                    log::debug!(
+                            "UNWIND - {:04}: Caller: 0x{:08x}\tCallee: 0x{:08x}\tRule: {}",
+                            self.unwind_registers
+                                .get_name_by_dwarf_register_number(register_number),
+                            stackframe_return_address,
+                            self.unwind_registers
+                                .get_value_by_dwarf_register_number(register_number)
+                                .unwrap_or_default(),
+                            "PC= Inlined function LR",
+                        );
+                    self.unwind_registers.set_program_counter(Some(stackframe_return_address));
+                    return Some(return_frame);
+                }
+            } else {
+                // Something happened in `DebugInfo::get_stackframe_info, and the return address was cleared.
+                log::debug!("UNWIND - Inline function @ {:#010x} had no return address. No additional unwind information available", frame_pc);
+                self.unwind_registers.set_return_address(None);
+                return Some(return_frame);
+            }
+
+            log::debug!("UNWIND - Preparing `StackFrameIterator` to unwind NON-INLINED function {:?} at {:?}",return_frame.function_name,return_frame.source_location);
+            // PART 2-b: get the `gimli::FrameDescriptorEntry` for this address and then the unwind info associated with this row.
             // TODO: The `gimli` docs for this function talks about cases where there might be more than one FDE for a function. Investigate if this affects RUST and how to solve.
             use gimli::UnwindSection;
             let frame_descriptor_entry = match self.debug_info.frame_section.fde_for_address(
@@ -423,8 +445,8 @@ impl<'debuginfo, 'probe, 'core> Iterator for StackFrameIterator<'debuginfo, 'pro
                         frame_pc,
                         error
                     );
-                    self.unwind_registers.set_program_counter(None);
-                    return return_frame;
+                    self.unwind_registers.set_return_address(None);
+                    return Some(return_frame);
                 }
             };
 
@@ -437,7 +459,7 @@ impl<'debuginfo, 'probe, 'core> Iterator for StackFrameIterator<'debuginfo, 'pro
                 Ok(unwind_info) => {
                     // Because we will be updating the `self.unwind_registers` with previous frame unwind info, we need to keep a copy of the current frame's registers that can be used to resolve [DWARF](https://dwarfstd.org) expressions.
                     let callee_frame_registers = self.unwind_registers.clone();
-                    // PART 2-b: Determine the CFA (canonical frame address) to use for this unwind row.
+                    // PART 2-c: Determine the CFA (canonical frame address) to use for this unwind row.
                     let unwind_cfa = match unwind_info.cfa() {
                         gimli::CfaRule::RegisterAndOffset { register, offset } => {
                             let reg_val = self
@@ -446,7 +468,7 @@ impl<'debuginfo, 'probe, 'core> Iterator for StackFrameIterator<'debuginfo, 'pro
                             match reg_val {
                                 Some(reg_val) => {
                                     let unwind_cfa = (i64::from(reg_val) + offset) as u32;
-                                    println!(
+                                    log::debug!(
                                         "UNWIND - CFA : 0x{:08x}\tRule: {:?}",
                                         unwind_cfa,
                                         unwind_info.cfa()
@@ -454,19 +476,16 @@ impl<'debuginfo, 'probe, 'core> Iterator for StackFrameIterator<'debuginfo, 'pro
                                     Some(unwind_cfa)
                                 }
                                 None => {
-                                    log::error!(
-                                                    "UNWIND: `StackFrameIterator` unable to determine the unwind CFA: Missing value of register {}",
-                                                    register.0
-                                                );
-                                    self.unwind_registers.set_program_counter(None);
-                                    return return_frame;
+                                    log::error!("UNWIND: `StackFrameIterator` unable to determine the unwind CFA: Missing value of register {}",register.0);
+                                    self.unwind_registers.set_return_address(None);
+                                    return Some(return_frame);
                                 }
                             }
                         }
                         gimli::CfaRule::Expression(_) => unimplemented!(),
                     };
 
-                    // PART 2-c: Unwind registers for the "previous frame.
+                    // PART 2-d: Unwind registers for the "previous frame.
                     // TODO: Test for RISCV ... This is only tested for ARM right now.
                     // TODO: Maybe do some cleanup on the `Registerfile` API, to make the following more ergonomic.
                     for register_number in 0..self
@@ -589,15 +608,15 @@ impl<'debuginfo, 'probe, 'core> Iterator for StackFrameIterator<'debuginfo, 'pro
                                             address_offset,
                                             unwind_cfa
                                         );
-                                        self.unwind_registers.set_program_counter(None);
-                                        return return_frame;
+                                        self.unwind_registers.set_return_address(None);
+                                        return Some(return_frame);
                                     }
                                     let previous_frame_register_value = u32::from_le_bytes(buff);
                                     Some(previous_frame_register_value as u32)
                                 } else {
                                     log::error!("UNWIND: Tried to unwind `RegisterRule` at CFA = None. Please report this as a bug.");
-                                    self.unwind_registers.set_program_counter(None);
-                                    return return_frame;
+                                    self.unwind_registers.set_return_address(None);
+                                    return Some(return_frame);
                                 }
                             }
                             //TODO: Implement the remainder of these `RegisterRule`s
@@ -606,7 +625,7 @@ impl<'debuginfo, 'probe, 'core> Iterator for StackFrameIterator<'debuginfo, 'pro
 
                         self.unwind_registers
                             .set_by_dwarf_register_number(register_number, new_value);
-                        println!(
+                        log::debug!(
                             "UNWIND - {:04}: Caller: 0x{:08x}\tCallee: 0x{:08x}\tRule: {}",
                             self.unwind_registers
                                 .get_name_by_dwarf_register_number(register_number),
@@ -621,12 +640,9 @@ impl<'debuginfo, 'probe, 'core> Iterator for StackFrameIterator<'debuginfo, 'pro
                     }
                 }
                 Err(error) => {
-                    log::debug!(
-                                    "UNWIND: Stack unwind complete. No available debug info for program counter {:#x}: {}",
-                                    frame_pc, error
-                                );
-                    self.unwind_registers.set_program_counter(None);
-                    return return_frame;
+                    log::debug!("UNWIND: Stack unwind complete. No available debug info for program counter {:#x}: {}", frame_pc, error);
+                    self.unwind_registers.set_return_address(None);
+                    return Some(return_frame);
                 }
             };
 
@@ -645,8 +661,8 @@ impl<'debuginfo, 'probe, 'core> Iterator for StackFrameIterator<'debuginfo, 'pro
                     Ok(frame_descriptor_entry) => frame_descriptor_entry,
                     Err(error) => {
                         log::error!("UNWIND: Error reading previous FrameDescriptorEntry at PC={:#010x} : {}", previous_frame_pc, error);
-                        self.unwind_registers.set_program_counter(None);
-                        return return_frame;
+                        self.unwind_registers.set_return_address(None);
+                        return Some(return_frame);
                     }
                 };
 
@@ -665,8 +681,8 @@ impl<'debuginfo, 'probe, 'core> Iterator for StackFrameIterator<'debuginfo, 'pro
                                 match reg_val {
                                     Some(reg_val) => {
                                         let unwind_cfa = (i64::from(reg_val) + offset) as u32;
-                                        println!(
-                                            "UNWIND - CFA : 0x{:08x}\tRule: {:?}",
+                                        log::debug!(
+                                            "UNWIND - CFA : 0x{:08x}\tRule: Previous Function {:?}",
                                             unwind_cfa,
                                             previous_unwind_info.cfa()
                                         );
@@ -677,8 +693,8 @@ impl<'debuginfo, 'probe, 'core> Iterator for StackFrameIterator<'debuginfo, 'pro
                                                         "UNWIND: `StackFrameIterator` unable to determine the previous frame unwind CFA: Missing value of register {}",
                                                         register.0
                                                     );
-                                        self.unwind_registers.set_program_counter(None);
-                                        return return_frame;
+                                        self.unwind_registers.set_return_address(None);
+                                        return Some(return_frame);
                                     }
                                 }
                             }
@@ -720,15 +736,15 @@ impl<'debuginfo, 'probe, 'core> Iterator for StackFrameIterator<'debuginfo, 'pro
                                             address_offset,
                                             unwind_cfa
                                         );
-                                        self.unwind_registers.set_program_counter(None);
-                                        return return_frame;
+                                        self.unwind_registers.set_return_address(None);
+                                        return Some(return_frame);
                                     }
                                     let previous_frame_register_value = u32::from_le_bytes(buff);
                                     Some(previous_frame_register_value as u32)
                                 } else {
                                     log::error!("UNWIND: Tried to unwind `RegisterRule` at CFA = None. Please report this as a bug.");
-                                    self.unwind_registers.set_program_counter(None);
-                                    return return_frame;
+                                    self.unwind_registers.set_return_address(None);
+                                    return Some(return_frame);
                                 }
                             }
                             //TODO: Implement the remainder of these `RegisterRule`s
@@ -736,8 +752,8 @@ impl<'debuginfo, 'probe, 'core> Iterator for StackFrameIterator<'debuginfo, 'pro
                         };
                         self.unwind_registers
                             .set_by_dwarf_register_number(return_register_number, new_return_value);
-                        println!(
-                            "UNWIND - {:04}: Caller: 0x{:08x}\tRule: Previous frame {}",
+                        log::debug!(
+                            "UNWIND - {:04}: Caller: 0x{:08x}\tRule: Override with previous frame {}",
                             self.unwind_registers
                                 .get_name_by_dwarf_register_number(return_register_number),
                             self.unwind_registers
@@ -747,24 +763,21 @@ impl<'debuginfo, 'probe, 'core> Iterator for StackFrameIterator<'debuginfo, 'pro
                         );
                     }
                     Err(error) => {
-                        log::debug!(
-                                        "UNWIND: Stack unwind complete. No available debug info for program counter {:#x}: {}",
-                                        frame_pc, error
-                                    );
-                        self.unwind_registers.set_program_counter(None);
-                        return return_frame;
+                        log::debug!("UNWIND: Stack unwind complete. No available debug info for program counter {:#x}: {}",frame_pc, error);
+                        self.unwind_registers.set_return_address(None);
+                        return Some(return_frame);
                     }
                 };
             } else {
                 log::error!("UNWIND: Cannot read previous FrameDescriptorEntry without a valid PC");
-                return return_frame;
+                self.unwind_registers.set_return_address(None);
+                return Some(return_frame);
             }
         } else {
             log::debug!("UNWIND: We have reached the bottom of the stack. This will be the last `StackFrame` returned.");
-            self.unwind_registers.set_program_counter(None);
         }
 
-        return_frame
+        Some(return_frame)
     }
 }
 
@@ -1068,30 +1081,39 @@ impl DebugInfo {
         &self,
         core: &mut Core<'_>,
         address: u64,
-        stackframe_registers: &Registers,
-        in_inlined_function: bool,
+        unwind_registers: &Registers
     ) -> Result<StackFrame, DebugError> {
         let mut units = self.get_units();
 
         let unknown_function = format!("<unknown function @ {:#010x}>", address);
+        let mut stackframe_registers = unwind_registers.clone();
 
         while let Some(unit_info) = self.get_next_unit_info(&mut units) {
-            if let Some(die_cursor_state) =
-                &mut unit_info.get_function_die(address, in_inlined_function)
+            if let Some(function_die) =
+                &mut unit_info.get_function_die(address, true)
             {
-                let function_name = die_cursor_state
+                let function_name = function_die
                     .function_name(&unit_info)
                     .unwrap_or(unknown_function);
 
+                if function_die.is_inline {
+                    // Calculate the call site for this function, so that we can use it later to create an additional 'callee' `StackFrame` from that PC.
+                    let address_size = gimli::_UnwindSectionPrivate::address_size(&self.frame_section) as u64;
+                    if function_die.low_pc > address_size && function_die.low_pc < u32::MAX.into() {
+                        stackframe_registers.set_return_address(Some((function_die.low_pc - address_size) as u32));
+                    } else {
+                        stackframe_registers.set_return_address(None);
+                    }
+                }
                 // To correctly show breakpoints, we use the source location where the function is declared, NOT the source location at the call site of any inlined_functions.
                 let function_source_location = self.get_source_location(address);
 
-                println!("UNWIND: Function name: {}", function_name);
+                log::debug!("UNWIND: Function name: {}", function_name);
 
                 // Now that we have the function_name and function_source_location, we can cache the in-scope `Variable`s (`<statics>` and `<locals>`) in `DebugInfo::VariableCache`
                 let mut stackframe_root_variable = Variable::new(
                     unit_info.unit.header.offset().as_debug_info_offset(),
-                    Some(die_cursor_state.function_die.offset()),
+                    Some(function_die.function_die.offset()),
                 );
                 stackframe_root_variable.name = "<stack_frame>".to_string();
                 stackframe_root_variable.source_location = function_source_location.clone();
@@ -1100,12 +1122,12 @@ impl DebugInfo {
                 stackframe_root_variable = unit_info.extract_location(
                     &unit_info
                         .unit
-                        .entries_tree(Some(die_cursor_state.function_die.offset()))?
+                        .entries_tree(Some(function_die.function_die.offset()))?
                         .root()?,
                     &parent_variable,
                     stackframe_root_variable,
                     core,
-                    stackframe_registers,
+                    &stackframe_registers,
                 )?;
 
                 stackframe_root_variable =
@@ -1113,7 +1135,7 @@ impl DebugInfo {
                         .cache_variable(0, stackframe_root_variable, core)?;
 
                 if let Some(error) = self
-                    .cache_register_variables(stackframe_registers, &stackframe_root_variable, core)
+                    .cache_register_variables(&stackframe_registers, &stackframe_root_variable, core)
                     .err()
                 {
                     log::warn!(
@@ -1125,9 +1147,9 @@ impl DebugInfo {
                 // Next, resolve and cache the function variables.
                 self.cache_function_variables(
                     core,
-                    die_cursor_state,
+                    function_die,
                     &unit_info,
-                    stackframe_registers,
+                    &stackframe_registers,
                     &stackframe_root_variable,
                 )?;
 
@@ -1137,7 +1159,7 @@ impl DebugInfo {
                     id: stackframe_root_variable.variable_key as u64,
                     function_name,
                     source_location: function_source_location,
-                    registers: stackframe_registers.clone(),
+                    registers: stackframe_registers,
                     pc: address as u32,
                 });
             }
@@ -1148,7 +1170,7 @@ impl DebugInfo {
             id: u64::MAX, // This value is outside the i64 range used by MS DAP Protocol, and will be used to identify that this is not a "real" StackFrame
             function_name: unknown_function,
             source_location: self.get_source_location(address),
-            registers: stackframe_registers.clone(),
+            registers: stackframe_registers,
             pc: address as u32,
         })
     }
@@ -1323,9 +1345,10 @@ impl DebugInfo {
 /// Reference to a DIE for a function
 struct FunctionDie<'abbrev, 'unit> {
     function_die: FunctionDieType<'abbrev, 'unit>,
-
     is_inline: bool,
     abstract_die: Option<FunctionDieType<'abbrev, 'unit>>,
+    low_pc: u64,
+    high_pc: u64,
 }
 
 // TODO: We should consider replacing the `panic`s with proper error handling, that allows a user to be 'partially' successful with a debug session. If we use `panic`, then the user will have to wait until the bug is fixed before they can continue trying to use probe-rs
@@ -1339,6 +1362,8 @@ impl<'debugunit, 'abbrev, 'unit: 'debugunit> FunctionDie<'abbrev, 'unit> {
                     function_die: die,
                     is_inline: false,
                     abstract_die: None,
+                    low_pc: 0,
+                    high_pc: 0,
                 }
             }
             other_tag => panic!("FunctionDie has to has to have Tag DW_TAG_subprogram, but tag is {:?}. This is a bug, please report it.", other_tag.static_string())
@@ -1357,6 +1382,9 @@ impl<'debugunit, 'abbrev, 'unit: 'debugunit> FunctionDie<'abbrev, 'unit> {
                     function_die: concrete_die,
                     is_inline: true,
                     abstract_die: Some(abstract_die),
+                    low_pc: 0,
+                    high_pc: 0,
+
                 }
             }
             other_tag => panic!("FunctionDie has to has to have Tag DW_TAG_inlined_subroutine, but tag is {:?}. This is a bug, please report it.", other_tag.static_string())
@@ -1424,19 +1452,19 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                     if (ranges.begin <= address) && (address < ranges.end) {
                         // Check if we are actually in an inlined function
 
-                        let die = FunctionDie::new(current.clone());
-
+                        let mut die = FunctionDie::new(current.clone());
+                        die.low_pc = ranges.begin;
+                        die.high_pc = ranges.end;
                         if find_inlined {
                             log::debug!(
                                 "Found DIE, now checking for inlined functions: name={:?}",
                                 die.function_name(self)
                             );
-
                             return self
                                 .find_inlined_function(address, current.offset())
                                 .or_else(|| {
                                     log::debug!("No inlined function found!");
-                                    Some(FunctionDie::new(current.clone()))
+                                    Some(die)
                                 });
                         } else {
                             log::debug!("Found DIE: name={:?}", die.function_name(self));
@@ -1472,22 +1500,24 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                     .unwrap();
 
                 while let Ok(Some(ranges)) = ranges.next() {
+
                     if (ranges.begin <= address) && (address < ranges.end) {
                         // Check if we are actually in an inlined function
 
                         // Find the abstract definition
-
                         if let Some(abstract_origin) =
                             current.attr(gimli::DW_AT_abstract_origin).unwrap()
                         {
                             match abstract_origin.value() {
                                 gimli::AttributeValue::UnitRef(unit_ref) => {
                                     let abstract_die = self.unit.entry(unit_ref).unwrap();
-
-                                    return Some(FunctionDie::new_inlined(
+                                    let mut die = FunctionDie::new_inlined(
                                         current.clone(),
                                         abstract_die.clone(),
-                                    ));
+                                    );
+                                    die.low_pc = ranges.begin;
+                                    die.high_pc = ranges.end;
+                                    return Some(die);
                                 }
                                 other_value => panic!("Unsupported value: {:?}", other_value),
                             }
