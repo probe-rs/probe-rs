@@ -290,12 +290,9 @@ impl App {
                                 let (table, locs) = defmt_state.as_ref().expect(
                                 "Running rtt in defmt mode but table or locations could not be loaded.",
                             );
-                                let mut frames = vec![];
-
-                                frames.extend_from_slice(&data);
-
-                                while let Ok((frame, consumed)) =
-                                    table.decode(&frames)
+                                let mut stream_decoder = table.new_stream_decoder();
+                                stream_decoder.received(&data);
+                                while let Ok(frame) = stream_decoder.decode()
                                 {
                                     // NOTE(`[]` indexing) all indices in `table` have already been
                                     // verified to exist in the `locs` map.
@@ -318,10 +315,6 @@ impl App {
                                             loc.line
                                         ));
                                     }
-
-                                    let num_frames = frames.len();
-                                    frames.rotate_left(consumed);
-                                    frames.truncate(num_frames - consumed);
                                 }
                             }
                             DataFormat::String => unreachable!("You encountered a bug. Please open an issue on Github."),
