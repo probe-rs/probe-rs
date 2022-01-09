@@ -1,7 +1,14 @@
-use crate::error;
 use crate::{
-    architecture::arm::{ap::MemoryAp, memory::adi_v5_memory_interface::ArmProbe},
+    architecture::arm::{
+        ap::{AccessPort, MemoryAp},
+        memory::adi_v5_memory_interface::ArmProbe,
+        ApAddress,
+    },
     CoreRegisterAddress,
+};
+use crate::{
+    architecture::arm::{communication_interface::Initialized, ArmCommunicationInterface},
+    error,
 };
 
 use anyhow::anyhow;
@@ -198,19 +205,18 @@ impl<'probe> Memory<'probe> {
     ) -> Result<(), error::Error> {
         self.inner.write_core_reg(self.ap_sel, addr, value)
     }
-}
 
-pub struct MemoryList<'probe>(Vec<Memory<'probe>>);
-
-impl<'probe> MemoryList<'probe> {
-    pub fn new(memories: Vec<Memory<'probe>>) -> Self {
-        Self(memories)
+    pub fn get_arm_interface(
+        &mut self,
+    ) -> Result<&mut ArmCommunicationInterface<Initialized>, error::Error> {
+        self.inner.get_arm_communication_interface()
     }
-}
 
-impl<'probe> std::ops::Deref for MemoryList<'probe> {
-    type Target = Vec<Memory<'probe>>;
-    fn deref(&self) -> &Self::Target {
-        &self.0
+    pub fn get_arm_probe(&mut self) -> &mut dyn ArmProbe {
+        self.inner.as_mut()
+    }
+
+    pub fn get_ap(&mut self) -> ApAddress {
+        self.ap_sel.ap_address()
     }
 }

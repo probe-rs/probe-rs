@@ -1,11 +1,4 @@
-use crate::{
-    probe::{DebugProbeInfo, DebugProbeType, ProbeCreationError},
-    DebugProbeSelector,
-};
-
-use rusb::{Device, DeviceDescriptor, UsbContext};
-use std::time::Duration;
-
+use crate:: probe::{DebugProbeInfo, DebugProbeType};
 /// Finds all CMSIS-DAP devices, either v1 (HID) or v2 (WinUSB Bulk).
 ///
 /// This method uses rusb to read device strings, which might fail due
@@ -38,8 +31,10 @@ fn get_edbg_hid_info(device: &hidapi::DeviceInfo) -> Option<DebugProbeInfo> {
                 product_id: device.product_id(),
                 serial_number: device.serial_number().map(|s| s.to_owned()),
                 probe_type: DebugProbeType::EDBG,
+                hid_interface: Some(device.interface_number() as u8),
             });
         }
     }
     None
 }
+

@@ -1,11 +1,11 @@
-use std::iter;
+use std::{iter, time::Duration};
 
 use crate::{
     architecture::arm::{
         dp::{Abort, Ctrl, RdBuff, DPIDR},
-        DapAccess, DapError, PortType, Register,
+        DapError, DpAddress, Pins, PortType, RawDapAccess, Register,
     },
-    DebugProbeError,
+    DebugProbe, DebugProbeError,
 };
 
 use super::{bits_to_byte, JLink};
@@ -175,15 +175,15 @@ fn perform_transfers<P: RawSwdIo>(
             // Check if we need an additional instruction to avoid loosing buffered writes.
 
             let abort_write = transfer.port == PortType::DebugPort
-                && transfer.address == Abort::ADDRESS as u16
+                && transfer.address == Abort::ADDRESS
                 && transfer.direction == TransferDirection::Write;
 
             let dpidr_read = transfer.port == PortType::DebugPort
-                && transfer.address == DPIDR::ADDRESS as u16
+                && transfer.address == DPIDR::ADDRESS
                 && transfer.direction == TransferDirection::Read;
 
             let ctrl_stat_read = transfer.port == PortType::DebugPort
-                && transfer.address == Ctrl::ADDRESS as u16
+                && transfer.address == Ctrl::ADDRESS
                 && transfer.direction == TransferDirection::Read;
 
             if abort_write || dpidr_read || ctrl_stat_read {
@@ -218,14 +218,14 @@ fn perform_transfers<P: RawSwdIo>(
         // Writes to the AP can be buffered
         //
         // TODO: Can DP writes be buffered as well?
-        buffered_write = matches!(transfer.port, PortType::AccessPort(_x))
-            && transfer.direction == TransferDirection::Write;
+        buffered_write =
+            transfer.port == PortType::AccessPort && transfer.direction == TransferDirection::Write;
 
         // For all writes, except writes to the DP ABORT register, we need to perform another register to ensure that
         // we know if the write succeeded.
         write_response_pending = transfer.is_write()
             && !(matches!(transfer.port, PortType::DebugPort)
-                && transfer.address == Abort::ADDRESS as u16);
+                && transfer.address == Abort::ADDRESS);
 
         // If the response is returned in the next transfer, we push the correct index
         // if need_ap_read || write_response_pending {
@@ -248,7 +248,6 @@ fn perform_transfers<P: RawSwdIo>(
         num_transfers += 1;
     }
 
-    //if need_ap_read || write_response_pending {
     if need_ap_read || write_response_pending {
         if write_response_pending {
             io_sequence.add_output_sequence(&vec![
@@ -346,13 +345,13 @@ fn perform_transfers<P: RawSwdIo>(
 struct SwdTransfer {
     port: PortType,
     direction: TransferDirection,
-    address: u16,
+    address: u8,
     value: u32,
     status: TransferStatus,
 }
 
 impl SwdTransfer {
-    fn read(port: PortType, address: u16) -> SwdTransfer {
+    fn read(port: PortType, address: u8) -> SwdTransfer {
         Self {
             port,
             address,
@@ -362,7 +361,7 @@ impl SwdTransfer {
         }
     }
 
-    fn write(port: PortType, address: u16, value: u32) -> SwdTransfer {
+    fn write(port: PortType, address: u8, value: u32) -> SwdTransfer {
         Self {
             port,
             address,
@@ -386,7 +385,7 @@ impl SwdTransfer {
     // Helper functions for combining transfers
 
     fn is_ap_read(&self) -> bool {
-        matches!(self.port, PortType::AccessPort(_)) && self.direction == TransferDirection::Read
+        self.port == PortType::AccessPort && self.direction == TransferDirection::Read
     }
 
     fn is_write(&self) -> bool {
@@ -395,7 +394,7 @@ impl SwdTransfer {
 }
 
 fn rdbuff_read() -> IoSequence {
-    SwdTransfer::read(PortType::DebugPort, RdBuff::ADDRESS as u16).io_sequence()
+    SwdTransfer::read(PortType::DebugPort, RdBuff::ADDRESS).io_sequence()
 }
 
 #[derive(Debug, PartialEq, Copy, Clone)]
@@ -471,7 +470,7 @@ enum TransferType {
     Write(u32),
 }
 
-fn build_swd_transfer(port: PortType, direction: TransferType, address: u16) -> IoSequence {
+fn build_swd_transfer(port: PortType, direction: TransferType, address: u8) -> IoSequence {
     // JLink operates on raw SWD bit sequences.
     // So we need to manually assemble the read and write bitsequences.
     // The following code with the comments hopefully explains well enough how it works.
@@ -481,7 +480,7 @@ fn build_swd_transfer(port: PortType, direction: TransferType, address: u16) -> 
     // First we determine the APnDP bit.
     let port = match port {
         PortType::DebugPort => false,
-        PortType::AccessPort(_) => true,
+        PortType::AccessPort => true,
     };
 
     // Set direction bit to 1 for reads.
@@ -717,8 +716,17 @@ impl RawSwdIo for JLink {
     }
 }
 
-impl<Probe: RawSwdIo + 'static> DapAccess for Probe {
-    fn read_register(&mut self, port: PortType, address: u16) -> Result<u32, DebugProbeError> {
+impl<Probe: DebugProbe + RawSwdIo + 'static> RawDapAccess for Probe {
+    fn select_dp(&mut self, dp: DpAddress) -> Result<(), DebugProbeError> {
+        match dp {
+            DpAddress::Default => Ok(()), // nop
+            DpAddress::Multidrop(_) => Err(DebugProbeError::ProbeSpecific(
+                anyhow::anyhow!("JLink doesn't support multidrop SWD yet").into(),
+            )),
+        }
+    }
+
+    fn raw_read_register(&mut self, port: PortType, address: u8) -> Result<u32, DebugProbeError> {
         let dap_wait_retries = self.swd_settings().num_retries_after_wait;
         let mut idle_cycles = std::cmp::max(1, self.swd_settings().num_idle_cycles_between_writes);
 
@@ -748,10 +756,10 @@ impl<Probe: RawSwdIo + 'static> DapAccess for Probe {
 
                     abort.set_orunerrclr(true);
 
-                    DapAccess::write_register(
+                    RawDapAccess::raw_write_register(
                         self,
                         PortType::DebugPort,
-                        Abort::ADDRESS as u16,
+                        Abort::ADDRESS,
                         abort.into(),
                     )?;
 
@@ -772,7 +780,7 @@ impl<Probe: RawSwdIo + 'static> DapAccess for Probe {
                     // To get a clue about the actual fault we read the ctrl register,
                     // which will have the fault status flags set.
                     let response =
-                        DapAccess::read_register(self, PortType::DebugPort, Ctrl::ADDRESS as u16)?;
+                        RawDapAccess::raw_read_register(self, PortType::DebugPort, Ctrl::ADDRESS)?;
                     let ctrl = Ctrl::from(response);
                     log::debug!(
                         "Reading DAP register failed. Ctrl/Stat register value is: {:#?}",
@@ -791,10 +799,10 @@ impl<Probe: RawSwdIo + 'static> DapAccess for Probe {
                         abort.set_orunerrclr(ctrl.sticky_orun());
                         abort.set_stkerrclr(ctrl.sticky_err());
 
-                        DapAccess::write_register(
+                        RawDapAccess::raw_write_register(
                             self,
                             PortType::DebugPort,
-                            Abort::ADDRESS as u16,
+                            Abort::ADDRESS,
                             abort.into(),
                         )?;
                     }
@@ -822,10 +830,10 @@ impl<Probe: RawSwdIo + 'static> DapAccess for Probe {
         Err(DebugProbeError::Timeout)
     }
 
-    fn read_block(
+    fn raw_read_block(
         &mut self,
         port: PortType,
-        address: u16,
+        address: u8,
         values: &mut [u32],
     ) -> Result<(), DebugProbeError> {
         let mut succesful_transfers = 0;
@@ -866,10 +874,10 @@ impl<Probe: RawSwdIo + 'static> DapAccess for Probe {
 
                             abort.set_orunerrclr(true);
 
-                            DapAccess::write_register(
+                            RawDapAccess::raw_write_register(
                                 self,
                                 PortType::DebugPort,
-                                Abort::ADDRESS as u16,
+                                Abort::ADDRESS,
                                 abort.into(),
                             )?;
 
@@ -895,10 +903,10 @@ impl<Probe: RawSwdIo + 'static> DapAccess for Probe {
         Ok(())
     }
 
-    fn write_register(
+    fn raw_write_register(
         &mut self,
         port: PortType,
-        address: u16,
+        address: u8,
         value: u32,
     ) -> Result<(), DebugProbeError> {
         let dap_wait_retries = self.swd_settings().num_retries_after_wait;
@@ -930,10 +938,10 @@ impl<Probe: RawSwdIo + 'static> DapAccess for Probe {
                     abort.set_orunerrclr(true);
 
                     // Because we use overrun detection, we now have to clear the overrun error
-                    DapAccess::write_register(
+                    RawDapAccess::raw_write_register(
                         self,
                         PortType::DebugPort,
-                        Abort::ADDRESS as u16,
+                        Abort::ADDRESS,
                         abort.into(),
                     )?;
 
@@ -954,7 +962,7 @@ impl<Probe: RawSwdIo + 'static> DapAccess for Probe {
                     // which will have the fault status flags set.
 
                     let response =
-                        DapAccess::read_register(self, PortType::DebugPort, Ctrl::ADDRESS as u16)?;
+                        RawDapAccess::raw_read_register(self, PortType::DebugPort, Ctrl::ADDRESS)?;
 
                     let ctrl = Ctrl::from(response);
                     log::trace!(
@@ -974,10 +982,10 @@ impl<Probe: RawSwdIo + 'static> DapAccess for Probe {
                         abort.set_orunerrclr(ctrl.sticky_orun());
                         abort.set_stkerrclr(ctrl.sticky_err());
 
-                        DapAccess::write_register(
+                        RawDapAccess::raw_write_register(
                             self,
                             PortType::DebugPort,
-                            Abort::ADDRESS as u16,
+                            Abort::ADDRESS,
                             abort.into(),
                         )?;
                     }
@@ -1005,10 +1013,10 @@ impl<Probe: RawSwdIo + 'static> DapAccess for Probe {
         Err(DebugProbeError::Timeout)
     }
 
-    fn write_block(
+    fn raw_write_block(
         &mut self,
         port: PortType,
-        address: u16,
+        address: u8,
         values: &[u32],
     ) -> Result<(), DebugProbeError> {
         let mut succesful_transfers = 0;
@@ -1051,10 +1059,10 @@ impl<Probe: RawSwdIo + 'static> DapAccess for Probe {
 
                             abort.set_orunerrclr(true);
 
-                            DapAccess::write_register(
+                            RawDapAccess::raw_write_register(
                                 self,
                                 PortType::DebugPort,
-                                Abort::ADDRESS as u16,
+                                Abort::ADDRESS,
                                 abort.into(),
                             )?;
 
@@ -1082,6 +1090,59 @@ impl<Probe: RawSwdIo + 'static> DapAccess for Probe {
 
         Ok(())
     }
+
+    fn swj_pins(
+        &mut self,
+        pin_out: u32,
+        pin_select: u32,
+        pin_wait: u32,
+    ) -> Result<u32, DebugProbeError> {
+        let mut nreset = Pins(0);
+        nreset.set_nreset(true);
+        let nreset_mask = nreset.0 as u32;
+
+        // If only the reset pin is selected we perform the reset.
+        // If something else is selected return an error as this is not supported on J-Links.
+        if pin_select == nreset_mask {
+            if Pins(pin_out as u8).nreset() {
+                self.target_reset_deassert()?;
+            } else {
+                self.target_reset_assert()?;
+            }
+
+            // Normally this would be the timeout we pass to the probe to settle the pins.
+            // The J-Link is not capable of this, so we just wait for this time on the host
+            // and assume it has settled until then.
+            std::thread::sleep(Duration::from_micros(pin_wait as u64));
+
+            // We signal that we cannot read the pin state.
+            Ok(0xFFFF_FFFF)
+        } else {
+            // This is not supported for J-Links, unfortunately.
+            Err(DebugProbeError::CommandNotSupportedByProbe("swj_pins"))
+        }
+    }
+
+    fn into_probe(self: Box<Self>) -> Box<dyn DebugProbe> {
+        self
+    }
+
+    fn swj_sequence(&mut self, bit_len: u8, mut bits: u64) -> Result<(), DebugProbeError> {
+        let mut io_sequence = IoSequence::new();
+
+        for _ in 0..bit_len {
+            io_sequence.add_output(bits & 1 == 1);
+
+            bits >>= 1;
+        }
+
+        self.swd_io(
+            io_sequence.direction_bits().to_owned(),
+            io_sequence.io_bits().to_owned(),
+        )?;
+
+        Ok(())
+    }
 }
 
 #[cfg(test)]
@@ -1089,7 +1150,10 @@ mod test {
 
     use std::iter;
 
-    use crate::architecture::arm::{DapAccess, PortType};
+    use crate::{
+        architecture::arm::{PortType, RawDapAccess},
+        DebugProbe,
+    };
 
     use super::{RawSwdIo, SwdSettings, SwdStatistics};
 
@@ -1103,6 +1167,7 @@ mod test {
         NoAck,
     }
 
+    #[derive(Debug)]
     struct MockJaylink {
         direction_input: Option<Vec<bool>>,
         io_input: Option<Vec<bool>>,
@@ -1223,11 +1288,7 @@ mod test {
     }
 
     impl RawSwdIo for MockJaylink {
-        fn swd_io<'a, D, S>(
-            &'a mut self,
-            dir: D,
-            swdio: S,
-        ) -> Result<Vec<bool>, crate::DebugProbeError>
+        fn swd_io<D, S>(&mut self, dir: D, swdio: S) -> Result<Vec<bool>, crate::DebugProbeError>
         where
             D: IntoIterator<Item = bool>,
             S: IntoIterator<Item = bool>,
@@ -1268,6 +1329,62 @@ mod test {
         }
     }
 
+    /// This is just a blanket impl that will crash if used (only relevant in tests,
+    /// so no problem as we do not use it) to fulfill the marker requirement.
+    impl DebugProbe for MockJaylink {
+        fn new_from_selector(
+            _selector: impl Into<crate::DebugProbeSelector>,
+        ) -> Result<Box<Self>, crate::DebugProbeError>
+        where
+            Self: Sized,
+        {
+            todo!()
+        }
+
+        fn get_name(&self) -> &str {
+            todo!()
+        }
+
+        fn speed(&self) -> u32 {
+            todo!()
+        }
+
+        fn set_speed(&mut self, _speed_khz: u32) -> Result<u32, crate::DebugProbeError> {
+            todo!()
+        }
+
+        fn attach(&mut self) -> Result<(), crate::DebugProbeError> {
+            todo!()
+        }
+
+        fn detach(&mut self) -> Result<(), crate::DebugProbeError> {
+            todo!()
+        }
+
+        fn target_reset(&mut self) -> Result<(), crate::DebugProbeError> {
+            todo!()
+        }
+
+        fn target_reset_assert(&mut self) -> Result<(), crate::DebugProbeError> {
+            todo!()
+        }
+
+        fn target_reset_deassert(&mut self) -> Result<(), crate::DebugProbeError> {
+            todo!()
+        }
+
+        fn select_protocol(
+            &mut self,
+            _protocol: crate::WireProtocol,
+        ) -> Result<(), crate::DebugProbeError> {
+            todo!()
+        }
+
+        fn into_probe(self: Box<Self>) -> Box<dyn DebugProbe> {
+            todo!()
+        }
+    }
+
     #[test]
     fn read_register() {
         let read_value = 12;
@@ -1277,7 +1394,7 @@ mod test {
         mock.add_read_response(DapAcknowledge::Ok, read_value);
         mock.add_idle_cycles(mock.swd_settings.idle_cycles_after_transfer);
 
-        let result = mock.read_register(PortType::AccessPort(0), 4).unwrap();
+        let result = mock.raw_read_register(PortType::AccessPort, 4).unwrap();
 
         assert_eq!(result, read_value);
     }
@@ -1305,7 +1422,7 @@ mod test {
         mock.add_read_response(DapAcknowledge::Ok, read_value);
         mock.add_idle_cycles(mock.swd_settings.idle_cycles_after_transfer);
 
-        let result = mock.read_register(PortType::AccessPort(0), 4).unwrap();
+        let result = mock.raw_read_register(PortType::AccessPort, 4).unwrap();
 
         assert_eq!(result, read_value);
     }
@@ -1321,7 +1438,7 @@ mod test {
         mock.add_read_response(DapAcknowledge::Ok, 0);
         mock.add_idle_cycles(mock.swd_settings.idle_cycles_after_transfer);
 
-        mock.write_register(PortType::AccessPort(0), 4, 0x123)
+        mock.raw_write_register(PortType::AccessPort, 4, 0x123)
             .expect("Failed to write register");
     }
 
@@ -1347,7 +1464,7 @@ mod test {
         mock.add_read_response(DapAcknowledge::Ok, 0);
         mock.add_idle_cycles(mock.swd_settings.idle_cycles_after_transfer);
 
-        mock.write_register(PortType::AccessPort(0), 4, 0x123)
+        mock.raw_write_register(PortType::AccessPort, 4, 0x123)
             .expect("Failed to write register");
     }
 
@@ -1384,7 +1501,7 @@ mod test {
         fn single_ap_register_read() {
             let register_value = 0x11_22_33_44u32;
 
-            let mut transfers = vec![SwdTransfer::read(PortType::AccessPort(0), 0)];
+            let mut transfers = vec![SwdTransfer::read(PortType::AccessPort, 0)];
 
             let mut mock = MockJaylink::new();
 
@@ -1410,7 +1527,7 @@ mod test {
             let dp_read_value = 0xFFAABB;
 
             let mut transfers = vec![
-                SwdTransfer::read(PortType::AccessPort(0), 4),
+                SwdTransfer::read(PortType::AccessPort, 4),
                 SwdTransfer::read(PortType::DebugPort, 3),
             ];
 
@@ -1441,7 +1558,7 @@ mod test {
 
             let mut transfers = vec![
                 SwdTransfer::read(PortType::DebugPort, 3),
-                SwdTransfer::read(PortType::AccessPort(0), 4),
+                SwdTransfer::read(PortType::AccessPort, 4),
             ];
 
             let mut mock = MockJaylink::new();
@@ -1468,8 +1585,8 @@ mod test {
             let ap_read_values = [1, 2];
 
             let mut transfers = vec![
-                SwdTransfer::read(PortType::AccessPort(0), 4),
-                SwdTransfer::read(PortType::AccessPort(0), 4),
+                SwdTransfer::read(PortType::AccessPort, 4),
+                SwdTransfer::read(PortType::AccessPort, 4),
             ];
 
             let mut mock = MockJaylink::new();
@@ -1539,7 +1656,7 @@ mod test {
 
         #[test]
         fn single_ap_register_write() {
-            let mut transfers = vec![SwdTransfer::write(PortType::AccessPort(0), 0, 0x1234_5678)];
+            let mut transfers = vec![SwdTransfer::write(PortType::AccessPort, 0, 0x1234_5678)];
 
             let mut mock = MockJaylink::new();
 
@@ -1566,8 +1683,8 @@ mod test {
         #[test]
         fn multiple_ap_register_write() {
             let mut transfers = vec![
-                SwdTransfer::write(PortType::AccessPort(0), 0, 0x1234_5678),
-                SwdTransfer::write(PortType::AccessPort(0), 0, 0xABABABAB),
+                SwdTransfer::write(PortType::AccessPort, 0, 0x1234_5678),
+                SwdTransfer::write(PortType::AccessPort, 0, 0xABABABAB),
             ];
 
             let mut mock = MockJaylink::new();

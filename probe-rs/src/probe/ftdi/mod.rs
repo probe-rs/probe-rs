@@ -1,4 +1,7 @@
-use crate::architecture::riscv::communication_interface::RiscvCommunicationInterface;
+use crate::architecture::{
+    arm::communication_interface::UninitializedArmProbe,
+    riscv::communication_interface::RiscvCommunicationInterface,
+};
 use crate::probe::{JTAGAccess, ProbeCreationError};
 use crate::{
     DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, DebugProbeType, WireProtocol,
@@ -12,14 +15,20 @@ use std::time::Duration;
 mod ftdi_impl;
 use ftdi_impl as ftdi;
 
+mod commands;
+
+use self::commands::{JtagCommand, WriteRegisterCommand};
+
+use super::{BatchExecutionError, CommandResult};
+
 #[derive(Debug)]
 struct JtagChainItem {
     idcode: u32,
     irlen: usize,
 }
 
-#[derive(Clone, Debug)]
-struct ChainParams {
+#[derive(Clone, Copy, Debug)]
+pub(super) struct ChainParams {
     irpre: usize,
     irpost: usize,
     drpre: usize,
@@ -254,31 +263,56 @@ impl JtagAdapter {
         }
 
         self.reset()?;
-        let cmd = vec![0xff; max_device_count];
-        let mut r = self.transfer_ir(&cmd, cmd.len() * 8)?;
 
-        let mut ir = 0;
-        let mut irbits = 0;
-        for (i, target) in targets.iter_mut().enumerate() {
-            if (!r.is_empty()) && irbits < 8 {
-                let byte = r[0];
-                r.remove(0);
-                ir |= (byte as u32) << irbits;
-                irbits += 8;
-            }
-            if ir & 0b11 == 0b01 {
-                ir &= !1;
-                let irlen = ir.trailing_zeros();
-                ir >>= irlen;
-                irbits -= irlen;
-                log::debug!("tap {} irlen: {}", i, irlen);
-                target.irlen = irlen as usize;
-            } else {
-                log::debug!("invalid irlen for tap {}", i);
-                return Err(io::Error::new(
-                    io::ErrorKind::InvalidData,
-                    "Invalid IR sequence during the chain scan",
-                ));
+        // Autodetect the targets' IR lengths.
+        //
+        // For many targets, reading the IR right after a reset yields 0b00..001. This allows
+        // autodetecting the IR lengths even when we have multiple targets. For example,
+        // if we read `0b1111111111110001000001` (LSB first) we know the first target in the
+        // chain has an irlen of 6 and the next one has an irlen of 4.
+        //
+        // However, not all targets satisfy this. For example, the esp32c3 shifts out a fixed value
+        // of `0b00101`. This makes the above algorithm to incorrectly detect the IR len as 2.
+        //
+        // Fortunately, we can use a different autodetection algorithm when we only have one target
+        // in the chain, that doesn't rely on the target to shift out a particular value. The key is
+        // the fact that whatever we shift in gets shifted back out, but delayed by the number of bits
+        // in the IR shfit register. So, we shift in lots of `1` bits to fill the shift register with `1`s.
+        // Then we shift in lots of `0` bytes. The output will be something like `0b00000111`, and the
+        // number of ones is the IR length.
+        if targets.len() == 1 {
+            let r = self.transfer_ir(&[0xFF, 0x00], 16)?;
+
+            let irlen = r[1].count_ones() as usize;
+            targets[0].irlen = irlen;
+            log::debug!("tap irlen: {}", irlen);
+        } else {
+            let cmd = vec![0xff; max_device_count];
+            let mut r = self.transfer_ir(&cmd, cmd.len() * 8)?;
+
+            let mut ir = 0;
+            let mut irbits = 0;
+            for (i, target) in targets.iter_mut().enumerate() {
+                if (!r.is_empty()) && irbits < 8 {
+                    let byte = r[0];
+                    r.remove(0);
+                    ir |= (byte as u32) << irbits;
+                    irbits += 8;
+                }
+                if ir & 0b11 == 0b01 {
+                    ir &= !1;
+                    let irlen = ir.trailing_zeros();
+                    ir >>= irlen;
+                    irbits -= irlen;
+                    log::debug!("tap {} irlen: {}", i, irlen);
+                    target.irlen = irlen as usize;
+                } else {
+                    log::debug!("invalid irlen for tap {}", i);
+                    return Err(io::Error::new(
+                        io::ErrorKind::InvalidData,
+                        "Invalid IR sequence during the chain scan",
+                    ));
+                }
             }
         }
 
@@ -320,7 +354,7 @@ impl JtagAdapter {
 
     fn get_chain_params(&self) -> io::Result<ChainParams> {
         match &self.chain_params {
-            Some(params) => Ok(params.clone()),
+            Some(params) => Ok(*params),
             None => Err(io::Error::new(
                 io::ErrorKind::Other,
                 "target is not selected",
@@ -353,10 +387,10 @@ impl JtagAdapter {
 
         let drbits = params.drpre + len_bits + params.drpost;
         let request = if let Some(data_slice) = data {
-            let data = BitSlice::<Lsb0, u8>::from_slice(data_slice).ok_or_else(|| {
+            let data = BitSlice::<Lsb0, u8>::from_slice(data_slice).map_err(|_| {
                 io::Error::new(io::ErrorKind::InvalidData, "could not create bitslice")
             })?;
-            let mut data = BitVec::<Lsb0, u8>::from_bitslice(&data);
+            let mut data = BitVec::<Lsb0, u8>::from_bitslice(data);
             data.truncate(len_bits);
 
             let mut buf = BitVec::<Lsb0, u8>::new();
@@ -515,10 +549,8 @@ impl DebugProbe for FtdiProbe {
 
     fn try_get_arm_interface<'probe>(
         self: Box<Self>,
-    ) -> Result<
-        Box<dyn crate::architecture::arm::communication_interface::ArmProbeInterface + 'probe>,
-        (Box<dyn DebugProbe>, DebugProbeError),
-    > {
+    ) -> Result<Box<dyn UninitializedArmProbe + 'probe>, (Box<dyn DebugProbe>, DebugProbeError)>
+    {
         todo!()
     }
 }
@@ -565,6 +597,136 @@ impl JTAGAccess for FtdiProbe {
         log::debug!("write_register result: {:?})", r);
         Ok(r)
     }
+
+    fn get_idle_cycles(&self) -> u8 {
+        self.idle_cycles
+    }
+
+    fn write_register_batch(
+        &mut self,
+        writes: &[super::JtagWriteCommand],
+    ) -> Result<Vec<CommandResult>, BatchExecutionError> {
+        // this value was determined by experimenting and doesn't match e.g
+        // the libftdi read/write chunk size - it is hopefully useful for every setup
+        // max value seems to be different for different adapters, e.g. for the Sipeed JTAG adapter
+        // 40 works but for the Pine64 adapter it doesn't
+        const CHUNK_SIZE: usize = 30;
+
+        let mut index_offset = 0;
+        let mut results = Vec::<CommandResult>::new();
+
+        let chain_params = self.adapter.get_chain_params().map_err(|e| {
+            BatchExecutionError::new(DebugProbeError::ProbeSpecific(Box::new(e)), results.clone())
+        })?;
+
+        let commands: Result<Vec<WriteRegisterCommand>, _> = writes
+            .iter()
+            .map(|w| {
+                WriteRegisterCommand::new(
+                    w.address,
+                    w.data.clone(),
+                    w.len as usize,
+                    self.idle_cycles as usize,
+                    chain_params,
+                )
+            })
+            .collect();
+
+        let mut commands = commands.map_err(|e| {
+            BatchExecutionError::new(DebugProbeError::ProbeSpecific(Box::new(e)), results.clone())
+        })?;
+
+        for cmd_chunk in commands.chunks_mut(CHUNK_SIZE) {
+            let mut out_buffer = Vec::<u8>::new();
+            let mut size = 0;
+            for cmd in cmd_chunk.iter_mut() {
+                cmd.add_bytes(&mut out_buffer);
+                size += cmd.bytes_to_read();
+            }
+
+            // Send Immediate: This will make the FTDI chip flush its buffer back to the PC.
+            // See https://www.ftdichip.com/Support/Documents/AppNotes/AN_108_Command_Processor_for_MPSSE_and_MCU_Host_Bus_Emulation_Modes.pdf
+            // section 5.1
+            out_buffer.push(0x87);
+
+            let write_res = self.adapter.device.write_all(&out_buffer);
+            match write_res {
+                Ok(_) => (),
+                Err(e) => {
+                    return Err(BatchExecutionError::new(
+                        DebugProbeError::ProbeSpecific(Box::new(e)),
+                        results.clone(),
+                    ));
+                }
+            }
+
+            let timeout = Duration::from_millis(10);
+            let mut result = Vec::new();
+
+            let t0 = std::time::Instant::now();
+            while result.len() < size {
+                if t0.elapsed() > timeout {
+                    return Err(BatchExecutionError::new(
+                        DebugProbeError::Timeout,
+                        results.clone(),
+                    ));
+                }
+
+                let read_res = self.adapter.device.read_to_end(&mut result);
+                match read_res {
+                    Ok(_) => (),
+                    Err(e) => {
+                        return Err(BatchExecutionError::new(
+                            DebugProbeError::ProbeSpecific(Box::new(e)),
+                            results.clone(),
+                        ));
+                    }
+                }
+            }
+
+            if result.len() > size {
+                return Err(BatchExecutionError::new(
+                    DebugProbeError::ProbeSpecific(Box::new(io::Error::new(
+                        io::ErrorKind::InvalidData,
+                        "Read more data than expected",
+                    ))),
+                    results.clone(),
+                ));
+            }
+
+            let mut pos = 0;
+            for (index, cmd) in cmd_chunk.iter().enumerate() {
+                let index = index + index_offset;
+                let len = cmd.bytes_to_read();
+                let mut data = Vec::<u8>::new();
+                data.extend_from_slice(&result[pos..(pos + len)]);
+
+                let result = cmd.process_output(&data);
+
+                match result {
+                    Ok(data) => {
+                        let transformer = writes[index].transform;
+
+                        let data = match data {
+                            CommandResult::VecU8(data) => data,
+                            _ => panic!("Internal error occured. Cannot have a transformer function for outputs other than Vec<u8>"),
+                        };
+                        results.push(
+                            transformer(data)
+                                .map_err(|e| BatchExecutionError::new(e, results.clone()))?,
+                        );
+                    }
+                    Err(e) => return Err(BatchExecutionError::new(e, results.clone())),
+                }
+
+                pos += len;
+            }
+
+            index_offset += cmd_chunk.len();
+        }
+
+        Ok(results)
+    }
 }
 
 /// (VendorId, ProductId)
@@ -591,6 +753,7 @@ fn get_device_info(device: &rusb::Device<rusb::Context>) -> Option<DebugProbeInf
         product_id: d_desc.product_id(),
         serial_number: sn_str,
         probe_type: DebugProbeType::Ftdi,
+        hid_interface: None,
     })
 }
 

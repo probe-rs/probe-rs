@@ -96,94 +96,66 @@ impl<'probe> GdbArchitectureExt for Core<'probe> {
                 32 => {
                     let addr: CoreRegisterAddress = self.registers().program_counter().into();
                     (addr.0, 8)
-                }
-                other => {
-                    log::warn!("Request for unsupported register with number {}", other);
-                    return None;
-                }
-            },
-        };
+                } other => { log::warn!("Request for unsupported register with number {}", other);
+                    return None; } }, };
 
-        Some((CoreRegisterAddress(probe_rs_number as u16), bytesize))
-    }
+        Some((CoreRegisterAddress(probe_rs_number as u16), bytesize)) }
 
-    fn num_general_registers(&self) -> usize {
-        match self.architecture() {
-            probe_rs::Architecture::Arm => 24,
-            probe_rs::Architecture::Avr => 33,
-            probe_rs::Architecture::Riscv => 33,
-        }
-    }
-}
+    fn num_general_registers(&self) -> usize { match self.architecture() {
+        probe_rs::Architecture::Arm => 24, probe_rs::Architecture::Avr => 33,
+            probe_rs::Architecture::Riscv => 33, } } }
 
-/// Extension trait for probe_rs::Target, to get XML-based target description and
-/// memory map.
-pub trait GdbTargetExt {
-    /// Memory map in GDB XML format.
+            /// Extension trait for probe_rs::Target, to get XML-based target description and
+            /// memory map.
+            pub trait GdbTargetExt {
+                /// Memory map in GDB XML format.
     ///
     /// See https://sourceware.org/gdb/onlinedocs/gdb/Memory-Map-Format.html#Memory-Map-Format
-    fn gdb_memory_map(&self) -> String;
+                fn gdb_memory_map(&self) -> String;
 
-    /// Target description in GDB XML Format.
+                /// Target description in GDB XML Format.
     ///
     /// See https://sourceware.org/gdb/onlinedocs/gdb/Target-Descriptions.html#Target-Descriptions
-    fn target_description(&self) -> String;
-}
+                fn target_description(&self) -> String; }
 
-impl GdbTargetExt for probe_rs::Target {
-    fn gdb_memory_map(&self) -> String {
-        let mut xml_map = r#"<?xml version="1.0"?>
-<!DOCTYPE memory-map PUBLIC "+//IDN gnu.org//DTD GDB Memory Map V1.0//EN" "http://sourceware.org/gdb/gdb-memory-map.dtd">
-<memory-map>
-"#.to_owned();
+                impl GdbTargetExt for probe_rs::Target { fn gdb_memory_map(&self) -> String { let
+                    mut xml_map = r#"<?xml version="1.0"?> <!DOCTYPE memory-map PUBLIC "+//IDN
+                    gnu.org//DTD GDB Memory Map V1.0//EN"
+                    "http://sourceware.org/gdb/gdb-memory-map.dtd"> <memory-map> "#.to_owned();
 
-        for region in &self.memory_map {
-            let region_entry = match region {
-                MemoryRegion::Ram(ram) => format!(
-                    r#"<memory type="ram" start="{:#x}" length="{:#x}"/>\n"#,
-                    ram.range.start,
-                    ram.range.end - ram.range.start
-                ),
-                MemoryRegion::Generic(region) => format!(
-                    r#"<memory type="rom" start="{:#x}" length="{:#x}"/>\n"#,
-                    region.range.start,
-                    region.range.end - region.range.start
-                ),
-                MemoryRegion::Nvm(region) => {
-                    // TODO: Use flash with block size
-                    format!(
-                        r#"<memory type="rom" start="{:#x}" length="{:#x}"/>\n"#,
-                        region.range.start,
-                        region.range.end - region.range.start
-                    )
-                }
-            };
+                    for region in &self.memory_map { let region_entry = match region {
+                        MemoryRegion::Ram(ram) => format!( r#"<memory type="ram" start="{:#x}"
+                                                           length="{:#x}"/>\n"#, ram.range.start,
+                                                           ram.range.end - ram.range.start),
+                                                           MemoryRegion::Generic(region) =>
+                                                               format!( r#"<memory type="rom"
+                                                               start="{:#x}" length="{:#x}"/>\n"#,
+                                                               region.range.start, region.range.end
+                                                               - region.range.start),
+                                                           MemoryRegion::Nvm(region) => {
+                                                               // TODO: Use flash with block size
+                    format!( r#"<memory type="rom" start="{:#x}" length="{:#x}"/>\n"#,
+                             region.range.start, region.range.end - region.range.start) } };
 
-            xml_map.push_str(&region_entry);
-        }
+                        xml_map.push_str(&region_entry); }
 
-        xml_map.push_str(r#"</memory-map>"#);
+                    xml_map.push_str(r#"</memory-map>"#);
 
-        xml_map
-    }
+                    xml_map }
 
-    fn target_description(&self) -> String {
-        // GDB-architectures
+                fn target_description(&self) -> String {
+                    // GDB-architectures
         //
-        // - armv6-m      -> Core-M0
-        // - armv7-m      -> Core-M3
-        // - armv7e-m      -> Core-M4, Core-M7
-        // - armv8-m.base -> Core-M23
-        // - armv8-m.main -> Core-M33
-        // - riscv:rv32   -> RISCV
+        // - armv6-m      -> Core-M0 - armv7-m      -> Core-M3 - armv7e-m      -> Core-M4, Core-M7
+        // - armv8-m.base -> Core-M23 - armv8-m.main -> Core-M33 - riscv:rv32   -> RISCV
 
-        let architecture = match self.core_type {
+        // TODO: what if they're not all equal?
+        let architecture = match self.cores[0].core_type {
+            CoreType::Armv6m => "armv6-m",
+            CoreType::Armv7m => "armv7",
+            CoreType::Armv7em => "armv7e-m",
+            CoreType::Armv8m => "armv8-m.main",
             CoreType::Avr => "avr",
-            CoreType::M0 => "armv6-m",
-            CoreType::M3 => "armv7-m",
-            CoreType::M4 | CoreType::M7 => "armv7e-m",
-            CoreType::M33 => "armv8-m.main",
-            //CoreType::M23 => "armv8-m.base",
             CoreType::Riscv => "riscv:rv32",
         };
 
@@ -199,5 +171,20 @@ impl GdbTargetExt for probe_rs::Target {
         target_description.push_str("</target>");
 
         target_description
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use crate::architecture::GdbTargetExt;
+    use insta;
+
+    #[test]
+    fn test_target_description_microbit() {
+        let target = probe_rs::config::get_target_by_name("nrf51822_xxAA").unwrap();
+
+        let description = target.target_description();
+
+        insta::assert_snapshot!(description);
     }
 }

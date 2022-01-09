@@ -1,43 +1,44 @@
 #![warn(missing_docs)]
 
-use crate::architecture::{
-    arm::{
-        communication_interface::{
-            ApInformation::{MemoryAp, Other},
-            ArmProbeInterface, MemoryApInformation,
-        },
-        core::{debug_core_start, reset_catch_clear, reset_catch_set},
-        memory::Component,
-        SwoConfig,
-    },
-    avr::communication_interface::AvrCommunicationInterface,
-    riscv::communication_interface::RiscvCommunicationInterface,
-};
+use crate::architecture::arm::sequences::DefaultArmSequence;
+use crate::architecture::arm::{ApAddress, DpAddress};
 use crate::config::{ChipInfo, MemoryRegion, RegistryError, Target, TargetSelector};
 use crate::core::{Architecture, CoreState, SpecificCoreState};
+use crate::{
+    architecture::{
+        arm::{
+            ap::{AccessPortError, GenericAp, MemoryAp},
+            communication_interface::{ArmProbeInterface, MemoryApInformation},
+            memory::Component,
+            ApInformation, SwoConfig, SwoReader,
+        },
+        avr::communication_interface::AvrCommunicationInterface,
+        riscv::communication_interface::RiscvCommunicationInterface,
+    },
+    config::DebugSequence,
+};
 use crate::{AttachMethod, Core, CoreType, Error, Probe};
 use anyhow::anyhow;
-use std::time::Duration;
+use std::{fmt, time::Duration};
 
 /// The `Session` struct represents an active debug session.
 ///
-/// ## Creating a session  
+/// ## Creating a session
 /// The session can be created by calling the [Session::auto_attach()] function,
-/// which tries to automatically select a probe, and then connect to the target.  
+/// which tries to automatically select a probe, and then connect to the target.
 ///
 /// For more control, the [Probe::attach()] and [Probe::attach_under_reset()]
-/// methods can be used to open a `Session` from a specific [Probe].  
+/// methods can be used to open a `Session` from a specific [Probe].
 ///
-/// # Usage  
-/// The Session is the common handle that gives a user exclusive access to an active probe.  
-/// You can create and share a session between threads to enable multiple stakeholders (e.g. GDB and RTT) to access the target taking turns, by using  `Arc<Mutex<Session>>.`  
+/// # Usage
+/// The Session is the common handle that gives a user exclusive access to an active probe.
+/// You can create and share a session between threads to enable multiple stakeholders (e.g. GDB and RTT) to access the target taking turns, by using  `Arc<Mutex<Session>>.`
 ///
-/// If you do so, make sure that both threads sleep in between tasks such that other stakeholders may take their turn.  
+/// If you do so, make sure that both threads sleep in between tasks such that other stakeholders may take their turn.
 ///
 /// To get access to a single [Core] from the `Session`, the [Session::core()] method can be used.
 /// Please see the [Session::core()] method for more usage guidelines.
 ///
-
 #[derive(Debug)]
 pub struct Session {
     target: Target,
@@ -45,11 +46,23 @@ pub struct Session {
     cores: Vec<(SpecificCoreState, CoreState)>,
 }
 
-#[derive(Debug)]
 enum ArchitectureInterface {
     Arm(Box<dyn ArmProbeInterface + 'static>),
     Riscv(Box<RiscvCommunicationInterface>),
     Avr(Box<AvrCommunicationInterface>),
+}
+
+impl fmt::Debug for ArchitectureInterface {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            ArchitectureInterface::Arm(..) => f.write_str("ArchitectureInterface::Arm(..)"),
+            ArchitectureInterface::Avr(..) => f.write_str("ArchitectureInterface::Avr(..)"),
+            ArchitectureInterface::Riscv(iface) => f
+                .debug_tuple("ArchitectureInterface::Riscv")
+                .field(iface)
+                .finish(),
+        }
+    }
 }
 
 impl From<ArchitectureInterface> for Architecture {
@@ -63,41 +76,41 @@ impl From<ArchitectureInterface> for Architecture {
 }
 
 impl ArchitectureInterface {
-    fn attach<'probe>(
+    fn attach<'probe, 'target: 'probe>(
         &'probe mut self,
         core: &'probe mut SpecificCoreState,
         core_state: &'probe mut CoreState,
+        target: &'target Target,
     ) -> Result<Core<'probe>, Error> {
         match self {
             ArchitectureInterface::Arm(state) => {
-                let memory = state.memory_interface(0.into())?;
+                let config = target
+                    .cores
+                    .get(core_state.id())
+                    .ok_or_else(|| Error::CoreNotFound(core_state.id()))?;
+                let arm_core_access_options = match &config.core_access_options {
+                    probe_rs_target::CoreAccessOptions::Arm(opt) => Ok(opt),
+                    probe_rs_target::CoreAccessOptions::Riscv(_) => {
+                        Err(AccessPortError::InvalidCoreAccessOption(config.clone()))
+                    }
+                }?;
 
-                core.attach_arm(core_state, memory)
+                let dp = match arm_core_access_options.psel {
+                    0 => DpAddress::Default,
+                    x => DpAddress::Multidrop(x),
+                };
+
+                let ap = ApAddress {
+                    dp,
+                    ap: arm_core_access_options.ap,
+                };
+                let memory = state.memory_interface(MemoryAp::new(ap))?;
+
+                core.attach_arm(core_state, memory, target)
             }
             ArchitectureInterface::Avr(state) => core.attach_avr(core_state, state),
             ArchitectureInterface::Riscv(state) => core.attach_riscv(core_state, state),
         }
-    }
-
-    /// Deassert the target reset line
-    ///
-    /// When connecting under reset,
-    /// initial configuration is done with the reset line
-    /// asserted. After initial configuration is done, the
-    /// reset line can be deasserted using this method.
-    ///
-    /// See also [`Probe::target_reset_deassert`].
-    fn target_reset_deassert(&mut self) -> Result<(), Error> {
-        match self {
-            ArchitectureInterface::Arm(arm_interface) => arm_interface.target_reset_deassert()?,
-            ArchitectureInterface::Avr(avr_interface) => avr_interface.target_reset_deassert()?,
-
-            ArchitectureInterface::Riscv(riscv_interface) => {
-                riscv_interface.target_reset_deassert()?
-            }
-        }
-
-        Ok(())
     }
 }
 
@@ -105,78 +118,160 @@ impl Session {
     /// Open a new session with a given debug target.
     pub(crate) fn new(
         probe: Probe,
-        target: impl Into<TargetSelector>,
+        target: TargetSelector,
         attach_method: AttachMethod,
     ) -> Result<Self, Error> {
-        let (probe, target) = get_target_from_selector(target, probe)?;
+        let (mut probe, target) = get_target_from_selector(target, attach_method, probe)?;
+
+        let cores = target
+            .cores
+            .iter()
+            .enumerate()
+            .map(|(id, core)| {
+                (
+                    SpecificCoreState::from_core_type(core.core_type),
+                    Core::create_state(id),
+                )
+            })
+            .collect();
 
         let mut session = match target.architecture() {
             Architecture::Arm => {
-                if !probe.has_arm_interface() {
-                    return Err(anyhow!(
-                        "Debugging ARM based chips is not supported with the connected probe."
-                    )
-                    .into());
+                let config = target.cores[0].clone();
+                let arm_core_access_options = match config.core_access_options {
+                    probe_rs_target::CoreAccessOptions::Arm(opt) => Ok(opt),
+                    probe_rs_target::CoreAccessOptions::Riscv(_) => {
+                        Err(AccessPortError::InvalidCoreAccessOption(config))
+                    }
+                }?;
+
+                let default_memory_ap = MemoryAp::new(ApAddress {
+                    dp: match arm_core_access_options.psel {
+                        0 => DpAddress::Default,
+                        x => DpAddress::Multidrop(x),
+                    },
+                    ap: arm_core_access_options.ap,
+                });
+
+                let sequence_handle = match &target.debug_sequence {
+                    DebugSequence::Arm(sequence) => sequence.clone(),
+                    DebugSequence::Riscv(_) => {
+                        panic!("Mismatch between architecture and sequence type!")
+                    }
+                };
+
+                if AttachMethod::UnderReset == attach_method {
+                    if let Some(dap_probe) = probe.try_as_dap_probe() {
+                        sequence_handle.reset_hardware_assert(dap_probe)?;
+                    } else {
+                        log::info!(
+                            "Custom reset sequences are not supported on {}.",
+                            probe.get_name()
+                        );
+                        log::info!("Falling back to standard probe reset.");
+                        probe.target_reset_assert()?;
+                    }
                 }
 
-                let core = (
-                    SpecificCoreState::from_core_type(target.core_type),
-                    Core::create_state(0),
-                );
+                probe.inner_attach()?;
 
                 let interface = probe.try_into_arm_interface().map_err(|(_, err)| err)?;
 
-                let mut session = Session {
-                    target,
-                    interface: ArchitectureInterface::Arm(interface),
-                    cores: vec![core],
-                };
+                let mut interface = interface.initialize(sequence_handle.clone())?;
 
-                // Enable debug mode
-                debug_core_start(&mut session.core(0)?)?;
+                {
+                    let mut memory_interface = interface.memory_interface(default_memory_ap)?;
 
-                if attach_method == AttachMethod::UnderReset {
-                    // we need to halt the chip here
-                    reset_catch_set(&mut session.core(0)?)?;
+                    // Enable debug mode
+                    sequence_handle.debug_device_unlock(&mut memory_interface)?;
 
-                    // Deassert the reset pin
-                    session.interface.target_reset_deassert()?;
-
-                    // Wait for the core to be halted
-                    let mut core = session.core(0)?;
-
-                    core.wait_for_core_halted(Duration::from_millis(100))?;
-
-                    reset_catch_clear(&mut core)?;
+                    // Enable debug mode
+                    sequence_handle.debug_core_start(&mut memory_interface)?;
                 }
+
+                let session = if attach_method == AttachMethod::UnderReset {
+                    {
+                        let mut memory_interface = interface.memory_interface(default_memory_ap)?;
+                        // we need to halt the chip here
+                        sequence_handle.reset_catch_set(&mut memory_interface)?;
+                        sequence_handle.reset_hardware_deassert(&mut memory_interface)?;
+                    }
+
+                    let cores = target
+                        .cores
+                        .iter()
+                        .enumerate()
+                        .map(|(id, core)| {
+                            (
+                                SpecificCoreState::from_core_type(core.core_type),
+                                Core::create_state(id),
+                            )
+                        })
+                        .collect();
+
+                    let mut session = Session {
+                        target,
+                        interface: ArchitectureInterface::Arm(interface),
+                        cores,
+                    };
+
+                    {
+                        // Wait for the core to be halted
+                        let mut core = session.core(0)?;
+                        core.wait_for_core_halted(Duration::from_millis(100))?;
+                    }
+
+                    {
+                        let interface = session.get_arm_interface()?;
+                        let mut memory_interface = interface.memory_interface(default_memory_ap)?;
+                        // we need to halt the chip here
+                        sequence_handle.reset_catch_clear(&mut memory_interface)?;
+                    }
+
+                    {
+                        let mut core = session.core(0)?;
+                        core.wait_for_core_halted(Duration::from_millis(100))?;
+                    }
+
+                    session
+                } else {
+                    Session {
+                        target,
+                        interface: ArchitectureInterface::Arm(interface),
+                        cores,
+                    }
+                };
 
                 session
             }
             Architecture::Avr => {
-                let core = (
-                    SpecificCoreState::from_core_type(target.core_type),
-                    Core::create_state(0),
-                );
+
+                probe.inner_attach()?;
 
                 let interface = probe
                     .try_into_avr_interface()
                     .map_err(|(_probe, err)| err)?;
 
-                let mut session = Session {
+                let session = Session {
                     target,
                     interface: ArchitectureInterface::Avr(Box::new(interface)),
-                    cores: vec![core],
+                    cores,
                 };
+
 
                 session
             }
             Architecture::Riscv => {
                 // TODO: Handle attach under reset
 
-                let core = (
-                    SpecificCoreState::from_core_type(target.core_type),
-                    Core::create_state(0),
-                );
+                let sequence_handle = match &target.debug_sequence {
+                    DebugSequence::Riscv(sequence) => sequence.clone(),
+                    DebugSequence::Arm(_) => {
+                        panic!("Mismatch between architecture and sequence type!")
+                    }
+                };
+
+                probe.inner_attach()?;
 
                 let interface = probe
                     .try_into_riscv_interface()
@@ -185,14 +280,17 @@ impl Session {
                 let mut session = Session {
                     target,
                     interface: ArchitectureInterface::Riscv(Box::new(interface)),
-                    cores: vec![core],
+                    cores,
                 };
 
                 {
+                    // Todo: Add multicore support. How to deal with any cores that are not active and won't respond?
                     let mut core = session.core(0)?;
 
                     core.halt(Duration::from_millis(100))?;
                 }
+
+                sequence_handle.on_connect(session.get_riscv_interface()?)?;
 
                 session
             }
@@ -244,8 +342,7 @@ impl Session {
     ///
     pub fn core(&mut self, n: usize) -> Result<Core<'_>, Error> {
         let (core, core_state) = self.cores.get_mut(n).ok_or(Error::CoreNotFound(n))?;
-
-        self.interface.attach(core, core_state)
+        self.interface.attach(core, core_state, &self.target)
     }
 
     /// Read available data from the SWO interface without waiting.
@@ -257,10 +354,30 @@ impl Session {
         interface.read_swo()
     }
 
+    /// Returns an implementation of [std::io::Read] that wraps [ArmProbeInterface::read_swo].
+    ///
+    /// The implementation buffers all available bytes from
+    /// [ArmProbeInterface::read_swo] on each [std::io::Read::read],
+    /// minimizing the chance of a target-side overflow event on which
+    /// trace packets are lost.
+    pub fn swo_reader(&mut self) -> Result<SwoReader, Error> {
+        let interface = self.get_arm_interface()?;
+        Ok(SwoReader::new(interface))
+    }
+
     fn get_arm_interface(&mut self) -> Result<&mut Box<dyn ArmProbeInterface>, Error> {
         let interface = match &mut self.interface {
             ArchitectureInterface::Arm(state) => state,
             _ => return Err(Error::ArchitectureRequired(&["ARMv7", "ARMv8"])),
+        };
+
+        Ok(interface)
+    }
+
+    fn get_riscv_interface(&mut self) -> Result<&mut Box<RiscvCommunicationInterface>, Error> {
+        let interface = match &mut self.interface {
+            ArchitectureInterface::Riscv(interface) => interface,
+            _ => return Err(Error::ArchitectureRequired(&["Riscv"])),
         };
 
         Ok(interface)
@@ -275,37 +392,34 @@ impl Session {
 
         let mut components = Vec::new();
 
-        for ap_index in 0..(interface.num_access_ports() as u8) {
+        // TODO
+        let dp = DpAddress::Default;
+
+        for ap_index in 0..(interface.num_access_ports(dp)? as u8) {
             let ap_information = interface
-                .ap_information(ap_index.into())
-                .ok_or_else(|| anyhow!("AP {} does not exist on chip.", ap_index))?;
+                .ap_information(GenericAp::new(ApAddress { dp, ap: ap_index }))?
+                .clone();
 
             let component = match ap_information {
-                MemoryAp(MemoryApInformation {
-                    port_number: _,
-                    only_32bit_data_size: _,
+                ApInformation::MemoryAp(MemoryApInformation {
                     debug_base_address: 0,
-                    supports_hnonsec: _,
+                    ..
                 }) => Err(Error::Other(anyhow!("AP has a base address of 0"))),
-                MemoryAp(MemoryApInformation {
-                    port_number,
+                ApInformation::MemoryAp(MemoryApInformation {
+                    address,
                     only_32bit_data_size: _,
                     debug_base_address,
                     supports_hnonsec: _,
                 }) => {
-                    let access_port_number = *port_number;
-                    let base_address = *debug_base_address;
-
-                    let mut memory = interface.memory_interface(access_port_number.into())?;
-
-                    Component::try_parse(&mut memory, base_address)
+                    let mut memory = interface.memory_interface(MemoryAp::new(address))?;
+                    Component::try_parse(&mut memory, debug_base_address)
                         .map_err(Error::architecture_specific)
                 }
-                Other { port_number } => {
+                ApInformation::Other { address } => {
                     // Return an error, only possible to get Component from MemoryAP
                     Err(Error::Other(anyhow!(
-                        "AP {} is not a MemoryAP, unable to get ARM component.",
-                        port_number
+                        "AP {:#x?} is not a MemoryAP, unable to get ARM component.",
+                        address
                     )))
                 }
             };
@@ -329,7 +443,7 @@ impl Session {
     }
 
     /// Configure the target and probe for serial wire view (SWV) tracing.
-    pub fn setup_swv(&mut self, config: &SwoConfig) -> Result<(), Error> {
+    pub fn setup_swv(&mut self, core_index: usize, config: &SwoConfig) -> Result<(), Error> {
         // Configure SWO on the probe
         {
             let interface = self.get_arm_interface()?;
@@ -338,25 +452,30 @@ impl Session {
 
         // Enable tracing on the target
         {
-            let mut core = self.core(0)?;
+            let mut core = self.core(core_index)?;
             crate::architecture::arm::component::enable_tracing(&mut core)?;
         }
 
         // Configure SWV on the target
         let components = self.get_arm_components()?;
-        let mut core = self.core(0)?;
+        let mut core = self.core(core_index)?;
         crate::architecture::arm::component::setup_swv(&mut core, &components, config)
     }
 
     /// Configure the target to stop emitting SWV trace data.
-    pub fn disable_swv(&mut self) -> Result<(), Error> {
-        crate::architecture::arm::component::disable_swv(&mut self.core(0)?)
+    pub fn disable_swv(&mut self, core_index: usize) -> Result<(), Error> {
+        crate::architecture::arm::component::disable_swv(&mut self.core(core_index)?)
     }
 
     /// Begin tracing a memory address over SWV.
-    pub fn add_swv_data_trace(&mut self, unit: usize, address: u32) -> Result<(), Error> {
+    pub fn add_swv_data_trace(
+        &mut self,
+        core_index: usize,
+        unit: usize,
+        address: u32,
+    ) -> Result<(), Error> {
         let components = self.get_arm_components()?;
-        let mut core = self.core(0)?;
+        let mut core = self.core(core_index)?;
         crate::architecture::arm::component::add_swv_data_trace(
             &mut core,
             &components,
@@ -366,9 +485,9 @@ impl Session {
     }
 
     /// Stop tracing from a given SWV unit
-    pub fn remove_swv_data_trace(&mut self, unit: usize) -> Result<(), Error> {
+    pub fn remove_swv_data_trace(&mut self, core_index: usize, unit: usize) -> Result<(), Error> {
         let components = self.get_arm_components()?;
-        let mut core = self.core(0)?;
+        let mut core = self.core(core_index)?;
         crate::architecture::arm::component::remove_swv_data_trace(&mut core, &components, unit)
     }
 
@@ -399,11 +518,12 @@ impl Session {
 // This test ensures that [Session] is fully [Send] + [Sync].
 static_assertions::assert_impl_all!(Session: Send);
 
+// TODO tiwalun: Enable again, after rework of Session::new is done.
 impl Drop for Session {
     fn drop(&mut self) {
         let result = { 0..self.cores.len() }.try_for_each(|i| {
             self.core(i)
-                .and_then(|mut core| core.clear_all_set_hw_breakpoints())
+                .and_then(|mut core| core.clear_all_hw_breakpoints())
         });
 
         if let Err(err) = result {
@@ -411,33 +531,46 @@ impl Drop for Session {
         }
     }
 }
+
 /// Determine the [Target] from a [TargetSelector].
 ///
 /// If the selector is [TargetSelector::Unspecified], the target will be looked up in the registry.
 /// If it its [TargetSelector::Auto], probe-rs will try to determine the target automatically, based on
 /// information read from the chip.
 fn get_target_from_selector(
-    target: impl Into<TargetSelector>,
+    target: TargetSelector,
+    attach_method: AttachMethod,
     probe: Probe,
 ) -> Result<(Probe, Target), Error> {
     let mut probe = probe;
 
-    let target = match target.into() {
+    let target = match target {
         TargetSelector::Unspecified(name) => crate::config::get_target_by_name(name)?,
         TargetSelector::Specified(target) => target,
         TargetSelector::Auto => {
             let mut found_chip = None;
 
+            // At this point we do not know what the target is, so we cannot use the chip specific reset sequence.
+            // Thus, we try just using a normal reset for target detection if we want to do so under reset.
+            // This can of course fail, but target detection is a best effort, not a guarantee!
+            if AttachMethod::UnderReset == attach_method {
+                probe.target_reset_assert()?;
+            }
+            probe.inner_attach()?;
+
             if probe.has_arm_interface() {
                 match probe.try_into_arm_interface() {
-                    Ok(mut interface) => {
-                        //let chip_result = try_arm_autodetect(interface);
-                        log::debug!("Autodetect: Trying DAP interface...");
+                    Ok(interface) => {
+                        let mut interface = interface.initialize(DefaultArmSequence::create())?;
 
-                        let found_arm_chip = interface.read_from_rom_table().unwrap_or_else(|e| {
-                            log::info!("Error during auto-detection of ARM chips: {}", e);
-                            None
-                        });
+                        // TODO:
+                        let dp = DpAddress::Default;
+
+                        let found_arm_chip =
+                            interface.read_from_rom_table(dp).unwrap_or_else(|e| {
+                                log::info!("Error during auto-detection of ARM chips: {}", e);
+                                None
+                            });
 
                         found_chip = found_arm_chip.map(ChipInfo::from);
 
@@ -487,6 +620,9 @@ fn get_target_from_selector(
             } else {
                 log::debug!("No RISCV interface was present. Skipping Riscv autodetect.");
             }
+
+            // Now we can deassert reset in case we asserted it before. This is always okay.
+            probe.target_reset_deassert()?;
 
             if let Some(chip) = found_chip {
                 crate::config::get_target_by_chip_info(chip)?

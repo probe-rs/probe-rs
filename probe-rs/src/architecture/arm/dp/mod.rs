@@ -1,15 +1,14 @@
 #[macro_use]
 mod register_generation;
 
-use super::Register;
+use super::{DapAccess, DpAddress, Register};
 use bitfield::bitfield;
 use jep106::JEP106Code;
 
 use crate::DebugProbeError;
 use std::fmt::Display;
-use thiserror::Error;
 
-#[derive(Error, Debug)]
+#[derive(thiserror::Error, Debug)]
 pub enum DebugPortError {
     #[error("Register {register} not supported by debug port version {version}")]
     UnsupportedRegister {
@@ -27,24 +26,41 @@ impl From<DebugPortError> for DebugProbeError {
 }
 
 pub trait DpAccess {
-    fn read_dp_register<R: DpRegister>(&mut self) -> Result<R, DebugPortError>;
+    fn read_dp_register<R: DpRegister>(&mut self, dp: DpAddress) -> Result<R, DebugPortError>;
 
-    fn write_dp_register<R: DpRegister>(&mut self, register: R) -> Result<(), DebugPortError>;
+    fn write_dp_register<R: DpRegister>(
+        &mut self,
+        dp: DpAddress,
+        register: R,
+    ) -> Result<(), DebugPortError>;
 }
 
-#[derive(Debug, PartialEq, Copy, Clone)]
-pub enum DpBankSel {
-    DontCare,
-    Bank(u8),
+impl<T: DapAccess> DpAccess for T {
+    fn read_dp_register<R: DpRegister>(&mut self, dp: DpAddress) -> Result<R, DebugPortError> {
+        log::debug!("Reading DP register {}", R::NAME);
+        let result = self.read_raw_dp_register(dp, R::ADDRESS)?;
+        log::debug!("Read    DP register {}, value=0x{:08x}", R::NAME, result);
+        Ok(result.into())
+    }
+
+    fn write_dp_register<R: DpRegister>(
+        &mut self,
+        dp: DpAddress,
+        register: R,
+    ) -> Result<(), DebugPortError> {
+        let value = register.into();
+        log::debug!("Writing DP register {}, value=0x{:08x}", R::NAME, value);
+        self.write_raw_dp_register(dp, R::ADDRESS, value)?;
+        Ok(())
+    }
 }
 
 pub trait DpRegister: Register {
-    const DP_BANK: DpBankSel;
     const VERSION: DebugPortVersion;
 }
 
 bitfield! {
-    #[derive(Clone)]
+    #[derive(Clone, Default)]
     pub struct Abort(u32);
     impl Debug;
     pub _, set_orunerrclr: 4;
@@ -52,12 +68,6 @@ bitfield! {
     pub _, set_stkerrclr: 2;
     pub _, set_stkcmpclr: 1;
     pub _, set_dapabort: 0;
-}
-
-impl Default for Abort {
-    fn default() -> Self {
-        Abort(0)
-    }
 }
 
 impl From<u32> for Abort {
@@ -73,7 +83,6 @@ impl From<Abort> for u32 {
 }
 
 impl DpRegister for Abort {
-    const DP_BANK: DpBankSel = DpBankSel::DontCare;
     const VERSION: DebugPortVersion = DebugPortVersion::DPv1;
 }
 
@@ -83,7 +92,7 @@ impl Register for Abort {
 }
 
 bitfield! {
-    #[derive(Clone)]
+    #[derive(Clone, Default)]
     pub struct Ctrl(u32);
     impl Debug;
     pub csyspwrupack, _: 31;
@@ -103,12 +112,6 @@ bitfield! {
     pub orun_detect, set_orun_detect: 0;
 }
 
-impl Default for Ctrl {
-    fn default() -> Self {
-        Ctrl(0)
-    }
-}
-
 impl From<u32> for Ctrl {
     fn from(raw: u32) -> Self {
         Ctrl(raw)
@@ -122,12 +125,11 @@ impl From<Ctrl> for u32 {
 }
 
 impl DpRegister for Ctrl {
-    const DP_BANK: DpBankSel = DpBankSel::Bank(0);
     const VERSION: DebugPortVersion = DebugPortVersion::DPv1;
 }
 
 impl Register for Ctrl {
-    const ADDRESS: u8 = 0x4;
+    const ADDRESS: u8 = 0x04;
     const NAME: &'static str = "CTRL/STAT";
 }
 
@@ -153,7 +155,6 @@ impl From<Select> for u32 {
 }
 
 impl DpRegister for Select {
-    const DP_BANK: DpBankSel = DpBankSel::DontCare;
     const VERSION: DebugPortVersion = DebugPortVersion::DPv1;
 }
 
@@ -188,7 +189,6 @@ impl From<DPIDR> for u32 {
 }
 
 impl DpRegister for DPIDR {
-    const DP_BANK: DpBankSel = DpBankSel::DontCare;
     const VERSION: DebugPortVersion = DebugPortVersion::DPv1;
 }
 
@@ -219,12 +219,11 @@ impl From<TARGETID> for u32 {
 }
 
 impl DpRegister for TARGETID {
-    const DP_BANK: DpBankSel = DpBankSel::Bank(2);
     const VERSION: DebugPortVersion = DebugPortVersion::DPv2;
 }
 
 impl Register for TARGETID {
-    const ADDRESS: u8 = 0x4;
+    const ADDRESS: u8 = 0x24;
     const NAME: &'static str = "TARGETID";
 }
 
@@ -271,7 +270,6 @@ impl From<RdBuff> for u32 {
 }
 
 impl DpRegister for RdBuff {
-    const DP_BANK: DpBankSel = DpBankSel::DontCare;
     const VERSION: DebugPortVersion = DebugPortVersion::DPv1;
 }
 

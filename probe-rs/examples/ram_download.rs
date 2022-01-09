@@ -1,15 +1,16 @@
 use probe_rs::{config::TargetSelector, MemoryInterface, Probe, WireProtocol};
 
+use clap;
+use clap::Parser;
 use std::num::ParseIntError;
 use std::time::{Duration, Instant};
 
 use rand::prelude::*;
-use structopt::StructOpt;
 
 use anyhow::{anyhow, Context, Result};
 
-#[derive(StructOpt)]
-struct CLI {
+#[derive(clap::StructOpt)]
+struct Cli {
     #[structopt(long = "chip")]
     chip: Option<String>,
     #[structopt(long = "address", parse(try_from_str = parse_hex))]
@@ -29,7 +30,7 @@ fn parse_hex(src: &str) -> Result<u32, ParseIntError> {
 fn main() -> Result<()> {
     pretty_env_logger::init();
 
-    let matches = CLI::from_args();
+    let matches = Cli::parse();
 
     let mut probe = open_probe(None)?;
 
@@ -145,7 +146,7 @@ fn open_probe(index: Option<usize>) -> Result<Probe> {
     let device = match index {
         Some(index) => list
             .get(index)
-            .ok_or(anyhow!("Probe with specified index not found"))?,
+            .ok_or_else(|| anyhow!("Probe with specified index not found"))?,
         None => {
             // open the default probe, if only one probe was found
             if list.len() == 1 {

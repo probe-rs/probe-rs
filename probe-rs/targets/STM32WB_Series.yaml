@@ -1,0 +1,484 @@
+name: STM32WB Series
+manufacturer:
+  id: 0x20
+  cc: 0x0
+variants:
+  - name: STM32WB30CEUx
+    cores:
+      - name: main
+        type: armv7em
+        core_access_options:
+          Arm:
+            ap: 0x0
+            psel: 0x0
+    memory_map:
+      - Ram:
+          range:
+            start: 0x20000000
+            end: 0x20008000
+          is_boot_memory: false
+          cores:
+            - main
+      - Nvm:
+          range:
+            start: 0x8000000
+            end: 0x8080000
+          is_boot_memory: true
+          cores:
+            - main
+    flash_algorithms:
+      - stm32wb3x_512_m4
+  - name: STM32WB35CCUx
+    cores:
+      - name: main
+        type: armv7em
+        core_access_options:
+          Arm:
+            ap: 0x0
+            psel: 0x0
+    memory_map:
+      - Ram:
+          range:
+            start: 0x20000000
+            end: 0x20008000
+          is_boot_memory: false
+          cores:
+            - main
+      - Nvm:
+          range:
+            start: 0x8000000
+            end: 0x8040000
+          is_boot_memory: true
+          cores:
+            - main
+    flash_algorithms:
+      - stm32wb3x_256_m4
+  - name: STM32WB35CEUx
+    cores:
+      - name: main
+        type: armv7em
+        core_access_options:
+          Arm:
+            ap: 0x0
+            psel: 0x0
+    memory_map:
+      - Ram:
+          range:
+            start: 0x20000000
+            end: 0x20008000
+          is_boot_memory: false
+          cores:
+            - main
+      - Nvm:
+          range:
+            start: 0x8000000
+            end: 0x8080000
+          is_boot_memory: true
+          cores:
+            - main
+    flash_algorithms:
+      - stm32wb3x_512_m4
+  - name: STM32WB50CGUx
+    cores:
+      - name: main
+        type: armv7em
+        core_access_options:
+          Arm:
+            ap: 0x0
+            psel: 0x0
+    memory_map:
+      - Ram:
+          range:
+            start: 0x20000000
+            end: 0x20020000
+          is_boot_memory: false
+          cores:
+            - main
+      - Nvm:
+          range:
+            start: 0x8000000
+            end: 0x8100000
+          is_boot_memory: true
+          cores:
+            - main
+    flash_algorithms:
+      - stm32wb_m4
+  - name: STM32WB55CCUx
+    part: 0x495
+    cores:
+      - name: main
+        type: armv7em
+        core_access_options:
+          Arm:
+            ap: 0x0
+            psel: 0x0
+    memory_map:
+      - Ram:
+          range:
+            start: 0x20000000
+            end: 0x20020000
+          is_boot_memory: false
+          cores:
+            - main
+      - Nvm:
+          range:
+            start: 0x8000000
+            end: 0x8040000
+          is_boot_memory: true
+          cores:
+            - main
+    flash_algorithms:
+      - stm32wb_m4
+  - name: STM32WB55CEUx
+    part: 0x495
+    cores:
+      - name: main
+        type: armv7em
+        core_access_options:
+          Arm:
+            ap: 0x0
+            psel: 0x0
+    memory_map:
+      - Ram:
+          range:
+            start: 0x20000000
+            end: 0x20040000
+          is_boot_memory: false
+          cores:
+            - main
+      - Nvm:
+          range:
+            start: 0x8000000
+            end: 0x8080000
+          is_boot_memory: true
+          cores:
+            - main
+    flash_algorithms:
+      - stm32wb_m4
+  - name: STM32WB55CGUx
+    part: 0x495
+    cores:
+      - name: main
+        type: armv7em
+        core_access_options:
+          Arm:
+            ap: 0x0
+            psel: 0x0
+    memory_map:
+      - Ram:
+          range:
+            start: 0x20000000
+            end: 0x20040000
+          is_boot_memory: false
+          cores:
+            - main
+      - Nvm:
+          range:
+            start: 0x8000000
+            end: 0x8100000
+          is_boot_memory: true
+          cores:
+            - main
+    flash_algorithms:
+      - stm32wb_m4
+  - name: STM32WB55RCVx
+    part: 0x495
+    cores:
+      - name: main
+        type: armv7em
+        core_access_options:
+          Arm:
+            ap: 0x0
+            psel: 0x0
+    memory_map:
+      - Ram:
+          range:
+            start: 0x20000000
+            end: 0x20020000
+          is_boot_memory: false
+          cores:
+            - main
+      - Nvm:
+          range:
+            start: 0x8000000
+            end: 0x8040000
+          is_boot_memory: true
+          cores:
+            - main
+    flash_algorithms:
+      - stm32wb_m4
+  - name: STM32WB55REVx
+    part: 0x495
+    cores:
+      - name: main
+        type: armv7em
+        core_access_options:
+          Arm:
+            ap: 0x0
+            psel: 0x0
+    memory_map:
+      - Ram:
+          range:
+            start: 0x20000000
+            end: 0x20040000
+          is_boot_memory: false
+          cores:
+            - main
+      - Nvm:
+          range:
+            start: 0x8000000
+            end: 0x8080000
+          is_boot_memory: true
+          cores:
+            - main
+    flash_algorithms:
+      - stm32wb_m4
+  - name: STM32WB55RGVx
+    part: 0x495
+    cores:
+      - name: main
+        type: armv7em
+        core_access_options:
+          Arm:
+            ap: 0x0
+            psel: 0x0
+    memory_map:
+      - Ram:
+          range:
+            start: 0x20000000
+            end: 0x20040000
+          is_boot_memory: false
+          cores:
+            - main
+      - Nvm:
+          range:
+            start: 0x8000000
+            end: 0x8100000
+          is_boot_memory: true
+          cores:
+            - main
+    flash_algorithms:
+      - stm32wb_m4
+  - name: STM32WB55VCQx
+    cores:
+      - name: main
+        type: armv7em
+        core_access_options:
+          Arm:
+            ap: 0x0
+            psel: 0x0
+    memory_map:
+      - Ram:
+          range:
+            start: 0x20000000
+            end: 0x20020000
+          is_boot_memory: false
+          cores:
+            - main
+      - Nvm:
+          range:
+            start: 0x8000000
+            end: 0x8040000
+          is_boot_memory: true
+          cores:
+            - main
+    flash_algorithms:
+      - stm32wb_m4
+  - name: STM32WB55VCYx
+    part: 0x495
+    cores:
+      - name: main
+        type: armv7em
+        core_access_options:
+          Arm:
+            ap: 0x0
+            psel: 0x0
+    memory_map:
+      - Ram:
+          range:
+            start: 0x20000000
+            end: 0x20020000
+          is_boot_memory: false
+          cores:
+            - main
+      - Nvm:
+          range:
+            start: 0x8000000
+            end: 0x8040000
+          is_boot_memory: true
+          cores:
+            - main
+    flash_algorithms:
+      - stm32wb_m4
+  - name: STM32WB55VEQx
+    cores:
+      - name: main
+        type: armv7em
+        core_access_options:
+          Arm:
+            ap: 0x0
+            psel: 0x0
+    memory_map:
+      - Ram:
+          range:
+            start: 0x20000000
+            end: 0x20040000
+          is_boot_memory: false
+          cores:
+            - main
+      - Nvm:
+          range:
+            start: 0x8000000
+            end: 0x8080000
+          is_boot_memory: true
+          cores:
+            - main
+    flash_algorithms:
+      - stm32wb_m4
+  - name: STM32WB55VEYx
+    part: 0x495
+    cores:
+      - name: main
+        type: armv7em
+        core_access_options:
+          Arm:
+            ap: 0x0
+            psel: 0x0
+    memory_map:
+      - Ram:
+          range:
+            start: 0x20000000
+            end: 0x20040000
+          is_boot_memory: false
+          cores:
+            - main
+      - Nvm:
+          range:
+            start: 0x8000000
+            end: 0x8080000
+          is_boot_memory: true
+          cores:
+            - main
+    flash_algorithms:
+      - stm32wb_m4
+  - name: STM32WB55VGQx
+    cores:
+      - name: main
+        type: armv7em
+        core_access_options:
+          Arm:
+            ap: 0x0
+            psel: 0x0
+    memory_map:
+      - Ram:
+          range:
+            start: 0x20000000
+            end: 0x20040000
+          is_boot_memory: false
+          cores:
+            - main
+      - Nvm:
+          range:
+            start: 0x8000000
+            end: 0x8100000
+          is_boot_memory: true
+          cores:
+            - main
+    flash_algorithms:
+      - stm32wb_m4
+  - name: STM32WB55VGYx
+    part: 0x495
+    cores:
+      - name: main
+        type: armv7em
+        core_access_options:
+          Arm:
+            ap: 0x0
+            psel: 0x0
+    memory_map:
+      - Ram:
+          range:
+            start: 0x20000000
+            end: 0x20040000
+          is_boot_memory: false
+          cores:
+            - main
+      - Nvm:
+          range:
+            start: 0x8000000
+            end: 0x8100000
+          is_boot_memory: true
+          cores:
+            - main
+    flash_algorithms:
+      - stm32wb_m4
+flash_algorithms:
+  - name: stm32wb3x_256_m4
+    description: STM32WB3_M4 256 Flash
+    cores:
+      - main
+    default: true
+    instructions: YUhBaQApA9pgSYFgYEmBYAAgcEdcSEFpQgQRQ0FhACBwRxC1WEhbSVtKAOARYANp2wP71FlKAmEBackD/NQBaQkD/NQBaUkD/NQBaVRLGUMBYUFpBCMZQ0FhQWmcAyFDQWEBackD/NQBaUkD/NQBaQkD/NRBaZlDQWEAIUFhAWkRQgLQAmEBIBC9ACAQvRC1PUlCSgphS2lCTCNAS2FACuNDGEALadsD/NQLaVsD/NQLaRsD/NRMaQIjGEMEQ0xhSGncAyBDSGEAvwC/CGnAA/zUCGlAA/zUCGkAA/zUSGmYQ0hhACBIYQhpEEIC0AphASAQvQEgwAYAaEAcAtEIaCBDCGAAIBC9cLXJHR5LyQgjTckAHWFcaQEmNENcYRpOQDYe4B1hHGnkA/zUHGlkA/zUHGkkA/zUFGgEYFRoRGAcaeQD/NQcaWQD/NQcaSQD/NQ0aggwCDkIMuQHAdABIHC9ACne0VhpQAhAAFhhASDABgBoQBwE0BhoASEJBIhDGGAAIHC9AAAAQABYIwFnRauJ782qqgAAADAAQPpDAAD/AQAAB+D//wAAAAA=
+    pc_init: 0x1
+    pc_uninit: 0x15
+    pc_program_page: 0x109
+    pc_erase_sector: 0x8f
+    pc_erase_all: 0x23
+    data_section_offset: 0x1a8
+    flash_properties:
+      address_range:
+        start: 0x8000000
+        end: 0x8040000
+      page_size: 0x400
+      erased_byte_value: 0xff
+      program_page_timeout: 0x190
+      erase_sector_timeout: 0x190
+      sectors:
+        - size: 0x1000
+          address: 0x0
+  - name: stm32wb3x_512_m4
+    description: STM32WB3_M4 512 Flash
+    cores:
+      - main
+    default: true
+    instructions: YUhBaQApA9pgSYFgYEmBYAAgcEdcSEFpQgQRQ0FhACBwRxC1WEhbSVtKAOARYANp2wP71FlKAmEBackD/NQBaQkD/NQBaUkD/NQBaVRLGUMBYUFpBCMZQ0FhQWmcAyFDQWEBackD/NQBaUkD/NQBaQkD/NRBaZlDQWEAIUFhAWkRQgLQAmEBIBC9ACAQvRC1PUlCSgphS2lCTCNAS2FACuNDGEALadsD/NQLaVsD/NQLaRsD/NRMaQIjGEMEQ0xhSGncAyBDSGEAvwC/CGnAA/zUCGlAA/zUCGkAA/zUSGmYQ0hhACBIYQhpEEIC0AphASAQvQEgwAYAaEAcAtEIaCBDCGAAIBC9cLXJHR5LyQgjTckAHWFcaQEmNENcYRpOQDYe4B1hHGnkA/zUHGlkA/zUHGkkA/zUFGgEYFRoRGAcaeQD/NQcaWQD/NQcaSQD/NQ0aggwCDkIMuQHAdABIHC9ACne0VhpQAhAAFhhASDABgBoQBwE0BhoASEJBIhDGGAAIHC9AAAAQABYIwFnRauJ782qqgAAADAAQPpDAAD/AQAAB+D//wAAAAA=
+    pc_init: 0x1
+    pc_uninit: 0x15
+    pc_program_page: 0x109
+    pc_erase_sector: 0x8f
+    pc_erase_all: 0x23
+    data_section_offset: 0x1a8
+    flash_properties:
+      address_range:
+        start: 0x8000000
+        end: 0x8080000
+      page_size: 0x400
+      erased_byte_value: 0xff
+      program_page_timeout: 0x190
+      erase_sector_timeout: 0x190
+      sectors:
+        - size: 0x1000
+          address: 0x0
+  - name: stm32wb_m4
+    description: STM32WB_M4 Flash
+    cores:
+      - main
+    default: true
+    instructions: Qfb4cQHqUCBwR0pISEmBYElJgWAAIHBHRkhBaUHwAEFBYQAgcEcBIHBHELVK9qoiQklASADgCmADadsD+9RE8vo0BGFI8gQDQ2FDaUP0gDNDYQDgCmADadsD+9QAIUFhAWkhQgLQBGEBIBC9ACAQvUH2+HEB6lAiELUuSAFpEfRAP/vRAWlJA/zUAWkJA/zURPL6NARhQvACAUFhQWlB9IAxQWFK9qohJEoA4BFgA2nbA/vUACFBYQFpIUIC0ARhASAQvQAgEL0QtRpLyR1A8v8UIfAHARxhASRcYR/gHGkU9EA/+9EcaWQD/NQcaSQD/NQUaARgVGhEYBxpFPRAP/vRHGlkA/zUHGkkA/zUHGmkBwHVASAQvQgwCDkIMgAp3dFYaSDwAQBYYQAgEL0AACMBZ0UAQABYq4nvzQAwAEAAAAAA
+    pc_init: 0xb
+    pc_uninit: 0x19
+    pc_program_page: 0xc9
+    pc_erase_sector: 0x71
+    pc_erase_all: 0x2b
+    data_section_offset: 0x140
+    flash_properties:
+      address_range:
+        start: 0x8000000
+        end: 0x8100000
+      page_size: 0x400
+      erased_byte_value: 0xff
+      program_page_timeout: 0x190
+      erase_sector_timeout: 0x190
+      sectors:
+        - size: 0x1000
+          address: 0x0

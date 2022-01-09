@@ -238,7 +238,7 @@ pub(crate) fn write_register(register: u32, hex_value: &str, mut core: Core) -> 
 
 pub(crate) fn read_memory(address: u32, length: u32, mut core: Core) -> Option<String> {
     let mut readback_data = vec![0u8; length as usize];
-    match core.read_8(address, &mut readback_data) {
+    match core.read(address, &mut readback_data) {
         Ok(_) => Some(
             readback_data
                 .iter()

@@ -1,13 +1,15 @@
 pub(crate) mod communication_interface;
 
 pub use communication_interface::CommunicationInterface;
+pub use probe_rs_target::Architecture;
+use probe_rs_target::CoreType;
 
 use crate::architecture::{
-    arm::core::CortexState, avr::communication_interface::AvrCommunicationInterface,
-    riscv::communication_interface::RiscvCommunicationInterface,
+    arm::core::State, riscv::communication_interface::RiscvCommunicationInterface, avr::communication_interface::AvrCommunicationInterface,
 };
-use crate::config::CoreType;
-use crate::{error, DebugProbeError, Error, Memory, MemoryInterface};
+use crate::error;
+use crate::Target;
+use crate::{Error, Memory, MemoryInterface};
 use anyhow::{anyhow, Result};
 use std::time::Duration;
 
@@ -38,7 +40,7 @@ pub struct CoreInformation {
 #[derive(Debug, Clone)]
 pub struct RegisterDescription {
     pub(crate) name: &'static str,
-    pub(crate) kind: RegisterKind,
+    pub(crate) _kind: RegisterKind,
     pub(crate) address: CoreRegisterAddress,
 }
 
@@ -67,11 +69,11 @@ pub(crate) enum RegisterKind {
 }
 
 /// Register description for a core.
-
 #[derive(Debug)]
 pub struct RegisterFile {
     pub(crate) platform_registers: &'static [RegisterDescription],
 
+    /// Register description for the program counter
     pub(crate) program_counter: &'static RegisterDescription,
 
     pub(crate) stack_pointer: &'static RegisterDescription,
@@ -79,7 +81,15 @@ pub struct RegisterFile {
     pub(crate) return_address: &'static RegisterDescription,
 
     pub(crate) argument_registers: &'static [RegisterDescription],
+
     pub(crate) result_registers: &'static [RegisterDescription],
+
+    pub(crate) msp: Option<&'static RegisterDescription>,
+
+    pub(crate) psp: Option<&'static RegisterDescription>,
+
+    pub(crate) extra: Option<&'static RegisterDescription>,
+    // TODO: floating point support
 }
 
 impl RegisterFile {
@@ -88,15 +98,15 @@ impl RegisterFile {
     }
 
     pub fn program_counter(&self) -> &RegisterDescription {
-        &self.program_counter
+        self.program_counter
     }
 
     pub fn stack_pointer(&self) -> &RegisterDescription {
-        &self.stack_pointer
+        self.stack_pointer
     }
 
     pub fn return_address(&self) -> &RegisterDescription {
-        &self.return_address
+        self.return_address
     }
 
     pub fn argument_register(&self, index: usize) -> &RegisterDescription {
@@ -122,21 +132,49 @@ impl RegisterFile {
     pub fn get_platform_register(&self, index: usize) -> Option<&RegisterDescription> {
         self.platform_registers.get(index)
     }
+
+    pub fn msp(&self) -> Option<&RegisterDescription> {
+        self.msp
+    }
+
+    pub fn psp(&self) -> Option<&RegisterDescription> {
+        self.psp
+    }
+
+    // ARM DDI 0403E.d (ID070218)
+    // C1.6.3 Debug Core Register Selector Register, DCRSR
+    // Bits[31:24] CONTROL.
+    // Bits[23:16] FAULTMASK.
+    // Bits[15:8]  BASEPRI.
+    // Bits[7:0]   PRIMASK.
+    // In each field, the valid bits are packed with leading zeros. For example,
+    // FAULTMASK is always a single bit, DCRDR[16], and DCRDR[23:17] is 0b0000000.
+    pub fn extra(&self) -> Option<&RegisterDescription> {
+        self.extra
+    }
+
+    // TODO: support for floating point registers
+    // 0b0100001            Floating-point Status and Control Register, FPSCR.
+    // 0b1000000-0b1011111  FP registers S0-S31.
+    // For example, 0b1000000 specifies S0, and 0b1000101 specifies S5.
+    // All other values are Reserved.
+    // If the processor does not implement the FP extension the REGSEL field is bits[4:0], and
+    // bits[6:5] are Reserved, SBZ.
 }
 
 pub trait CoreInterface: MemoryInterface {
     /// Wait until the core is halted. If the core does not halt on its own,
-    /// a [DebugProbeError::Timeout] error will be returned.
+    /// a [`DebugProbeError::Timeout`](crate::DebugProbeError::Timeout) error will be returned.
     fn wait_for_core_halted(&mut self, timeout: Duration) -> Result<(), error::Error>;
 
     /// Check if the core is halted. If the core does not halt on its own,
-    /// a [DebugProbeError::Timeout] error will be returned.
+    /// a [`DebugProbeError::Timeout`](crate::DebugProbeError::Timeout) error will be returned.
     fn core_halted(&mut self) -> Result<bool, error::Error>;
 
     fn status(&mut self) -> Result<CoreStatus, error::Error>;
 
     /// Try to halt the core. This function ensures the core is actually halted, and
-    /// returns a [DebugProbeError::Timeout] otherwise.
+    /// returns a [`DebugProbeError::Timeout`](crate::DebugProbeError::Timeout) otherwise.
     fn halt(&mut self, timeout: Duration) -> Result<CoreInformation, error::Error>;
 
     fn run(&mut self) -> Result<(), error::Error>;
@@ -162,11 +200,16 @@ pub trait CoreInterface: MemoryInterface {
 
     fn get_available_breakpoint_units(&mut self) -> Result<u32, error::Error>;
 
+    /// Read the hardware breakpoints from FpComp registers, and adds them to the Result Vector.
+    /// A value of None in any position of the Vector indicates that the position is unset/available.
+    /// We intentionally return all breakpoints, irrespective of whether they are enabled or not.
+    fn get_hw_breakpoints(&mut self) -> Result<Vec<Option<u32>>, error::Error>;
+
     fn enable_breakpoints(&mut self, state: bool) -> Result<(), error::Error>;
 
-    fn set_breakpoint(&mut self, bp_unit_index: usize, addr: u32) -> Result<(), error::Error>;
+    fn set_hw_breakpoint(&mut self, bp_unit_index: usize, addr: u32) -> Result<(), error::Error>;
 
-    fn clear_breakpoint(&mut self, unit_index: usize) -> Result<(), error::Error>;
+    fn clear_hw_breakpoint(&mut self, unit_index: usize) -> Result<(), error::Error>;
 
     fn registers(&self) -> &'static RegisterFile;
 
@@ -217,25 +260,24 @@ impl<'probe> MemoryInterface for Core<'probe> {
 #[derive(Debug)]
 pub struct CoreState {
     id: usize,
-    breakpoints: Vec<Breakpoint>,
 }
 
 impl CoreState {
     pub fn new(id: usize) -> Self {
-        Self {
-            id,
-            breakpoints: vec![],
-        }
+        Self { id }
+    }
+
+    pub fn id(&self) -> usize {
+        self.id
     }
 }
 
 #[derive(Debug)]
 pub enum SpecificCoreState {
-    M3(CortexState),
-    M4(CortexState),
-    M33(CortexState),
-    M0(CortexState),
-    M7(CortexState),
+    Armv6m(State),
+    Armv7m(State),
+    Armv7em(State),
+    Armv8m(State),
     Avr,
     Riscv,
 }
@@ -243,11 +285,10 @@ pub enum SpecificCoreState {
 impl SpecificCoreState {
     pub(crate) fn from_core_type(typ: CoreType) -> Self {
         match typ {
-            CoreType::M0 => SpecificCoreState::M0(CortexState::new()),
-            CoreType::M3 => SpecificCoreState::M3(CortexState::new()),
-            CoreType::M33 => SpecificCoreState::M33(CortexState::new()),
-            CoreType::M4 => SpecificCoreState::M4(CortexState::new()),
-            CoreType::M7 => SpecificCoreState::M7(CortexState::new()),
+            CoreType::Armv6m => SpecificCoreState::Armv6m(State::new()),
+            CoreType::Armv7m => SpecificCoreState::Armv7m(State::new()),
+            CoreType::Armv7em => SpecificCoreState::Armv7m(State::new()),
+            CoreType::Armv8m => SpecificCoreState::Armv8m(State::new()),
             CoreType::Avr => SpecificCoreState::Avr,
             CoreType::Riscv => SpecificCoreState::Riscv,
         }
@@ -256,33 +297,42 @@ impl SpecificCoreState {
     pub(crate) fn core_type(&self) -> CoreType {
         match self {
             SpecificCoreState::Avr => CoreType::Avr,
-            SpecificCoreState::M0(_) => CoreType::M0,
-            SpecificCoreState::M3(_) => CoreType::M3,
-            SpecificCoreState::M33(_) => CoreType::M33,
-            SpecificCoreState::M4(_) => CoreType::M4,
-            SpecificCoreState::M7(_) => CoreType::M7,
+            SpecificCoreState::Armv6m(_) => CoreType::Armv6m,
+            SpecificCoreState::Armv7m(_) => CoreType::Armv7m,
+            SpecificCoreState::Armv7em(_) => CoreType::Armv7em,
+            SpecificCoreState::Armv8m(_) => CoreType::Armv8m,
             SpecificCoreState::Riscv => CoreType::Riscv,
         }
     }
 
-    pub(crate) fn attach_arm<'probe>(
+    pub(crate) fn attach_arm<'probe, 'target: 'probe>(
         &'probe mut self,
         state: &'probe mut CoreState,
         memory: Memory<'probe>,
+        target: &'target Target,
     ) -> Result<Core<'probe>, Error> {
+        let debug_sequence = match &target.debug_sequence {
+            crate::config::DebugSequence::Arm(sequence) => sequence.clone(),
+            crate::config::DebugSequence::Riscv(_) => {
+                return Err(Error::UnableToOpenProbe(
+                    "Core architecture and Probe mismatch.",
+                ))
+            }
+        };
+
         Ok(match self {
-            // TODO: Change this once the new archtecture structure for ARM hits.
-            // Cortex-M3, M4 and M7 use the Armv7[E]-M architecture and are
-            // identical for our purposes.
-            SpecificCoreState::M3(s) | SpecificCoreState::M4(s) | SpecificCoreState::M7(s) => {
-                Core::new(crate::architecture::arm::m4::M4::new(memory, s)?, state)
-            }
-            SpecificCoreState::M33(s) => {
-                Core::new(crate::architecture::arm::m33::M33::new(memory, s)?, state)
-            }
-            SpecificCoreState::M0(s) => {
-                Core::new(crate::architecture::arm::m0::M0::new(memory, s)?, state)
-            }
+            SpecificCoreState::Armv6m(s) => Core::new(
+                crate::architecture::arm::armv6m::Armv6m::new(memory, s, debug_sequence)?,
+                state,
+            ),
+            SpecificCoreState::Armv7m(s) | SpecificCoreState::Armv7em(s) => Core::new(
+                crate::architecture::arm::armv7m::Armv7m::new(memory, s, debug_sequence)?,
+                state,
+            ),
+            SpecificCoreState::Armv8m(s) => Core::new(
+                crate::architecture::arm::armv8m::Armv8m::new(memory, s, debug_sequence)?,
+                state,
+            ),
             _ => {
                 return Err(Error::UnableToOpenProbe(
                     "Core architecture and Probe mismatch.",
@@ -348,19 +398,19 @@ impl<'probe> Core<'probe> {
     }
 
     /// Wait until the core is halted. If the core does not halt on its own,
-    /// a [DebugProbeError::Timeout] error will be returned.
+    /// a [`DebugProbeError::Timeout`](crate::DebugProbeError::Timeout) error will be returned.
     pub fn wait_for_core_halted(&mut self, timeout: Duration) -> Result<(), error::Error> {
         self.inner.wait_for_core_halted(timeout)
     }
 
     /// Check if the core is halted. If the core does not halt on its own,
-    /// a [DebugProbeError::Timeout] error will be returned.
+    /// a [`DebugProbeError::Timeout`](crate::DebugProbeError::Timeout) error will be returned.
     pub fn core_halted(&mut self) -> Result<bool, error::Error> {
         self.inner.core_halted()
     }
 
     /// Try to halt the core. This function ensures the core is actually halted, and
-    /// returns a [DebugProbeError::Timeout] otherwise.
+    /// returns a [`DebugProbeError::Timeout`](crate::DebugProbeError::Timeout) otherwise.
     pub fn halt(&mut self, timeout: Duration) -> Result<CoreInformation, error::Error> {
         self.inner.halt(timeout)
     }
@@ -421,60 +471,70 @@ impl<'probe> Core<'probe> {
         self.inner.registers()
     }
 
+    /// Find the index of the next available HW breakpoint comparator.
+    fn find_free_breakpoint_comparator_index(&mut self) -> Result<usize, error::Error> {
+        let mut next_available_hw_breakpoint = 0;
+        for breakpoint in self.inner.get_hw_breakpoints()? {
+            if breakpoint.is_none() {
+                return Ok(next_available_hw_breakpoint);
+            } else {
+                next_available_hw_breakpoint += 1;
+            }
+        }
+        Err(error::Error::Other(anyhow!(
+            "No available hardware breakpoints"
+        )))
+    }
+
     /// Set a hardware breakpoint
     ///
     /// This function will try to set a hardware breakpoint. The amount
     /// of hardware breakpoints which are supported is chip specific,
     /// and can be queried using the `get_available_breakpoint_units` function.
     pub fn set_hw_breakpoint(&mut self, address: u32) -> Result<(), error::Error> {
-        log::debug!("Trying to set HW breakpoint at address {:#08x}", address);
-
-        // Get the number of HW breakpoints available
-        let num_hw_breakpoints = self.get_available_breakpoint_units()? as usize;
-
-        log::debug!("{} HW breakpoints are supported.", num_hw_breakpoints);
-
-        if num_hw_breakpoints <= self.state.breakpoints.len() {
-            // We cannot set additional breakpoints
-            log::warn!("Maximum number of breakpoints ({}) reached, unable to set additional HW breakpoint.", num_hw_breakpoints);
-
-            return Err(error::Error::Probe(
-                DebugProbeError::BreakpointUnitsExceeded,
-            ));
-        }
-
         if !self.inner.hw_breakpoints_enabled() {
             self.enable_breakpoints(true)?;
         }
 
-        let bp_unit = self.find_free_breakpoint_unit();
+        // If there is a breakpoint set already, return its bp_unit_index, else find the next free index.
+        let breakpoint_comparator_index = match self
+            .inner
+            .get_hw_breakpoints()?
+            .iter()
+            .position(|&bp| bp == Some(address))
+        {
+            Some(breakpoint_comparator_index) => breakpoint_comparator_index,
+            None => self.find_free_breakpoint_comparator_index()?,
+        };
 
-        log::debug!("Using comparator {} of breakpoint unit", bp_unit);
-        // actually set the breakpoint
-        self.inner.set_breakpoint(bp_unit, address)?;
+        log::debug!(
+            "Trying to set HW breakpoint #{} with comparator address  {:#08x}",
+            breakpoint_comparator_index,
+            address
+        );
 
-        self.state.breakpoints.push(Breakpoint {
-            address,
-            register_hw: bp_unit,
-        });
-
+        // Actually set the breakpoint. Even if it has been set, set it again so it will be active.
+        self.inner
+            .set_hw_breakpoint(breakpoint_comparator_index, address)?;
         Ok(())
     }
 
     pub fn clear_hw_breakpoint(&mut self, address: u32) -> Result<(), error::Error> {
         let bp_position = self
-            .state
-            .breakpoints
+            .inner
+            .get_hw_breakpoints()?
             .iter()
-            .position(|bp| bp.address == address);
+            .position(|bp| bp.is_some() && bp.unwrap() == address);
+
+        log::debug!(
+            "Will clear HW breakpoint    #{} with comparator address    {:#08x}",
+            bp_position.unwrap_or(usize::MAX),
+            address
+        );
 
         match bp_position {
             Some(bp_position) => {
-                let bp = &self.state.breakpoints[bp_position];
-                self.inner.clear_breakpoint(bp.register_hw)?;
-
-                // We only remove the breakpoint if we have actually managed to clear it.
-                self.state.breakpoints.swap_remove(bp_position);
+                self.inner.clear_hw_breakpoint(bp_position)?;
                 Ok(())
             }
             None => Err(error::Error::Other(anyhow!(
@@ -487,48 +547,17 @@ impl<'probe> Core<'probe> {
     /// Clear all hardware breakpoints
     ///
     /// This function will clear all HW breakpoints which are configured on the target,
-    /// regardless if they are set by probe-rs or not.
+    /// regardless if they are set by probe-rs, AND regardless if they are enabled or not.
+    /// Also used as a helper function in [`Session::drop`](crate::session::Session).
     pub fn clear_all_hw_breakpoints(&mut self) -> Result<(), error::Error> {
-        let num_hw_breakpoints = self.get_available_breakpoint_units()? as usize;
-
-        { 0..num_hw_breakpoints }.try_for_each(|unit_index| self.inner.clear_breakpoint(unit_index))
-    }
-
-    /// Clear all HW breakpoints which were set by probe-rs.
-    ///
-    /// Currently used as a helper function in [`Session::drop`].
-    pub(crate) fn clear_all_set_hw_breakpoints(&mut self) -> Result<(), error::Error> {
-        for bp in self.state.breakpoints.drain(..) {
-            self.inner.clear_breakpoint(bp.register_hw)?;
+        for breakpoint in (self.inner.get_hw_breakpoints()?).into_iter().flatten() {
+            self.clear_hw_breakpoint(breakpoint)?
         }
-
         Ok(())
     }
 
     pub fn architecture(&self) -> Architecture {
         self.inner.architecture()
-    }
-
-    fn find_free_breakpoint_unit(&self) -> usize {
-        let mut used_bp: Vec<_> = self
-            .state
-            .breakpoints
-            .iter()
-            .map(|bp| bp.register_hw)
-            .collect();
-        used_bp.sort_unstable();
-
-        let mut free_bp = 0;
-
-        for bp in used_bp {
-            if bp == free_bp {
-                free_bp += 1;
-            } else {
-                return free_bp;
-            }
-        }
-
-        free_bp
     }
 }
 
@@ -543,7 +572,7 @@ impl<'probe> CoreList<'probe> {
 impl<'probe> std::ops::Deref for CoreList<'probe> {
     type Target = [CoreType];
     fn deref(&self) -> &Self::Target {
-        &self.0
+        self.0
     }
 }
 
@@ -556,23 +585,12 @@ impl BreakpointId {
     }
 }
 
-#[derive(Clone, Debug)]
-pub struct Breakpoint {
-    address: u32,
-    register_hw: usize,
-}
-
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub enum Architecture {
-    Arm,
-    Avr,
-    Riscv,
-}
-
 #[derive(Debug, PartialEq, Copy, Clone)]
 pub enum CoreStatus {
     Running,
     Halted(HaltReason),
+    /// This is a Cortex-M specific status, and will not be set or handled by RISCV code.
+    LockedUp,
     Sleeping,
     Unknown,
 }

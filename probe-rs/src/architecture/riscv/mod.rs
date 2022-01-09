@@ -21,6 +21,7 @@ pub(crate) mod assembly;
 mod dtm;
 
 pub mod communication_interface;
+pub mod sequences;
 
 pub struct Riscv32<'probe> {
     interface: &'probe mut RiscvCommunicationInterface,
@@ -371,11 +372,13 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
         Ok(())
     }
 
-    fn set_breakpoint(&mut self, bp_unit_index: usize, addr: u32) -> Result<(), crate::Error> {
+    fn set_hw_breakpoint(&mut self, bp_unit_index: usize, addr: u32) -> Result<(), crate::Error> {
         // select requested trigger
         let tselect = 0x7a0;
         let tdata1 = 0x7a1;
         let tdata2 = 0x7a2;
+
+        log::warn!("Setting breakpoint {}", bp_unit_index);
 
         self.write_csr(tselect, bp_unit_index as u32)?;
 
@@ -392,16 +395,24 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
         // Setup the trigger
 
         let mut instruction_breakpoint = Mcontrol(0);
+
+        // Enter debug mode
         instruction_breakpoint.set_action(1);
+
+        // Match exactly the value in tdata2
         instruction_breakpoint.set_match(0);
 
         instruction_breakpoint.set_m(true);
         instruction_breakpoint.set_s(true);
         instruction_breakpoint.set_u(true);
 
+        // Trigger when instruction is executed
         instruction_breakpoint.set_execute(true);
 
         instruction_breakpoint.set_dmode(true);
+
+        // Match address
+        instruction_breakpoint.set_select(false);
 
         self.write_csr(tdata1, instruction_breakpoint.0)?;
         self.write_csr(tdata2, addr)?;
@@ -409,7 +420,7 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
         Ok(())
     }
 
-    fn clear_breakpoint(&mut self, unit_index: usize) -> Result<(), crate::Error> {
+    fn clear_hw_breakpoint(&mut self, unit_index: usize) -> Result<(), crate::Error> {
         let tselect = 0x7a0;
         let tdata1 = 0x7a1;
         let tdata2 = 0x7a2;
@@ -469,6 +480,47 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
                     .into(),
             )
         }
+    }
+
+    /// See docs on the [`CoreInterface::get_hw_breakpoints`] trait
+    /// NOTE: For riscv, this assumes that only execution breakpoints are used.
+    fn get_hw_breakpoints(&mut self) -> Result<Vec<Option<u32>>, Error> {
+        let tselect = 0x7a0;
+        let tdata1 = 0x7a1;
+        let tdata2 = 0x7a2;
+
+        let mut breakpoints = vec![];
+        let num_hw_breakpoints = self.get_available_breakpoint_units()? as usize;
+        for bp_unit_index in 0..num_hw_breakpoints {
+            // Select the trigger.
+            self.write_csr(tselect, bp_unit_index as u32)?;
+
+            // Read the trigger "configuration" data.
+            let tdata_value = Mcontrol(self.read_csr(tdata1)?);
+
+            log::warn!("Breakpoint {}: {:?}", bp_unit_index, tdata_value);
+
+            // The trigger must be active in at least a single mode
+            let trigger_any_mode_active = tdata_value.m() || tdata_value.s() || tdata_value.u();
+
+            let trigger_any_action_enabled =
+                tdata_value.execute() || tdata_value.store() || tdata_value.load();
+
+            // Only return if the trigger if it is for an execution debug action in all modes.
+            if tdata_value.type_() == 0b10
+                && tdata_value.action() == 1
+                && tdata_value.match_() == 0
+                && trigger_any_mode_active
+                && trigger_any_action_enabled
+            {
+                let breakpoint = self.read_csr(tdata2)?;
+                breakpoints.push(Some(breakpoint));
+            } else {
+                breakpoints.push(None);
+            }
+        }
+
+        Ok(breakpoints)
     }
 }
 

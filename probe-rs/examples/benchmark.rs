@@ -6,20 +6,21 @@ use std::{
     time::{Duration, Instant, UNIX_EPOCH},
 };
 
+use clap;
+use clap::Parser;
 use rand::prelude::*;
-use structopt::StructOpt;
 
-#[derive(StructOpt)]
-struct CLI {
-    #[structopt(long = "chip")]
+#[derive(clap::Parser)]
+struct Cli {
+    #[clap(long = "chip")]
     chip: Option<String>,
-    #[structopt(long = "address", parse(try_from_str = parse_hex))]
+    #[clap(long = "address", parse(try_from_str = parse_hex))]
     address: u32,
-    #[structopt(long = "speed")]
+    #[clap(long = "speed")]
     speed: Option<u32>,
-    #[structopt(long = "protocol")]
+    #[clap(long = "protocol")]
     protocol: Option<String>,
-    #[structopt(long = "pr")]
+    #[clap(long = "pr")]
     pr: Option<u64>,
 }
 
@@ -32,7 +33,7 @@ const SIZE: usize = 0x1000;
 fn main() -> Result<(), &'static str> {
     pretty_env_logger::init();
 
-    let matches = CLI::from_args();
+    let matches = Cli::parse();
 
     let mut probe = open_probe(None)?;
 
@@ -53,15 +54,13 @@ fn main() -> Result<(), &'static str> {
         .map_err(|_| "Failed to select SWD as the transport protocol")?;
 
     let protocol_speed = if let Some(speed) = matches.speed {
-        let protocol_speed = probe
+        probe
             .set_speed(speed)
-            .map_err(|_| "Failed to set probe speed")?;
-        protocol_speed
+            .map_err(|_| "Failed to set probe speed")?
     } else {
-        let protocol_speed = probe
+        probe
             .set_speed(10000)
-            .map_err(|_| "Failed to set probe speed")?;
-        protocol_speed
+            .map_err(|_| "Failed to set probe speed")?
     } as i32;
 
     if ![100, 1000, 10000, 50000].contains(&protocol_speed) {
@@ -181,7 +180,7 @@ fn main() -> Result<(), &'static str> {
                 chip: chip_name,
                 os: env::consts::OS.to_string(),
                 protocol: protocol_name,
-                protocol_speed: protocol_speed,
+                protocol_speed,
                 commit_hash: commit_name,
                 timestamp: NaiveDateTime::from_timestamp(since_the_epoch as i64, 0),
                 kind: "ram".into(),

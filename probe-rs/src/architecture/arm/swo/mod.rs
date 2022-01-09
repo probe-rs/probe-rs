@@ -1,5 +1,4 @@
-pub use itm_decode::*;
-
+use crate::architecture::arm::communication_interface::ArmProbeInterface;
 use crate::Error;
 
 #[derive(Debug, Copy, Clone)]
@@ -149,4 +148,47 @@ pub(crate) fn poll_interval_from_buf_size(
 
     // Poll frequently enough to catch the buffer at 1/4 full
     Some(std::time::Duration::from_millis(time_to_full_ms as u64 / 4))
+}
+
+pub struct SwoReader<'a> {
+    interface: &'a mut Box<dyn ArmProbeInterface>,
+    buf: Vec<u8>,
+}
+
+impl<'a> SwoReader<'a> {
+    pub(crate) fn new(interface: &'a mut Box<dyn ArmProbeInterface>) -> Self {
+        Self {
+            interface,
+            buf: Vec::new(),
+        }
+    }
+}
+
+impl<'a> std::io::Read for SwoReader<'a> {
+    fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
+        use core::cmp;
+        use std::{
+            io::{Error, ErrorKind},
+            mem,
+        };
+
+        // Always buffer: this pulls data as quickly as possible from
+        // the target to clear it's embedded trace buffer, minimizing
+        // the chance of an overflow event during which packets are
+        // lost.
+        self.buf.append(
+            &mut self
+                .interface
+                .read_swo()
+                .map_err(|e| Error::new(ErrorKind::Other, e))?,
+        );
+
+        let swo = {
+            let next_buf = self.buf.split_off(cmp::min(self.buf.len(), buf.len()));
+            mem::replace(&mut self.buf, next_buf)
+        };
+
+        buf[..swo.len()].copy_from_slice(&swo);
+        Ok(swo.len())
+    }
 }

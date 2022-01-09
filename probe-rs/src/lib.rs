@@ -77,12 +77,12 @@ mod session;
 
 pub use crate::config::{CoreType, Target};
 pub use crate::core::{
-    Architecture, Breakpoint, BreakpointId, CommunicationInterface, Core, CoreInformation,
-    CoreInterface, CoreList, CoreRegister, CoreRegisterAddress, CoreState, CoreStatus, HaltReason,
+    Architecture, BreakpointId, CommunicationInterface, Core, CoreInformation, CoreInterface,
+    CoreList, CoreRegister, CoreRegisterAddress, CoreState, CoreStatus, HaltReason, RegisterFile,
     SpecificCoreState,
 };
 pub use crate::error::Error;
-pub use crate::memory::{Memory, MemoryInterface, MemoryList};
+pub use crate::memory::{Memory, MemoryInterface};
 pub use crate::probe::{
     AttachMethod, AvrWireProtocol, DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector,
     DebugProbeType, Probe, ProbeCreationError, WireProtocol,
@@ -90,4 +90,4 @@ pub use crate::probe::{
 pub use crate::session::Session;
 
 // TODO: Hide behind feature
-pub use crate::probe::FakeProbe;
+pub use crate::probe::fake_probe::FakeProbe;

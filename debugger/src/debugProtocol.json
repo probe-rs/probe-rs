@@ -691,6 +691,38 @@
 			}]
 		},
 
+		"MemoryEvent": {
+			"allOf": [ { "$ref": "#/definitions/Event" }, {
+				"type": "object",
+				"description": "This event indicates that some memory range has been updated. It should only be sent if the debug adapter has received a value true for the `supportsMemoryEvent` capability of the `initialize` request.\nClients typically react to the event by re-issuing a `readMemory` request if they show the memory identified by the `memoryReference` and if the updated memory range overlaps the displayed range. Clients should not make assumptions how individual memory references relate to each other, so they should not assume that they are part of a single continuous address range and might overlap.\nDebug adapters can use this event to indicate that the contents of a memory range has changed due to some other DAP request like `setVariable` or `setExpression`. Debug adapters are not expected to emit this event for each and every memory change of a running program, because that information is typically not available from debuggers and it would flood clients with too many events.",
+				"properties": {
+					"event": {
+						"type": "string",
+						"enum": [ "memory" ]
+					},
+					"body": {
+						"type": "object",
+						"properties": {
+							"memoryReference": {
+								"type": "string",
+								"description": "Memory reference of a memory range that has been updated."
+							},
+							"offset": {
+								"type": "integer",
+								"description": "Starting offset in bytes where memory has been updated. Can be negative."
+							},
+							"count": {
+								"type": "integer",
+								"description": "Number of bytes updated."
+							}
+						},
+						"required": [ "memoryReference", "offset", "count" ]
+					}
+				},
+				"required": [ "event", "body" ]
+			}]
+		},
+
 		"RunInTerminalRequest": {
 			"allOf": [ { "$ref": "#/definitions/Request" }, {
 				"type": "object",
@@ -839,6 +871,10 @@
 				"supportsInvalidatedEvent": {
 					"type": "boolean",
 					"description": "Client supports the invalidated event."
+				},
+				"supportsMemoryEvent": {
+					"type": "boolean",
+					"description": "Client supports the memory event."
 				}
 			},
 			"required": [ "adapterID" ]
@@ -2020,7 +2056,7 @@
 		"SetVariableRequest": {
 			"allOf": [ { "$ref": "#/definitions/Request" }, {
 				"type": "object",
-				"description": "Set the variable with the given name in the variable container to a new value. Clients should only call this request if the capability 'supportsSetVariable' is true.",
+				"description": "Set the variable with the given name in the variable container to a new value. Clients should only call this request if the capability 'supportsSetVariable' is true.\nIf a debug adapter implements both setVariable and setExpression, a client will only use setExpression if the variable has an evaluateName property.",
 				"properties": {
 					"command": {
 						"type": "string",
@@ -2412,7 +2448,7 @@
 		"SetExpressionRequest": {
 			"allOf": [ { "$ref": "#/definitions/Request" }, {
 				"type": "object",
-				"description": "Evaluates the given 'value' expression and assigns it to the 'expression' which must be a modifiable l-value.\nThe expressions have access to any variables and arguments that are in scope of the specified frame.\nClients should only call this request if the capability 'supportsSetExpression' is true.",
+				"description": "Evaluates the given 'value' expression and assigns it to the 'expression' which must be a modifiable l-value.\nThe expressions have access to any variables and arguments that are in scope of the specified frame.\nClients should only call this request if the capability 'supportsSetExpression' is true.\nIf a debug adapter implements both setExpression and setVariable, a client will only use setExpression if the variable has an evaluateName property.",
 				"properties": {
 					"command": {
 						"type": "string",
@@ -2779,6 +2815,67 @@
 			}]
 		},
 
+		"WriteMemoryRequest": {
+			"allOf": [ { "$ref": "#/definitions/Request" }, {
+				"type": "object",
+				"description": "Writes bytes to memory at the provided location.\nClients should only call this request if the capability 'supportsWriteMemoryRequest' is true.",
+				"properties": {
+					"command": {
+						"type": "string",
+						"enum": [ "writeMemory" ]
+					},
+					"arguments": {
+						"$ref": "#/definitions/WriteMemoryArguments"
+					}
+				},
+				"required": [ "command", "arguments" ]
+			}]
+		},
+		"WriteMemoryArguments": {
+			"type": "object",
+			"description": "Arguments for 'writeMemory' request.",
+			"properties": {
+				"memoryReference": {
+					"type": "string",
+					"description": "Memory reference to the base location to which data should be written."
+				},
+				"offset": {
+					"type": "integer",
+					"description": "Optional offset (in bytes) to be applied to the reference location before writing data. Can be negative."
+				},
+				"allowPartial": {
+					"type": "boolean",
+					"description": "Optional property to control partial writes. If true, the debug adapter should attempt to write memory even if the entire memory region is not writable. In such a case the debug adapter should stop after hitting the first byte of memory that cannot be written and return the number of bytes written in the response via the 'offset' and 'bytesWritten' properties.\nIf false or missing, a debug adapter should attempt to verify the region is writable before writing, and fail the response if it is not."
+				},
+				"data": {
+					"type": "string",
+					"description": "Bytes to write, encoded using base64."
+				}
+			},
+			"required": [ "memoryReference", "data" ]
+		},
+		"WriteMemoryResponse": {
+			"allOf": [ { "$ref": "#/definitions/Response" }, {
+				"type": "object",
+				"description": "Response to 'writeMemory' request.",
+				"properties": {
+					"body": {
+						"type": "object",
+						"properties": {
+							"offset": {
+								"type": "integer",
+								"description": "Optional property that should be returned when 'allowPartial' is true to indicate the offset of the first byte of data successfully written. Can be negative."
+							},
+							"bytesWritten": {
+								"type": "integer",
+								"description": "Optional property that should be returned when 'allowPartial' is true to indicate the number of bytes starting from address that were successfully written."
+							}
+						}
+					}
+				}
+			}]
+		},
+
 		"DisassembleRequest": {
 			"allOf": [ { "$ref": "#/definitions/Request" }, {
 				"type": "object",
@@ -2980,6 +3077,10 @@
 				"supportsReadMemoryRequest": {
 					"type": "boolean",
 					"description": "The debug adapter supports the 'readMemory' request."
+				},
+				"supportsWriteMemoryRequest": {
+					"type": "boolean",
+					"description": "The debug adapter supports the 'writeMemory' request."
 				},
 				"supportsDisassembleRequest": {
 					"type": "boolean",

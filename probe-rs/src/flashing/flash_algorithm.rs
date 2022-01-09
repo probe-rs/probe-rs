@@ -1,5 +1,6 @@
+use probe_rs_target::{FlashProperties, PageInfo, RamRegion, RawFlashAlgorithm, SectorInfo};
+
 use super::FlashError;
-use crate::config::{FlashProperties, PageInfo, RamRegion, RawFlashAlgorithm, SectorInfo};
 use crate::core::Architecture;
 use crate::{architecture::riscv, Target};
 use std::convert::TryInto;
@@ -186,6 +187,13 @@ impl FlashAlgorithm {
     ) -> Result<Self, FlashError> {
         use std::mem::size_of;
 
+        if raw.flash_properties.page_size % 4 != 0 {
+            // TODO move to yaml validation
+            return Err(FlashError::InvalidPageSize {
+                size: raw.flash_properties.page_size,
+            });
+        }
+
         let assembled_instructions = raw.instructions.chunks_exact(size_of::<u32>());
 
         if !assembled_instructions.remainder().is_empty() {
@@ -208,37 +216,49 @@ impl FlashAlgorithm {
         let mut addr_stack = 0;
         let mut addr_load = 0;
         let mut addr_data = 0;
+        let mut code_start = 0;
 
         // Try to find a stack size that fits with at least one page of data.
         for i in 0..Self::FLASH_ALGO_STACK_SIZE / Self::FLASH_ALGO_STACK_DECREMENT {
-            offset = Self::FLASH_ALGO_STACK_SIZE - Self::FLASH_ALGO_STACK_DECREMENT * i;
-            // Stack address
-            addr_stack = ram_region.range.start + offset;
             // Load address
-            addr_load = addr_stack;
+            addr_load = raw
+                .load_address
+                .map(|a| {
+                    a.checked_sub((header.len() * size_of::<u32>()) as u32) // adjust the raw load address to account for the algo header
+                        .ok_or(FlashError::InvalidFlashAlgorithmLoadAddress { addr: addr_load })
+                })
+                .unwrap_or(Ok(ram_region.range.start))?;
+            if addr_load < ram_region.range.start {
+                return Err(FlashError::InvalidFlashAlgorithmLoadAddress { addr: addr_load });
+            }
+            offset += (header.len() * size_of::<u32>()) as u32;
+            code_start = addr_load + offset;
             offset += (instructions.len() * size_of::<u32>()) as u32;
 
+            // Stack start address (desc)
+            addr_stack = addr_load
+                + offset
+                + (Self::FLASH_ALGO_STACK_SIZE - Self::FLASH_ALGO_STACK_DECREMENT * i);
+
             // Data buffer 1
-            addr_data = ram_region.range.start + offset;
+            addr_data = addr_stack;
             offset += raw.flash_properties.page_size;
 
-            if offset <= ram_region.range.end - ram_region.range.start {
+            if offset <= ram_region.range.end - addr_load {
                 break;
             }
         }
 
         // Data buffer 2
-        let addr_data2 = ram_region.range.start + offset;
+        let addr_data2 = addr_data + raw.flash_properties.page_size;
         offset += raw.flash_properties.page_size;
 
         // Determine whether we can use double buffering or not by the remaining RAM region size.
-        let page_buffers = if offset <= ram_region.range.end - ram_region.range.start {
+        let page_buffers = if offset <= ram_region.range.end - addr_load {
             vec![addr_data, addr_data2]
         } else {
             vec![addr_data]
         };
-
-        let code_start = addr_load + (header.len() * size_of::<u32>()) as u32;
 
         let name = raw.name.clone();
 
@@ -261,177 +281,176 @@ impl FlashAlgorithm {
     }
 }
 
-#[test]
-fn flash_sector_single_size() {
-    use crate::config::SectorDescription;
+#[cfg(test)]
+mod test {
+    use probe_rs_target::{FlashProperties, SectorDescription, SectorInfo};
 
-    let config = FlashAlgorithm {
-        flash_properties: FlashProperties {
-            sectors: vec![SectorDescription {
-                size: 0x100,
-                address: 0x0,
-            }],
-            address_range: 0x1000..0x1000 + 0x1000,
-            page_size: 0x10,
-            ..Default::default()
-        },
-        ..Default::default()
-    };
+    use crate::flashing::FlashAlgorithm;
 
-    let expected_first = SectorInfo {
-        base_address: 0x1000,
-        size: 0x100,
-    };
-
-    assert!(config.sector_info(0x1000 - 1).is_none());
-
-    assert_eq!(Some(expected_first), config.sector_info(0x1000));
-    assert_eq!(Some(expected_first), config.sector_info(0x10ff));
-
-    assert_eq!(Some(expected_first), config.sector_info(0x100b));
-    assert_eq!(Some(expected_first), config.sector_info(0x10ea));
-}
-
-#[test]
-fn flash_sector_single_size_weird_sector_size() {
-    use crate::config::SectorDescription;
-
-    let config = FlashAlgorithm {
-        flash_properties: FlashProperties {
-            sectors: vec![SectorDescription {
-                size: 258,
-                address: 0x0,
-            }],
-            address_range: 0x800_0000..0x800_0000 + 258 * 10,
-            page_size: 0x10,
-            ..Default::default()
-        },
-        ..Default::default()
-    };
-
-    let expected_first = SectorInfo {
-        base_address: 0x800_0000,
-        size: 258,
-    };
-
-    assert!(config.sector_info(0x800_0000 - 1).is_none());
-
-    assert_eq!(Some(expected_first), config.sector_info(0x800_0000));
-    assert_eq!(Some(expected_first), config.sector_info(0x800_0000 + 257));
-
-    assert_eq!(Some(expected_first), config.sector_info(0x800_000b));
-    assert_eq!(Some(expected_first), config.sector_info(0x800_00e0));
-}
-
-#[test]
-fn flash_sector_multiple_sizes() {
-    use crate::config::SectorDescription;
-
-    let config = FlashAlgorithm {
-        flash_properties: FlashProperties {
-            sectors: vec![
-                SectorDescription {
-                    size: 0x4000,
+    #[test]
+    fn flash_sector_single_size() {
+        let config = FlashAlgorithm {
+            flash_properties: FlashProperties {
+                sectors: vec![SectorDescription {
+                    size: 0x100,
                     address: 0x0,
-                },
-                SectorDescription {
-                    size: 0x1_0000,
-                    address: 0x1_0000,
-                },
-                SectorDescription {
-                    size: 0x2_0000,
-                    address: 0x2_0000,
-                },
-            ],
-            address_range: 0x800_0000..0x800_0000 + 0x10_0000,
-            page_size: 0x10,
+                }],
+                address_range: 0x1000..0x1000 + 0x1000,
+                page_size: 0x10,
+                ..Default::default()
+            },
             ..Default::default()
-        },
-        ..Default::default()
-    };
+        };
 
-    let expected_a = SectorInfo {
-        base_address: 0x800_4000,
-        size: 0x4000,
-    };
+        let expected_first = SectorInfo {
+            base_address: 0x1000,
+            size: 0x100,
+        };
 
-    let expected_b = SectorInfo {
-        base_address: 0x801_0000,
-        size: 0x1_0000,
-    };
+        assert!(config.sector_info(0x1000 - 1).is_none());
 
-    let expected_c = SectorInfo {
-        base_address: 0x80A_0000,
-        size: 0x2_0000,
-    };
+        assert_eq!(Some(expected_first), config.sector_info(0x1000));
+        assert_eq!(Some(expected_first), config.sector_info(0x10ff));
 
-    assert_eq!(Some(expected_a), config.sector_info(0x800_4000));
-    assert_eq!(Some(expected_b), config.sector_info(0x801_0000));
-    assert_eq!(Some(expected_c), config.sector_info(0x80A_0000));
-}
+        assert_eq!(Some(expected_first), config.sector_info(0x100b));
+        assert_eq!(Some(expected_first), config.sector_info(0x10ea));
+    }
 
-#[test]
-fn flash_sector_multiple_sizes_iter() {
-    use crate::config::SectorDescription;
-
-    let config = FlashAlgorithm {
-        flash_properties: FlashProperties {
-            sectors: vec![
-                SectorDescription {
-                    size: 0x4000,
+    #[test]
+    fn flash_sector_single_size_weird_sector_size() {
+        let config = FlashAlgorithm {
+            flash_properties: FlashProperties {
+                sectors: vec![SectorDescription {
+                    size: 258,
                     address: 0x0,
-                },
-                SectorDescription {
-                    size: 0x1_0000,
-                    address: 0x1_0000,
-                },
-                SectorDescription {
-                    size: 0x2_0000,
-                    address: 0x2_0000,
-                },
-            ],
-            address_range: 0x800_0000..0x800_0000 + 0x8_0000,
-            page_size: 0x10,
+                }],
+                address_range: 0x800_0000..0x800_0000 + 258 * 10,
+                page_size: 0x10,
+                ..Default::default()
+            },
             ..Default::default()
-        },
-        ..Default::default()
-    };
+        };
 
-    let got: Vec<SectorInfo> = config.iter_sectors().collect();
-
-    let expected = &[
-        SectorInfo {
+        let expected_first = SectorInfo {
             base_address: 0x800_0000,
-            size: 0x4000,
-        },
-        SectorInfo {
+            size: 258,
+        };
+
+        assert!(config.sector_info(0x800_0000 - 1).is_none());
+
+        assert_eq!(Some(expected_first), config.sector_info(0x800_0000));
+        assert_eq!(Some(expected_first), config.sector_info(0x800_0000 + 257));
+
+        assert_eq!(Some(expected_first), config.sector_info(0x800_000b));
+        assert_eq!(Some(expected_first), config.sector_info(0x800_00e0));
+    }
+
+    #[test]
+    fn flash_sector_multiple_sizes() {
+        let config = FlashAlgorithm {
+            flash_properties: FlashProperties {
+                sectors: vec![
+                    SectorDescription {
+                        size: 0x4000,
+                        address: 0x0,
+                    },
+                    SectorDescription {
+                        size: 0x1_0000,
+                        address: 0x1_0000,
+                    },
+                    SectorDescription {
+                        size: 0x2_0000,
+                        address: 0x2_0000,
+                    },
+                ],
+                address_range: 0x800_0000..0x800_0000 + 0x10_0000,
+                page_size: 0x10,
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+
+        let expected_a = SectorInfo {
             base_address: 0x800_4000,
             size: 0x4000,
-        },
-        SectorInfo {
-            base_address: 0x800_8000,
-            size: 0x4000,
-        },
-        SectorInfo {
-            base_address: 0x800_c000,
-            size: 0x4000,
-        },
-        SectorInfo {
+        };
+
+        let expected_b = SectorInfo {
             base_address: 0x801_0000,
             size: 0x1_0000,
-        },
-        SectorInfo {
-            base_address: 0x802_0000,
+        };
+
+        let expected_c = SectorInfo {
+            base_address: 0x80A_0000,
             size: 0x2_0000,
-        },
-        SectorInfo {
-            base_address: 0x804_0000,
-            size: 0x2_0000,
-        },
-        SectorInfo {
-            base_address: 0x806_0000,
-            size: 0x2_0000,
-        },
-    ];
-    assert_eq!(&got, expected);
+        };
+
+        assert_eq!(Some(expected_a), config.sector_info(0x800_4000));
+        assert_eq!(Some(expected_b), config.sector_info(0x801_0000));
+        assert_eq!(Some(expected_c), config.sector_info(0x80A_0000));
+    }
+
+    #[test]
+    fn flash_sector_multiple_sizes_iter() {
+        let config = FlashAlgorithm {
+            flash_properties: FlashProperties {
+                sectors: vec![
+                    SectorDescription {
+                        size: 0x4000,
+                        address: 0x0,
+                    },
+                    SectorDescription {
+                        size: 0x1_0000,
+                        address: 0x1_0000,
+                    },
+                    SectorDescription {
+                        size: 0x2_0000,
+                        address: 0x2_0000,
+                    },
+                ],
+                address_range: 0x800_0000..0x800_0000 + 0x8_0000,
+                page_size: 0x10,
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+
+        let got: Vec<SectorInfo> = config.iter_sectors().collect();
+
+        let expected = &[
+            SectorInfo {
+                base_address: 0x800_0000,
+                size: 0x4000,
+            },
+            SectorInfo {
+                base_address: 0x800_4000,
+                size: 0x4000,
+            },
+            SectorInfo {
+                base_address: 0x800_8000,
+                size: 0x4000,
+            },
+            SectorInfo {
+                base_address: 0x800_c000,
+                size: 0x4000,
+            },
+            SectorInfo {
+                base_address: 0x801_0000,
+                size: 0x1_0000,
+            },
+            SectorInfo {
+                base_address: 0x802_0000,
+                size: 0x2_0000,
+            },
+            SectorInfo {
+                base_address: 0x804_0000,
+                size: 0x2_0000,
+            },
+            SectorInfo {
+                base_address: 0x806_0000,
+                size: 0x2_0000,
+            },
+        ];
+        assert_eq!(&got, expected);
+    }
 }

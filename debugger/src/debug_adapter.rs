@@ -1,22 +1,25 @@
-use crate::dap_types;
 use crate::debugger::ConsoleLog;
 use crate::debugger::CoreData;
 use crate::DebuggerError;
+use crate::{dap_types, rtt::DataFormat};
 use anyhow::{anyhow, Result};
 use dap_types::*;
 use parse_int::parse;
-use probe_rs::{debug::VariableKind, CoreStatus, HaltReason, MemoryInterface};
-use rustyline::Editor;
+use probe_rs::{
+    debug::{ColumnType, VariableKind},
+    CoreStatus, HaltReason, MemoryInterface,
+};
 use serde::{de::DeserializeOwned, Serialize};
-use serde_json::json;
+
 use std::{collections::HashMap, string::ToString};
 use std::{
     convert::TryInto,
-    io::{BufRead, BufReader, Read, Write},
     path::{Path, PathBuf},
     str, thread,
     time::Duration,
 };
+
+use crate::protocol::ProtocolAdapter;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum DebugAdapterType {
@@ -24,47 +27,51 @@ pub enum DebugAdapterType {
     DapClient,
 }
 
-pub struct DebugAdapter<R: Read, W: Write> {
-    seq: i64,
-    input: BufReader<R>,
-    output: W,
-    /// Track the last_known_status of the probe. The debug client needs to be notified when the probe changes state, and the only way is to poll the probe status periodically. For instance, when the client sets the probe running, and the probe halts because of a breakpoint, we need to notify the client.
+/// Progress ID used for progress reporting when the debug adapter protocol is used.
+type ProgressId = i64;
+
+pub struct DebugAdapter<P: ProtocolAdapter> {
+    /// Track the last_known_status of the probe.
+    /// The debug client needs to be notified when the probe changes state,
+    /// and the only way is to poll the probe status periodically.
+    /// For instance, when the client sets the probe running,
+    /// and the probe halts because of a breakpoint, we need to notify the client.
     pub(crate) last_known_status: CoreStatus,
-    pub(crate) adapter_type: DebugAdapterType,
     pub(crate) halt_after_reset: bool,
-    pub(crate) console_log_level: ConsoleLog,
-    /// rl is the optional rustyline command line processor instance
-    rl: Option<Editor<()>>,
-    /// scope_map stores a list of all MS DAP Scopes with a each stack frame's unique id as key
-    /// It is cleared by threads(), populated by stack_trace(), for later re-use by scopes()
+    /// `scope_map` stores a list of all MS DAP Scopes with a each stack frame's unique id as key.
+    /// It is cleared by `threads()`, populated by stack_trace(), for later re-use by `scopes()`.
     scope_map: HashMap<i64, Vec<Scope>>,
-    /// variable_map stores a list of all MS DAP Variables with a unique per-level reference
-    /// It is cleared by threads(), populated by stack_trace(), for later nested re-use by variables()
-    variable_map_key_seq: i64, //Used to create unique values for self.variable_map keys
+    /// `variable_map` stores a list of all MS DAP Variables with a unique per-level reference.
+    /// It is cleared by `threads()`, populated by stack_trace(), for later nested re-use by `variables()`.
+    variable_map_key_seq: i64, // Used to create unique values for `self.variable_map` keys.
     variable_map: HashMap<i64, Vec<Variable>>,
+
+    progress_id: ProgressId,
+
+    /// Flag to indicate if the connected client supports progress reporting.
+    pub(crate) supports_progress_reporting: bool,
+    adapter: P,
 }
 
-impl<R: Read, W: Write> DebugAdapter<R, W> {
-    pub fn new(input: R, output: W, adapter_type: DebugAdapterType) -> DebugAdapter<R, W> {
+impl<P: ProtocolAdapter> DebugAdapter<P> {
+    pub fn new(adapter: P) -> DebugAdapter<P> {
         DebugAdapter {
-            seq: 1,
-            input: BufReader::new(input),
-            output,
             last_known_status: CoreStatus::Unknown,
-            adapter_type,
-            halt_after_reset: false, //default of false
-            console_log_level: ConsoleLog::Error,
-            rl: match adapter_type {
-                DebugAdapterType::CommandLine => Some(Editor::<()>::new()),
-                DebugAdapterType::DapClient => None,
-            },
+            halt_after_reset: false,
             scope_map: HashMap::new(),
             variable_map: HashMap::new(),
             variable_map_key_seq: -1,
+            progress_id: 0,
+            supports_progress_reporting: false,
+            adapter,
         }
     }
 
-    pub(crate) fn status(&mut self, core_data: &mut CoreData, request: &Request) -> bool {
+    pub(crate) fn adapter_type(&self) -> DebugAdapterType {
+        P::ADAPTER_TYPE
+    }
+
+    pub(crate) fn status(&mut self, core_data: &mut CoreData, request: Request) -> Result<()> {
         let status = match core_data.target_core.status() {
             Ok(status) => {
                 self.last_known_status = status;
@@ -72,7 +79,7 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
             }
             Err(error) => {
                 return self.send_response::<()>(
-                    &request,
+                    request,
                     Err(DebuggerError::Other(anyhow!(
                         "Could not read core status. {:?}",
                         error
@@ -93,18 +100,19 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
                         pc
                     ))),
                 ),
+
                 Err(error) => self
-                    .send_response::<()>(&request, Err(DebuggerError::Other(anyhow!("{}", error)))),
+                    .send_response::<()>(request, Err(DebuggerError::Other(anyhow!("{}", error)))),
             }
         } else {
             self.send_response(request, Ok(Some(status.short_long_status().1.to_string())))
         }
     }
 
-    pub(crate) fn pause(&mut self, core_data: &mut CoreData, request: &Request) -> bool {
+    pub(crate) fn pause(&mut self, core_data: &mut CoreData, request: Request) -> Result<()> {
         // let args: PauseArguments = get_arguments(&request)?;
 
-        match core_data.target_core.halt(Duration::from_millis(100)) {
+        match core_data.target_core.halt(Duration::from_millis(500)) {
             Ok(cpu_info) => {
                 let event_body = Some(StoppedEventBody {
                     reason: "pause".to_owned(),
@@ -115,28 +123,28 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
                     all_threads_stopped: Some(true),
                     hit_breakpoint_ids: None,
                 });
-                self.send_event("stopped", event_body);
+                self.send_event("stopped", event_body)?;
                 self.send_response(
                     request,
                     Ok(Some(format!(
                         "Core stopped at address 0x{:08x}",
                         cpu_info.pc
                     ))),
-                );
+                )?;
                 self.last_known_status = CoreStatus::Halted(HaltReason::Request);
 
-                true
+                Ok(())
             }
             Err(error) => {
-                self.send_response::<()>(&request, Err(DebuggerError::Other(anyhow!("{}", error))))
+                self.send_response::<()>(request, Err(DebuggerError::Other(anyhow!("{}", error))))
             }
         }
 
-        //TODO: This is from original probe_rs_cli 'halt' function ... disasm code at memory location
+        // TODO: This is from original probe_rs_cli 'halt' function ... disasm code at memory location
         /*
         let mut code = [0u8; 16 * 2];
 
-        core_data.target_core.read_8(cpu_info.pc, &mut code)?;
+        core_data.target_core.read(cpu_info.pc, &mut code)?;
 
         let instructions = core_data
             .capstone
@@ -158,18 +166,18 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
             */
     }
 
-    pub(crate) fn read_memory(&mut self, core_data: &mut CoreData, request: &Request) -> bool {
-        let arguments: ReadMemoryArguments = match self.adapter_type {
+    pub(crate) fn read_memory(&mut self, core_data: &mut CoreData, request: Request) -> Result<()> {
+        let arguments: ReadMemoryArguments = match self.adapter_type() {
             DebugAdapterType::CommandLine => match request.arguments.as_ref().unwrap().try_into() {
                 Ok(arguments) => arguments,
                 Err(error) => return self.send_response::<()>(request, Err(error)),
             },
             DebugAdapterType::DapClient => match get_arguments(&request) {
                 Ok(arguments) => arguments,
-                Err(error) => return self.send_response::<()>(&request, Err(error)),
+                Err(error) => return self.send_response::<()>(request, Err(error)),
             },
         };
-        let address: u32 = parse(&arguments.memory_reference.as_ref()).unwrap();
+        let address: u32 = parse(arguments.memory_reference.as_ref()).unwrap();
         let num_words = arguments.count as usize;
         let mut buff = vec![0u32; num_words];
         if num_words > 1 {
@@ -184,10 +192,10 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
                     format!("0x{:08x} = 0x{:08x}\n", address + (offset * 4) as u32, word).as_str(),
                 );
             }
-            self.send_response::<String>(&request, Ok(Some(response)))
+            self.send_response::<String>(request, Ok(Some(response)))
         } else {
             self.send_response::<()>(
-                &request,
+                request,
                 Err(DebuggerError::Other(anyhow!(
                     "Could not read any data at address 0x{:08x}",
                     address
@@ -195,12 +203,12 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
             )
         }
     }
-    pub(crate) fn write(&mut self, core_data: &mut CoreData, request: &Request) -> bool {
-        let address = match get_int_argument(request.arguments.as_ref().unwrap(), "address", 0) {
+    pub(crate) fn write(&mut self, core_data: &mut CoreData, request: Request) -> Result<()> {
+        let address = match get_int_argument(request.arguments.as_ref(), "address", 0) {
             Ok(address) => address,
             Err(error) => return self.send_response::<()>(request, Err(error)),
         };
-        let data = match get_int_argument(request.arguments.as_ref().unwrap(), "data", 1) {
+        let data = match get_int_argument(request.arguments.as_ref(), "data", 1) {
             Ok(data) => data,
             Err(error) => return self.send_response::<()>(request, Err(error)),
         };
@@ -210,12 +218,16 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
             .write_word_32(address, data)
             .map_err(DebuggerError::ProbeRs)
         {
-            Ok(_) => true,
+            Ok(_) => Ok(()),
             Err(error) => self.send_response::<()>(request, Err(error)),
         }
     }
-    pub(crate) fn set_breakpoint(&mut self, core_data: &mut CoreData, request: &Request) -> bool {
-        let address = match get_int_argument(request.arguments.as_ref().unwrap(), "address", 0) {
+    pub(crate) fn set_breakpoint(
+        &mut self,
+        core_data: &mut CoreData,
+        request: Request,
+    ) -> Result<()> {
+        let address = match get_int_argument(request.arguments.as_ref(), "address", 0) {
             Ok(address) => address,
             Err(error) => return self.send_response::<()>(request, Err(error)),
         };
@@ -237,8 +249,12 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
             Err(error) => self.send_response::<()>(request, Err(error)),
         }
     }
-    pub(crate) fn clear_breakpoint(&mut self, core_data: &mut CoreData, request: &Request) -> bool {
-        let address = match get_int_argument(request.arguments.as_ref().unwrap(), "address", 0) {
+    pub(crate) fn clear_breakpoint(
+        &mut self,
+        core_data: &mut CoreData,
+        request: Request,
+    ) -> Result<()> {
+        let address = match get_int_argument(request.arguments.as_ref(), "address", 0) {
             Ok(address) => address,
             Err(error) => return self.send_response::<()>(request, Err(error)),
         };
@@ -248,7 +264,7 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
             .clear_hw_breakpoint(address)
             .map_err(DebuggerError::ProbeRs)
         {
-            Ok(_) => true,
+            Ok(_) => Ok(()),
             Err(error) => self.send_response::<()>(request, Err(error)),
         }
     }
@@ -257,7 +273,7 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
         &mut self,
         _core_data: &mut CoreData,
         _request: &Request,
-    ) -> bool {
+    ) -> Result<()> {
         todo!();
         // let register_file = core_data.target_core.registers();
 
@@ -275,7 +291,7 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
         &mut self,
         _core_data: &mut CoreData,
         _requestt: &Request,
-    ) -> bool {
+    ) -> Result<()> {
         todo!();
         // dump all relevant data, stack and regs for now..
         //
@@ -292,9 +308,9 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
 
         // let mut stack = vec![0u8; (stack_top - stack_bot) as usize];
 
-        // core_data.target_core.read_8(stack_bot, &mut stack[..])?;
+        // core_data.target_core.read(stack_bot, &mut stack[..])?;
 
-        // let mut dump = CortexDump::new(stack_bot, stack);
+        // let mut dump = Dump::new(stack_bot, stack);
 
         // for i in 0..12 {
         //     dump.regs[i as usize] = core_data
@@ -315,29 +331,61 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
         //     .expect("Failed to write dump file");
         // true
     }
-    pub(crate) fn restart(&mut self, core_data: &mut CoreData, request: &Request) -> bool {
-        match core_data.target_core.halt(Duration::from_millis(100)) {
+    pub(crate) fn restart(
+        &mut self,
+        core_data: &mut CoreData,
+        request: Option<Request>,
+    ) -> Result<()> {
+        match core_data.target_core.halt(Duration::from_millis(500)) {
             Ok(_) => {}
             Err(error) => {
-                return self
-                    .send_response::<()>(&request, Err(DebuggerError::Other(anyhow!("{}", error))))
+                if let Some(request) = request {
+                    return self.send_response::<()>(
+                        request,
+                        Err(DebuggerError::Other(anyhow!("{}", error))),
+                    );
+                } else {
+                    return self.send_error_response(&DebuggerError::Other(anyhow!("{}", error)));
+                }
             }
         }
-        if self.halt_after_reset || self.adapter_type == DebugAdapterType::DapClient
-        //the DAP Client will always do a reset_and_halt, and then will consider halt_after_reset value after the configuration_done request. Otherwise the probe will run past the main() before the DAP Client has had a chance to set breakpoints in main().
+
+        if request.is_some() || self.adapter_type() == DebugAdapterType::CommandLine {
+            match core_data.target_core.reset() {
+                Ok(_) => {
+                    self.last_known_status = CoreStatus::Running;
+                    let event_body = Some(ContinuedEventBody {
+                        all_threads_continued: Some(true),
+                        thread_id: core_data.target_core.id() as i64,
+                    });
+
+                    self.send_event("continued", event_body)
+                }
+                Err(error) => {
+                    return self.send_response::<()>(
+                        request.unwrap(), // Checked above
+                        Err(DebuggerError::Other(anyhow!("{}", error))),
+                    );
+                }
+            }
+        } else if self.halt_after_reset || self.adapter_type() == DebugAdapterType::DapClient
+        // The DAP Client will always do a `reset_and_halt`, and then will consider `halt_after_reset` value after the `configuration_done` request.
+        // Otherwise the probe will run past the `main()` before the DAP Client has had a chance to set breakpoints in `main()`.
         {
             match core_data
                 .target_core
-                .reset_and_halt(Duration::from_millis(100))
+                .reset_and_halt(Duration::from_millis(500))
             {
                 Ok(_) => {
-                    match self.adapter_type {
+                    match self.adapter_type() {
                         DebugAdapterType::CommandLine => {}
                         DebugAdapterType::DapClient => {
-                            self.send_response::<()>(request, Ok(None));
+                            if let Some(request) = request {
+                                return self.send_response::<()>(request, Ok(None));
+                            }
                         }
                     }
-                    //Only notify the DAP client if we are NOT in initialization stage (CoreStatus::Unknown)
+                    // Only notify the DAP client if we are NOT in initialization stage (`CoreStatus::Unknown`).
                     if self.last_known_status != CoreStatus::Unknown {
                         let event_body = Some(StoppedEventBody {
                             reason: "reset".to_owned(),
@@ -353,47 +401,34 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
                             all_threads_stopped: Some(true),
                             hit_breakpoint_ids: None,
                         });
-                        self.send_event("stopped", event_body);
+                        self.send_event("stopped", event_body)?;
                         self.last_known_status = CoreStatus::Halted(HaltReason::External);
                     }
-                    true
+                    Ok(())
                 }
                 Err(error) => {
-                    return self.send_response::<()>(
-                        request,
-                        Err(DebuggerError::Other(anyhow!("{}", error))),
-                    )
-                }
-            }
-        } else if self.adapter_type == DebugAdapterType::CommandLine {
-            match core_data.target_core.reset() {
-                Ok(_) => {
-                    self.last_known_status = CoreStatus::Running;
-                    let event_body = Some(ContinuedEventBody {
-                        all_threads_continued: Some(true),
-                        thread_id: core_data.target_core.id() as i64,
-                    });
-                    self.send_event("continued", event_body);
-                    true
-                }
-                Err(error) => {
-                    return self.send_response::<()>(
-                        request,
-                        Err(DebuggerError::Other(anyhow!("{}", error))),
-                    )
+                    if let Some(request) = request {
+                        return self.send_response::<()>(
+                            request,
+                            Err(DebuggerError::Other(anyhow!("{}", error))),
+                        );
+                    } else {
+                        return self
+                            .send_error_response(&DebuggerError::Other(anyhow!("{}", error)));
+                    }
                 }
             }
         } else {
-            true
+            Ok(())
         }
     }
 
     pub(crate) fn configuration_done(
         &mut self,
         core_data: &mut CoreData,
-        request: &Request,
-    ) -> bool {
-        //Make sure the DAP Client and DAP Server are in synch with status of the core
+        request: Request,
+    ) -> Result<()> {
+        // Make sure the DAP Client and the DAP Server are in sync with the status of the core.
         match core_data.target_core.status() {
             Ok(core_status) => {
                 self.last_known_status = core_status;
@@ -401,7 +436,8 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
                     if self.halt_after_reset
                         || core_status == CoreStatus::Halted(HaltReason::Breakpoint)
                     {
-                        self.send_response::<()>(&request, Ok(None));
+                        self.send_response::<()>(request, Ok(None))?;
+
                         let event_body = Some(StoppedEventBody {
                             reason: core_status.short_long_status().0.to_owned(),
                             description: Some(core_status.short_long_status().1.to_string()),
@@ -413,50 +449,26 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
                         });
                         self.send_event("stopped", event_body)
                     } else {
-                        self.r#continue(core_data, &request)
+                        self.r#continue(core_data, request)
                     }
                 } else {
-                    self.send_response::<()>(&request, Ok(None))
+                    self.send_response::<()>(request, Ok(None))
                 }
             }
             Err(error) => {
                 self.send_response::<()>(
-                    &request,
+                    request,
                     Err(DebuggerError::Other(anyhow!(
                         "Could not read core status to synchronize the client and the probe. {:?}",
                         error
                     ))),
-                );
-                false
+                )?;
+                Err(anyhow!("Failed to get core status."))
             }
         }
     }
-    pub(crate) fn disconnect(&mut self, _core_data: &mut CoreData, request: &Request) -> bool {
-        let arguments: DisconnectArguments = match get_arguments(&request) {
-            Ok(arguments) => arguments,
-            Err(error) => return self.send_response::<()>(request, Err(error)),
-        };
-        self.send_response::<()>(&request, Ok(None));
-        let terminate_debugee = arguments.terminate_debuggee.unwrap_or(false);
-        let restart = arguments.restart.unwrap_or(false);
-
-        if terminate_debugee {
-            false
-        } else {
-            restart
-        }
-    }
-    pub(crate) fn terminate(&mut self, _core_data: &mut CoreData, request: &Request) -> bool {
-        let arguments: TerminateArguments = match get_arguments(&request) {
-            Ok(arguments) => arguments,
-            Err(error) => return self.send_response::<()>(request, Err(error)),
-        };
-        self.send_response::<()>(&request, Ok(None));
-
-        arguments.restart.unwrap_or(false)
-    }
-    pub(crate) fn threads(&mut self, core_data: &mut CoreData, request: &Request) -> bool {
-        //TODO: Implement actual thread resolution. For now, we just use the core id as the thread id.
+    pub(crate) fn threads(&mut self, core_data: &mut CoreData, request: Request) -> Result<()> {
+        // TODO: Implement actual thread resolution. For now, we just use the core id as the thread id.
 
         let single_thread = Thread {
             id: core_data.target_core.id() as i64,
@@ -467,14 +479,18 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
         self.scope_map.clear();
         self.variable_map.clear();
         self.variable_map_key_seq = -1;
-        self.send_response(&request, Ok(Some(ThreadsResponseBody { threads })))
+        self.send_response(request, Ok(Some(ThreadsResponseBody { threads })))
     }
-    pub(crate) fn set_breakpoints(&mut self, core_data: &mut CoreData, request: &Request) -> bool {
+    pub(crate) fn set_breakpoints(
+        &mut self,
+        core_data: &mut CoreData,
+        request: Request,
+    ) -> Result<()> {
         let args: SetBreakpointsArguments = match get_arguments(&request) {
             Ok(arguments) => arguments,
             Err(error) => {
                 return self.send_response::<()>(
-                    &request,
+                    request,
                     Err(DebuggerError::Other(anyhow!(
                         "Could not read arguments : {}",
                         error
@@ -483,18 +499,16 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
             }
         };
 
-        let mut created_breakpoints: Vec<Breakpoint> = Vec::new(); //For returning in the Response
+        let mut created_breakpoints: Vec<Breakpoint> = Vec::new(); // For returning in the Response
 
         let source_path = args.source.path.as_ref().map(Path::new);
 
-        //Always clear existing breakpoints before setting new ones.
-        //TODO: Consider if it would be more or less efficient to compare VSCode's requested breakpoints against Probe-rs and only clear/set the old/new ones.
-        //TODO: It appears as if the clear_all_hw_breakpoints doesn't always do that. Investigate and fix.
+        // Always clear existing breakpoints before setting new ones. The DAP Specification doesn't make allowances for deleting and setting individual breakpoints.
         match core_data.target_core.clear_all_hw_breakpoints() {
             Ok(_) => {}
             Err(error) => {
                 return self.send_response::<()>(
-                    &request,
+                    request,
                     Err(DebuggerError::Other(anyhow!(
                         "Failed to clear existing breakpoints before setting new ones : {}",
                         error
@@ -519,8 +533,21 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
                 if let Some(location) = source_location {
                     let (verified, reason_msg) =
                         match core_data.target_core.set_hw_breakpoint(location as u32) {
-                            Ok(_) => (true, None),
-                            Err(err) => (false, Some(err.to_string())),
+                            Ok(_) => (
+                                true,
+                                Some(format!("Breakpoint at memory address: 0x{:08x}", location)),
+                            ),
+                            Err(err) => {
+                                let message = format!(
+                                "WARNING: Could not set breakpoint at memory address: 0x{:08x}: {}",
+                                location, err
+                            )
+                                .to_string();
+                                // In addition to sending the error to the 'Hover' message, also write it to the Debug Console Log.
+                                self.log_to_console(format!("WARNING: {}", message));
+                                self.show_message(MessageSeverity::Warning, message.clone());
+                                (false, Some(message))
+                            }
                         };
 
                     created_breakpoints.push(Breakpoint {
@@ -536,15 +563,17 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
                         verified,
                     });
                 } else {
+                    let message = "No source location for breakpoint. Try reducing `opt-level` in `Cargo.toml` ".to_string();
+                    // In addition to sending the error to the 'Hover' message, also write it to the Debug Console Log.
+                    self.log_to_console(format!("WARNING: {}", message));
+                    self.show_message(MessageSeverity::Warning, message.clone());
                     created_breakpoints.push(Breakpoint {
                         column: bp.column,
                         end_column: None,
                         end_line: None,
                         id: None,
                         line: Some(bp.line),
-                        message: Some(
-                            "No source location for breakpoint. Try reducing `opt-level` in `Cargo.toml` ".to_string(),
-                        ),
+                        message: Some(message),
                         source: None,
                         instruction_reference: None,
                         offset: None,
@@ -557,15 +586,15 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
         let breakpoint_body = SetBreakpointsResponseBody {
             breakpoints: created_breakpoints,
         };
-        self.send_response(&request, Ok(Some(breakpoint_body)))
+        self.send_response(request, Ok(Some(breakpoint_body)))
     }
 
-    pub(crate) fn stack_trace(&mut self, core_data: &mut CoreData, request: &Request) -> bool {
-        let _statuss = match core_data.target_core.status() {
+    pub(crate) fn stack_trace(&mut self, core_data: &mut CoreData, request: Request) -> Result<()> {
+        let _status = match core_data.target_core.status() {
             Ok(status) => {
                 if !status.is_halted() {
                     return self.send_response::<()>(
-                        &request,
+                        request,
                         Err(DebuggerError::Other(anyhow!(
                             "Core must be halted before requesting a stack trace"
                         ))),
@@ -586,7 +615,7 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
             }
         };
 
-        let _arguments: StackTraceArguments = match self.adapter_type {
+        let _arguments: StackTraceArguments = match self.adapter_type() {
             DebugAdapterType::CommandLine => StackTraceArguments {
                 format: None,
                 levels: None,
@@ -597,7 +626,7 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
                 Ok(arguments) => arguments,
                 Err(error) => {
                     return self.send_response::<()>(
-                        &request,
+                        request,
                         Err(DebuggerError::Other(anyhow!(
                             "Could not read arguments : {}",
                             error
@@ -608,54 +637,77 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
         };
 
         if let Some(debug_info) = core_data.debug_info.as_ref() {
+            // Evaluate the static scoped variables.
+            let static_variables =
+                match debug_info.get_stack_statics(&mut core_data.target_core, u64::from(pc)) {
+                    Ok(static_variables) => static_variables,
+                    Err(err) => {
+                        let mut error_variable = probe_rs::debug::Variable::new();
+                        error_variable.name = "ERROR".to_string();
+                        error_variable
+                            .set_value(format!("Failed to retrieve static variables: {:?}", err));
+                        vec![error_variable]
+                    }
+                };
+
+            // Store the static variables for later calls to `variables()` to retrieve.
+            let (static_scope_reference, named_static_variables_cnt, indexed_static_variables_cnt) =
+                self.create_variable_map(&static_variables);
+
             let current_stackframes =
                 debug_info.try_unwind(&mut core_data.target_core, u64::from(pc));
 
-            match self.adapter_type {
+            match self.adapter_type() {
                 DebugAdapterType::CommandLine => {
                     let mut body = "".to_string();
-
+                    // TODO: Update the code to include static variables.
                     for frame in current_stackframes {
                         body.push_str(format!("{}\n", frame).as_str());
                     }
-                    self.send_response(&request, Ok(Some(body)))
+                    self.send_response(request, Ok(Some(body)))
                 }
                 DebugAdapterType::DapClient => {
-                    let frame_list: Vec<StackFrame> = current_stackframes
+                    let mut frame_list: Vec<StackFrame> = current_stackframes
                         .map(|frame| {
-                            use probe_rs::debug::ColumnType::*;
                             let column = frame
                                 .source_location
                                 .as_ref()
-                                .and_then(|sl| {
-                                    sl.column.map(|col| match col {
-                                        LeftEdge => 0,
-                                        Column(c) => c,
-                                    })
+                                .and_then(|sl| sl.column)
+                                .map(|col| match col {
+                                    ColumnType::LeftEdge => 0,
+                                    ColumnType::Column(c) => c,
                                 })
                                 .unwrap_or(0);
 
-                            let sl = frame.source_location.as_ref().unwrap();
+                            let source = if let Some(source_location) = &frame.source_location {
+                                let path: Option<PathBuf> =
+                                    source_location.directory.as_ref().map(|path| {
+                                        let mut path = if path.is_relative() {
+                                            std::env::current_dir().unwrap().join(path)
+                                        } else {
+                                            path.to_owned()
+                                        };
 
-                            let mut path: PathBuf = sl.directory.as_ref().unwrap().into();
+                                        if let Some(file) = &source_location.file {
+                                            path.push(file);
+                                        }
 
-                            if path.is_relative() {
-                                path = std::env::current_dir().unwrap().join(path);
-                            }
-
-                            path.push(sl.file.as_ref().unwrap());
-
-                            //TODO: Consider implementing RTIC's expanded source access. Might also do a general macro expansion if that makes sense.
-                            let source = Some(Source {
-                                name: Some(sl.file.clone().unwrap()),
-                                path: path.to_str().map(|s| s.to_owned()),
-                                source_reference: None,
-                                presentation_hint: None,
-                                origin: None,
-                                sources: None,
-                                adapter_data: None,
-                                checksums: None,
-                            });
+                                        path
+                                    });
+                                Some(Source {
+                                    name: source_location.file.clone(),
+                                    path: path.map(|p| p.to_string_lossy().to_string()),
+                                    source_reference: None,
+                                    presentation_hint: None,
+                                    origin: None,
+                                    sources: None,
+                                    adapter_data: None,
+                                    checksums: None,
+                                })
+                            } else {
+                                log::debug!("No source location present for frame!");
+                                None
+                            };
 
                             let line = frame
                                 .source_location
@@ -663,76 +715,21 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
                                 .and_then(|sl| sl.line)
                                 .unwrap_or(0) as i64;
 
-                            //MS DAP requests happen in the order Threads->StackFrames->Scopes->Variables(recursive)
-                            // We build & extract all the info during this stack_trace() method, and re-use it when MS DAP requests come in
+                            // MS DAP requests happen in the order Threads -> StackFrames -> Scopes -> Variables (recursive).
+                            // We build & extract all the info during this `stack_trace()` method, and re-use it when MS DAP requests come in.
                             let mut scopes = vec![];
 
-                            //First build the registers scope and add it's variables
-                            //TODO: Consider expanding beyond core register to add other architectue registers
-                            let register_scope_reference = self.new_variable_map_key();
-                            let mut register_count: i64 = 0;
-                            self.variable_map.insert(
-                                register_scope_reference,
-                                frame
-                                    .registers
-                                    .into_iter()
-                                    .map(|register| {
-                                        register_count += 1;
-                                        let register_position = register_count - 1;
-                                        Variable {
-                                            name: match register_position {
-                                                7 => "R7: THUMB Frame Pointer".to_owned(),
-                                                11 => "R11: ARM Frame Pointer".to_owned(),
-                                                13 => "SP".to_owned(),
-                                                14 => "LR".to_owned(),
-                                                15 => "PC".to_owned(),
-                                                other => format!("R{}", other),
-                                            },
-                                            value: match register {
-                                                None | Some(0) => "<not available>".to_owned(),
-                                                Some(register) => {
-                                                    format!("0x{:08x}", register)
-                                                }
-                                            },
-                                            type_: Some("Core Register".to_owned()),
-                                            presentation_hint: None,
-                                            evaluate_name: None,
-                                            variables_reference: 0,
-                                            named_variables: None,
-                                            indexed_variables: None,
-                                            memory_reference: None,
-                                        }
-                                    })
-                                    .collect(),
-                            );
-                            scopes.push(Scope {
-                                line: None,
-                                column: None,
-                                end_column: None,
-                                end_line: None,
-                                expensive: false,
-                                indexed_variables: Some(0),
-                                name: "Registers".to_string(),
-                                presentation_hint: Some("registers".to_string()),
-                                named_variables: Some(register_count),
-                                source: None,
-                                variables_reference: if register_count > 0 {
-                                    register_scope_reference
-                                } else {
-                                    0
-                                },
-                            });
-
-                            //Now that we've done the register scope, we can do the locals scope
-                            //Extract all the variables from the StackFrame for later MS DAP calls to retrieve
+                            // Build the locals scope.
+                            // Extract all the variables from the `StackFrame` for later MS DAP calls to retrieve.
                             let (variables_reference, named_variables_cnt, indexed_variables_cnt) =
                                 self.create_variable_map(&frame.variables);
+
                             scopes.push(Scope {
                                 line: Some(line),
                                 column: frame.source_location.as_ref().and_then(|l| {
                                     l.column.map(|c| match c {
-                                        LeftEdge => 0,
-                                        Column(c) => c as i64,
+                                        ColumnType::LeftEdge => 0,
+                                        ColumnType::Column(c) => c as i64,
                                     })
                                 }),
                                 end_column: None,
@@ -746,10 +743,82 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
                                 variables_reference,
                             });
 
-                            //Finally, store the scopes for this frame
+                            // The static variables are mapped and stored before iterating the frames. Store a reference to them here.
+                            scopes.push(Scope {
+                                line: None,
+                                column: None,
+                                end_column: None,
+                                end_line: None,
+                                expensive: true, // VSCode won't open this tree by default.
+                                indexed_variables: Some(indexed_static_variables_cnt),
+                                name: "Static".to_string(),
+                                presentation_hint: Some("statics".to_string()),
+                                named_variables: Some(named_static_variables_cnt),
+                                source: None,
+                                variables_reference: if indexed_static_variables_cnt
+                                    + named_variables_cnt
+                                    == 0
+                                {
+                                    0
+                                } else {
+                                    static_scope_reference
+                                },
+                            });
+
+                            // Build the registers scope and add its variables.
+                            // TODO: Consider expanding beyond core registers to add other architectue registers.
+                            let register_scope_reference = self.new_variable_map_key();
+
+                            // TODO: This is ARM specific, but should be generalized
+                            let variables: Vec<Variable> = frame
+                                .registers
+                                .registers()
+                                .map(|(register_number, value)| Variable {
+                                    name: match register_number {
+                                        7 => "R7: THUMB Frame Pointer".to_owned(),
+                                        11 => "R11: ARM Frame Pointer".to_owned(),
+                                        13 => "SP".to_owned(),
+                                        14 => "LR".to_owned(),
+                                        15 => "PC".to_owned(),
+                                        other => format!("R{}", other),
+                                    },
+                                    value: format!("0x{:08x}", value),
+                                    type_: Some("Core Register".to_owned()),
+                                    presentation_hint: None,
+                                    evaluate_name: None,
+                                    variables_reference: 0,
+                                    named_variables: None,
+                                    indexed_variables: None,
+                                    memory_reference: None,
+                                })
+                                .collect();
+
+                            let register_count = variables.len();
+
+                            self.variable_map
+                                .insert(register_scope_reference, variables);
+                            scopes.push(Scope {
+                                line: None,
+                                column: None,
+                                end_column: None,
+                                end_line: None,
+                                expensive: true, // VSCode won't open this tree by default.
+                                indexed_variables: Some(0),
+                                name: "Registers".to_string(),
+                                presentation_hint: Some("registers".to_string()),
+                                named_variables: Some(register_count as i64),
+                                source: None,
+                                variables_reference: if register_count > 0 {
+                                    register_scope_reference
+                                } else {
+                                    0
+                                },
+                            });
+
+                            // Finally, store the scopes for this frame.
                             self.scope_map.insert(frame.id as i64, scopes);
 
-                            //TODO: Can we add more meaningful info to module_id, etc.
+                            // TODO: Can we add more meaningful info to `module_id`, etc.
                             StackFrame {
                                 id: frame.id as i64,
                                 name: frame.function_name.clone(),
@@ -766,28 +835,47 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
                         })
                         .collect();
 
+                    // If we get an empty stack frame list,
+                    // add a frame so that something is visible in the
+                    // debugger.
+                    if frame_list.is_empty() {
+                        frame_list.push(StackFrame {
+                            can_restart: None,
+                            column: 0,
+                            end_column: None,
+                            end_line: None,
+                            id: pc as i64,
+                            instruction_pointer_reference: None,
+                            line: 0,
+                            module_id: None,
+                            name: format!("<unknown function @ {:#010x}>", pc),
+                            presentation_hint: None,
+                            source: None,
+                        })
+                    }
+
                     let frame_len = frame_list.len();
 
                     let body = StackTraceResponseBody {
                         stack_frames: frame_list,
                         total_frames: Some(frame_len as i64),
                     };
-                    self.send_response(&request, Ok(Some(body)))
+                    self.send_response(request, Ok(Some(body)))
                 }
             }
         } else {
             // No debug information, so we cannot send stack trace information
             self.send_response::<()>(
-                &request,
+                request,
                 Err(DebuggerError::Other(anyhow!("No debug information found!"))),
             )
         }
     }
-    /// scopes uses the following references for variables_map in a frame.
-    /// - local scope   : Use the frame.id (the actual frame address in memory)
-    /// - registers     : Manufactured references in the range 0..0x400
-    /// - global scope  : Manufactured refernces in the range 0x400..0x800 (unimplemented)
-    pub(crate) fn scopes(&mut self, _core_data: &mut CoreData, request: &Request) -> bool {
+    /// Retrieve available scopes  
+    /// - local scope   : Variables defined between start of current frame, and the current pc (program counter)
+    /// - static scope  : Variables with `static` modifier
+    /// - registers     : Currently supports core registers 0-15
+    pub(crate) fn scopes(&mut self, _core_data: &mut CoreData, request: Request) -> Result<()> {
         let arguments: ScopesArguments = match get_arguments(&request) {
             Ok(arguments) => arguments,
             Err(error) => return self.send_response::<()>(request, Err(error)),
@@ -795,20 +883,20 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
 
         match self.scope_map.clone().get(&(arguments.frame_id)) {
             Some(dap_scopes) => self.send_response(
-                &request,
+                request,
                 Ok(Some(ScopesResponseBody {
                     scopes: dap_scopes.clone(),
                 })),
             ),
             None => self.send_response::<()>(
-                &request,
+                request,
                 Err(DebuggerError::Other(anyhow!(
                     "No variable information available"
                 ))),
             ),
         }
     }
-    pub(crate) fn source(&mut self, _core_data: &mut CoreData, request: &Request) -> bool {
+    pub(crate) fn source(&mut self, _core_data: &mut CoreData, request: Request) -> Result<()> {
         let arguments: SourceArguments = match get_arguments(&request) {
             Ok(arguments) => arguments,
             Err(error) => return self.send_response::<()>(request, Err(error)),
@@ -842,15 +930,16 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
             );
         };
 
-        self.send_response(&request, result)
+        self.send_response(request, result)
     }
-    pub(crate) fn variables(&mut self, _core_data: &mut CoreData, request: &Request) -> bool {
+
+    pub(crate) fn variables(&mut self, _core_data: &mut CoreData, request: Request) -> Result<()> {
         let arguments: VariablesArguments = match get_arguments(&request) {
             Ok(arguments) => arguments,
             Err(error) => return self.send_response::<()>(request, Err(error)),
         };
         return self.send_response(
-            &request,
+            request,
             match self
                 .variable_map
                 .clone()
@@ -860,12 +949,13 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
                     match arguments.filter {
                         Some(filter) => {
                             match filter.as_str() {
-                                //TODO: Use probe-rs::Variables for the variable_map, and then transform them here before serving them up. That way we can actually track indexed versus named variables (The DAP protocol doesn't have Variable fields to do so)
+                                // TODO: Use `probe_rs::Variables` for the `variable_map`, and then transform them here before serving them up.
+                                // That way we can actually track indexed versus named variables (The DAP protocol doesn't have Variable fields to do so).
                                 "indexed" => Ok(Some(VariablesResponseBody {
-                                    variables: dap_variables.clone(), //.retain(|&var| true ).collect::<Vec<Variable>>()
+                                    variables: dap_variables.clone(),
                                 })),
                                 "named" => Ok(Some(VariablesResponseBody {
-                                    variables: dap_variables.clone(), //.retain(|&var| true ).collect::<Vec<Variable>>()
+                                    variables: dap_variables.clone(),
                                 })),
                                 other => Err(DebuggerError::Other(anyhow!(
                                     "ERROR: Received invalid variable filter: {}",
@@ -885,22 +975,21 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
         );
     }
 
-    pub(crate) fn r#continue(&mut self, core_data: &mut CoreData, request: &Request) -> bool {
-        // let args: ContinueArguments = get_arguments(&request)?;
+    pub(crate) fn r#continue(&mut self, core_data: &mut CoreData, request: Request) -> Result<()> {
         match core_data.target_core.run() {
             Ok(_) => {
                 self.last_known_status = core_data
                     .target_core
                     .status()
                     .unwrap_or(CoreStatus::Unknown);
-                match self.adapter_type {
+                match self.adapter_type() {
                     DebugAdapterType::CommandLine => self.send_response(
-                        &request,
+                        request,
                         Ok(Some(self.last_known_status.short_long_status().1)),
                     ),
                     DebugAdapterType::DapClient => {
                         self.send_response(
-                            &request,
+                            request,
                             Ok(Some(ContinueResponseBody {
                                 all_threads_continued: if self.last_known_status
                                     == CoreStatus::Running
@@ -910,9 +999,11 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
                                     Some(false)
                                 },
                             })),
-                        );
-                        //We have to consider the fact that sometimes the `run()` is successfull, but "immediately" after the MCU hits a breakpoint or exception. So we have to check the status again to be sure.
-                        thread::sleep(Duration::from_millis(100)); //small delay to make sure the MCU hits user breakpoints early in main()
+                        )?;
+                        // We have to consider the fact that sometimes the `run()` is successfull,
+                        // but "immediately" after the MCU hits a breakpoint or exception.
+                        // So we have to check the status again to be sure.
+                        thread::sleep(Duration::from_millis(100)); // Small delay to make sure the MCU hits user breakpoints early in `main()`.
                         let core_status = match core_data.target_core.status() {
                             Ok(new_status) => match new_status {
                                 CoreStatus::Halted(_) => {
@@ -927,7 +1018,7 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
                                         all_threads_stopped: Some(true),
                                         hit_breakpoint_ids: None,
                                     });
-                                    self.send_event("stopped", event_body);
+                                    self.send_event("stopped", event_body)?;
                                     new_status
                                 }
                                 other => other,
@@ -935,20 +1026,21 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
                             Err(_) => CoreStatus::Unknown,
                         };
                         self.last_known_status = core_status;
-                        true
+                        Ok(())
                     }
                 }
             }
             Err(error) => {
                 self.last_known_status = CoreStatus::Halted(HaltReason::Unknown);
-                self.send_response::<()>(&request, Err(DebuggerError::Other(anyhow!("{}", error))))
+                self.send_response::<()>(request, Err(DebuggerError::Other(anyhow!("{}", error))))?;
+                Err(error.into())
             }
         }
     }
 
     /// Steps at 'instruction' granularity ONLY.
-    pub(crate) fn next(&mut self, core_data: &mut CoreData, request: &Request) -> bool {
-        //TODO: Implement 'statement' granularity, then update DAP `Capabilities` and read `NextArguments`
+    pub(crate) fn next(&mut self, core_data: &mut CoreData, request: Request) -> Result<()> {
+        // TODO: Implement 'statement' granularity, then update DAP `Capabilities` and read `NextArguments`.
         // let args: NextArguments = get_arguments(&request)?;
 
         match core_data.target_core.step() {
@@ -956,12 +1048,12 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
                 let new_status = match core_data.target_core.status() {
                     Ok(new_status) => new_status,
                     Err(error) => {
-                        self.send_response::<()>(&request, Err(DebuggerError::ProbeRs(error)));
-                        return false;
+                        self.send_response::<()>(request, Err(DebuggerError::ProbeRs(error)))?;
+                        return Err(anyhow!("Failed to retrieve core status"));
                     }
                 };
                 self.last_known_status = new_status;
-                self.send_response::<()>(&request, Ok(None));
+                self.send_response::<()>(request, Ok(None))?;
                 let event_body = Some(StoppedEventBody {
                     reason: "step".to_owned(),
                     description: Some(format!(
@@ -978,14 +1070,9 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
                 self.send_event("stopped", event_body)
             }
             Err(error) => {
-                self.send_response::<()>(&request, Err(DebuggerError::Other(anyhow!("{}", error))))
+                self.send_response::<()>(request, Err(DebuggerError::Other(anyhow!("{}", error))))
             }
         }
-    }
-
-    //SECTION: Helper functions
-    pub fn peek_seq(&self) -> i64 {
-        self.seq
     }
 
     /// return a newly allocated id for a register scope reference
@@ -994,7 +1081,7 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
         self.variable_map_key_seq
     }
 
-    /// recurse through each variable and add children with parent reference to sef.variables_map
+    /// recurse through each variable and add children with parent reference to self.variables_map
     /// returns a tuple containing the parent's  (variables_map_key, named_child_variables_cnt, indexed_child_variables_cnt)
     fn create_variable_map(&mut self, variables: &[probe_rs::debug::Variable]) -> (i64, i64, i64) {
         let mut named_child_variables_cnt = 0;
@@ -1002,7 +1089,8 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
         let dap_variables: Vec<Variable> = variables
             .iter()
             .map(|variable| {
-                //TODO: The DAP Protocol doesn't seem to have an easy way to indicate if a variable is Named or Indexed. Figure out what needs to be done to improve this.
+                // TODO: The DAP Protocol doesn't seem to have an easy way to indicate if a variable is `Named` or `Indexed`.
+                // Figure out what needs to be done to improve this.
                 if variable.kind == VariableKind::Indexed {
                     indexed_child_variables_cnt += 1;
                 } else {
@@ -1027,421 +1115,70 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
                 }
             })
             .collect();
-        let variable_map_key = if named_child_variables_cnt > 0 || indexed_child_variables_cnt > 0 {
-            self.new_variable_map_key()
+
+        if named_child_variables_cnt > 0 || indexed_child_variables_cnt > 0 {
+            let variable_map_key = self.new_variable_map_key();
+            match self.variable_map.insert(variable_map_key, dap_variables) {
+                Some(_) => {
+                    log::warn!("Failed to create a unique `variable_map_key`. Variables shown in this frame may be incomplete or corrupted. Please report this as a bug!");
+                    (0, 0, 0)
+                }
+                None => (
+                    variable_map_key,
+                    named_child_variables_cnt,
+                    indexed_child_variables_cnt,
+                ),
+            }
         } else {
-            0
-        };
-        match self.variable_map.insert(variable_map_key, dap_variables) {
-            Some(_) => (0, 0, 0), //This should never happen ... unless this module has a logic error for calculating unique variable_map_key values :)
-            None => (
-                variable_map_key,
-                named_child_variables_cnt,
-                indexed_child_variables_cnt,
-            ),
+            // Returning 0's allows VSCode DAP Client to behave correctly for frames that have no variables, and variables that have no children.
+            (0, 0, 0)
         }
     }
 
-    /// Returns one of the standard DAP Requests if all goes well, or a "error" request, which should indicate that the calling function should return. When preparing to return an "error" request, we will send a Response containing the DebuggerError encountered.
-    pub fn listen_for_request(&mut self) -> Request {
-        if self.adapter_type == DebugAdapterType::CommandLine {
-            let readline = self.rl.as_mut().unwrap().readline(">> ");
-            let line = match readline {
-                Ok(line) => line,
-                Err(error) => {
-                    use rustyline::error::ReadlineError;
-                    match error {
-                        // For end of file and ctrl-c, we just quit
-                        ReadlineError::Eof | ReadlineError::Interrupted => "quit".to_string(),
-                        actual_error => {
-                            let request = Request {
-                                seq: self.seq,
-                                arguments: None,
-                                command: "error".to_owned(),
-                                type_: "request".to_owned(),
-                            };
-                            self.send_response::<Request>(
-                                &request,
-                                Err(DebuggerError::Other(anyhow!(
-                                    "Error handling input: {:?}",
-                                    actual_error
-                                ))),
-                            );
-                            return request;
-                        }
-                    }
-                }
-            };
-            let history_entry: &str = line.as_ref();
-            self.rl.as_mut().unwrap().add_history_entry(history_entry);
-
-            let mut command_arguments: Vec<&str> = line.split_whitespace().collect();
-            let command_name = command_arguments.remove(0);
-            let arguments = if command_arguments.is_empty() {
-                Some(json!(command_arguments))
-            } else {
-                None
-            };
-            Request {
-                arguments,
-                command: command_name.to_string(),
-                seq: self.seq,
-                type_: "request".to_string(),
-            }
-        } else {
-            // DebugAdapterType::DapClient
-            match self.receive_data() {
-                Ok(message_content) => {
-                    // Extract protocol message
-                    match serde_json::from_slice::<ProtocolMessage>(&message_content) {
-                        Ok(protocol_message) => {
-                            match protocol_message.type_.as_str() {
-                                "request" => {
-                                    match serde_json::from_slice::<Request>(&message_content) {
-                                        Ok(request) => {
-                                            //This is the SUCCESS request for new requests from the client
-                                            match self.console_log_level {
-                                                ConsoleLog::Error => {}
-                                                ConsoleLog::Info => {
-                                                    self.log_to_console(format!(
-                                                        "\nReceived DAP Request sequence #{} : {}",
-                                                        request.seq, request.command
-                                                    ));
-                                                }
-                                                ConsoleLog::Debug => {
-                                                    self.log_to_console(format!(
-                                                        "\nReceived DAP Request: {:#?}",
-                                                        request
-                                                    ));
-                                                }
-                                            }
-                                            request
-                                        }
-                                        Err(error) => {
-                                            let request = Request {
-                                                seq: self.seq,
-                                                arguments: None,
-                                                command: "error".to_owned(),
-                                                type_: "request".to_owned(),
-                                            };
-                                            self.send_response::<Request>( &request, Err(DebuggerError::Other(anyhow!("Error encoding ProtocolMessage to Request: {:?}", error))));
-                                            request
-                                        }
-                                    }
-                                }
-                                other => {
-                                    let request = Request {
-                                        seq: self.seq,
-                                        arguments: None,
-                                        command: "error".to_owned(),
-                                        type_: "request".to_owned(),
-                                    };
-                                    self.send_response::<Request>(
-                                        &request,
-                                        Err(DebuggerError::Other(anyhow!(
-                                            "Received an unexpected message type: '{}'",
-                                            other
-                                        ))),
-                                    );
-                                    request
-                                }
-                            }
-                        }
-                        Err(error) => {
-                            let request = Request {
-                                seq: self.seq,
-                                arguments: None,
-                                command: "error".to_owned(),
-                                type_: "request".to_owned(),
-                            };
-                            self.send_response::<Request>(
-                                &request,
-                                Err(DebuggerError::Other(anyhow!("{}", error))),
-                            );
-                            request
-                        }
-                    }
-                }
-                Err(error) => {
-                    let request = Request {
-                        seq: self.seq,
-                        arguments: None,
-                        command: "error".to_owned(),
-                        type_: "request".to_owned(),
-                    };
-                    match error {
-                        DebuggerError::NonBlockingReadError {
-                            os_error_number: _,
-                            original_error,
-                        } => {
-                            // println!("temporary error ... retry: {}", os_error_number);
-                            if original_error.kind() == std::io::ErrorKind::WouldBlock {
-                                //non-blocking read is waiting for incoming data that is not ready yet.
-                                //This is not a real error, so use this opportunity to check on probe status and notify the debug client if required.
-                                return Request {
-                                    arguments: None,
-                                    command: "process_next_request".to_owned(),
-                                    seq: self.seq,
-                                    type_: "request".to_owned(),
-                                };
-                            } else {
-                                //This is a legitimate error. Tell the client about it.
-                                self.send_response::<Request>(
-                                    &request,
-                                    Err(DebuggerError::StdIO(original_error)),
-                                );
-                            }
-                        }
-                        _ => {
-                            //This is a legitimate error. Tell the client about it.
-                            self.send_response::<Request>(
-                                &request,
-                                Err(DebuggerError::Other(anyhow!("{}", error))),
-                            );
-                        }
-                    }
-                    request
-                }
-            }
-        }
+    /// Returns one of the standard DAP Requests if all goes well, or a "error" request, which should indicate that the calling function should return.
+    /// When preparing to return an "error" request, we will send a Response containing the DebuggerError encountered.
+    pub fn listen_for_request(&mut self) -> anyhow::Result<Option<Request>> {
+        self.adapter.listen_for_request()
     }
 
-    pub fn receive_data(&mut self) -> Result<Vec<u8>, DebuggerError> {
-        if self.adapter_type == DebugAdapterType::CommandLine {
-            Err(DebuggerError::Other(anyhow!(
-                "Please use the `listen_for_request` method to retrieve data from the CLI"
-            )))
-        } else {
-            // DebugAdapterType::DapClient
-            let mut header = String::new();
-
-            match self.input.read_line(&mut header) {
-                Ok(_len) => {}
-                Err(error) => {
-                    //There is no data available, so do something else (like check Probe status) or try again
-                    return Err(DebuggerError::NonBlockingReadError {
-                        os_error_number: error.raw_os_error().unwrap_or(0),
-                        original_error: error,
-                    });
-                }
-            }
-
-            // we should read an empty line here
-            let mut buff = String::new();
-            match self.input.read_line(&mut buff) {
-                Ok(_len) => {}
-                Err(error) => {
-                    println!("Error {}", error);
-                    //There is no data available, so do something else (like check Probe status) or try again
-                    return Err(DebuggerError::NonBlockingReadError {
-                        os_error_number: error.raw_os_error().unwrap_or(0),
-                        original_error: error,
-                    });
-                }
-            }
-
-            let len = get_content_len(&header).ok_or_else(|| {
-                DebuggerError::Other(anyhow!(
-                    "Failed to read content length from header '{}'",
-                    header
-                ))
-            })?;
-
-            let mut content = vec![0u8; len];
-            let bytes_read = match self.input.read(&mut content) {
-                Ok(len) => len,
-                Err(error) => {
-                    //There is no data available, so do something else (like check Probe status) or try again
-                    return Err(DebuggerError::NonBlockingReadError {
-                        os_error_number: error.raw_os_error().unwrap_or(0),
-                        original_error: error,
-                    });
-                }
-            };
-            // println!("content: {:?}", str::from_utf8(&content));
-
-            if bytes_read == len {
-                Ok(content)
-            } else {
-                Err(DebuggerError::Other(anyhow!(
-                    "Failed to read the expected {} bytes from incoming data",
-                    len
-                )))
-            }
-        }
-    }
-
-    /// Sends either the success response or an error response if passed a DebuggerError. For the DAP Client, it forwards the response, while for the CLI, it will print the body for success, or the message for failure.
+    /// Sends either the success response or an error response if passed a
+    /// DebuggerError. For the DAP Client, it forwards the response, while for
+    /// the CLI, it will print the body for success, or the message for
+    /// failure.
     pub fn send_response<S: Serialize>(
         &mut self,
-        request: &Request,
+        request: Request,
         response: Result<Option<S>, DebuggerError>,
-    ) -> bool {
-        let mut resp = Response {
-            command: request.command.clone(),
-            request_seq: request.seq,
-            seq: request.seq,
-            success: false,
-            body: None,
-            type_: "response".to_owned(),
-            message: None,
-        };
+    ) -> Result<()> {
+        self.adapter.send_response(request, response)
+    }
 
-        match response {
-            Ok(value) => {
-                let body_value = match value {
-                    Some(value) => Some(match serde_json::to_value(value) {
-                        Ok(value) => value,
-                        Err(_) => {
-                            return false;
-                        }
-                    }),
-                    None => None,
-                };
-                resp.success = true;
-                resp.body = body_value;
-            }
-            Err(e) => {
-                resp.success = false;
-                resp.message = Some(e.to_string());
-            }
-        };
-        if self.adapter_type == DebugAdapterType::DapClient {
-            let encoded_resp = match serde_json::to_vec(&resp) {
-                Ok(encoded_resp) => encoded_resp,
-                Err(_) => return false,
-            };
-            self.send_data(&encoded_resp);
-            if !resp.success {
-                self.log_to_console(&resp.message.unwrap());
-            } else {
-                match self.console_log_level {
-                    ConsoleLog::Error => {}
-                    ConsoleLog::Info => {
-                        self.log_to_console(format!(
-                            "   Sent DAP Response sequence #{} : {}",
-                            resp.seq, resp.command
-                        ));
-                    }
-                    ConsoleLog::Debug => {
-                        self.log_to_console(format!("\nSent DAP Response: {:#?}", resp));
-                    }
-                }
-            }
+    pub fn send_error_response(&mut self, response: &DebuggerError) -> Result<()> {
+        if self
+            .adapter
+            .show_message(MessageSeverity::Error, response.to_string())
+        {
+            Ok(())
         } else {
-            //DebugAdapterType::CommandLine
-            if resp.success {
-                if let Some(body) = resp.body {
-                    println!("{}", body.as_str().unwrap());
-                }
-            } else {
-                println!("ERROR: {}", resp.message.unwrap());
-            }
+            Err(anyhow!("Failed to send error response"))
         }
-        true
     }
 
-    fn send_data(&mut self, raw_data: &[u8]) -> bool {
-        let response_body = raw_data;
-
-        let response_header = format!("Content-Length: {}\r\n\r\n", response_body.len());
-
-        match self.output.write(response_header.as_bytes()) {
-            Ok(write_size) => {
-                if write_size != response_header.len() {
-                    return false;
-                }
-            }
-            Err(_) => return false,
-        }
-        match self.output.write(response_body) {
-            Ok(write_size) => {
-                if write_size != response_body.len() {
-                    return false;
-                }
-            }
-            Err(_) => return false,
-        }
-
-        self.output.flush().ok();
-
-        self.seq += 1;
-
-        true
+    pub fn send_event<S: Serialize>(
+        &mut self,
+        event_type: &str,
+        event_body: Option<S>,
+    ) -> Result<()> {
+        self.adapter.send_event(event_type, event_body)
     }
 
-    pub fn send_event<S: Serialize>(&mut self, event_type: &str, event_body: Option<S>) -> bool {
-        if self.adapter_type == DebugAdapterType::DapClient {
-            let new_event = Event {
-                seq: self.seq,
-                type_: "event".to_string(),
-                event: event_type.to_string(),
-                body: event_body
-                    .map(|event_body| serde_json::to_value(event_body).unwrap_or_default()),
-            };
+    pub fn log_to_console<S: Into<String>>(&mut self, message: S) -> bool {
+        self.adapter.log_to_console(message)
 
-            let encoded_event = match serde_json::to_vec(&new_event) {
-                Ok(encoded_event) => encoded_event,
-                Err(_) => {
-                    return false;
-                }
-            };
-            self.send_data(&encoded_event);
-            if new_event.event != "output" {
-                //This would result in an endless loop
-                match self.console_log_level {
-                    ConsoleLog::Error => {}
-                    ConsoleLog::Info => {
-                        self.log_to_console(format!("\nTriggered DAP Event: {}", new_event.event));
-                    }
-                    ConsoleLog::Debug => {
-                        self.log_to_console(format!("\nTriggered DAP Event: {:#?}", new_event));
-                    }
-                }
-            }
-        } else {
-            //DebugAdapterType::CommandLine
-            //Only report on continued or stopped events, so the user knows when the core halts
-            match event_type {
-                "stopped" => {
-                    if let Some(event_body) = event_body {
-                        let event_body_struct: StoppedEventBody = serde_json::from_value(
-                            serde_json::to_value(event_body).unwrap_or_default(),
-                        )
-                        .unwrap();
-                        let description = event_body_struct.description.unwrap_or_else(|| {
-                            "Received and unknown event from the debugger".to_owned()
-                        });
-                        println!("{}", description);
-                    }
-                }
-                "continued" => {
-                    println!(
-                        "{}",
-                        self.last_known_status.short_long_status().1.to_owned()
-                    );
-                }
-                other => match self.console_log_level {
-                    ConsoleLog::Error => {}
-                    ConsoleLog::Info => {
-                        self.log_to_console(format!("Triggered Event: {}", other));
-                    }
-                    ConsoleLog::Debug => {
-                        self.log_to_console(format!(
-                            "Triggered Event: {:#?}",
-                            serde_json::to_value(event_body).unwrap_or_default()
-                        ));
-                    }
-                },
-            }
-        }
-        true
-    }
-
-    pub fn log_to_console<S: Into<String>>(&mut self, msg: S) -> bool {
+        /*
         if self.adapter_type == DebugAdapterType::DapClient {
             let event_body = match serde_json::to_value(OutputEventBody {
-                output: format!("{}\n", msg.into()),
+                output: format!("{}\n", message.into()),
                 category: Some("console".to_owned()),
                 variables_reference: None,
                 source: None,
@@ -1457,14 +1194,149 @@ impl<R: Read, W: Write> DebugAdapter<R, W> {
             };
             self.send_event("output", Some(event_body))
         } else {
-            //DebugCAdapterType::CommandLine
-            println!("{}", msg.into());
+            println!("{}", message.into());
+            true
+        }
+        */
+    }
+
+    /// Send a custom "probe-rs-show-message" event to the MS DAP Client.
+    /// The `severity` field can be one of `information`, `warning`, or `error`.
+    pub fn show_message(&mut self, severity: MessageSeverity, message: impl Into<String>) -> bool {
+        self.adapter.show_message(severity, message)
+    }
+
+    /// Send a custom `probe-rs-rtt-channel-config` event to the MS DAP Client, to create a window for a specific RTT channel.
+    pub fn rtt_window(
+        &mut self,
+        channel_number: usize,
+        channel_name: String,
+        data_format: DataFormat,
+    ) -> bool {
+        if self.adapter_type() == DebugAdapterType::DapClient {
+            let event_body = match serde_json::to_value(RttChannelEventBody {
+                channel_number,
+                channel_name,
+                data_format,
+            }) {
+                Ok(event_body) => event_body,
+                Err(_) => {
+                    return false;
+                }
+            };
+            self.send_event("probe-rs-rtt-channel-config", Some(event_body))
+                .is_ok()
+        } else {
             true
         }
     }
+
+    /// Send a custom `probe-rs-rtt-data` event to the MS DAP Client, to
+    pub fn rtt_output(&mut self, channel_number: usize, rtt_data: String) -> bool {
+        if self.adapter_type() == DebugAdapterType::DapClient {
+            let event_body = match serde_json::to_value(RttDataEventBody {
+                channel_number,
+                data: rtt_data,
+            }) {
+                Ok(event_body) => event_body,
+                Err(_) => {
+                    return false;
+                }
+            };
+            self.send_event("probe-rs-rtt-data", Some(event_body))
+                .is_ok()
+        } else {
+            println!("RTT Channel {}: {}", channel_number, rtt_data);
+            true
+        }
+    }
+
+    fn new_progress_id(&mut self) -> ProgressId {
+        let id = self.progress_id;
+
+        self.progress_id += 1;
+
+        id
+    }
+
+    pub fn start_progress(&mut self, title: &str, request_id: Option<i64>) -> Result<ProgressId> {
+        anyhow::ensure!(
+            self.supports_progress_reporting,
+            "Progress reporting is not supported by client."
+        );
+
+        let progress_id = self.new_progress_id();
+
+        self.send_event(
+            "progressStart",
+            Some(ProgressStartEventBody {
+                cancellable: Some(false),
+                message: None,
+                percentage: None,
+                progress_id: progress_id.to_string(),
+                request_id,
+                title: title.to_owned(),
+            }),
+        )?;
+
+        Ok(progress_id)
+    }
+
+    pub fn end_progress(&mut self, progress_id: ProgressId) -> Result<()> {
+        anyhow::ensure!(
+            self.supports_progress_reporting,
+            "Progress reporting is not supported by client."
+        );
+
+        self.send_event(
+            "progressEnd",
+            Some(ProgressEndEventBody {
+                message: None,
+                progress_id: progress_id.to_string(),
+            }),
+        )
+    }
+
+    /// Update the progress report in VSCode.
+    /// The progress has the range [0..1].
+    pub fn update_progress(
+        &mut self,
+        progress: f64,
+        message: Option<impl Into<String>>,
+        progress_id: i64,
+    ) -> Result<ProgressId> {
+        anyhow::ensure!(
+            self.supports_progress_reporting,
+            "Progress reporting is not supported by client."
+        );
+
+        let _ok = self.send_event(
+            "progressUpdate",
+            Some(ProgressUpdateEventBody {
+                message: message.map(|v| v.into()),
+                percentage: Some(progress * 100.0),
+                progress_id: progress_id.to_string(),
+            }),
+        )?;
+
+        Ok(progress_id)
+    }
+
+    pub(crate) fn set_console_log_level(&mut self, error: ConsoleLog) {
+        self.adapter.set_console_log_level(error)
+    }
 }
 
-// SECTION: Some helper functions
+/// Provides halt functionality that is re-used elsewhere, in context of multiple DAP Requests
+pub(crate) fn halt_core(
+    target_core: &mut probe_rs::Core,
+) -> Result<probe_rs::CoreInformation, DebuggerError> {
+    match target_core.halt(Duration::from_millis(100)) {
+        Ok(cpu_info) => Ok(cpu_info),
+        Err(error) => Err(DebuggerError::Other(anyhow!("{}", error))),
+    }
+}
+
 pub fn get_arguments<T: DeserializeOwned>(req: &Request) -> Result<T, crate::DebuggerError> {
     let value = req
         .arguments
@@ -1472,27 +1344,6 @@ pub fn get_arguments<T: DeserializeOwned>(req: &Request) -> Result<T, crate::Deb
         .ok_or(crate::DebuggerError::InvalidRequest)?;
 
     serde_json::from_value(value.to_owned()).map_err(|e| e.into())
-}
-
-fn get_content_len(header: &str) -> Option<usize> {
-    let mut parts = header.trim_end().split_ascii_whitespace();
-
-    // discard first part
-    parts.next()?;
-
-    parts.next()?.parse::<usize>().ok()
-}
-
-#[cfg(test)]
-mod test {
-    use super::*;
-
-    #[test]
-    fn parse_valid_header() {
-        let header = "Content-Length: 234\r\n";
-
-        assert_eq!(234, get_content_len(&header).unwrap());
-    }
 }
 
 pub(crate) trait DapStatus {
@@ -1504,11 +1355,10 @@ impl DapStatus for CoreStatus {
         match self {
             CoreStatus::Running => ("continued", "Core is running"),
             CoreStatus::Sleeping => ("sleeping", "Core is in SLEEP mode"),
-            //TODO: Need to implement LockedUp in probe-rs/src/debug
-            // CoreStatus::LockedUp => (
-            //     "lockedup",
-            //     "Core is in LOCKUP status - encountered an unrecoverable error",
-            // ),
+            CoreStatus::LockedUp => (
+                "lockedup",
+                "Core is in LOCKUP status - encountered an unrecoverable exception",
+            ),
             CoreStatus::Halted(halt_reason) => match halt_reason {
                 HaltReason::Breakpoint => (
                     "breakpoint",

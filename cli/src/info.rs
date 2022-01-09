@@ -1,12 +1,13 @@
-use crate::{common::open_probe, SharedOptions};
+use std::error::Error;
 
 use probe_rs::{
     architecture::{
         arm::{
             ap::{GenericAp, MemoryAp},
-            m0::Demcr,
+            armv6m::Demcr,
             memory::Component,
-            ApInformation, ArmProbeInterface, MemoryApInformation,
+            sequences::DefaultArmSequence,
+            ApAddress, ApInformation, ArmProbeInterface, DpAddress, MemoryApInformation,
         },
         avr::communication_interface::AvrCommunicationInterface,
         riscv::communication_interface::RiscvCommunicationInterface,
@@ -15,18 +16,19 @@ use probe_rs::{
 };
 
 use anyhow::Result;
+use probe_rs_cli_util::common_options::ProbeOptions;
 
-pub(crate) fn show_info_of_device(shared_options: &SharedOptions) -> Result<()> {
-    let mut probe = open_probe(shared_options.n)?;
+pub(crate) fn show_info_of_device(common: &ProbeOptions) -> Result<()> {
+    let mut probe = common.attach_probe()?;
 
-    let protocols = if let Some(protocol) = shared_options.protocol {
+    let protocols = if let Some(protocol) = common.protocol {
         vec![protocol]
     } else {
         vec![WireProtocol::Jtag, WireProtocol::Swd]
     };
 
     for protocol in protocols {
-        let (new_probe, result) = try_show_info(probe, protocol);
+        let (new_probe, result) = try_show_info(probe, protocol, common.connect_under_reset);
 
         probe = new_probe;
 
@@ -44,12 +46,22 @@ pub(crate) fn show_info_of_device(shared_options: &SharedOptions) -> Result<()> 
     Ok(())
 }
 
-fn try_show_info(mut probe: Probe, protocol: WireProtocol) -> (Probe, Result<()>) {
+fn try_show_info(
+    mut probe: Probe,
+    protocol: WireProtocol,
+    connect_under_reset: bool,
+) -> (Probe, Result<()>) {
     if let Err(e) = probe.select_protocol(protocol) {
         return (probe, Err(e.into()));
     }
 
-    if let Err(e) = probe.attach_to_unspecified() {
+    let attach_result = if connect_under_reset {
+        probe.attach_to_unspecified_under_reset()
+    } else {
+        probe.attach_to_unspecified()
+    };
+
+    if let Err(e) = attach_result {
         return (probe, Err(e.into()));
     }
 
@@ -57,7 +69,11 @@ fn try_show_info(mut probe: Probe, protocol: WireProtocol) -> (Probe, Result<()>
 
     if probe.has_arm_interface() {
         match probe.try_into_arm_interface() {
-            Ok(mut interface) => {
+            Ok(interface) => {
+                let mut interface = interface
+                    .initialize(DefaultArmSequence::create())
+                    .expect("This should not be an unwrap...");
+
                 if let Err(e) = show_arm_info(&mut interface) {
                     // Log error?
                     log::warn!("Error showing ARM chip information: {}", e);
@@ -84,7 +100,14 @@ fn try_show_info(mut probe: Probe, protocol: WireProtocol) -> (Probe, Result<()>
 
                 probe = interface.close();
             }
-            Err((interface_probe, _e)) => {
+            Err((interface_probe, e)) => {
+                let mut source = Some(&e as &dyn Error);
+
+                while let Some(parent) = source {
+                    log::error!("Error: {}", parent);
+                    source = parent.source();
+                }
+
                 probe = interface_probe;
             }
         }
@@ -111,15 +134,17 @@ fn try_show_info(mut probe: Probe, protocol: WireProtocol) -> (Probe, Result<()>
 fn show_arm_info(interface: &mut Box<dyn ArmProbeInterface>) -> Result<()> {
     println!("\nAvailable Access Ports:");
 
-    let num_access_ports = interface.num_access_ports();
+    let dp = DpAddress::Default;
+    let num_access_ports = interface.num_access_ports(dp).unwrap();
 
     for ap_index in 0..num_access_ports {
-        let access_port = GenericAp::from(ap_index as u8);
+        let ap = ApAddress {
+            ap: ap_index as u8,
+            dp,
+        };
+        let access_port = GenericAp::new(ap);
 
         let ap_information = interface.ap_information(access_port).unwrap();
-
-        //let idr = interface.read_ap_register(access_port, IDR::default())?;
-        //println!("{:#x?}", idr);
 
         match ap_information {
             ApInformation::MemoryAp(MemoryApInformation {

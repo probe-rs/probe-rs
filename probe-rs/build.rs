@@ -6,6 +6,11 @@ use std::path::{Path, PathBuf};
 use probe_rs_target::ChipFamily;
 
 fn main() {
+    // Only rerun build.rs if something inside targets/ has changed. (By default
+    // cargo reruns build.rs if any file under the crate root has changed)
+    // This improves build times and IDE responsivity when not editing targets.
+    println!("cargo:rerun-if-changed=targets");
+
     // Test if we have to generate built-in targets
     if env::var("CARGO_FEATURE_BUILTIN_TARGETS").is_err() {
         return;
@@ -14,7 +19,7 @@ fn main() {
     let mut families: Vec<ChipFamily> = Vec::new();
 
     let mut files = vec![];
-    visit_dirs(&Path::new("targets"), &mut files).unwrap();
+    visit_dirs(Path::new("targets"), &mut files).unwrap();
     for file in files {
         let string = read_to_string(&file).expect(
             "Algorithm definition file could not be read. This is a bug. Please report it.",

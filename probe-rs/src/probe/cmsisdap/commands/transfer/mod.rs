@@ -1,26 +1,10 @@
 pub mod configure;
 
-use super::{Category, Request, Response, Result};
-use crate::architecture::arm::PortType as ArmPortType;
-use anyhow::anyhow;
+use super::{CommandId, Request, SendError};
+use crate::architecture::arm::PortType;
 use scroll::{Pread, Pwrite, LE};
 
-#[derive(Copy, Clone, Debug)]
-pub enum PortType {
-    AP = 1,
-    DP = 0,
-}
-
-impl From<ArmPortType> for PortType {
-    fn from(typ: ArmPortType) -> PortType {
-        match typ {
-            ArmPortType::DebugPort => PortType::DP,
-            ArmPortType::AccessPort(_) => PortType::AP,
-        }
-    }
-}
-
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum RW {
     R = 1,
     W = 0,
@@ -28,7 +12,7 @@ pub enum RW {
 
 /// Contains information about requested access from host debugger.
 #[allow(non_snake_case)]
-#[derive(Copy, Clone, Debug)]
+#[derive(Clone, Debug)]
 pub struct InnerTransferRequest {
     /// 0 = Debug PortType (DP), 1 = Access PortType (AP).
     pub APnDP: PortType,
@@ -67,15 +51,15 @@ impl InnerTransferRequest {
 
 #[test]
 fn creating_inner_transfer_request() {
-    let req = InnerTransferRequest::new(PortType::DP, RW::W, 0x8, None);
+    let req = InnerTransferRequest::new(PortType::DebugPort, RW::W, 0x8, None);
 
-    assert_eq!(true, req.A3);
-    assert_eq!(false, req.A2);
+    assert!(req.A3);
+    assert!(!req.A2);
 }
 
 impl InnerTransferRequest {
-    fn to_bytes(&self, buffer: &mut [u8], offset: usize) -> Result<usize> {
-        buffer[offset] = (self.APnDP as u8)
+    fn to_bytes(&self, buffer: &mut [u8]) -> Result<usize, SendError> {
+        buffer[0] = (self.APnDP as u8)
             | (self.RnW as u8) << 1
             | (if self.A2 { 1 } else { 0 }) << 2
             | (if self.A3 { 1 } else { 0 }) << 3
@@ -84,22 +68,63 @@ impl InnerTransferRequest {
             | (if self.td_timestamp_request { 1 } else { 0 }) << 7;
         if let Some(data) = self.data {
             let data = data.to_le_bytes();
-            buffer[offset + 1..offset + 5].copy_from_slice(&data[..]);
+            buffer[1..5].copy_from_slice(&data[..]);
             Ok(5)
         } else {
             Ok(1)
         }
     }
 }
+/// Response to an InnerTransferRequest.
+#[allow(non_snake_case)]
+#[derive(Clone, Debug)]
+pub struct InnerTransferResponse {
+    /// Test Domain Timestamp. Will be `Some` if `td_timestamp_request` was set on the request.
+    pub td_timestamp: Option<u32>,
+    /// Response data. Will be `Some` if the request was a read.
+    pub data: Option<u32>,
+}
+
+impl InnerTransferResponse {
+    fn from_bytes(req: &InnerTransferRequest, buffer: &[u8]) -> Result<(Self, usize), SendError> {
+        let mut resp = Self {
+            td_timestamp: None,
+            data: None,
+        };
+
+        let mut offset = 0;
+        if req.td_timestamp_request {
+            if buffer.len() < offset + 4 {
+                return Err(SendError::NotEnoughData);
+            }
+            resp.td_timestamp = Some(buffer.pread_with(offset, LE).unwrap());
+            offset += 4;
+        }
+        if req.RnW == RW::R {
+            if buffer.len() < offset + 4 {
+                return Err(SendError::NotEnoughData);
+            }
+            resp.data = Some(buffer.pread_with(offset, LE).unwrap());
+            offset += 4;
+        }
+
+        Ok((resp, offset))
+    }
+}
 
 /// Read/write single and multiple registers.
 ///
-///The DAP_Transfer Command reads or writes data to CoreSight registers. Each CoreSight register is accessed with a single 32-bit read or write. The CoreSight registers are addressed with DPBANKSEL/APBANKSEL and address lines A2, A3 (A0 = 0 and A1 = 0). This command executes several read/write operations on the selected DP/AP registers. The Transfer Data in the Response are in the order of the Transfer Request in the Command but might be shorter in case of communication failures. The data transfer is aborted on a communication error:
+/// The DAP_Transfer Command reads or writes data to CoreSight registers.
+/// Each CoreSight register is accessed with a single 32-bit read or write.
+/// The CoreSight registers are addressed with DPBANKSEL/APBANKSEL and address lines A2, A3 (A0 = 0 and A1 = 0).
+/// This command executes several read/write operations on the selected DP/AP registers.
+/// The Transfer Data in the Response are in the order of the Transfer Request in the Command but might be shorter in case of communication failures.
+/// The data transfer is aborted on a communication error:
 ///
-///- Protocol Error
-///- Target FAULT response
-///- Target WAIT responses exceed configured value
-///- Value Mismatch (Read Register with Value Match)
+/// - Protocol Error
+/// - Target FAULT response
+/// - Target WAIT responses exceed configured value
+/// - Value Mismatch (Read Register with Value Match)
 #[derive(Debug)]
 pub struct TransferRequest {
     /// Zero based device index of the selected JTAG device. For SWD mode the value is ignored.
@@ -120,25 +145,66 @@ impl TransferRequest {
 }
 
 impl Request for TransferRequest {
-    const CATEGORY: Category = Category(0x05);
+    const COMMAND_ID: CommandId = CommandId::Transfer;
 
-    fn to_bytes(&self, buffer: &mut [u8], offset: usize) -> Result<usize> {
+    type Response = TransferResponse;
+
+    fn to_bytes(&self, buffer: &mut [u8]) -> Result<usize, SendError> {
         let mut size = 0;
 
-        buffer[offset] = self.dap_index;
+        buffer[0] = self.dap_index;
         size += 1;
 
-        buffer[offset + 1] = self.transfer_count;
+        buffer[1] = self.transfer_count;
         size += 1;
 
         for transfer in self.transfers.iter() {
-            size += transfer.to_bytes(buffer, offset + size)?;
+            size += transfer.to_bytes(&mut buffer[size..])?;
         }
 
         Ok(size)
     }
+
+    fn from_bytes(&self, mut buffer: &[u8]) -> Result<Self::Response, SendError> {
+        if buffer.len() < 2 {
+            return Err(SendError::NotEnoughData);
+        }
+        let transfer_count = buffer[0];
+        if transfer_count as usize > self.transfers.len() {
+            log::error!("Transfer count larger than requested number of transfers");
+            return Err(SendError::UnexpectedAnswer);
+        }
+
+        let last_transfer_response = LastTransferResponse {
+            ack: match buffer[1] & 0x7 {
+                1 => Ack::Ok,
+                2 => Ack::Wait,
+                4 => Ack::Fault,
+                7 => Ack::NoAck,
+                _ => Ack::NoAck,
+            },
+            protocol_error: buffer[1] & 0x8 > 1,
+            value_missmatch: buffer[1] & 0x10 > 1,
+        };
+
+        buffer = &buffer[2..];
+        let mut transfers = Vec::new();
+        for i in 0..transfer_count as usize {
+            let req = &self.transfers[i];
+            let (resp, len) = InnerTransferResponse::from_bytes(req, buffer)?;
+            transfers.push(resp);
+            buffer = &buffer[len..];
+        }
+
+        Ok(TransferResponse {
+            transfer_count,
+            last_transfer_response,
+            transfers,
+        })
+    }
 }
 
+#[allow(clippy::enum_variant_names)]
 #[derive(Debug, PartialEq)]
 pub enum Ack {
     /// TODO: ??????????????????????? Docs are weird?
@@ -150,7 +216,7 @@ pub enum Ack {
 }
 
 #[derive(Debug)]
-pub struct InnerTransferResponse {
+pub struct LastTransferResponse {
     pub ack: Ack,
     pub protocol_error: bool,
     pub value_missmatch: bool,
@@ -161,37 +227,10 @@ pub struct TransferResponse {
     /// Number of transfers: 1 .. 255 that are executed.
     pub transfer_count: u8,
     /// Contains information about last response from target Device.
-    pub transfer_response: InnerTransferResponse,
-    /// Current Test Domain Timer value is added before each Transfer Data word when Transfer Request - bit 7: TD_TimeStamp request is set.
-    pub td_timestamp: u32,
-    /// register value or match value in the order of the Transfer Request.
-    ///- for Read Register transfer request: the register value of the CoreSight register.
-    ///- no data is sent for other operations.
-    pub transfer_data: u32,
-}
-
-impl Response for TransferResponse {
-    fn from_bytes(buffer: &[u8], offset: usize) -> Result<Self> {
-        Ok(TransferResponse {
-            transfer_count: buffer[offset],
-            transfer_response: InnerTransferResponse {
-                ack: match buffer[offset + 1] & 0x7 {
-                    1 => Ack::Ok,
-                    2 => Ack::Wait,
-                    4 => Ack::Fault,
-                    7 => Ack::NoAck,
-                    _ => Ack::NoAck,
-                },
-                protocol_error: buffer[offset + 1] & 0x8 > 1,
-                value_missmatch: buffer[offset + 1] & 0x10 > 1,
-            },
-            // TODO: implement this properly.
-            td_timestamp: 0, // scroll::pread_with(buffer[offset + 2..offset + 2 + 4], LE),
-            transfer_data: buffer
-                .pread_with(offset + 2, LE)
-                .map_err(|_| anyhow!("This is a bug. Please report it."))?,
-        })
-    }
+    pub last_transfer_response: LastTransferResponse,
+    /// Responses to each requested transfer in `TransferRequest`. May be shorter than
+    /// `TransferRequest::transfers` in case of communication failure.
+    pub transfers: Vec<InnerTransferResponse>,
 }
 
 #[derive(Debug)]
@@ -210,34 +249,70 @@ pub(crate) struct TransferBlockRequest {
 }
 
 impl Request for TransferBlockRequest {
-    const CATEGORY: Category = Category(0x06);
+    const COMMAND_ID: CommandId = CommandId::TransferBlock;
 
-    fn to_bytes(&self, buffer: &mut [u8], offset: usize) -> Result<usize> {
+    type Response = TransferBlockResponse;
+
+    fn to_bytes(&self, buffer: &mut [u8]) -> Result<usize, SendError> {
         let mut size = 0;
-        buffer[offset] = self.dap_index;
+        buffer[0] = self.dap_index;
         size += 1;
 
         buffer
-            .pwrite_with(self.transfer_count, offset + 1, LE)
-            .map_err(|_| anyhow!("This is a bug. Please report it."))?;
+            .pwrite_with(self.transfer_count, 1, LE)
+            .expect("Buffer for CMSIS-DAP command is too small. This is a bug, please report it.");
         size += 2;
 
-        size += self.transfer_request.to_bytes(buffer, offset + 3)?;
+        size += self.transfer_request.to_bytes(buffer, 3)?;
 
-        let mut data_offset = offset + 4;
+        let mut data_offset = 4;
 
         for word in &self.transfer_data {
-            buffer.pwrite_with(word, data_offset, LE).map_err(|_| {
-                anyhow!(
-                    "Failed to write word at data_offset {}. This is a bug. Please report it.",
-                    data_offset
-                )
-            })?;
+            buffer.pwrite_with(word, data_offset, LE).expect(
+                "Buffer for CMSIS-DAP command is too small. This is a bug, please report it.",
+            );
             data_offset += 4;
             size += 4;
         }
 
         Ok(size)
+    }
+
+    fn from_bytes(&self, buffer: &[u8]) -> Result<Self::Response, SendError> {
+        let transfer_count = buffer
+            .pread_with(0, LE)
+            .map_err(|_| SendError::NotEnoughData)?;
+        let transfer_response = buffer
+            .pread_with(2, LE)
+            .map_err(|_| SendError::NotEnoughData)?;
+
+        let mut data = Vec::with_capacity(transfer_count as usize);
+
+        let num_transfers = (buffer.len() - 3) / 4;
+
+        log::debug!(
+            "Expected {} responses, got {} responses with data..",
+            transfer_count,
+            num_transfers
+        );
+
+        // if it's a read, process the read data.
+        // If it's a write, there's no interesting data in the response.
+        if self.transfer_request.r_n_w == RW::R {
+            for data_offset in 0..transfer_count as usize {
+                data.push(
+                    buffer
+                        .pread_with(3 + data_offset * 4, LE)
+                        .map_err(|_| SendError::NotEnoughData)?,
+                );
+            }
+        }
+
+        Ok(TransferBlockResponse {
+            _transfer_count: transfer_count,
+            transfer_response,
+            transfer_data: data,
+        })
     }
 }
 
@@ -284,7 +359,7 @@ struct InnerTransferBlockRequest {
 }
 
 impl InnerTransferBlockRequest {
-    fn to_bytes(&self, buffer: &mut [u8], offset: usize) -> Result<usize> {
+    fn to_bytes(&self, buffer: &mut [u8], offset: usize) -> Result<usize, SendError> {
         buffer[offset] = (self.ap_n_dp as u8)
             | (self.r_n_w as u8) << 1
             | (if self.a2 { 1 } else { 0 }) << 2
@@ -295,34 +370,7 @@ impl InnerTransferBlockRequest {
 
 #[derive(Debug)]
 pub(crate) struct TransferBlockResponse {
-    transfer_count: u16,
+    _transfer_count: u16,
     pub transfer_response: u8,
     pub transfer_data: Vec<u32>,
-}
-
-impl Response for TransferBlockResponse {
-    fn from_bytes(buffer: &[u8], offset: usize) -> Result<Self> {
-        let transfer_count = buffer
-            .pread_with(offset, LE)
-            .expect("Failed to read transfer count");
-        let transfer_response = buffer
-            .pread_with(offset + 2, LE)
-            .expect("Failed to read transfer response");
-
-        let mut data = Vec::with_capacity(transfer_count as usize);
-
-        for data_offset in 0..(transfer_count as usize) {
-            data.push(
-                buffer
-                    .pread_with(offset + 3 + data_offset * 4, LE)
-                    .map_err(|_| anyhow!("Failed to read value.."))?,
-            );
-        }
-
-        Ok(TransferBlockResponse {
-            transfer_count,
-            transfer_response,
-            transfer_data: data,
-        })
-    }
 }

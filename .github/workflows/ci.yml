@@ -29,40 +29,33 @@ jobs:
       - name: Checkout sources
         uses: actions/checkout@v2.3.4
 
-      - name: Install libusb and libftdi (linux)
+      - name: Install libusb, libudev (linux)
         run: |
           sudo apt update
-          sudo apt install -y libusb-1.0-0-dev libftdi1-dev
+          sudo apt install -y libusb-1.0-0-dev libudev-dev
         # Only install on Ubuntu
         if: (matrix.os == 'ubuntu-latest') || (matrix.os == 'ubuntu-20.04')
-
-      - name: Install libftdi (windows)
-        uses: lukka/run-vcpkg@v5
-        with:
-          vcpkgArguments: "libftdi1:x64-windows"
-          # Version including bugfix for libusb (see https://github.com/microsoft/vcpkg/issues/12642)
-          vcpkgGitCommitId: "6ed0bc982bf9bdca25439d538f7f272786a7af4d"
-          vcpkgTriplet: x64-windows
-        if: matrix.os == 'windows-latest'
-
-      - name: Install libftdi (macos)
-        run: brew install libftdi
-        # Only install on macos
-        if: matrix.os == 'macos-latest'
 
       - name: Install stable toolchain
         uses: actions-rs/toolchain@v1.0.7
         with:
           toolchain: stable
           override: true
-          
+
       - name: Cache Dependencies
-        uses: Swatinem/rust-cache@v1.2.0
+        uses: Swatinem/rust-cache@v1.3.0
+
+      - name: cargo check for probe-rs, --no-default-features
+        uses: actions-rs/cargo@v1.0.3
+        with:
+          command: check
+          args: -p probe-rs --no-default-features
 
       - name: Run cargo check
         uses: actions-rs/cargo@v1.0.3
         with:
           command: check
+          args: --all-features
 
   test:
     name: Test Suite
@@ -84,21 +77,12 @@ jobs:
       - name: Checkout sources
         uses: actions/checkout@v2.3.4
 
-      - name: Install libusb and libftdi (linux)
+      - name: Install libusb (linux)
         run: |
           sudo apt update
-          sudo apt install -y libusb-1.0-0-dev libftdi1-dev
+          sudo apt install -y libusb-1.0-0-dev libudev-dev
         # Only install on Ubuntu
         if: matrix.os == 'ubuntu-latest'
-
-      - name: Install libftdi (windows)
-        uses: lukka/run-vcpkg@v5
-        with:
-          vcpkgArguments: "libftdi1:x64-windows"
-          # Version including bugfix for libusb (see https://github.com/microsoft/vcpkg/issues/12642)
-          vcpkgGitCommitId: "6ed0bc982bf9bdca25439d538f7f272786a7af4d"
-          vcpkgTriplet: x64-windows
-        if: matrix.os == 'windows-latest'
 
       - name: Install stable toolchain
         uses: actions-rs/toolchain@v1.0.7
@@ -106,9 +90,9 @@ jobs:
           toolchain: stable
           override: true
           target: thumbv7m-none-eabi
-      
+
       - name: Cache Dependencies
-        uses: Swatinem/rust-cache@v1.2.0
+        uses: Swatinem/rust-cache@v1.3.0
 
       - name: Run cargo test
         uses: actions-rs/cargo@v1.0.3
@@ -153,7 +137,7 @@ jobs:
       - name: Install libusb
         run: |
           sudo apt update
-          sudo apt install -y libusb-1.0-0-dev libftdi1-dev
+          sudo apt install -y libusb-1.0-0-dev libudev-dev
 
       - name: Install stable toolchain
         uses: actions-rs/toolchain@v1.0.7
@@ -163,9 +147,9 @@ jobs:
 
       - name: Install clippy
         run: rustup component add clippy
-        
+
       - name: Cache Dependencies
-        uses: Swatinem/rust-cache@v1.2.0
+        uses: Swatinem/rust-cache@v1.3.0
 
       - name: Run cargo clippy
         uses: actions-rs/clippy-check@v1.0.7

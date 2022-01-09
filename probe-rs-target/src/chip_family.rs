@@ -22,23 +22,43 @@ pub enum TargetDescriptionSource {
     External,
 }
 
-/// Type of a supported core
-#[derive(Debug, Copy, Clone, Serialize, Deserialize)]
+/// Type of a supported core.
+#[derive(Debug, Copy, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum CoreType {
+    /// ARMv6-M: Cortex M0, M0+, M1
+    Armv6m,
+    /// ARMv7-M: Cortex M3
+    Armv7m,
+    /// ARMv7e-M: Cortex M4, M7
+    Armv7em,
+    /// ARMv8-M: Cortex M23, M33
+    Armv8m,
     /// AVR
     Avr,
-    /// ARM Cortex M0
-    M0,
-    /// ARM Cortex M3
-    M3,
-    /// ARM Cortex M4
-    M4,
-    /// ARM Cortex M33
-    M33,
-    /// ARM Cortex M7
-    M7,
     /// RISC-V
     Riscv,
+}
+
+/// The architecture family of a specific [`CoreType`].
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum Architecture {
+    /// An ARM core of one of the specific types [`CoreType::Armv6m`], [`CoreType::Armv7m`], [`CoreType::Armv7em`] or [`CoreType::Armv8m`]
+    Arm,
+    /// An AVR core
+    Avr,
+    /// A RISC-V core.
+    Riscv,
+}
+
+impl CoreType {
+    /// Returns the parent architecture family of this core type.
+    pub fn architecture(&self) -> Architecture {
+        match self {
+            CoreType::Riscv => Architecture::Riscv,
+            _ => Architecture::Arm,
+        }
+    }
 }
 
 /// This describes a chip family with all its variants.
@@ -59,64 +79,63 @@ pub struct ChipFamily {
     /// This vector holds all the variants of the family.
     pub variants: Vec<Chip>,
     /// This vector holds all available algorithms.
-    #[serde(deserialize_with = "deserialize")]
-    #[serde(serialize_with = "serialize")]
-    #[serde(default)]
     pub flash_algorithms: Vec<RawFlashAlgorithm>,
-    /// The name of the core type.
-    /// E.g. `M0` or `M4`.
-    pub core: CoreType,
 
     #[serde(skip, default = "default_source")]
     /// Source of the target description, used for diagnostics
     pub source: TargetDescriptionSource,
 }
 
-/// When deserialization is used, this means that the target is read from an external source.
 fn default_source() -> TargetDescriptionSource {
     TargetDescriptionSource::External
 }
 
-pub fn serialize<S>(raw_algorithms: &[RawFlashAlgorithm], serializer: S) -> Result<S::Ok, S::Error>
-where
-    S: serde::Serializer,
-{
-    use serde::ser::SerializeMap;
-    let mut map = serializer.serialize_map(Some(raw_algorithms.len()))?;
-    for entry in raw_algorithms {
-        map.serialize_entry(&entry.name, entry)?;
-    }
-    map.end()
-}
-
-pub fn deserialize<'de, D>(deserializer: D) -> Result<Vec<RawFlashAlgorithm>, D::Error>
-where
-    D: serde::Deserializer<'de>,
-{
-    struct MapVisitor;
-
-    use serde::de::MapAccess;
-    impl<'de> serde::de::Visitor<'de> for MapVisitor {
-        type Value = Vec<RawFlashAlgorithm>;
-
-        fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
-            write!(formatter, "a map")
-        }
-
-        fn visit_map<A>(self, mut v: A) -> Result<Self::Value, A::Error>
-        where
-            A: MapAccess<'de>,
-        {
-            let mut result = vec![];
-            while let Some((_key, value)) = v.next_entry::<String, RawFlashAlgorithm>()? {
-                result.push(value);
+impl ChipFamily {
+    /// Validates the [`ChipFamily`] such that probe-rs can make assumptions about the correctness without validating thereafter.
+    ///
+    /// This method should be called right after the [`ChipFamily`] is created!
+    pub fn validate(&self) -> Result<(), String> {
+        // We check each variant if it is valid.
+        // If one is not valid, we abort with an appropriate error message.
+        for variant in &self.variants {
+            // Make sure the algorithms used on the variant actually exist on the family (this is basically a check for typos).
+            for algorithm_name in variant.flash_algorithms.iter() {
+                if !self
+                    .flash_algorithms
+                    .iter()
+                    .any(|algorithm| &algorithm.name == algorithm_name)
+                {
+                    return Err(format!(
+                        "unknown flash algorithm `{}` for variant `{}`",
+                        algorithm_name, variant.name
+                    ));
+                }
             }
 
-            Ok(result)
+            // Check that there is at least one core.
+            if let Some(core) = variant.cores.get(0) {
+                // Make sure that the core types (architectures) are not mixed.
+                let architecture = core.core_type.architecture();
+                if variant
+                    .cores
+                    .iter()
+                    .any(|core| core.core_type.architecture() != architecture)
+                {
+                    return Err(format!(
+                        "definition for variant `{}` contains mixed core architectures",
+                        variant.name
+                    ));
+                }
+            } else {
+                return Err(format!(
+                    "definition for variant `{}` does not contain any cores",
+                    variant.name
+                ));
+            }
         }
-    }
 
-    deserializer.deserialize_map(MapVisitor)
+        Ok(())
+    }
 }
 
 impl ChipFamily {

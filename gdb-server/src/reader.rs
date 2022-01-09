@@ -17,7 +17,7 @@ pub async fn reader(
     let mut parser = Parser::default();
     log::trace!("Awaiting packet");
     while !buffer.is_empty() {
-        let (read, packet) = parser.feed(&buffer)?;
+        let (read, packet) = parser.feed(buffer)?;
 
         let drained = buffer.drain(..read).collect::<Vec<_>>();
         log::debug!(

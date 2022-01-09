@@ -1,76 +1,24 @@
 use crate::{
     core::{CoreRegister, CoreRegisterAddress, RegisterDescription, RegisterFile, RegisterKind},
-    CoreStatus, Error, HaltReason, MemoryInterface,
+    CoreStatus, HaltReason,
 };
 
 use bitfield::bitfield;
 
-pub mod m0;
-pub mod m33;
-pub mod m4;
-
-/// Enable debugging on an ARM core. This is based on the
-/// `DebugCoreStart` function from the [ARM SVD Debug Description].
-///
-/// [ARM SVD Debug Description]: http://www.keil.com/pack/doc/cmsis/Pack/html/debug_description.html#debugCoreStart
-pub(crate) fn debug_core_start(core: &mut impl MemoryInterface) -> Result<(), Error> {
-    use crate::architecture::arm::core::m4::Dhcsr;
-
-    let mut dhcsr = Dhcsr(0);
-    dhcsr.set_c_debugen(true);
-    dhcsr.enable_write();
-
-    core.write_word_32(Dhcsr::ADDRESS, dhcsr.into())?;
-
-    Ok(())
-}
-
-/// Setup the core to stop after reset. After this, the core will halt when it comes
-/// out of reset. This is based on the `ResetCatchSet` function from
-/// the [ARM SVD Debug Description].
-///
-/// [ARM SVD Debug Description]: http://www.keil.com/pack/doc/cmsis/Pack/html/debug_description.html#resetCatchSet
-pub(crate) fn reset_catch_set(core: &mut impl MemoryInterface) -> Result<(), Error> {
-    use crate::architecture::arm::core::m4::{Demcr, Dhcsr};
-
-    // Request halt after reset
-    let mut demcr = Demcr(core.read_word_32(Demcr::ADDRESS)?);
-    demcr.set_vc_corereset(true);
-
-    core.write_word_32(Demcr::ADDRESS, demcr.into())?;
-
-    // Clear the status bits by reading from DHCSR
-    let _ = core.read_word_32(Dhcsr::ADDRESS)?;
-
-    Ok(())
-}
-
-/// Undo the settings of the `reset_catch_set` function.
-/// This is based on the `ResetCatchSet` function from
-/// the [ARM SVD Debug Description].
-///
-/// [ARM SVD Debug Description]: http://www.keil.com/pack/doc/cmsis/Pack/html/debug_description.html#resetCatchClear
-pub(crate) fn reset_catch_clear(core: &mut impl MemoryInterface) -> Result<(), Error> {
-    use crate::architecture::arm::core::m4::Demcr;
-
-    // Clear reset catch bit
-    let mut demcr = Demcr(core.read_word_32(Demcr::ADDRESS)?);
-    demcr.set_vc_corereset(false);
-
-    core.write_word_32(Demcr::ADDRESS, demcr.into())?;
-    Ok(())
-}
+pub mod armv6m;
+pub mod armv7m;
+pub mod armv8m;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct CortexDump {
+pub struct Dump {
     pub regs: [u32; 16],
     stack_addr: u32,
     stack: Vec<u8>,
 }
 
-impl CortexDump {
-    pub fn new(stack_addr: u32, stack: Vec<u8>) -> CortexDump {
-        CortexDump {
+impl Dump {
+    pub fn new(stack_addr: u32, stack: Vec<u8>) -> Dump {
+        Dump {
             regs: [0u32; 16],
             stack_addr,
             stack,
@@ -86,109 +34,131 @@ pub(crate) mod register {
 
     pub const PC: RegisterDescription = RegisterDescription {
         name: "PC",
-        kind: RegisterKind::PC,
+        _kind: RegisterKind::PC,
         address: CoreRegisterAddress(15),
     };
 
     pub const XPSR: RegisterDescription = RegisterDescription {
         name: "XPSR",
-        kind: RegisterKind::General,
+        _kind: RegisterKind::General,
         address: CoreRegisterAddress(0b1_0000),
     };
 
     pub const SP: RegisterDescription = RegisterDescription {
         name: "SP",
-        kind: RegisterKind::General,
+        _kind: RegisterKind::General,
         address: CoreRegisterAddress(13),
     };
 
     pub const LR: RegisterDescription = RegisterDescription {
         name: "LR",
-        kind: RegisterKind::General,
+        _kind: RegisterKind::General,
         address: CoreRegisterAddress(14),
     };
+
+    pub const MSP: RegisterDescription = RegisterDescription {
+        name: "MSP",
+        _kind: RegisterKind::General,
+        address: CoreRegisterAddress(0b10001),
+    };
+
+    pub const PSP: RegisterDescription = RegisterDescription {
+        name: "PSP",
+        _kind: RegisterKind::General,
+        address: CoreRegisterAddress(0b10010),
+    };
+
+    // CONTROL bits [31:24], FAULTMASK bits [23:16],
+    // BASEPRI bits [15:8], and PRIMASK bits [7:0]
+    pub const EXTRA: RegisterDescription = RegisterDescription {
+        name: "EXTRA",
+        _kind: RegisterKind::General,
+        address: CoreRegisterAddress(0b10100),
+    };
+
+    // TODO: Floating point support
 }
 
 static ARM_REGISTER_FILE: RegisterFile = RegisterFile {
     platform_registers: &[
         RegisterDescription {
             name: "R0",
-            kind: RegisterKind::General,
+            _kind: RegisterKind::General,
             address: CoreRegisterAddress(0),
         },
         RegisterDescription {
             name: "R1",
-            kind: RegisterKind::General,
+            _kind: RegisterKind::General,
             address: CoreRegisterAddress(1),
         },
         RegisterDescription {
             name: "R2",
-            kind: RegisterKind::General,
+            _kind: RegisterKind::General,
             address: CoreRegisterAddress(2),
         },
         RegisterDescription {
             name: "R3",
-            kind: RegisterKind::General,
+            _kind: RegisterKind::General,
             address: CoreRegisterAddress(3),
         },
         RegisterDescription {
             name: "R4",
-            kind: RegisterKind::General,
+            _kind: RegisterKind::General,
             address: CoreRegisterAddress(4),
         },
         RegisterDescription {
             name: "R5",
-            kind: RegisterKind::General,
+            _kind: RegisterKind::General,
             address: CoreRegisterAddress(5),
         },
         RegisterDescription {
             name: "R6",
-            kind: RegisterKind::General,
+            _kind: RegisterKind::General,
             address: CoreRegisterAddress(6),
         },
         RegisterDescription {
             name: "R7",
-            kind: RegisterKind::General,
+            _kind: RegisterKind::General,
             address: CoreRegisterAddress(7),
         },
         RegisterDescription {
             name: "R8",
-            kind: RegisterKind::General,
+            _kind: RegisterKind::General,
             address: CoreRegisterAddress(8),
         },
         RegisterDescription {
             name: "R9",
-            kind: RegisterKind::General,
+            _kind: RegisterKind::General,
             address: CoreRegisterAddress(9),
         },
         RegisterDescription {
             name: "R10",
-            kind: RegisterKind::General,
+            _kind: RegisterKind::General,
             address: CoreRegisterAddress(10),
         },
         RegisterDescription {
             name: "R11",
-            kind: RegisterKind::General,
+            _kind: RegisterKind::General,
             address: CoreRegisterAddress(11),
         },
         RegisterDescription {
             name: "R12",
-            kind: RegisterKind::General,
+            _kind: RegisterKind::General,
             address: CoreRegisterAddress(12),
         },
         RegisterDescription {
             name: "R13",
-            kind: RegisterKind::General,
+            _kind: RegisterKind::General,
             address: CoreRegisterAddress(13),
         },
         RegisterDescription {
             name: "R14",
-            kind: RegisterKind::General,
+            _kind: RegisterKind::General,
             address: CoreRegisterAddress(14),
         },
         RegisterDescription {
             name: "R15",
-            kind: RegisterKind::General,
+            _kind: RegisterKind::General,
             address: CoreRegisterAddress(15),
         },
     ],
@@ -200,22 +170,22 @@ static ARM_REGISTER_FILE: RegisterFile = RegisterFile {
     argument_registers: &[
         RegisterDescription {
             name: "a1",
-            kind: RegisterKind::General,
+            _kind: RegisterKind::General,
             address: CoreRegisterAddress(0),
         },
         RegisterDescription {
             name: "a2",
-            kind: RegisterKind::General,
+            _kind: RegisterKind::General,
             address: CoreRegisterAddress(1),
         },
         RegisterDescription {
             name: "a3",
-            kind: RegisterKind::General,
+            _kind: RegisterKind::General,
             address: CoreRegisterAddress(2),
         },
         RegisterDescription {
             name: "a4",
-            kind: RegisterKind::General,
+            _kind: RegisterKind::General,
             address: CoreRegisterAddress(3),
         },
     ],
@@ -223,15 +193,20 @@ static ARM_REGISTER_FILE: RegisterFile = RegisterFile {
     result_registers: &[
         RegisterDescription {
             name: "a1",
-            kind: RegisterKind::General,
+            _kind: RegisterKind::General,
             address: CoreRegisterAddress(0),
         },
         RegisterDescription {
             name: "a2",
-            kind: RegisterKind::General,
+            _kind: RegisterKind::General,
             address: CoreRegisterAddress(1),
         },
     ],
+
+    msp: Some(&register::MSP),
+    psp: Some(&register::PSP),
+    extra: Some(&register::EXTRA),
+    // TODO: Floating point support
 };
 
 bitfield! {
@@ -307,7 +282,7 @@ impl CoreRegister for Dfsr {
 }
 
 #[derive(Debug)]
-pub struct CortexState {
+pub struct State {
     initialized: bool,
 
     hw_breakpoints_enabled: bool,
@@ -315,7 +290,7 @@ pub struct CortexState {
     current_state: CoreStatus,
 }
 
-impl CortexState {
+impl State {
     pub(crate) fn new() -> Self {
         Self {
             initialized: false,

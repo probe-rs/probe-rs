@@ -2,8 +2,9 @@ use std::collections::BTreeMap;
 use std::fmt::{Debug, Formatter};
 use std::ops::Range;
 
+use probe_rs_target::{MemoryRange, NvmRegion, PageInfo};
+
 use super::{FlashAlgorithm, FlashError, FlashVisualizer};
-use crate::config::{MemoryRange, NvmRegion, PageInfo};
 
 /// The description of a page in flash.
 #[derive(Clone, PartialEq, Eq)]
@@ -132,7 +133,7 @@ impl FlashLayout {
     }
 
     pub fn visualize(&self) -> FlashVisualizer {
-        FlashVisualizer::new(&self)
+        FlashVisualizer::new(self)
     }
 }
 
@@ -365,8 +366,9 @@ impl FlashBuilder {
 
 #[cfg(test)]
 mod tests {
+    use probe_rs_target::{FlashProperties, NvmRegion, SectorDescription};
+
     use super::*;
-    use crate::config::{FlashProperties, SectorDescription};
 
     fn assemble_demo_flash1() -> (NvmRegion, FlashAlgorithm) {
         let sd = SectorDescription {
@@ -374,19 +376,23 @@ mod tests {
             address: 0,
         };
 
-        let mut flash_algorithm = FlashAlgorithm::default();
-        flash_algorithm.flash_properties = FlashProperties {
-            address_range: 0..1 << 16,
-            page_size: 1024,
-            erased_byte_value: 255,
-            program_page_timeout: 200,
-            erase_sector_timeout: 200,
-            sectors: vec![sd],
+        let flash_algorithm = FlashAlgorithm {
+            flash_properties: FlashProperties {
+                address_range: 0..1 << 16,
+                page_size: 1024,
+                erased_byte_value: 255,
+                program_page_timeout: 200,
+                erase_sector_timeout: 200,
+                sectors: vec![sd],
+            },
+            ..Default::default()
         };
 
         let region = NvmRegion {
+            name: Some("FLASH".into()),
             is_boot_memory: true,
             range: 0..1 << 16,
+            cores: vec!["main".into()],
         };
 
         (region, flash_algorithm)
@@ -398,19 +404,23 @@ mod tests {
             address: 0,
         };
 
-        let mut flash_algorithm = FlashAlgorithm::default();
-        flash_algorithm.flash_properties = FlashProperties {
-            address_range: 0..1 << 16,
-            page_size: 1024,
-            erased_byte_value: 255,
-            program_page_timeout: 200,
-            erase_sector_timeout: 200,
-            sectors: vec![sd],
+        let flash_algorithm = FlashAlgorithm {
+            flash_properties: FlashProperties {
+                address_range: 0..1 << 16,
+                page_size: 1024,
+                erased_byte_value: 255,
+                program_page_timeout: 200,
+                erase_sector_timeout: 200,
+                sectors: vec![sd],
+            },
+            ..Default::default()
         };
 
         let region = NvmRegion {
+            name: Some("FLASH".into()),
             is_boot_memory: true,
             range: 0..1 << 16,
+            cores: vec!["main".into()],
         };
 
         (region, flash_algorithm)

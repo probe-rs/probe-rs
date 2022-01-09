@@ -1,22 +1,22 @@
-mod dap_types; //Uses Schemafy to generate DAP types from Json
+// Uses Schemafy to generate DAP types from Json
+mod dap_types;
 mod debug_adapter;
-mod debugger; //The probe-rs debugger.
+mod debugger;
 mod info;
+mod protocol;
+mod rtt;
 
 use anyhow::Result;
+use clap::{crate_authors, crate_description, crate_name, crate_version, Parser};
 use debugger::{
-    debug, download_program_fast, dump_memory, list_connected_devices, reset_target_of_device,
-    trace_u32_on_target, DebuggerOptions,
+    debug, download_program_fast, dump_memory, list_connected_devices, list_supported_chips,
+    reset_target_of_device, trace_u32_on_target, DebuggerOptions,
 };
-use log::error;
 use probe_rs::architecture::arm::ap::AccessPortError;
 use probe_rs::flashing::FileDownloadError;
 use probe_rs::{DebugProbeError, Error};
-use structopt::clap::{crate_authors, crate_description, crate_name, crate_version};
-use structopt::StructOpt;
-use thiserror::Error;
 
-#[derive(Debug, Error)]
+#[derive(Debug, thiserror::Error)]
 pub enum DebuggerError {
     #[error(transparent)]
     AccessPort(#[from] AccessPortError),
@@ -50,10 +50,7 @@ pub enum DebuggerError {
         original_error: std::io::Error,
     },
     #[error("IO error: '{original_error}'.")]
-    NonBlockingReadError {
-        os_error_number: i32,
-        original_error: std::io::Error,
-    },
+    NonBlockingReadError { original_error: std::io::Error },
     #[error(transparent)]
     StdIO(#[from] std::io::Error),
     #[error("Unable to open probe{}", .0.map(|s| format!(": {}", s)).as_deref().unwrap_or("."))]
@@ -72,8 +69,8 @@ fn parse_hex(src: &str) -> Result<u32, std::num::ParseIntError> {
 
 /// CliCommands enum contains the list of supported commands that can be invoked from the command line.
 /// The `debug` command is also the entry point for the DAP server, when the --dap option is used.
-#[derive(StructOpt)]
-#[structopt(
+#[derive(clap::Parser)]
+#[clap(
     name = crate_name!(),
     about = crate_description!(),
     author = crate_authors!(),
@@ -81,18 +78,21 @@ fn parse_hex(src: &str) -> Result<u32, std::num::ParseIntError> {
 )]
 enum CliCommands {
     /// List all connected debug probes
-    #[structopt(name = "list")]
+    #[clap(name = "list")]
     List {},
+    /// List all probe-rs supported chips
+    #[clap(name = "list-chips")]
+    ListChips {},
     /// Gets infos about the selected debug probe and connected target
-    #[structopt(name = "info")]
+    #[clap(name = "info")]
     Info {
-        #[structopt(flatten)]
+        #[clap(flatten)]
         debugger_options: DebuggerOptions,
     },
     /// Resets the target attached to the selected debug probe
-    #[structopt(name = "reset")]
+    #[clap(name = "reset")]
     Reset {
-        #[structopt(flatten)]
+        #[clap(flatten)]
         debugger_options: DebuggerOptions,
 
         /// Whether the reset pin should be asserted or deasserted. If left open, just pulse it
@@ -100,62 +100,63 @@ enum CliCommands {
     },
     /// Open target in debug mode and accept debug commands.
     /// By default, the program operates in CLI mode.
-    #[structopt(name = "debug")]
+    #[clap(name = "debug")]
     Debug {
-        #[structopt(flatten)]
+        #[clap(flatten)]
         debugger_options: DebuggerOptions,
 
-        //TODO: Implement multi-session --server choices
-        /// Switch from using CLI to DAP Protocol debug commands. By default, the DAP communication for the first session is via STDIN and STDOUT. Adding the additional --port property will run as an IP server, listening to connections on the specified port.
-        #[structopt(long)]
+        /// Switch from using the CLI(command line interface) to using DAP Protocol debug commands (enables connections from clients such as Microsoft Visual Studio Code).
+        /// This option requires the user to specify the `port` option, along with a valid IP port number on which the server will listen for incoming connections.
+        #[clap(long)]
         dap: bool,
+
+        /// The debug adapter processed was launched by VSCode, and should terminate itself at the end of every debug session (when receiving `Disconnect` or `Terminate` Request from VSCode). The "false"(default) state of this option implies that the process was launched (and will be managed) by the user.
+        #[clap(long, hide = true, requires("dap"))]
+        vscode: bool,
     },
     /// Dump memory from attached target
-    #[structopt(name = "dump")]
+    #[clap(name = "dump")]
     Dump {
-        #[structopt(flatten)]
+        #[clap(flatten)]
         debugger_options: DebuggerOptions,
 
         /// The address of the memory to dump from the target (in hexadecimal without 0x prefix)
-        #[structopt(parse(try_from_str = parse_hex))]
+        #[clap(parse(try_from_str = parse_hex))]
         loc: u32,
         /// The amount of memory (in words) to dump
         words: u32,
     },
     /// Download memory to attached target
-    #[structopt(name = "download")]
+    #[clap(name = "download")]
     Download {
-        #[structopt(flatten)]
+        #[clap(flatten)]
         debugger_options: DebuggerOptions,
 
         /// The path to the file to be downloaded to the flash
         path: String,
     },
     /// Begin tracing a memory address over SWV
-    #[structopt(name = "trace")]
+    #[clap(name = "trace")]
     Trace {
-        #[structopt(flatten)]
+        #[clap(flatten)]
         debugger_options: DebuggerOptions,
 
         /// The address of the memory start trace (in hexadecimal without 0x prefix)
-        #[structopt(parse(try_from_str = parse_hex))]
+        #[clap(parse(try_from_str = parse_hex))]
         loc: u32,
     },
 }
 
 fn main() -> Result<()> {
-    //TODO: Consider using https://github.com/probe-rs/probe-rs/blob/master/probe-rs-cli-util/src/logging.rs
-    //TODO: See if we can have a single solution for RUST_LOG and the DAP Client Console Log (`debug_adapter::log_to_console`)
-    // Initialize the logging backend.
     env_logger::Builder::from_default_env()
-        .target(env_logger::Target::Stderr) // Log to Stderr, because the DebugAdapater, in 'Launch' mode, needs Stdin and Stdout to communicate with VSCode DAP Client
+        .target(env_logger::Target::Stderr) // Log to Stderr, so that VSCode Debug Extension can intercept the messages and pass them to the VSCode DAP Client
         .init();
 
-    let matches = CliCommands::from_args();
+    let matches = CliCommands::parse();
 
-    //TODO: Fix all the unwrap() and ?'s
     match matches {
         CliCommands::List {} => list_connected_devices()?,
+        CliCommands::ListChips {} => list_supported_chips()?,
         CliCommands::Info { debugger_options } => {
             crate::info::show_info_of_device(&debugger_options)?
         }
@@ -165,10 +166,9 @@ fn main() -> Result<()> {
         } => reset_target_of_device(debugger_options, assert)?,
         CliCommands::Debug {
             debugger_options,
-            // program_binary,
-            // port,
             dap,
-        } => debug(debugger_options, dap),
+            vscode,
+        } => debug(debugger_options, dap, vscode)?,
         CliCommands::Dump {
             debugger_options,
             loc,

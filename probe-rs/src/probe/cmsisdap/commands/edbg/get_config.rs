@@ -1,5 +1,4 @@
-use super::super::{Category, Request, Response, Result};
-use anyhow::anyhow;
+use super::super::{CommandId, Request, SendError};
 use scroll::{Pread, LE};
 
 pub struct EdbgGetConfigRequest {
@@ -9,14 +8,30 @@ pub struct EdbgGetConfigRequest {
 }
 
 impl Request for EdbgGetConfigRequest {
-    const CATEGORY: Category = Category(0x83);
+    const COMMAND_ID: CommandId = CommandId::EdbgGetConfig;
 
-    fn to_bytes(&self, buffer: &mut [u8], offset: usize) -> Result<usize> {
-        buffer[offset] = self.count;
-        buffer[offset + 1] = self.config_id;
-        buffer[offset + 2] = self.parameter;
+    type Response = EdbgGetConfigResponse;
+
+    fn to_bytes(&self, buffer: &mut [u8]) -> Result<usize, SendError> {
+        buffer[0] = self.count;
+        buffer[1] = self.config_id;
+        buffer[2] = self.parameter;
 
         Ok(3)
+    }
+
+    fn from_bytes(&self, buffer: &[u8]) -> Result<Self::Response, SendError> {
+        let status = buffer[0];
+        if status == 0 {
+            let size: u16 = buffer
+                .pread_with(1, LE)
+                .expect("Failed to read size");
+            Ok(EdbgGetConfigResponse {
+                config_packets: buffer[3..3 + size as usize].to_vec(),
+            })
+        } else {
+            Err(SendError::UnexpectedAnswer)
+        }
     }
 }
 
@@ -28,19 +43,4 @@ pub struct EdbgConfigPacket {
 
 pub struct EdbgGetConfigResponse {
     config_packets: Vec<u8>,
-}
-impl Response for EdbgGetConfigResponse {
-    fn from_bytes(buffer: &[u8], offset: usize) -> Result<Self> {
-        let status = buffer[offset];
-        if status == 0 {
-            let size: u16 = buffer
-                .pread_with(offset + 1, LE)
-                .expect("Failed to read size");
-            Ok(EdbgGetConfigResponse {
-                config_packets: buffer[offset + 3..offset + 3 + size as usize].to_vec(),
-            })
-        } else {
-            Err(anyhow!("GET_CONFIG failed"))
-        }
-    }
 }

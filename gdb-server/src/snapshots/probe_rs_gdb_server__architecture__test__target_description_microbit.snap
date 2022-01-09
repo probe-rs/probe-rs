@@ -1,0 +1,10 @@
+---
+source: gdb-server/src/architecture.rs
+assertion_line: 179
+expression: description
+
+---
+<?xml version="1.0"?>
+        <!DOCTYPE target SYSTEM "gdb-target.dtd">
+        <target version="1.0">
+        <architecture>armv6-m</architecture></target>

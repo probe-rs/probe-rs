@@ -166,7 +166,7 @@ impl SwdFrequencyToDelayCount {
     pub(crate) fn find_setting(frequency: u32) -> Option<SwdFrequencyToDelayCount> {
         use SwdFrequencyToDelayCount::*;
 
-        let setting = match frequency {
+        Some(match frequency {
             _ if frequency >= 4_600 => Hz4600000,
             _ if frequency >= 1_800 => Hz1800000,
             _ if frequency >= 1_200 => Hz1200000,
@@ -182,13 +182,11 @@ impl SwdFrequencyToDelayCount {
             _ => {
                 return None;
             }
-        };
-
-        Some(setting)
+        })
     }
 
     /// Get the SWD frequency in kHz
-    pub(crate) fn to_khz(&self) -> u32 {
+    pub(crate) fn to_khz(self) -> u32 {
         use SwdFrequencyToDelayCount::*;
 
         match self {
@@ -226,10 +224,10 @@ impl JTagFrequencyToDivider {
     ///
     /// If a direct match is not found, return the setting for a higher frequency
     /// if possible. If this is not possible, returns `None`.
-    pub(crate) fn find_setting(frequency: u32) -> Option<JTagFrequencyToDivider> {
+    pub(crate) fn find_setting(frequency: u32) -> Option<Self> {
         use JTagFrequencyToDivider::*;
 
-        let setting = match frequency {
+        Some(match frequency {
             _ if frequency >= 18_000 => Hz18000000,
             _ if frequency >= 9_000 => Hz9000000,
             _ if frequency >= 4_500 => Hz4500000,
@@ -241,13 +239,11 @@ impl JTagFrequencyToDivider {
             _ => {
                 return None;
             }
-        };
-
-        Some(setting)
+        })
     }
 
     /// Return the frequency in kHz
-    pub(crate) fn to_khz(&self) -> u32 {
+    pub(crate) fn to_khz(self) -> u32 {
         use JTagFrequencyToDivider::*;
 
         match self {

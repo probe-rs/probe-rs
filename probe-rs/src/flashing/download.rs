@@ -2,13 +2,12 @@ use object::{
     elf::FileHeader32, elf::PT_LOAD, read::elf::FileHeader, read::elf::ProgramHeader, Endianness,
     Object, ObjectSection,
 };
+use probe_rs_target::MemoryRange;
 
 use std::{fs::File, path::Path, str::FromStr};
 
 use super::*;
-use crate::{config::MemoryRange, session::Session};
-
-use thiserror::Error;
+use crate::session::Session;
 
 /// Extended options for flashing a binary file.
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
@@ -52,7 +51,7 @@ impl FromStr for Format {
 ///
 /// This includes corrupt file issues,
 /// OS permission issues as well as chip connectivity and memory boundary issues.
-#[derive(Debug, Error)]
+#[derive(Debug, thiserror::Error)]
 pub enum FileDownloadError {
     /// An error with the actual flashing procedure has occured.
     ///
@@ -79,7 +78,20 @@ pub enum FileDownloadError {
 }
 
 /// Options for downloading a file onto a target chip.
+///
+///
+/// This struct should be created using the [`DownloadOptions::default()`] function, and can be configured by setting
+/// the fields directly:
+///
+/// ```
+/// use probe_rs::flashing::DownloadOptions;
+///
+/// let mut options = DownloadOptions::default();
+///
+/// options.verify = true;
+/// ```
 #[derive(Default)]
+#[non_exhaustive]
 pub struct DownloadOptions<'progress> {
     /// An optional progress reporter which is used if this argument is set to `Some(...)`.
     pub progress: Option<&'progress FlashProgress>,
@@ -99,6 +111,15 @@ pub struct DownloadOptions<'progress> {
     /// If the chip was pre-erased with external erasers, this flag can set to true to skip erasing
     /// It may be useful for mass production.
     pub skip_erase: bool,
+    /// After flashing, read back all the flashed data to verify it has been written correctly.
+    pub verify: bool,
+}
+
+impl<'progress> DownloadOptions<'progress> {
+    /// DownloadOptions with default values.
+    pub fn new() -> Self {
+        Self::default()
+    }
 }
 
 /// Downloads a file of given `format` at `path` to the flash of the target given in `session`.

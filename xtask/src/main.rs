@@ -12,7 +12,7 @@ fn main() {
 
 fn try_main() -> Result<(), DynError> {
     let task = env::args().nth(1);
-    match task.as_ref().map(|it| it.as_str()) {
+    match task.as_deref() {
         Some("release") => release(
             &env::args()
                 .nth(2)
@@ -70,7 +70,7 @@ fn release(version: &str) -> Result<(), DynError> {
         version
     );
     let title = format!("Release v{}", version);
-    cmd!("gh pr create --label 'release' --title {title} --repo 'probe-rs/probe-rs' --body {message}").run()?;
+    cmd!("gh pr create --label 'release' --title {title} --repo 'probe-rs/probe-rs' --body {message} --draft").run()?;
 
     Ok(())
 }

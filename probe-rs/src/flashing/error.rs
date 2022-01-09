@@ -1,14 +1,11 @@
 #![allow(missing_docs)]
 
+use crate::config::{NvmRegion, RamRegion, TargetDescriptionSource};
+use crate::error;
 use std::ops::Range;
 
-use thiserror::Error;
-
-use crate::config::{NvmRegion, TargetDescriptionSource};
-use crate::error;
-
 /// Describes any error that happened during the or in preparation for the flashing procedure.
-#[derive(Error, Debug)]
+#[derive(thiserror::Error, Debug)]
 pub enum FlashError {
     #[error(
         "No flash memory contains the entire requested memory range {start:#010x}..{end:#10x}."
@@ -48,15 +45,30 @@ pub enum FlashError {
         "The RAM contents did not match the expected contents after loading the flash algorithm."
     )]
     FlashAlgorithmNotLoaded,
+    #[error(
+        "Failed to load flash algorithm into RAM at address {addr:08X?}. Is there space for the algorithm header?"
+    )]
+    InvalidFlashAlgorithmLoadAddress { addr: u32 },
+
+    #[error("Invalid page size {size:08X?}. Must be a multiple of 4 bytes.")]
+    InvalidPageSize { size: u32 },
 
     // TODO: Warn at YAML parsing stage.
     // TODO: 1 Add information about flash (name, address)
     // TODO: 2 Add source of target definition (built-in, yaml)
-    #[error("Trying to write flash, but no suitable flash loader algorithm is linked to the given target information.")]
-    NoFlashLoaderAlgorithmAttached,
+    #[error("Trying to write flash, but no suitable (default) flash loader algorithm is linked to the given target: {name} .")]
+    NoFlashLoaderAlgorithmAttached { name: String },
+
+    #[error("Trying to write flash, but found more than one suitable flash loader algorithim marked as default for {region:?}.")]
+    MultipleDefaultFlashLoaderAlgorithms { region: NvmRegion },
+    #[error("Trying to write flash, but found more than one suitable flash algorithims but none marked as default for {region:?}.")]
+    MultipleFlashLoaderAlgorithmsNoDefault { region: NvmRegion },
+
+    #[error("Verify failed.")]
+    Verify,
 
     // TODO: 1 Add source of target definition
-    #[error("No RAM defined for chip.")]
+    #[error("No RAM defined for chip: {chip}.")]
     NoRamDefined { chip: String },
 
     // Flash algorithm in YAML is broken
@@ -70,4 +82,8 @@ pub enum FlashError {
         added_addresses: Range<u32>,
         existing_addresses: Range<u32>,
     },
+    #[error("No core can access the NVM region {0:?}.")]
+    NoNvmCoreAccess(NvmRegion),
+    #[error("No core can access the ram region {0:?}.")]
+    NoRamCoreAccess(RamRegion),
 }

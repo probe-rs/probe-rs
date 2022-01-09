@@ -4,12 +4,11 @@ use crate::Error as ProbeRsError;
 use thiserror::Error;
 
 use crate::{
-    Architecture, CoreInformation, CoreInterface, CoreRegisterAddress, CoreStatus, MemoryInterface,
+    CoreInformation, CoreInterface, CoreStatus,
 };
 
 use std::time::Duration;
 
-use crate::probe::cmsisdap::commands::CmsisDapDevice;
 use crate::probe::cmsisdap::CmsisDap;
 use crate::probe::edbg::avr8generic;
 use crate::probe::edbg::EDBG;

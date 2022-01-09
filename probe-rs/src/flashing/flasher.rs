@@ -1,7 +1,9 @@
+use probe_rs_target::{MemoryRegion, RawFlashAlgorithm};
+
 use super::{
     FlashAlgorithm, FlashBuilder, FlashError, FlashFill, FlashLayout, FlashPage, FlashProgress,
 };
-use crate::config::{MemoryRange, NvmRegion};
+use crate::config::NvmRegion;
 use crate::memory::MemoryInterface;
 use crate::{
     core::{Architecture, RegisterFile},
@@ -12,7 +14,7 @@ use std::{fmt::Debug, time::Duration};
 
 pub(super) trait Operation {
     fn operation() -> u32;
-    fn operation_name(&self) -> &str {
+    fn operation_name() -> &'static str {
         match Self::operation() {
             1 => "Erase",
             2 => "Program",
@@ -49,28 +51,50 @@ impl Operation for Verify {
 /// A structure to control the flash of an attached microchip.
 ///
 /// Once constructed it can be used to program date to the flash.
-/// This is mostly for internal use but can be used with [Flasher::flash_block()] for low, block level access to the flash.
-///
-/// If a higher level access to the flash is required, check out [flashing::download_file()].
-///
-/// [flashing::download_file()]: crate::flashing::download_file()
-pub struct Flasher<'session> {
+pub(super) struct Flasher<'session> {
     session: &'session mut Session,
+    core_index: usize,
     flash_algorithm: FlashAlgorithm,
-    region: NvmRegion,
 }
 
 impl<'session> Flasher<'session> {
     pub(super) fn new(
         session: &'session mut Session,
-        flash_algorithm: FlashAlgorithm,
-        region: NvmRegion,
-    ) -> Self {
-        Self {
+        core_index: usize,
+        raw_flash_algorithm: &RawFlashAlgorithm,
+    ) -> Result<Self, FlashError> {
+        let target = session.target();
+
+        // Find a RAM region from which we can run the algo.
+        let mm = &target.memory_map;
+        let core_name = &target.cores[core_index].name;
+        let ram = mm
+            .iter()
+            .filter_map(|mm| match mm {
+                MemoryRegion::Ram(ram) => Some(ram),
+                _ => None,
+            })
+            .find(|ram| {
+                // The RAM must be accessible from the core we're going to run the algo on.
+                ram.cores.contains(core_name)
+            })
+            .ok_or(FlashError::NoRamDefined {
+                chip: session.target().name.clone(),
+            })?;
+
+        log::info!("chosen RAM to run the algo: {:x?}", ram);
+
+        let flash_algorithm = FlashAlgorithm::assemble_from_raw(raw_flash_algorithm, ram, target)?;
+
+        let mut this = Self {
             session,
+            core_index,
             flash_algorithm,
-            region,
-        }
+        };
+
+        this.load()?;
+
+        Ok(this)
     }
 
     pub(super) fn flash_algorithm(&self) -> &FlashAlgorithm {
@@ -81,23 +105,18 @@ impl<'session> Flasher<'session> {
         self.flash_algorithm.page_buffers.len() > 1
     }
 
-    pub(super) fn init<O: Operation>(
-        &mut self,
-        mut address: Option<u32>,
-        clock: Option<u32>,
-    ) -> Result<ActiveFlasher<'_, O>, FlashError> {
+    fn load(&mut self) -> Result<(), FlashError> {
         log::debug!("Initializing the flash algorithm.");
         let algo = &mut self.flash_algorithm;
 
-        if address.is_none() {
-            address = Some(self.region.nvm_info().rom_start);
-        }
-
         // Attach to memory and core.
-        let mut core = self.session.core(0).map_err(FlashError::Core)?;
+        let mut core = self
+            .session
+            .core(self.core_index)
+            .map_err(FlashError::Core)?;
 
         // TODO: Halt & reset target.
-        log::debug!("Halting core.");
+        log::debug!("Halting core {}", self.core_index);
         let cpu_info = core
             .halt(Duration::from_millis(100))
             .map_err(FlashError::Core)?;
@@ -140,15 +159,27 @@ impl<'session> Flasher<'session> {
 
         log::debug!("RAM contents match flashing algo blob.");
 
-        log::debug!("Preparing Flasher for region:");
-        log::debug!("{:#?}", &self.region);
+        Ok(())
+    }
+
+    pub(super) fn init<O: Operation>(
+        &mut self,
+        clock: Option<u32>,
+    ) -> Result<ActiveFlasher<'_, O>, FlashError> {
+        // Attach to memory and core.
+        let core = self
+            .session
+            .core(self.core_index)
+            .map_err(FlashError::Core)?;
+
+        log::debug!("Preparing Flasher for operation {}", O::operation_name());
         let mut flasher = ActiveFlasher::<O> {
             core,
             flash_algorithm: self.flash_algorithm.clone(),
             _operation: core::marker::PhantomData,
         };
 
-        flasher.init(address, clock)?;
+        flasher.init(clock)?;
 
         Ok(flasher)
     }
@@ -158,7 +189,7 @@ impl<'session> Flasher<'session> {
         F: FnOnce(&mut ActiveFlasher<'_, Erase>) -> Result<T, FlashError> + Sized,
     {
         // TODO: Fix those values (None, None).
-        let mut active = self.init(None, None)?;
+        let mut active = self.init(None)?;
         let r = f(&mut active)?;
         active.uninit()?;
         Ok(r)
@@ -169,7 +200,7 @@ impl<'session> Flasher<'session> {
         F: FnOnce(&mut ActiveFlasher<'_, Program>) -> Result<T, FlashError> + Sized,
     {
         // TODO: Fix those values (None, None).
-        let mut active = self.init(None, None)?;
+        let mut active = self.init(None)?;
         let r = f(&mut active)?;
         active.uninit()?;
         Ok(r)
@@ -180,40 +211,14 @@ impl<'session> Flasher<'session> {
         F: FnOnce(&mut ActiveFlasher<'_, Verify>) -> Result<T, FlashError> + Sized,
     {
         // TODO: Fix those values (None, None).
-        let mut active = self.init(None, None)?;
+        let mut active = self.init(None)?;
         let r = f(&mut active)?;
         active.uninit()?;
         Ok(r)
     }
 
-    /// Writes a single block of data to a given address in the flash.
-    ///
-    /// This will return a [FlashError::AddressNotInRegion] if the given address range is not contained
-    /// in the given NVM region.
-    pub fn flash_block(
-        &mut self,
-        address: u32,
-        data: &[u8],
-        progress: &FlashProgress,
-        do_chip_erase: bool,
-        _fast_verify: bool,
-    ) -> Result<(), FlashError> {
-        if !self
-            .region
-            .range
-            .contains_range(&(address..address + data.len() as u32))
-        {
-            return Err(FlashError::AddressNotInRegion {
-                address,
-                region: self.region.clone(),
-            });
-        }
-
-        let mut fb = FlashBuilder::new();
-        fb.add_data(address, data)?;
-        self.program(&fb, do_chip_erase, true, true, false, progress)?;
-
-        Ok(())
+    pub(super) fn is_chip_erase_supported(&self) -> bool {
+        self.flash_algorithm().pc_erase_all.is_some()
     }
 
     /// Program the contents of given `FlashBuilder` to the flash.
@@ -223,8 +228,8 @@ impl<'session> Flasher<'session> {
     /// and written again once the sector is erased.
     pub(super) fn program(
         &mut self,
+        region: &NvmRegion,
         flash_builder: &FlashBuilder,
-        mut do_chip_erase: bool,
         restore_unwritten_bytes: bool,
         enable_double_buffering: bool,
         skip_erasing: bool,
@@ -233,21 +238,13 @@ impl<'session> Flasher<'session> {
         log::debug!("Starting program procedure.");
         // Convert the list of flash operations into flash sectors and pages.
         let mut flash_layout = flash_builder.build_sectors_and_pages(
-            &self.region,
+            region,
             &self.flash_algorithm,
             restore_unwritten_bytes,
         )?;
 
         progress.initialized(flash_layout.clone());
 
-        // If the flash algo doesn't support erase all, disable chip erase.
-        if self.flash_algorithm().pc_erase_all.is_none() {
-            do_chip_erase = false;
-            log::warn!("Chip erase was the selected method to erase the sectors but this chip does not support chip erases (yet).");
-            log::warn!("A manual sector erase will be performed.");
-        }
-
-        log::debug!("Full Chip Erase enabled: {:?}", do_chip_erase);
         log::debug!("Double Buffering enabled: {:?}", enable_double_buffering);
         log::debug!(
             "Restoring unwritten bytes enabled: {:?}",
@@ -280,11 +277,7 @@ impl<'session> Flasher<'session> {
         // Skip erase if necessary
         if !skip_erasing {
             // Erase all necessary sectors
-            if do_chip_erase {
-                self.chip_erase(&flash_layout, progress)?;
-            } else {
-                self.sector_erase(&flash_layout, progress)?;
-            }
+            self.sector_erase(&flash_layout, progress)?;
         }
 
         // Flash all necessary pages.
@@ -312,35 +305,9 @@ impl<'session> Flasher<'session> {
         self.run_verify(|active| {
             active
                 .core
-                .read_8(fill.address(), page_slice)
+                .read(fill.address(), page_slice)
                 .map_err(FlashError::Core)
         })
-    }
-
-    /// Erase the entire flash of the chip.
-    ///
-    /// This takes the list of available sectors only for progress reporting reasons.
-    /// It does not indeed erase single sectors but erases the entire flash.
-    fn chip_erase(
-        &mut self,
-        flash_layout: &FlashLayout,
-        progress: &FlashProgress,
-    ) -> Result<(), FlashError> {
-        progress.started_erasing();
-
-        let mut t = std::time::Instant::now();
-        let result = self.run_erase(|active| active.erase_all());
-        for sector in flash_layout.sectors() {
-            progress.sector_erased(sector.size(), t.elapsed());
-            t = std::time::Instant::now();
-        }
-
-        if result.is_ok() {
-            progress.finished_erasing();
-        } else {
-            progress.failed_erasing();
-        }
-        result
     }
 
     /// Programs the pages given in `flash_layout` into the flash.
@@ -517,13 +484,11 @@ pub(super) struct ActiveFlasher<'probe, O: Operation> {
 }
 
 impl<'probe, O: Operation> ActiveFlasher<'probe, O> {
-    pub(super) fn init(
-        &mut self,
-        address: Option<u32>,
-        clock: Option<u32>,
-    ) -> Result<(), FlashError> {
+    pub(super) fn init(&mut self, clock: Option<u32>) -> Result<(), FlashError> {
         let algo = &self.flash_algorithm;
         log::debug!("Running init routine.");
+
+        let address = self.flash_algorithm.flash_properties.address_range.start;
 
         // Execute init routine if one is present.
         if let Some(pc_init) = algo.pc_init {
@@ -531,7 +496,7 @@ impl<'probe, O: Operation> ActiveFlasher<'probe, O> {
                 .call_function_and_wait(
                     &Registers {
                         pc: pc_init,
-                        r0: address,
+                        r0: Some(address),
                         r1: clock.or(Some(0)),
                         r2: Some(O::operation()),
                         r3: None,
@@ -684,7 +649,7 @@ impl<'probe> ActiveFlasher<'probe, Erase> {
                         r3: None,
                     },
                     false,
-                    Duration::from_secs(5),
+                    Duration::from_secs(30),
                 )
                 .map_err(|error| FlashError::ChipEraseFailed {
                     source: Box::new(error),
@@ -840,11 +805,22 @@ impl<'p> ActiveFlasher<'p, Program> {
         );
 
         // TODO: Prevent security settings from locking the device.
-
         // Transfer the buffer bytes to RAM.
+        let words: Vec<u32> = bytes
+            .chunks_exact(core::mem::size_of::<u32>())
+            .map(|a| u32::from_le_bytes([a[0], a[1], a[2], a[3]]))
+            .collect();
+
+        let t1 = std::time::Instant::now();
         self.core
-            .write_8(algo.page_buffers[buffer_number], bytes)
+            .write_32(algo.page_buffers[buffer_number], &words)
             .map_err(FlashError::Core)?;
+
+        log::info!(
+            "Took {:?} to download {} byte page into ram",
+            t1.elapsed(),
+            bytes.len()
+        );
 
         Ok(())
     }

@@ -6,8 +6,8 @@ use serde::{Deserialize, Serialize};
 /// and is usually read from a target description file.
 ///
 /// Before it can be used for flashing, it has to be assembled for
-/// a specific chip, using the [RawFlashAlgorithm::assemble] function. This function
-/// will determine the RAM addresses which are used when flashing.
+/// a specific chip, by determining the RAM addresses which are used when flashing.
+/// This process is done in the main `probe-rs` library.
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
 pub struct RawFlashAlgorithm {
     /// The name of the flash algorithm.
@@ -16,10 +16,12 @@ pub struct RawFlashAlgorithm {
     pub description: String,
     /// Whether this flash algorithm is the default one or not.
     pub default: bool,
-    /// List of 32-bit words containing the position-independent code for the algo.
+    /// List of 32-bit words containing the code for the algo. If `load_address` is not specified, the code must be position indepent (PIC).
     #[serde(deserialize_with = "deserialize")]
     #[serde(serialize_with = "serialize")]
     pub instructions: Vec<u8>,
+    /// Address to load algo into RAM. Optional.
+    pub load_address: Option<u32>,
     /// Address of the `Init()` entry point. Optional.
     pub pc_init: Option<u32>,
     /// Address of the `UnInit()` entry point. Optional.
@@ -34,6 +36,8 @@ pub struct RawFlashAlgorithm {
     pub data_section_offset: u32,
     /// The properties of the flash on the device.
     pub flash_properties: FlashProperties,
+    /// List of cores that can use this algorithm
+    pub cores: Vec<String>,
 }
 
 pub fn serialize<S>(bytes: &[u8], serializer: S) -> Result<S::Ok, S::Error>

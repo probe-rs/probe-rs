@@ -1,5 +1,5 @@
 use crate::error;
-use anyhow::{anyhow, Context, Result};
+use anyhow::Result;
 use thiserror::Error;
 
 //use log::debug;
@@ -9,17 +9,15 @@ use crate::architecture::avr::communication_interface::AvrCommunicationInterface
 use crate::probe::cmsisdap;
 use crate::probe::cmsisdap::commands;
 use crate::probe::cmsisdap::commands::edbg::{
-    avr_cmd::AvrCommand, avr_cmd::AvrCommandResponse, avr_evt::AvrEventRequest,
-    avr_evt::AvrEventResponse, avr_rsp::AvrRSPRequest, avr_rsp::AvrRSPResponse,
+    avr_cmd::AvrCommand, avr_evt::AvrEventRequest, avr_rsp::AvrRSPRequest,
 };
 use crate::probe::cmsisdap::commands::CmsisDapDevice;
-use crate::probe::cmsisdap::CmsisDap;
 use crate::DebugProbe;
 use crate::DebugProbeError;
 use crate::DebugProbeSelector;
 use crate::WireProtocol;
 use crate::{
-    CoreInformation, CoreInterface, CoreRegisterAddress, CoreStatus, HaltReason, MemoryInterface,
+    CoreInformation, CoreStatus, HaltReason,
 };
 use enum_primitive_derive::Primitive;
 use num_traits::FromPrimitive;
@@ -265,7 +263,7 @@ impl EDBG {
         ];
         packet.extend_from_slice(command_packet);
 
-        commands::send_command::<AvrCommand, AvrCommandResponse>(
+        commands::send_command::<AvrCommand>(
             &mut self.device,
             // FIXME: fragment info need to be properly calculated
             AvrCommand {
@@ -278,7 +276,7 @@ impl EDBG {
 
         let mut response_data: Vec<u8> = vec![];
 
-        let rsp = commands::send_command::<AvrRSPRequest, AvrRSPResponse>(
+        let rsp = commands::send_command::<AvrRSPRequest>(
             &mut self.device,
             AvrRSPRequest,
         )?;
@@ -289,7 +287,7 @@ impl EDBG {
         response_data.extend(&rsp.command_packet);
 
         for i in 2..(total_fragments + 1) {
-            let rsp = commands::send_command::<AvrRSPRequest, AvrRSPResponse>(
+            let rsp = commands::send_command::<AvrRSPRequest>(
                 &mut self.device,
                 AvrRSPRequest,
             )?;
@@ -363,7 +361,7 @@ impl EDBG {
     }
 
     fn check_event(&mut self) -> Result<Vec<u8>, DebugProbeError> {
-        let response = commands::send_command::<AvrEventRequest, AvrEventResponse>(
+        let response = commands::send_command::<AvrEventRequest>(
             &mut self.device,
             AvrEventRequest,
         )?;

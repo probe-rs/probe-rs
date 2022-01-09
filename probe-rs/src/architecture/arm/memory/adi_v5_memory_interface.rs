@@ -1,7 +1,11 @@
 use super::super::ap::{
     AccessPortError, AddressIncrement, ApAccess, ApRegister, DataSize, MemoryAp, CSW, DRW, TAR,
 };
-use crate::architecture::arm::{dp::DpAccess, MemoryApInformation};
+use crate::architecture::arm::communication_interface::SwdSequence;
+use crate::architecture::arm::ArmCommunicationInterface;
+use crate::architecture::arm::{
+    communication_interface::Initialized, dp::DpAccess, MemoryApInformation,
+};
 use crate::{CommunicationInterface, CoreRegister, CoreRegisterAddress, DebugProbeError, Error};
 use scroll::{Pread, Pwrite, LE};
 use std::convert::TryInto;
@@ -12,7 +16,7 @@ use std::{
 
 use bitfield::bitfield;
 
-pub trait ArmProbe {
+pub trait ArmProbe: SwdSequence {
     fn read_core_reg(&mut self, ap: MemoryAp, addr: CoreRegisterAddress) -> Result<u32, Error>;
     fn write_core_reg(
         &mut self,
@@ -28,16 +32,16 @@ pub trait ArmProbe {
     fn write_32(&mut self, ap: MemoryAp, address: u32, data: &[u32]) -> Result<(), Error>;
 
     fn flush(&mut self) -> Result<(), Error>;
+
+    fn get_arm_communication_interface(
+        &mut self,
+    ) -> Result<&mut ArmCommunicationInterface<Initialized>, Error>;
 }
 
 /// A struct to give access to a targets memory using a certain DAP.
 pub(crate) struct ADIMemoryInterface<'interface, AP>
 where
-    AP: CommunicationInterface
-        + ApAccess<MemoryAp, CSW>
-        + ApAccess<MemoryAp, TAR>
-        + ApAccess<MemoryAp, DRW>
-        + DpAccess,
+    AP: CommunicationInterface + ApAccess + DpAccess,
 {
     interface: &'interface mut AP,
     only_32bit_data_size: bool,
@@ -57,11 +61,7 @@ where
 
 impl<'interface, AP> ADIMemoryInterface<'interface, AP>
 where
-    AP: CommunicationInterface
-        + ApAccess<MemoryAp, CSW>
-        + ApAccess<MemoryAp, TAR>
-        + ApAccess<MemoryAp, DRW>
-        + DpAccess,
+    AP: CommunicationInterface + ApAccess + DpAccess,
 {
     /// Creates a new MemoryInterface for given AccessPort.
     pub fn new(
@@ -79,11 +79,7 @@ where
 
 impl<AP> ADIMemoryInterface<'_, AP>
 where
-    AP: CommunicationInterface
-        + ApAccess<MemoryAp, CSW>
-        + ApAccess<MemoryAp, TAR>
-        + ApAccess<MemoryAp, DRW>
-        + DpAccess,
+    AP: CommunicationInterface + ApAccess + DpAccess,
 {
     /// Build the correct CSW register for a memory access
     ///
@@ -154,17 +150,13 @@ where
     }
 
     /// Read a 32 bit register on the given AP.
-    fn read_ap_register<R>(
-        &mut self,
-        access_port: MemoryAp,
-        register: R,
-    ) -> Result<R, AccessPortError>
+    fn read_ap_register<R>(&mut self, access_port: MemoryAp) -> Result<R, AccessPortError>
     where
         R: ApRegister<MemoryAp>,
-        AP: ApAccess<MemoryAp, R>,
+        AP: ApAccess,
     {
         self.interface
-            .read_ap_register(access_port, register)
+            .read_ap_register(access_port)
             .map_err(AccessPortError::register_read_error::<R, _>)
     }
 
@@ -178,7 +170,7 @@ where
     ) -> Result<(), AccessPortError>
     where
         R: ApRegister<MemoryAp>,
-        AP: ApAccess<MemoryAp, R>,
+        AP: ApAccess,
     {
         self.interface
             .read_ap_register_repeated(access_port, register, values)
@@ -193,7 +185,7 @@ where
     ) -> Result<(), AccessPortError>
     where
         R: ApRegister<MemoryAp>,
-        AP: ApAccess<MemoryAp, R>,
+        AP: ApAccess,
     {
         self.interface
             .write_ap_register(access_port, register)
@@ -210,7 +202,7 @@ where
     ) -> Result<(), AccessPortError>
     where
         R: ApRegister<MemoryAp>,
-        AP: ApAccess<MemoryAp, R>,
+        AP: ApAccess,
     {
         self.interface
             .write_ap_register_repeated(access_port, register, values)
@@ -236,7 +228,7 @@ where
 
         self.write_csw_register(access_port, csw)?;
         self.write_ap_register(access_port, tar)?;
-        let result = self.read_ap_register(access_port, DRW::default())?;
+        let result: DRW = self.read_ap_register(access_port)?;
 
         Ok(result.data)
     }
@@ -260,7 +252,7 @@ where
             let tar = TAR { address };
             self.write_csw_register(access_port, csw)?;
             self.write_ap_register(access_port, tar)?;
-            let result = self.read_ap_register(access_port, DRW::default())?;
+            let result: DRW = self.read_ap_register(access_port)?;
 
             // Extract the correct byte
             // See "Arm Debug Interface Architecture Specification ADIv5.0 to ADIv5.2", C2.2.6
@@ -327,7 +319,9 @@ where
         )?;
 
         remaining_data_len -= first_chunk_size_words;
-        address += (4 * first_chunk_size_words) as u32;
+        address = address
+            .checked_add((4 * first_chunk_size_words) as u32)
+            .ok_or(AccessPortError::OutOfBoundsError)?;
         data_offset += first_chunk_size_words;
 
         while remaining_data_len > 0 {
@@ -585,7 +579,7 @@ where
 
         // Copy input data into buffer at the correct location
         let start = (address - aligned.start) as usize;
-        buf8[start..start + data.len()].copy_from_slice(&data);
+        buf8[start..start + data.len()].copy_from_slice(data);
 
         // Convert buffer to 32-bit words
         let mut buf32 = vec![0u32; aligned.len() / 4];
@@ -600,13 +594,24 @@ where
     }
 }
 
+impl<AP> SwdSequence for ADIMemoryInterface<'_, AP>
+where
+    AP: CommunicationInterface + ApAccess + DpAccess,
+{
+    fn swj_sequence(&mut self, bit_len: u8, bits: u64) -> Result<(), Error> {
+        self.get_arm_communication_interface()?
+            .swj_sequence(bit_len, bits)
+    }
+
+    fn swj_pins(&mut self, pin_out: u32, pin_select: u32, pin_wait: u32) -> Result<u32, Error> {
+        self.get_arm_communication_interface()?
+            .swj_pins(pin_out, pin_select, pin_wait)
+    }
+}
+
 impl<AP> ArmProbe for ADIMemoryInterface<'_, AP>
 where
-    AP: CommunicationInterface
-        + ApAccess<MemoryAp, CSW>
-        + ApAccess<MemoryAp, TAR>
-        + ApAccess<MemoryAp, DRW>
-        + DpAccess,
+    AP: CommunicationInterface + ApAccess + DpAccess,
 {
     fn read_core_reg(&mut self, ap: MemoryAp, addr: CoreRegisterAddress) -> Result<u32, Error> {
         // Write the DCRSR value to select the register we want to read.
@@ -687,6 +692,12 @@ where
         self.interface.flush()?;
 
         Ok(())
+    }
+
+    fn get_arm_communication_interface(
+        &mut self,
+    ) -> Result<&mut ArmCommunicationInterface<Initialized>, Error> {
+        CommunicationInterface::get_arm_communication_interface(self.interface)
     }
 }
 
@@ -802,10 +813,16 @@ fn aligned_range(address: u32, len: usize) -> Result<Range<u32>, AccessPortError
 
 #[cfg(test)]
 mod tests {
-    use crate::architecture::arm::MemoryApInformation;
+    use crate::architecture::arm::{ap::AccessPort, ApAddress, DpAddress, MemoryApInformation};
 
     use super::super::super::ap::memory_ap::mock::MockMemoryAp;
+    use super::super::super::ap::memory_ap::MemoryAp;
     use super::ADIMemoryInterface;
+
+    const DUMMY_AP: MemoryAp = MemoryAp::new(ApAddress {
+        dp: DpAddress::Default,
+        ap: 0,
+    });
 
     impl<'interface> ADIMemoryInterface<'interface, MockMemoryAp> {
         /// Creates a new MemoryInterface for given AccessPort.
@@ -813,11 +830,12 @@ mod tests {
             mock: &'interface mut MockMemoryAp,
         ) -> ADIMemoryInterface<'interface, MockMemoryAp> {
             let ap_information = MemoryApInformation {
-                port_number: 0,
+                address: DUMMY_AP.ap_address(),
                 only_32bit_data_size: false,
-                debug_base_address: 0xf000_0000,
                 supports_hnonsec: false,
+                debug_base_address: 0xf000_0000,
             };
+
             Self::new(mock, &ap_information).unwrap()
         }
 
@@ -842,7 +860,7 @@ mod tests {
 
         for &address in &[0, 4] {
             let value = mi
-                .read_word_32(0.into(), address)
+                .read_word_32(DUMMY_AP, address)
                 .expect("read_word_32 failed");
             assert_eq!(value, DATA32[address as usize / 4]);
         }
@@ -856,7 +874,7 @@ mod tests {
 
         for address in 0..8 {
             let value = mi
-                .read_word_8(0.into(), address)
+                .read_word_8(DUMMY_AP, address)
                 .unwrap_or_else(|_| panic!("read_word_8 failed, address = {}", address));
             assert_eq!(value, DATA8[address as usize], "address = {}", address);
         }
@@ -871,7 +889,7 @@ mod tests {
             let mut expected = Vec::from(mi.mock_memory());
             expected[(address as usize)..(address as usize) + 4].copy_from_slice(&DATA8[..4]);
 
-            mi.write_word_32(0.into(), address, DATA32[0])
+            mi.write_word_32(DUMMY_AP, address, DATA32[0])
                 .unwrap_or_else(|_| panic!("write_word_32 failed, address = {}", address));
             assert_eq!(
                 mi.mock_memory(),
@@ -891,7 +909,7 @@ mod tests {
             let mut expected = Vec::from(mi.mock_memory());
             expected[address] = DATA8[0];
 
-            mi.write_word_8(0.into(), address as u32, DATA8[0])
+            mi.write_word_8(DUMMY_AP, address as u32, DATA8[0])
                 .unwrap_or_else(|_| panic!("write_word_8 failed, address = {}", address));
             assert_eq!(
                 mi.mock_memory(),
@@ -911,7 +929,7 @@ mod tests {
         for &address in &[0, 4] {
             for len in 0..3 {
                 let mut data = vec![0u32; len];
-                mi.read_32(0.into(), address, &mut data)
+                mi.read_32(DUMMY_AP, address, &mut data)
                     .unwrap_or_else(|_| {
                         panic!("read_32 failed, address = {}, len = {}", address, len)
                     });
@@ -933,7 +951,7 @@ mod tests {
         let mut mi = ADIMemoryInterface::new_mock(&mut mock);
 
         for &address in &[1, 3, 127] {
-            assert!(mi.read_32(0.into(), address, &mut [0u32; 4]).is_err());
+            assert!(mi.read_32(DUMMY_AP, address, &mut [0u32; 4]).is_err());
         }
     }
 
@@ -946,7 +964,7 @@ mod tests {
         for address in 0..4 {
             for len in 0..12 {
                 let mut data = vec![0u8; len];
-                mi.read_8(0.into(), address, &mut data).unwrap_or_else(|_| {
+                mi.read_8(DUMMY_AP, address, &mut data).unwrap_or_else(|_| {
                     panic!("read_8 failed, address = {}, len = {}", address, len)
                 });
 
@@ -973,7 +991,7 @@ mod tests {
                     .copy_from_slice(&DATA8[..len * 4]);
 
                 let data = &DATA32[..len];
-                mi.write_32(0.into(), address, data).unwrap_or_else(|_| {
+                mi.write_32(DUMMY_AP, address, data).unwrap_or_else(|_| {
                     panic!("write_32 failed, address = {}, len = {}", address, len)
                 });
 
@@ -995,7 +1013,7 @@ mod tests {
 
         for &address in &[1, 3, 127] {
             assert!(mi
-                .write_32(0.into(), address, &[0xDEAD_BEEF, 0xABBA_BABE])
+                .write_32(DUMMY_AP, address, &[0xDEAD_BEEF, 0xABBA_BABE])
                 .is_err());
         }
     }
@@ -1011,7 +1029,7 @@ mod tests {
                 expected[address as usize..(address as usize) + len].copy_from_slice(&DATA8[..len]);
 
                 let data = &DATA8[..len];
-                mi.write_8(0.into(), address, data).unwrap_or_else(|_| {
+                mi.write_8(DUMMY_AP, address, data).unwrap_or_else(|_| {
                     panic!("write_8 failed, address = {}, len = {}", address, len)
                 });
 

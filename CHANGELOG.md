@@ -4,7 +4,107 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
 ### Added
+
+- Support for core registers `msp`, `psp` and `extra`, extra containing:
+  - Bits[31:24] CONTROL.
+  - Bits[23:16] FAULTMASK.
+  - Bits[15:8]  BASEPRI.
+  - Bits[7:0]   PRIMASK.
+- Debug port start sequence for LPC55S16. (#944)
+- Added a command to print the list of all supported chips. (#946)
+- Added a command to print info about a chip, such as RAM and the number of cores. (#946)
+- ARM:`Session::swo_reader` that returns a wrapping implementation of `std::io::Read` around `Session::read_swo`. (#916)
+
+### Fixed
+
+- Fixed a panic when cmsisdap probes return more transfers than requested (#922, #923)
+
+## [0.12.0]
+
+- Added support for `chip-erase` flag under the `probe-rs-cli download` command. (#898)
+- Added support for `disable-progressbars` flag under the `probe-rs-cli download` command. (#898)
+- Fixed bug in `FlashLoader` not emitting `ProgressEvent::FinishedErasing` when using `do_chip_erase`. (#898)
+
+### Added
+
+- Added initial multicore support. (#565)
+- probe-rs-cli-util: added common option structures and logic pertaining to probes and target attachment from cargo-flash. (#723)
+- probe-rs-cli-util: escape hatch via `--` for extra cargo options not declared by `common_options::CargoOptions`.
+- Added SWDv2 multidrop support for multi-DP chips. (#720)
+- Added The possibility to use `--connect-under-reset` for the `probe-rs-cli info` command. (#775)
+- Added support for flashing `bin` format binaries with the `probe-rs-cli download` command. (#774)
+- Improved number parsing on all the `probe-rs-cli` commands. They now all accept normal (`01234`), hex (`0x1234`), octal (`0o1234`) and binary (`0b1`) formats. (#774)
+- Added progress bars to the probe-rs-cli download command. (#776)
+- Improve reliability of communication with the RISCV debug module by recovering from busy errors in batch operations. (#802)
+- Added optional ability to load fixed address flashing algorithms (non PIC). (#822)
+- Added target definition validation to make handling inside probe-rs easier by making some basic assumptions about the validity of the used `ChipFamily` without always checking again. (#848)
+- Added support for the built in JTAG on the ESP32C3 and other ESP32 devices (#863).
+- Added name field to memory regions. (#864)
+- debugger: Show progress notification while device is being flashed. (#871, #884)
+
+### Removed
+
+- probe-rs-cli-util: unused module `argument_handling`. (#760)
+
+### Changed
+- Enabled the generation of global timestamps and exception traces for ARM targets on `Session::setup_swv`.
+- Changed to `hidraw` for HID access on Linux. This should allow access to HID-based probes without udev rules (#737).
+- Support batching of FTDI commands and use it for RISCV (#717)
+- Include the chip string for `NoRamDefined` in its error message
+- Improved handling of errors in CMSIS-DAP commands (#745).
+- Implemented RTT (String, BinaryLE, and Defmt) in `probe-rs-debugger` (#688).
+- `probe-rs-debugger` will use the VSCode Client `launch.json` configuration to set RUST_LOG levels and send output to the VSCode Debug Console (#688).
+- Bumped dependencies `bitvec 0.19.4`to `bitvec 0.22`, `nom 6.0.0` to `nom 7.0.0-alpha1`. (#756)
+- `DebugProbeError::CommandNotSupportedByProbe` now holds a name string of the unsupported command.
+- Target YAMLs: Renamed `core.type` values from `M0, M4, etc` to `armv6m`, `armv7m`, `armv8m`.
+- Breaking API: Modify `probe-rs-rtt` interfaces to use `probe_rs::Core` rather than `Arc<Mutex<probe_rs::Session>>`.
+- An opaque object is returned to represent a compiled artifact. This allows extra information to be provided
+  in future without a breaking change (#795).
+- Information on whether a rebuild was necessary is included in the artefact (nothing changed if
+ `fresh == true`) (#795).
+- `Debug` was reimplemented on `Session` (#795).
+- Target YAMLs: Changed `flash_algorithms` from a map to an array. (#813)
+- Reject ambiguous chip selection.
+- Prefer using `read` over `read_8` for better performance and compatibility. (#829)
+- Increased default RTT Timeout (retry waiting for RTT Control Block initialization) to 1000ms in `probe-rs-debugger`. (#847)
+- Improved when RTT is initialized/retried, and removed `rtt_timeout` from recognized options of `probe-rs-debugger`. (#850)
+- Refactor `probe-rs-debugger` code as per `launch` vs. `attach` changes documented in [VS Code extension PR # 12](https://github.com/probe-rs/vscode/pull/12) (#854)
+- Breaking change: `probe-rs-debugger` and the associated [VSCode extension PR #21](https://github.com/probe-rs/vscode/pull/21) now uses camelCase for all `launch.json` properties (#885)
+- Publicly export `core::RegisterFile` type.
+- The trait surface for DAP/AP/DP access was cleaned up and more clarity around the access level of the API was added by properly putting `Raw` or not in the name.
+
+### Fixed
+- Detect proper USB HID interface to use for CMSIS-DAP v1 probes. Without this, CMSIS-DAP probes with multiple HID interfaces, e.g. MCUlink, were not working properly on MacOS (#722).
+- When reading from a HID device, check number of bytes returned to detect USB HID timeouts.
+- Fix connecting to EDBG and similar probes on MacOS (#681, #721)
+- Fixed incorrect flash range in `fe310` causing flashing to fail (#732).
+- Multiple default algorithims would silently select the first, now errors intead (#744).
+- Fixed STM32WL targets getting a HardFault when flashing binaries larger than 64K (#762).
+- Use a more reliable JTAG IR length detection when there's only a single target in the chain. Fixes an issue with the esp32c3. (#796, #823).
+- Replaced `unreachable!` induced panic with logic to fix `probe-rs-debugger` failures. (#847)
+- Fixed logic errors and timing of RTT initialization in `probe-rs-debugger`. (#847)
+- Debugger: Do not crash the CLI when pressing enter without a command. (#875)
+- Fixed panic in CLI debugger when using a command without arguments. (#873)
+- Debugger: Reduce panics caused by `unwrap()` usage. (#886)
+- probe-rs: When unwinding, detect if the program counter does not change anymore and stop. (#893)
+
+### Target Support
+
+- Added LPC5516 targets. (#853)
+- Added LPC552x and LPC55S2x targets. (#742)
+- Added SAM3U targets. (#833)
+- Added RP2040 target (Raspberry Pi Pico). (#720)
+- Added STM32WL55JCIx target. (#835)
+- Add esp32.yaml with esp32c3 variant. (#846)
+- Added STM32U5 series target.
+- Added all RAM regions to most STM32H7 parts. (#864)
+
+## [0.11.0]
+
+### Added
+
 - Support for the `HNONSEC` bit in memory access. This now allows secure access on chips which support TrustZone (#465).
 - Support for RISCV chips which use the System Bus Access method for memory access when debugging (#527).
 - Support for double buffering in the flash loader, which increased flashing speed (#107).
@@ -22,7 +122,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added a generic `read` function, which can be used for memory access with maximum speed, regardless of access width (#633).
 - Added an option to skip erasing the flash before programming (#628).
 - Added a new debugger for VS Code, using the [Debug Adapter Protocol](https://microsoft.github.io/debug-adapter-protocol/specification). The debugger can be found in the `probe-rs-debugger` crate (#620).
-
+- Additional datatype support for the debugger, plus easier to read display values (#631)
+- Added support for raw DAP register reads and writes, using `RawDpAccess`, `RawApAccess` trait (#669, #689, #700).
+- Added support for verify after flashing. (#671).
+- Handle inlined functions when getting a stack trace (#678).
+- Added 'Statics' (static variables) to the stackframe scopes. These are now visible in VSCode between 'Locals' and 'Registers'. This includes some additional datatypes and DWARF expression evaluation capabilities. (#683)
+- Added a function to mass erase all memory. (#672).
+- Handle Cortex `LOCKUP` status during debugging (#707)
 
 ### Target Support
 
@@ -43,6 +149,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Updated target description for NRF91 (#619).
 - Added a RAM benchmark script (#514).
 - Initial support for batched commands for J-Link (#515).
+- Added support for the STM32F2 family (#675).
+- Added support for FE310-G002 (HiFive1 Rev. B).
+- Added flash algorithm for GD32VF1 family (#830).
 
 ### Changed
 
@@ -70,7 +179,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Rework SWD sequence in J-Link (#513).
 - Print ST-Link version in name (#516).
 - Improve argument parsing in debugger, add speed option to probe-rs-cli (#523).
-  
+- `probe_rs::flashing::DownloadOptions` is now marked `non_exhaustive`, to make it easier to add additional flags in the future.
+- Replace `lazy_static` with `once_cell::sync::Lazy` (#685).
+- Use new `SendError` instead of `anyhow::Error` in `cmsisdap` module (#687).
+
 ### Fixed
 
 - Fixed `M33` breakpoints (#543).
@@ -92,10 +204,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The breakpoint address is now verified to ensure a breakpoint at the given address is actually possible (#626).
 - riscv: Use correct address for access to `abstractauto`register (#511).
 - The `--chip` argument now works without specifying the `--elf` argument (fix #517).
-
-
+- Fixed: Invalid "Unable to set hardware breakpoint", by removing breakpoint caching, instead querying core directly (#632)
+- Fix crash on unknown AP class. (#662).
+- Fix too many chip erases in chips with multiple NvmRegions. (#670).
+- Added missing `skip_erase` setter function introduced in #677 (#679).
+- Fixed incorrect array size calculation  (#683)
+- STLink: Removed unnecessary SELECT bank switching  (#692)
+- STLink: chunk writes in `write_8` to avoid hitting limit (#697)
+- Partial fix for a bug where `probe-rs-debugger` does not set breakpoints when the target is in *sleep* mode (#703)
 
 ## [0.10.1]
+
 ### Fixed
 
 - Replace calls to `unwrap()` in adi_v5_memory_interface.rs with proper error types (#440).
@@ -373,7 +492,9 @@ Initial release on crates.io
 - Working basic flash downloader with nRF51.
 - Introduce cargo-flash which can automatically build & flash the target elf file.
 
-[Unreleased]: https://github.com/probe-rs/probe-rs/compare/0.11.0-alpha.1...master
+[Unreleased]: https://github.com/probe-rs/probe-rs/compare/0.12.0...master
+[0.12.0]: https://github.com/probe-rs/probe-rs/compare/0.11.0...0.12.0
+[0.11.0]: https://github.com/probe-rs/probe-rs/compare/v0.10.1...0.11.0
 [0.11.0-alpha.1]: https://github.com/probe-rs/probe-rs/compare/v0.10.1...0.11.0-alpha.1
 [0.10.1]: https://github.com/probe-rs/probe-rs/compare/v0.10.0...v0.10.1
 [0.10.0]: https://github.com/probe-rs/probe-rs/compare/v0.9.0...v0.10.0

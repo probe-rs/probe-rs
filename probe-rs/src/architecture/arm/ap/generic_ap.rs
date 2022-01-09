@@ -1,6 +1,7 @@
 //! Generic access port
 
 use super::{AccessPort, ApRegister, Register};
+use crate::architecture::arm::ApAddress;
 use enum_primitive_derive::Primitive;
 use num_traits::cast::{FromPrimitive, ToPrimitive};
 
@@ -60,7 +61,7 @@ define_ap_register!(
     IDR {
         REVISION: ((value >> 28) & 0x0F) as u8,
         DESIGNER: ((value >> 17) & 0x7FF) as u16,
-        CLASS: ApClass::from_u8(((value >> 13) & 0x0F) as u8).unwrap(),
+        CLASS: ApClass::from_u8(((value >> 13) & 0x0F) as u8).unwrap_or_default(),
         _RES0: 0,
         VARIANT: ((value >> 4) & 0x0F) as u8,
         TYPE: ApType::from_u8((value & 0x0F) as u8).unwrap()

@@ -1,0 +1,60 @@
+---
+name: esp32
+manufacturer: ~
+variants:
+  - name: esp32c3
+    part: ~
+    cores:
+      - name: main
+        type: riscv
+        core_access_options:
+          Riscv: {}
+    memory_map:
+      - Nvm:
+          range:
+            start: 0
+            end: 67108864
+          is_boot_memory: true
+          cores:
+            - main
+      - Ram:
+          range:
+            start: 1077411840
+            end: 1077805056
+          is_boot_memory: false
+          cores:
+            - main
+      - Ram:
+          range:
+            start: 1070071808
+            end: 1070137344
+          is_boot_memory: false
+          cores:
+            - main
+    flash_algorithms:
+      - esp32c3-flashloader
+flash_algorithms:
+  - name: esp32c3-flashloader
+    description: A flash loader for the esp32c3.
+    default: true
+    instructions: QREGxjcFOUADRQUHGcEBRS2glwDH/+eAoHCBRZcAx//ngIAUlwDH/+eAwBEZ5QFFtwU5QAVGI4jFBrJAQQGCgDGBFwPH/2cAYw4XA8f/ZwBjDRN3NgABxxMFoAqCgK6GsoU2hhcDx/9nAIMMAUWCgAAAAAA=
+    load_address: 1077477376
+    pc_init: 0
+    pc_uninit: 108
+    pc_program_page: 82
+    pc_erase_sector: 64
+    pc_erase_all: 74
+    data_section_offset: 116
+    flash_properties:
+      address_range:
+        start: 0
+        end: 67108864
+      page_size: 2048
+      erased_byte_value: 255
+      program_page_timeout: 1000
+      erase_sector_timeout: 2000
+      sectors:
+        - size: 4096
+          address: 0
+    cores:
+      - main

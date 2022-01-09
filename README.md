@@ -3,7 +3,7 @@
 a modern, embedded debugging toolkit,
 written in Rust
 
-[![crates.io](https://meritbadge.herokuapp.com/probe-rs)](https://crates.io/crates/probe-rs) [![documentation](https://docs.rs/probe-rs/badge.svg)](https://docs.rs/probe-rs) [![Actions Status](https://github.com/probe-rs/probe-rs/workflows/CI/badge.svg)](https://github.com/probe-rs/probe-rs/actions) [![chat](https://img.shields.io/badge/chat-probe--rs%3Amatrix.org-brightgreen)](https://matrix.to/#/#probe-rs:matrix.org) 
+[![crates.io](https://img.shields.io/crates/v/probe-rs)](https://crates.io/crates/probe-rs) [![documentation](https://docs.rs/probe-rs/badge.svg)](https://docs.rs/probe-rs) [![Actions Status](https://img.shields.io/github/workflow/status/probe-rs/probe-rs/Run%20CI)](https://github.com/probe-rs/probe-rs/actions) [![chat](https://img.shields.io/badge/chat-probe--rs%3Amatrix.org-brightgreen)](https://matrix.to/#/#probe-rs:matrix.org) 
 
 The goal of this library is to provide a toolset to interact with a variety of embedded MCUs and debug probes.
 
@@ -126,10 +126,10 @@ Building requires Rust and Cargo which can be installed [using rustup](https://r
 
 ```console
 # Ubuntu
-> sudo apt install -y libusb-1.0-0-dev libftdi1-dev
+> sudo apt install -y libusb-1.0-0-dev libftdi1-dev libudev-dev
 
 # Fedora
-> sudo dnf install -y libusbx-devel libftdi-devel
+> sudo dnf install -y libusbx-devel libftdi-devel libudev-devel
 ```
 
 On Windows you can use [vcpkg](https://github.com/microsoft/vcpkg#quick-start-windows):

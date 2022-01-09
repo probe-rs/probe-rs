@@ -8,7 +8,7 @@ use crate::{
     Architecture, CoreInformation, CoreInterface, CoreRegisterAddress, CoreStatus, MemoryInterface,
 };
 
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 
 use std::time::Duration;
 
@@ -16,189 +16,192 @@ static AVR_REGISTER_FILE: RegisterFile = RegisterFile {
     platform_registers: &[
         RegisterDescription {
             name: "R0",
-            kind: RegisterKind::General,
+            _kind: RegisterKind::General,
             address: CoreRegisterAddress(0),
         },
         RegisterDescription {
             name: "R1",
-            kind: RegisterKind::General,
+            _kind: RegisterKind::General,
             address: CoreRegisterAddress(1),
         },
         RegisterDescription {
             name: "R2",
-            kind: RegisterKind::General,
+            _kind: RegisterKind::General,
             address: CoreRegisterAddress(2),
         },
         RegisterDescription {
             name: "R3",
-            kind: RegisterKind::General,
+            _kind: RegisterKind::General,
             address: CoreRegisterAddress(3),
         },
         RegisterDescription {
             name: "R4",
-            kind: RegisterKind::General,
+            _kind: RegisterKind::General,
             address: CoreRegisterAddress(4),
         },
         RegisterDescription {
             name: "R5",
-            kind: RegisterKind::General,
+            _kind: RegisterKind::General,
             address: CoreRegisterAddress(5),
         },
         RegisterDescription {
             name: "R6",
-            kind: RegisterKind::General,
+            _kind: RegisterKind::General,
             address: CoreRegisterAddress(6),
         },
         RegisterDescription {
             name: "R7",
-            kind: RegisterKind::General,
+            _kind: RegisterKind::General,
             address: CoreRegisterAddress(7),
         },
         RegisterDescription {
             name: "R8",
-            kind: RegisterKind::General,
+            _kind: RegisterKind::General,
             address: CoreRegisterAddress(8),
         },
         RegisterDescription {
             name: "R9",
-            kind: RegisterKind::General,
+            _kind: RegisterKind::General,
             address: CoreRegisterAddress(9),
         },
         RegisterDescription {
             name: "R10",
-            kind: RegisterKind::General,
+            _kind: RegisterKind::General,
             address: CoreRegisterAddress(10),
         },
         RegisterDescription {
             name: "R11",
-            kind: RegisterKind::General,
+            _kind: RegisterKind::General,
             address: CoreRegisterAddress(11),
         },
         RegisterDescription {
             name: "R12",
-            kind: RegisterKind::General,
+            _kind: RegisterKind::General,
             address: CoreRegisterAddress(12),
         },
         RegisterDescription {
             name: "R13",
-            kind: RegisterKind::General,
+            _kind: RegisterKind::General,
             address: CoreRegisterAddress(13),
         },
         RegisterDescription {
             name: "R14",
-            kind: RegisterKind::General,
+            _kind: RegisterKind::General,
             address: CoreRegisterAddress(14),
         },
         RegisterDescription {
             name: "R15",
-            kind: RegisterKind::General,
+            _kind: RegisterKind::General,
             address: CoreRegisterAddress(15),
         },
         RegisterDescription {
             name: "R16",
-            kind: RegisterKind::General,
+            _kind: RegisterKind::General,
             address: CoreRegisterAddress(16),
         },
         RegisterDescription {
             name: "R17",
-            kind: RegisterKind::General,
+            _kind: RegisterKind::General,
             address: CoreRegisterAddress(17),
         },
         RegisterDescription {
             name: "R18",
-            kind: RegisterKind::General,
+            _kind: RegisterKind::General,
             address: CoreRegisterAddress(18),
         },
         RegisterDescription {
             name: "R19",
-            kind: RegisterKind::General,
+            _kind: RegisterKind::General,
             address: CoreRegisterAddress(19),
         },
         RegisterDescription {
             name: "R20",
-            kind: RegisterKind::General,
+            _kind: RegisterKind::General,
             address: CoreRegisterAddress(20),
         },
         RegisterDescription {
             name: "R21",
-            kind: RegisterKind::General,
+            _kind: RegisterKind::General,
             address: CoreRegisterAddress(21),
         },
         RegisterDescription {
             name: "R22",
-            kind: RegisterKind::General,
+            _kind: RegisterKind::General,
             address: CoreRegisterAddress(22),
         },
         RegisterDescription {
             name: "R23",
-            kind: RegisterKind::General,
+            _kind: RegisterKind::General,
             address: CoreRegisterAddress(23),
         },
         RegisterDescription {
             name: "R24",
-            kind: RegisterKind::General,
+            _kind: RegisterKind::General,
             address: CoreRegisterAddress(24),
         },
         RegisterDescription {
             name: "R25",
-            kind: RegisterKind::General,
+            _kind: RegisterKind::General,
             address: CoreRegisterAddress(25),
         },
         RegisterDescription {
             name: "R26",
-            kind: RegisterKind::General,
+            _kind: RegisterKind::General,
             address: CoreRegisterAddress(26),
         },
         RegisterDescription {
             name: "R27",
-            kind: RegisterKind::General,
+            _kind: RegisterKind::General,
             address: CoreRegisterAddress(27),
         },
         RegisterDescription {
             name: "R28",
-            kind: RegisterKind::General,
+            _kind: RegisterKind::General,
             address: CoreRegisterAddress(28),
         },
         RegisterDescription {
             name: "R29",
-            kind: RegisterKind::General,
+            _kind: RegisterKind::General,
             address: CoreRegisterAddress(29),
         },
         RegisterDescription {
             name: "R30",
-            kind: RegisterKind::General,
+            _kind: RegisterKind::General,
             address: CoreRegisterAddress(30),
         },
         RegisterDescription {
             name: "R31",
-            kind: RegisterKind::General,
+            _kind: RegisterKind::General,
             address: CoreRegisterAddress(31),
         },
         RegisterDescription {
             name: "SREG",
-            kind: RegisterKind::General,
+            _kind: RegisterKind::General,
             address: CoreRegisterAddress(32),
         },
     ],
 
     program_counter: &RegisterDescription {
         name: "PC",
-        kind: RegisterKind::PC,
+        _kind: RegisterKind::PC,
         address: CoreRegisterAddress(34),
     },
     return_address: &RegisterDescription {
         name: "RA",
-        kind: RegisterKind::General,
+        _kind: RegisterKind::General,
         address: CoreRegisterAddress(0),
     },
     stack_pointer: &RegisterDescription {
         name: "SP",
-        kind: RegisterKind::General,
+        _kind: RegisterKind::General,
         address: CoreRegisterAddress(33),
     },
 
     argument_registers: &[],
     result_registers: &[],
+    extra: None,
+    msp: None,
+    psp: None,
 };
 
 pub struct Avr<'probe> {
@@ -279,16 +282,20 @@ impl<'probe> CoreInterface for Avr<'probe> {
         Ok(1)
     }
 
+    fn get_hw_breakpoints(&mut self) -> Result<Vec<Option<u32>>, error::Error>{
+        todo!();
+    }
+
     fn enable_breakpoints(&mut self, state: bool) -> Result<(), error::Error> {
         unimplemented!();
     }
 
-    fn set_breakpoint(&mut self, bp_unit_index: usize, addr: u32) -> Result<(), error::Error> {
-        unimplemented!();
+    fn set_hw_breakpoint(&mut self, bp_unit_index: usize, addr: u32) -> Result<(), error::Error>{
+        todo!();
     }
 
-    fn clear_breakpoint(&mut self, unit_index: usize) -> Result<(), error::Error> {
-        self.interface.clear_breakpoint(unit_index)
+    fn clear_hw_breakpoint(&mut self, unit_index: usize) -> Result<(), error::Error>{
+        todo!();
     }
 
     fn registers(&self) -> &'static RegisterFile {

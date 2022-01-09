@@ -1,25 +1,26 @@
 //! Internal target registry
 
-use super::{Chip, ChipFamily, ChipInfo, Target, TargetDescriptionSource};
+use super::{Chip, ChipFamily, ChipInfo, Core, Target, TargetDescriptionSource};
 use crate::config::CoreType;
-use lazy_static::lazy_static;
+use once_cell::sync::Lazy;
+use probe_rs_target::{ArmCoreAccessOptions, CoreAccessOptions, RiscvCoreAccessOptions};
 use std::fs::File;
 use std::path::Path;
 use std::sync::{Arc, Mutex, TryLockError};
-use thiserror::Error;
 
-lazy_static! {
-    static ref REGISTRY: Arc<Mutex<Registry>> =
-        Arc::new(Mutex::new(Registry::from_builtin_families()));
-}
+static REGISTRY: Lazy<Arc<Mutex<Registry>>> =
+    Lazy::new(|| Arc::new(Mutex::new(Registry::from_builtin_families())));
 
 /// Error type for all errors which occur when working
 /// with the internal registry of targets.
-#[derive(Debug, Error)]
+#[derive(Debug, thiserror::Error)]
 pub enum RegistryError {
     /// The requested chip was not found in the registry.
     #[error("The requested chip '{0}' was not found in the list of known targets.")]
     ChipNotFound(String),
+    /// Multiple chips found which match the given string, unable to return a single chip.
+    #[error("Found multiple chips matching '{0}', unable to select a single chip.")]
+    ChipNotUnique(String),
     /// When searching for a chip based on information read from the target,
     /// no matching chip was found in the registry.
     #[error("The connected chip could not automatically be determined.")]
@@ -37,6 +38,9 @@ pub enum RegistryError {
     /// Unable to lock the registry.
     #[error("Unable to lock registry")]
     LockUnavailable,
+    /// An invalid [`ChipFamily`] was encountered.
+    #[error("Invalid chip family definition ({})", .0.name)]
+    InvalidChipFamilyDefinition(ChipFamily, String),
 }
 
 impl<R> From<TryLockError<R>> for RegistryError {
@@ -48,87 +52,80 @@ impl<R> From<TryLockError<R>> for RegistryError {
 fn add_generic_targets(vec: &mut Vec<ChipFamily>) {
     vec.extend_from_slice(&[
         ChipFamily {
-            name: "Generic Cortex-M0".to_owned(),
+            name: "Generic ARMv6-M".to_owned(),
             manufacturer: None,
             variants: vec![Chip {
-                name: "cortex-m0".to_owned(),
+                name: "armv6m".to_owned(),
                 part: None,
+                cores: vec![Core {
+                    name: "core".to_owned(),
+                    core_type: CoreType::Armv6m,
+                    core_access_options: CoreAccessOptions::Arm(ArmCoreAccessOptions {
+                        ap: 0,
+                        psel: 0,
+                    }),
+                }],
                 memory_map: vec![],
-                device_data: None,
                 flash_algorithms: vec![],
             }],
             flash_algorithms: vec![],
-            core: CoreType::M0,
             source: TargetDescriptionSource::Generic,
         },
         ChipFamily {
-            name: "Generic Cortex-M4".to_owned(),
+            name: "Generic ARMv7-M".to_owned(),
             manufacturer: None,
             variants: vec![Chip {
-                name: "cortex-m4".to_owned(),
+                name: "armv7m".to_owned(),
                 part: None,
+                cores: vec![Core {
+                    name: "core".to_owned(),
+                    core_type: CoreType::Armv7m,
+                    core_access_options: CoreAccessOptions::Arm(ArmCoreAccessOptions {
+                        ap: 0,
+                        psel: 0,
+                    }),
+                }],
                 memory_map: vec![],
-                device_data: None,
                 flash_algorithms: vec![],
             }],
             flash_algorithms: vec![],
-            core: CoreType::M4,
             source: TargetDescriptionSource::Generic,
         },
         ChipFamily {
-            name: "Generic Cortex-M3".to_owned(),
+            name: "Generic ARMv8-M".to_owned(),
             manufacturer: None,
             variants: vec![Chip {
-                name: "cortex-m3".to_owned(),
+                name: "armv8m".to_owned(),
                 part: None,
+                cores: vec![Core {
+                    name: "core".to_owned(),
+                    core_type: CoreType::Armv8m,
+                    core_access_options: CoreAccessOptions::Arm(ArmCoreAccessOptions {
+                        ap: 0,
+                        psel: 0,
+                    }),
+                }],
                 memory_map: vec![],
-                device_data: None,
                 flash_algorithms: vec![],
             }],
             flash_algorithms: vec![],
-            core: CoreType::M3,
             source: TargetDescriptionSource::Generic,
         },
         ChipFamily {
-            name: "Generic Cortex-M33".to_owned(),
-            manufacturer: None,
-            variants: vec![Chip {
-                name: "cortex-m33".to_owned(),
-                part: None,
-                memory_map: vec![],
-                device_data: None,
-                flash_algorithms: vec![],
-            }],
-            flash_algorithms: vec![],
-            core: CoreType::M33,
-            source: TargetDescriptionSource::Generic,
-        },
-        ChipFamily {
-            name: "Generic Cortex-M7".to_owned(),
-            manufacturer: None,
-            variants: vec![Chip {
-                name: "cortex-m7".to_owned(),
-                part: None,
-                memory_map: vec![],
-                device_data: None,
-                flash_algorithms: vec![],
-            }],
-            flash_algorithms: vec![],
-            core: CoreType::M7,
-            source: TargetDescriptionSource::Generic,
-        },
-        ChipFamily {
-            name: "Generic Riscv".to_owned(),
+            name: "Generic RISC-V".to_owned(),
             manufacturer: None,
             variants: vec![Chip {
                 name: "riscv".to_owned(),
                 part: None,
+                cores: vec![Core {
+                    name: "core".to_owned(),
+                    core_type: CoreType::Riscv,
+                    core_access_options: CoreAccessOptions::Riscv(RiscvCoreAccessOptions {}),
+                }],
                 memory_map: vec![],
-                device_data: None,
                 flash_algorithms: vec![],
             }],
             flash_algorithms: vec![],
-            core: CoreType::Riscv,
             source: TargetDescriptionSource::Generic,
         },
     ]);
@@ -141,6 +138,7 @@ struct Registry {
 }
 
 impl Registry {
+    #[cfg(feature = "builtin-targets")]
     fn from_builtin_families() -> Self {
         const BUILTIN_TARGETS: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/targets.bincode"));
 
@@ -149,6 +147,10 @@ impl Registry {
 
         add_generic_targets(&mut families);
 
+        // We skip validating the targets here as this is done at a later stage in `get_target`.
+        // Additionally, validation for existing targets is done in the tests `validate_generic_targets` and
+        // `validate_builtin` as well, to ensure we do not ship broken target definitions.
+
         Self { families }
     }
 
@@ -156,7 +158,12 @@ impl Registry {
     fn from_builtin_families() -> Self {
         let mut families = vec![];
         add_generic_targets(&mut families);
-        families
+
+        // We skip validating the targets here as this is done at a later stage in `get_target`.
+        // Additionally, validation for existing targets is done in the tests `validate_generic_targets` and
+        // `validate_builtin` as well, to ensure we do not ship broken target definitions.
+
+        Self { families }
     }
 
     fn families(&self) -> &Vec<ChipFamily> {
@@ -171,6 +178,8 @@ impl Registry {
         let (family, chip) = {
             // Try get the corresponding chip.
             let mut selected_family_and_chip = None;
+            let mut exact_matches = 0;
+            let mut partial_matches = 0;
             for family in &self.families {
                 for variant in family.variants.iter() {
                     if variant
@@ -179,15 +188,32 @@ impl Registry {
                         .starts_with(&name.to_ascii_lowercase())
                     {
                         if variant.name.to_ascii_lowercase() != name.to_ascii_lowercase() {
-                            log::warn!(
-                                "Found chip {} which matches given partial name {}. Consider specifying its full name.",
-                                variant.name,
-                                name,
-                            )
+                            log::debug!("Partial match for chip name: {}", variant.name);
+                            partial_matches += 1;
+                            if exact_matches > 0 {
+                                continue;
+                            }
+                        } else {
+                            log::debug!("Exact match for chip name: {}", variant.name);
+                            exact_matches += 1;
                         }
                         selected_family_and_chip = Some((family, variant));
                     }
                 }
+            }
+            if exact_matches > 1 || (exact_matches == 0 && partial_matches > 1) {
+                log::warn!(
+                    "Ignoring ambiguous matches for specified chip name {}",
+                    name,
+                );
+                return Err(RegistryError::ChipNotUnique(name.to_owned()));
+            }
+            if exact_matches == 0 && partial_matches == 1 {
+                log::warn!(
+                    "Found chip {} which matches given partial name {}. Consider specifying its full name.",
+                    selected_family_and_chip.unwrap().1.name,
+                    name,
+                );
             }
             let (family, chip) = selected_family_and_chip
                 .ok_or_else(|| RegistryError::ChipNotFound(name.to_owned()))?;
@@ -261,34 +287,26 @@ impl Registry {
     }
 
     fn get_target(&self, family: &ChipFamily, chip: &Chip) -> Result<Target, RegistryError> {
-        // find relevant algorithms
-        let chip_algorithms = chip
-            .flash_algorithms
-            .iter()
-            .filter_map(|fa| family.get_algorithm(fa))
-            .cloned()
-            .collect();
-
-        Ok(Target::new(
-            chip,
-            chip_algorithms,
-            family.core,
-            family.source.clone(),
-        ))
+        // The validity of the given `ChipFamily` is checked in the constructor.
+        Target::new(family, &chip.name)
     }
 
     fn add_target_from_yaml(&mut self, path_to_yaml: &Path) -> Result<(), RegistryError> {
         let file = File::open(path_to_yaml)?;
-        let chip: ChipFamily = serde_yaml::from_reader(file)?;
+        let family: ChipFamily = serde_yaml::from_reader(file)?;
+
+        family
+            .validate()
+            .map_err(|e| RegistryError::InvalidChipFamilyDefinition(family.clone(), e))?;
 
         let index = self
             .families
             .iter()
-            .position(|old_chip| old_chip.name == chip.name);
+            .position(|old_family| old_family.name == family.name);
         if let Some(index) = index {
             self.families.remove(index);
         }
-        self.families.push(chip);
+        self.families.push(family);
 
         Ok(())
     }
@@ -326,26 +344,65 @@ mod tests {
     use super::*;
 
     #[test]
-    fn try_fetch1() {
+    fn try_fetch_not_unique() {
         let registry = Registry::from_builtin_families();
-        assert!(registry.get_target_by_name("nrf51").is_ok());
+        // ambiguous: partially matches STM32G081KBUx and STM32G081KBUxN
+        assert!(matches!(
+            registry.get_target_by_name("STM32G081KBU"),
+            Err(RegistryError::ChipNotUnique(_))
+        ));
+    }
+
+    #[test]
+    fn try_fetch_not_found() {
+        let registry = Registry::from_builtin_families();
+        assert!(matches!(
+            registry.get_target_by_name("not_a_real_chip"),
+            Err(RegistryError::ChipNotFound(_))
+        ));
     }
 
     #[test]
     fn try_fetch2() {
         let registry = Registry::from_builtin_families();
-        assert!(registry.get_target_by_name("nrf5182").is_ok());
+        // ok: matches both STM32G081KBUx and STM32G081KBUxN, but the first one is an exact match
+        assert!(registry.get_target_by_name("stm32G081KBUx").is_ok());
     }
 
     #[test]
     fn try_fetch3() {
         let registry = Registry::from_builtin_families();
-        assert!(registry.get_target_by_name("nrF51822_x").is_ok());
+        // ok: unique substring match
+        assert!(registry.get_target_by_name("STM32G081RBI").is_ok());
     }
 
     #[test]
     fn try_fetch4() {
         let registry = Registry::from_builtin_families();
+        // ok: unique exact match
         assert!(registry.get_target_by_name("nrf51822_Xxaa").is_ok());
+    }
+
+    #[test]
+    fn validate_generic_targets() {
+        let mut families = vec![];
+        add_generic_targets(&mut families);
+
+        families
+            .iter()
+            .map(|family| family.validate())
+            .collect::<Result<Vec<_>, _>>()
+            .unwrap();
+    }
+
+    #[test]
+    fn validate_builtin() {
+        let registry = Registry::from_builtin_families();
+        registry
+            .families()
+            .iter()
+            .map(|family| family.validate())
+            .collect::<Result<Vec<_>, _>>()
+            .unwrap();
     }
 }

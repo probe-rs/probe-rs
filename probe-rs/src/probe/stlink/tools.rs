@@ -18,8 +18,9 @@ pub(super) fn is_stlink_device<T: UsbContext>(device: &Device<T>) -> bool {
 }
 
 pub fn list_stlink_devices() -> Vec<DebugProbeInfo> {
-    if let Ok(context) = rusb::Context::new() {
-        if let Ok(devices) = context.devices() {
+    rusb::Context::new()
+        .and_then(|context| context.devices())
+        .map_or(vec![], |devices| {
             devices
                 .iter()
                 .filter(is_stlink_device)
@@ -33,9 +34,9 @@ pub fn list_stlink_devices() -> Vec<DebugProbeInfo> {
                             // is not installed. In this case we can still list the probe,
                             // just without serial number.
                             log::debug!(
-                                "Failed to read serial number of device {:#06x}:{:#06x} : {}",
-                                descriptor.product_id(),
+                                "Failed to read serial number of device {:04x}:{:04x} : {}",
                                 descriptor.vendor_id(),
+                                descriptor.product_id(),
                                 e
                             );
                             log::debug!("This might be happening because of a missing driver.");
@@ -52,15 +53,11 @@ pub fn list_stlink_devices() -> Vec<DebugProbeInfo> {
                         descriptor.product_id(),
                         sn_str,
                         DebugProbeType::StLink,
+                        None,
                     ))
                 })
                 .collect::<Vec<_>>()
-        } else {
-            vec![]
-        }
-    } else {
-        vec![]
-    }
+        })
 }
 
 /// Try to read the serial number of a USB device.
@@ -76,7 +73,7 @@ pub(super) fn read_serial_number<T: rusb::UsbContext>(
         .get(0)
         .cloned()
         .ok_or(rusb::Error::BadDescriptor)?;
-    let sn = handle.read_serial_number_string(language, &descriptor, timeout);
+    let sn = handle.read_serial_number_string(language, descriptor, timeout);
     sn.map(|s| {
         if s.len() < 24 {
             // Some STLink (especially V2) have their serial number stored as a 12 bytes binary string

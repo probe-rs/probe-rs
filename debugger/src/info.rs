@@ -3,10 +3,11 @@ use crate::{DebuggerError, DebuggerOptions};
 use probe_rs::{
     architecture::{
         arm::{
-            ap::{GenericAp, MemoryAp},
-            m0::Demcr,
+            ap::{GenericAp, MemoryAp, IDR},
+            armv6m::Demcr,
             memory::Component,
-            ApInformation, ArmProbeInterface, MemoryApInformation,
+            sequences::DefaultArmSequence,
+            ApAddress, ApInformation, ArmProbeInterface, DpAddress, MemoryApInformation, Register,
         },
         riscv::communication_interface::RiscvCommunicationInterface,
     },
@@ -84,7 +85,11 @@ fn try_show_info(mut probe: Probe, protocol: WireProtocol) -> (Probe, Result<()>
 
     if probe.has_arm_interface() {
         match probe.try_into_arm_interface() {
-            Ok(mut interface) => {
+            Ok(interface) => {
+                let mut interface = interface
+                    .initialize(DefaultArmSequence::create())
+                    .expect("This should not be an unwrap");
+
                 if let Err(e) = show_arm_info(&mut interface) {
                     // Log error?
                     log::warn!("Error showing ARM chip information: {}", e);
@@ -123,15 +128,20 @@ fn try_show_info(mut probe: Probe, protocol: WireProtocol) -> (Probe, Result<()>
 fn show_arm_info(interface: &mut Box<dyn ArmProbeInterface>) -> Result<()> {
     println!("\nAvailable Access Ports:");
 
-    let num_access_ports = interface.num_access_ports();
+    let dp = DpAddress::Default;
+    let num_access_ports = interface.num_access_ports(dp).unwrap();
 
     for ap_index in 0..num_access_ports {
-        let access_port = GenericAp::from(ap_index as u8);
+        let ap = ApAddress {
+            ap: ap_index as u8,
+            dp,
+        };
+        let access_port = GenericAp::new(ap);
+
+        let idr = interface.read_raw_ap_register(ap, IDR::ADDRESS)?;
+        println!("{:#x?}", idr);
 
         let ap_information = interface.ap_information(access_port).unwrap();
-
-        //let idr = interface.read_ap_register(access_port, IDR::default())?;
-        //println!("{:#x?}", idr);
 
         match ap_information {
             ApInformation::MemoryAp(MemoryApInformation {

@@ -6,7 +6,10 @@ use std::{
 use bitfield::bitfield;
 
 use super::communication_interface::RiscvError;
-use crate::{probe::JTAGAccess, DebugProbeError};
+use crate::{
+    probe::{CommandResult, DeferredResultIndex, JTAGAccess, JtagWriteCommand},
+    DebugProbeError,
+};
 
 ///! Debug Transport Module (DTM) handling
 ///!
@@ -18,6 +21,8 @@ use crate::{probe::JTAGAccess, DebugProbeError};
 #[derive(Debug)]
 pub struct Dtm {
     pub probe: Box<dyn JTAGAccess>,
+
+    queued_commands: Vec<JtagWriteCommand>,
 
     /// Number of address bits in the DMI register
     abits: u32,
@@ -47,7 +52,11 @@ impl Dtm {
         // Setup the number of idle cycles between JTAG accesses
         probe.set_idle_cycles(idle_cycles as u8);
 
-        Ok(Self { probe, abits })
+        Ok(Self {
+            probe,
+            abits,
+            queued_commands: Vec::new(),
+        })
     }
 
     pub fn target_reset_deassert(&mut self) -> Result<(), DebugProbeError> {
@@ -74,6 +83,79 @@ impl Dtm {
             .write_register(DTMCS_ADDRESS, &bytes, DTMCS_WIDTH)?;
 
         Ok(())
+    }
+
+    pub fn execute(&mut self) -> Result<Vec<CommandResult>, DebugProbeError> {
+        let cmds = self.queued_commands.clone();
+        self.queued_commands = Vec::new();
+
+        match self.probe.write_register_batch(&cmds) {
+            Ok(r) => Ok(r),
+            Err(e) => match e.error {
+                DebugProbeError::ArchitectureSpecific(ref ae) => {
+                    match ae.downcast_ref::<RiscvError>() {
+                        Some(RiscvError::DmiTransfer(DmiOperationStatus::RequestInProgress)) => {
+                            self.reset()
+                                .map_err(|e| DebugProbeError::ArchitectureSpecific(Box::new(e)))?;
+
+                            // queue up the remaining commands when we retry
+                            self.queued_commands
+                                .extend_from_slice(&cmds[e.results.len()..]);
+
+                            self.probe.set_idle_cycles(self.probe.get_idle_cycles() + 1);
+
+                            self.execute()
+                        }
+                        _ => Err(e.error),
+                    }
+                }
+                _ => Err(e.error),
+            },
+        }
+    }
+
+    pub fn schedule_dmi_register_access(
+        &mut self,
+        address: u64,
+        value: u32,
+        op: DmiOperation,
+    ) -> Result<DeferredResultIndex, DebugProbeError> {
+        let register_value: u128 = ((address as u128) << DMI_ADDRESS_BIT_OFFSET)
+            | ((value as u128) << DMI_VALUE_BIT_OFFSET)
+            | op as u128;
+
+        let bytes = register_value.to_le_bytes();
+
+        let bit_size = self.abits + DMI_ADDRESS_BIT_OFFSET;
+
+        self.queued_commands.push(JtagWriteCommand {
+            address: DMI_ADDRESS,
+            data: bytes.to_vec(),
+            transform: |response_bytes| {
+                let response_value: u128 =
+                    response_bytes.iter().enumerate().fold(0, |acc, elem| {
+                        let (byte_offset, value) = elem;
+                        acc + ((*value as u128) << (8 * byte_offset))
+                    });
+
+                // Verify that the transfer was ok
+                let op = (response_value & DMI_OP_MASK) as u8;
+
+                if op != 0 {
+                    return Err(DebugProbeError::ArchitectureSpecific(Box::new(
+                        RiscvError::DmiTransfer(
+                            DmiOperationStatus::parse(op).expect("INVALID DMI OP status"),
+                        ),
+                    )));
+                }
+
+                let value = (response_value >> 2) as u32;
+                Ok(CommandResult::U32(value))
+            },
+            len: bit_size,
+        });
+
+        Ok(self.queued_commands.len() - 1)
     }
 
     /// Perform an access to the dmi register of the JTAG Transport module.
@@ -130,6 +212,8 @@ impl Dtm {
                 Err(DmiOperationStatus::RequestInProgress) => {
                     // Operation still in progress, reset dmi status and try again.
                     self.reset()?;
+                    self.probe
+                        .set_idle_cycles(self.probe.get_idle_cycles().saturating_add(1));
                 }
                 Err(e) => return Err(RiscvError::DmiTransfer(e)),
             }

@@ -1,7 +1,7 @@
 [package]
 name = "probe-rs-target"
-version = "0.10.1"
-edition = "2018"
+version = "0.12.0"
+edition = "2021"
 description = "Target description schema for probe-rs."
 documentation = "https://docs.rs/probe-rs/"
 homepage = "https://github.com/probe-rs/probe-rs"
@@ -19,6 +19,6 @@ license = "MIT OR Apache-2.0"
 bincode = []
 
 [dependencies]
-jep106 = "0.2.4"
+jep106 = "0.2.6"
 serde = { version = "1.0.104", features = ["derive"] }
 base64 = "0.13.0"

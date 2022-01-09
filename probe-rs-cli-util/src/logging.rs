@@ -2,6 +2,7 @@ use colored::*;
 use env_logger::{Builder, Logger};
 use indicatif::ProgressBar;
 use log::{Level, LevelFilter, Log, Record};
+use once_cell::sync::Lazy;
 #[cfg(feature = "sentry")]
 use sentry::{
     integrations::panic::PanicIntegration,
@@ -24,15 +25,11 @@ use terminal_size::{Height, Width};
 /// The maximum window width of the terminal, given in characters possible.
 static MAX_WINDOW_WIDTH: AtomicUsize = AtomicUsize::new(0);
 
-lazy_static::lazy_static! {
-    /// Stores the progress bar for the logging facility.
-    static ref PROGRESS_BAR: RwLock<Option<Arc<ProgressBar>>> = RwLock::new(None);
-}
+/// Stores the progress bar for the logging facility.
+static PROGRESS_BAR: Lazy<RwLock<Option<Arc<ProgressBar>>>> = Lazy::new(|| RwLock::new(None));
 
 #[cfg(feature = "sentry")]
-lazy_static::lazy_static! {
-    static ref LOG: Arc<RwLock<Vec<Breadcrumb>>> = Arc::new(RwLock::new(vec![]));
-}
+static LOG: Lazy<Arc<RwLock<Vec<Breadcrumb>>>> = Lazy::new(|| Arc::new(RwLock::new(vec![])));
 
 /// A structure to hold a string with a padding attached to the start of it.
 struct Padded<T> {
