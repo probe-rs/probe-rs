@@ -13,7 +13,7 @@ use std::{
 /// VariableCache stores every available `Variable`, and provides methods to create and navigate the parent-child relationships of the Variables.
 /// There should be ONLY ONE `VariableCache` per `DebugInfo`. Because of the multiple ways in which it is updated, all references to `VariableCache` are *immutable*, and can only be updated through its methods, which provide *interior mutability"
 ///
-/// There are four 'dummy' `Variables`, named `<statics>`, `stackframe`, `<registers>`, and `<locals>`. These are used to provide the header structure of how variables relate to different scopes in a particular stacktrace. This 'dummy' structure looks as follows
+/// There are four 'dummy' `Variables`, named `<statics>`, `<stack_frame>`, `<registers>`, and `<locals>`. These are used to provide the header structure of how variables relate to different scopes in a particular stacktrace. This 'dummy' structure looks as follows
 /// - `<statics>`: The parent variable for all static coped variables in the stack
 ///   - A recursive `Variable` structure as described for `<locals>` below.
 /// - `<stack_frame>`: Every `StackFrame` will have one of these, with its function name captured in the `value` field of this dummy variable.
@@ -50,6 +50,7 @@ impl VariableCache {
     /// - For all operations, update the `parent_key`. A value of 0 means there are no parents for this variable.
     ///   - Validate that the supplied `Variable::parent_key` is a valid entry in the cache.
     /// - If appropriate, the `Variable::value` is updated from the core memory, and can be used by the calling function.
+    #[must_use]
     pub fn cache_variable(
         &self,
         parent_key: i64,

@@ -839,6 +839,7 @@ impl DebugInfo {
 
         // To support DWARF v2, where the address size is not encoded in the .debug_frame section,
         // we have to set the address size here.
+        // TODO: With current versions of RUST, do we still need to do this?
         frame_section.set_address_size(4);
 
         Ok(DebugInfo {
@@ -1626,6 +1627,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
     /// - Consumes the `child_variable`.
     /// - Updates the `DebugInfo::VariableCache` with all appropriate `Variable` fields.
     /// - Returns a clone of the most up-to-date `child_variable` in the cache.
+    #[must_use]
     fn process_tree_node_attributes(
         &self,
         tree_node: &mut gimli::EntriesTreeNode<GimliReader>,
@@ -1918,6 +1920,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
     /// - Consumes the `parent_variable`.
     /// - Updates the `DebugInfo::VariableCache` with all descendant `Variable`s.
     /// - Returns a clone of the most up-to-date `parent_variable` in the cache.
+    #[must_use]
     fn process_tree(
         &self,
         parent_node: gimli::EntriesTreeNode<GimliReader>,
@@ -2033,7 +2036,12 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                         core
                     )?;
                     // We need to do this here, to identify "default" variants for when the rust lang compiler doesn't encode them explicitly ... only by absence of a DW_AT_discr_value
-                    self.extract_variant_discriminant(&child_node, &mut child_variable)?;
+                    let default_variant = if let VariantRole::VariantPart(discriminant) = parent_variable.role {
+                        discriminant
+                    } else {
+                        0
+                    };
+                    self.extract_variant_discriminant(&child_node, &mut child_variable, default_variant)?;
                     child_variable = self.process_tree_node_attributes(&mut child_node, &mut parent_variable, child_variable, core, stackframe_registers)?;
                     if let VariantRole::Variant(discriminant) = child_variable.role {
                         // Only process the discriminant variants.
@@ -2171,6 +2179,8 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
         &self,
         node: &gimli::EntriesTreeNode<GimliReader>,
         variable: &mut Variable,
+        default_variant: u64,
+
     ) -> Result<(), DebugError> {
         if node.entry().tag() == gimli::DW_TAG_variant {
             variable.role = match node.entry().attr(gimli::DW_AT_discr_value) {
@@ -2189,8 +2199,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                         }
                         None => {
                             // In the case where the variable is a DW_TAG_variant, but has NO DW_AT_discr_value, then this is the "default" to be used.
-                            // TODO: Acctually, the RUST implementation sometimes puts a DW_AT_discr_value for the first variant, and then assumes implicit "+1" values for the additional DW_TAG_variant's. This needs to be implemented here also.
-                            VariantRole::Variant(0)
+                            VariantRole::Variant(default_variant)
                         }
                     }
                 }
@@ -2211,6 +2220,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
     /// This means both [`get_function_variables()`] and [`extract_type()`] will call the recursive [`process_tree()`] method to build an integrated `tree` of variables with types and values.
     /// - Consumes the `child_variable`.
     /// - Returns a clone of the most up-to-date `child_variable` in the cache.
+    #[must_use]
     fn extract_type(
         &self,
         node: gimli::EntriesTreeNode<GimliReader>,
@@ -2572,6 +2582,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
     /// - Consumes the `child_variable`.
     /// - Find the location using either DW_AT_location, or DW_AT_data_member_location, and store it in the Variable. A value of 0 is a valid 0 reported from dwarf.
     ///  - Returns a clone of the most up-to-date `child_variable` in the cache.
+    #[must_use]
     fn extract_location(
         &self,
         node: &gimli::EntriesTreeNode<GimliReader>,
