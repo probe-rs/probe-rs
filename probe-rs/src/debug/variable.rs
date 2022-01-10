@@ -391,19 +391,24 @@ pub struct Variable {
     pub(crate) value: String,
     pub source_location: Option<SourceLocation>,
     pub type_name: String,
-    /// Instead of parsing the type_name to infer if this variable is a pointer to another data type, we set this to true explicitly during ELF parsing.
+    /// TODO: Update this documentation to reflect the code logic.
+    /// When we encounter DW_TAG_pointer_type during ELF parsing, we store the `gimli::UnitOffset to the 'referened' node.
     /// This will later be used to determine if we need to **automatically** recurse the children of pointer types, or to wait until a user explicitly requests the children of such a pointer type.
     /// By default, the automatic recursion follows these rules:
     /// - Pointers to `struct` `Variable`s WILL NOT BE recursed, because  this may lead to infinite loops/stack overflows in `struct`s that self-reference.
     /// - Pointers to `const` `Variable`s WILL BE recursed, because they provide essential information, for example about the length of strings, or the size of arrays.
     /// - Pointers to "base" datatypes WILL BE resolved, because it keeps things simple.
     /// - Pointers to `unit` datatypes WILL NOT BE resolved, because it doesn't make sense.
-    pub is_pointer: bool,
-    /// The header_offset and entries_offset are cached to allow on-demand access to the DIE, through functions like:
+    pub referenced_node_offset: Option<UnitOffset>,
+    /// The header_offset and entries_offset are cached to allow on-demand access to the gimli::Unit, through functions like:
     ///   `gimli::Read::DebugInfo.header_from_offset()`, and   
-    ///   `gimli::Read::UnitHeader.entries_at_offset()`
+    ///   `gimli::Read::UnitHeader.entries_tree()`
+    ///
+    /// TODO: Is there a more efficient method to get on demand access to gimli::Unit through stored references to it?
     pub header_offset: Option<DebugInfoOffset>,
     pub entries_offset: Option<UnitOffset>,
+    /// The register values are needed to resolve the debug information and calculate memory locations and run-time data values. This is only needed for referenced nodes of variables with `DW_TAG_pointer_type`
+    pub stack_frame_registers: Option<Registers>,
     /// The starting location/address in memory where this Variable's value is stored.
     pub memory_location: u64,
     pub byte_size: u64,
@@ -506,7 +511,7 @@ impl Variable {
         || self.memory_location.is_zero()
         {
             return;
-        } else if self.is_pointer {
+        } else if self.referenced_node_offset.is_some() {
             // And we have not previously assigned the value, then assign the type and address as the value
             self.value = format!(
                 "{} @ 0x{:08X}",

@@ -3,12 +3,12 @@ use crate::DebuggerError;
 use crate::{dap_types, rtt::DataFormat};
 use anyhow::{anyhow, Result};
 use dap_types::*;
+use gimli::UnitHeader;
 use num_traits::Zero;
 use parse_int::parse;
 use probe_rs::debug::DebugInfo;
 use probe_rs::{debug::ColumnType, CoreStatus, HaltReason, MemoryInterface};
 use serde::{de::DeserializeOwned, Serialize};
-
 use std::string::ToString;
 use std::{
     convert::TryInto,
@@ -985,10 +985,21 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         };
 
         let response = if let Some(debug_info) = core_data.debug_info {
+            // During the intial stack unwind operation, if we encounter certain types of pointers as children of complex variables, they will not be auto-expanded and included in the variable cache. Please refer to the `is_pointer` member of [probe_rs::debug::Variable] for more information. If this is the case, we will store the `stack_frame_registers` as part of the variable definition, so that we can  resolve the variable and add it to the cache before continuing.
+            // TODO: Introduce some sane error handling
+            if let Some(parent_variable) = debug_info
+                .variable_cache
+                .get_variable_by_key(arguments.variables_reference)
+            {
+                if parent_variable.referenced_node_offset.is_some() {
+                    debug_info
+                        .cache_referenced_variables(&mut core_data.target_core, parent_variable)?;
+                }
+            }
+
             let dap_variables: Vec<Variable> = debug_info
                 .variable_cache
-                .get_children(arguments.variables_reference)
-                .unwrap()
+                .get_children(arguments.variables_reference)?
                 .iter()
                 // Filter out requested children, then map them as DAP variables
                 .filter(|variable| match &arguments.filter {
@@ -1170,7 +1181,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                 named_child_variables_cnt,
                 indexed_child_variables_cnt,
             )
-        } else if parent_variable.is_pointer {
+        } else if parent_variable.referenced_node_offset.is_some() {
             // We have not yet cached the children for this reference.
             // Provide DAP Client with a reference so that it will explicitly ask for children when the user expands it.
             (parent_variable.variable_key, 0, 0)
