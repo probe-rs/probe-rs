@@ -18,17 +18,13 @@ use std::{
     collections::HashMap,
     io,
     num::NonZeroU64,
-    ops::RangeBounds,
     path::{Path, PathBuf},
     rc::Rc,
     str::{from_utf8, Utf8Error},
-    thread::current,
 };
 
 use gimli::{
-    DebugInfoOffset, DebuggingInformationEntry, EntriesTree, EntriesTreeNode, FileEntry,
-    FrameDescriptionEntry, LineProgramHeader, LittleEndian, Location, UnitOffset, UnwindContext,
-    UnwindTableRow,
+    DebuggingInformationEntry, FileEntry, LineProgramHeader, Location, UnitOffset, UnwindContext,
 };
 use object::read::{Object, ObjectSection};
 

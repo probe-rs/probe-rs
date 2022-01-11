@@ -6,8 +6,6 @@ use num_traits::Zero;
 use std::{
     cell::{Cell, RefCell},
     cmp::Ordering,
-    convert::TryInto,
-    fmt,
 };
 
 /// VariableCache stores every available `Variable`, and provides methods to create and navigate the parent-child relationships of the Variables.
@@ -605,7 +603,7 @@ impl Variable {
                     format!("{}]", compound_value)
                 } else {
                     // Generic handling of other structured types.
-                    // TODO: This is 'ok' for most, but could benefit from some custom formatting, e.g. Unions.
+                    // TODO: This is 'ok' for most, but could benefit from some custom formatting, e.g. Unions, Result<> and Option<>
                     if self.name.starts_with("__") {
                         // Indexed variables look different ...
                         compound_value = format!("{}{}:{{", compound_value, self.name);
@@ -662,9 +660,11 @@ impl Value for char {
         _variable_cache: &VariableCache,
     ) -> Result<Self, DebugError> {
         let mem_data = core.read_word_32(variable.memory_location as u32)?;
-        // TODO: Use char::from_u32 once it stabilizes.
-        let ret_value: char = mem_data.try_into()?;
-        Ok(ret_value)
+        if let Some(return_value) = char::from_u32(mem_data) {
+            Ok(return_value)
+        } else {
+            Ok('?')
+        }
     }
 }
 

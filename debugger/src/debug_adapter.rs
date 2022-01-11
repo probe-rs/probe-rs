@@ -3,7 +3,6 @@ use crate::DebuggerError;
 use crate::{dap_types, rtt::DataFormat};
 use anyhow::{anyhow, Result};
 use dap_types::*;
-use gimli::UnitHeader;
 use num_traits::Zero;
 use parse_int::parse;
 use probe_rs::debug::DebugInfo;
