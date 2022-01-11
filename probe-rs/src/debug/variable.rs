@@ -391,13 +391,12 @@ pub struct Variable {
     pub(crate) value: String,
     pub source_location: Option<SourceLocation>,
     pub type_name: String,
-    /// TODO: Update this documentation to reflect the code logic.
     /// When we encounter DW_TAG_pointer_type during ELF parsing, we store the `gimli::UnitOffset to the 'referened' node.
-    /// This will later be used to determine if we need to **automatically** recurse the children of pointer types, or to wait until a user explicitly requests the children of such a pointer type.
+    /// This will later be used to determine if we need to **automatically** recurse the children of pointer types, or to "lazily" wait until a user explicitly requests the children of such a pointer type.
     /// By default, the automatic recursion follows these rules:
     /// - Pointers to `struct` `Variable`s WILL NOT BE recursed, because  this may lead to infinite loops/stack overflows in `struct`s that self-reference.
     /// - Pointers to `const` `Variable`s WILL BE recursed, because they provide essential information, for example about the length of strings, or the size of arrays.
-    /// - Pointers to "base" datatypes WILL BE resolved, because it keeps things simple.
+    /// - Pointers to "base" datatypes SHOULD BE resolved, because it would keep the UX simple, but DWARF doesn't make it easy to determine when a pointer points to a base data type. We can read ahead in the DIE children, but that feels rather inefficient.
     /// - Pointers to `unit` datatypes WILL NOT BE resolved, because it doesn't make sense.
     pub referenced_node_offset: Option<UnitOffset>,
     /// The header_offset and entries_offset are cached to allow on-demand access to the gimli::Unit, through functions like:

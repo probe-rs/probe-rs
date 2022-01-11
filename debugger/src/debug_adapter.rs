@@ -986,7 +986,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
 
         let response = if let Some(debug_info) = core_data.debug_info {
             // During the intial stack unwind operation, if we encounter certain types of pointers as children of complex variables, they will not be auto-expanded and included in the variable cache. Please refer to the `is_pointer` member of [probe_rs::debug::Variable] for more information. If this is the case, we will store the `stack_frame_registers` as part of the variable definition, so that we can  resolve the variable and add it to the cache before continuing.
-            // TODO: Introduce some sane error handling
+            // TODO: Use the DAP "Invalidated" event to refresh the variables for this stackframe. It will allow the UI to see updated compound values for pointer variables based on the newly resolved children.
             if let Some(parent_variable) = debug_info
                 .variable_cache
                 .get_variable_by_key(arguments.variables_reference)
@@ -1189,61 +1189,6 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             // Returning 0's allows VSCode DAP Client to behave correctly for frames that have no variables, and variables that have no children.
             (0, 0, 0)
         }
-
-        // .get_cloned_children(parent_variable_key)
-        // .unwrap_or_else(vec![])
-        // .for_
-        // .iter()
-        // .map(|variable| {
-        //     if variable.name.starts_with("__") {
-        //         indexed_child_variables_cnt += 1;
-        //     } else {
-        //         named_child_variables_cnt += 1;
-        //     }
-        //     let (variables_reference, named_variables_cnt, indexed_variables_cnt) =
-        //         if variable {
-        //             Some(children) => self.create_variable_map(children),
-        //             None => {
-        //                 if variable.is_pointer {
-        //                     // Provide DAP Client with a reference so that it will explicitly ask for children when the user expands it.
-        //                     (self.new_variable_map_key(), 0, 0)
-        //                 } else {
-        //                     // Returning 0's allows VSCode DAP Client to behave correctly for frames that have no variables, and variables that have no children.
-        //                     (0, 0, 0)
-        //                 }
-        //             }
-        //         };
-        //     Variable {
-        //         name: variable.name.clone(),
-        //         value: variable.get_value(),
-        //         type_: Some(variable.type_name.clone()),
-        //         presentation_hint: None,
-        //         evaluate_name: None,
-        //         variables_reference,
-        //         named_variables: Some(named_variables_cnt),
-        //         indexed_variables: Some(indexed_variables_cnt),
-        //         memory_reference: Some(format!("{:#010x}", variable.memory_location)),
-        //     }
-        // })
-        // .collect();
-
-        // if named_child_variables_cnt > 0 || indexed_child_variables_cnt > 0 {
-        //     let variable_map_key = self.new_variable_map_key();
-        //     match self.variable_map.insert(variable_map_key, dap_variables) {
-        //         Some(_) => {
-        //             log::warn!("Failed to create a unique `variable_map_key`. Variables shown in this frame may be incomplete or corrupted. Please report this as a bug!");
-        //             (0, 0, 0)
-        //         }
-        //         None => (
-        //             variable_map_key,
-        //             named_child_variables_cnt,
-        //             indexed_child_variables_cnt,
-        //         ),
-        //     }
-        // } else {
-        //     // Returning 0's allows VSCode DAP Client to behave correctly for frames that have no variables, and variables that have no children.
-        //     (0, 0, 0)
-        // }
     }
 
     /// Returns one of the standard DAP Requests if all goes well, or a "error" request, which should indicate that the calling function should return.

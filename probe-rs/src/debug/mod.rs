@@ -2341,6 +2341,10 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                     gimli::AttributeValue::UnitRef(unit_ref) => {
                                         child_variable.referenced_node_offset = Some(unit_ref);
                                         child_variable.stack_frame_registers = Some(stack_frame_registers.clone());
+                                        if child_variable.type_name.starts_with("*const") {
+                                            // Resolve the children of this variable, because they contain essential information required to resolve the value
+                                            self.debug_info.cache_referenced_variables(core, child_variable.clone())?;
+                                        }
                                         child_variable =
                                             self.debug_info.variable_cache.cache_variable(
                                                 parent_variable.variable_key,
