@@ -410,7 +410,7 @@ impl<'debuginfo, 'probe, 'core> Iterator for StackFrameIterator<'debuginfo, 'pro
                                             .0
                                             as u32;
                     log::debug!(
-                            "UNWIND - {:04}: Caller: 0x{:08x}\tCallee: 0x{:08x}\tRule: {}",
+                            "UNWIND - {:04}: Caller: {:#010x}\tCallee: {:#010x}\tRule: {}",
                             self.unwind_registers
                                 .get_name_by_dwarf_register_number(register_number),
                             stackframe_return_address,
@@ -469,7 +469,7 @@ impl<'debuginfo, 'probe, 'core> Iterator for StackFrameIterator<'debuginfo, 'pro
                                 Some(reg_val) => {
                                     let unwind_cfa = (i64::from(reg_val) + offset) as u32;
                                     log::debug!(
-                                        "UNWIND - CFA : 0x{:08x}\tRule: {:?}",
+                                        "UNWIND - CFA : {:#010x}\tRule: {:?}",
                                         unwind_cfa,
                                         unwind_info.cfa()
                                     );
@@ -626,7 +626,7 @@ impl<'debuginfo, 'probe, 'core> Iterator for StackFrameIterator<'debuginfo, 'pro
                         self.unwind_registers
                             .set_by_dwarf_register_number(register_number, new_value);
                         log::debug!(
-                            "UNWIND - {:04}: Caller: 0x{:08x}\tCallee: 0x{:08x}\tRule: {}",
+                            "UNWIND - {:04}: Caller: {:#010x}\tCallee: {:#010x}\tRule: {}",
                             self.unwind_registers
                                 .get_name_by_dwarf_register_number(register_number),
                             self.unwind_registers
@@ -682,7 +682,7 @@ impl<'debuginfo, 'probe, 'core> Iterator for StackFrameIterator<'debuginfo, 'pro
                                     Some(reg_val) => {
                                         let unwind_cfa = (i64::from(reg_val) + offset) as u32;
                                         log::debug!(
-                                            "UNWIND - CFA : 0x{:08x}\tRule: Previous Function {:?}",
+                                            "UNWIND - CFA : {:#010x}\tRule: Previous Function {:?}",
                                             unwind_cfa,
                                             previous_unwind_info.cfa()
                                         );
@@ -753,7 +753,7 @@ impl<'debuginfo, 'probe, 'core> Iterator for StackFrameIterator<'debuginfo, 'pro
                         self.unwind_registers
                             .set_by_dwarf_register_number(return_register_number, new_return_value);
                         log::debug!(
-                            "UNWIND - {:04}: Caller: 0x{:08x}\tRule: Override with previous frame {}",
+                            "UNWIND - {:04}: Caller: {:#010x}\tRule: Override with previous frame {}",
                             self.unwind_registers
                                 .get_name_by_dwarf_register_number(return_register_number),
                             self.unwind_registers
@@ -1023,7 +1023,7 @@ impl DebugInfo {
                 variable_key: 0,
                 parent_key: register_root_variable.variable_key,
                 name: registers.get_name_by_dwarf_register_number(register_number),
-                value: format!("0x{:08x}", register_value),
+                value: format!("{:#010x}", register_value),
                 source_location: None,
                 type_name: "Platform Register".to_owned(),
                 referenced_node_offset: None,
@@ -1329,7 +1329,7 @@ impl DebugInfo {
                 });
 
                 for loc in &locations {
-                    log::debug!("col={:?}, addr=0x{:08x}", loc.1, loc.0);
+                    log::debug!("col={:?}, addr={:#010x}", loc.1, loc.0);
                 }
 
                 match column {
@@ -2868,7 +2868,7 @@ pub(crate) fn _print_all_attributes(
         use gimli::AttributeValue::*;
 
         match attr.value() {
-            Addr(a) => println!("0x{:08x}", a),
+            Addr(a) => println!("{:#010x}", a),
             DebugStrRef(_) => {
                 let val = dwarf.attr_string(unit, attr.value()).unwrap();
                 println!("{}", std::str::from_utf8(&val).unwrap());

@@ -473,8 +473,7 @@ impl Variable {
             match variable_cache.has_children(self) {
                 Ok(has_children) => {
                     if has_children {
-                        //TODO: Recurse through all descendants ... change {:?} to {}
-                        format!("{:?}", self)
+                        self.formatted_variable_value(variable_cache)
                     } else if self.type_name.is_empty() || self.memory_location.is_zero() {
                         // Intermediate nodes from DWARF. These should not show up in the final `VariableCache`
                         "ERROR: This is a bug! Attempted to evaluate a Variable with no type or no memory location".to_string()
@@ -514,7 +513,7 @@ impl Variable {
         } else if self.referenced_node_offset.is_some() {
             // And we have not previously assigned the value, then assign the type and address as the value
             self.value = format!(
-                "{} @ 0x{:08X}",
+                "{} @ {:#010X}",
                 self.type_name.clone(),
                 self.memory_location
             );
@@ -564,56 +563,75 @@ impl Variable {
         };
         self.value = string_value;
     }
-}
 
-// TODO: Fix this
-// impl fmt::Display for Variable {
-//     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-//         if self.value.is_empty() {
-//             // Only do this if we do not already have a value assigned.
-//             if let Some(children) = self.children.clone() {
-//                 // Make sure we can safely unwrap() children.
-//                 if self.type_name.starts_with('&') {
-//                     // Pointers
-//                     write!(f, "{}", children.first().unwrap())
-//                 } else if self.type_name.starts_with('(') {
-//                     // Tuples
-//                     write!(f, "(")?;
-//                     for child in children {
-//                         write!(f, "{}, ", child)?;
-//                     }
-//                     write!(f, ")")
-//                 } else if self.type_name.starts_with('[') {
-//                     // Arrays
-//                     write!(f, "[")?;
-//                     for child in children {
-//                         write!(f, "{}, ", child)?;
-//                     }
-//                     write!(f, "]")
-//                 } else {
-//                     // Generic handling of other structured types.
-//                     // TODO: This is 'ok' for most, but could benefit from some custom formatting, e.g. Unions.
-//                     if self.name.starts_with("__") {
-//                         // Indexed variables look different ...
-//                         write!(f, "{}:{{", self.name)?;
-//                     } else {
-//                         write!(f, "{{")?;
-//                     }
-//                     for child in children {
-//                         write!(f, "{}, ", child)?;
-//                     }
-//                     write!(f, "}}")
-//                 }
-//             } else {
-//                 // Unknown.
-//                 write!(f, "{}", self.type_name)
-//             }
-//         } else {
-//             // Use the supplied value.
-//             write!(f, "{}", self.value)
-//         }
-//     }
-// }
+    fn formatted_variable_value(&self, variable_cache: &VariableCache) -> String {
+        if self.value.is_empty() {
+            let mut compound_value = "".to_string();
+            // Only do this if we do not already have a value assigned.
+            if let Ok(children) = variable_cache.get_children(self.variable_key) {
+                // Make sure we can safely unwrap() children.
+                if self.type_name.starts_with('&') {
+                    // Pointers
+                    compound_value = format!(
+                        "{}{}",
+                        compound_value,
+                        if let Some(first_child) = children.first() {
+                            first_child.formatted_variable_value(variable_cache)
+                        } else {
+                            "Unable to resolve referenced variable value".to_string()
+                        }
+                    );
+                    compound_value
+                } else if self.type_name.starts_with('(') {
+                    // Tuples
+                    compound_value = format!("{}(", compound_value);
+                    for child in children {
+                        compound_value = format!(
+                            "{}{}, ",
+                            compound_value,
+                            child.formatted_variable_value(variable_cache)
+                        );
+                    }
+                    format!("{})", compound_value)
+                } else if self.type_name.starts_with('[') {
+                    // Arrays
+                    compound_value = format!("{}[", compound_value);
+                    for child in children {
+                        compound_value = format!(
+                            "{}{}, ",
+                            compound_value,
+                            child.formatted_variable_value(variable_cache)
+                        );
+                    }
+                    format!("{}]", compound_value)
+                } else {
+                    // Generic handling of other structured types.
+                    // TODO: This is 'ok' for most, but could benefit from some custom formatting, e.g. Unions.
+                    if self.name.starts_with("__") {
+                        // Indexed variables look different ...
+                        compound_value = format!("{}{}:{{", compound_value, self.name);
+                    } else {
+                        compound_value = format!("{}{{", compound_value);
+                    }
+                    for child in children {
+                        compound_value = format!(
+                            "{}{}, ",
+                            compound_value,
+                            child.formatted_variable_value(variable_cache)
+                        );
+                    }
+                    format!("{}}}", compound_value)
+                }
+            } else {
+                // We don't have a value, and we can't generate one from children values, so use the type_name
+                format!("{}", self.type_name)
+            }
+        } else {
+            // Use the supplied value.
+            format!("{}", self.value)
+        }
+    }
+}
 
 /// Traits and Impl's to read from memory and decode the Variable value based on Variable::typ and Variable::location.
 /// The MS DAP protocol passes the value as a string, so these are here only to provide the memory read logic before returning it as a string.

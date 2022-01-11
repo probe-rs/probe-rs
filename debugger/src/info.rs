@@ -172,7 +172,7 @@ fn show_arm_info(interface: &mut Box<dyn ArmProbeInterface>) -> Result<()> {
 
                 // for e in reader.entries() {
                 //     if let Ok(e) = e {
-                //         println!("ROM Table Entry: Component @ 0x{:08x}", e.component_addr());
+                //         println!("ROM Table Entry: Component @ {:#010x}", e.component_addr());
                 //     }
                 // }
             }

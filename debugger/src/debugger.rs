@@ -1529,7 +1529,7 @@ pub fn dump_memory(debugger_options: DebuggerOptions, loc: u32, words: u32) -> R
     // Print read values.
     for word in 0..words {
         println!(
-            "Addr 0x{:08x?}: 0x{:08x}",
+            "Addr 0x{:08x?}: {:#010x}",
             loc + 4 * word,
             data[word as usize]
         );

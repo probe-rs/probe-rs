@@ -117,7 +117,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                 self.send_response(
                     request,
                     Ok(Some(format!(
-                        "Core stopped at address 0x{:08x}",
+                        "Core stopped at address {:#010x}",
                         cpu_info.pc
                     ))),
                 )?;
@@ -179,7 +179,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             let mut response = "".to_string();
             for (offset, word) in buff.iter().enumerate() {
                 response.push_str(
-                    format!("0x{:08x} = 0x{:08x}\n", address + (offset * 4) as u32, word).as_str(),
+                    format!("{:#010x} = {:#010x}\n", address + (offset * 4) as u32, word).as_str(),
                 );
             }
             self.send_response::<String>(request, Ok(Some(response)))
@@ -187,7 +187,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             self.send_response::<()>(
                 request,
                 Err(DebuggerError::Other(anyhow!(
-                    "Could not read any data at address 0x{:08x}",
+                    "Could not read any data at address {:#010x}",
                     address
                 ))),
             )
@@ -536,11 +536,11 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                         match core_data.target_core.set_hw_breakpoint(location as u32) {
                             Ok(_) => (
                                 true,
-                                Some(format!("Breakpoint at memory address: 0x{:08x}", location)),
+                                Some(format!("Breakpoint at memory address: {:#010x}", location)),
                             ),
                             Err(err) => {
                                 let message = format!(
-                                "WARNING: Could not set breakpoint at memory address: 0x{:08x}: {}",
+                                "WARNING: Could not set breakpoint at memory address: {:#010x}: {}",
                                 location, err
                             )
                                 .to_string();
@@ -716,7 +716,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                                 module_id: None,
                                 presentation_hint: Some("normal".to_owned()),
                                 can_restart: Some(false),
-                                instruction_pointer_reference: Some(format!("0x{:08x}", frame.pc)),
+                                instruction_pointer_reference: Some(format!("{:#010x}", frame.pc)),
                             }
                         })
                         .collect();
@@ -902,7 +902,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         //             15 => "PC".to_owned(),
         //             other => format!("R{}", other),
         //         },
-        //         value: format!("0x{:08x}", value),
+        //         value: format!("{:#010x}", value),
         //         type_: Some("Core Register".to_owned()),
         //         presentation_hint: None,
         //         evaluate_name: None,
@@ -1024,7 +1024,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                     Variable {
                         name: variable.name.clone(),
                         evaluate_name: None,
-                        memory_reference: Some(format!("0x{:08x}", variable.memory_location)),
+                        memory_reference: Some(format!("{:#010x}", variable.memory_location)),
                         indexed_variables: Some(indexed_child_variables_cnt),
                         named_variables: Some(named_child_variables_cnt),
                         presentation_hint: None,
@@ -1134,7 +1134,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                 let event_body = Some(StoppedEventBody {
                     reason: "step".to_owned(),
                     description: Some(format!(
-                        "{} at address 0x{:08x}",
+                        "{} at address {:#010x}",
                         new_status.short_long_status().1,
                         cpu_info.pc
                     )),
@@ -1222,7 +1222,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         //         variables_reference,
         //         named_variables: Some(named_variables_cnt),
         //         indexed_variables: Some(indexed_variables_cnt),
-        //         memory_reference: Some(format!("0x{:08x}", variable.memory_location)),
+        //         memory_reference: Some(format!("{:#010x}", variable.memory_location)),
         //     }
         // })
         // .collect();
