@@ -6,19 +6,22 @@ pub(crate) mod ftdi;
 pub(crate) mod jlink;
 pub(crate) mod stlink;
 
-use crate::architecture::{
-    arm::{
-        communication_interface::DapProbe,
-        sequences::{ArmDebugSequence, DefaultArmSequence},
-        PortType, SwoAccess,
-    },
-    riscv::communication_interface::RiscvCommunicationInterface,
-};
 use crate::error::Error;
 use crate::Session;
 use crate::{
     architecture::arm::communication_interface::UninitializedArmProbe,
     config::{RegistryError, TargetSelector},
+};
+use crate::{
+    architecture::{
+        arm::{
+            communication_interface::DapProbe,
+            sequences::{ArmDebugSequence, DefaultArmSequence},
+            PortType, SwoAccess,
+        },
+        riscv::communication_interface::RiscvCommunicationInterface,
+    },
+    Permissions,
 };
 use jlink::list_jlink_devices;
 use std::{convert::TryFrom, fmt};
@@ -251,10 +254,14 @@ impl Probe {
     /// This runs all the necessary protocol init routines.
     ///
     /// If this doesn't work, you might want to try `attach_under_reset`
-    pub fn attach(mut self, target: impl Into<TargetSelector>) -> Result<Session, Error> {
+    pub fn attach(
+        mut self,
+        target: impl Into<TargetSelector>,
+        permissions: Permissions,
+    ) -> Result<Session, Error> {
         self.attached = true;
 
-        Session::new(self, target.into(), AttachMethod::Normal)
+        Session::new(self, target.into(), AttachMethod::Normal, permissions)
     }
 
     pub fn attach_to_unspecified(&mut self) -> Result<(), Error> {
@@ -287,11 +294,12 @@ impl Probe {
     pub fn attach_under_reset(
         mut self,
         target: impl Into<TargetSelector>,
+        permissions: Permissions,
     ) -> Result<Session, Error> {
         self.attached = true;
 
         // The session will de-assert reset after connecting to the debug interface.
-        Session::new(self, target.into(), AttachMethod::UnderReset)
+        Session::new(self, target.into(), AttachMethod::UnderReset, permissions)
     }
 
     pub(crate) fn inner_attach(&mut self) -> Result<(), DebugProbeError> {

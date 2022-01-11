@@ -1,4 +1,4 @@
-use probe_rs::{config::TargetSelector, MemoryInterface, Probe, WireProtocol};
+use probe_rs::{config::TargetSelector, MemoryInterface, Permissions, Probe, WireProtocol};
 
 use clap;
 use clap::Parser;
@@ -57,7 +57,7 @@ fn main() -> Result<()> {
     }
 
     let mut session = probe
-        .attach(target_selector)
+        .attach(target_selector, Permissions::default())
         .context("Failed to attach probe to target")?;
     let mut core = session.core(0).context("Failed to attach to core")?;
 

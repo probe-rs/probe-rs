@@ -12,7 +12,7 @@
 //! ## Halting the attached chip
 //! ```no_run
 //! # use probe_rs::Error;
-//! use probe_rs::Probe;
+//! use probe_rs::{Probe, Permissions};
 //!
 //! // Get a list of all available debug probes.
 //! let probes = Probe::list_all();
@@ -21,7 +21,7 @@
 //! let mut probe = probes[0].open()?;
 //!
 //! // Attach to a chip.
-//! let mut session = probe.attach("nrf52")?;
+//! let mut session = probe.attach("nrf52", Permissions::default())?;
 //!
 //! // Select a core.
 //! let mut core = session.core(0)?;
@@ -35,10 +35,10 @@
 //!
 //! ```no_run
 //! # use probe_rs::Error;
-//! use probe_rs::Session;
+//! use probe_rs::{Session, Permissions};
 //! use probe_rs::MemoryInterface;
 //!
-//! let mut session = Session::auto_attach("nrf52")?;
+//! let mut session = Session::auto_attach("nrf52", Permissions::default())?;
 //! let mut core = session.core(0)?;
 //!
 //! // Read a block of 50 32 bit words.
@@ -87,7 +87,7 @@ pub use crate::probe::{
     AttachMethod, DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, DebugProbeType,
     Probe, ProbeCreationError, WireProtocol,
 };
-pub use crate::session::Session;
+pub use crate::session::{Permissions, Session};
 
 // TODO: Hide behind feature
 pub use crate::probe::fake_probe::FakeProbe;

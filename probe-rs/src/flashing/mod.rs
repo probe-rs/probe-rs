@@ -16,9 +16,9 @@
 //! and looks like this:
 //!
 //! ```no_run
-//! use probe_rs::{Session, flashing};
+//! use probe_rs::{Session, flashing, Permissions};
 //!
-//! let mut session = Session::auto_attach("nrf51822")?;
+//! let mut session = Session::auto_attach("nrf51822", Permissions::default())?;
 //!
 //! flashing::download_file(&mut session, "binary.hex", flashing::Format::Hex)?;
 //!
@@ -28,10 +28,10 @@
 //! ### Adding data manually
 //!
 //! ```no_run
-//! use probe_rs::{Session, flashing::{FlashLoader, DownloadOptions}};
+//! use probe_rs::{Session, flashing::{FlashLoader, DownloadOptions}, Permissions};
 //!
 //!
-//! let mut session = Session::auto_attach("nrf51822")?;
+//! let mut session = Session::auto_attach("nrf51822", Permissions::default())?;
 //!
 //! let mut loader = session.target().flash_loader();
 //!

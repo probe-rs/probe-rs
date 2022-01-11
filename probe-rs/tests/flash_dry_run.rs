@@ -1,11 +1,11 @@
-use probe_rs::{flashing::DownloadOptions, FakeProbe, Probe};
+use probe_rs::{flashing::DownloadOptions, FakeProbe, Permissions, Probe};
 
 #[test]
 fn flash_dry_run() {
     let probe = Probe::from_specific_probe(Box::new(FakeProbe::new()));
 
     let mut session = probe
-        .attach("stm32wb55ccux")
+        .attach("stm32wb55ccux", Permissions::default())
         .expect("Failed to attach with 'fake' probe.");
 
     let mut flasher = session.target().flash_loader();
