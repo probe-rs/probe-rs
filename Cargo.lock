@@ -125,8 +125,11 @@ version = "0.4.19"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "670ad68c9088c2a963aaa298cb369688cf3f9465ce5e2d4ca10e6e0098a1ce73"
 dependencies = [
+ "libc",
  "num-integer",
  "num-traits",
+ "serde",
+ "winapi",
 ]
 
 [[package]]
@@ -199,8 +202,7 @@ dependencies = [
 [[package]]
 name = "defmt-decoder"
 version = "0.3.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a7d5765366c461413e5b2966b89f14bbdb3f5d785fd03f1cfe8261fcfcac6844"
+source = "git+https://github.com/knurling-rs/defmt?branch=json#b94a9d5adf9db03cd711e81d1f89ba93c3065ba7"
 dependencies = [
  "anyhow",
  "byteorder",
@@ -219,8 +221,7 @@ dependencies = [
 [[package]]
 name = "defmt-parser"
 version = "0.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8d1ce010e1a51aef925c98f12ed81a4e0e96ce0185a87c33f1b3b9c8f20749c7"
+source = "git+https://github.com/knurling-rs/defmt?branch=json#b94a9d5adf9db03cd711e81d1f89ba93c3065ba7"
 
 [[package]]
 name = "diff"
