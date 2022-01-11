@@ -90,8 +90,8 @@ impl Target {
             Architecture::Riscv => DebugSequence::Riscv(DefaultRiscvSequence::create()),
         };
 
-        if chip.name.starts_with("LPC55S69") {
-            log::warn!("Using custom sequence for LPC55S69");
+        if chip.name.starts_with("LPC55S16") || chip.name.starts_with("LPC55S69") {
+            log::warn!("Using custom sequence for LPC55S16/LPC55S69");
             debug_sequence = DebugSequence::Arm(LPC55S69::create());
         } else if chip.name.starts_with("esp32c3") {
             log::warn!("Using custom sequence for ESP32c3");

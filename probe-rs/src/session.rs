@@ -10,7 +10,7 @@ use crate::{
             ap::{AccessPortError, GenericAp, MemoryAp},
             communication_interface::{ArmProbeInterface, MemoryApInformation},
             memory::Component,
-            ApInformation, SwoConfig,
+            ApInformation, SwoConfig, SwoReader,
         },
         riscv::communication_interface::RiscvCommunicationInterface,
     },
@@ -334,6 +334,17 @@ impl Session {
     pub fn read_swo(&mut self) -> Result<Vec<u8>, Error> {
         let interface = self.get_arm_interface()?;
         interface.read_swo()
+    }
+
+    /// Returns an implementation of [std::io::Read] that wraps [ArmProbeInterface::read_swo].
+    ///
+    /// The implementation buffers all available bytes from
+    /// [ArmProbeInterface::read_swo] on each [std::io::Read::read],
+    /// minimizing the chance of a target-side overflow event on which
+    /// trace packets are lost.
+    pub fn swo_reader(&mut self) -> Result<SwoReader, Error> {
+        let interface = self.get_arm_interface()?;
+        Ok(SwoReader::new(interface))
     }
 
     fn get_arm_interface(&mut self) -> Result<&mut Box<dyn ArmProbeInterface>, Error> {

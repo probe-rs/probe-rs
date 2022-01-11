@@ -4,10 +4,10 @@
 //!
 //! Example usage:
 //! ```no_run
-//! use structopt::StructOpt;
+//! use clap::Parser;
 //! use probe_rs_cli_util::common_options::FlashOptions;
 //!
-//! #[derive(StructOpt)]
+//! #[derive(clap::Parser)]
 //! struct Opts {
 //!     #[structopt(long = "some-opt")]
 //!     opt: String,
@@ -35,18 +35,19 @@ use crate::ArtifactError;
 
 use std::{fs::File, io::Write, path::Path, path::PathBuf};
 
+use byte_unit::Byte;
+use clap;
 use probe_rs::{
     config::{RegistryError, TargetSelector},
     flashing::{FileDownloadError, FlashError, FlashLoader},
     DebugProbeError, DebugProbeSelector, FakeProbe, Permissions, Probe, Session, Target,
     WireProtocol,
 };
-use structopt::StructOpt;
 
 /// Common options when flashing a target device.
-#[derive(Debug, StructOpt)]
+#[derive(Debug, clap::StructOpt)]
 pub struct FlashOptions {
-    #[structopt(short = "V", long = "version")]
+    #[structopt(short = 'V', long = "version")]
     pub version: bool,
     #[structopt(name = "list-chips", long = "list-chips")]
     pub list_chips: bool,
@@ -127,7 +128,7 @@ impl FlashOptions {
 }
 
 /// Common options and logic when interfacing with a [Probe].
-#[derive(StructOpt, Debug)]
+#[derive(clap::StructOpt, Debug)]
 pub struct ProbeOptions {
     #[structopt(name = "chip", long = "chip")]
     pub chip: Option<String>,
@@ -310,27 +311,27 @@ impl ProbeOptions {
 }
 
 /// Common options used when building artifacts with cargo.
-#[derive(StructOpt, Debug, Default)]
+#[derive(clap::StructOpt, Debug, Default)]
 pub struct CargoOptions {
-    #[structopt(name = "binary", long = "bin", hidden = true)]
+    #[structopt(name = "binary", long = "bin", hide = true)]
     pub bin: Option<String>,
-    #[structopt(name = "example", long = "example", hidden = true)]
+    #[structopt(name = "example", long = "example", hide = true)]
     pub example: Option<String>,
-    #[structopt(name = "package", short = "p", long = "package", hidden = true)]
+    #[structopt(name = "package", short = 'p', long = "package", hide = true)]
     pub package: Option<String>,
-    #[structopt(name = "release", long = "release", hidden = true)]
+    #[structopt(name = "release", long = "release", hide = true)]
     pub release: bool,
-    #[structopt(name = "target", long = "target", hidden = true)]
+    #[structopt(name = "target", long = "target", hide = true)]
     pub target: Option<String>,
-    #[structopt(name = "PATH", long = "manifest-path", hidden = true)]
+    #[structopt(name = "PATH", long = "manifest-path", hide = true)]
     pub manifest_path: Option<PathBuf>,
-    #[structopt(long, hidden = true)]
+    #[structopt(long, hide = true)]
     pub no_default_features: bool,
-    #[structopt(long, hidden = true)]
+    #[structopt(long, hide = true)]
     pub all_features: bool,
-    #[structopt(long, hidden = true)]
+    #[structopt(long, hide = true)]
     pub features: Vec<String>,
-    #[structopt(hidden = true)]
+    #[structopt(hide = true)]
     /// Escape hatch: all args passed after a sentinel `--` end up here,
     /// unprocessed. Used to pass arguments to cargo not declared in
     /// [CargoOptions].
@@ -342,7 +343,7 @@ impl CargoOptions {
     /// --help. Example usage:
     /// ```no_run
     /// use probe_rs_cli_util::common_options::{FlashOptions, CargoOptions};
-    /// use probe_rs_cli_util::structopt::StructOpt;
+    /// use probe_rs_cli_util::clap::Parser;
     ///
     /// let matches = FlashOptions::clap()
     ///     .bin_name("cargo flash")
@@ -502,6 +503,8 @@ pub enum OperationError {
     IOError(#[source] std::io::Error),
     #[error("probe-rs API was called in the wrong order.")]
     InvalidAPIOrder,
+    #[error("Failed to parse CLI arguments.")]
+    CliArgument(#[from] clap::Error),
 }
 
 impl From<std::io::Error> for OperationError {
@@ -536,6 +539,45 @@ pub fn print_families(mut f: impl Write) -> Result<(), OperationError> {
         for variant in family.variants() {
             writeln!(f, "        {}", variant.name)?;
         }
+    }
+    Ok(())
+}
+
+/// Print all the available families and their contained chips to the
+/// commandline.
+pub fn print_chip_info(name: impl AsRef<str>, mut f: impl Write) -> anyhow::Result<()> {
+    writeln!(f, "{}", name.as_ref())?;
+    let target = probe_rs::config::get_target_by_name(name)?;
+    writeln!(f, "Cores ({}):", target.cores.len())?;
+    for core in target.cores {
+        writeln!(
+            f,
+            "    - {} ({:?})",
+            core.name.to_ascii_lowercase(),
+            core.core_type
+        )?;
+    }
+    for memory in target.memory_map {
+        match memory {
+            probe_rs::config::MemoryRegion::Ram(region) => writeln!(
+                f,
+                "RAM: {:#010x?} ({})",
+                &region.range,
+                Byte::from_bytes(region.range.len() as u128).get_appropriate_unit(true)
+            )?,
+            probe_rs::config::MemoryRegion::Generic(region) => writeln!(
+                f,
+                "Generic: {:#010x?} ({})",
+                &region.range,
+                Byte::from_bytes(region.range.len() as u128).get_appropriate_unit(true)
+            )?,
+            probe_rs::config::MemoryRegion::Nvm(region) => writeln!(
+                f,
+                "NVM: {:#010x?} ({})",
+                &region.range,
+                Byte::from_bytes(region.range.len() as u128).get_appropriate_unit(true)
+            )?,
+        };
     }
     Ok(())
 }

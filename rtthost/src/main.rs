@@ -1,11 +1,12 @@
 use probe_rs::Permissions;
 use probe_rs::{config::TargetSelector, DebugProbeInfo, Probe};
 use probe_rs_rtt::{Channels, Rtt, RttChannel, ScanRegion};
+
+use clap::Parser;
 use std::io::prelude::*;
 use std::io::{stdin, stdout};
 use std::sync::mpsc::{channel, Receiver};
 use std::thread;
-use structopt::StructOpt;
 
 #[derive(Debug, PartialEq, Eq)]
 enum ProbeInfo {
@@ -27,7 +28,9 @@ impl std::str::FromStr for ProbeInfo {
     }
 }
 
-fn parse_scan_region(mut src: &str) -> Result<ScanRegion, Box<dyn std::error::Error>> {
+fn parse_scan_region(
+    mut src: &str,
+) -> Result<ScanRegion, Box<dyn std::error::Error + Send + Sync + 'static>> {
     src = src.trim();
     if src.is_empty() {
         return Ok(ScanRegion::Ram);
@@ -51,13 +54,13 @@ fn parse_scan_region(mut src: &str) -> Result<ScanRegion, Box<dyn std::error::Er
     }
 }
 
-#[derive(Debug, StructOpt)]
-#[structopt(
+#[derive(Debug, clap::Parser)]
+#[clap(
     name = "rtthost",
     about = "Host program for debugging microcontrollers using the RTT (real-time transfer) protocol."
 )]
 struct Opts {
-    #[structopt(
+    #[clap(
         short,
         long,
         default_value = "0",
@@ -65,31 +68,31 @@ struct Opts {
     )]
     probe: ProbeInfo,
 
-    #[structopt(
+    #[clap(
         short,
         long,
         help = "Target chip type. Leave unspecified to auto-detect."
     )]
     chip: Option<String>,
 
-    #[structopt(short, long, help = "List RTT channels and exit.")]
+    #[clap(short, long, help = "List RTT channels and exit.")]
     list: bool,
 
-    #[structopt(
+    #[clap(
         short,
         long,
         help = "Number of up channel to output. Defaults to 0 if it exists."
     )]
     up: Option<usize>,
 
-    #[structopt(
+    #[clap(
         short,
         long,
         help = "Number of down channel for keyboard input. Defaults to 0 if it exists."
     )]
     down: Option<usize>,
 
-    #[structopt(
+    #[clap(
         long,
         default_value="",
         parse(try_from_str=parse_scan_region),
@@ -104,7 +107,7 @@ fn main() {
 }
 
 fn run() -> i32 {
-    let opts = Opts::from_args();
+    let opts = Opts::parse();
 
     let probes = Probe::list_all();
 

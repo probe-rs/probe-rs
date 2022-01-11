@@ -7,20 +7,21 @@ use std::{
     time::{Duration, Instant, UNIX_EPOCH},
 };
 
+use clap;
+use clap::Parser;
 use rand::prelude::*;
-use structopt::StructOpt;
 
-#[derive(StructOpt)]
+#[derive(clap::Parser)]
 struct Cli {
-    #[structopt(long = "chip")]
+    #[clap(long = "chip")]
     chip: Option<String>,
-    #[structopt(long = "address", parse(try_from_str = parse_hex))]
+    #[clap(long = "address", parse(try_from_str = parse_hex))]
     address: u32,
-    #[structopt(long = "speed")]
+    #[clap(long = "speed")]
     speed: Option<u32>,
-    #[structopt(long = "protocol")]
+    #[clap(long = "protocol")]
     protocol: Option<String>,
-    #[structopt(long = "pr")]
+    #[clap(long = "pr")]
     pr: Option<u64>,
 }
 
@@ -33,7 +34,7 @@ const SIZE: usize = 0x1000;
 fn main() -> Result<(), &'static str> {
     pretty_env_logger::init();
 
-    let matches = Cli::from_args();
+    let matches = Cli::parse();
 
     let mut probe = open_probe(None)?;
 
