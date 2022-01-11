@@ -342,9 +342,7 @@ impl<'debuginfo, 'probe, 'core> Iterator for StackFrameIterator<'debuginfo, 'pro
     ///
     /// Note: In addition to populating the `StackFrame`s, this function will also populate the `DebugInfo::VariableCache` with `Variable`s for available Registers and function variables.
     fn next(&mut self) -> Option<Self::Item> {
-        if self.unwind_registers.get_return_address().is_none() {
-            return None;
-        }
+        self.unwind_registers.get_return_address()?;
         // PART 0: If we've encountered an error in the previous iteration, the `PC` will be `None`.
         let frame_pc = if let Some(frame_pc) = self.unwind_registers.get_program_counter() {
             frame_pc as u64
@@ -362,22 +360,22 @@ impl<'debuginfo, 'probe, 'core> Iterator for StackFrameIterator<'debuginfo, 'pro
         );
 
         // PART 1-a: Prepare the `StackFrame` that holds the current frame information
-        let return_frame = match self.debug_info.get_stackframe_info(
-            &mut self.core,
-            frame_pc,
-            &self.unwind_registers,
-        ) {
-            Ok(frame) => {
-                // self.frame_count += 1;
-                frame
-            }
-            Err(e) => {
-                log::error!("UNWIND: Unable to complete `StackFrame` information: {}", e);
-                // There is no point in continuing with the unwind, so let's get out of here.
-                self.unwind_registers.set_return_address(None);
-                return None;
-            }
-        };
+        let return_frame =
+            match self
+                .debug_info
+                .get_stackframe_info(self.core, frame_pc, &self.unwind_registers)
+            {
+                Ok(frame) => {
+                    // self.frame_count += 1;
+                    frame
+                }
+                Err(e) => {
+                    log::error!("UNWIND: Unable to complete `StackFrame` information: {}", e);
+                    // There is no point in continuing with the unwind, so let's get out of here.
+                    self.unwind_registers.set_return_address(None);
+                    return None;
+                }
+            };
 
         // Part 1-b: When we encounter the starting (after reset) return address, we've reached the bottom of the stack, so no more unwinding after this ...
         if let Some(check_return_address) = self.unwind_registers.get_return_address() {
@@ -392,30 +390,30 @@ impl<'debuginfo, 'probe, 'core> Iterator for StackFrameIterator<'debuginfo, 'pro
 
         // PART 2: Setup the registers for the `next()` iteration (a.k.a. unwind previous frame, a.k.a. "callee", in the call stack).
         log::debug!("\nUNWIND Registers for previous function ...");
-        if let Some(unwind_return_address)  = self.unwind_registers.get_return_address() {
+        if let Some(unwind_return_address) = self.unwind_registers.get_return_address() {
             // Part2-a: we have to check if the `return_frame::registers` had the LR value modified. This would indicate that it processed an INLINED function, and the unwind process below will take a different path than the one for NON-INLINED functions.
             if let Some(stackframe_return_address) = return_frame.registers.get_return_address() {
                 if unwind_return_address != stackframe_return_address {
                     log::debug!("UNWIND - Preparing `StackFrameIterator` to unwind INLINED function {:?} at {:?}",return_frame.function_name,return_frame.source_location);
                     // The only `unwind` we need to do, is to update the PC with the call site address of the inline function. The `StackFrameIterator::next()` iteration will then create a virtual `StackFrame` for the call-site.
                     let register_number = self
-                                            .unwind_registers
-                                            .register_description
-                                            .program_counter()
-                                            .address
-                                            .0
-                                            as u32;
+                        .unwind_registers
+                        .register_description
+                        .program_counter()
+                        .address
+                        .0 as u32;
                     log::debug!(
-                            "UNWIND - {:04}: Caller: {:#010x}\tCallee: {:#010x}\tRule: {}",
-                            self.unwind_registers
-                                .get_name_by_dwarf_register_number(register_number),
-                            stackframe_return_address,
-                            self.unwind_registers
-                                .get_value_by_dwarf_register_number(register_number)
-                                .unwrap_or_default(),
-                            "PC= Inlined function LR",
-                        );
-                    self.unwind_registers.set_program_counter(Some(stackframe_return_address));
+                        "UNWIND - {:04}: Caller: {:#010x}\tCallee: {:#010x}\tRule: {}",
+                        self.unwind_registers
+                            .get_name_by_dwarf_register_number(register_number),
+                        stackframe_return_address,
+                        self.unwind_registers
+                            .get_value_by_dwarf_register_number(register_number)
+                            .unwrap_or_default(),
+                        "PC= Inlined function LR",
+                    );
+                    self.unwind_registers
+                        .set_program_counter(Some(stackframe_return_address));
                     return Some(return_frame);
                 }
             } else {
@@ -566,12 +564,10 @@ impl<'debuginfo, 'probe, 'core> Iterator for StackFrameIterator<'debuginfo, 'pro
                                                 if return_address == u32::MAX {
                                                     // No reliable return is available.
                                                     None
+                                                } else if return_address.is_zero() {
+                                                    Some(0)
                                                 } else {
-                                                    if return_address.is_zero() {
-                                                        Some(0)
-                                                    } else {
-                                                        Some((return_address - address_size) & !0b1)
-                                                    }
+                                                    Some((return_address - address_size) & !0b1)
                                                 }
                                             },
                                         )
@@ -846,7 +842,7 @@ impl DebugInfo {
     }
 
     // Get a reference to the private member `dwarf`
-    pub fn get_dwarf(&self) -> &gimli::Dwarf<DwarfReader>{
+    pub fn get_dwarf(&self) -> &gimli::Dwarf<DwarfReader> {
         &self.dwarf
     }
 
@@ -981,12 +977,7 @@ impl DebugInfo {
                 static_root_variable =
                     self.variable_cache
                         .cache_variable(0, static_root_variable, core)?;
-                unit_info.process_tree(
-                    unit_node,
-                    static_root_variable,
-                    core,
-                    core_registers,
-                )?;
+                unit_info.process_tree(unit_node, static_root_variable, core, core_registers)?;
             }
         }
         Ok(())
@@ -1012,7 +1003,7 @@ impl DebugInfo {
             .values
             .into_iter()
             .collect::<Vec<(u32, u32)>>();
-        sorted_registers.sort_by_key(|(register_number, _register_value)| register_number.clone());
+        sorted_registers.sort_by_key(|(register_number, _register_value)| *register_number);
 
         for (register_number, register_value) in sorted_registers {
             let register_variable = Variable {
@@ -1085,13 +1076,12 @@ impl DebugInfo {
         parent_variable: Variable,
     ) -> Result<(), DebugError> {
         // Only do attempt this part if the parent is a pointer and we have not yet resolved the referenced children.
-        if parent_variable.referenced_node_offset.is_some() && !self.variable_cache.has_children(&parent_variable)? {
+        if parent_variable.referenced_node_offset.is_some()
+            && !self.variable_cache.has_children(&parent_variable)?
+        {
             if let Some(ref stack_frame_registers) = parent_variable.stack_frame_registers {
                 if let Some(header_offset) = parent_variable.header_offset {
-                    let unit_header = self
-                        .dwarf
-                        .debug_info
-                        .header_from_offset(header_offset)?;
+                    let unit_header = self.dwarf.debug_info.header_from_offset(header_offset)?;
                     let unit_info = UnitInfo {
                         debug_info: self,
                         unit: gimli::Unit::new(&self.dwarf, unit_header)?,
@@ -1102,30 +1092,24 @@ impl DebugInfo {
                         parent_variable.referenced_node_offset,
                     )?;
                     let referenced_node = type_tree.root()?;
-                    let mut referenced_variable =
-                        self.variable_cache.cache_variable(
-                            parent_variable.variable_key,
-                            Variable::new(
-                                unit_info
-                                    .unit
-                                    .header
-                                    .offset()
-                                    .as_debug_info_offset(),
-                                Some(referenced_node.entry().offset()),
-                            ),
-                            core,
-                        )?;
-                    referenced_variable.name =
-                        format!("*{}", parent_variable.name);
+                    let mut referenced_variable = self.variable_cache.cache_variable(
+                        parent_variable.variable_key,
+                        Variable::new(
+                            unit_info.unit.header.offset().as_debug_info_offset(),
+                            Some(referenced_node.entry().offset()),
+                        ),
+                        core,
+                    )?;
+                    referenced_variable.name = format!("*{}", parent_variable.name);
                     // Now, retrieve the location by reading the adddress pointed to by the parent variable.
                     let mut buff = [0u8; 4];
-                    core.read(
-                        parent_variable.memory_location as u32,
-                        &mut buff,
+                    core.read(parent_variable.memory_location as u32, &mut buff)?;
+                    referenced_variable.memory_location = u32::from_le_bytes(buff) as u64;
+                    referenced_variable = self.variable_cache.cache_variable(
+                        referenced_variable.parent_key,
+                        referenced_variable,
+                        core,
                     )?;
-                    referenced_variable.memory_location =
-                        u32::from_le_bytes(buff) as u64;
-                    referenced_variable = self.variable_cache.cache_variable(referenced_variable.parent_key, referenced_variable, core)?;
                     referenced_variable = unit_info.extract_type(
                         referenced_node,
                         &parent_variable,
@@ -1135,9 +1119,8 @@ impl DebugInfo {
                     )?;
                     // Only use this, if it is NOT a unit datatype.
                     if referenced_variable.type_name.eq("()") {
-                        self.variable_cache.remove_cache_entry(
-                            referenced_variable.variable_key,
-                        )?;
+                        self.variable_cache
+                            .remove_cache_entry(referenced_variable.variable_key)?;
                     }
                 }
             }
@@ -1151,7 +1134,7 @@ impl DebugInfo {
         &self,
         core: &mut Core<'_>,
         address: u64,
-        unwind_registers: &Registers
+        unwind_registers: &Registers,
     ) -> Result<StackFrame, DebugError> {
         let mut units = self.get_units();
 
@@ -1159,18 +1142,18 @@ impl DebugInfo {
         let mut stack_frame_registers = unwind_registers.clone();
 
         while let Some(unit_info) = self.get_next_unit_info(&mut units) {
-            if let Some(function_die) =
-                &mut unit_info.get_function_die(address, true)
-            {
+            if let Some(function_die) = &mut unit_info.get_function_die(address, true) {
                 let function_name = function_die
                     .function_name(&unit_info)
                     .unwrap_or(unknown_function);
 
                 if function_die.is_inline {
                     // Calculate the call site for this function, so that we can use it later to create an additional 'callee' `StackFrame` from that PC.
-                    let address_size = gimli::_UnwindSectionPrivate::address_size(&self.frame_section) as u64;
+                    let address_size =
+                        gimli::_UnwindSectionPrivate::address_size(&self.frame_section) as u64;
                     if function_die.low_pc > address_size && function_die.low_pc < u32::MAX.into() {
-                        stack_frame_registers.set_return_address(Some((function_die.low_pc - address_size) as u32));
+                        stack_frame_registers
+                            .set_return_address(Some((function_die.low_pc - address_size) as u32));
                     } else {
                         stack_frame_registers.set_return_address(None);
                     }
@@ -1205,7 +1188,11 @@ impl DebugInfo {
                         .cache_variable(0, stackframe_root_variable, core)?;
 
                 if let Some(error) = self
-                    .cache_register_variables(&stack_frame_registers, &stackframe_root_variable, core)
+                    .cache_register_variables(
+                        &stack_frame_registers,
+                        &stackframe_root_variable,
+                        core,
+                    )
                     .err()
                 {
                     log::warn!(
@@ -1570,7 +1557,6 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                     .unwrap();
 
                 while let Ok(Some(ranges)) = ranges.next() {
-
                     if (ranges.begin <= address) && (address < ranges.end) {
                         // Check if we are actually in an inlined function
 
@@ -1696,7 +1682,6 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
     /// - Consumes the `child_variable`.
     /// - Updates the `DebugInfo::VariableCache` with all appropriate `Variable` fields.
     /// - Returns a clone of the most up-to-date `child_variable` in the cache.
-    #[must_use]
     fn process_tree_node_attributes(
         &self,
         tree_node: &mut gimli::EntriesTreeNode<GimliReader>,
@@ -1989,7 +1974,6 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
     /// - Consumes the `parent_variable`.
     /// - Updates the `DebugInfo::VariableCache` with all descendant `Variable`s.
     /// - Returns a clone of the most up-to-date `parent_variable` in the cache.
-    #[must_use]
     fn process_tree(
         &self,
         parent_node: gimli::EntriesTreeNode<GimliReader>,
@@ -2093,7 +2077,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                     child_variable = self.process_tree_node_attributes(&mut child_node, &mut parent_variable, child_variable, core, stack_frame_registers)?;
                     // Pass some key values through intermediate nodes to valid desccendants.
                     child_variable.role = parent_variable.role.clone();
-                    child_variable.memory_location = parent_variable.memory_location;                    
+                    child_variable.memory_location = parent_variable.memory_location;
                     // Recursively process each child.
                     child_variable = self.process_tree(child_node, child_variable, core, stack_frame_registers)?;
                     // Eliminate intermediate DWARF nodes, but keep their children
@@ -2228,7 +2212,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                         gimli::DW_TAG_enumeration_type |
                         gimli::DW_TAG_array_type |
                         gimli::DW_TAG_subroutine_type |
-                        gimli::DW_TAG_subprogram | 
+                        gimli::DW_TAG_subprogram |
                         gimli::DW_TAG_union_type => {
                             // These will be processed elsewhere.
                         }
@@ -2251,7 +2235,6 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
         node: &gimli::EntriesTreeNode<GimliReader>,
         variable: &mut Variable,
         default_variant: u64,
-
     ) -> Result<(), DebugError> {
         if node.entry().tag() == gimli::DW_TAG_variant {
             variable.role = match node.entry().attr(gimli::DW_AT_discr_value) {
@@ -2291,7 +2274,6 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
     /// This means both [`get_function_variables()`] and [`extract_type()`] will call the recursive [`process_tree()`] method to build an integrated `tree` of variables with types and values.
     /// - Consumes the `child_variable`.
     /// - Returns a clone of the most up-to-date `child_variable` in the cache.
-    #[must_use]
     fn extract_type(
         &self,
         node: gimli::EntriesTreeNode<GimliReader>,
@@ -2336,10 +2318,14 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                 match data_type_attribute.value() {
                                     gimli::AttributeValue::UnitRef(unit_ref) => {
                                         child_variable.referenced_node_offset = Some(unit_ref);
-                                        child_variable.stack_frame_registers = Some(stack_frame_registers.clone());
+                                        child_variable.stack_frame_registers =
+                                            Some(stack_frame_registers.clone());
                                         if child_variable.type_name.starts_with("*const") {
                                             // Resolve the children of this variable, because they contain essential information required to resolve the value
-                                            self.debug_info.cache_referenced_variables(core, child_variable.clone())?;
+                                            self.debug_info.cache_referenced_variables(
+                                                core,
+                                                child_variable.clone(),
+                                            )?;
                                         }
                                         child_variable =
                                             self.debug_info.variable_cache.cache_variable(
@@ -2614,7 +2600,6 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
     /// - Consumes the `child_variable`.
     /// - Find the location using either DW_AT_location, or DW_AT_data_member_location, and store it in the Variable. A value of 0 is a valid 0 reported from dwarf.
     ///  - Returns a clone of the most up-to-date `child_variable` in the cache.
-    #[must_use]
     fn extract_location(
         &self,
         node: &gimli::EntriesTreeNode<GimliReader>,

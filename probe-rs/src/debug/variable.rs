@@ -48,7 +48,6 @@ impl VariableCache {
     /// - For all operations, update the `parent_key`. A value of 0 means there are no parents for this variable.
     ///   - Validate that the supplied `Variable::parent_key` is a valid entry in the cache.
     /// - If appropriate, the `Variable::value` is updated from the core memory, and can be used by the calling function.
-    #[must_use]
     pub fn cache_variable(
         &self,
         parent_key: i64,
@@ -253,7 +252,7 @@ impl std::fmt::Display for VariableCache {
             .values()
             .cloned()
             .filter(|child_variable| {
-                child_variable.name == "<stack_frame>".to_owned() && child_variable.parent_key == 0
+                child_variable.name == *"<stack_frame>" && child_variable.parent_key == 0
             })
             .collect::<Vec<Variable>>();
         stack_frames.sort();
@@ -621,11 +620,11 @@ impl Variable {
                 }
             } else {
                 // We don't have a value, and we can't generate one from children values, so use the type_name
-                format!("{}", self.type_name)
+                self.type_name.to_string()
             }
         } else {
             // Use the supplied value.
-            format!("{}", self.value)
+            self.value.to_string()
         }
     }
 }
