@@ -140,7 +140,7 @@ fn run_target_program(elf_path: &Path, chip_name: &str, opts: &cli::Opts) -> any
     let halted_due_to_signal =
         extract_and_print_logs(elf, &mut core, &memory_map, opts, current_dir)?;
 
-    print_separator();
+    print_separator()?;
 
     let canary_touched = canary
         .map(|canary| canary.touched(&mut core, elf))
@@ -268,7 +268,7 @@ fn extract_and_print_logs(
         None
     };
 
-    print_separator();
+    print_separator()?;
 
     let stdout = io::stdout();
     let mut stdout = stdout.lock();
@@ -426,6 +426,6 @@ fn setup_logging_channel(
 }
 
 /// Print a line to separate different execution stages.
-fn print_separator() {
-    println!("{}", "─".repeat(80).dimmed());
+fn print_separator() -> io::Result<()> {
+    writeln!(io::stdout(), "{}", "─".repeat(80).dimmed())
 }
