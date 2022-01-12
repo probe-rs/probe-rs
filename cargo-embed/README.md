@@ -15,7 +15,7 @@ If you think cargo-embedded makes your embedded journey more enjoyable or even e
 
 ## Installation
 
-You can install this utility with cargo:
+You can install this utility with cargo after installing the prerequisites listed below:
 
 ```bash
 cargo install cargo-embed
@@ -70,10 +70,16 @@ cargo-embed depends on the [libusb](https://libusb.info/) and optionally on [lib
 
 #### Linux
 
-On Ubuntu, the following packages need to be installed:
+On Ubuntu or Debian, the following packages need to be installed:
 
 ```
 > sudo apt install -y pkg-config libusb-1.0-0-dev libftdi1-dev
+```
+
+You may also need to remove old versions of libusb:
+
+```
+> sudo apt remove libusb-dev
 ```
 
 #### Windows
