@@ -5,7 +5,8 @@ pub use probe_rs_target::Architecture;
 use probe_rs_target::CoreType;
 
 use crate::architecture::{
-    arm::core::State, riscv::communication_interface::RiscvCommunicationInterface, avr::communication_interface::AvrCommunicationInterface,
+    arm::core::State, avr::communication_interface::AvrCommunicationInterface,
+    riscv::communication_interface::RiscvCommunicationInterface,
 };
 use crate::error;
 use crate::Target;
@@ -313,7 +314,7 @@ impl SpecificCoreState {
     ) -> Result<Core<'probe>, Error> {
         let debug_sequence = match &target.debug_sequence {
             crate::config::DebugSequence::Arm(sequence) => sequence.clone(),
-            crate::config::DebugSequence::Riscv(_) => {
+            crate::config::DebugSequence::Avr | crate::config::DebugSequence::Riscv(_) => {
                 return Err(Error::UnableToOpenProbe(
                     "Core architecture and Probe mismatch.",
                 ))

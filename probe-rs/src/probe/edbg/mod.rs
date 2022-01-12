@@ -16,15 +16,13 @@ use crate::DebugProbe;
 use crate::DebugProbeError;
 use crate::DebugProbeSelector;
 use crate::WireProtocol;
-use crate::{
-    CoreInformation, CoreStatus, HaltReason,
-};
+use crate::{CoreInformation, CoreStatus, HaltReason};
 use enum_primitive_derive::Primitive;
 use num_traits::FromPrimitive;
 
 use std::time::Duration;
 
-use std::{convert::TryFrom, fmt};
+use std::fmt;
 
 pub mod avr8generic;
 
@@ -140,6 +138,7 @@ enum SubProtocols {
     EDBGCtrl = 0x20,
 }
 
+#[allow(dead_code)]
 #[derive(Copy, Clone, Debug)]
 enum AddressSize {
     Size24bit = 0x01,
@@ -237,7 +236,7 @@ impl std::fmt::Debug for EDBG {
 
 impl EDBG {
     pub fn new_from_device(device: CmsisDapDevice) -> Self {
-        log::debug!("Createing new edbg device");
+        log::debug!("Creating new edbg device");
 
         Self {
             device,
@@ -252,7 +251,7 @@ impl EDBG {
         sub_protocol_id: SubProtocols,
         command_packet: &[u8],
     ) -> Result<Vec<u8>, DebugProbeError> {
-        let report_size = 512;
+        //let report_size = 512;
 
         let mut packet: Vec<u8> = vec![
             EDBG_SOF,
@@ -276,10 +275,7 @@ impl EDBG {
 
         let mut response_data: Vec<u8> = vec![];
 
-        let rsp = commands::send_command::<AvrRSPRequest>(
-            &mut self.device,
-            AvrRSPRequest,
-        )?;
+        let rsp = commands::send_command::<AvrRSPRequest>(&mut self.device, AvrRSPRequest)?;
 
         log::debug!("Fragment info: {}", rsp.fragment_info);
 
@@ -287,17 +283,14 @@ impl EDBG {
         response_data.extend(&rsp.command_packet);
 
         for i in 2..(total_fragments + 1) {
-            let rsp = commands::send_command::<AvrRSPRequest>(
-                &mut self.device,
-                AvrRSPRequest,
-            )?;
+            let rsp = commands::send_command::<AvrRSPRequest>(&mut self.device, AvrRSPRequest)?;
 
-            let current_fragment = (rsp.fragment_info & 0xF0)>>4;
-            if rsp.fragment_info == 0 || current_fragment != i{
+            let current_fragment = (rsp.fragment_info & 0xF0) >> 4;
+            if rsp.fragment_info == 0 || current_fragment != i {
                 panic!("Invalid fragment");
             }
             response_data.extend(&rsp.command_packet);
-        };
+        }
 
         if response_data[0] != EDBG_SOF {
             panic!("Wrong SOF byte in AVR RSP");
@@ -308,7 +301,7 @@ impl EDBG {
             != self.sequence_number
         {
             panic!("Wrong sequence number in AVR RSP");
-            }
+        }
 
         self.sequence_number += 1;
         response_data.drain(0..4);
@@ -361,10 +354,8 @@ impl EDBG {
     }
 
     fn check_event(&mut self) -> Result<Vec<u8>, DebugProbeError> {
-        let response = commands::send_command::<AvrEventRequest>(
-            &mut self.device,
-            AvrEventRequest,
-        )?;
+        let response =
+            commands::send_command::<AvrEventRequest>(&mut self.device, AvrEventRequest)?;
 
         Ok(response.events)
     }
@@ -444,7 +435,7 @@ impl EDBG {
     pub fn read_program_counter(&mut self) -> Result<u32, DebugProbeError> {
         let response = self.send_command_avr8_generic(avr8generic::Commands::PcRead, 0, &[])?;
         match response {
-            avr8generic::Response::Pc(pc) => Ok(pc*2),
+            avr8generic::Response::Pc(pc) => Ok(pc * 2),
             avr8generic::Response::Failed(f) => Err(EdbgError::ErrorCode(f).into()),
             _ => Err(EdbgError::UnexpectedResponse.into()),
         }
@@ -546,7 +537,7 @@ impl EDBG {
         }
     }
 
-    pub fn halt(&mut self, timeout: Duration) -> Result<CoreInformation, error::Error> {
+    pub fn halt(&mut self, _timeout: Duration) -> Result<CoreInformation, error::Error> {
         // FIXME: Implementation currently ignores timeout argmuent
         self.send_command_avr8_generic(avr8generic::Commands::Stop, 0, &[1])?;
         let pc = self.read_program_counter()?;
@@ -559,7 +550,7 @@ impl EDBG {
         Ok(())
     }
 
-    pub fn reset_and_halt(&mut self, timeout: Duration) -> Result<CoreInformation, error::Error> {
+    pub fn reset_and_halt(&mut self, _timeout: Duration) -> Result<CoreInformation, error::Error> {
         self.send_command_avr8_generic(avr8generic::Commands::Reset, 0, &[1])?;
 
         let pc = self.read_program_counter()?;
@@ -589,8 +580,8 @@ impl DebugProbe for EDBG {
         let mut probe = Self::new_from_device(device);
 
         let protocols = probe.discover_protocols()?;
-        probe.housekeeping_start_session()?;
         log::debug!("Found protocols {:?}", protocols);
+        probe.housekeeping_start_session()?;
 
         Ok(Box::new(probe))
     }

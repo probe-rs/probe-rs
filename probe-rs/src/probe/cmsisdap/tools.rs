@@ -360,6 +360,7 @@ pub fn open_device_from_selector(
         })
         .ok_or(ProbeCreationError::NotFound)?;
 
+    log::debug!("found device info {:?}", device_info);
     let device = device_info.open_device(&hid_api)?;
 
     match device.get_product_string() {

@@ -10,22 +10,22 @@ impl Request for EdbgGetRequest<'_> {
 
     type Response = EdbgGetResponse;
 
-    fn to_bytes(&self, buffer: &mut [u8]) -> Result<usize, SendError> {
+    fn to_bytes(&self, _buffer: &mut [u8]) -> Result<usize, SendError> {
         unimplemented!();
-        buffer[0] = self.fragment_info;
-        let len = self.command_packet.len() as u16;
-        buffer[1..3].copy_from_slice(&len.to_le_bytes());
+        //buffer[0] = self.fragment_info;
+        //let len = self.command_packet.len() as u16;
+        //buffer[1..3].copy_from_slice(&len.to_le_bytes());
 
-        Ok(len as usize + 3)
+        //Ok(len as usize + 3)
     }
 
-    fn from_bytes(&self, buffer: &[u8]) -> Result<Self::Response, SendError> {
+    fn from_bytes(&self, _buffer: &[u8]) -> Result<Self::Response, SendError> {
         unimplemented!();
-        let done = buffer[1] == 0x01;
-        Ok(EdbgGetResponse { done })
+        //let done = buffer[1] == 0x01;
+        //Ok(EdbgGetResponse { done })
     }
 }
 
 pub struct EdbgGetResponse {
-    done: bool,
+    //done: bool,
 }

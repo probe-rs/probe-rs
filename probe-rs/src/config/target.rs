@@ -209,6 +209,8 @@ impl From<Target> for TargetSelector {
 pub enum DebugSequence {
     /// An ARM debug sequence.
     Arm(Arc<dyn ArmDebugSequence>),
+    /// An AVR debug sequence
+    Avr,
     /// A RISC-V debug sequence.
     Riscv(Arc<dyn RiscvDebugSequence>),
 }

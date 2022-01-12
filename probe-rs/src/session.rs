@@ -90,7 +90,8 @@ impl ArchitectureInterface {
                     .ok_or_else(|| Error::CoreNotFound(core_state.id()))?;
                 let arm_core_access_options = match &config.core_access_options {
                     probe_rs_target::CoreAccessOptions::Arm(opt) => Ok(opt),
-                    probe_rs_target::CoreAccessOptions::Riscv(_) => {
+                    probe_rs_target::CoreAccessOptions::Avr
+                    | probe_rs_target::CoreAccessOptions::Riscv(_) => {
                         Err(AccessPortError::InvalidCoreAccessOption(config.clone()))
                     }
                 }?;
@@ -140,7 +141,8 @@ impl Session {
                 let config = target.cores[0].clone();
                 let arm_core_access_options = match config.core_access_options {
                     probe_rs_target::CoreAccessOptions::Arm(opt) => Ok(opt),
-                    probe_rs_target::CoreAccessOptions::Riscv(_) => {
+                    probe_rs_target::CoreAccessOptions::Avr
+                    | probe_rs_target::CoreAccessOptions::Riscv(_) => {
                         Err(AccessPortError::InvalidCoreAccessOption(config))
                     }
                 }?;
@@ -155,7 +157,7 @@ impl Session {
 
                 let sequence_handle = match &target.debug_sequence {
                     DebugSequence::Arm(sequence) => sequence.clone(),
-                    DebugSequence::Riscv(_) => {
+                    DebugSequence::Avr | DebugSequence::Riscv(_) => {
                         panic!("Mismatch between architecture and sequence type!")
                     }
                 };
@@ -245,7 +247,6 @@ impl Session {
                 session
             }
             Architecture::Avr => {
-
                 probe.inner_attach()?;
 
                 let interface = probe
@@ -258,7 +259,6 @@ impl Session {
                     cores,
                 };
 
-
                 session
             }
             Architecture::Riscv => {
@@ -266,7 +266,7 @@ impl Session {
 
                 let sequence_handle = match &target.debug_sequence {
                     DebugSequence::Riscv(sequence) => sequence.clone(),
-                    DebugSequence::Arm(_) => {
+                    DebugSequence::Arm(_) | DebugSequence::Avr => {
                         panic!("Mismatch between architecture and sequence type!")
                     }
                 };
@@ -587,7 +587,7 @@ fn get_target_from_selector(
 
             if found_chip.is_none() && probe.has_avr_interface() {
                 match probe.try_into_avr_interface() {
-                    Ok(mut interface) => {
+                    Ok(interface) => {
                         //let idcode = interface.read_idcode();
 
                         //log::debug!("ID Code read over JTAG: {:x?}", idcode);

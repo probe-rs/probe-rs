@@ -8,7 +8,7 @@ impl Request for AvrEventRequest {
 
     type Response = AvrEventResponse;
 
-    fn to_bytes(&self, buffer: &mut [u8]) -> Result<usize, SendError> {
+    fn to_bytes(&self, _buffer: &mut [u8]) -> Result<usize, SendError> {
         Ok(0)
     }
 

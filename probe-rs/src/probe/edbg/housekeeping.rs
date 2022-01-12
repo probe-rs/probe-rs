@@ -1,6 +1,5 @@
 use enum_primitive_derive::Primitive;
 use num_traits::FromPrimitive;
-use scroll::{Pread, LE};
 
 #[allow(dead_code)]
 #[derive(Clone, Copy, Debug, PartialEq)]

@@ -1,10 +1,10 @@
 use serde::{Deserialize, Serialize};
 #[derive(Copy, Clone, PartialEq, Eq, Serialize, Deserialize, Debug)]
 pub enum DeviceData {
-    TinyX(TinyXDeviceData)
+    TinyX(TinyXDeviceData),
 }
 #[derive(Copy, Clone, PartialEq, Eq, Serialize, Deserialize, Debug)]
-pub struct TinyXDeviceData { 
+pub struct TinyXDeviceData {
     prog_base: u32,
     flash_pages_bytes: u16,
     eeprom_pages_bytes: u8,

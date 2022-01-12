@@ -112,6 +112,23 @@ fn add_generic_targets(vec: &mut Vec<ChipFamily>) {
             source: TargetDescriptionSource::Generic,
         },
         ChipFamily {
+            name: "Generic AVR UPDI".to_owned(),
+            manufacturer: None,
+            variants: vec![Chip {
+                name: "avr".to_owned(),
+                part: None,
+                cores: vec![Core {
+                    name: "core".to_owned(),
+                    core_type: CoreType::Avr,
+                    core_access_options: CoreAccessOptions::Avr,
+                }],
+                memory_map: vec![],
+                flash_algorithms: vec![],
+            }],
+            flash_algorithms: vec![],
+            source: TargetDescriptionSource::Generic,
+        },
+        ChipFamily {
             name: "Generic RISC-V".to_owned(),
             manufacturer: None,
             variants: vec![Chip {

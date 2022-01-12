@@ -2,7 +2,6 @@ use super::memory::MemoryRegion;
 use crate::CoreType;
 use serde::{Deserialize, Serialize};
 
-
 /// A single chip variant.
 ///
 /// This describes an exact chip variant, including the cores, flash and memory size. For example,
@@ -53,6 +52,8 @@ pub struct Core {
 pub enum CoreAccessOptions {
     /// Arm specific options
     Arm(ArmCoreAccessOptions),
+    /// Avr specific options
+    Avr,
     /// Riscv specific options
     Riscv(RiscvCoreAccessOptions),
 }

@@ -8,7 +8,7 @@ impl Request for AvrRSPRequest {
 
     type Response = AvrRSPResponse;
 
-    fn to_bytes(&self, buffer: &mut [u8]) -> Result<usize, SendError> {
+    fn to_bytes(&self, _buffer: &mut [u8]) -> Result<usize, SendError> {
         Ok(0)
     }
 
@@ -20,9 +20,7 @@ impl Request for AvrRSPRequest {
                 command_packet: vec![],
             })
         } else {
-            let size: u16 = buffer
-                .pread_with(1, BE)
-                .expect("Failed to read size");
+            let size: u16 = buffer.pread_with(1, BE).expect("Failed to read size");
             Ok(AvrRSPResponse {
                 fragment_info: buffer[0],
                 command_packet: buffer[3..3 + size as usize].to_vec(),

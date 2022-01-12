@@ -1,7 +1,6 @@
-use crate::probe::edbg::EDBG;
 use enum_primitive_derive::Primitive;
 use num_traits::FromPrimitive;
-use scroll::{Pread, Pwrite, LE};
+use scroll::{Pread, LE};
 
 #[allow(dead_code)]
 #[derive(Clone, Copy, Debug, Primitive, PartialEq)]
@@ -158,7 +157,7 @@ pub enum OptionsContextParameters {
 
 #[allow(dead_code)]
 pub enum SessionContextParameters {
-    AVR8_SESS_MAIN_PC = 0x00, // Address of main() function (deprecated)
+    Avr8SessMainPc = 0x00, // Address of main() function (deprecated)
 }
 
 #[allow(dead_code)]

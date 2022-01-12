@@ -204,12 +204,13 @@ impl Probe {
     /// This can be used to select the debug probe which
     /// should be used.
     pub fn list_all() -> Vec<DebugProbeInfo> {
-        let mut list = cmsisdap::tools::list_cmsisdap_devices();
+        //let mut list = cmsisdap::tools::list_cmsisdap_devices();
         #[cfg(feature = "ftdi")]
         {
             list.extend(ftdi::list_ftdi_devices());
         }
-        list.extend(edbg::tools::list_edbg_devices());
+        // FIXME: Figure out how to support both cmcisdap and edgb on same probe
+        let mut list = edbg::tools::list_edbg_devices();
         list.extend(stlink::tools::list_stlink_devices());
 
         list.extend(list_jlink_devices());

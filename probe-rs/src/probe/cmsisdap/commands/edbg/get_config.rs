@@ -23,9 +23,7 @@ impl Request for EdbgGetConfigRequest {
     fn from_bytes(&self, buffer: &[u8]) -> Result<Self::Response, SendError> {
         let status = buffer[0];
         if status == 0 {
-            let size: u16 = buffer
-                .pread_with(1, LE)
-                .expect("Failed to read size");
+            let size: u16 = buffer.pread_with(1, LE).expect("Failed to read size");
             Ok(EdbgGetConfigResponse {
                 config_packets: buffer[3..3 + size as usize].to_vec(),
             })
@@ -35,11 +33,11 @@ impl Request for EdbgGetConfigRequest {
     }
 }
 
-pub struct EdbgConfigPacket {
-    config_id: u8,
-    data_type: u8,
-    data: Vec<u8>,
-}
+//pub struct EdbgConfigPacket {
+//    config_id: u8,
+//    data_type: u8,
+//    data: Vec<u8>,
+//}
 
 pub struct EdbgGetConfigResponse {
     config_packets: Vec<u8>,

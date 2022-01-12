@@ -3,9 +3,7 @@ use crate::DebugProbeError;
 use crate::Error as ProbeRsError;
 use thiserror::Error;
 
-use crate::{
-    CoreInformation, CoreInterface, CoreStatus,
-};
+use crate::{CoreInformation, CoreStatus};
 
 use std::time::Duration;
 
@@ -86,7 +84,7 @@ impl<'probe> AvrCommunicationInterface {
 
     pub fn read_8(&mut self, address: u32, data: &mut [u8]) -> Result<(), error::Error> {
         let addr_space = (address & 0x00ff0000) >> 16;
-        let mem_type = match addr_space{
+        let mem_type = match addr_space {
             0x00 => avr8generic::Memtypes::ApplFlash,
             0x80 => avr8generic::Memtypes::Sram,
             0x81 => avr8generic::Memtypes::Eeprom,

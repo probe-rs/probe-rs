@@ -216,7 +216,7 @@ impl<'probe> Avr<'probe> {
 impl<'probe> CoreInterface for Avr<'probe> {
     /// Wait until the core is halted. If the core does not halt on its own,
     /// a [DebugProbeError::Timeout] error will be returned.
-    fn wait_for_core_halted(&mut self, timeout: Duration) -> Result<(), error::Error> {
+    fn wait_for_core_halted(&mut self, _timeout: Duration) -> Result<(), error::Error> {
         unimplemented!();
     }
 
@@ -273,7 +273,7 @@ impl<'probe> CoreInterface for Avr<'probe> {
         }
     }
 
-    fn write_core_reg(&mut self, address: CoreRegisterAddress, value: u32) -> Result<()> {
+    fn write_core_reg(&mut self, _address: CoreRegisterAddress, _value: u32) -> Result<()> {
         unimplemented!()
     }
 
@@ -282,19 +282,19 @@ impl<'probe> CoreInterface for Avr<'probe> {
         Ok(1)
     }
 
-    fn get_hw_breakpoints(&mut self) -> Result<Vec<Option<u32>>, error::Error>{
+    fn get_hw_breakpoints(&mut self) -> Result<Vec<Option<u32>>, error::Error> {
         todo!();
     }
 
-    fn enable_breakpoints(&mut self, state: bool) -> Result<(), error::Error> {
+    fn enable_breakpoints(&mut self, _state: bool) -> Result<(), error::Error> {
         unimplemented!();
     }
 
-    fn set_hw_breakpoint(&mut self, bp_unit_index: usize, addr: u32) -> Result<(), error::Error>{
+    fn set_hw_breakpoint(&mut self, _bp_unit_index: usize, _addr: u32) -> Result<(), error::Error> {
         todo!();
     }
 
-    fn clear_hw_breakpoint(&mut self, unit_index: usize) -> Result<(), error::Error>{
+    fn clear_hw_breakpoint(&mut self, _unit_index: usize) -> Result<(), error::Error> {
         todo!();
     }
 
@@ -312,32 +312,32 @@ impl<'probe> CoreInterface for Avr<'probe> {
     }
 }
 impl<'probe> MemoryInterface for Avr<'probe> {
-    fn read_word_32(&mut self, address: u32) -> Result<u32, Error> {
+    fn read_word_32(&mut self, _address: u32) -> Result<u32, Error> {
         //self.interface.read_word_32(address)
         unimplemented!()
     }
     fn read_word_8(&mut self, address: u32) -> Result<u8, Error> {
         self.interface.read_word_8(address)
     }
-    fn read_32(&mut self, address: u32, data: &mut [u32]) -> Result<(), Error> {
+    fn read_32(&mut self, _address: u32, _data: &mut [u32]) -> Result<(), Error> {
         //self.interface.read_32(address, data)
         unimplemented!()
     }
     fn read_8(&mut self, address: u32, data: &mut [u8]) -> Result<(), Error> {
         self.interface.read_8(address, data)
     }
-    fn write_word_32(&mut self, address: u32, data: u32) -> Result<(), Error> {
+    fn write_word_32(&mut self, _address: u32, _data: u32) -> Result<(), Error> {
         //self.interface.write_word_32(address, data)
         unimplemented!()
     }
     fn write_word_8(&mut self, address: u32, data: u8) -> Result<(), Error> {
         self.interface.write_word_8(address, data)
     }
-    fn write_32(&mut self, address: u32, data: &[u32]) -> Result<(), Error> {
+    fn write_32(&mut self, _address: u32, _data: &[u32]) -> Result<(), Error> {
         //self.interface.write_32(address, data)
         unimplemented!()
     }
-    fn write_8(&mut self, address: u32, data: &[u8]) -> Result<(), Error> {
+    fn write_8(&mut self, _address: u32, _data: &[u8]) -> Result<(), Error> {
         //self.interface.write_8(address, data)
         unimplemented!()
     }

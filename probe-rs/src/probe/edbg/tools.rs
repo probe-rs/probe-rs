@@ -1,4 +1,4 @@
-use crate:: probe::{DebugProbeInfo, DebugProbeType};
+use crate::probe::{DebugProbeInfo, DebugProbeType};
 /// Finds all CMSIS-DAP devices, either v1 (HID) or v2 (WinUSB Bulk).
 ///
 /// This method uses rusb to read device strings, which might fail due
@@ -37,4 +37,3 @@ fn get_edbg_hid_info(device: &hidapi::DeviceInfo) -> Option<DebugProbeInfo> {
     }
     None
 }
-

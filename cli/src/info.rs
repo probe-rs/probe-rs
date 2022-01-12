@@ -21,6 +21,8 @@ use probe_rs_cli_util::common_options::ProbeOptions;
 pub(crate) fn show_info_of_device(common: &ProbeOptions) -> Result<()> {
     let mut probe = common.attach_probe()?;
 
+    log::debug!("Attached probe: {:?}", probe);
+
     let protocols = if let Some(protocol) = common.protocol {
         vec![protocol]
     } else {
@@ -207,6 +209,6 @@ fn show_riscv_info(interface: &mut RiscvCommunicationInterface) -> Result<()> {
     Ok(())
 }
 
-fn show_avr_info(interface: &mut AvrCommunicationInterface) -> Result<()> {
+fn show_avr_info(_interface: &mut AvrCommunicationInterface) -> Result<()> {
     Ok(())
 }
