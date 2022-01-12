@@ -1,6 +1,6 @@
 //! Pretty printing the backtrace
 
-use std::{borrow::Cow, fmt::Write};
+use std::{borrow::Cow, fmt::Write, io, io::Write as _};
 
 use colored::Colorize as _;
 
@@ -9,14 +9,16 @@ use crate::dep;
 use super::{symbolicate::Frame, Settings};
 
 /// Pretty prints processed backtrace frames up to `backtrace_limit`
-pub(crate) fn backtrace(frames: &[Frame], settings: &Settings) {
-    println!("{}", "stack backtrace:".dimmed());
+pub(crate) fn backtrace(frames: &[Frame], settings: &Settings) -> io::Result<()> {
+    let stdout = io::stdout();
+    let mut stdout = stdout.lock();
+    writeln!(stdout, "{}", "stack backtrace:".dimmed())?;
 
     let mut frame_index = 0;
     for frame in frames {
         match frame {
             Frame::Exception => {
-                println!("      <exception entry>");
+                writeln!(stdout, "      <exception entry>")?;
             }
 
             Frame::Subroutine(subroutine) => {
@@ -42,7 +44,7 @@ pub(crate) fn backtrace(frames: &[Frame], settings: &Settings) {
                 } else {
                     line.normal()
                 };
-                println!("{}", colorized_line);
+                writeln!(stdout, "{}", colorized_line)?;
 
                 if let Some(location) = &subroutine.location {
                     let dep_path = dep::Path::from_std_path(&location.path);
@@ -59,7 +61,7 @@ pub(crate) fn backtrace(frames: &[Frame], settings: &Settings) {
                         .map(|column| Cow::Owned(format!(":{}", column)))
                         .unwrap_or(Cow::Borrowed(""));
 
-                    println!("        at {}:{}{}", path, line, column);
+                    writeln!(stdout, "        at {}:{}{}", path, line, column)?;
                 }
 
                 frame_index += 1;
@@ -76,4 +78,6 @@ pub(crate) fn backtrace(frames: &[Frame], settings: &Settings) {
             }
         }
     }
+
+    Ok(())
 }
