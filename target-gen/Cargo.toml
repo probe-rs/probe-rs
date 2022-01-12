@@ -39,5 +39,5 @@ tokio = { version = "1.15.0", features = ["macros", "rt", "rt-multi-thread"] }
 
 [dev-dependencies]
 assert_cmd = "2.0.2"
-predicates = "2.1.0"
+predicates = "2.1.1"
 assert_fs = "1.0.7"
