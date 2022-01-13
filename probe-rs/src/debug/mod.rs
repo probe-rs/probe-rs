@@ -2049,13 +2049,19 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                 } else {"<anonymous namespace>".to_string()};
                                 namespace_child_variable.type_name = "<namespace>".to_string();
                                 namespace_child_variable.memory_location = 0;
-                                let namespace_child_variable = self.debug_info.variable_cache.cache_variable(namespace_variable.variable_key, namespace_child_variable, core)?;
-                                self.process_tree(namespace_child_node, namespace_child_variable, core, stack_frame_registers)?;
+                                namespace_child_variable = self.debug_info.variable_cache.cache_variable(namespace_variable.variable_key, namespace_child_variable, core)?;
+                                namespace_child_variable = self.process_tree(namespace_child_node, namespace_child_variable, core, stack_frame_registers)?;
+                                if !self.debug_info.variable_cache.has_children(&namespace_child_variable)? {
+                                    self.debug_info.variable_cache.remove_cache_entry(namespace_child_variable.variable_key)?;
+                                }
                             }
                             _ => {
                                 // We only want namespace and variable children.
                             }
                         }
+                    }
+                    if !self.debug_info.variable_cache.has_children(&namespace_variable)? {
+                        self.debug_info.variable_cache.remove_cache_entry(namespace_variable.variable_key)?;
                     }
                 }
                 gimli::DW_TAG_variable |    // Typical top-level variables.

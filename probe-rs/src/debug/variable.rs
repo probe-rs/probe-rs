@@ -474,8 +474,14 @@ impl Variable {
                     if has_children {
                         self.formatted_variable_value(variable_cache)
                     } else if self.type_name.is_empty() || self.memory_location.is_zero() {
-                        // Intermediate nodes from DWARF. These should not show up in the final `VariableCache`
-                        "ERROR: This is a bug! Attempted to evaluate a Variable with no type or no memory location".to_string()
+                        if self.referenced_node_offset.is_some() {
+                            // When we will do a lazy-load of variable children, and they have not yet been requested by the user
+                            "".to_string()
+                        } else {
+                            // This condition should only be true for intermediate nodes from DWARF. These should not show up in the final `VariableCache`
+                            // If a user sees this error, then there is a logic problem in the stack unwind
+                            "ERROR: This is a bug! Attempted to evaluate a Variable with no type or no memory location".to_string()
+                        }
                     } else {
                         format!(
                             "UNIMPLEMENTED: Evaluate type {} of ({} bytes) at location 0x{:08x}",
