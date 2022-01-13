@@ -774,32 +774,37 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
 
         let mut dap_scopes: Vec<Scope> = vec![];
 
-        if let Some(static_root_variable) = debug_info
-            .variable_cache
-            .get_variable_by_name_and_parent("<statics>".to_owned(), 0)
-        {
-            let (static_variables_reference, static_named_variables, static_indexed_variables) =
-                self.get_variable_reference(debug_info, &static_root_variable);
-            dap_scopes.push(Scope {
-                line: None,
-                column: None,
-                end_column: None,
-                end_line: None,
-                expensive: true, // VSCode won't open this tree by default.
-                indexed_variables: Some(static_indexed_variables),
-                name: "Static".to_string(),
-                presentation_hint: Some("statics".to_string()),
-                named_variables: Some(static_named_variables),
-                source: None,
-                variables_reference: static_variables_reference,
-            });
-        };
-
         if arguments.frame_id > 0 {
             if let Some(stackframe_root_variable) = debug_info
                 .variable_cache
                 .get_variable_by_key(arguments.frame_id)
             {
+                if let Some(static_root_variable) =
+                    debug_info.variable_cache.get_variable_by_name_and_parent(
+                        "<statics>".to_owned(),
+                        stackframe_root_variable.variable_key,
+                    )
+                {
+                    let (
+                        static_variables_reference,
+                        static_named_variables,
+                        static_indexed_variables,
+                    ) = self.get_variable_reference(debug_info, &static_root_variable);
+                    dap_scopes.push(Scope {
+                        line: None,
+                        column: None,
+                        end_column: None,
+                        end_line: None,
+                        expensive: true, // VSCode won't open this tree by default.
+                        indexed_variables: Some(static_indexed_variables),
+                        name: "Static".to_string(),
+                        presentation_hint: Some("statics".to_string()),
+                        named_variables: Some(static_named_variables),
+                        source: None,
+                        variables_reference: static_variables_reference,
+                    });
+                };
+
                 if let Some(register_root_variable) =
                     debug_info.variable_cache.get_variable_by_name_and_parent(
                         "<registers>".to_owned(),
@@ -1112,7 +1117,9 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                 named_child_variables_cnt,
                 indexed_child_variables_cnt,
             )
-        } else if parent_variable.referenced_node_offset.is_some() {
+        } else if parent_variable.referenced_node_offset.is_some()
+            && parent_variable.get_value(&debug_info.variable_cache) != "()"
+        {
             // We have not yet cached the children for this reference.
             // Provide DAP Client with a reference so that it will explicitly ask for children when the user expands it.
             (parent_variable.variable_key, 0, 0)

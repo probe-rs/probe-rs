@@ -11,10 +11,10 @@ use std::{
 /// VariableCache stores every available `Variable`, and provides methods to create and navigate the parent-child relationships of the Variables.
 /// There should be ONLY ONE `VariableCache` per `DebugInfo`. Because of the multiple ways in which it is updated, all references to `VariableCache` are *immutable*, and can only be updated through its methods, which provide *interior mutability"
 ///
-/// There are four 'dummy' `Variables`, named `<statics>`, `<stack_frame>`, `<registers>`, and `<locals>`. These are used to provide the header structure of how variables relate to different scopes in a particular stacktrace. This 'dummy' structure looks as follows
-/// - `<statics>`: The parent variable for all static coped variables in the stack
-///   - A recursive `Variable` structure as described for `<locals>` below.
+/// There are four 'dummy' `Variables`, named `<stack_frame>`, `<statics>`, `<registers>`, and `<locals>`. These are used to provide the header structure of how variables relate to different scopes in a particular stacktrace. This 'dummy' structure looks as follows
 /// - `<stack_frame>`: Every `StackFrame` will have one of these, with its function name captured in the `value` field of this dummy variable.
+///   - `<statics>`: The parent variable for all static coped variables in the stack
+///     - A recursive `Variable` structure as described for `<locals>` below.
 ///   - `<registers>`: Every `StackFrame` will have a collection of `Variable` registers.
 ///     - A `Variable` for each available register
 ///   - `<locals>`: Every `StackFrame` (function) will have a collection of locally scoped `Variable`s.

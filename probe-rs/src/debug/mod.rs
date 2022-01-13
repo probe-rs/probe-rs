@@ -304,16 +304,6 @@ impl<'debuginfo, 'probe, 'core> StackFrameIterator<'debuginfo, 'probe, 'core> {
         let unwind_context: Box<UnwindContext<DwarfReader>> = Box::new(gimli::UnwindContext::new());
         let unwind_bases = gimli::BaseAddresses::default();
 
-        if let Some(error) = debug_info
-            .cache_static_variables(core, &current_registers)
-            .err()
-        {
-            log::warn!(
-                "Error while resolving static variables.{}\nContinuing.",
-                error
-            );
-        }
-
         Self {
             debug_info,
             core,
@@ -957,30 +947,31 @@ impl DebugInfo {
     }
 
     /// Resolves and then loads all the `static` variables into the `DebugInfo::VariableCache`.
-    pub fn cache_static_variables(
+    fn cache_static_variables(
         &self,
         core: &mut Core<'_>,
-        core_registers: &Registers,
+        unit_info: &UnitInfo,
+        stack_frame_registers: &Registers,
+        stackframe_root_variable: &Variable,
     ) -> Result<(), DebugError> {
-        // Iterate through the unit headers.
-        let mut header_units = self.get_units();
-        let mut static_root_variable = Variable::new(None, None);
-        static_root_variable.name = "<statics>".to_string();
-        static_root_variable = self
-            .variable_cache
-            .cache_variable(0, static_root_variable, core)?;
-        while let Some(unit_info) = self.get_next_unit_info(&mut header_units) {
-            let abbrevs = &unit_info.unit.abbreviations;
-            // Navigate the current unit from the header down.
-            if let Ok(mut header_tree) = unit_info.unit.header.entries_tree(abbrevs, None) {
-                let unit_node = header_tree.root()?;
-                static_root_variable = unit_info.process_tree(
-                    unit_node,
-                    static_root_variable,
-                    core,
-                    core_registers,
-                )?;
-            }
+        // Only process statics for this unit header.
+        let abbrevs = &unit_info.unit.abbreviations;
+        // Navigate the current unit from the header down.
+        if let Ok(mut header_tree) = unit_info.unit.header.entries_tree(abbrevs, None) {
+            let unit_node = header_tree.root()?;
+            let mut static_root_variable = Variable::new(None, None);
+            static_root_variable.name = "<statics>".to_string();
+            static_root_variable = self.variable_cache.cache_variable(
+                stackframe_root_variable.variable_key,
+                static_root_variable,
+                core,
+            )?;
+            static_root_variable = unit_info.process_tree(
+                unit_node,
+                static_root_variable,
+                core,
+                stack_frame_registers,
+            )?;
         }
         Ok(())
     }
@@ -1171,6 +1162,8 @@ impl DebugInfo {
                 log::debug!("UNWIND: Function name: {}", function_name);
 
                 // Now that we have the function_name and function_source_location, we can cache the in-scope `Variable`s (`<statics>` and `<locals>`) in `DebugInfo::VariableCache`
+                // We need an empty parent variable for the next operation, but do not need to store it in the cache.
+                let parent_variable = Variable::new(None, None);
                 let mut stackframe_root_variable = Variable::new(
                     unit_info.unit.header.offset().as_debug_info_offset(),
                     Some(function_die.function_die.offset()),
@@ -1178,7 +1171,6 @@ impl DebugInfo {
                 stackframe_root_variable.name = "<stack_frame>".to_string();
                 stackframe_root_variable.source_location = function_source_location.clone();
                 stackframe_root_variable.set_value(function_name.clone());
-                let parent_variable = self.variable_cache.get_variable_by_key(1).unwrap();
                 stackframe_root_variable = unit_info.extract_location(
                     &unit_info
                         .unit
@@ -1190,9 +1182,11 @@ impl DebugInfo {
                     &stack_frame_registers,
                 )?;
 
-                stackframe_root_variable =
-                    self.variable_cache
-                        .cache_variable(0, stackframe_root_variable, core)?;
+                stackframe_root_variable = self.variable_cache.cache_variable(
+                    parent_variable.variable_key,
+                    stackframe_root_variable,
+                    core,
+                )?;
 
                 if let Some(error) = self
                     .cache_register_variables(
@@ -1204,6 +1198,22 @@ impl DebugInfo {
                 {
                     log::warn!(
                         "Could not resolve register variables.{}\nContinuing.",
+                        error
+                    );
+                }
+
+                // Next, resolve the statics that belong to the compilation unit that this function is in.
+                if let Some(error) = self
+                    .cache_static_variables(
+                        core,
+                        &unit_info,
+                        &stack_frame_registers,
+                        &stackframe_root_variable,
+                    )
+                    .err()
+                {
+                    log::warn!(
+                        "Error while resolving static variables.{}\nContinuing.",
                         error
                     );
                 }
@@ -2016,12 +2026,10 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                         match namespace_child_node.entry().tag() {
                             gimli::DW_TAG_variable => {
                                 // We only want the TOP level variables of the namespace (statics).
-                                let mut static_child_variable = self.debug_info.variable_cache.cache_variable(namespace_variable.variable_key, Variable::new(
+                                let static_child_variable = self.debug_info.variable_cache.cache_variable(namespace_variable.variable_key, Variable::new(
                                     self.unit.header.offset().as_debug_info_offset(),
                                     Some(namespace_child_node.entry().offset()),), core)?;
-                                static_child_variable = self.process_tree_node_attributes(&mut namespace_child_node, &mut namespace_variable, static_child_variable, core, stack_frame_registers)?;
-                                // self.debug_info.variable_cache.remove_cache_entry(static_child_variable.variable_key)?;
-                                // namespace_variable = self.debug_info.variable_cache.cache_variable(parent_variable.variable_key, namespace_variable, core)?;
+                                self.process_tree_node_attributes(&mut namespace_child_node, &mut namespace_variable, static_child_variable, core, stack_frame_registers)?;
                             }
                             gimli::DW_TAG_namespace => {
                                 // Recurse for additional namespace variables.
@@ -2062,7 +2070,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                     }
                     else {
                         // Recursively process each child.
-                        child_variable = self.process_tree(child_node, child_variable, core, stack_frame_registers)?;
+                        self.process_tree(child_node, child_variable, core, stack_frame_registers)?;
                     }
                 }
                 gimli::DW_TAG_variant_part => {
@@ -2074,7 +2082,6 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                     //          Level 3: --> Some DW_TAG_variant's that have discriminant values to be matched against the discriminant 
                     //              Level 4: --> The actual variables, with matching discriminant, which will be added to `parent_variable`
                     // TODO: Handle Level 3 nodes that belong to a DW_AT_discr_list, instead of having a discreet DW_AT_discr_value 
-                    // TODO: UX Improvement: For Option<> and Result<> structures,  hide the '__0' intermediate variable that is created between the 'Some'/'OK'/'Err' nodes and their contents.
                     let mut child_variable = self.debug_info.variable_cache.cache_variable(
                         parent_variable.variable_key,
                         Variable::new(self.unit.header.offset().as_debug_info_offset(),Some(child_node.entry().offset())),
