@@ -427,5 +427,5 @@ fn setup_logging_channel(
 
 /// Print a line to separate different execution stages.
 fn print_separator() -> io::Result<()> {
-    writeln!(io::stdout(), "{}", "─".repeat(80).dimmed())
+    writeln!(io::stderr(), "{}", "─".repeat(80).dimmed())
 }
