@@ -177,7 +177,8 @@ impl VariableCache {
     ) -> Result<(), Error> {
         // If the `obsolete_child_variable` has a type other than `Some`, then silently do nothing.
         if obsolete_child_variable.type_name.is_empty()
-            || obsolete_child_variable.type_name == "Some"
+            || obsolete_child_variable.type_name.eq("Some")
+            || obsolete_child_variable.name.eq("*<statics>")
         {
             // Make sure we pass children up, past any intermediate nodes.
             self.variable_hash_map

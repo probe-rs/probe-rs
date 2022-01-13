@@ -946,7 +946,9 @@ impl DebugInfo {
         None
     }
 
-    /// Resolves and then loads all the `static` variables into the `DebugInfo::VariableCache`.
+    /// We do not actually resolve the children of `<statics>` automatically, and only create the necessary header in the `VariableCache`.
+    /// This allows us to resolve the `<statics>` on demand/lazily, when a user requests it from the debug client.
+    /// This saves a lot of overhead when a user only wants to see the `<locals>` or `<registers>` while stepping through code (the most common use cases)
     fn cache_static_variables(
         &self,
         core: &mut Core<'_>,
@@ -959,18 +961,17 @@ impl DebugInfo {
         // Navigate the current unit from the header down.
         if let Ok(mut header_tree) = unit_info.unit.header.entries_tree(abbrevs, None) {
             let unit_node = header_tree.root()?;
-            let mut static_root_variable = Variable::new(None, None);
+            let mut static_root_variable = Variable::new(
+                unit_info.unit.header.offset().as_debug_info_offset(),
+                Some(unit_node.entry().offset()),
+            );
+            static_root_variable.referenced_node_offset = Some(unit_node.entry().offset());
+            static_root_variable.stack_frame_registers = Some(stack_frame_registers.clone());
             static_root_variable.name = "<statics>".to_string();
             static_root_variable = self.variable_cache.cache_variable(
                 stackframe_root_variable.variable_key,
                 static_root_variable,
                 core,
-            )?;
-            static_root_variable = unit_info.process_tree(
-                unit_node,
-                static_root_variable,
-                core,
-                stack_frame_registers,
             )?;
         }
         Ok(())
@@ -1062,7 +1063,10 @@ impl DebugInfo {
         Ok(())
     }
 
-    /// Resolves and then loads all the 'child' `Variable`s for pointer variables (`DW_TAG_pointer_type`) into the `DebugInfo::VariableCache`.
+    /// This is a lazy/deffered resolves and loads all the 'child' `Variable`s for a given unit.
+    /// This is used for:
+    /// - pointer variables (`DW_TAG_pointer_type`) into the `DebugInfo::VariableCache`.
+    /// - <statics> : The load of static variables and their namespaces in the debugger.
     pub fn cache_referenced_variables(
         &self,
         core: &mut Core<'_>,
@@ -1119,6 +1123,10 @@ impl DebugInfo {
                     if referenced_variable.type_name.eq("()") {
                         self.variable_cache
                             .remove_cache_entry(referenced_variable.variable_key)?;
+                    } else if parent_variable.name.eq("<statics>") {
+                        // If we are lazily resolving `<statics>`, then we need to eliminate the intermediate node
+                        self.variable_cache
+                            .adopt_grand_children(&parent_variable, &referenced_variable)?;
                     }
                 }
             }
@@ -2595,6 +2603,11 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                         ));
                     }
                 }
+            }
+            gimli::DW_TAG_compile_unit => {
+                // This only happens when we do a 'lazy' load of <statics>
+                child_variable =
+                    self.process_tree(node, child_variable, core, stack_frame_registers)?;
             }
             // Do not expand this type.
             other => {
