@@ -774,7 +774,10 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
 
         let mut dap_scopes: Vec<Scope> = vec![];
 
-        if let Some(static_root_variable) = debug_info.variable_cache.get_variable_by_key(0) {
+        if let Some(static_root_variable) = debug_info
+            .variable_cache
+            .get_variable_by_name_and_parent("<statics>".to_owned(), 0)
+        {
             let (static_variables_reference, static_named_variables, static_indexed_variables) =
                 self.get_variable_reference(debug_info, &static_root_variable);
             dap_scopes.push(Scope {
@@ -861,77 +864,6 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             }
         }
 
-        //////
-        //
-        // // Build the locals scope.
-        // // Extract all the variables from the `StackFrame` for later MS DAP calls to retrieve.
-        // let (variables_reference, named_variables_cnt, indexed_variables_cnt) =
-        //     self.create_variable_map(&frame.variables);
-        // scopes.push(Scope {
-        //     line: Some(line),
-        // column: frame.source_location.as_ref().and_then(|l| {
-        //     l.column.map(|c| match c {
-        //         ColumnType::LeftEdge => 0,
-        //         ColumnType::Column(c) => c as i64,
-        //     })
-        // }),
-        //     end_column: None,
-        //     end_line: None,
-        //     expensive: false,
-        //     indexed_variables: Some(indexed_variables_cnt),
-        //     name: "Locals".to_string(),
-        //     presentation_hint: Some("locals".to_string()),
-        //     named_variables: Some(named_variables_cnt),
-        //     source: source.clone(),
-        //     variables_reference,
-        // });
-        // // Build the registers scope and add its variables.
-        // // TODO: Consider expanding beyond core registers to add other architectue registers.
-        // let register_scope_reference = self.new_variable_map_key();
-        // // TODO: This is ARM specific, but should be generalized
-        // let variables: Vec<Variable> = frame
-        //     .registers
-        //     .registers()
-        //     .map(|(register_number, value)| Variable {
-        //         name: match register_number {
-        //             7 => "R7: THUMB Frame Pointer".to_owned(),
-        //             11 => "R11: ARM Frame Pointer".to_owned(),
-        //             13 => "SP".to_owned(),
-        //             14 => "LR".to_owned(),
-        //             15 => "PC".to_owned(),
-        //             other => format!("R{}", other),
-        //         },
-        //         value: format!("{:#010x}", value),
-        //         type_: Some("Core Register".to_owned()),
-        //         presentation_hint: None,
-        //         evaluate_name: None,
-        //         variables_reference: 0,
-        //         named_variables: None,
-        //         indexed_variables: None,
-        //         memory_reference: None,
-        //     })
-        //     .collect();
-        // let register_count = variables.len();
-        // self.variable_map
-        //     .insert(register_scope_reference, variables);
-        // scopes.push(Scope {
-        //     line: None,
-        //     column: None,
-        //     end_column: None,
-        //     end_line: None,
-        //     expensive: true, // VSCode won't open this tree by default.
-        //     indexed_variables: Some(0),
-        //     name: "Registers".to_string(),
-        //     presentation_hint: Some("registers".to_string()),
-        //     named_variables: Some(register_count as i64),
-        //     source: None,
-        //     variables_reference: if register_count > 0 {
-        //         register_scope_reference
-        //     } else {
-        //         0
-        //     },
-        // });
-        //////
         self.send_response(
             request,
             Ok(Some(ScopesResponseBody {

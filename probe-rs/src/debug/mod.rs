@@ -964,20 +964,22 @@ impl DebugInfo {
     ) -> Result<(), DebugError> {
         // Iterate through the unit headers.
         let mut header_units = self.get_units();
+        let mut static_root_variable = Variable::new(None, None);
+        static_root_variable.name = "<statics>".to_string();
+        static_root_variable = self
+            .variable_cache
+            .cache_variable(0, static_root_variable, core)?;
         while let Some(unit_info) = self.get_next_unit_info(&mut header_units) {
             let abbrevs = &unit_info.unit.abbreviations;
             // Navigate the current unit from the header down.
             if let Ok(mut header_tree) = unit_info.unit.header.entries_tree(abbrevs, None) {
                 let unit_node = header_tree.root()?;
-                let mut static_root_variable = Variable::new(
-                    unit_info.unit.header.offset().as_debug_info_offset(),
-                    Some(unit_node.entry().offset()),
-                );
-                static_root_variable.name = "<statics>".to_string();
-                static_root_variable =
-                    self.variable_cache
-                        .cache_variable(0, static_root_variable, core)?;
-                unit_info.process_tree(unit_node, static_root_variable, core, core_registers)?;
+                static_root_variable = unit_info.process_tree(
+                    unit_node,
+                    static_root_variable,
+                    core,
+                    core_registers,
+                )?;
             }
         }
         Ok(())
@@ -1100,8 +1102,12 @@ impl DebugInfo {
                         ),
                         core,
                     )?;
-                    referenced_variable.name = format!("*{}", parent_variable.name);
-                    // Now, retrieve the location by reading the adddress pointed to by the parent variable.
+                    if parent_variable.name.starts_with("Some") {
+                        referenced_variable.name = parent_variable.name.replacen("&", "*", 1);
+                    } else {
+                        referenced_variable.name = format!("*{}", parent_variable.name);
+                        // Now, retrieve the location by reading the adddress pointed to by the parent variable.
+                    }
                     let mut buff = [0u8; 4];
                     core.read(parent_variable.memory_location as u32, &mut buff)?;
                     referenced_variable.memory_location = u32::from_le_bytes(buff) as u64;
@@ -1117,6 +1123,7 @@ impl DebugInfo {
                         core,
                         stack_frame_registers,
                     )?;
+
                     // Only use this, if it is NOT a unit datatype.
                     if referenced_variable.type_name.eq("()") {
                         self.variable_cache
@@ -1798,7 +1805,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                         // Unused.
                     }
                     gimli::DW_AT_containing_type => {
-                        // TODO: Resolve Traits.
+                        // TODO: Implement [documented RUST extensions to DWARF standard](https://rustc-dev-guide.rust-lang.org/debugging-support-in-rustc.html?highlight=dwarf#dwarf-and-rustc)
                     }
                     gimli::DW_AT_type => {
                         match attr.value() {
@@ -2011,18 +2018,16 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                 // We only want the TOP level variables of the namespace (statics).
                                 let mut static_child_variable = self.debug_info.variable_cache.cache_variable(namespace_variable.variable_key, Variable::new(
                                     self.unit.header.offset().as_debug_info_offset(),
-                                    Some(namespace_child_node.entry().offset()),
-                ), core)?;
+                                    Some(namespace_child_node.entry().offset()),), core)?;
                                 static_child_variable = self.process_tree_node_attributes(&mut namespace_child_node, &mut namespace_variable, static_child_variable, core, stack_frame_registers)?;
-                                self.debug_info.variable_cache.remove_cache_entry(static_child_variable.variable_key)?;
-                                namespace_variable = self.debug_info.variable_cache.cache_variable(parent_variable.variable_key, namespace_variable, core)?;
+                                // self.debug_info.variable_cache.remove_cache_entry(static_child_variable.variable_key)?;
+                                // namespace_variable = self.debug_info.variable_cache.cache_variable(parent_variable.variable_key, namespace_variable, core)?;
                             }
                             gimli::DW_TAG_namespace => {
                                 // Recurse for additional namespace variables.
                                 let mut namespace_child_variable = Variable::new(
-                    self.unit.header.offset().as_debug_info_offset(),
-                    Some(namespace_child_node.entry().offset()),
-                );
+                                    self.unit.header.offset().as_debug_info_offset(),
+                                    Some(namespace_child_node.entry().offset()),);
                                 namespace_child_variable.name = if let Ok(Some(attr)) = namespace_child_node.entry().attr(gimli::DW_AT_name) {
                                     format!("{}::{}", namespace_variable.name, extract_name(self.debug_info, attr.value()))
                                 } else {"<anonymous namespace>".to_string()};
@@ -2051,9 +2056,13 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                         ||  child_variable.name == "<artificial>"
                     {
                         self.debug_info.variable_cache.remove_cache_entry(child_variable.variable_key)?;
-                    } else {
+                    } else if child_variable.type_name == "Some" {
+                        //This is an intermediate node. Once we've resolved the children, we can adopt them to their grandparent
+                        self.debug_info.variable_cache.adopt_grand_children(&parent_variable, &child_variable)?;
+                    }
+                    else {
                         // Recursively process each child.
-                        self.process_tree(child_node, child_variable, core, stack_frame_registers)?;
+                        child_variable = self.process_tree(child_node, child_variable, core, stack_frame_registers)?;
                     }
                 }
                 gimli::DW_TAG_variant_part => {
@@ -2065,50 +2074,48 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                     //          Level 3: --> Some DW_TAG_variant's that have discriminant values to be matched against the discriminant 
                     //              Level 4: --> The actual variables, with matching discriminant, which will be added to `parent_variable`
                     // TODO: Handle Level 3 nodes that belong to a DW_AT_discr_list, instead of having a discreet DW_AT_discr_value 
-                    // TODO: Figure out exact rules for Option/Result variants. They don't have obvious (or documented) behavior for matching `DW_AT_discr == DW_AT_discr_value`
                     // TODO: UX Improvement: For Option<> and Result<> structures,  hide the '__0' intermediate variable that is created between the 'Some'/'OK'/'Err' nodes and their contents.
                     let mut child_variable = self.debug_info.variable_cache.cache_variable(
                         parent_variable.variable_key,
                         Variable::new(self.unit.header.offset().as_debug_info_offset(),Some(child_node.entry().offset())),
                         core
                     )?;
-                    // If there is a child with DW_AT_discr, the variable role will updated appropriately, otherwise we use 0 as the default ...
-                    parent_variable.role = VariantRole::VariantPart(0);
+                    // To determine the discriminant, we use the following rules:
+                    // - If there is no DW_AT_discr, then there will be a single DW_TAG_variant, and this will be the matching value. In the code here, we assign a default value of u64::MAX to both, so that they will be matched as belonging together (https://dwarfstd.org/ShowIssue.php?issue=180517.2)
+                    // - TODO: The [DWARF] standard, 5.7.10, allows for a case where there is no DW_AT_discr attribute, but a DW_AT_type to represent the tag. I have not seen that generated from RUST yet.
+                    // - If there is a DW_AT_discr that has a value, then this is a reference to the member entry for the discriminant. This value will be resolved to match against the appropriate DW_TAG_variant.
+                    // - TODO: The [DWARF] standard, 5.7.10, allows for a DW_AT_discr_list, but I have not seen that generated from RUST yet. 
+                    parent_variable.role = VariantRole::VariantPart(u64::MAX);
                     child_variable = self.process_tree_node_attributes(&mut child_node, &mut parent_variable, child_variable, core, stack_frame_registers)?;
-                    // Pass some key values through intermediate nodes to valid desccendants.
-                    child_variable.role = parent_variable.role.clone();
-                    child_variable.memory_location = parent_variable.memory_location;
-                    // Recursively process each child.
-                    child_variable = self.process_tree(child_node, child_variable, core, stack_frame_registers)?;
-                    // Eliminate intermediate DWARF nodes, but keep their children
-                    self.debug_info.variable_cache.adopt_grand_children(&parent_variable, &child_variable)?;
+                    // At this point we have everything we need (It has updated the parent's `role`) from the child_variable, so elimnate it before we continue ...
+                    self.debug_info.variable_cache.remove_cache_entry(child_variable.variable_key)?;
+                    parent_variable = self.process_tree(child_node, parent_variable, core, stack_frame_registers)?;
                 }
                 gimli::DW_TAG_variant // variant is a child of a structure, and one of them should have a discriminant value to match the DW_TAG_variant_part 
                 => {
-                    let mut child_variable = self.debug_info.variable_cache.cache_variable(
-                        parent_variable.variable_key,
-                        Variable::new(self.unit.header.offset().as_debug_info_offset(), Some(child_node.entry().offset())),
-                        core
-                    )?;
-                    // We need to do this here, to identify "default" variants for when the rust lang compiler doesn't encode them explicitly ... only by absence of a DW_AT_discr_value
-                    let default_variant = if let VariantRole::VariantPart(discriminant) = parent_variable.role {
-                        discriminant
-                    } else {
-                        0
-                    };
-                    self.extract_variant_discriminant(&child_node, &mut child_variable, default_variant)?;
-                    child_variable = self.process_tree_node_attributes(&mut child_node, &mut parent_variable, child_variable, core, stack_frame_registers)?;
-                    if let VariantRole::Variant(discriminant) = child_variable.role {
-                        // Only process the discriminant variants.
-                        if parent_variable.role == VariantRole::VariantPart(discriminant) {
-                            // Pass some key values through intermediate nodes to valid desccendants.
-                            child_variable.memory_location = parent_variable.memory_location;
-                            // Recursively process each child.// Recursively process each relevant child.
-                            child_variable = self.process_tree(child_node, child_variable, core, stack_frame_registers)?;
-                            // Eliminate intermediate DWARF nodes, but keep their children
-                            self.debug_info.variable_cache.adopt_grand_children(&parent_variable, &child_variable)?;
-                        } else {
-                            self.debug_info.variable_cache.remove_cache_entry(child_variable.variable_key)?;
+                    // We only need to do this if we have not already found our variant,
+                    if !self.debug_info.variable_cache.has_children(&parent_variable)? {
+                        let mut child_variable = self.debug_info.variable_cache.cache_variable(
+                            parent_variable.variable_key,
+                            Variable::new(self.unit.header.offset().as_debug_info_offset(), Some(child_node.entry().offset())),
+                            core
+                        )?;
+                        self.extract_variant_discriminant(&child_node, &mut child_variable)?;
+                        child_variable = self.process_tree_node_attributes(&mut child_node, &mut parent_variable, child_variable, core, stack_frame_registers)?;
+                        if let VariantRole::Variant(discriminant) = child_variable.role {
+                            // Only process the discriminant variants or when we eventually   encounter the default 
+                            if parent_variable.role == VariantRole::VariantPart(discriminant) || discriminant == u64::MAX
+                            {
+                                // Pass some key values through intermediate nodes to valid desccendants.
+                                child_variable.memory_location = parent_variable.memory_location;
+                                // Recursively process each relevant child node.
+                                child_variable = self.process_tree(child_node, child_variable, core, stack_frame_registers)?;
+                                // Eliminate intermediate DWARF nodes, but keep their children
+                                self.debug_info.variable_cache.adopt_grand_children(&parent_variable, &child_variable)?;
+
+                            } else {
+                                self.debug_info.variable_cache.remove_cache_entry(child_variable.variable_key)?;
+                            }
                         }
                     }
                 }
@@ -2128,12 +2135,9 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                 }
                 gimli::DW_TAG_template_type_parameter => {
                     // The parent node for Rust generic type parameter
-                    // These show up as a child of structures they belong to, but currently don't lead to the member value or type.
-                    // Until rust lang implements this, we will ONLY process the ACTUAL structure member, to avoid a cluttered UI. 
-                    // let mut template_type_variable = Variable::new();
-                    // self.process_tree_node_attributes(&mut child_node, parent_variable, &mut template_type_variable, core, frame_base, program_counter)?;
-                    // parent_variable.add_child_variable(&mut template_type_variable, core);
-                    // self.process_tree(child_node, parent_variable, core, frame_base, program_counter)?;
+                    // These show up as a child of structures they belong to and points to the type that matches the template.
+                    // They are followed by a sibling of `DW_TAG_member` with name '__0' that has all the attributes needed to resolve the value.
+                    // TODO: If there are multiple types supported, then I suspect there will be additional `DW_TAG_member` siblings. We will need to match those correctly.
                 }
                 gimli::DW_TAG_formal_parameter => {
                     // TODO: WIP Parameters for functions, closures and inlined functions.
@@ -2234,7 +2238,6 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
         &self,
         node: &gimli::EntriesTreeNode<GimliReader>,
         variable: &mut Variable,
-        default_variant: u64,
     ) -> Result<(), DebugError> {
         if node.entry().tag() == gimli::DW_TAG_variant {
             variable.role = match node.entry().attr(gimli::DW_AT_discr_value) {
@@ -2253,7 +2256,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                         }
                         None => {
                             // In the case where the variable is a DW_TAG_variant, but has NO DW_AT_discr_value, then this is the "default" to be used.
-                            VariantRole::Variant(default_variant)
+                            VariantRole::Variant(u64::MAX)
                         }
                     }
                 }
@@ -2326,6 +2329,11 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                                 core,
                                                 child_variable.clone(),
                                             )?;
+                                        } else if parent_variable.type_name == "Some" {
+                                            // The parent `DW_TAG_structure_type` with name `Some` is an intermediate node that we only need for its children
+                                            // Update the child's name for when we adopt it to the grandparent later on.
+                                            child_variable.name =
+                                                format!("Some({})", child_variable.type_name);
                                         }
                                         child_variable =
                                             self.debug_info.variable_cache.cache_variable(

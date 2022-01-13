@@ -175,8 +175,10 @@ impl VariableCache {
         parent_variable: &Variable,
         obsolete_child_variable: &Variable,
     ) -> Result<(), Error> {
-        // If the `obsolete_child_variable` has a type, then silently do nothing.
-        if obsolete_child_variable.type_name.is_empty() {
+        // If the `obsolete_child_variable` has a type other than `Some`, then silently do nothing.
+        if obsolete_child_variable.type_name.is_empty()
+            || obsolete_child_variable.type_name == "Some"
+        {
             // Make sure we pass children up, past any intermediate nodes.
             self.variable_hash_map
                 .borrow_mut()
@@ -456,7 +458,7 @@ impl Variable {
     pub(crate) fn set_value(&mut self, new_value: String) {
         if self.value.is_empty() {
             self.value = new_value;
-        } else {
+        } else if new_value != self.value {
             // We append the new value to the old value, so that we don't loose any prior errors or warnings originating from the process of decoding the actual value.
             self.value = format!("{} : {}", self.value, new_value);
         }
