@@ -100,7 +100,7 @@ pub struct DebuggerOptions {
     pub(crate) cwd: Option<PathBuf>,
 
     /// Binary to debug as a path. Relative to `cwd`, or fully qualified.
-    #[clap(long, parse(from_os_str), conflicts_with("dap"))]
+    #[clap(long, parse(from_os_str), required(true), conflicts_with("dap"))]
     pub(crate) program_binary: Option<PathBuf>,
 
     /// The number associated with the debug probe to use. Use 'list' command to see available probes
@@ -153,7 +153,7 @@ pub struct DebuggerOptions {
     /// Reset the target after flashing
     #[clap(
         long,
-        required_if_eq("flashing_enabled", "true"),
+        required_if_eq("flashing-enabled", "true"),
         conflicts_with("dap")
     )]
     #[serde(default)]
@@ -168,7 +168,7 @@ pub struct DebuggerOptions {
     #[clap(
         long,
         conflicts_with("dap"),
-        required_if_eq("flashing_enabled", "true")
+        required_if_eq("flashing-enabled", "true")
     )]
     #[serde(default)]
     pub(crate) full_chip_erase: bool,
@@ -177,7 +177,7 @@ pub struct DebuggerOptions {
     #[clap(
         long,
         conflicts_with("dap"),
-        required_if_eq("flashing_enabled", "true")
+        required_if_eq("flashing-enabled", "true")
     )]
     #[serde(default)]
     pub(crate) restore_unwritten_bytes: bool,

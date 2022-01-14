@@ -78,19 +78,16 @@ fn parse_hex(src: &str) -> Result<u32, std::num::ParseIntError> {
 )]
 enum CliCommands {
     /// List all connected debug probes
-    #[clap(name = "list")]
     List {},
     /// List all probe-rs supported chips
     #[clap(name = "list-chips")]
     ListChips {},
     /// Gets infos about the selected debug probe and connected target
-    #[clap(name = "info")]
     Info {
         #[clap(flatten)]
         debugger_options: DebuggerOptions,
     },
     /// Resets the target attached to the selected debug probe
-    #[clap(name = "reset")]
     Reset {
         #[clap(flatten)]
         debugger_options: DebuggerOptions,
@@ -100,7 +97,6 @@ enum CliCommands {
     },
     /// Open target in debug mode and accept debug commands.
     /// By default, the program operates in CLI mode.
-    #[clap(name = "debug")]
     Debug {
         #[clap(flatten)]
         debugger_options: DebuggerOptions,
@@ -115,7 +111,6 @@ enum CliCommands {
         vscode: bool,
     },
     /// Dump memory from attached target
-    #[clap(name = "dump")]
     Dump {
         #[clap(flatten)]
         debugger_options: DebuggerOptions,
@@ -127,7 +122,6 @@ enum CliCommands {
         words: u32,
     },
     /// Download memory to attached target
-    #[clap(name = "download")]
     Download {
         #[clap(flatten)]
         debugger_options: DebuggerOptions,
@@ -136,7 +130,6 @@ enum CliCommands {
         path: String,
     },
     /// Begin tracing a memory address over SWV
-    #[clap(name = "trace")]
     Trace {
         #[clap(flatten)]
         debugger_options: DebuggerOptions,
