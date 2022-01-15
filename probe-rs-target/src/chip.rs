@@ -41,7 +41,7 @@ impl Chip {
             name: name.to_string(),
             part: None,
             cores: vec![Core {
-                name: "core".to_string(),
+                name: "main".to_string(),
                 core_type,
                 core_access_options: CoreAccessOptions::Arm(ArmCoreAccessOptions::default()),
             }],

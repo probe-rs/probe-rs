@@ -3,7 +3,7 @@
 use super::{Chip, ChipFamily, ChipInfo, Core, Target, TargetDescriptionSource};
 use crate::config::CoreType;
 use once_cell::sync::Lazy;
-use probe_rs_target::{ArmCoreAccessOptions, CoreAccessOptions, RiscvCoreAccessOptions};
+use probe_rs_target::{CoreAccessOptions, RiscvCoreAccessOptions};
 use std::fs::File;
 use std::path::Path;
 use std::sync::{Arc, Mutex, TryLockError};
