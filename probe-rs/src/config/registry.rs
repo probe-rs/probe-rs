@@ -54,60 +54,41 @@ fn add_generic_targets(vec: &mut Vec<ChipFamily>) {
         ChipFamily {
             name: "Generic ARMv6-M".to_owned(),
             manufacturer: None,
-            variants: vec![Chip {
-                name: "armv6m".to_owned(),
-                part: None,
-                cores: vec![Core {
-                    name: "core".to_owned(),
-                    core_type: CoreType::Armv6m,
-                    core_access_options: CoreAccessOptions::Arm(ArmCoreAccessOptions {
-                        ap: 0,
-                        psel: 0,
-                    }),
-                }],
-                memory_map: vec![],
-                flash_algorithms: vec![],
-            }],
+            variants: vec![
+                Chip::generic_arm("Cortex-M0", CoreType::Armv6m),
+                Chip::generic_arm("Cortex-M0+", CoreType::Armv6m),
+                Chip::generic_arm("Cortex-M1", CoreType::Armv6m),
+            ],
+
             flash_algorithms: vec![],
             source: TargetDescriptionSource::Generic,
         },
         ChipFamily {
             name: "Generic ARMv7-M".to_owned(),
             manufacturer: None,
-            variants: vec![Chip {
-                name: "armv7m".to_owned(),
-                part: None,
-                cores: vec![Core {
-                    name: "core".to_owned(),
-                    core_type: CoreType::Armv7m,
-                    core_access_options: CoreAccessOptions::Arm(ArmCoreAccessOptions {
-                        ap: 0,
-                        psel: 0,
-                    }),
-                }],
-                memory_map: vec![],
-                flash_algorithms: vec![],
-            }],
+            variants: vec![Chip::generic_arm("Cortex-M3", CoreType::Armv7m)],
+            flash_algorithms: vec![],
+            source: TargetDescriptionSource::Generic,
+        },
+        ChipFamily {
+            name: "Generic ARMv7E-M".to_owned(),
+            manufacturer: None,
+            variants: vec![
+                Chip::generic_arm("Cortex-M4", CoreType::Armv7em),
+                Chip::generic_arm("Cortex-M7", CoreType::Armv7em),
+            ],
             flash_algorithms: vec![],
             source: TargetDescriptionSource::Generic,
         },
         ChipFamily {
             name: "Generic ARMv8-M".to_owned(),
             manufacturer: None,
-            variants: vec![Chip {
-                name: "armv8m".to_owned(),
-                part: None,
-                cores: vec![Core {
-                    name: "core".to_owned(),
-                    core_type: CoreType::Armv8m,
-                    core_access_options: CoreAccessOptions::Arm(ArmCoreAccessOptions {
-                        ap: 0,
-                        psel: 0,
-                    }),
-                }],
-                memory_map: vec![],
-                flash_algorithms: vec![],
-            }],
+            variants: vec![
+                Chip::generic_arm("Cortex-M23", CoreType::Armv8m),
+                Chip::generic_arm("Cortex-M33", CoreType::Armv8m),
+                Chip::generic_arm("Cortex-M35P", CoreType::Armv8m),
+                Chip::generic_arm("Cortex-M55", CoreType::Armv8m),
+            ],
             flash_algorithms: vec![],
             source: TargetDescriptionSource::Generic,
         },
