@@ -163,20 +163,16 @@ impl Registry {
             let mut partial_matches = 0;
             for family in &self.families {
                 for variant in family.variants.iter() {
-                    if variant
-                        .name
-                        .to_ascii_lowercase()
-                        .starts_with(&name.to_ascii_lowercase())
-                    {
-                        if variant.name.to_ascii_lowercase() != name.to_ascii_lowercase() {
+                    if match_name_prefix(&variant.name, name) {
+                        if variant.name.len() == name.len() {
+                            log::debug!("Exact match for chip name: {}", variant.name);
+                            exact_matches += 1;
+                        } else {
                             log::debug!("Partial match for chip name: {}", variant.name);
                             partial_matches += 1;
                             if exact_matches > 0 {
                                 continue;
                             }
-                        } else {
-                            log::debug!("Exact match for chip name: {}", variant.name);
-                            exact_matches += 1;
                         }
                         selected_family_and_chip = Some((family, variant));
                     }
@@ -189,15 +185,22 @@ impl Registry {
                 );
                 return Err(RegistryError::ChipNotUnique(name.to_owned()));
             }
+            let (family, chip) = selected_family_and_chip
+                .ok_or_else(|| RegistryError::ChipNotFound(name.to_owned()))?;
             if exact_matches == 0 && partial_matches == 1 {
                 log::warn!(
                     "Found chip {} which matches given partial name {}. Consider specifying its full name.",
-                    selected_family_and_chip.unwrap().1.name,
+                    chip.name,
                     name,
                 );
             }
-            let (family, chip) = selected_family_and_chip
-                .ok_or_else(|| RegistryError::ChipNotFound(name.to_owned()))?;
+            if chip.name.to_ascii_lowercase() != name.to_ascii_lowercase() {
+                log::warn!(
+                    "Matching {} based on wildcard. Consider specifying the chip as {} instead.",
+                    name,
+                    chip.name,
+                );
+            }
 
             // Try get the correspnding flash algorithm.
             (family, chip)
@@ -318,6 +321,21 @@ pub fn add_target_from_yaml(path_to_yaml: &Path) -> Result<(), RegistryError> {
 /// registry.
 pub fn families() -> Result<Vec<ChipFamily>, RegistryError> {
     Ok(REGISTRY.try_lock()?.families().clone())
+}
+
+/// See if `name` matches the start of `pattern`, treating any lower-case `x`
+/// character in `pattern` as a wildcard that matches any character in `name`.
+///
+/// Both `name` and `pattern` are compared case-insensitively.
+fn match_name_prefix(pattern: &str, name: &str) -> bool {
+    // If `name` is shorter than `pattern` but all characters in `name` match,
+    // the iterator will end early and the function returns true.
+    for (n, p) in name.to_ascii_lowercase().chars().zip(pattern.chars()) {
+        if p.to_ascii_lowercase() != n && p != 'x' {
+            return false;
+        }
+    }
+    true
 }
 
 #[cfg(test)]
