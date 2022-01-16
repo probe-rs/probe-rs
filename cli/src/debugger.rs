@@ -263,11 +263,10 @@ impl DebugCli {
 
                     if let Some(di) = &mut cli_data.debug_info {
                         let frames = di.try_unwind(&mut cli_data.core, u64::from(program_counter));
-
-                        for frame in frames {
-                            //TODO: Fix this
-                            // println!("{}", frame);
+                        for _stack_frame in frames {
+                            // Iterate all the stack frames, so that `debug_info.variable_cache` gets populated.
                         }
+                        println!("{}", cli_data.debug_info.as_ref().unwrap().variable_cache);
                     } else {
                         println!("No debug information present!");
                     }

@@ -640,9 +640,7 @@ impl Debugger {
                         Err(error) => {
                             let error = Err(error);
                             debug_adapter.send_response::<()>(request, error)?;
-
-                            // TODO: Nicer response
-                            return Err(DebuggerError::Other(anyhow!("Failed to attach to core")));
+                            return Err(DebuggerError::Other(anyhow!("Unable to connect to the core, and therefor could not terminate the target program.")));
                         }
                     };
                     debug_adapter.pause(&mut core_data, request)?;
@@ -667,16 +665,19 @@ impl Debugger {
                     match valid_command {
                         Some(valid_command) => {
                             // First, attach to the core.
-                            let mut core_data =
-                                match attach_core(session_data, &self.debugger_options) {
-                                    Ok(core_data) => core_data,
-                                    Err(error) => {
-                                        debug_adapter.send_response::<()>(request, Err(error))?;
-                                        return Err(DebuggerError::Other(anyhow!(
-                                            "Failed to attach to core"
+                            let mut core_data = match attach_core(
+                                session_data,
+                                &self.debugger_options,
+                            ) {
+                                Ok(core_data) => core_data,
+                                Err(error) => {
+                                    debug_adapter.send_response::<()>(request, Err(error))?;
+                                    return Err(DebuggerError::Other(anyhow!(
+                                            "Error while attaching to core. Could not complete command {}",
+                                            valid_command.dap_cmd
                                         )));
-                                    }
-                                };
+                                }
+                            };
                             // For some operations, we need to make sure the core isn't sleeping, by calling `Core::halt()`.
                             // When we do this, we need to flag it (`unhalt_me = true`), and later call `Core::run()` again.
                             // NOTE: The target will exit sleep mode as a result of this command.
@@ -718,7 +719,8 @@ impl Debugger {
 
                                             // TODO: Nicer response here
                                             return Err(DebuggerError::Other(anyhow!(
-                                                "Failed to get core status"
+                                                "Failed to get core status. Could not complete command: {:?}",
+                                                valid_command.dap_cmd
                                             )));
                                         }
                                     }

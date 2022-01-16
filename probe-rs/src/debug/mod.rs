@@ -71,58 +71,6 @@ pub struct StackFrame {
     pub pc: u32,
 }
 
-// TODO: Fix this
-// impl std::fmt::Display for StackFrame {
-//     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-//         writeln!(f, "{}: {}", self.id, self.function_name)?;
-//         if let Some(si) = &self.source_location {
-//             write!(
-//                 f,
-//                 "\t{}/{}",
-//                 si.directory
-//                     .as_ref()
-//                     .map(|p| p.to_string_lossy())
-//                     .unwrap_or_else(|| std::borrow::Cow::from("<unknown dir>")),
-//                 si.file.as_ref().unwrap_or(&"<unknown file>".to_owned())
-//             )?;
-
-//             if let (Some(column), Some(line)) = (si.column, si.line) {
-//                 match column {
-//                     ColumnType::Column(c) => write!(f, ":{}:{}", line, c)?,
-//                     ColumnType::LeftEdge => write!(f, ":{}", line)?,
-//                 }
-//             }
-//         }
-
-//         writeln!(f)?;
-//         writeln!(f, "\tVariables:")?;
-
-//         for variable in &self.variables {
-//             variable_recurse(variable, 0, f)?;
-//         }
-//         write!(f, "")
-//     }
-// }
-
-// fn variable_recurse(
-//     variable: &Variable,
-//     level: u32,
-//     f: &mut std::fmt::Formatter,
-// ) -> std::fmt::Result {
-//     for _depth in 0..level {
-//         write!(f, "   ")?;
-//     }
-//     let new_level = level + 1;
-//     let ret = writeln!(f, "|-> {} \t= {}", variable.name, variable.get_value());
-//     if let Some(children) = variable.children.clone() {
-//         for variable in &children {
-//             variable_recurse(variable, new_level, f)?;
-//         }
-//     }
-
-//     ret
-// }
-
 #[derive(Debug, Clone)]
 pub struct Registers {
     register_description: &'static RegisterFile,
@@ -968,7 +916,7 @@ impl DebugInfo {
             static_root_variable.referenced_node_offset = Some(unit_node.entry().offset());
             static_root_variable.stack_frame_registers = Some(stack_frame_registers.clone());
             static_root_variable.name = "<statics>".to_string();
-            static_root_variable = self.variable_cache.cache_variable(
+            self.variable_cache.cache_variable(
                 stackframe_root_variable.variable_key,
                 static_root_variable,
                 core,

@@ -232,23 +232,6 @@ impl VariableCache {
 
 impl std::fmt::Display for VariableCache {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        if let Some(static_root_variable) =
-            self.get_variable_by_name_and_parent("<statics>".to_owned(), 0)
-        {
-            // Write the static variable data
-            writeln!(
-                f,
-                "Static Variables for StackFrame {:?}",
-                static_root_variable
-            )?;
-            fmt_recurse_variables(self, &static_root_variable, 0, f)?;
-        } else {
-            writeln!(
-                f,
-                "`DebugInfo::VariableCache` contains no data. Please report this as a bug."
-            )?;
-        }
-
         let mut stack_frames = self
             .variable_hash_map
             .borrow()
@@ -290,7 +273,6 @@ impl std::fmt::Display for VariableCache {
 
                 writeln!(f)?;
             }
-
             // Write the register variable data
             if let Some(register_root_variable) = self.get_variable_by_name_and_parent(
                 "<registers>".to_owned(),
@@ -308,6 +290,25 @@ impl std::fmt::Display for VariableCache {
                     f,
                     "`DebugInfo::VariableCache` contains no `Register` data for `StackFrame` {}.",
                     stackframe_root_variable.value
+                )?;
+            }
+
+            // Write the static variable data
+            if let Some(static_root_variable) = self.get_variable_by_name_and_parent(
+                "<statics>".to_owned(),
+                stackframe_root_variable.variable_key,
+            ) {
+                // Write the static variable data
+                writeln!(
+                    f,
+                    "Static Variables for StackFrame {}",
+                    static_root_variable.value
+                )?;
+                fmt_recurse_variables(self, &static_root_variable, 0, f)?;
+            } else {
+                writeln!(
+                    f,
+                    "`DebugInfo::VariableCache` contains no data. Please report this as a bug."
                 )?;
             }
 
@@ -331,7 +332,6 @@ impl std::fmt::Display for VariableCache {
                 )?;
             }
         }
-
         writeln!(f)
     }
 }
@@ -350,7 +350,7 @@ fn fmt_recurse_variables(
         f,
         "|-> {} \t= {} \t({})",
         parent_variable.name, parent_variable.value, parent_variable.type_name
-    ); // ... or if we want human readable values for complex variables, use `get_value())`;
+    );
     if let Ok(children) = variable_cache.get_children(parent_variable.variable_key) {
         for variable in &children {
             fmt_recurse_variables(variable_cache, variable, new_level, f)?;
@@ -794,7 +794,7 @@ impl Value for isize {
     ) -> Result<Self, DebugError> {
         let mut buff = [0u8; 4];
         core.read(variable.memory_location as u32, &mut buff)?;
-        // TODO: how to get the MCU isize calculated for all platforms.
+        // TODO: We can get the actual WORD length from [DWARF] instead of assuming `u32`
         let ret_value = i32::from_le_bytes(buff);
         Ok(ret_value as isize)
     }
@@ -868,7 +868,7 @@ impl Value for usize {
     ) -> Result<Self, DebugError> {
         let mut buff = [0u8; 4];
         core.read(variable.memory_location as u32, &mut buff)?;
-        // TODO: how to get the MCU usize calculated for all platforms.
+        // TODO: We can get the actual WORD length from [DWARF] instead of assuming `u32`
         let ret_value = u32::from_le_bytes(buff);
         Ok(ret_value as usize)
     }

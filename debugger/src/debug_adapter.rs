@@ -643,9 +643,8 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             match self.adapter_type() {
                 DebugAdapterType::CommandLine => {
                     let mut body = "".to_string();
-                    // TODO: Update the code to include static variables.
                     for _stack_frame in current_stackframes {
-                        // Iterate all the stack frames, so thta `debug_info.variable_cache` gets populated.
+                        // Iterate all the stack frames, so that `debug_info.variable_cache` gets populated.
                     }
                     body.push_str(format!("{}\n", debug_info.variable_cache).as_str());
                     self.send_response(request, Ok(Some(body)))
