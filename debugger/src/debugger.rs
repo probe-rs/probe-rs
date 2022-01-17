@@ -1144,32 +1144,35 @@ impl Debugger {
                 download_options.keep_unwritten_bytes =
                     self.debugger_options.restore_unwritten_bytes;
                 download_options.do_chip_erase = self.debugger_options.full_chip_erase;
-                let rc_debug_adapter = Rc::new(RefCell::new(debug_adapter));
-                let rc_debug_adapter_clone = rc_debug_adapter.clone();
-                let flash_result = {
-                    struct ProgressState {
-                        total_page_size: usize,
-                        total_sector_size: usize,
-                        total_fill_size: usize,
-                        page_size_done: usize,
-                        sector_size_done: usize,
-                        fill_size_done: usize,
-                    }
+                let flash_result = match debug_adapter.adapter_type() {
+                    DebugAdapterType::DapClient => {
+                        let rc_debug_adapter = Rc::new(RefCell::new(debug_adapter));
+                        let rc_debug_adapter_clone = rc_debug_adapter.clone();
+                        let flash_result = {
+                            struct ProgressState {
+                                total_page_size: usize,
+                                total_sector_size: usize,
+                                total_fill_size: usize,
+                                page_size_done: usize,
+                                sector_size_done: usize,
+                                fill_size_done: usize,
+                            }
 
-                    let flash_progress = Rc::new(RefCell::new(ProgressState {
-                        total_page_size: 0,
-                        total_sector_size: 0,
-                        total_fill_size: 0,
-                        page_size_done: 0,
-                        sector_size_done: 0,
-                        fill_size_done: 0,
-                    }));
+                            let flash_progress = Rc::new(RefCell::new(ProgressState {
+                                total_page_size: 0,
+                                total_sector_size: 0,
+                                total_fill_size: 0,
+                                page_size_done: 0,
+                                sector_size_done: 0,
+                                fill_size_done: 0,
+                            }));
 
-                    let flash_progress = if let Some(id) = progress_id {
-                        FlashProgress::new(move |event| {
-                            let mut flash_progress = flash_progress.borrow_mut();
-                            let mut debug_adapter = rc_debug_adapter_clone.borrow_mut();
-                            match event {
+                            let flash_progress =
+                                if let Some(id) = progress_id {
+                                    FlashProgress::new(move |event| {
+                                        let mut flash_progress = flash_progress.borrow_mut();
+                                        let mut debug_adapter = rc_debug_adapter_clone.borrow_mut();
+                                        match event {
                                 probe_rs::flashing::ProgressEvent::Initialized { flash_layout } => {
                                     flash_progress.total_page_size = flash_layout
                                         .pages()
@@ -1279,27 +1282,39 @@ impl Debugger {
                                         .ok();
                                 }
                             }
-                        })
-                    } else {
-                        FlashProgress::new(|_event| {})
-                    };
-                    download_options.progress = Some(&flash_progress);
-                    download_file_with_options(
+                                    })
+                                } else {
+                                    FlashProgress::new(|_event| {})
+                                };
+                            download_options.progress = Some(&flash_progress);
+                            download_file_with_options(
+                                &mut session_data.session,
+                                &path_to_elf,
+                                Format::Elf,
+                                download_options,
+                            )
+                        };
+                        debug_adapter = match Rc::try_unwrap(rc_debug_adapter) {
+                            Ok(debug_adapter) => debug_adapter.into_inner(),
+                            Err(too_many_strong_references) => {
+                                let other_error = DebuggerError::Other(anyhow!("Unexpected error while dereferencing the `debug_adapter` (It has {} strong references). Please report this as a bug.", Rc::strong_count(&too_many_strong_references)));
+                                return Err(other_error);
+                            }
+                        };
+
+                        if let Some(id) = progress_id {
+                            let _ = debug_adapter.end_progress(id);
+                        }
+                        flash_result
+                    }
+                    DebugAdapterType::CommandLine => download_file_with_options(
+                        // TODO: Implement fancy CLI flash progress from probe-rs-cli-util
                         &mut session_data.session,
                         &path_to_elf,
                         Format::Elf,
                         download_options,
-                    )
+                    ),
                 };
-                debug_adapter = if let Ok(v) = Rc::try_unwrap(rc_debug_adapter) {
-                    v.into_inner()
-                } else {
-                    panic!("This is a bug. Please report it.")
-                };
-
-                if let Some(id) = progress_id {
-                    let _ = debug_adapter.end_progress(id);
-                }
 
                 match flash_result {
                     Ok(_) => {
