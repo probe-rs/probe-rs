@@ -7,6 +7,7 @@ mod protocol;
 mod rtt;
 
 use anyhow::Result;
+use clap::{crate_authors, crate_description, crate_name, crate_version, Parser};
 use debugger::{
     debug, download_program_fast, dump_memory, list_connected_devices, list_supported_chips,
     reset_target_of_device, trace_u32_on_target, DebuggerOptions,
@@ -14,8 +15,6 @@ use debugger::{
 use probe_rs::architecture::arm::ap::AccessPortError;
 use probe_rs::flashing::FileDownloadError;
 use probe_rs::{DebugProbeError, Error};
-use structopt::clap::{crate_authors, crate_description, crate_name, crate_version};
-use structopt::StructOpt;
 
 #[derive(Debug, thiserror::Error)]
 pub enum DebuggerError {
@@ -70,8 +69,8 @@ fn parse_hex(src: &str) -> Result<u32, std::num::ParseIntError> {
 
 /// CliCommands enum contains the list of supported commands that can be invoked from the command line.
 /// The `debug` command is also the entry point for the DAP server, when the --dap option is used.
-#[derive(StructOpt)]
-#[structopt(
+#[derive(clap::Parser)]
+#[clap(
     name = crate_name!(),
     about = crate_description!(),
     author = crate_authors!(),
@@ -79,21 +78,18 @@ fn parse_hex(src: &str) -> Result<u32, std::num::ParseIntError> {
 )]
 enum CliCommands {
     /// List all connected debug probes
-    #[structopt(name = "list")]
     List {},
     /// List all probe-rs supported chips
-    #[structopt(name = "list-chips")]
+    #[clap(name = "list-chips")]
     ListChips {},
     /// Gets infos about the selected debug probe and connected target
-    #[structopt(name = "info")]
     Info {
-        #[structopt(flatten)]
+        #[clap(flatten)]
         debugger_options: DebuggerOptions,
     },
     /// Resets the target attached to the selected debug probe
-    #[structopt(name = "reset")]
     Reset {
-        #[structopt(flatten)]
+        #[clap(flatten)]
         debugger_options: DebuggerOptions,
 
         /// Whether the reset pin should be asserted or deasserted. If left open, just pulse it
@@ -101,49 +97,45 @@ enum CliCommands {
     },
     /// Open target in debug mode and accept debug commands.
     /// By default, the program operates in CLI mode.
-    #[structopt(name = "debug")]
     Debug {
-        #[structopt(flatten)]
+        #[clap(flatten)]
         debugger_options: DebuggerOptions,
 
         /// Switch from using the CLI(command line interface) to using DAP Protocol debug commands (enables connections from clients such as Microsoft Visual Studio Code).
         /// This option requires the user to specify the `port` option, along with a valid IP port number on which the server will listen for incoming connections.
-        #[structopt(long)]
+        #[clap(long)]
         dap: bool,
 
         /// The debug adapter processed was launched by VSCode, and should terminate itself at the end of every debug session (when receiving `Disconnect` or `Terminate` Request from VSCode). The "false"(default) state of this option implies that the process was launched (and will be managed) by the user.
-        #[structopt(long, hidden = true, requires("dap"))]
+        #[clap(long, hide = true, requires("dap"))]
         vscode: bool,
     },
     /// Dump memory from attached target
-    #[structopt(name = "dump")]
     Dump {
-        #[structopt(flatten)]
+        #[clap(flatten)]
         debugger_options: DebuggerOptions,
 
         /// The address of the memory to dump from the target (in hexadecimal without 0x prefix)
-        #[structopt(parse(try_from_str = parse_hex))]
+        #[clap(parse(try_from_str = parse_hex))]
         loc: u32,
         /// The amount of memory (in words) to dump
         words: u32,
     },
     /// Download memory to attached target
-    #[structopt(name = "download")]
     Download {
-        #[structopt(flatten)]
+        #[clap(flatten)]
         debugger_options: DebuggerOptions,
 
         /// The path to the file to be downloaded to the flash
         path: String,
     },
     /// Begin tracing a memory address over SWV
-    #[structopt(name = "trace")]
     Trace {
-        #[structopt(flatten)]
+        #[clap(flatten)]
         debugger_options: DebuggerOptions,
 
         /// The address of the memory start trace (in hexadecimal without 0x prefix)
-        #[structopt(parse(try_from_str = parse_hex))]
+        #[clap(parse(try_from_str = parse_hex))]
         loc: u32,
     },
 }
@@ -153,7 +145,7 @@ fn main() -> Result<()> {
         .target(env_logger::Target::Stderr) // Log to Stderr, so that VSCode Debug Extension can intercept the messages and pass them to the VSCode DAP Client
         .init();
 
-    let matches = CliCommands::from_args();
+    let matches = CliCommands::parse();
 
     match matches {
         CliCommands::List {} => list_connected_devices()?,

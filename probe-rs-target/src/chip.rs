@@ -32,6 +32,25 @@ pub struct Chip {
     pub flash_algorithms: Vec<String>,
 }
 
+impl Chip {
+    /// Create a generic chip with the given name, a single core,
+    /// and no flash algorithm or memory map. Used to create
+    /// generic targets.
+    pub fn generic_arm(name: &str, core_type: CoreType) -> Self {
+        Chip {
+            name: name.to_string(),
+            part: None,
+            cores: vec![Core {
+                name: "main".to_string(),
+                core_type,
+                core_access_options: CoreAccessOptions::Arm(ArmCoreAccessOptions::default()),
+            }],
+            memory_map: vec![],
+            flash_algorithms: vec![],
+        }
+    }
+}
+
 /// An individual core inside a chip
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Core {
@@ -57,7 +76,7 @@ pub enum CoreAccessOptions {
 }
 
 /// The data required to access an ARM core
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct ArmCoreAccessOptions {
     /// The access port number to access the core
     pub ap: u8,

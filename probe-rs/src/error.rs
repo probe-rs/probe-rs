@@ -15,6 +15,8 @@ pub enum Error {
     ChipNotFound(#[from] RegistryError),
     #[error("This feature requires one of the following architectures: {0:?}")]
     ArchitectureRequired(&'static [&'static str]),
+    #[error("An operation couldn't be done because it lacked the permission to do so: {0}")]
+    MissingPermissions(String),
     #[error(transparent)]
     Other(#[from] anyhow::Error),
 }

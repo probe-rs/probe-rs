@@ -1,14 +1,15 @@
-use probe_rs::{config::TargetSelector, MemoryInterface, Probe, WireProtocol};
+use probe_rs::{config::TargetSelector, MemoryInterface, Permissions, Probe, WireProtocol};
 
+use clap;
+use clap::Parser;
 use std::num::ParseIntError;
 use std::time::{Duration, Instant};
 
 use rand::prelude::*;
-use structopt::StructOpt;
 
 use anyhow::{anyhow, Context, Result};
 
-#[derive(StructOpt)]
+#[derive(clap::StructOpt)]
 struct Cli {
     #[structopt(long = "chip")]
     chip: Option<String>,
@@ -29,7 +30,7 @@ fn parse_hex(src: &str) -> Result<u32, ParseIntError> {
 fn main() -> Result<()> {
     pretty_env_logger::init();
 
-    let matches = Cli::from_args();
+    let matches = Cli::parse();
 
     let mut probe = open_probe(None)?;
 
@@ -56,7 +57,7 @@ fn main() -> Result<()> {
     }
 
     let mut session = probe
-        .attach(target_selector)
+        .attach(target_selector, Permissions::default())
         .context("Failed to attach probe to target")?;
     let mut core = session.core(0).context("Failed to attach to core")?;
 

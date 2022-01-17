@@ -10,7 +10,7 @@ use crate::{
             ap::{AccessPortError, GenericAp, MemoryAp},
             communication_interface::{ArmProbeInterface, MemoryApInformation},
             memory::Component,
-            ApInformation, SwoConfig,
+            ApInformation, SwoConfig, SwoReader,
         },
         riscv::communication_interface::RiscvCommunicationInterface,
     },
@@ -115,6 +115,7 @@ impl Session {
         probe: Probe,
         target: TargetSelector,
         attach_method: AttachMethod,
+        permissions: Permissions,
     ) -> Result<Self, Error> {
         let (mut probe, target) = get_target_from_selector(target, attach_method, probe)?;
 
@@ -178,7 +179,7 @@ impl Session {
                     let mut memory_interface = interface.memory_interface(default_memory_ap)?;
 
                     // Enable debug mode
-                    sequence_handle.debug_device_unlock(&mut memory_interface)?;
+                    sequence_handle.debug_device_unlock(&mut memory_interface, &permissions)?;
 
                     // Enable debug mode
                     sequence_handle.debug_core_start(&mut memory_interface)?;
@@ -280,7 +281,10 @@ impl Session {
     }
 
     /// Automatically creates a session with the first connected probe found.
-    pub fn auto_attach(target: impl Into<TargetSelector>) -> Result<Session, Error> {
+    pub fn auto_attach(
+        target: impl Into<TargetSelector>,
+        permissions: Permissions,
+    ) -> Result<Session, Error> {
         // Get a list of all available debug probes.
         let probes = Probe::list_all();
 
@@ -291,7 +295,7 @@ impl Session {
             .open()?;
 
         // Attach to a chip.
-        probe.attach(target)
+        probe.attach(target, permissions)
     }
 
     /// Lists the available cores with their number and their type.
@@ -330,6 +334,17 @@ impl Session {
     pub fn read_swo(&mut self) -> Result<Vec<u8>, Error> {
         let interface = self.get_arm_interface()?;
         interface.read_swo()
+    }
+
+    /// Returns an implementation of [std::io::Read] that wraps [ArmProbeInterface::read_swo].
+    ///
+    /// The implementation buffers all available bytes from
+    /// [ArmProbeInterface::read_swo] on each [std::io::Read::read],
+    /// minimizing the chance of a target-side overflow event on which
+    /// trace packets are lost.
+    pub fn swo_reader(&mut self) -> Result<SwoReader, Error> {
+        let interface = self.get_arm_interface()?;
+        Ok(SwoReader::new(interface))
     }
 
     fn get_arm_interface(&mut self) -> Result<&mut Box<dyn ArmProbeInterface>, Error> {
@@ -581,4 +596,55 @@ fn get_target_from_selector(
     };
 
     Ok((probe, target))
+}
+
+/// The `Permissions` struct represents what a [Session] is allowed to do with a target.
+/// Some operations can be irreversable, so need to be explicitly allowed by the user.
+///
+/// # Example
+///
+/// ```
+/// use probe_rs::Permissions;
+///
+/// let permissions = Permissions::new().allow_erase_all();
+/// ```
+#[non_exhaustive]
+#[derive(Debug, Clone)]
+pub struct Permissions {
+    /// When set to true, all memory of the chip may be erased or reset to factory default
+    erase_all: bool,
+}
+
+impl Permissions {
+    /// Constructs a new permissions object with the default values
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Allow the session to erase all memory of the chip or reset it to factory default.
+    ///
+    /// # Warning
+    /// This may irreversibly remove otherwise read-protected data from the device like security keys and 3rd party firmware.
+    /// What happens exactly may differ per device and per probe-rs version.
+    #[must_use]
+    pub fn allow_erase_all(self) -> Self {
+        Self {
+            erase_all: true,
+            ..self
+        }
+    }
+
+    pub(crate) fn erase_all(&self) -> Result<(), crate::Error> {
+        if self.erase_all {
+            Ok(())
+        } else {
+            Err(crate::Error::MissingPermissions("erase_all".into()))
+        }
+    }
+}
+
+impl Default for Permissions {
+    fn default() -> Self {
+        Self { erase_all: false }
+    }
 }

@@ -11,7 +11,7 @@ use anyhow::{Context, Result};
 use colored::Colorize;
 
 use clap::{App, Arg};
-use probe_rs::Error;
+use probe_rs::{Error, Permissions};
 
 mod dut_definition;
 mod macros;
@@ -22,7 +22,7 @@ fn main() -> Result<()> {
 
     let app = App::new("smoke tester")
         .arg(
-            Arg::with_name("dut_definitions")
+            Arg::new("dut_definitions")
                 .long("dut-definitions")
                 .value_name("DIRECTORY")
                 .takes_value(true)
@@ -30,7 +30,7 @@ fn main() -> Result<()> {
                 .required(true),
         )
         .arg(
-            Arg::with_name("chip")
+            Arg::new("chip")
                 .long("chip")
                 .takes_value(true)
                 .value_name("CHIP")
@@ -38,14 +38,14 @@ fn main() -> Result<()> {
                 .required(true),
         )
         .arg(
-            Arg::with_name("probe")
+            Arg::new("probe")
                 .long("probe")
                 .takes_value(true)
                 .value_name("PROBE")
                 .required(false),
         )
         .arg(
-            Arg::with_name("single_dut")
+            Arg::new("single_dut")
                 .long("single-dut")
                 .value_name("FILE")
                 .takes_value(true)
@@ -81,7 +81,7 @@ fn main() -> Result<()> {
         println_dut_status!(tracker, blue, "Chip:  {:?}", &definition.chip.name);
 
         let mut session = probe
-            .attach(definition.chip.clone())
+            .attach(definition.chip.clone(), Permissions::default())
             .context("Failed to attach to chip")?;
         let target = session.target();
         let memory_regions = target.memory_map.clone();
@@ -137,7 +137,8 @@ fn main() -> Result<()> {
         if definition.reset_connected {
             let probe = definition.open_probe()?;
 
-            let _session = probe.attach_under_reset(definition.chip.clone())?;
+            let _session =
+                probe.attach_under_reset(definition.chip.clone(), Permissions::default())?;
         }
 
         Ok(())

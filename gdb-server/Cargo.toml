@@ -38,3 +38,6 @@ memchr = "2.3.4"
 hex = "0.4.2"
 nom = "=7.1.0"
 anyhow = "1.0.31"
+
+[dev-dependencies]
+insta = "1.10.0"

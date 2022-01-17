@@ -7,11 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Added a permissions system that allows the user to specify if a full chip erase is allowed (#918)
+- Added debug sequence for the nRF5340 that turns on the network core can unlock both cores by erasing them if that is permitted (#918)
 - Support for core registers `msp`, `psp` and `extra`, extra containing:
   - Bits[31:24] CONTROL.
   - Bits[23:16] FAULTMASK.
   - Bits[15:8]  BASEPRI.
   - Bits[7:0]   PRIMASK.
+- Debug port start sequence for LPC55S16. (#944)
+- Added a command to print the list of all supported chips. (#946)
+- Added a command to print info about a chip, such as RAM and the number of cores. (#946)
+- ARM:`Session::swo_reader` that returns a wrapping implementation of `std::io::Read` around `Session::read_swo`. (#916)
+
+### Changed
+
+- Chip names are now matched treating an 'x' as a wildcard. (#964)
 
 ### Fixed
 
@@ -84,7 +94,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed logic errors and timing of RTT initialization in `probe-rs-debugger`. (#847)
 - Debugger: Do not crash the CLI when pressing enter without a command. (#875)
 - Fixed panic in CLI debugger when using a command without arguments. (#873)
-- Debugger: Reduce panics caused by `unwrap()` usage. (#886) 
+- Debugger: Reduce panics caused by `unwrap()` usage. (#886)
 - probe-rs: When unwinding, detect if the program counter does not change anymore and stop. (#893)
 
 ### Target Support

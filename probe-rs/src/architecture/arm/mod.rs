@@ -11,7 +11,7 @@ mod traits;
 pub use communication_interface::{
     ApInformation, ArmChipInfo, ArmCommunicationInterface, DapError, MemoryApInformation, Register,
 };
-pub use swo::{SwoAccess, SwoConfig, SwoMode};
+pub use swo::{SwoAccess, SwoConfig, SwoMode, SwoReader};
 pub use traits::*;
 
 pub use self::core::armv6m;
