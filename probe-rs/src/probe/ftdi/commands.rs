@@ -84,13 +84,11 @@ impl TargetTransferCommand {
 
         let drbits = params.drpre + len + params.drpost;
         let request = {
-            let data = BitSlice::<Lsb0, u8>::from_slice(&data).map_err(|_| {
-                io::Error::new(io::ErrorKind::InvalidData, "could not create bitslice")
-            })?;
-            let mut data = BitVec::<Lsb0, u8>::from_bitslice(data);
+            let data = BitSlice::<u8, Lsb0>::from_slice(&data);
+            let mut data = BitVec::<u8, Lsb0>::from_bitslice(data);
             data.truncate(len);
 
-            let mut buf = BitVec::<Lsb0, u8>::new();
+            let mut buf = BitVec::<u8, Lsb0>::new();
             buf.resize(params.drpre, false);
             buf.append(&mut data);
             buf.resize(buf.len() + params.drpost, false);
@@ -132,7 +130,7 @@ impl JtagCommand for TargetTransferCommand {
         };
 
         // Process the reply
-        let mut reply = BitVec::<Lsb0, u8>::from_vec(reply);
+        let mut reply = BitVec::<u8, Lsb0>::from_vec(reply);
         if params.drpre > 0 {
             reply = reply.split_off(params.drpre);
         }
