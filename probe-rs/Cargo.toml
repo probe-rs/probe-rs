@@ -28,7 +28,7 @@ anyhow = "1.0.31"
 base64 = "0.13.0"
 bincode = "1.3.2"
 bitfield = "0.13.2"
-bitvec = "0.22"
+bitvec = "1.0"
 enum-primitive-derive = "0.2.1"
 gimli = { version = "0.26.1", default-features = false, features = ["endian-reader", "read", "std"] }
 hidapi = { version = "1.2.0", default-features = false, features = ["linux-static-hidraw"] }
