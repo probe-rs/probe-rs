@@ -137,7 +137,7 @@ pub(crate) fn write_general_registers(reg_values: &str, mut core: Core) -> Optio
 
     let mut current_str_regval_offset = 0;
 
-    for reg_num in (0..core.num_general_registers() as u32).into_iter() {
+    for reg_num in 0..core.num_general_registers() as u32 {
         let (addr, bytesize) = core.translate_gdb_register_number(reg_num)?;
 
         // TODO: remove, when `Core::write_core_reg()` supports larger registers

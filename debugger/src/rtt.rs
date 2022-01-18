@@ -194,7 +194,7 @@ impl RttActiveTarget {
         // For each channel configured in the RTT Control Block (`Rtt`), check if there are additional user configuration in a `RttChannelConfig`. If not, apply defaults.
         let up_channels = rtt.up_channels().drain();
         let down_channels = rtt.down_channels().drain();
-        for channel in up_channels.into_iter() {
+        for channel in up_channels {
             let number = channel.number();
             let channel_config = debugger_options
                 .rtt
