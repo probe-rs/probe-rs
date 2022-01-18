@@ -8,11 +8,12 @@ use std::ops::Range;
 
 /// The RTT interface.
 ///
-/// Use [`Rtt::attach`] or [`Rt:attach_region`] to attach to a probe-rs `Core` and detect the channels, as they were
+/// Use [`Rtt::attach`] or [`Rtt::attach_region`] to attach to a probe-rs [`Core`] and detect the channels, as they were
 ///     configured on the target.
 /// The timing of when this is called is really important, or else unexpected results can be expected.
 ///
-/// *Examples of how timing between host and target effects the results*
+/// ## Examples of how timing between host and target effects the results
+///
 /// 1. **Scenario: Ideal configuration** The host RTT interface is created AFTER the target program has successfully executing the RTT
 /// initialization, by calling an api such as [rtt:target](https://github.com/mvirkkunen/rtt-target)`::rtt_init_print!()`
 ///     * At this point, both the RTT Control Block and the RTT Channel configurations are present in the target memory, and

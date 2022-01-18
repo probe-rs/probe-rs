@@ -310,7 +310,7 @@ impl Session {
     /// Attaches to the core with the given number.
     ///
     /// ## Usage
-    /// Everytime you want to perform an operation on the chip, you need to get the Core handle with the [Session::core() method. This [Core] handle is merely a view into the core. And provides a convenient API surface.
+    /// Everytime you want to perform an operation on the chip, you need to get the Core handle with the [Session::core()] method. This [Core] handle is merely a view into the core and provides a convenient API surface.
     ///
     /// All the state is stored in the [Session] handle.
     ///
@@ -336,12 +336,14 @@ impl Session {
         interface.read_swo()
     }
 
-    /// Returns an implementation of [std::io::Read] that wraps [ArmProbeInterface::read_swo].
+    /// Returns an implementation of [std::io::Read] that wraps [SwoAccess::read_swo].
     ///
     /// The implementation buffers all available bytes from
-    /// [ArmProbeInterface::read_swo] on each [std::io::Read::read],
+    /// [SwoAccess::read_swo] on each [std::io::Read::read],
     /// minimizing the chance of a target-side overflow event on which
     /// trace packets are lost.
+    ///
+    /// [SwoAccess::read_swo]: crate::architecture::arm::swo::SwoAccess
     pub fn swo_reader(&mut self) -> Result<SwoReader, Error> {
         let interface = self.get_arm_interface()?;
         Ok(SwoReader::new(interface))
@@ -609,7 +611,7 @@ fn get_target_from_selector(
 /// let permissions = Permissions::new().allow_erase_all();
 /// ```
 #[non_exhaustive]
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct Permissions {
     /// When set to true, all memory of the chip may be erased or reset to factory default
     erase_all: bool,
@@ -640,11 +642,5 @@ impl Permissions {
         } else {
             Err(crate::Error::MissingPermissions("erase_all".into()))
         }
-    }
-}
-
-impl Default for Permissions {
-    fn default() -> Self {
-        Self { erase_all: false }
     }
 }
