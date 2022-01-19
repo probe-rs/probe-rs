@@ -53,7 +53,7 @@ impl FromStr for Format {
 /// OS permission issues as well as chip connectivity and memory boundary issues.
 #[derive(Debug, thiserror::Error)]
 pub enum FileDownloadError {
-    /// An error with the actual flashing procedure has occured.
+    /// An error with the actual flashing procedure has occurred.
     ///
     /// This is mostly an error in the communication with the target inflicted by a bad hardware connection or a probe-rs bug.
     #[error("Error while flashing")]
@@ -61,10 +61,10 @@ pub enum FileDownloadError {
     /// Reading and decoding the IHEX file has failed due to the given error.
     #[error("Could not read ihex format")]
     IhexRead(#[from] ihex::ReaderError),
-    /// An IO error has occured while reading the firmware file.
+    /// An IO error has occurred while reading the firmware file.
     #[error("I/O error")]
     IO(#[from] std::io::Error),
-    /// The given error has occured while reading the object file.
+    /// The given error has occurred while reading the object file.
     #[error("Object Error: {0}.")]
     Object(&'static str),
     /// Reading and decoding the given ELF file has resulted in the given error.

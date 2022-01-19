@@ -467,7 +467,7 @@ impl<D: StLinkUsb> StLink<D> {
 
                     self.enter_idle()?;
                 }
-                // Other error occured, return it
+                // Other error occurred, return it
                 _ => return Err(e),
             }
         }

@@ -3,9 +3,9 @@ use crate::{architecture::arm::ap::AccessPortError, config::RegistryError};
 
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
-    #[error("An error with the usage of the probe occured")]
+    #[error("An error with the usage of the probe occurred")]
     Probe(#[from] DebugProbeError),
-    #[error("A core architecture specific error occured")]
+    #[error("A core architecture specific error occurred")]
     ArchitectureSpecific(#[from] Box<dyn std::error::Error + Send + Sync>),
     #[error("Probe could not be opened: {0}")]
     UnableToOpenProbe(&'static str),

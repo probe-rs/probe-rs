@@ -15,7 +15,7 @@ pub enum DebugPortError {
         register: &'static str,
         version: DebugPortVersion,
     },
-    #[error("A Debug Probe Error occured")]
+    #[error("A Debug Probe Error occurred")]
     DebugProbe(#[from] DebugProbeError),
 }
 

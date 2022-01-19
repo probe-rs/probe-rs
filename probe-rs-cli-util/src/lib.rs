@@ -25,7 +25,7 @@ pub enum ArtifactError {
         source: std::io::Error,
         work_dir: String,
     },
-    #[error("An IO error occured during the execution of 'cargo build'.")]
+    #[error("An IO error occurred during the execution of 'cargo build'.")]
     Io(#[source] std::io::Error),
     #[error("Unable to read the Cargo.toml at '{path}'.")]
     CargoToml {
@@ -151,7 +151,7 @@ pub fn build_artifact(work_dir: &Path, args: &[String]) -> Result<Artifact, Arti
     }
 
     // Check if the command succeeded, otherwise return an error.
-    // Any error messages occuring during the build are shown above,
+    // Any error messages occurring during the build are shown above,
     // when the compiler messages are rendered.
     if !output.status.success() {
         return Err(ArtifactError::CargoBuild(output.status.code()));

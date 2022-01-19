@@ -31,7 +31,7 @@ pub enum RiscvError {
     DebugProbe(#[from] DebugProbeError),
     #[error("Timeout during JTAG register access.")]
     Timeout,
-    #[error("Error occured during execution of an abstract command: {0:?}")]
+    #[error("Error occurred during execution of an abstract command: {0:?}")]
     AbstractCommand(AbstractCommandErrorKind),
     #[error("The core did not acknowledge a request for reset, resume or halt")]
     RequestNotAcknowledged,
@@ -619,14 +619,14 @@ impl<'probe> RiscvCommunicationInterface {
         for (out_index, &idx) in read_results.iter().enumerate() {
             data[out_index] = match result[idx] {
                 CommandResult::U32(data) => V::from_register_value(data),
-                _ => panic!("Internal error occured."),
+                _ => panic!("Internal error occurred."),
             };
         }
 
         // Check that the read was succesful
         let sbcs = match result[sbcs_result] {
             CommandResult::U32(res) => res,
-            _ => panic!("Internal error occured."),
+            _ => panic!("Internal error occurred."),
         };
 
         let sbcs = Sbcs(sbcs);
@@ -790,7 +790,7 @@ impl<'probe> RiscvCommunicationInterface {
         // Check that the write was succesful
         let sbcs = match result[ok_index] {
             CommandResult::U32(res) => res,
-            _ => panic!("Internal error occured."),
+            _ => panic!("Internal error occurred."),
         };
 
         let sbcs = Sbcs(sbcs);
