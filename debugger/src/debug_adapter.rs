@@ -1167,30 +1167,6 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
 
     pub fn log_to_console<S: Into<String>>(&mut self, message: S) -> bool {
         self.adapter.log_to_console(message)
-
-        /*
-        if self.adapter_type == DebugAdapterType::DapClient {
-            let event_body = match serde_json::to_value(OutputEventBody {
-                output: format!("{}\n", message.into()),
-                category: Some("console".to_owned()),
-                variables_reference: None,
-                source: None,
-                line: None,
-                column: None,
-                data: None,
-                group: Some("probe-rs-debug".to_owned()),
-            }) {
-                Ok(event_body) => event_body,
-                Err(_) => {
-                    return false;
-                }
-            };
-            self.send_event("output", Some(event_body))
-        } else {
-            println!("{}", message.into());
-            true
-        }
-        */
     }
 
     /// Send a custom "probe-rs-show-message" event to the MS DAP Client.

@@ -348,8 +348,15 @@
 						"properties": {
 							"category": {
 								"type": "string",
-								"description": "The output category. If not specified, 'console' is assumed.",
-								"_enum": [ "console", "stdout", "stderr", "telemetry" ]
+								"description": "The output category. If not specified or if the category is not understand by the client, 'console' is assumed.",
+								"_enum": [ "console", "important", "stdout", "stderr", "telemetry" ],
+								"enumDescriptions": [
+									"Show the output in the client's default message UI, e.g. a 'debug console'. This category should only be used for informational output from the debugger (as opposed to the debuggee).",
+									"A hint for the client to show the ouput in the client's UI for important and highly visible information, e.g. as a popup notification. This category should only be used for important messages from the debugger (as opposed to the debuggee). Since this category value is a hint, clients might ignore the hint and assume the 'console' category.",
+									"Show the output as normal program output from the debuggee.",
+									"Show the output as error program output from the debuggee.",
+									"Send the output to telemetry instead of showing it to the user."
+								]
 							},
 							"output": {
 								"type": "string",
@@ -1378,7 +1385,7 @@
 				},
 				"name": {
 					"type": "string",
-					"description": "The name of the Variable's child to obtain data breakpoint information for.\nIf variablesReference isn’t provided, this can be an expression."
+					"description": "The name of the Variable's child to obtain data breakpoint information for.\nIf variablesReference isn't provided, this can be an expression."
 				}
 			},
 			"required": [ "name" ]
@@ -1531,7 +1538,7 @@
 		"ContinueRequest": {
 			"allOf": [ { "$ref": "#/definitions/Request" }, {
 				"type": "object",
-				"description": "The request starts the debuggee to run again.",
+				"description": "The request resumes execution of all threads. If the debug adapter supports single thread execution (see capability 'supportsSingleThreadExecutionRequests') setting the 'singleThread' argument to true resumes only the specified thread. If not all threads were resumed, the 'allThreadsContinued' attribute of the response must be set to false.",
 				"properties": {
 					"command": {
 						"type": "string",
@@ -1550,7 +1557,11 @@
 			"properties": {
 				"threadId": {
 					"type": "integer",
-					"description": "Continue execution for the specified thread (if possible).\nIf the backend cannot continue on a single thread but will continue on all threads, it should set the 'allThreadsContinued' attribute in the response to true."
+					"description": "Specifies the active thread. If the debug adapter supports single thread execution (see 'supportsSingleThreadExecutionRequests') and the optional argument 'singleThread' is true, only the thread with this ID is resumed."
+				},
+				"singleThread": {
+					"type": "boolean",
+					"description": "If this optional flag is true, execution is resumed only for the thread with given 'threadId'."
 				}
 			},
 			"required": [ "threadId" ]
@@ -1565,7 +1576,7 @@
 						"properties": {
 							"allThreadsContinued": {
 								"type": "boolean",
-								"description": "If true, the 'continue' request has ignored the specified thread and continued all threads instead.\nIf this attribute is missing a value of 'true' is assumed for backward compatibility."
+								"description": "The value true (or a missing property) signals to the client that all threads have been resumed. The value false must be returned if not all threads were resumed."
 							}
 						}
 					}
@@ -1577,7 +1588,7 @@
 		"NextRequest": {
 			"allOf": [ { "$ref": "#/definitions/Request" }, {
 				"type": "object",
-				"description": "The request starts the debuggee to run again for one step.\nThe debug adapter first sends the response and then a 'stopped' event (with reason 'step') after the step has completed.",
+				"description": "The request executes one step (in the given granularity) for the specified thread and allows all other threads to run freely by resuming them.\nIf the debug adapter supports single thread execution (see capability 'supportsSingleThreadExecutionRequests') setting the 'singleThread' argument to true prevents other suspended threads from resuming.\nThe debug adapter first sends the response and then a 'stopped' event (with reason 'step') after the step has completed.",
 				"properties": {
 					"command": {
 						"type": "string",
@@ -1596,7 +1607,11 @@
 			"properties": {
 				"threadId": {
 					"type": "integer",
-					"description": "Execute 'next' for this thread."
+					"description": "Specifies the thread for which to resume execution for one step (of the given granularity)."
+				},
+				"singleThread": {
+					"type": "boolean",
+					"description": "If this optional flag is true, all other suspended threads are not resumed."
 				},
 				"granularity": {
 					"$ref": "#/definitions/SteppingGranularity",
@@ -1615,7 +1630,7 @@
 		"StepInRequest": {
 			"allOf": [ { "$ref": "#/definitions/Request" }, {
 				"type": "object",
-				"description": "The request starts the debuggee to step into a function/method if possible.\nIf it cannot step into a target, 'stepIn' behaves like 'next'.\nThe debug adapter first sends the response and then a 'stopped' event (with reason 'step') after the step has completed.\nIf there are multiple function/method calls (or other targets) on the source line,\nthe optional argument 'targetId' can be used to control into which target the 'stepIn' should occur.\nThe list of possible targets for a given source line can be retrieved via the 'stepInTargets' request.",
+				"description": "The request resumes the given thread to step into a function/method and allows all other threads to run freely by resuming them.\nIf the debug adapter supports single thread execution (see capability 'supportsSingleThreadExecutionRequests') setting the 'singleThread' argument to true prevents other suspended threads from resuming.\nIf the request cannot step into a target, 'stepIn' behaves like the 'next' request.\nThe debug adapter first sends the response and then a 'stopped' event (with reason 'step') after the step has completed.\nIf there are multiple function/method calls (or other targets) on the source line,\nthe optional argument 'targetId' can be used to control into which target the 'stepIn' should occur.\nThe list of possible targets for a given source line can be retrieved via the 'stepInTargets' request.",
 				"properties": {
 					"command": {
 						"type": "string",
@@ -1634,7 +1649,11 @@
 			"properties": {
 				"threadId": {
 					"type": "integer",
-					"description": "Execute 'stepIn' for this thread."
+					"description": "Specifies the thread for which to resume execution for one step-into (of the given granularity)."
+				},
+				"singleThread": {
+					"type": "boolean",
+					"description": "If this optional flag is true, all other suspended threads are not resumed."
 				},
 				"targetId": {
 					"type": "integer",
@@ -1657,7 +1676,7 @@
 		"StepOutRequest": {
 			"allOf": [ { "$ref": "#/definitions/Request" }, {
 				"type": "object",
-				"description": "The request starts the debuggee to run again for one step.\nThe debug adapter first sends the response and then a 'stopped' event (with reason 'step') after the step has completed.",
+				"description": "The request resumes the given thread to step out (return) from a function/method and allows all other threads to run freely by resuming them.\nIf the debug adapter supports single thread execution (see capability 'supportsSingleThreadExecutionRequests') setting the 'singleThread' argument to true prevents other suspended threads from resuming.\nThe debug adapter first sends the response and then a 'stopped' event (with reason 'step') after the step has completed.",
 				"properties": {
 					"command": {
 						"type": "string",
@@ -1676,7 +1695,11 @@
 			"properties": {
 				"threadId": {
 					"type": "integer",
-					"description": "Execute 'stepOut' for this thread."
+					"description": "Specifies the thread for which to resume execution for one step-out (of the given granularity)."
+				},
+				"singleThread": {
+					"type": "boolean",
+					"description": "If this optional flag is true, all other suspended threads are not resumed."
 				},
 				"granularity": {
 					"$ref": "#/definitions/SteppingGranularity",
@@ -1695,7 +1718,7 @@
 		"StepBackRequest": {
 			"allOf": [ { "$ref": "#/definitions/Request" }, {
 				"type": "object",
-				"description": "The request starts the debuggee to run one step backwards.\nThe debug adapter first sends the response and then a 'stopped' event (with reason 'step') after the step has completed.\nClients should only call this request if the capability 'supportsStepBack' is true.",
+				"description": "The request executes one backward step (in the given granularity) for the specified thread and allows all other threads to run backward freely by resuming them.\nIf the debug adapter supports single thread execution (see capability 'supportsSingleThreadExecutionRequests') setting the 'singleThread' argument to true prevents other suspended threads from resuming.\nThe debug adapter first sends the response and then a 'stopped' event (with reason 'step') after the step has completed.\nClients should only call this request if the capability 'supportsStepBack' is true.",
 				"properties": {
 					"command": {
 						"type": "string",
@@ -1714,7 +1737,11 @@
 			"properties": {
 				"threadId": {
 					"type": "integer",
-					"description": "Execute 'stepBack' for this thread."
+					"description": "Specifies the thread for which to resume execution for one step backwards (of the given granularity)."
+				},
+				"singleThread": {
+					"type": "boolean",
+					"description": "If this optional flag is true, all other suspended threads are not resumed."
 				},
 				"granularity": {
 					"$ref": "#/definitions/SteppingGranularity",
@@ -1733,7 +1760,7 @@
 		"ReverseContinueRequest": {
 			"allOf": [ { "$ref": "#/definitions/Request" }, {
 				"type": "object",
-				"description": "The request starts the debuggee to run backward.\nClients should only call this request if the capability 'supportsStepBack' is true.",
+				"description": "The request resumes backward execution of all threads. If the debug adapter supports single thread execution (see capability 'supportsSingleThreadExecutionRequests') setting the 'singleThread' argument to true resumes only the specified thread. If not all threads were resumed, the 'allThreadsContinued' attribute of the response must be set to false.\nClients should only call this request if the capability 'supportsStepBack' is true.",
 				"properties": {
 					"command": {
 						"type": "string",
@@ -1752,8 +1779,13 @@
 			"properties": {
 				"threadId": {
 					"type": "integer",
-					"description": "Execute 'reverseContinue' for this thread."
+					"description": "Specifies the active thread. If the debug adapter supports single thread execution (see 'supportsSingleThreadExecutionRequests') and the optional argument 'singleThread' is true, only the thread with this ID is resumed."
+				},
+				"singleThread": {
+					"type": "boolean",
+					"description": "If this optional flag is true, backward execution is resumed only for the thread with given 'threadId'."
 				}
+
 			},
 			"required": [ "threadId" ]
 		},
@@ -3109,6 +3141,10 @@
 				"supportsExceptionFilterOptions": {
 					"type": "boolean",
 					"description": "The debug adapter supports 'filterOptions' as an argument on the 'setExceptionBreakpoints' request."
+				},
+				"supportsSingleThreadExecutionRequests": {
+					"type": "boolean",
+					"description": "The debug adapter supports the 'singleThread' property on the execution requests ('continue', 'next', 'stepIn', 'stepOut', 'reverseContinue', 'stepBack')."
 				}
 			}
 		},

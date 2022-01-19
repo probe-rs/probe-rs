@@ -1068,7 +1068,7 @@ impl DebugInfo {
                     )?;
 
                     // Only use this, if it is NOT a unit datatype.
-                    if referenced_variable.type_name.eq("()") {
+                    if referenced_variable.type_name.contains("()") {
                         self.variable_cache
                             .remove_cache_entry(referenced_variable.variable_key)?;
                     } else if parent_variable.name.eq("<statics>") {
