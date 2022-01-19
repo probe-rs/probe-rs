@@ -29,10 +29,10 @@ pub enum RegistryError {
     /// in probe-rs.
     #[error("The core type '{0}' is not supported in probe-rs.")]
     UnknownCoreType(String),
-    /// An IO error which occured when trying to read a target description file.
+    /// An IO error which occurred when trying to read a target description file.
     #[error("An IO error was encountered")]
     Io(#[from] std::io::Error),
-    /// An error occured while deserializing a YAML target description file.
+    /// An error occurred while deserializing a YAML target description file.
     #[error("Deserializing the yaml encountered an error")]
     Yaml(#[from] serde_yaml::Error),
     /// Unable to lock the registry.

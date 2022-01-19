@@ -707,7 +707,7 @@ impl JTAGAccess for FtdiProbe {
 
                         let data = match data {
                             CommandResult::VecU8(data) => data,
-                            _ => panic!("Internal error occured. Cannot have a transformer function for outputs other than Vec<u8>"),
+                            _ => panic!("Internal error occurred. Cannot have a transformer function for outputs other than Vec<u8>"),
                         };
                         results.push(
                             transformer(data)

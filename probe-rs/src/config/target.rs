@@ -45,7 +45,7 @@ impl std::fmt::Debug for Target {
     }
 }
 
-/// An error occured while parsing the target description.
+/// An error occurred while parsing the target description.
 pub type TargetParseError = serde_yaml::Error;
 
 impl Target {

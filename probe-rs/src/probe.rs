@@ -91,7 +91,7 @@ pub enum DebugProbeError {
     Usb(#[source] Option<Box<dyn std::error::Error + Send + Sync>>),
     #[error("The firmware on the probe is outdated")]
     ProbeFirmwareOutdated,
-    #[error("An error specific to a probe type occured")]
+    #[error("An error specific to a probe type occurred")]
     ProbeSpecific(#[source] Box<dyn std::error::Error + Send + Sync>),
     #[error("Probe could not be created")]
     ProbeCouldNotBeCreated(#[from] ProbeCreationError),
@@ -100,11 +100,11 @@ pub enum DebugProbeError {
     // TODO: This is core specific, so should probably be moved there.
     #[error("Operation timed out")]
     Timeout,
-    #[error("An error specific to the selected architecture occured")]
+    #[error("An error specific to the selected architecture occurred")]
     ArchitectureSpecific(#[source] Box<dyn std::error::Error + Send + Sync>),
     #[error("The connected probe does not support the interface '{0}'")]
     InterfaceNotAvailable(&'static str),
-    #[error("An error occured while working with the registry occured")]
+    #[error("An error occurred while working with the registry")]
     Registry(#[from] RegistryError),
     #[error("Tried to close interface while it was still in use")]
     InterfaceInUse,
@@ -140,7 +140,7 @@ pub enum ProbeCreationError {
     HidApi(#[from] hidapi::HidError),
     #[error("{0}")]
     Rusb(#[from] rusb::Error),
-    #[error("An error specific to a probe type occured: {0}")]
+    #[error("An error specific to a probe type occurred: {0}")]
     ProbeSpecific(#[source] Box<dyn std::error::Error + Send + Sync>),
     #[error("{0}")]
     Other(&'static str),

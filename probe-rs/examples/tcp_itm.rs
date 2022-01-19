@@ -266,7 +266,7 @@ impl SwoPublisher<Box<dyn Any + Send>> for TcpPublisher {
             h.0.join()
         }) {
             Some(Err(err)) => {
-                log::error!("An error occured during thread execution: {:?}", err);
+                log::error!("An error occurred during thread execution: {:?}", err);
                 Err(err)
             }
             _ => Ok(()),
