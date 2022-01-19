@@ -274,19 +274,32 @@ impl<'debuginfo, 'probe, 'core> Iterator for StackFrameIterator<'debuginfo, 'pro
     /// [DWARF](https://dwarfstd.org) 6.4.4 - CIE defines the return register address used in the `gimli::RegisterRule` tables for unwind operations. Theoretically, if we encounter a function that has `Undefined` `gimli::RegisterRule` for the return register address, it means we have reached the bottom of the stack OR the function is a 'no return' type of function. I have found actual examples (e.g. local functions) where we get `Undefined` for register rule when we cannot apply this logic. Example 1: local functions in main.rs will have LR rule as `Undefined`. Example 2: main()-> ! that is called from a trampoline will have a valid LR rule.
     /// The iterator will continue until we have an LR register value of `None`. This will be true under the following conditions:
     /// - We encounter a LR register value of 0xFFFFFFFF which is the 'Reset` value for that register.
+    /// - TODO: Catch the situation where the PC value indicates a hard-fault or other non-recoverable exception
     /// - We can not intelligently infer a valid LR register value from the other registers.
     /// - We legitimately get an LR register value of 0x0, indicating the bottom of the stack.
     /// - Similarly, certain error conditions encountered in `StackFrameIterator` will also clear the LR register, to prevent further (likely faulty) iterations.
-    ///
+    /// - If the FP register is 0x0, then we have encountered a logic 'bottom of the stack' (i.e. a non-returning function)
     /// Note: In addition to populating the `StackFrame`s, this function will also populate the `DebugInfo::VariableCache` with `Variable`s for available Registers and function variables.
     fn next(&mut self) -> Option<Self::Item> {
         self.unwind_registers.get_return_address()?;
-        // PART 0: If we've encountered an error in the previous iteration, the `PC` will be `None`.
+        // PART 0-a: If we've encountered an error in the previous iteration, the `PC` will be `None`.
         let frame_pc = if let Some(frame_pc) = self.unwind_registers.get_program_counter() {
             frame_pc as u64
         } else {
             log::debug!(
                 "UNWIND: No available PC (program counter). Cannot continue stack unwinding."
+            );
+            return None;
+        };
+        // PART 0-b: We cannot go deeper in the stack.
+        let frame_fp = if let Some(frame_fp) = self.unwind_registers.get_frame_pointer() {
+            frame_fp as u64
+        } else {
+            0
+        };
+        if frame_fp == 0 {
+            log::debug!(
+                "UNWIND: We have reached the bottom of the stack. Cannot continue stack unwinding."
             );
             return None;
         };
@@ -303,10 +316,7 @@ impl<'debuginfo, 'probe, 'core> Iterator for StackFrameIterator<'debuginfo, 'pro
                 .debug_info
                 .get_stackframe_info(self.core, frame_pc, &self.unwind_registers)
             {
-                Ok(frame) => {
-                    // self.frame_count += 1;
-                    frame
-                }
+                Ok(frame) => frame,
                 Err(e) => {
                     log::error!("UNWIND: Unable to complete `StackFrame` information: {}", e);
                     // There is no point in continuing with the unwind, so let's get out of here.
@@ -1195,9 +1205,34 @@ impl DebugInfo {
             }
         }
 
-        // If we get here, we were not able to identify/unwind the function information
+        // If we get here, we were not able to identify/unwind the function information.
+        // Before returning `unknown_function` [StackFrame], make sure we at least cache the Register values.
+        // We need an empty parent variable for the next operation, but do not need to store it in the cache.
+        let parent_variable = Variable::new(None, None);
+        let mut stackframe_root_variable = Variable::new(None, None);
+        stackframe_root_variable.name = "<stack_frame>".to_string();
+        stackframe_root_variable.source_location = self.get_source_location(address);
+        stackframe_root_variable.set_value(unknown_function.clone());
+        stackframe_root_variable.memory_location = address;
+
+        stackframe_root_variable = self.variable_cache.cache_variable(
+            parent_variable.variable_key,
+            stackframe_root_variable,
+            core,
+        )?;
+
+        if let Some(error) = self
+            .cache_register_variables(&stack_frame_registers, &stackframe_root_variable, core)
+            .err()
+        {
+            log::warn!(
+                "Could not resolve register variables.{}\nContinuing.",
+                error
+            );
+        }
+
         Ok(StackFrame {
-            id: u64::MAX, // This value is outside the i64 range used by MS DAP Protocol, and will be used to identify that this is not a "real" StackFrame
+            id: stackframe_root_variable.variable_key as u64,
             function_name: unknown_function,
             source_location: self.get_source_location(address),
             registers: stack_frame_registers,
