@@ -1,5 +1,6 @@
 mod common;
 mod debugger;
+mod gdb;
 mod info;
 
 use debugger::CliState;
@@ -26,40 +27,54 @@ use std::{fs::File, path::PathBuf};
 use std::{io, time::Instant};
 use std::{num::ParseIntError, path::Path};
 
-#[derive(clap::StructOpt)]
-#[structopt(
-    name = "Probe-rs CLI",
+#[derive(clap::Parser)]
+#[clap(
+    name = "probe-rs CLI",
     about = "A CLI for on top of the debug probe capabilities provided by probe-rs",
     author = "Noah Hüsser <yatekii@yatekii.ch> / Dominik Böhi <dominik.boehi@gmail.ch>"
 )]
 enum Cli {
     /// List all connected debug probes
-    #[structopt(name = "list")]
     List {},
     /// Gets infos about the selected debug probe and connected target
-    #[structopt(name = "info")]
     Info {
-        #[structopt(flatten)]
+        #[clap(flatten)]
         common: ProbeOptions,
     },
     /// Resets the target attached to the selected debug probe
-    #[structopt(name = "reset")]
     Reset {
-        #[structopt(flatten)]
+        #[clap(flatten)]
         shared: CoreOptions,
 
-        #[structopt(flatten)]
+        #[clap(flatten)]
         common: ProbeOptions,
 
         /// Whether the reset pin should be asserted or deasserted. If left open, just pulse it
         assert: Option<bool>,
     },
-    #[structopt(name = "debug")]
+    /// Run a GDB server
+    Gdb {
+        #[clap(
+            long,
+            help = "Use this flag to override the default GDB connection string (localhost:1337)."
+        )]
+        gdb_connection_string: Option<String>,
+
+        #[structopt(
+            name = "reset-halt",
+            long = "reset-halt",
+            help = "Use this flag to reset and halt (instead of just a halt) the attached core after attaching to the target."
+        )]
+        reset_halt: bool,
+        #[clap(flatten)]
+        common: ProbeOptions,
+    },
+    /// Basic command line debugger
     Debug {
-        #[structopt(flatten)]
+        #[clap(flatten)]
         shared: CoreOptions,
 
-        #[structopt(flatten)]
+        #[clap(flatten)]
         common: ProbeOptions,
 
         #[structopt(long, parse(from_os_str))]
@@ -67,7 +82,6 @@ enum Cli {
         exe: Option<PathBuf>,
     },
     /// Dump memory from attached target
-    #[structopt(name = "dump")]
     Dump {
         #[structopt(flatten)]
         shared: CoreOptions,
@@ -83,7 +97,6 @@ enum Cli {
         words: u32,
     },
     /// Download memory to attached target
-    #[structopt(name = "download")]
     Download {
         #[structopt(flatten)]
         common: ProbeOptions,
@@ -111,12 +124,11 @@ enum Cli {
         disable_progressbars: bool,
     },
     /// Erase all nonvolatile memory of attached target
-    #[structopt(name = "erase")]
     Erase {
         #[structopt(flatten)]
         common: ProbeOptions,
     },
-    #[structopt(name = "trace")]
+    /// Trace a memory location on the target
     Trace {
         #[structopt(flatten)]
         shared: CoreOptions,
@@ -128,12 +140,12 @@ enum Cli {
         #[structopt(parse(try_from_str = parse_u32))]
         loc: u32,
     },
-    #[structopt(name = "chip")]
     #[clap(subcommand)]
     Chip(Chip),
 }
 
 #[derive(clap::StructOpt)]
+/// Inspect internal registry of supported chips
 enum Chip {
     /// Lists all the available families and their chips with their full.
     #[structopt(name = "list")]
@@ -162,6 +174,11 @@ fn main() -> Result<()> {
     match matches {
         Cli::List {} => list_connected_devices(),
         Cli::Info { common } => crate::info::show_info_of_device(&common),
+        Cli::Gdb {
+            gdb_connection_string,
+            common,
+            reset_halt,
+        } => gdb::run_gdb_server(common, gdb_connection_string.as_deref(), reset_halt),
         Cli::Reset {
             shared,
             common,

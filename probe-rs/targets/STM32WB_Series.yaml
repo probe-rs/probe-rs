@@ -116,7 +116,7 @@ variants:
       - Ram:
           range:
             start: 0x20000000
-            end: 0x20020000
+            end: 0x20030000
           is_boot_memory: false
           cores:
             - main
