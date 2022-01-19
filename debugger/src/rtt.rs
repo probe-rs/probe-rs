@@ -316,16 +316,14 @@ impl RttActiveTarget {
                                     DataFormat::Defmt => {
                                         match defmt_state {
                                             Some((table, locs)) => {
-                                                let mut frames = vec![];
-                                                frames.extend_from_slice(&active_channel.rtt_buffer.0[..bytes_read]);
 
-                                                while let Ok((frame, consumed)) =
-                                                    table.decode(&frames)
+                                                let mut stream_decoder = table.new_stream_decoder();
+                                                stream_decoder.received(&active_channel.rtt_buffer.0[..bytes_read]);
+                                                while let Ok(frame) = stream_decoder.decode()
                                                 {
                                                     // NOTE(`[]` indexing) all indices in `table` have already been
                                                     // verified to exist in the `locs` map.
                                                     let loc = locs.as_ref().map(|locs| &locs[&frame.index()]);
-
                                                     writeln!(formatted_data, "{}", frame.display(false)).map_or_else(|err| log::error!("Failed to format RTT data - {:?}", err), |r|r);
                                                     if let Some(loc) = loc {
                                                         let relpath = if let Ok(relpath) =
@@ -342,10 +340,6 @@ impl RttActiveTarget {
                                                             loc.line
                                                         ).map_or_else(|err| log::error!("Failed to format RTT data - {:?}", err), |r|r);
                                                     }
-
-                                                    let num_frames = frames.len();
-                                                    frames.rotate_left(consumed);
-                                                    frames.truncate(num_frames - consumed);
                                                 }
                                             }
                                             None => {

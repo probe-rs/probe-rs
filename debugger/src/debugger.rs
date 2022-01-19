@@ -772,7 +772,11 @@ impl Debugger {
                                     debug_adapter.configuration_done(&mut core_data, request)
                                 }
                                 "threads" => debug_adapter.threads(&mut core_data, request),
-                                "restart" => debug_adapter.restart(&mut core_data, Some(request)),
+                                "restart" => {
+                                    // Reset RTT so that the link can be re-established
+                                    self.target_rtt = None;
+                                    debug_adapter.restart(&mut core_data, Some(request))
+                                }
                                 "set_breakpoints" => {
                                     debug_adapter.set_breakpoints(&mut core_data, request)
                                 }
@@ -1678,7 +1682,6 @@ pub fn debug(debugger_options: DebuggerOptions, dap: bool, vscode: bool) -> Resu
                                 format!("{}: ..Starting session from   :{}", &program_name, addr);
                             log::info!("{}", &message);
                             println!("{}", &message);
-
                             let reader = socket
                                 .try_clone()
                                 .context("Failed to establish a bi-directional Tcp connection.")?;

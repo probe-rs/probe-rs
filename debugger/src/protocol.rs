@@ -74,6 +74,7 @@ impl<R: Read, W: Write> DapAdapter<R, W> {
         match self.output.write_all(response_body) {
             Ok(_) => {}
             Err(error) => {
+                // TODO: Implement catch of errorkind "WouldBlock" and retry
                 log::error!("send_data - body: {:?}", error);
                 self.output.flush().ok();
                 return Err(error);
