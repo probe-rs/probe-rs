@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added a command to print the list of all supported chips. (#946)
 - Added a command to print info about a chip, such as RAM and the number of cores. (#946)
 - ARM:`Session::swo_reader` that returns a wrapping implementation of `std::io::Read` around `Session::read_swo`. (#916)
+- Added CortexM23 to Armv8m mapping for `target-gen`. (#966)
 
 ### Changed
 

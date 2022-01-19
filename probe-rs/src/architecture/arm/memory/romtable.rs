@@ -8,7 +8,7 @@ use num_traits::cast::FromPrimitive;
 pub enum RomTableError {
     #[error("Component is not a valid romtable")]
     NotARomtable,
-    #[error("An error with the access port occured during runtime")]
+    #[error("An error with the access port occurred during runtime")]
     AccessPort(
         #[from]
         #[source]

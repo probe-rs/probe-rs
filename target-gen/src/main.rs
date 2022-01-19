@@ -41,7 +41,7 @@ enum TargetGen {
         )]
         output_dir: PathBuf,
     },
-    /// Generates all the target descriptions from the entries listed in the ARM root VIDX/PIDX at https://www.keil.com/pack/Keil.pidx.
+    /// Generates all the target descriptions from the entries listed in the ARM root VIDX/PIDX at <https://www.keil.com/pack/Keil.pidx>.
     Arm {
         #[clap(
             name = "OUTPUT",

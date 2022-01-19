@@ -1208,7 +1208,7 @@ mod test {
             // - x idle cycles
             let write_length = 2 + 8 + 1 + 3 + 2 + 32 + idle_cycles;
 
-            let mut response = BitVec::<Lsb0, usize>::repeat(false, write_length);
+            let mut response = BitVec::<usize, Lsb0>::repeat(false, write_length);
 
             match acknowledge {
                 DapAcknowledge::Ok => {
@@ -1244,7 +1244,7 @@ mod test {
             // - 2 turnaround bits
             let write_length = 2 + 8 + 1 + 3 + 32 + 2;
 
-            let mut response = BitVec::<Lsb0, usize>::repeat(false, write_length);
+            let mut response = BitVec::<usize, Lsb0>::repeat(false, write_length);
 
             match acknowledge {
                 DapAcknowledge::Ok => {
