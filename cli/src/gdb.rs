@@ -17,13 +17,10 @@ pub fn run_gdb_server(
             .reset_and_halt(Duration::from_millis(100))?;
     }
 
-    let gdb_connection_string = connection_string.or_else(|| Some("localhost:1337"));
-    // This next unwrap will always resolve as the connection string is always Some(T).
-    println!(
-        "Firing up GDB stub at {}",
-        gdb_connection_string.as_ref().unwrap()
-    );
-    if let Err(e) = probe_rs_gdb_server::run(gdb_connection_string.to_owned(), &session) {
+    let gdb_connection_string = connection_string.unwrap_or("localhost:1337");
+    println!("Firing up GDB stub at {}", gdb_connection_string);
+
+    if let Err(e) = probe_rs_gdb_server::run(Some(gdb_connection_string.to_owned()), &session) {
         eprintln!("During the execution of GDB an error was encountered:");
         eprintln!("{:?}", e);
     }
