@@ -23,6 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Chip names are now matched treating an 'x' as a wildcard. (#964)
+- GDB server is now available as a subcommand in the probe-rs-cli, not as a separate binary in the `gdb-server` package anymore . (#972)
 
 ### Fixed
 

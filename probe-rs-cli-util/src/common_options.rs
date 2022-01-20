@@ -128,27 +128,33 @@ impl FlashOptions {
 }
 
 /// Common options and logic when interfacing with a [Probe].
-#[derive(clap::StructOpt, Debug)]
+#[derive(clap::Parser, Debug)]
 pub struct ProbeOptions {
-    #[structopt(name = "chip", long = "chip")]
+    #[structopt(long)]
     pub chip: Option<String>,
     #[structopt(name = "chip description file path", long = "chip-description-path")]
     pub chip_description_path: Option<PathBuf>,
-    #[structopt(name = "protocol", long = "protocol")]
+
+    /// Protocol used to connect to chip. Possible options: [swd, jtag]
+    #[structopt(long, help_heading = "PROBE CONFIGURATION")]
     pub protocol: Option<WireProtocol>,
-    #[structopt(
-        long = "probe",
-        help = "Use this flag to select a specific probe in the list.\n\
-        Use '--probe VID:PID' or '--probe VID:PID:Serial' if you have more than one probe with the same VID:PID."
-    )]
+
+    /// Use this flag to select a specific probe in the list.
+    ///
+    /// Use '--probe VID:PID' or '--probe VID:PID:Serial' if you have more than one probe with the same VID:PID.",
+    #[structopt(long = "probe", help_heading = "PROBE CONFIGURATION")]
     pub probe_selector: Option<DebugProbeSelector>,
+    #[clap(
+        long,
+        help = "The protocol speed in kHz.",
+        help_heading = "PROBE CONFIGURATION"
+    )]
+    pub speed: Option<u32>,
     #[structopt(
         long = "connect-under-reset",
         help = "Use this flag to assert the nreset & ntrst pins during attaching the probe to the chip."
     )]
     pub connect_under_reset: bool,
-    #[structopt(name = "speed", long = "speed", help = "The protocol speed in kHz.")]
-    pub speed: Option<u32>,
     #[structopt(long = "dry-run")]
     pub dry_run: bool,
     #[structopt(
