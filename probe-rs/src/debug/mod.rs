@@ -1657,15 +1657,25 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                     register,
                     base_type,
                 } => {
-                    let raw_value = stack_frame_registers
+                    let raw_value = match stack_frame_registers
                         .get_value_by_dwarf_register_number(register.0 as u32)
-                        .expect("Failed to read register from `StackFrame::registers`");
-
-                    if base_type != gimli::UnitOffset(0) {
-                        todo!(
-                            "Support for units in RequiresRegister request is not yet implemented."
-                        )
-                    }
+                    {
+                        Some(raw_value) => {
+                            if base_type != gimli::UnitOffset(0) {
+                                return Err(DebugError::Other(anyhow::anyhow!(
+                                    "UNIMPLEMENTED: Support for type {:?} in `RequiresRegister` request is not yet implemented.",
+                                    base_type
+                                )));
+                            }
+                            raw_value
+                        }
+                        None => {
+                            return Err(DebugError::Other(anyhow::anyhow!(
+                                    "Error while calculating `Variable::memory_location`. No value for register #:{}.",
+                                    register.0
+                                )));
+                        }
+                    };
 
                     evaluation.resume_with_register(gimli::Value::Generic(raw_value as u64))?
                 }
