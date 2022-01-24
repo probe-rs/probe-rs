@@ -128,7 +128,6 @@ dependencies = [
  "libc",
  "num-integer",
  "num-traits",
- "serde",
  "winapi",
 ]
 
@@ -202,12 +201,13 @@ dependencies = [
 [[package]]
 name = "defmt-decoder"
 version = "0.3.1"
-source = "git+https://github.com/knurling-rs/defmt?branch=json#b94a9d5adf9db03cd711e81d1f89ba93c3065ba7"
+source = "git+https://github.com/knurling-rs/defmt?branch=main#b396257be01f477eda2ac16f7e62dece31749963"
 dependencies = [
  "anyhow",
  "byteorder",
  "chrono",
  "colored",
+ "defmt-json-schema",
  "defmt-parser",
  "difference",
  "gimli",
@@ -219,9 +219,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "defmt-json-schema"
+version = "0.1.0"
+source = "git+https://github.com/knurling-rs/defmt?branch=main#b396257be01f477eda2ac16f7e62dece31749963"
+dependencies = [
+ "log",
+ "serde",
+]
+
+[[package]]
 name = "defmt-parser"
 version = "0.3.0"
-source = "git+https://github.com/knurling-rs/defmt?branch=json#b94a9d5adf9db03cd711e81d1f89ba93c3065ba7"
+source = "git+https://github.com/knurling-rs/defmt?branch=main#b396257be01f477eda2ac16f7e62dece31749963"
 
 [[package]]
 name = "diff"
@@ -493,6 +502,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "51b9bbe6c47d51fc3e1a9b945965946b4c44142ab8792c50835a980d362c2710"
 dependencies = [
  "cfg-if",
+ "serde",
 ]
 
 [[package]]
