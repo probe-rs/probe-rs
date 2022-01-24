@@ -1087,7 +1087,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         }
     }
 
-    /// The DAP protocol uses thee related values to determine how to invoke the `Variables` request.
+    /// The DAP protocol uses three related values to determine how to invoke the `Variables` request.
     /// This function retrieves that information from the `DebugInfo::VariableCache` and returns it as
     /// (`variable_reference`, `named_child_variables_cnt`, `indexed_child_variables_cnt`)
     fn get_variable_reference(
