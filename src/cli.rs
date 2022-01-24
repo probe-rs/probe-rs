@@ -71,6 +71,9 @@ pub(crate) struct Opts {
     #[structopt(long)]
     pub(crate) measure_stack: bool,
 
+    #[structopt(long)]
+    pub(crate) json: bool,
+
     /// Arguments passed after the ELF file path are discarded
     #[structopt(name = "REST")]
     _rest: Vec<String>,
@@ -80,7 +83,7 @@ pub(crate) fn handle_arguments() -> anyhow::Result<i32> {
     let opts: Opts = Opts::from_args();
     let verbose = opts.verbose;
 
-    defmt_decoder::log::init_logger(verbose >= 1, move |metadata| {
+    defmt_decoder::log::init_logger(verbose >= 1, opts.json, move |metadata| {
         if defmt_decoder::log::is_defmt_frame(metadata) {
             true // We want to display *all* defmt frames.
         } else {

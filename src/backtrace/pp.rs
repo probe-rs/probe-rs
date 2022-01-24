@@ -1,6 +1,10 @@
 //! Pretty printing the backtrace
 
-use std::{borrow::Cow, fmt::Write, io, io::Write as _};
+use std::{
+    borrow::Cow,
+    fmt::Write,
+    io::{self, Write as _},
+};
 
 use colored::Colorize as _;
 
@@ -10,17 +14,14 @@ use super::{symbolicate::Frame, Settings};
 
 /// Pretty prints processed backtrace frames up to `backtrace_limit`
 pub(crate) fn backtrace(frames: &[Frame], settings: &Settings) -> io::Result<()> {
-    let stdout = io::stdout();
-    let mut stdout = stdout.lock();
-    writeln!(stdout, "{}", "stack backtrace:".dimmed())?;
+    let stderr = io::stderr();
+    let mut stderr = stderr.lock();
+    writeln!(stderr, "{}", "stack backtrace:".dimmed())?;
 
     let mut frame_index = 0;
     for frame in frames {
         match frame {
-            Frame::Exception => {
-                writeln!(stdout, "      <exception entry>")?;
-            }
-
+            Frame::Exception => writeln!(stderr, "      <exception entry>")?,
             Frame::Subroutine(subroutine) => {
                 let is_local_function = subroutine
                     .location
@@ -44,7 +45,7 @@ pub(crate) fn backtrace(frames: &[Frame], settings: &Settings) -> io::Result<()>
                 } else {
                     line.normal()
                 };
-                writeln!(stdout, "{}", colorized_line)?;
+                writeln!(stderr, "{}", colorized_line)?;
 
                 if let Some(location) = &subroutine.location {
                     let dep_path = dep::Path::from_std_path(&location.path);
@@ -61,7 +62,7 @@ pub(crate) fn backtrace(frames: &[Frame], settings: &Settings) -> io::Result<()>
                         .map(|column| Cow::Owned(format!(":{}", column)))
                         .unwrap_or(Cow::Borrowed(""));
 
-                    writeln!(stdout, "        at {}:{}{}", path, line, column)?;
+                    writeln!(stderr, "        at {}:{}{}", path, line, column)?;
                 }
 
                 frame_index += 1;
