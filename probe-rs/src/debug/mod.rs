@@ -2610,8 +2610,8 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
     }
 
     /// - Consumes the `child_variable`.
-    /// - Find the location using either DW_AT_location, or DW_AT_data_member_location, and store it in the Variable. A value of 0 is a valid 0 reported from dwarf.
-    ///  - Returns a clone of the most up-to-date `child_variable` in the cache.
+    /// - Find the location using either DW_AT_location, or DW_AT_data_member_location, and store it in the Variable.
+    /// - Returns a clone of the most up-to-date `child_variable` in the cache.
     fn extract_location(
         &self,
         node: &gimli::EntriesTreeNode<GimliReader>,
