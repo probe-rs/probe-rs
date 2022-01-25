@@ -24,7 +24,7 @@ colored = "2.0.0"
 probe-rs = { version = "0.12.0", git = "https://github.com/probe-rs/probe-rs" }
 probe-rs-cli-util = { version = "0.12.0", git = "https://github.com/probe-rs/probe-rs", default-features = false, features=["anyhow"] }
 git-version = "0.3.5"
-anyhow = "1.0.52"
+anyhow = "1.0.53"
 bytesize = "1.1.0"
 thiserror = "1.0.30"
 dunce = "1.0.2"
