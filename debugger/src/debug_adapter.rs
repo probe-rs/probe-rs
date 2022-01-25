@@ -3,7 +3,6 @@ use crate::DebuggerError;
 use crate::{dap_types, rtt::DataFormat};
 use anyhow::{anyhow, Result};
 use dap_types::*;
-use num_traits::Zero;
 use parse_int::parse;
 use probe_rs::debug::DebugInfo;
 use probe_rs::{debug::ColumnType, CoreStatus, HaltReason, MemoryInterface};
@@ -37,8 +36,10 @@ pub struct DebugAdapter<P: ProtocolAdapter> {
     progress_id: ProgressId,
     /// Flag to indicate if the connected client supports progress reporting.
     pub(crate) supports_progress_reporting: bool,
-    /// Flags to improve breakpoint accuracy
+    /// Flags to improve breakpoint accuracy.
+    /// [DWARF] spec at Sect 2.14 uses 1 based numbering, with a 0 indicating not-specified. We will follow that standard, and translate incoming requests depending on the DAP Client treatment of 0 or 1 based numbering.
     pub(crate) lines_start_at_1: bool,
+    /// [DWARF] spec at Sect 2.14 uses 1 based numbering, with a 0 indicating not-specified. We will follow that standard, and translate incoming requests depending on the DAP Client treatment of 0 or 1 based numbering.
     pub(crate) columns_start_at_1: bool,
     adapter: P,
 }
@@ -51,7 +52,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             progress_id: 0,
             supports_progress_reporting: false,
             lines_start_at_1: true,
-            columns_start_at_1: false,
+            columns_start_at_1: true,
             adapter,
         }
     }
@@ -507,28 +508,32 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         if let Some(requested_breakpoints) = args.breakpoints.as_ref() {
             for bp in requested_breakpoints {
                 // Some overrides to improve breakpoint accuracy when `DebugInfo::get_breakpoint_location()` has to select the best from multiple options
-                let breakpoint_line = if self.lines_start_at_1 && bp.line.is_zero() {
-                    1
-                } else {
+                let breakpoint_line = if self.lines_start_at_1 {
+                    // If the debug client uses 1 based numbering, then we can use it as is.
                     bp.line as u64
+                } else {
+                    // If the debug client uses 0 based numbering, then we bump the number by 1
+                    bp.line as u64 + 1
                 };
                 let breakpoint_column = if self.columns_start_at_1
                     && (bp.column.is_none() || bp.column.unwrap_or(0) == 0)
                 {
-                    Some(1)
+                    // If the debug client uses 1 based numbering, then we can use it as is.
+                    Some(bp.column.unwrap_or(1) as u64)
                 } else {
-                    bp.column.map(|c| c as u64)
+                    // If the debug client uses 0 based numbering, then we bump the number by 1
+                    Some(bp.column.unwrap_or(0) as u64 + 1)
                 };
 
                 // Try to find source code location
-                let source_location: Option<u64> = core_data.debug_info.as_ref().and_then(|di| {
-                    di.get_breakpoint_location(
+                let source_location: Option<u64> = core_data
+                    .debug_info
+                    .get_breakpoint_location(
                         source_path.unwrap(),
                         breakpoint_line,
                         breakpoint_column,
                     )
-                    .unwrap_or(None)
-                });
+                    .unwrap_or(None);
 
                 if let Some(location) = source_location {
                     let (verified, reason_msg) =
@@ -636,123 +641,112 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             }
         };
 
-        if let Some(debug_info) = core_data.debug_info.as_mut() {
-            let current_stackframes =
-                debug_info.try_unwind(&mut core_data.target_core, u64::from(pc));
+        let current_stackframes = core_data
+            .debug_info
+            .try_unwind(&mut core_data.target_core, u64::from(pc));
 
-            match self.adapter_type() {
-                DebugAdapterType::CommandLine => {
-                    let mut body = "".to_string();
-                    for _stack_frame in current_stackframes {
-                        // Iterate all the stack frames, so that `debug_info.variable_cache` gets populated.
-                    }
-                    body.push_str(format!("{}\n", debug_info.variable_cache).as_str());
-                    self.send_response(request, Ok(Some(body)))
+        match self.adapter_type() {
+            DebugAdapterType::CommandLine => {
+                let mut body = "".to_string();
+                for _stack_frame in current_stackframes {
+                    // Iterate all the stack frames, so that `debug_info.variable_cache` gets populated.
                 }
-                DebugAdapterType::DapClient => {
-                    let mut frame_list: Vec<StackFrame> = current_stackframes
-                        .map(|frame| {
-                            let column = frame
-                                .source_location
-                                .as_ref()
-                                .and_then(|sl| sl.column)
-                                .map(|col| match col {
-                                    ColumnType::LeftEdge => 0,
-                                    ColumnType::Column(c) => c,
-                                })
-                                .unwrap_or(0);
+                body.push_str(format!("{}\n", core_data.debug_info.variable_cache).as_str());
+                self.send_response(request, Ok(Some(body)))
+            }
+            DebugAdapterType::DapClient => {
+                let mut frame_list: Vec<StackFrame> = current_stackframes
+                    .map(|frame| {
+                        let column = frame
+                            .source_location
+                            .as_ref()
+                            .and_then(|sl| sl.column)
+                            .map(|col| match col {
+                                ColumnType::LeftEdge => 0,
+                                ColumnType::Column(c) => c,
+                            })
+                            .unwrap_or(0);
 
-                            let source = if let Some(source_location) = &frame.source_location {
-                                let path: Option<PathBuf> =
-                                    source_location.directory.as_ref().map(|path| {
-                                        let mut path = if path.is_relative() {
-                                            std::env::current_dir().unwrap().join(path)
-                                        } else {
-                                            path.to_owned()
-                                        };
+                        let source = if let Some(source_location) = &frame.source_location {
+                            let path: Option<PathBuf> =
+                                source_location.directory.as_ref().map(|path| {
+                                    let mut path = if path.is_relative() {
+                                        std::env::current_dir().unwrap().join(path)
+                                    } else {
+                                        path.to_owned()
+                                    };
 
-                                        if let Some(file) = &source_location.file {
-                                            path.push(file);
-                                        }
+                                    if let Some(file) = &source_location.file {
+                                        path.push(file);
+                                    }
 
-                                        path
-                                    });
-                                Some(Source {
-                                    name: source_location.file.clone(),
-                                    path: path.map(|p| p.to_string_lossy().to_string()),
-                                    source_reference: None,
-                                    presentation_hint: None,
-                                    origin: None,
-                                    sources: None,
-                                    adapter_data: None,
-                                    checksums: None,
-                                })
-                            } else {
-                                log::debug!("No source location present for frame!");
-                                None
-                            };
+                                    path
+                                });
+                            Some(Source {
+                                name: source_location.file.clone(),
+                                path: path.map(|p| p.to_string_lossy().to_string()),
+                                source_reference: None,
+                                presentation_hint: None,
+                                origin: None,
+                                sources: None,
+                                adapter_data: None,
+                                checksums: None,
+                            })
+                        } else {
+                            log::debug!("No source location present for frame!");
+                            None
+                        };
 
-                            let line = frame
-                                .source_location
-                                .as_ref()
-                                .and_then(|sl| sl.line)
-                                .unwrap_or(0) as i64;
+                        let line = frame
+                            .source_location
+                            .as_ref()
+                            .and_then(|sl| sl.line)
+                            .unwrap_or(0) as i64;
 
-                            // TODO: Can we add more meaningful info to `module_id`, etc.
-                            StackFrame {
-                                id: if frame.id == u64::MAX {
-                                    -1 // VS Code will not attempt to retrieve variables for this frame
-                                } else {
-                                    frame.id as i64
-                                },
-                                name: frame.function_name.clone(),
-                                source,
-                                line,
-                                column: column as i64,
-                                end_column: None,
-                                end_line: None,
-                                module_id: None,
-                                presentation_hint: Some("normal".to_owned()),
-                                can_restart: Some(false),
-                                instruction_pointer_reference: Some(format!("{:#010x}", frame.pc)),
-                            }
-                        })
-                        .collect();
-
-                    // If we get an empty stack frame list,
-                    // add a frame so that something is visible in the
-                    // debugger.
-                    if frame_list.is_empty() {
-                        frame_list.push(StackFrame {
-                            can_restart: None,
-                            column: 0,
+                        // TODO: Can we add more meaningful info to `module_id`, etc.
+                        StackFrame {
+                            id: frame.id as i64,
+                            name: frame.function_name.clone(),
+                            source,
+                            line,
+                            column: column as i64,
                             end_column: None,
                             end_line: None,
-                            id: pc as i64,
-                            instruction_pointer_reference: None,
-                            line: 0,
                             module_id: None,
-                            name: format!("<unknown function @ {:#010x}>", pc),
-                            presentation_hint: None,
-                            source: None,
-                        })
-                    }
+                            presentation_hint: Some("normal".to_owned()),
+                            can_restart: Some(false),
+                            instruction_pointer_reference: Some(format!("{:#010x}", frame.pc)),
+                        }
+                    })
+                    .collect();
 
-                    let frame_len = frame_list.len();
-
-                    let body = StackTraceResponseBody {
-                        stack_frames: frame_list,
-                        total_frames: Some(frame_len as i64),
-                    };
-                    self.send_response(request, Ok(Some(body)))
+                // If we get an empty stack frame list,
+                // add a frame so that something is visible in the
+                // debugger.
+                if frame_list.is_empty() {
+                    frame_list.push(StackFrame {
+                        can_restart: None,
+                        column: 0,
+                        end_column: None,
+                        end_line: None,
+                        id: pc as i64,
+                        instruction_pointer_reference: None,
+                        line: 0,
+                        module_id: None,
+                        name: format!("<unknown function @ {:#010x}>", pc),
+                        presentation_hint: None,
+                        source: None,
+                    })
                 }
+
+                let frame_len = frame_list.len();
+
+                let body = StackTraceResponseBody {
+                    stack_frames: frame_list,
+                    total_frames: Some(frame_len as i64),
+                };
+                self.send_response(request, Ok(Some(body)))
             }
-        } else {
-            // No debug information, so we cannot send stack trace information
-            self.send_response::<()>(
-                request,
-                Err(DebuggerError::Other(anyhow!("No debug information found!"))),
-            )
         }
     }
     /// Retrieve available scopes  
@@ -765,115 +759,103 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             Err(error) => return self.send_response::<()>(request, Err(error)),
         };
 
-        let debug_info = if let Some(debug_info) = core_data.debug_info {
-            debug_info
-        } else {
-            return Err(anyhow!("This is a bug. The program tried to create `Scopes` before calling `DebugAdapter::stack_trace()`"));
-        };
-
         let mut dap_scopes: Vec<Scope> = vec![];
 
-        if arguments.frame_id > 0 {
-            if let Some(stackframe_root_variable) = debug_info
+        if let Some(stackframe_root_variable) = core_data
+            .debug_info
+            .variable_cache
+            .get_variable_by_key(arguments.frame_id)
+        {
+            if let Some(static_root_variable) = core_data
+                .debug_info
                 .variable_cache
-                .get_variable_by_key(arguments.frame_id)
+                .get_variable_by_name_and_parent(
+                    "<statics>".to_owned(),
+                    stackframe_root_variable.variable_key,
+                )
             {
-                if let Some(static_root_variable) =
-                    debug_info.variable_cache.get_variable_by_name_and_parent(
-                        "<statics>".to_owned(),
-                        stackframe_root_variable.variable_key,
-                    )
-                {
-                    let (
-                        static_variables_reference,
-                        static_named_variables,
-                        static_indexed_variables,
-                    ) = self.get_variable_reference(debug_info, &static_root_variable);
-                    dap_scopes.push(Scope {
-                        line: None,
-                        column: None,
-                        end_column: None,
-                        end_line: None,
-                        expensive: true, // VSCode won't open this tree by default.
-                        indexed_variables: Some(static_indexed_variables),
-                        name: "Static".to_string(),
-                        presentation_hint: Some("statics".to_string()),
-                        named_variables: Some(static_named_variables),
-                        source: None,
-                        variables_reference: static_variables_reference,
-                    });
-                };
+                let (static_variables_reference, static_named_variables, static_indexed_variables) =
+                    self.get_variable_reference(core_data.debug_info, &static_root_variable);
+                dap_scopes.push(Scope {
+                    line: None,
+                    column: None,
+                    end_column: None,
+                    end_line: None,
+                    expensive: true, // VSCode won't open this tree by default.
+                    indexed_variables: Some(static_indexed_variables),
+                    name: "Static".to_string(),
+                    presentation_hint: Some("statics".to_string()),
+                    named_variables: Some(static_named_variables),
+                    source: None,
+                    variables_reference: static_variables_reference,
+                });
+            };
 
-                if let Some(register_root_variable) =
-                    debug_info.variable_cache.get_variable_by_name_and_parent(
-                        "<registers>".to_owned(),
-                        stackframe_root_variable.variable_key,
-                    )
-                {
-                    let (
-                        register_variables_reference,
-                        register_named_variables,
-                        register_indexed_variables,
-                    ) = self.get_variable_reference(debug_info, &register_root_variable);
-                    dap_scopes.push(Scope {
-                        line: None,
-                        column: None,
-                        end_column: None,
-                        end_line: None,
-                        expensive: true, // VSCode won't open this tree by default.
-                        indexed_variables: Some(register_indexed_variables),
-                        name: "Registers".to_string(),
-                        presentation_hint: Some("registers".to_string()),
-                        named_variables: Some(register_named_variables),
-                        source: None,
-                        variables_reference: register_variables_reference,
-                    });
-                };
-                if let Some(locals_root_variable) =
-                    debug_info.variable_cache.get_variable_by_name_and_parent(
-                        "<locals>".to_owned(),
-                        stackframe_root_variable.variable_key,
-                    )
-                {
-                    let (
-                        locals_variables_reference,
-                        locals_named_variables,
-                        locals_indexed_variables,
-                    ) = self.get_variable_reference(debug_info, &locals_root_variable);
-                    dap_scopes.push(Scope {
-                        line: stackframe_root_variable
-                            .source_location
-                            .as_ref()
-                            .and_then(|location| location.line.map(|line| line as i64)),
-                        column: stackframe_root_variable
-                            .source_location
-                            .as_ref()
-                            .and_then(|l| {
-                                l.column.map(|c| match c {
-                                    ColumnType::LeftEdge => 0,
-                                    ColumnType::Column(c) => c as i64,
-                                })
-                            }),
-                        end_column: None,
-                        end_line: None,
-                        expensive: false, // VSCode will open this tree by default.
-                        indexed_variables: Some(locals_indexed_variables),
-                        name: "Variables".to_string(),
-                        presentation_hint: Some("locals".to_string()),
-                        named_variables: Some(locals_named_variables),
-                        source: None,
-                        variables_reference: locals_variables_reference,
-                    });
-                };
-            }
+            if let Some(register_root_variable) = core_data
+                .debug_info
+                .variable_cache
+                .get_variable_by_name_and_parent(
+                    "<registers>".to_owned(),
+                    stackframe_root_variable.variable_key,
+                )
+            {
+                let (
+                    register_variables_reference,
+                    register_named_variables,
+                    register_indexed_variables,
+                ) = self.get_variable_reference(core_data.debug_info, &register_root_variable);
+                dap_scopes.push(Scope {
+                    line: None,
+                    column: None,
+                    end_column: None,
+                    end_line: None,
+                    expensive: true, // VSCode won't open this tree by default.
+                    indexed_variables: Some(register_indexed_variables),
+                    name: "Registers".to_string(),
+                    presentation_hint: Some("registers".to_string()),
+                    named_variables: Some(register_named_variables),
+                    source: None,
+                    variables_reference: register_variables_reference,
+                });
+            };
+            if let Some(locals_root_variable) = core_data
+                .debug_info
+                .variable_cache
+                .get_variable_by_name_and_parent(
+                    "<locals>".to_owned(),
+                    stackframe_root_variable.variable_key,
+                )
+            {
+                let (locals_variables_reference, locals_named_variables, locals_indexed_variables) =
+                    self.get_variable_reference(core_data.debug_info, &locals_root_variable);
+                dap_scopes.push(Scope {
+                    line: stackframe_root_variable
+                        .source_location
+                        .as_ref()
+                        .and_then(|location| location.line.map(|line| line as i64)),
+                    column: stackframe_root_variable
+                        .source_location
+                        .as_ref()
+                        .and_then(|l| {
+                            l.column.map(|c| match c {
+                                ColumnType::LeftEdge => 0,
+                                ColumnType::Column(c) => c as i64,
+                            })
+                        }),
+                    end_column: None,
+                    end_line: None,
+                    expensive: false, // VSCode will open this tree by default.
+                    indexed_variables: Some(locals_indexed_variables),
+                    name: "Variables".to_string(),
+                    presentation_hint: Some("locals".to_string()),
+                    named_variables: Some(locals_named_variables),
+                    source: None,
+                    variables_reference: locals_variables_reference,
+                });
+            };
         }
 
-        self.send_response(
-            request,
-            Ok(Some(ScopesResponseBody {
-                scopes: dap_scopes.clone(),
-            })),
-        )
+        self.send_response(request, Ok(Some(ScopesResponseBody { scopes: dap_scopes })))
     }
 
     pub(crate) fn source(&mut self, _core_data: &mut CoreData, request: Request) -> Result<()> {
@@ -919,28 +901,31 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             Err(error) => return self.send_response::<()>(request, Err(error)),
         };
 
-        let response = if let Some(debug_info) = core_data.debug_info {
+        let response = {
             // During the intial stack unwind operation, if we encounter certain types of pointers as children of complex variables, they will not be auto-expanded and included in the variable cache. Please refer to the `is_pointer` member of [probe_rs::debug::Variable] for more information. If this is the case, we will store the `stack_frame_registers` as part of the variable definition, so that we can  resolve the variable and add it to the cache before continuing.
             // TODO: Use the DAP "Invalidated" event to refresh the variables for this stackframe. It will allow the UI to see updated compound values for pointer variables based on the newly resolved children.
-            if let Some(parent_variable) = debug_info
+            if let Some(parent_variable) = core_data
+                .debug_info
                 .variable_cache
                 .get_variable_by_key(arguments.variables_reference)
             {
                 if parent_variable.referenced_node_offset.is_some() {
-                    debug_info
+                    core_data
+                        .debug_info
                         .cache_referenced_variables(&mut core_data.target_core, parent_variable)?;
                 }
             }
 
-            let dap_variables: Vec<Variable> = debug_info
+            let dap_variables: Vec<Variable> = core_data
+                .debug_info
                 .variable_cache
                 .get_children(arguments.variables_reference)?
                 .iter()
                 // Filter out requested children, then map them as DAP variables
                 .filter(|variable| match &arguments.filter {
                     Some(filter) => match filter.as_str() {
-                        "indexed" => variable.name.starts_with("__"),
-                        "named" => !variable.name.starts_with("__"),
+                        "indexed" => variable.is_indexed(),
+                        "named" => !variable.is_indexed(),
                         other => {
                             // This will yield an empty Vec, which will result in a user facing error as well as the log below.
                             log::error!("Received invalid variable filter: {}", other);
@@ -955,7 +940,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                         variables_reference,
                         named_child_variables_cnt,
                         indexed_child_variables_cnt,
-                    ) = self.get_variable_reference(debug_info, variable);
+                    ) = self.get_variable_reference(core_data.debug_info, variable);
                     Variable {
                         name: variable.name.clone(),
                         evaluate_name: None,
@@ -964,7 +949,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                         named_variables: Some(named_child_variables_cnt),
                         presentation_hint: None,
                         type_: Some(variable.type_name.clone()),
-                        value: variable.get_value(&debug_info.variable_cache),
+                        value: variable.get_value(&core_data.debug_info.variable_cache),
                         variables_reference,
                     }
                 })
@@ -978,10 +963,6 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                     variables: dap_variables,
                 })),
             }
-        } else {
-            Err(DebuggerError::Other(anyhow!(
-                "No `DebugInfo` available. Please report this as a bug."
-            )))
         };
 
         self.send_response(request, response)
@@ -1102,7 +1083,8 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             .get_children(parent_variable.variable_key)
         {
             for child_variable in children {
-                if child_variable.name.starts_with("__") {
+                // TODO: This should be if it starts with __ followed by a number. Fix this when std::str::pattern api stabilizes.
+                if child_variable.is_indexed() {
                     indexed_child_variables_cnt += 1;
                 } else {
                     named_child_variables_cnt += 1;
