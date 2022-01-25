@@ -538,13 +538,7 @@ impl Variable {
             && self
                 .name
                 .find(char::is_numeric)
-                .map_or(false, |zero_based_position| {
-                    if zero_based_position == 2 {
-                        true
-                    } else {
-                        false
-                    }
-                })
+                .map_or(false, |zero_based_position| zero_based_position == 2)
     }
 
     fn formatted_variable_value(&self, variable_cache: &VariableCache) -> String {
