@@ -240,13 +240,13 @@ pub struct SessionData {
     pub(crate) session: Session,
     #[allow(dead_code)]
     pub(crate) capstone: Capstone,
-    pub(crate) debug_info: Option<DebugInfo>,
+    pub(crate) debug_info: DebugInfo,
 }
 
 pub struct CoreData<'p> {
     pub(crate) target_core: Core<'p>,
     pub(crate) target_name: String,
-    pub(crate) debug_info: &'p mut Option<DebugInfo>,
+    pub(crate) debug_info: &'p mut DebugInfo,
 }
 
 /// Definition of commands that have been implemented in Debugger.
@@ -356,10 +356,13 @@ pub fn start_session(debugger_options: &DebuggerOptions) -> Result<SessionData, 
         .map_err(|err| anyhow!("Error creating Capstone disassembler: {:?}", err))?;
 
     // Configure the `DebugInfo`.
-    let debug_info = debugger_options
-        .program_binary
-        .as_ref()
-        .and_then(|path| DebugInfo::from_file(path).ok());
+    let debug_info = if let Some(binary_path) = &debugger_options.program_binary {
+        DebugInfo::from_file(binary_path).map_err(|error| DebuggerError::Other(anyhow!(error)))?
+    } else {
+        return Err(
+            anyhow!("Please provide a valid `program_binary` for this debug session").into(),
+        );
+    };
 
     Ok(SessionData {
         session: target_session,

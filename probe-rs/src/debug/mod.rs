@@ -193,15 +193,10 @@ impl Registers {
     }
 
     /// Lookup the register name from the RegisterDescriptions.
-    pub fn get_name_by_dwarf_register_number(&self, register_number: u32) -> String {
-        if let Some(platform_register) = self
-            .register_description
+    pub fn get_name_by_dwarf_register_number(&self, register_number: u32) -> Option<String> {
+        self.register_description
             .get_platform_register(register_number as usize)
-        {
-            platform_register.name().to_string()
-        } else {
-            format!("r{} - Uninitialized", register_number)
-        }
+            .map(|platform_register| platform_register.name().to_string())
     }
 
     pub fn set_by_dwarf_register_number(&mut self, register_number: u32, value: Option<u32>) {
@@ -281,7 +276,6 @@ impl<'debuginfo, 'probe, 'core> Iterator for StackFrameIterator<'debuginfo, 'pro
     /// - If the FP register is 0x0, then we have encountered a logic 'bottom of the stack' (i.e. a non-returning function)
     /// Note: In addition to populating the `StackFrame`s, this function will also populate the `DebugInfo::VariableCache` with `Variable`s for available Registers and function variables.
     fn next(&mut self) -> Option<Self::Item> {
-        self.unwind_registers.get_return_address()?;
         // PART 0-a: If we've encountered an error in the previous iteration, the `PC` will be `None`.
         let frame_pc = if let Some(frame_pc) = self.unwind_registers.get_program_counter() {
             frame_pc as u64
@@ -326,6 +320,7 @@ impl<'debuginfo, 'probe, 'core> Iterator for StackFrameIterator<'debuginfo, 'pro
             };
 
         // Part 1-b: When we encounter the starting (after reset) return address, we've reached the bottom of the stack, so no more unwinding after this ...
+        // TODO: Validate that this applies to RISCV also.s
         if let Some(check_return_address) = self.unwind_registers.get_return_address() {
             if check_return_address == u32::MAX {
                 self.unwind_registers.set_return_address(None);
@@ -351,7 +346,7 @@ impl<'debuginfo, 'probe, 'core> Iterator for StackFrameIterator<'debuginfo, 'pro
                         .address
                         .0 as u32;
                     log::debug!(
-                        "UNWIND - {:04}: Caller: {:#010x}\tCallee: {:#010x}\tRule: {}",
+                        "UNWIND - {:04?}: Caller: {:#010x}\tCallee: {:#010x}\tRule: {}",
                         self.unwind_registers
                             .get_name_by_dwarf_register_number(register_number),
                         stackframe_return_address,
@@ -566,7 +561,7 @@ impl<'debuginfo, 'probe, 'core> Iterator for StackFrameIterator<'debuginfo, 'pro
                         self.unwind_registers
                             .set_by_dwarf_register_number(register_number, new_value);
                         log::debug!(
-                            "UNWIND - {:04}: Caller: {:#010x}\tCallee: {:#010x}\tRule: {}",
+                            "UNWIND - {:04?}: Caller: {:#010x}\tCallee: {:#010x}\tRule: {}",
                             self.unwind_registers
                                 .get_name_by_dwarf_register_number(register_number),
                             self.unwind_registers
@@ -693,7 +688,7 @@ impl<'debuginfo, 'probe, 'core> Iterator for StackFrameIterator<'debuginfo, 'pro
                         self.unwind_registers
                             .set_by_dwarf_register_number(return_register_number, new_return_value);
                         log::debug!(
-                            "UNWIND - {:04}: Caller: {:#010x}\tRule: Override with previous frame {}",
+                            "UNWIND - {:04?}: Caller: {:#010x}\tRule: Override with previous frame {}",
                             self.unwind_registers
                                 .get_name_by_dwarf_register_number(return_register_number),
                             self.unwind_registers
@@ -958,24 +953,14 @@ impl DebugInfo {
         sorted_registers.sort_by_key(|(register_number, _register_value)| *register_number);
 
         for (register_number, register_value) in sorted_registers {
-            let register_variable = Variable {
-                variable_key: 0,
-                parent_key: register_root_variable.variable_key,
-                name: registers.get_name_by_dwarf_register_number(register_number),
-                value: format!("{:#010x}", register_value),
-                source_location: None,
-                type_name: "Platform Register".to_owned(),
-                referenced_node_offset: None,
-                header_offset: None,
-                entries_offset: None,
-                stack_frame_registers: None,
-                memory_location: 0,
-                byte_size: 4,
-                member_index: None,
-                range_lower_bound: 0,
-                range_upper_bound: 0,
-                role: VariantRole::NonVariant,
-            };
+            let mut register_variable = Variable::new(None, None);
+            register_variable.parent_key = register_root_variable.variable_key;
+            register_variable.name = registers
+                .get_name_by_dwarf_register_number(register_number)
+                .unwrap_or_else(|| format!("r{}", register_number));
+            register_variable.type_name = "Platform Register".to_owned();
+            register_variable.byte_size = 4;
+            register_variable.set_value(format!("{:#010x}", register_value));
             self.variable_cache.cache_variable(
                 register_root_variable.variable_key,
                 register_variable,

@@ -9,11 +9,11 @@ use std::{
 };
 
 /// VariableCache stores every available `Variable`, and provides methods to create and navigate the parent-child relationships of the Variables.
-/// There should be ONLY ONE `VariableCache` per `DebugInfo`. Because of the multiple ways in which it is updated, all references to `VariableCache` are *immutable*, and can only be updated through its methods, which provide *interior mutability"
+/// `VariableCache` is a member of `DebugInfo`, and it will be recreated/repopulated with appropriate data everytime `DebugInfo::try_unwind()` is called. Because of the multiple ways in which it is updated, all references to `VariableCache` are *immutable*, and can only be updated through its methods, which provide *interior mutability"
 ///
 /// There are four 'dummy' `Variables`, named `<stack_frame>`, `<statics>`, `<registers>`, and `<locals>`. These are used to provide the header structure of how variables relate to different scopes in a particular stacktrace. This 'dummy' structure looks as follows
 /// - `<stack_frame>`: Every `StackFrame` will have one of these, with its function name captured in the `value` field of this dummy variable.
-///   - `<statics>`: The parent variable for all static coped variables in the stack
+///   - `<statics>`: The parent variable for all statics variables that are in the same compile unit, or in dependencies that are explicitly mentioned in the compile unit of the relevant stack frame.
 ///     - A recursive `Variable` structure as described for `<locals>` below.
 ///   - `<registers>`: Every `StackFrame` will have a collection of `Variable` registers.
 ///     - A `Variable` for each available register
@@ -127,20 +127,29 @@ impl VariableCache {
     }
 
     /// Retrieve a clone of a specific `Variable`, using the `name` and `parent_key`.
-    /// If there is more than one, it will be logged (log::warn!), and only the last will be returned.
+    /// If there is more than one, it will be logged (log::error!), and only the last will be returned.
     pub fn get_variable_by_name_and_parent(
         &self,
         variable_name: String,
         parent_key: i64,
     ) -> Option<Variable> {
-        self.variable_hash_map
+        let child_variables = self
+            .variable_hash_map
             .borrow()
             .values()
             .filter(|child_variable| {
                 child_variable.name == variable_name && child_variable.parent_key == parent_key
             })
-            .last()
             .cloned()
+            .collect::<Vec<Variable>>();
+        match child_variables.len() {
+            0 => None,
+            1 => child_variables.first().cloned(),
+            child_count => {
+                log::error!("Found {} variables with parent_key={} and name={}. Please report this as a bug.", child_count, parent_key, variable_name);
+                child_variables.last().cloned()
+            }
+        }
     }
 
     /// Retrieve `clone`d version of all the children of a `Variable`.
@@ -252,7 +261,13 @@ impl std::fmt::Display for VariableCache {
         for stackframe_root_variable in stack_frames {
             // Header info for the StackFrame
             writeln!(f)?;
-            writeln!(f, "StackFrame data for {}", stackframe_root_variable.value)?;
+            writeln!(
+                f,
+                "StackFrame data for {}",
+                stackframe_root_variable
+                    .value
+                    .unwrap_or_else(|| "unknown function".to_string())
+            )?;
             if let Some(si) = stackframe_root_variable.source_location {
                 write!(
                     f,
@@ -273,70 +288,13 @@ impl std::fmt::Display for VariableCache {
 
                 writeln!(f)?;
             }
-            // Write the register variable data
-            if let Some(register_root_variable) = self.get_variable_by_name_and_parent(
-                "<registers>".to_owned(),
-                stackframe_root_variable.variable_key,
-            ) {
-                writeln!(f)?;
-                writeln!(
-                    f,
-                    "Registers for StackFrame {}",
-                    stackframe_root_variable.value
-                )?;
-                fmt_recurse_variables(self, &register_root_variable, 0, f)?;
-            } else {
-                writeln!(
-                    f,
-                    "`DebugInfo::VariableCache` contains no `Register` data for `StackFrame` {}.",
-                    stackframe_root_variable.value
-                )?;
-            }
-
-            // Write the static variable data
-            if let Some(static_root_variable) = self.get_variable_by_name_and_parent(
-                "<statics>".to_owned(),
-                stackframe_root_variable.variable_key,
-            ) {
-                // Write the static variable data
-                writeln!(
-                    f,
-                    "Static Variables for StackFrame {}",
-                    static_root_variable.value
-                )?;
-                fmt_recurse_variables(self, &static_root_variable, 0, f)?;
-            } else {
-                writeln!(
-                    f,
-                    "`DebugInfo::VariableCache` contains no data. Please report this as a bug."
-                )?;
-            }
-
-            // Write the function variable data
-            if let Some(function_root_variable) = self.get_variable_by_name_and_parent(
-                "<locals>".to_owned(),
-                stackframe_root_variable.variable_key,
-            ) {
-                writeln!(f)?;
-                writeln!(
-                    f,
-                    "Function variables for StackFrame {}",
-                    stackframe_root_variable.value
-                )?;
-                fmt_recurse_variables(self, &function_root_variable, 0, f)?;
-            } else {
-                writeln!(
-                    f,
-                    "`DebugInfo::VariableCache` contains no `Variable` data for `StackFrame` {}.",
-                    stackframe_root_variable.value
-                )?;
-            }
         }
         writeln!(f)
     }
 }
 
-fn fmt_recurse_variables(
+// TODO: For the CLI, implement new commands to view the values of variables. Including it in the std::fmt::Display for VariableCache is too noisy.
+fn _fmt_recurse_variables(
     variable_cache: &VariableCache,
     parent_variable: &Variable,
     level: u32,
@@ -349,11 +307,13 @@ fn fmt_recurse_variables(
     let ret = writeln!(
         f,
         "|-> {} \t= {} \t({})",
-        parent_variable.name, parent_variable.value, parent_variable.type_name
+        parent_variable.name,
+        parent_variable.value.as_ref().unwrap_or(&"".to_string()),
+        parent_variable.type_name
     );
     if let Ok(children) = variable_cache.get_children(parent_variable.variable_key) {
         for variable in &children {
-            fmt_recurse_variables(variable_cache, variable, new_level, f)?;
+            _fmt_recurse_variables(variable_cache, variable, new_level, f)?;
         }
     }
     ret
@@ -384,11 +344,12 @@ impl Default for VariantRole {
 pub struct Variable {
     /// Every variable must have a unique key value assigned to it. The value will be zero until it is stored in VariableCache, at which time its value will be set to the same as the VariableCache::variable_cache_key
     pub variable_key: i64,
-    /// Every variable must have a unique parent assigned to it when stored in the VariableCache A parent_key of 0 in the cache means it is the root of a variable tree.
+    /// Every variable must have a unique parent assigned to it when stored in the VariableCache. A parent_key of 0 in the cache simply implies that this variable doesn't have a parent, i.e. it is the root of a tree.
     pub parent_key: i64,
+    /// The variable name refers to the name of any of the types of values described in the [VariableCache]
     pub name: String,
-    /// The value will always be an empty string unless the variable is a base type. For all Variables that are complex types or references, the value will be a "fmt::Display" representation that attempts to assemble the base types into human readable form. Use `Variable::set_value()` and `Variable::get_value()` to correctly process this `value`
-    pub(crate) value: String,
+    /// The value will always be `None` unless the variable is a base type or there was an error during the unwind operation for the variable value. For all Variables that are complex types or references, the value will be a "fmt::Display" representation that attempts to assemble the base types into human readable form. Use `Variable::set_value()` and `Variable::get_value()` to correctly process this `value`
+    value: Option<String>,
     pub source_location: Option<SourceLocation>,
     pub type_name: String,
     /// When we encounter DW_TAG_pointer_type during ELF parsing, we store the `gimli::UnitOffset to the 'referened' node.
@@ -423,7 +384,6 @@ pub struct Variable {
 impl PartialEq for Variable {
     fn eq(&self, other: &Self) -> bool {
         self.variable_key == other.variable_key
-            || (self.parent_key == other.parent_key && self.name == other.name)
     }
 }
 
@@ -457,17 +417,24 @@ impl Variable {
     /// Implementing set_value(), because the library passes errors into the value of the variable.
     /// This ensures debug front ends can see the errors, but doesn't fail because of a single variable not being able to decode correctly.
     pub(crate) fn set_value(&mut self, new_value: String) {
-        if self.value.is_empty() {
-            self.value = new_value;
-        } else if new_value != self.value {
-            // We append the new value to the old value, so that we don't loose any prior errors or warnings originating from the process of decoding the actual value.
-            self.value = format!("{} : {}", self.value, new_value);
+        if let Some(existing_value) = self.value.clone() {
+            if new_value != existing_value {
+                // We append the new value to the old value, so that we don't loose any prior errors or warnings originating from the process of decoding the actual value.
+                self.value = Some(format!("{} : {}", existing_value, new_value));
+            }
+        } else {
+            self.value = Some(new_value);
         }
     }
 
     /// Implementing get_value(), because Variable.value has to be private (a requirement of updating the value without overriding earlier values ... see set_value()).
     pub fn get_value(&self, variable_cache: &VariableCache) -> String {
-        if self.value.is_empty() {
+        if let Some(existing_value) = self.value.clone() {
+            // The `value` for this `Variable` is non empty because it is either:
+            // - A base data type for which a value was determined based on the core runtime
+            // - Contains an error that was encountered while resolving the `Variable`'s `DebugInfo`
+            existing_value
+        } else {
             // We need to construct a 'human readable' value using `fmt::Display` to represent the values of complex types and pointers.
             match variable_cache.has_children(self) {
                 Ok(has_children) => {
@@ -494,11 +461,6 @@ impl Variable {
                     self.name, error
                 ),
             }
-        } else {
-            // The `value` for this `Variable` is non empty because it is either:
-            // - A base data type for which a value was determined based on the core runtime
-            // - Contains an error that was encountered while resolving the `Variable`'s `DebugInfo`
-            self.value.clone()
         }
     }
 
@@ -508,7 +470,7 @@ impl Variable {
         // The value was set by get_location(), so just leave it as is.
         if self.memory_location == u64::MAX
         // The value was set elsewhere in this library - probably because of an error - so just leave it as is.
-        || !self.value.is_empty()
+        || self.value.is_some()
         // Early on in the process of `Variable` evaluation
         || self.type_name.is_empty()
         // Templates, Phantoms, etc.
@@ -517,11 +479,11 @@ impl Variable {
             return;
         } else if self.referenced_node_offset.is_some() {
             // And we have not previously assigned the value, then assign the type and address as the value
-            self.value = format!(
+            self.value = Some(format!(
                 "{} @ {:#010X}",
                 self.type_name.clone(),
                 self.memory_location
-            );
+            ));
             return;
         }
 
@@ -566,11 +528,30 @@ impl Variable {
             "None" => "None".to_string(),
             _undetermined_value => "".to_owned(),
         };
-        self.value = string_value;
+        self.value = Some(string_value);
+    }
+
+    /// The variable is considered to be an 'indexed' variable if the name starts with two underscores followed by a number. e.g. "__1".
+    /// TODO: Consider replacing this logic with `std::str::pattern::Pattern` when that API stabilizes
+    pub fn is_indexed(&self) -> bool {
+        self.name.starts_with("__")
+            && self
+                .name
+                .find(char::is_numeric)
+                .map_or(false, |zero_based_position| {
+                    if zero_based_position == 2 {
+                        true
+                    } else {
+                        false
+                    }
+                })
     }
 
     fn formatted_variable_value(&self, variable_cache: &VariableCache) -> String {
-        if self.value.is_empty() {
+        if let Some(existing_value) = self.value.clone() {
+            // Use the supplied value.
+            existing_value
+        } else {
             let mut compound_value = "".to_string();
             // Only do this if we do not already have a value assigned.
             if let Ok(children) = variable_cache.get_children(self.variable_key) {
@@ -612,7 +593,7 @@ impl Variable {
                 } else {
                     // Generic handling of other structured types.
                     // TODO: This is 'ok' for most, but could benefit from some custom formatting, e.g. Unions, Result<> and Option<>
-                    if self.name.starts_with("__") {
+                    if self.is_indexed() {
                         // Indexed variables look different ...
                         compound_value = format!("{}{}:{{", compound_value, self.name);
                     } else {
@@ -631,9 +612,6 @@ impl Variable {
                 // We don't have a value, and we can't generate one from children values, so use the type_name
                 self.type_name.to_string()
             }
-        } else {
-            // Use the supplied value.
-            self.value.to_string()
         }
     }
 }
@@ -690,7 +668,10 @@ impl Value for String {
                     .into_iter()
                     .find(|child_variable| child_variable.name == *"length")
                 {
-                    Some(length_value) => length_value.value.parse().unwrap_or(0) as usize,
+                    Some(length_value) => length_value
+                        .value
+                        .map(|value| value.parse().unwrap_or(0))
+                        .unwrap_or(0) as usize,
                     None => 0_usize,
                 };
                 let string_location = match children
