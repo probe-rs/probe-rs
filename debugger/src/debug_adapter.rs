@@ -1083,7 +1083,6 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             .get_children(parent_variable.variable_key)
         {
             for child_variable in children {
-                // TODO: This should be if it starts with __ followed by a number. Fix this when std::str::pattern api stabilizes.
                 if child_variable.is_indexed() {
                     indexed_child_variables_cnt += 1;
                 } else {
