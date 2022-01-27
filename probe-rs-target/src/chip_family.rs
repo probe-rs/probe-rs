@@ -55,6 +55,7 @@ impl CoreType {
     /// Returns the parent architecture family of this core type.
     pub fn architecture(&self) -> Architecture {
         match self {
+            CoreType::Avr => Architecture::Avr,
             CoreType::Riscv => Architecture::Riscv,
             _ => Architecture::Arm,
         }

@@ -1,0 +1,47 @@
+---
+name: Avr
+manufacturer: ~
+variants:
+  - name: AVR128DA48
+    cores:
+      - name: main
+        type: avr
+        core_access_options:
+          Avr
+    memory_map:
+      - Ram:
+          range: 
+              start: 0x20000000
+              end: 0x20001000
+          is_boot_memory: false
+          cores:
+          - main
+      - Flash:
+          range: 
+              start: 0x20000000
+              end: 0x20001000
+          is_boot_memory: true
+          cores:
+          - main
+    flash_algorithms: []
+    device_spesific_data:
+      AvrTinyX:
+        prog_base: 0x00800000
+        flash_pages_bytes: 0x200
+        eeprom_pages_bytes: 0x01
+        nvmctrl_module_address: 0x00001000
+        ocd_module_address: 0x0F80
+        flash_bytes: 0x20000
+        eeprom_bytes: 0x200
+        user_sig_bytes_bytes: 0x20
+        fuse_bytes: 0x10
+        eeprom_base: 0x1400
+        user_row_base: 0x1080
+        sigrow_base: 0x1100
+        fuses_base: 0x1050
+        lock_base: 0x1040
+        device_id: 0x1E9708
+        address_size: Size24bit
+        
+
+flash_algorithms: []

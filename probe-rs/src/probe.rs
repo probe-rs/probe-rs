@@ -20,7 +20,7 @@ use crate::error::Error;
 use crate::Session;
 use crate::{
     architecture::arm::communication_interface::UninitializedArmProbe,
-    config::{RegistryError, TargetSelector},
+    config::{RegistryError, Target, TargetSelector},
 };
 
 pub use edbg::AvrWireProtocol;
@@ -318,6 +318,10 @@ impl Probe {
         self.inner.attach()
     }
 
+    pub fn set_target(&mut self, target: Target) -> Result<(), DebugProbeError> {
+        self.inner.set_target(target)
+    }
+
     /// Selects the transport protocol to be used by the debug probe.
     pub fn select_protocol(&mut self, protocol: WireProtocol) -> Result<(), DebugProbeError> {
         if !self.attached {
@@ -402,6 +406,7 @@ impl Probe {
                 .map_err(|(probe, err)| (Probe::from_attached_probe(probe), err))
         }
     }
+
 
     /// Check if the probe has an interface to
     /// debug RISCV chips.
@@ -490,6 +495,10 @@ pub trait DebugProbe: Send + fmt::Debug {
 
     /// Selects the transport protocol to be used by the debug probe.
     fn select_protocol(&mut self, protocol: WireProtocol) -> Result<(), DebugProbeError>;
+
+    fn set_target(&mut self, target: Target) -> Result<(), DebugProbeError> {
+        panic!("Setting target not supported by probe");
+    }
 
     /// Check if the proble offers an interface to debug ARM chips.
     fn has_arm_interface(&self) -> bool {

@@ -247,6 +247,7 @@ impl Session {
                 session
             }
             Architecture::Avr => {
+                probe.set_target(target.clone())?;
                 probe.inner_attach()?;
 
                 let interface = probe

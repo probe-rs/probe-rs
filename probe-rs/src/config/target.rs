@@ -1,4 +1,4 @@
-use probe_rs_target::{Architecture, ChipFamily};
+use probe_rs_target::{Architecture, ChipFamily, DeviceData};
 
 use super::{Core, MemoryRegion, RawFlashAlgorithm, RegistryError, TargetDescriptionSource};
 
@@ -28,7 +28,11 @@ pub struct Target {
 
     /// Debug sequences for the given target.
     pub debug_sequence: DebugSequence,
+
+    /// Device spesific debug data
+    pub device_spesific_data: Option<DeviceData>,
 }
+
 
 impl std::fmt::Debug for Target {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -86,7 +90,7 @@ impl Target {
         // We always just take the architecture of the first core which is okay if there is no mixed architectures.
         let mut debug_sequence = match chip.cores[0].core_type.architecture() {
             Architecture::Arm => DebugSequence::Arm(DefaultArmSequence::create()),
-            Architecture::Avr => todo!("Debug sequences not implemented for AVR yet"),
+            Architecture::Avr => DebugSequence::Avr,
             Architecture::Riscv => DebugSequence::Riscv(DefaultRiscvSequence::create()),
         };
 
@@ -105,6 +109,7 @@ impl Target {
             source: family.source.clone(),
             memory_map: chip.memory_map.clone(),
             debug_sequence,
+            device_spesific_data: chip.device_spesific_data.clone(),
         })
     }
 

@@ -1,4 +1,5 @@
 use super::memory::MemoryRegion;
+use super::device_data::DeviceData;
 use crate::CoreType;
 use serde::{Deserialize, Serialize};
 
@@ -23,6 +24,7 @@ pub struct Chip {
     pub cores: Vec<Core>,
     /// The memory regions available on the chip.
     pub memory_map: Vec<MemoryRegion>,
+
     /// Names of all flash algorithms available for this chip.
     ///
     /// This can be used to look up the flash algorithm in the
@@ -30,6 +32,10 @@ pub struct Chip {
     ///
     /// [`ChipFamily::flash_algorithms`]: crate::ChipFamily::flash_algorithms
     pub flash_algorithms: Vec<String>,
+
+    /// Debug data specific for a particular device
+    #[serde(default)]
+    pub device_spesific_data: Option<DeviceData>,
 }
 
 /// An individual core inside a chip

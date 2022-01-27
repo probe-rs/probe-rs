@@ -2,6 +2,8 @@ use crate::error;
 use anyhow::Result;
 use thiserror::Error;
 
+use probe_rs_target::DeviceData;
+
 //use log::debug;
 use scroll::{Pread, Pwrite, LE};
 
@@ -15,6 +17,7 @@ use crate::probe::cmsisdap::commands::CmsisDapDevice;
 use crate::DebugProbe;
 use crate::DebugProbeError;
 use crate::DebugProbeSelector;
+use crate::Target;
 use crate::WireProtocol;
 use crate::{CoreInformation, CoreStatus, HaltReason};
 use enum_primitive_derive::Primitive;
@@ -51,6 +54,7 @@ pub struct EDBG {
     pub speed_khz: u32,
     pub sequence_number: u16,
     pub protocol: Option<AvrWireProtocol>,
+    pub target: Option<Target>,
 }
 
 #[derive(Copy, Clone, PartialEq, Debug, serde::Serialize, serde::Deserialize)]
@@ -138,94 +142,6 @@ enum SubProtocols {
     EDBGCtrl = 0x20,
 }
 
-#[allow(dead_code)]
-#[derive(Copy, Clone, Debug)]
-enum AddressSize {
-    Size24bit = 0x01,
-    Size16bit = 0x00,
-}
-
-#[derive(Copy, Clone, Debug)]
-struct TinyXDeviceData {
-    prog_base: u32,
-    flash_pages_bytes: u16,
-    eeprom_pages_bytes: u8,
-    nvmctrl_module_address: u16,
-    ocd_module_address: u16,
-    //_padding: [u8; 10],
-    flash_bytes: u32,
-    eeprom_bytes: u16,
-    user_sig_bytes_bytes: u16,
-    fuse_bytes: u8,
-    //padding: [u8; 5]
-    eeprom_base: u16,
-    user_row_base: u16,
-    sigrow_base: u16,
-    fuses_base: u16,
-    lock_base: u16,
-    device_id: u32,
-    //prog_base_msb
-    //flash_pages_bytes_msb
-    address_size: AddressSize,
-}
-
-impl TinyXDeviceData {
-    pub fn to_device_data(&self) -> Vec<u8> {
-        let mut data = vec![0u8; 0x2f];
-
-        data.pwrite_with(self.prog_base as u16, 0, LE).unwrap();
-        data.pwrite_with(self.flash_pages_bytes as u8, 2, LE)
-            .unwrap();
-        data.pwrite_with(self.eeprom_pages_bytes as u8, 3, LE)
-            .unwrap();
-        data.pwrite_with(self.nvmctrl_module_address as u16, 4, LE)
-            .unwrap();
-        data.pwrite_with(self.ocd_module_address as u16, 6, LE)
-            .unwrap();
-
-        data.pwrite_with(self.flash_bytes as u32, 0x12, LE).unwrap();
-        data.pwrite_with(self.eeprom_bytes as u16, 0x16, LE)
-            .unwrap();
-        data.pwrite_with(self.user_sig_bytes_bytes as u16, 0x18, LE)
-            .unwrap();
-        data.pwrite_with(self.fuse_bytes as u8, 0x1a, LE).unwrap();
-
-        data.pwrite_with(self.eeprom_base as u16, 0x20, LE).unwrap();
-        data.pwrite_with(self.user_row_base as u16, 0x22, LE)
-            .unwrap();
-        data.pwrite_with(self.sigrow_base as u16, 0x24, LE).unwrap();
-        data.pwrite_with(self.fuses_base as u16, 0x26, LE).unwrap();
-        data.pwrite_with(self.lock_base as u16, 0x28, LE).unwrap();
-        data.pwrite_with(self.device_id as u16, 0x2a, LE).unwrap();
-        data.pwrite_with((self.prog_base >> 16) as u8, 0x2c, LE)
-            .unwrap();
-        data.pwrite_with((self.flash_pages_bytes >> 8) as u8, 0x2d, LE)
-            .unwrap();
-        data.pwrite_with(self.address_size as u8, 0x2e, LE).unwrap();
-
-        data
-    }
-}
-
-static avr128da48_device_data: TinyXDeviceData = TinyXDeviceData {
-    prog_base: 0x00800000,
-    flash_pages_bytes: 0x200,
-    eeprom_pages_bytes: 0x01,
-    nvmctrl_module_address: 0x00001000,
-    ocd_module_address: 0x0F80,
-    flash_bytes: 0x20000,
-    eeprom_bytes: 0x200,
-    user_sig_bytes_bytes: 0x20,
-    fuse_bytes: 0x10,
-    eeprom_base: 0x1400,
-    user_row_base: 0x1080,
-    sigrow_base: 0x1100,
-    fuses_base: 0x1050,
-    lock_base: 0x1040,
-    device_id: 0x1E9708,
-    address_size: AddressSize::Size24bit,
-};
-
 impl std::fmt::Debug for EDBG {
     fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         fmt.debug_struct("DAPLink")
@@ -243,6 +159,7 @@ impl EDBG {
             speed_khz: 100,
             sequence_number: 0,
             protocol: None,
+            target: None,
         }
     }
 
@@ -277,7 +194,7 @@ impl EDBG {
 
         let rsp = commands::send_command::<AvrRSPRequest>(&mut self.device, AvrRSPRequest)?;
 
-        log::debug!("Fragment info: {}", rsp.fragment_info);
+        log::debug!("Fragment info: {:#x}", rsp.fragment_info);
 
         let total_fragments: u8 = rsp.fragment_info & 0x0f;
         response_data.extend(&rsp.command_packet);
@@ -425,8 +342,45 @@ impl EDBG {
         }
     }
 
-    fn send_device_data(&mut self, device_data: TinyXDeviceData) -> Result<(), DebugProbeError> {
-        let data = device_data.to_device_data();
+    fn send_device_data(&mut self, device_data: DeviceData) -> Result<(), DebugProbeError> {
+        let data = match device_data {
+            DeviceData::AvrTinyX(d) => {
+                let mut data = vec![0u8; 0x2f];
+
+                data.pwrite_with(d.prog_base as u16, 0, LE).unwrap();
+                data.pwrite_with(d.flash_pages_bytes as u8, 2, LE)
+                    .unwrap();
+                data.pwrite_with(d.eeprom_pages_bytes as u8, 3, LE)
+                    .unwrap();
+                data.pwrite_with(d.nvmctrl_module_address as u16, 4, LE)
+                    .unwrap();
+                data.pwrite_with(d.ocd_module_address as u16, 6, LE)
+                    .unwrap();
+
+                data.pwrite_with(d.flash_bytes as u32, 0x12, LE).unwrap();
+                data.pwrite_with(d.eeprom_bytes as u16, 0x16, LE)
+                    .unwrap();
+                data.pwrite_with(d.user_sig_bytes_bytes as u16, 0x18, LE)
+                    .unwrap();
+                data.pwrite_with(d.fuse_bytes as u8, 0x1a, LE).unwrap();
+
+                data.pwrite_with(d.eeprom_base as u16, 0x20, LE).unwrap();
+                data.pwrite_with(d.user_row_base as u16, 0x22, LE)
+                    .unwrap();
+                data.pwrite_with(d.sigrow_base as u16, 0x24, LE).unwrap();
+                data.pwrite_with(d.fuses_base as u16, 0x26, LE).unwrap();
+                data.pwrite_with(d.lock_base as u16, 0x28, LE).unwrap();
+                data.pwrite_with(d.device_id as u16, 0x2a, LE).unwrap();
+                data.pwrite_with((d.prog_base >> 16) as u8, 0x2c, LE)
+                    .unwrap();
+                data.pwrite_with((d.flash_pages_bytes >> 8) as u8, 0x2d, LE)
+                    .unwrap();
+                data.pwrite_with(d.address_size as u8, 0x2e, LE).unwrap();
+
+                data
+            }
+            _ => panic!("Device data type not implemented for edbg")
+        };
 
         self.avr8generic_set(avr8generic::SetGetContexts::Device, 0x00, &data)?;
         Ok(())
@@ -590,6 +544,12 @@ impl DebugProbe for EDBG {
         "EDBG"
     }
 
+    fn set_target(&mut self, target: Target) -> Result<(), DebugProbeError> {
+        // FIXME: check that the target info is for an avr
+        self.target = Some(target);
+        Ok(())
+    }
+
     /// Check if the probe offers an interface to debug AVR chips.
     fn has_avr_interface(&self) -> bool {
         true
@@ -621,7 +581,11 @@ impl DebugProbe for EDBG {
 
         self.select_protocol(WireProtocol::Avr(AvrWireProtocol::Updi))?;
 
-        self.send_device_data(avr128da48_device_data)?;
+        // Get device data from target description
+        let device_data = self.target.clone().expect("set_target has to be set before calling attach on avr").device_spesific_data.unwrap();
+        println!("{:#?}", device_data);
+
+        self.send_device_data(device_data)?;
 
         self.send_command_avr8_generic(avr8generic::Commands::ActivatePhysical, 0, &[0])?;
         self.send_command_avr8_generic(avr8generic::Commands::Attach, 0, &[0])?;
