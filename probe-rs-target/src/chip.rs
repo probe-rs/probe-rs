@@ -1,5 +1,5 @@
-use super::memory::MemoryRegion;
 use super::device_data::DeviceData;
+use super::memory::MemoryRegion;
 use crate::CoreType;
 use serde::{Deserialize, Serialize};
 

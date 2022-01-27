@@ -407,7 +407,6 @@ impl Probe {
         }
     }
 
-
     /// Check if the probe has an interface to
     /// debug RISCV chips.
     pub fn has_riscv_interface(&self) -> bool {

@@ -352,25 +352,21 @@ impl EDBG {
                 let mut data = vec![0u8; 0x2f];
 
                 data.pwrite_with(d.prog_base as u16, 0, LE).unwrap();
-                data.pwrite_with(d.flash_pages_bytes as u8, 2, LE)
-                    .unwrap();
-                data.pwrite_with(d.eeprom_pages_bytes as u8, 3, LE)
-                    .unwrap();
+                data.pwrite_with(d.flash_pages_bytes as u8, 2, LE).unwrap();
+                data.pwrite_with(d.eeprom_pages_bytes as u8, 3, LE).unwrap();
                 data.pwrite_with(d.nvmctrl_module_address as u16, 4, LE)
                     .unwrap();
                 data.pwrite_with(d.ocd_module_address as u16, 6, LE)
                     .unwrap();
 
                 data.pwrite_with(d.flash_bytes as u32, 0x12, LE).unwrap();
-                data.pwrite_with(d.eeprom_bytes as u16, 0x16, LE)
-                    .unwrap();
+                data.pwrite_with(d.eeprom_bytes as u16, 0x16, LE).unwrap();
                 data.pwrite_with(d.user_sig_bytes_bytes as u16, 0x18, LE)
                     .unwrap();
                 data.pwrite_with(d.fuse_bytes as u8, 0x1a, LE).unwrap();
 
                 data.pwrite_with(d.eeprom_base as u16, 0x20, LE).unwrap();
-                data.pwrite_with(d.user_row_base as u16, 0x22, LE)
-                    .unwrap();
+                data.pwrite_with(d.user_row_base as u16, 0x22, LE).unwrap();
                 data.pwrite_with(d.sigrow_base as u16, 0x24, LE).unwrap();
                 data.pwrite_with(d.fuses_base as u16, 0x26, LE).unwrap();
                 data.pwrite_with(d.lock_base as u16, 0x28, LE).unwrap();
@@ -383,7 +379,7 @@ impl EDBG {
 
                 data
             }
-            _ => panic!("Device data type not implemented for edbg")
+            _ => panic!("Device data type not implemented for edbg"),
         };
 
         self.avr8generic_set(avr8generic::SetGetContexts::Device, 0x00, &data)?;
@@ -592,12 +588,18 @@ impl DebugProbe for EDBG {
         self.select_protocol(WireProtocol::Avr(AvrWireProtocol::Updi))?;
 
         // Get device data from target description
-        let device_data = self.target.clone().expect("set_target has to be set before calling attach on avr").device_spesific_data.unwrap();
+        let device_data = self
+            .target
+            .clone()
+            .expect("set_target has to be set before calling attach on avr")
+            .device_spesific_data
+            .unwrap();
         println!("{:#?}", device_data);
 
         self.send_device_data(device_data)?;
 
-        let id = self.send_command_avr8_generic(avr8generic::Commands::ActivatePhysical, 0, &[0])?;
+        let id =
+            self.send_command_avr8_generic(avr8generic::Commands::ActivatePhysical, 0, &[0])?;
         if let avr8generic::Response::Data(id) = id {
             log::debug!("Returned ID = {:?}", id);
         }
@@ -606,7 +608,6 @@ impl DebugProbe for EDBG {
     }
 
     fn detach(&mut self) -> Result<(), DebugProbeError> {
-
         self.send_command_avr8_generic(avr8generic::Commands::Detach, 0, &[])?;
         self.send_command_avr8_generic(avr8generic::Commands::DeactivatePhysical, 0, &[])?;
         Ok(())

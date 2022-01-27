@@ -18,9 +18,9 @@ mod flash_algorithm;
 mod flash_properties;
 mod memory;
 
-pub use device_data::{DeviceData, TinyXDeviceData, AddressSize};
 pub use chip::{ArmCoreAccessOptions, Chip, Core, CoreAccessOptions, RiscvCoreAccessOptions};
 pub use chip_family::{Architecture, ChipFamily, CoreType, TargetDescriptionSource};
+pub use device_data::{AddressSize, DeviceData, TinyXDeviceData};
 pub use flash_algorithm::RawFlashAlgorithm;
 pub use flash_properties::FlashProperties;
 pub use memory::{
