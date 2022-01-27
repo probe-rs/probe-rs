@@ -62,7 +62,7 @@ impl<'probe> GdbArchitectureExt for Core<'probe> {
                     let addr: CoreRegisterAddress = self
                         .registers()
                         .get_platform_register(x as usize)
-                        .expect("avr register must exist")
+                            .expect("avr register must exist")
                         .into();
                     (addr.0, 1)
                 }
@@ -132,22 +132,20 @@ pub trait GdbTargetExt {
 
 impl GdbTargetExt for probe_rs::Target {
     fn gdb_memory_map(&self) -> String {
-        let mut xml_map = r#"<?xml version="1.0"?> <!DOCTYPE memory-map PUBLIC "+//IDN
-                    gnu.org//DTD GDB Memory Map V1.0//EN"
-                    "http://sourceware.org/gdb/gdb-memory-map.dtd"> <memory-map> "#
-            .to_owned();
+        let mut xml_map = r#"<?xml version="1.0"?>
+<!DOCTYPE memory-map PUBLIC "+//IDN gnu.org//DTD GDB Memory Map V1.0//EN" "http://sourceware.org/gdb/gdb-memory-map.dtd">
+<memory-map>
+"#.to_owned();
 
         for region in &self.memory_map {
             let region_entry = match region {
                 MemoryRegion::Ram(ram) => format!(
-                    r#"<memory type="ram" start="{:#x}"
-                                                           length="{:#x}"/>\n"#,
+                    r#"<memory type="ram" start="{:#x}" length="{:#x}"/>\n"#,
                     ram.range.start,
                     ram.range.end - ram.range.start
                 ),
                 MemoryRegion::Generic(region) => format!(
-                    r#"<memory type="rom"
-                                                               start="{:#x}" length="{:#x}"/>\n"#,
+                    r#"<memory type="rom" start="{:#x}" length="{:#x}"/>\n"#,
                     region.range.start,
                     region.range.end - region.range.start
                 ),
@@ -172,8 +170,12 @@ impl GdbTargetExt for probe_rs::Target {
     fn target_description(&self) -> String {
         // GDB-architectures
         //
-        // - armv6-m      -> Core-M0 - armv7-m      -> Core-M3 - armv7e-m      -> Core-M4, Core-M7
-        // - armv8-m.base -> Core-M23 - armv8-m.main -> Core-M33 - riscv:rv32   -> RISCV
+        // - armv6-m      -> Core-M0
+        // - armv7-m      -> Core-M3
+        // - armv7e-m      -> Core-M4, Core-M7
+        // - armv8-m.base -> Core-M23
+        // - armv8-m.main -> Core-M33
+        // - riscv:rv32   -> RISCV
 
         // TODO: what if they're not all equal?
         let architecture = match self.cores[0].core_type {
