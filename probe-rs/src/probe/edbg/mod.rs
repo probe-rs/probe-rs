@@ -179,7 +179,7 @@ impl EDBG {
         ];
         packet.extend_from_slice(command_packet);
 
-        commands::send_command::<AvrCommand>(
+        let status = commands::send_command::<AvrCommand>(
             &mut self.device,
             // FIXME: fragment info need to be properly calculated
             AvrCommand {
@@ -187,6 +187,10 @@ impl EDBG {
                 command_packet: packet.as_slice(),
             },
         )?;
+
+        if !status.done {
+            panic!("Packet not complete. More data requered");
+        }
 
         // FIXME: Handle data split accross multiple packages
 
@@ -473,6 +477,12 @@ impl EDBG {
 impl EDBG {
     // Private functions for core interface
     pub fn clear_breakpoint(&mut self, unit_index: usize) -> Result<(), error::Error> {
+        // FIXME check that the breakpoint is legal for the current target
+        // old tinyAVR and mega AVR with debugWIRE as none
+        // megaAVR with JTAG has three
+        // AVR XMEGA has two
+        // AVR with UPDI has one
+        let unit_index = unit_index + 1;
         self.send_command_avr8_generic(
             avr8generic::Commands::HwBreakClear,
             0,
@@ -587,13 +597,18 @@ impl DebugProbe for EDBG {
 
         self.send_device_data(device_data)?;
 
-        self.send_command_avr8_generic(avr8generic::Commands::ActivatePhysical, 0, &[0])?;
+        let id = self.send_command_avr8_generic(avr8generic::Commands::ActivatePhysical, 0, &[0])?;
+        if let avr8generic::Response::Data(id) = id {
+            log::debug!("Returned ID = {:?}", id);
+        }
         self.send_command_avr8_generic(avr8generic::Commands::Attach, 0, &[0])?;
         Ok(())
     }
 
     fn detach(&mut self) -> Result<(), DebugProbeError> {
-        self.send_command_avr8_generic(avr8generic::Commands::Detach, 0, &[0])?;
+
+        self.send_command_avr8_generic(avr8generic::Commands::Detach, 0, &[])?;
+        self.send_command_avr8_generic(avr8generic::Commands::DeactivatePhysical, 0, &[])?;
         Ok(())
     }
 
@@ -653,5 +668,18 @@ impl DebugProbe for EDBG {
 
     fn into_probe(self: Box<Self>) -> Box<dyn DebugProbe> {
         self
+    }
+}
+
+impl Drop for EDBG {
+    fn drop(&mut self) {
+        // FIXME:
+        // The physical interface is requered to be desabled. Otherwise it wil cause issues on next
+        // connect. This might not be the correct place to do this cleanup.
+        // Another alternative is to run detach if Faild response is returned from the debugger or
+        // prior to attach.
+        //
+        // But this seems to work for now.
+        self.detach();
     }
 }

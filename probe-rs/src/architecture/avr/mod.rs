@@ -265,6 +265,7 @@ impl<'probe> CoreInterface for Avr<'probe> {
     }
 
     fn read_core_reg(&mut self, address: CoreRegisterAddress) -> Result<u32, error::Error> {
+        log::debug!("Read avr core register {:?}", address);
         match address.0 {
             32 => Ok(self.interface.read_sreg()?),
             33 => Ok(self.interface.read_stack_pointer()?),
@@ -283,7 +284,8 @@ impl<'probe> CoreInterface for Avr<'probe> {
     }
 
     fn get_hw_breakpoints(&mut self) -> Result<Vec<Option<u32>>, error::Error> {
-        todo!();
+        // FIXME: This is only correct for UPDI devices
+        Ok(vec![Some(1)])
     }
 
     fn enable_breakpoints(&mut self, _state: bool) -> Result<(), error::Error> {
@@ -294,8 +296,8 @@ impl<'probe> CoreInterface for Avr<'probe> {
         todo!();
     }
 
-    fn clear_hw_breakpoint(&mut self, _unit_index: usize) -> Result<(), error::Error> {
-        todo!();
+    fn clear_hw_breakpoint(&mut self, unit_index: usize) -> Result<(), error::Error> {
+        self.interface.clear_breakpoint(unit_index)
     }
 
     fn registers(&self) -> &'static RegisterFile {
