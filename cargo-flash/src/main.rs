@@ -33,7 +33,7 @@ fn main() {
     panic::set_hook(Box::new(move |info| {
         #[cfg(feature = "sentry")]
         if ask_to_log_crash() {
-            capture_panic(&METADATA.lock().unwrap(), &info)
+            capture_panic(&METADATA.lock().unwrap(), info)
         }
         #[cfg(not(feature = "sentry"))]
         log::info!("{:#?}", &METADATA.lock().unwrap());
@@ -91,7 +91,7 @@ fn main_try() -> Result<(), OperationError> {
     logging::init(opt.log);
 
     // Get the current working dir. Make sure we have a proper default if it cannot be determined.
-    let work_dir = PathBuf::from(opt.work_dir.clone().unwrap_or_else(|| PathBuf::from(".")));
+    let work_dir = opt.work_dir.clone().unwrap_or_else(|| PathBuf::from("."));
 
     // Load the target description, if given in the cli parameters.
     opt.probe_options.maybe_load_chip_desc()?;
