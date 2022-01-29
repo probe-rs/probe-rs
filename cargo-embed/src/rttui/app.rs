@@ -361,12 +361,15 @@ impl App {
 
                     if let Some(path) = &self.history_path {
                         for (i, tab) in self.tabs.iter().enumerate() {
+                            if tab.format() == DataFormat::Defmt {
+                                eprintln!("Not saving tab {} as saving defmt logs is currently unsupported.", i + 1);
+                                continue;
+                            }
+
                             let extension = match tab.format() {
                                 DataFormat::String => "txt",
                                 DataFormat::BinaryLE => "dat",
-                                DataFormat::Defmt => {
-                                    panic!("You encountered a bug. Please open an issue on Github.")
-                                }
+                                DataFormat::Defmt => unreachable!(),
                             };
 
                             let name = format!("{}_channel{}.{}", self.logname, i, extension);
@@ -399,9 +402,7 @@ impl App {
                                                 continue;
                                             }
                                         },
-                                        DataFormat::Defmt => {
-                                            log::error!("Cannot write defmt output to disk.")
-                                        }
+                                        DataFormat::Defmt => unreachable!(),
                                     };
 
                                     // Flush file
