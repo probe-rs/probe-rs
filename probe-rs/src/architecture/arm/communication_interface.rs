@@ -101,6 +101,7 @@ pub struct Initialized {
     dps: HashMap<DpAddress, DpState>,
     use_overrun_detect: bool,
     sequence: Arc<dyn ArmDebugSequence>,
+    current_tar: Option<u32>,
 }
 
 impl Initialized {
@@ -110,6 +111,7 @@ impl Initialized {
             dps: HashMap::new(),
             use_overrun_detect,
             sequence,
+            current_tar: None,
         }
     }
 }
@@ -632,6 +634,14 @@ impl DapAccess for ArmCommunicationInterface<Initialized> {
         self.probe
             .raw_write_block(PortType::AccessPort, address, values)?;
         Ok(())
+    }
+
+    fn current_tar(&self) -> Option<u32> {
+        self.state.current_tar
+    }
+
+    fn set_current_tar(&mut self, current_tar: u32) {
+        self.state.current_tar = Some(current_tar);
     }
 }
 

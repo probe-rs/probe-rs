@@ -3,9 +3,10 @@ pub mod register_generation;
 pub(crate) mod generic_ap;
 pub(crate) mod memory_ap;
 
-use crate::architecture::arm::dp::DebugPortError;
+use crate::architecture::arm::{dp::DebugPortError, register_catalog::try_get_register_name};
 use crate::DebugProbeError;
 
+use colored::Colorize;
 pub use generic_ap::{ApClass, ApType, GenericAp, IDR};
 pub use memory_ap::{
     AddressIncrement, BaseaddrFormat, DataSize, MemoryAp, BASE, BASE2, CSW, DRW, TAR,
@@ -123,7 +124,24 @@ impl<T: DapAccess> ApAccess for T {
         log::debug!("Reading register {}", R::NAME);
         let raw_value = self.read_raw_ap_register(port.into().ap_address(), R::ADDRESS)?;
 
-        log::debug!("Read register    {}, value=0x{:x?}", R::NAME, raw_value);
+        let is_drw = R::NAME == "DRW";
+        let drw_map = if is_drw {
+            format!(
+                "={}",
+                self.current_tar()
+                    .and_then(try_get_register_name)
+                    .unwrap_or_else(|| "Unknown".into())
+                    .yellow()
+            )
+        } else {
+            "".into()
+        };
+        log::debug!(
+            "Read register    {}, value={}{}",
+            R::NAME,
+            format!("{:#010X?}", raw_value).cyan(),
+            drw_map,
+        );
 
         Ok(raw_value.into())
     }
@@ -137,8 +155,19 @@ impl<T: DapAccess> ApAccess for T {
         PORT: AccessPort,
         R: ApRegister<PORT>,
     {
-        log::debug!("Writing register {}, value={:x?}", R::NAME, register);
-        self.write_raw_ap_register(port.into().ap_address(), R::ADDRESS, register.into())
+        let register_value = register.into();
+        log::debug!(
+            "Writing register {}, value={}",
+            R::NAME,
+            format!("{:#010X?}", register_value).cyan()
+        );
+        let result =
+            self.write_raw_ap_register(port.into().ap_address(), R::ADDRESS, register_value)?;
+        if R::NAME == "TAR" {
+            self.set_current_tar(register_value);
+        }
+
+        Ok(result)
     }
 
     fn write_ap_register_repeated<PORT, R>(

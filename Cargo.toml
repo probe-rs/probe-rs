@@ -4,13 +4,13 @@ members = [
     "debugger",
     "gdb-server",
     "probe-rs",
-    "probe-rs-target",
     "probe-rs-cli-util",
+    "probe-rs-target",
     "rtt",
     "rtthost",
     "smoke-tester",
+    "target-gen",
     "xtask",
-    "target-gen"
 ]
 
 [profile.release]

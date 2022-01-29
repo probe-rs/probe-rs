@@ -237,7 +237,7 @@ impl From<Demcr> for u32 {
 }
 
 impl CoreRegister for Demcr {
-    const ADDRESS: u32 = 0xe000_edfc;
+    const ADDRESS: u32 = 0xE000_EDFC;
     const NAME: &'static str = "DEMCR";
 }
 
