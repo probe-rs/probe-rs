@@ -37,6 +37,22 @@ This will do following in sequence:
 5. (if enabled) start RTT host side
 6. (if enabled) start gdb debugging
 
+### RTT UI
+
+If you've enabled rtt (see [Configuration](#configuration)) the RTT UI will appear automatically.
+
+#### Keyboard shortcuts
+
+| Command | Action |
+| - | - |
+| `^c` | Quit |
+| `Fn{n}` | Switch to tab `n` |
+| Any character | Add the character to the pending input |
+| `Backspace` | Delete the last character of the pending input |
+| `Enter` | Send the pending input |
+| `PgUp` | Scroll up |
+| `PgDn` | Scroll Down |
+
 ## Configuration
 
 You can configure `cargo-embed` with a file called `Embed.toml` (or `.embed.toml`) in your project directory. That file should be added to your git history.
