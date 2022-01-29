@@ -4,7 +4,7 @@
 
 This crate provides a cargo subcommand to flash ELF binaries onto ARM chips.
 
-Various chip families including but not limited to **nRF5x**, **STM32** and **LPC800** can be flashed using **DAPLink**, **ST-Link** or **J-Link**. To check if your specific chip is supported, use `cargo flash --list-chips`
+Various chip families including but not limited to **nRF5x**, **STM32** and **LPC800** can be flashed using **DAPLink**, **ST-Link** or **J-Link**. To check if your specific chip is supported, use `cargo flash --list-chips`.
 
 ## Support
 
@@ -36,24 +36,24 @@ which will then build your binary and download the contents onto the connected t
 #### Flash the debug version of the current crate
 
 ```bash
-cargo flash --chip nrf58122
+cargo flash --chip nRF52840_xxAA
 ```
 
 #### Specifying manually what options should be used
 
 ```bash
-cargo flash --release --chip nRF51822 --target thumbv6m-none-eabi --example gpio_hal_blinky
+cargo flash --release --chip nRF52840_xxAA --target thumbv6m-none-eabi --example gpio_hal_blinky
 ```
 
 #### Use a custom chip definition from a non-builtin file
 
 ```bash
-cargo flash --release --chip-description-path nRF51822.yaml --target thumbv6m-none-eabi --example gpio_hal_blinky
+cargo flash --release --chip-description-path nRF52840_xxAA.yaml --target thumbv6m-none-eabi --example gpio_hal_blinky
 ```
 
 ### Manually selecting a chip
 
-To manually select a chip, you can use the `--chip <chip name>` argument. The chip name is an identifier such as `nRF51822` or `STM32F042`. Capitalization does not matter; Special characters do matter.
+To manually select a chip, you can use the `--chip <chip name>` argument. The chip name is an identifier such as `nRF52840_xxAA` or `STM32F042C4Tx`. Capitalization does not matter; Special characters do matter.
 
 ### Specifying a chip family description file
 
@@ -69,7 +69,6 @@ You can also reference to an already unziped `pack` directory instead of the `fi
 ## Add more chip definitions
 
 If you have a chip you want to flash, feel free to contribute to [probe-rs](https://github.com/probe-rs/probe-rs).
-
 
 ## Building
 
@@ -92,7 +91,9 @@ On Debian and derived distros (e.g. Ubuntu), the following packages need to be i
 # apt install -y pkg-config libusb-1.0-0-dev libftdi1-dev
 ```
 
-n.b. If the libusb v0.1 dev package (`libusb-dev`) is installed when dependant crates are built, you may get link failures at the end of the build.  Remove with:
+If the libusb v0.1 dev package (`libusb-dev`) is installed when dependant crates are built, you may get link failures at the end of the build.
+
+On Ubuntu you can fix this by removing it with
 
 ```bash
 # apt purge libusb-dev
