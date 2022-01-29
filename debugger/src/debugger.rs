@@ -1,30 +1,30 @@
+use crate::dap_types::*;
 use crate::debug_adapter::*;
 use crate::protocol::{CliAdapter, DapAdapter, ProtocolAdapter};
-use crate::{dap_types::*, rtt::*};
 
 use crate::DebuggerError;
 use anyhow::{anyhow, Context, Result};
 use capstone::{arch::arm::ArchMode, prelude::*, Capstone, Endian};
+use probe_rs::config::TargetSelector;
 use probe_rs::debug::DebugInfo;
-use probe_rs::flashing::{
-    download_file, download_file_with_options, DownloadOptions, FlashProgress, Format,
-};
-use probe_rs::{
-    config::{MemoryRegion, TargetSelector},
-    ProbeCreationError,
-};
+use probe_rs::flashing::download_file;
+use probe_rs::flashing::download_file_with_options;
+use probe_rs::flashing::DownloadOptions;
+use probe_rs::flashing::FlashProgress;
+use probe_rs::flashing::Format;
+use probe_rs::ProbeCreationError;
 use probe_rs::{
     Core, CoreStatus, DebugProbeError, DebugProbeSelector, MemoryInterface, Permissions, Probe,
     Session, WireProtocol,
 };
-use probe_rs_rtt::{Rtt, ScanRegion};
+use probe_rs_cli_util::rtt;
 use serde::Deserialize;
 use std::cell::RefCell;
+use std::net::Ipv4Addr;
+use std::net::TcpListener;
 use std::rc::Rc;
 use std::{
     env::{current_dir, set_current_dir},
-    fs::File,
-    net::{Ipv4Addr, TcpListener},
     path::PathBuf,
     str::FromStr,
     thread,
@@ -189,7 +189,7 @@ pub struct DebuggerOptions {
 
     #[clap(flatten)]
     #[serde(flatten)]
-    pub(crate) rtt: RttConfig,
+    pub(crate) rtt: rtt::RttConfig,
 }
 
 impl DebuggerOptions {
@@ -405,7 +405,7 @@ pub struct Debugger {
     all_commands: Vec<DebugCommand>,
     pub supported_commands: Vec<DebugCommand>,
     /// The optional connection to RTT on the target
-    target_rtt: Option<RttActiveTarget>,
+    target_rtt: Option<rtt::RttActiveTarget>,
 }
 
 impl Debugger {
@@ -1400,10 +1400,12 @@ impl Debugger {
                         // RTT can only be initialized if the target application has been allowed to run to the point where it does the RTT initialization.
                         // If the target halts before it processes this code, then this RTT intialization silently fail, and try again later ...
                         // See `probe-rs-rtt::Rtt` for more information.
-                        self.target_rtt = match attach_to_rtt(
+                        self.target_rtt = match rtt::attach_to_rtt(
                             &mut core_data.target_core,
                             &target_memory_map,
-                            &self.debugger_options,
+                            // We can safely unwrap() program_binary here, because it is validated to exist at startup of the debugger
+                            self.debugger_options.program_binary.as_ref().unwrap(),
+                            &self.debugger_options.rtt,
                         ) {
                             Ok(target_rtt) => {
                                 for any_channel in target_rtt.active_channels.iter() {
@@ -1450,38 +1452,6 @@ impl Debugger {
                 }
             }
         }
-    }
-}
-
-pub fn attach_to_rtt(
-    core: &mut Core,
-    memory_map: &[MemoryRegion],
-    debugger_options: &DebuggerOptions,
-) -> Result<crate::rtt::RttActiveTarget, anyhow::Error> {
-    if let Some(program_binary) = debugger_options.program_binary.clone() {
-        let rtt_header_address = if let Ok(mut file) = File::open(program_binary.as_path()) {
-            if let Some(address) = RttActiveTarget::get_rtt_symbol(&mut file) {
-                ScanRegion::Exact(address as u32)
-            } else {
-                ScanRegion::Ram
-            }
-        } else {
-            ScanRegion::Ram
-        };
-
-        match Rtt::attach_region(core, memory_map, &rtt_header_address) {
-            Ok(rtt) => {
-                log::info!("RTT initialized.");
-                let app = RttActiveTarget::new(rtt, debugger_options)?;
-                Ok(app)
-            }
-            Err(err) => Err(anyhow!("Error attempting to attach to RTT: {}", err)),
-        }
-    } else {
-        Err(anyhow!(
-            "RTT Initialization failed due to invalid `program_binary` option: {:?}",
-            debugger_options.program_binary
-        ))
     }
 }
 

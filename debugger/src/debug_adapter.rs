@@ -1,7 +1,7 @@
+use crate::dap_types;
 use crate::debugger::ConsoleLog;
 use crate::debugger::CoreData;
 use crate::DebuggerError;
-use crate::{dap_types, rtt::DataFormat};
 use anyhow::{anyhow, Result};
 use dap_types::*;
 use parse_int::parse;
@@ -9,6 +9,7 @@ use probe_rs::{
     debug::{ColumnType, VariableKind},
     CoreStatus, HaltReason, MemoryInterface,
 };
+use probe_rs_cli_util::rtt;
 use serde::{de::DeserializeOwned, Serialize};
 
 use std::{collections::HashMap, string::ToString};
@@ -1211,7 +1212,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         &mut self,
         channel_number: usize,
         channel_name: String,
-        data_format: DataFormat,
+        data_format: rtt::DataFormat,
     ) -> bool {
         if self.adapter_type() == DebugAdapterType::DapClient {
             let event_body = match serde_json::to_value(RttChannelEventBody {

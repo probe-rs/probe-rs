@@ -2,6 +2,7 @@ mod common;
 mod debugger;
 mod gdb;
 mod info;
+mod run;
 
 use debugger::CliState;
 
@@ -128,7 +129,21 @@ enum Cli {
         #[structopt(flatten)]
         common: ProbeOptions,
     },
+    /// Flash and run an ELF program
+    #[structopt(name = "run")]
+    Run {
+        #[structopt(flatten)]
+        common: ProbeOptions,
+
+        /// The path to the ELF file to flash and run
+        path: String,
+
+        /// Whether to erase the entire chip before downloading
+        #[structopt(long)]
+        chip_erase: bool,
+    },
     /// Trace a memory location on the target
+    #[structopt(name = "trace")]
     Trace {
         #[structopt(flatten)]
         shared: CoreOptions,
@@ -210,6 +225,11 @@ fn main() -> Result<()> {
             chip_erase,
             disable_progressbars,
         ),
+        Cli::Run {
+            common,
+            path,
+            chip_erase,
+        } => run::run(common, &path, chip_erase),
         Cli::Erase { common } => erase(&common),
         Cli::Trace {
             shared,

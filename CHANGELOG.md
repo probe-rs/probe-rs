@@ -51,6 +51,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added support for the built in JTAG on the ESP32C3 and other ESP32 devices (#863).
 - Added name field to memory regions. (#864)
 - debugger: Show progress notification while device is being flashed. (#871, #884)
+- Add optional ability to load fixed address flashing algorithms (non PIC). (#822)
+- Added `probe-rs-cli run` command, to flash and run a binary showing RTT output.
 
 ### Removed
 

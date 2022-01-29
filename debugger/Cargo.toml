@@ -1,7 +1,11 @@
 [package]
 name = "probe-rs-debugger"
 version = "0.12.0"
-authors = ["Noah Hüsser <yatekii@yatekii.ch>", "Dominik Boehi <dominik.boehi@gmail.ch>", "Jack Noppe <noppej@hotmail.com>"]
+authors = [
+    "Noah Hüsser <yatekii@yatekii.ch>",
+    "Dominik Boehi <dominik.boehi@gmail.ch>",
+    "Jack Noppe <noppej@hotmail.com>",
+]
 edition = "2021"
 description = "An interface (CLI or DAP Server) on top of the debug probe capabilities provided by probe-rs."
 documentation = "https://docs.rs/probe-rs/"
@@ -16,8 +20,8 @@ license = "MIT OR Apache-2.0"
 ftdi = ["probe-rs/ftdi"]
 
 [dependencies]
-probe-rs = { version = "0.12.0", path = "../probe-rs"}
-probe-rs-rtt = { version = "0.12.0", path = "../rtt"}
+probe-rs = { version = "0.12.0", path = "../probe-rs" }
+probe-rs-cli-util = { version = "0.12.0", path = "../probe-rs-cli-util" }
 
 env_logger = "0.9.0"
 log = "0.4.6"
@@ -37,7 +41,6 @@ serde = { version = "^1.0", features = ["derive"] }
 schemafy = "^0.6"
 chrono = { version = "0.4", features = ["serde"] }
 goblin = "0.4.1"
-defmt-decoder = { version = "0.2.1", features = ["unstable"] }
 
 [dev-dependencies]
 insta = "1.8.0"
