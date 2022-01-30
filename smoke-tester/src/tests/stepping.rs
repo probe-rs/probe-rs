@@ -64,7 +64,7 @@ pub fn test_stepping(core: &mut Core, memory_regions: &[MemoryRegion]) -> Result
 
     match core.wait_for_core_halted(Duration::from_millis(100)) {
         Ok(()) => {}
-        Err(Error::Probe(DebugProbeError::Timeout)) => {
+        Err(Error::Probe(DebugProbeError::Timeout(_))) => {
             println!("Core did not halt after timeout!");
             core.halt(Duration::from_millis(100))?;
 
@@ -106,7 +106,7 @@ pub fn test_stepping(core: &mut Core, memory_regions: &[MemoryRegion]) -> Result
 
     match core.wait_for_core_halted(Duration::from_millis(100)) {
         Ok(()) => {}
-        Err(Error::Probe(DebugProbeError::Timeout)) => {
+        Err(Error::Probe(DebugProbeError::Timeout(_))) => {
             println!("Core did not halt after timeout!");
             core.halt(Duration::from_millis(100))?;
 
