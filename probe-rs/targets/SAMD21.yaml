@@ -892,7 +892,7 @@ flash_algorithms:
       program_page_timeout: 0x64
       erase_sector_timeout: 0x3e8
       sectors:
-        - size: 0x800
+        - size: 0x100
           address: 0x0
   - name: atsamd21_32_eeprom
     description: ATSAMD21 1kB Data EEPROM
@@ -938,7 +938,7 @@ flash_algorithms:
       program_page_timeout: 0x64
       erase_sector_timeout: 0x3e8
       sectors:
-        - size: 0x1000
+        - size: 0x100
           address: 0x0
   - name: atsamd21_64_eeprom
     description: ATSAMD21 2kB Data EEPROM
@@ -984,7 +984,7 @@ flash_algorithms:
       program_page_timeout: 0x64
       erase_sector_timeout: 0x3e8
       sectors:
-        - size: 0x2000
+        - size: 0x100
           address: 0x0
   - name: atsamd21_128_eeprom
     description: ATSAMD21 4kB Data EEPROM
@@ -1030,5 +1030,5 @@ flash_algorithms:
       program_page_timeout: 0x64
       erase_sector_timeout: 0x3e8
       sectors:
-        - size: 0x4000
+        - size: 0x100
           address: 0x0

@@ -391,7 +391,7 @@ impl<'probe> CoreInterface for Armv7m<'probe> {
             }
             std::thread::sleep(Duration::from_millis(1));
         }
-        Err(Error::Probe(DebugProbeError::Timeout))
+        Err(Error::Probe(DebugProbeError::Timeout("halt")))
     }
 
     fn core_halted(&mut self) -> Result<bool, Error> {

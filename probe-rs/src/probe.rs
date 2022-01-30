@@ -98,8 +98,8 @@ pub enum DebugProbeError {
     #[error("Probe does not support protocol")]
     UnsupportedProtocol(WireProtocol),
     // TODO: This is core specific, so should probably be moved there.
-    #[error("Operation timed out")]
-    Timeout,
+    #[error("Operation timed out: {0}")]
+    Timeout(&'static str),
     #[error("An error specific to the selected architecture occurred")]
     ArchitectureSpecific(#[source] Box<dyn std::error::Error + Send + Sync>),
     #[error("The connected probe does not support the interface '{0}'")]

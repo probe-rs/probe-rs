@@ -63,7 +63,7 @@ pub trait ArmDebugSequence: Send + Sync {
                 }
             }
 
-            Err(DebugProbeError::Timeout.into())
+            Err(DebugProbeError::Timeout("hw reset deassert").into())
         } else {
             thread::sleep(Duration::from_millis(100));
             Ok(())
@@ -144,7 +144,7 @@ pub trait ArmDebugSequence: Send + Sync {
             }
 
             if timeout {
-                return Err(DebugProbeError::Timeout);
+                return Err(DebugProbeError::Timeout("debug powerup"));
             }
 
             // TODO: Handle JTAG Specific part
@@ -261,7 +261,9 @@ pub trait ArmDebugSequence: Send + Sync {
             }
         }
 
-        Err(crate::Error::Probe(DebugProbeError::Timeout))
+        Err(crate::Error::Probe(DebugProbeError::Timeout(
+            "system reset",
+        )))
     }
 
     /// Check if the device is in a locked state and unlock it.

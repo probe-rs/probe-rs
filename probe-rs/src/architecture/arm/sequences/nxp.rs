@@ -60,7 +60,7 @@ impl ArmDebugSequence for LPC55S69 {
             }
 
             if timeout {
-                return Err(DebugProbeError::Timeout);
+                return Err(DebugProbeError::Timeout("debug powerup"));
             }
 
             // TODO: Handle JTAG Specific part
@@ -133,7 +133,9 @@ impl ArmDebugSequence for LPC55S69 {
 
         if timeout {
             log::warn!("Failed: Wait for flash word read to finish");
-            return Err(crate::Error::Probe(DebugProbeError::Timeout));
+            return Err(crate::Error::Probe(DebugProbeError::Timeout(
+                "flash read word",
+            )));
         }
 
         if (interface.read_word_32(0x4003_4fe0)? & 0xB) == 0 {
@@ -230,7 +232,9 @@ fn wait_for_stop_after_reset(memory: &mut crate::Memory) -> Result<(), crate::Er
     }
 
     if timeout {
-        return Err(crate::Error::Probe(DebugProbeError::Timeout));
+        return Err(crate::Error::Probe(DebugProbeError::Timeout(
+            "halt after reset",
+        )));
     }
 
     let dhcsr = Dhcsr(memory.read_word_32(Dhcsr::ADDRESS)?);

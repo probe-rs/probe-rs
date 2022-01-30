@@ -665,7 +665,7 @@ impl JTAGAccess for FtdiProbe {
             while result.len() < size {
                 if t0.elapsed() > timeout {
                     return Err(BatchExecutionError::new(
-                        DebugProbeError::Timeout,
+                        DebugProbeError::Timeout("write register batch"),
                         results.clone(),
                     ));
                 }

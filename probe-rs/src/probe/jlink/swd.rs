@@ -827,7 +827,7 @@ impl<Probe: DebugProbe + RawSwdIo + 'static> RawDapAccess for Probe {
 
         // If we land here, the DAP operation timed out.
         log::error!("DAP read timeout.");
-        Err(DebugProbeError::Timeout)
+        Err(DebugProbeError::Timeout("dap read"))
     }
 
     fn raw_read_block(
@@ -1010,7 +1010,7 @@ impl<Probe: DebugProbe + RawSwdIo + 'static> RawDapAccess for Probe {
 
         // If we land here, the DAP operation timed out.
         log::error!("DAP write timeout.");
-        Err(DebugProbeError::Timeout)
+        Err(DebugProbeError::Timeout("dap write"))
     }
 
     fn raw_write_block(

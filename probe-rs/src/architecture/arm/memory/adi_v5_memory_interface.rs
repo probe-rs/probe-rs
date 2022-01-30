@@ -146,7 +146,7 @@ where
                 return Ok(());
             }
         }
-        Err(Error::Probe(DebugProbeError::Timeout))
+        Err(Error::Probe(DebugProbeError::Timeout("core reg transfer")))
     }
 
     /// Read a 32 bit register on the given AP.
