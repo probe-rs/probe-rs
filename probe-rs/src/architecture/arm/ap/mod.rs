@@ -122,26 +122,29 @@ impl<T: DapAccess> ApAccess for T {
         R: ApRegister<PORT>,
     {
         log::debug!("Reading register {}", R::NAME);
-        let raw_value = self.read_raw_ap_register(port.into().ap_address(), R::ADDRESS)?;
+        let ap_address = port.into().ap_address();
+        let raw_value = self.read_raw_ap_register(ap_address, R::ADDRESS)?;
 
-        let is_drw = R::NAME == "DRW";
-        let drw_map = if is_drw {
-            format!(
-                "={}",
-                self.current_tar()
-                    .and_then(try_get_register_name)
-                    .unwrap_or_else(|| "Unknown".into())
-                    .yellow()
-            )
-        } else {
-            "".into()
-        };
-        log::debug!(
-            "Read register    {}, value={}{}",
-            R::NAME,
-            format!("{:#010X?}", raw_value).cyan(),
-            drw_map,
-        );
+        if log::log_enabled!(log::Level::Debug) {
+            let is_drw = R::NAME == "DRW";
+            let drw_map = if is_drw {
+                format!(
+                    "={}",
+                    self.current_tar(ap_address.ap)
+                        .and_then(try_get_register_name)
+                        .unwrap_or_else(|| "Unknown".into())
+                        .yellow()
+                )
+            } else {
+                "".into()
+            };
+            log::debug!(
+                "Read register    {}, value={}{}",
+                R::NAME,
+                format!("{:#010X?}", raw_value).cyan(),
+                drw_map,
+            );
+        }
 
         Ok(raw_value.into())
     }
@@ -161,10 +164,10 @@ impl<T: DapAccess> ApAccess for T {
             R::NAME,
             format!("{:#010X?}", register_value).cyan()
         );
-        let result =
-            self.write_raw_ap_register(port.into().ap_address(), R::ADDRESS, register_value)?;
+        let ap_address = port.into().ap_address();
+        let result = self.write_raw_ap_register(ap_address, R::ADDRESS, register_value)?;
         if R::NAME == "TAR" {
-            self.set_current_tar(register_value);
+            self.set_current_tar(ap_address.ap, register_value);
         }
 
         Ok(result)

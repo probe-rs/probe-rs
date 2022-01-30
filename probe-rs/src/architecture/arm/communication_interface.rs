@@ -101,7 +101,8 @@ pub struct Initialized {
     dps: HashMap<DpAddress, DpState>,
     use_overrun_detect: bool,
     sequence: Arc<dyn ArmDebugSequence>,
-    current_tar: Option<u32>,
+    // This map maps from AP number to TAR value.
+    current_tar: HashMap<u8, u32>,
 }
 
 impl Initialized {
@@ -111,7 +112,7 @@ impl Initialized {
             dps: HashMap::new(),
             use_overrun_detect,
             sequence,
-            current_tar: None,
+            current_tar: HashMap::new(),
         }
     }
 }
@@ -636,12 +637,12 @@ impl DapAccess for ArmCommunicationInterface<Initialized> {
         Ok(())
     }
 
-    fn current_tar(&self) -> Option<u32> {
-        self.state.current_tar
+    fn current_tar(&self, ap: u8) -> Option<u32> {
+        self.state.current_tar.get(&ap).cloned()
     }
 
-    fn set_current_tar(&mut self, current_tar: u32) {
-        self.state.current_tar = Some(current_tar);
+    fn set_current_tar(&mut self, ap: u8, current_tar: u32) {
+        self.state.current_tar.insert(ap, current_tar);
     }
 }
 

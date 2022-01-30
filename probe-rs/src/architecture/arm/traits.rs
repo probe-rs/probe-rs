@@ -213,10 +213,10 @@ pub trait DapAccess {
     }
 
     /// Returns the current TAR register value if possible.
-    fn current_tar(&self) -> Option<u32> {
+    fn current_tar(&self, _ap: u8) -> Option<u32> {
         None
     }
 
     /// Sets the current TAR register value.
-    fn set_current_tar(&mut self, _current_tar: u32) {}
+    fn set_current_tar(&mut self, _ap: u8, _current_tar: u32) {}
 }
