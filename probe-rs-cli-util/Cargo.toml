@@ -41,4 +41,4 @@ byte-unit = "4.0.13"
 chrono = { version = "0.4", features = ["serde"] }
 goblin = "0.4.1"
 num-traits = "0.2.14"
-defmt-decoder = { version = "0.2.1", features = ["unstable"] }
+defmt-decoder = { version = "0.3.1", features = ["unstable"] }
