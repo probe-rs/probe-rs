@@ -285,18 +285,30 @@ impl<'debuginfo, 'probe, 'core> Iterator for StackFrameIterator<'debuginfo, 'pro
             );
             return None;
         };
-        // PART 0-b: We cannot go deeper in the stack.
-        let frame_fp = if let Some(frame_fp) = self.unwind_registers.get_frame_pointer() {
-            frame_fp as u64
+        // PART 0-b: If the LR is set to 0x0, then we can't unwind anything further.
+        let frame_lr = if let Some(frame_lr) = self.unwind_registers.get_return_address() {
+            frame_lr as u64
         } else {
             0
         };
-        if frame_fp == 0 {
+        if frame_lr == 0x0 {
             log::debug!(
                 "UNWIND: We have reached the bottom of the stack. Cannot continue stack unwinding."
             );
             return None;
         };
+        // PART 0-b: We cannot go deeper in the stack.
+        // let frame_fp = if let Some(frame_fp) = self.unwind_registers.get_frame_pointer() {
+        //     frame_fp as u64
+        // } else {
+        //     0
+        // };
+        // if frame_fp == 0 {
+        //     log::debug!(
+        //         "UNWIND: We have reached the bottom of the stack. Cannot continue stack unwinding."
+        //     );
+        //     return None;
+        // };
 
         // PART 1: Construct the `StackFrame` for the current pc.
         log::debug!(
@@ -422,7 +434,7 @@ impl<'debuginfo, 'probe, 'core> Iterator for StackFrameIterator<'debuginfo, 'pro
                         gimli::CfaRule::Expression(_) => unimplemented!(),
                     };
 
-                    // PART 2-d: Unwind registers for the "previous frame.
+                    // PART 2-d: Unwind registers for the "previous/calling" frame.
                     // TODO: Test for RISCV ... This is only tested for ARM right now.
                     // TODO: Maybe do some cleanup on the `Registerfile` API, to make the following more ergonomic.
                     for register_number in 0..self
@@ -1092,11 +1104,16 @@ impl DebugInfo {
 
         while let Some(unit_info) = self.get_next_unit_info(&mut units) {
             if let Some(function_die) = &mut unit_info.get_function_die(address, true) {
-                let function_name = function_die
-                    .function_name(&unit_info)
-                    .unwrap_or(unknown_function);
+                let mut function_name = format!(
+                    "{} @{:#010x}",
+                    function_die
+                        .function_name(&unit_info)
+                        .unwrap_or(unknown_function),
+                    address
+                );
 
                 if function_die.is_inline {
+                    function_name = format!("{} (inline)", function_name);
                     // Calculate the call site for this function, so that we can use it later to create an additional 'callee' `StackFrame` from that PC.
                     let address_size =
                         gimli::_UnwindSectionPrivate::address_size(&self.frame_section) as u64;
