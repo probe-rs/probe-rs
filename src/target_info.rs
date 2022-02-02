@@ -69,6 +69,10 @@ fn extract_stack_info(
     active_ram_region: Option<&RamRegion>,
     initial_stack_pointer: u32,
 ) -> Option<StackInfo> {
+    // How does it work?
+    // - the upper end of the stack is the initial SP, minus one
+    // - the lower end of the stack is the highest address any section in the elf file uses, plus one
+
     let ram_range = &active_ram_region?.range;
 
     // SP points one past the end of the stack.
@@ -99,11 +103,7 @@ fn extract_stack_info(
             }
         }
     }
-    log::debug!(
-        "valid SP range: {:#010X} ..= {:#010X}",
-        stack_range.start(),
-        stack_range.end(),
-    );
+    log::debug!("valid SP range: {:#010X?}", stack_range);
     Some(StackInfo {
         data_below_stack: *stack_range.start() > ram_range.start,
         range: stack_range,
