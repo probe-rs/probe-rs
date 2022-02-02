@@ -85,24 +85,19 @@ fn extract_stack_info(
         let section_range = lowest_address..=highest_address;
         let name = section.name().unwrap_or("<unknown>");
 
-        if active_ram_region.range.contains(&highest_address) {
-            log::debug!(
-                "section `{}` is in RAM at {:#010X} ..= {:#010X}",
-                name,
-                lowest_address,
-                highest_address,
-            );
+        if active_ram_region.range.contains(section_range.end()) {
+            log::debug!("section `{}` is in RAM at {:#010X?}", name, section_range);
 
-            if section_range.contains(&(initial_stack_pointer - 1)) {
+            if section_range.contains(stack_range.end()) {
                 log::debug!(
                     "initial SP is in section `{}`, cannot determine valid stack range",
                     name
                 );
                 return None;
-            }
-
-            if initial_stack_pointer > lowest_address && *stack_range.start() <= highest_address {
-                stack_range = highest_address + 1..=initial_stack_pointer - 1;
+            } else if stack_range.end() >= section_range.start()
+                && stack_range.start() <= section_range.end()
+            {
+                stack_range = section_range.end() + 1..=*stack_range.end();
             }
         }
     }
