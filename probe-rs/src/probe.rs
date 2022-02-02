@@ -407,6 +407,10 @@ impl Probe {
     pub fn try_as_dap_probe(&mut self) -> Option<&mut dyn DapProbe> {
         self.inner.try_as_dap_probe()
     }
+
+    pub fn get_target_voltage(&mut self) -> Result<Option<f32>, DebugProbeError> {
+        self.inner.get_target_voltage()
+    }
 }
 
 pub trait DebugProbe: Send + fmt::Debug {
