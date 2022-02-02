@@ -1,6 +1,7 @@
+use std::{convert::TryInto, ops::RangeInclusive};
+
 use object::{Object, ObjectSection as _};
 use probe_rs::config::{MemoryRegion, RamRegion};
-use std::{convert::TryInto, ops::RangeInclusive};
 
 use crate::elf::Elf;
 
@@ -22,11 +23,7 @@ impl TargetInfo {
         let probe_target = probe_rs::config::get_target_by_name(chip)?;
         let active_ram_region =
             extract_active_ram_region(&probe_target, elf.vector_table.initial_stack_pointer);
-        let stack_info = extract_stack_info(
-            elf,
-            active_ram_region.as_ref(),
-            elf.vector_table.initial_stack_pointer,
-        );
+        let stack_info = extract_stack_info(elf, active_ram_region.as_ref());
 
         Ok(Self {
             probe_target,
@@ -64,16 +61,13 @@ fn extract_active_ram_region(
         .cloned()
 }
 
-fn extract_stack_info(
-    elf: &object::read::File,
-    active_ram_region: Option<&RamRegion>,
-    initial_stack_pointer: u32,
-) -> Option<StackInfo> {
+fn extract_stack_info(elf: &Elf, ram_region: Option<&RamRegion>) -> Option<StackInfo> {
     // How does it work?
     // - the upper end of the stack is the initial SP, minus one
     // - the lower end of the stack is the highest address any section in the elf file uses, plus one
 
-    let ram_range = &active_ram_region?.range;
+    let ram_range = &ram_region?.range;
+    let initial_stack_pointer = elf.vector_table.initial_stack_pointer;
 
     // SP points one past the end of the stack.
     let mut stack_range = ram_range.start..=initial_stack_pointer - 1;
