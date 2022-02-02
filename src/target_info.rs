@@ -102,7 +102,7 @@ fn extract_stack_info(
             }
 
             if initial_stack_pointer > lowest_address && *stack_range.start() <= highest_address {
-                stack_range = highest_address + 1..=initial_stack_pointer;
+                stack_range = highest_address + 1..=initial_stack_pointer - 1;
             }
         }
     }
