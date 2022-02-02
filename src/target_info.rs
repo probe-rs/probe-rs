@@ -69,10 +69,10 @@ fn extract_stack_info(
     active_ram_region: Option<&RamRegion>,
     initial_stack_pointer: u32,
 ) -> Option<StackInfo> {
-    let active_ram_region = active_ram_region?;
+    let ram_range = &active_ram_region?.range;
 
     // SP points one past the end of the stack.
-    let mut stack_range = active_ram_region.range.start..=initial_stack_pointer - 1;
+    let mut stack_range = ram_range.start..=initial_stack_pointer - 1;
 
     for section in elf.sections() {
         let size: u32 = section.size().try_into().expect("expected 32-bit ELF");
@@ -85,7 +85,7 @@ fn extract_stack_info(
         let section_range = lowest_address..=highest_address;
         let name = section.name().unwrap_or("<unknown>");
 
-        if active_ram_region.range.contains(section_range.end()) {
+        if ram_range.contains(section_range.end()) {
             log::debug!("section `{}` is in RAM at {:#010X?}", name, section_range);
 
             if section_range.contains(stack_range.end()) {
@@ -107,7 +107,7 @@ fn extract_stack_info(
         stack_range.end(),
     );
     Some(StackInfo {
-        data_below_stack: *stack_range.start() > active_ram_region.range.start,
+        data_below_stack: *stack_range.start() > ram_range.start,
         range: stack_range,
     })
 }
