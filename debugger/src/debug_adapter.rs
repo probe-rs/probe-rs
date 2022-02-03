@@ -704,11 +704,15 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                             .as_ref()
                             .and_then(|sl| sl.line)
                             .unwrap_or(0) as i64;
-
+                        let function_display_name = if frame.inlined_call_site.is_some() {
+                            format!("{} #[inline]", frame.function_name)
+                        } else {
+                            format!("{} @{:#010x}", frame.function_name, frame.pc)
+                        };
                         // TODO: Can we add more meaningful info to `module_id`, etc.
                         StackFrame {
                             id: frame.id as i64,
-                            name: frame.function_name.clone(),
+                            name: function_display_name,
                             source,
                             line,
                             column: column as i64,

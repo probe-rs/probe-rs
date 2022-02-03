@@ -298,15 +298,15 @@ impl<'debuginfo, 'probe, 'core> Iterator for StackFrameIterator<'debuginfo, 'pro
             .get_return_address()
             .map_or(true, |lr_value| lr_value == 0x0)
         {
-            log::debug!(
-                "UNWIND: We have reached the bottom of the stack. Cannot continue stack unwinding."
+            log::warn!(
+                "UNWIND: We encountered an LR value of `None` or `0x0`, and cannot continue stack unwinding."
             );
             return None;
         };
 
         // PART 1: Construct the `StackFrame` for the current pc.
         log::debug!(
-            "\nUNWIND: Will generate `StackFrame` for function at address (PC) {:#010x}",
+            "UNWIND: Will generate `StackFrame` for function at address (PC) {:#010x}",
             frame_pc,
         );
 
@@ -339,7 +339,7 @@ impl<'debuginfo, 'probe, 'core> Iterator for StackFrameIterator<'debuginfo, 'pro
         }
 
         // PART 2: Setup the registers for the `next()` iteration (a.k.a. unwind previous frame, a.k.a. "callee", in the call stack).
-        log::debug!("\nUNWIND Registers for previous function ...");
+        log::debug!("UNWIND Registers for previous function ...");
         // Part2-a: We check if the StackFrame just processed was an INLINED function, in which case the unwind process below will take a different path than the one for NON-INLINED functions.
         if let Some(inlined_call_site) = return_frame.inlined_call_site {
             self.inlined_caller_source_location =
@@ -586,8 +586,9 @@ impl<'debuginfo, 'probe, 'core> Iterator for StackFrameIterator<'debuginfo, 'pro
             }
         };
 
-        // Part 3: In order to set the correct value of the previous frame we need to peek one frame deeper in the stack.
+        // PART 3: In order to set the correct value of the previous frame we need to peek one frame deeper in the stack.
         // NOTE: ARM Specific.
+        // TODO: Investigate and document why and under which circumstances this extra step is necessary. It was added during PR#895.
         // TODO: Test on RISCV and fix as needed
         if let Some(previous_frame_pc) = self.unwind_registers.get_program_counter() {
             let previous_frame_descriptor_entry =
@@ -1088,6 +1089,7 @@ impl DebugInfo {
         core: &mut Core<'_>,
         address: u64,
         unwind_registers: &Registers,
+        // If we encountered an abstract source location (the location in the caller function where it calls and inline function), during the previous iteration, it was stored on the `StackFrameIterator` for passing to this function in the `::next()` iteration. This function then uses this as the source location for the caller.
         abstract_source_location: Option<SourceLocation>,
     ) -> Result<StackFrame, DebugError> {
         let mut units = self.get_units();
@@ -1101,16 +1103,11 @@ impl DebugInfo {
             if let Some(function_die) =
                 &mut unit_info.get_function_die(address, abstract_source_location.is_none())
             {
-                let mut function_name = format!(
-                    "{} @{:#010x}",
-                    function_die
-                        .function_name(&unit_info)
-                        .unwrap_or(unknown_function),
-                    address
-                );
+                let function_name = function_die
+                    .function_name(&unit_info)
+                    .unwrap_or(unknown_function);
 
                 if function_die.is_inline {
-                    function_name = format!("{} #[inline]", function_name);
                     // Calculate the call site for this function, so that we can use it later to create an additional 'callee' `StackFrame` from that PC.
                     let address_size =
                         gimli::_UnwindSectionPrivate::address_size(&self.frame_section) as u64;
@@ -1178,7 +1175,12 @@ impl DebugInfo {
                 );
                 stackframe_root_variable.name = "<stack_frame>".to_string();
                 stackframe_root_variable.source_location = function_source_location.clone();
-                stackframe_root_variable.set_value(function_name.clone());
+                let function_display_name = if function_die.is_inline {
+                    format!("{} #[inline]", &function_name)
+                } else {
+                    format!("{} @{:#010x}", &function_name, address)
+                };
+                stackframe_root_variable.set_value(function_display_name);
                 stackframe_root_variable = unit_info.extract_location(
                     &unit_info
                         .unit
@@ -1205,7 +1207,7 @@ impl DebugInfo {
                     .err()
                 {
                     log::warn!(
-                        "Could not resolve register variables.{}\nContinuing.",
+                        "Could not resolve register variables.{}. Continuing...",
                         error
                     );
                 }
@@ -1221,7 +1223,7 @@ impl DebugInfo {
                     .err()
                 {
                     log::warn!(
-                        "Error while resolving static variables.{}\nContinuing.",
+                        "Error while resolving static variables.{}. Continuing...",
                         error
                     );
                 }
@@ -1270,7 +1272,7 @@ impl DebugInfo {
             .err()
         {
             log::warn!(
-                "Could not resolve register variables.{}\nContinuing.",
+                "Could not resolve register variables.{}. Continuing...",
                 error
             );
         }
