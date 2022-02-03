@@ -105,10 +105,7 @@ fn extract_stack_info(elf: &Elf, ram_region: Option<&RamRegion>) -> Option<Stack
 }
 
 fn is_superset(superset: &RangeInclusive<u32>, subset: &RangeInclusive<u32>) -> bool {
-    subset.start() >= superset.start()
-        && subset.start() <= superset.end()
-        && subset.end() <= superset.end()
-        && subset.end() >= superset.start()
+    subset.start() >= superset.start() && subset.end() <= superset.end()
 }
 
 #[cfg(test)]
