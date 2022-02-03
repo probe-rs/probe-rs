@@ -5,10 +5,13 @@
 
 mod variable;
 
-use crate::{core::Core, MemoryInterface};
+use crate::{
+    core::{Core, RegisterFile},
+    MemoryInterface,
+};
 use num_traits::Zero;
 use probe_rs_target::Architecture;
-pub use variable::{Variable, VariableInclusion, VariableKind, VariantRole};
+pub use variable::{Variable, VariableCache, VariantRole};
 
 use std::{
     borrow,
@@ -21,8 +24,7 @@ use std::{
 };
 
 use gimli::{
-    DW_AT_abstract_origin, DebuggingInformationEntry, FileEntry, LineProgramHeader, Location,
-    UnitOffset,
+    DebuggingInformationEntry, FileEntry, LineProgramHeader, Location, UnitOffset, UnwindContext,
 };
 use object::read::{Object, ObjectSection};
 
@@ -60,69 +62,24 @@ impl From<gimli::ColumnType> for ColumnType {
     }
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct StackFrame {
     pub id: u64,
     pub function_name: String,
     pub source_location: Option<SourceLocation>,
     pub registers: Registers,
     pub pc: u32,
-    // variables that are in scope between the start of the frame and the current `pc`.
-    pub variables: Vec<Variable>,
+    /// If this StackFrame was for an inlined function, then the call site addresss (the point where the calling function invoked this function) will be stored here, to be used as the PC value for the calling StackFrame. This allows us to create virtual StackFrames for inlined functions, and improves the logical flow of a stepping experience during debug.
+    /// TODO: This only works for one-level of inlined function. When we have nested inlined functions, it collapses them into a single logical `StackFrame`. We need to find a better mechanism to enable nesting.
+    pub inlined_call_site: Option<u32>,
+    /// If this function is an inlined function, we record the caller's [`SourceLocation`] here.
+    pub inlined_caller_source_location: Option<SourceLocation>,
 }
 
-impl std::fmt::Display for StackFrame {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        writeln!(f, "{}: {}", self.id, self.function_name)?;
-        if let Some(si) = &self.source_location {
-            write!(
-                f,
-                "\t{}/{}",
-                si.directory
-                    .as_ref()
-                    .map(|p| p.to_string_lossy())
-                    .unwrap_or_else(|| std::borrow::Cow::from("<unknown dir>")),
-                si.file.as_ref().unwrap_or(&"<unknown file>".to_owned())
-            )?;
-
-            if let (Some(column), Some(line)) = (si.column, si.line) {
-                match column {
-                    ColumnType::Column(c) => write!(f, ":{}:{}", line, c)?,
-                    ColumnType::LeftEdge => write!(f, ":{}", line)?,
-                }
-            }
-        }
-
-        writeln!(f)?;
-        writeln!(f, "\tVariables:")?;
-
-        for variable in &self.variables {
-            variable_recurse(variable, 0, f)?;
-        }
-        write!(f, "")
-    }
-}
-
-fn variable_recurse(
-    variable: &Variable,
-    level: u32,
-    f: &mut std::fmt::Formatter,
-) -> std::fmt::Result {
-    for _depth in 0..level {
-        write!(f, "   ")?;
-    }
-    let new_level = level + 1;
-    let ret = writeln!(f, "|-> {} \t= {}", variable.name, variable.get_value());
-    if let Some(children) = variable.children.clone() {
-        for variable in &children {
-            variable_recurse(variable, new_level, f)?;
-        }
-    }
-
-    ret
-}
 #[derive(Debug, Clone)]
 pub struct Registers {
+    register_description: &'static RegisterFile,
+
     values: HashMap<u32, u32>,
 
     architecture: Architecture,
@@ -136,6 +93,7 @@ impl Registers {
         let num_platform_registers = register_file.platform_registers.len();
 
         let mut registers = Registers {
+            register_description: register_file,
             values: HashMap::new(),
             architecture: core.architecture(),
         };
@@ -152,24 +110,58 @@ impl Registers {
         registers
     }
 
-    /// Get the canonical frame address, as specified in the [DWARF] specification, section 6.4.
-    ///
-    /// For ARM, this is the value of the stack pointer at the call site in the previous frame.
-    ///
-    /// [DWARF]: https://dwarfstd.org
-    pub fn get_canonical_frame_address(&self) -> Option<u32> {
+    // TODO: These get_ and set_ functions should probably be implemented as Traits, with architecture specific implementations.
+
+    /// Get the canonical frame address, as specified in the [DWARF](https://dwarfstd.org) specification, section 6.4.
+    /// [DWARF](https://dwarfstd.org)
+    pub fn get_frame_pointer(&self) -> Option<u32> {
+        match self.architecture {
+            Architecture::Arm => self.values.get(&7).copied(),
+            Architecture::Riscv => self.values.get(&8).copied(),
+        }
+    }
+    /// Set the canonical frame address, as specified in the [DWARF](https://dwarfstd.org) specification, section 6.4.
+    /// [DWARF](https://dwarfstd.org)
+    pub fn set_frame_pointer(&mut self, value: Option<u32>) {
+        let register_address = match self.architecture {
+            Architecture::Arm => 7,
+            Architecture::Riscv => 8,
+        };
+
+        if let Some(value) = value {
+            self.values.insert(register_address, value);
+        } else {
+            self.values.remove(&register_address);
+        }
+    }
+
+    // TODO: FIX Riscv .... PC is a separate register, and NOT r1 (which is the return address)
+    pub fn get_program_counter(&self) -> Option<u32> {
+        match self.architecture {
+            Architecture::Arm => self.values.get(&15).copied(),
+            Architecture::Riscv => self.values.get(&1).copied(),
+        }
+    }
+    pub fn set_program_counter(&mut self, value: Option<u32>) {
+        let register_address = match self.architecture {
+            Architecture::Arm => 15,
+            Architecture::Riscv => 1,
+        };
+
+        if let Some(value) = value {
+            self.values.insert(register_address, value);
+        } else {
+            self.values.remove(&register_address);
+        }
+    }
+
+    pub fn get_stack_pointer(&self) -> Option<u32> {
         match self.architecture {
             Architecture::Arm => self.values.get(&13).copied(),
             Architecture::Riscv => self.values.get(&2).copied(),
         }
     }
-
-    /// Set the canonical frame address, as specified in the [DWARF] specification, section 6.4.
-    ///
-    /// For ARM, this is the value of the stack pointer at the call site in the previous frame.
-    ///
-    /// [DWARF]: https://dwarfstd.org
-    pub fn set_canonical_frame_address(&mut self, value: Option<u32>) {
+    pub fn set_stack_pointer(&mut self, value: Option<u32>) {
         let register_address = match self.architecture {
             Architecture::Arm => 13,
             Architecture::Riscv => 2,
@@ -182,22 +174,34 @@ impl Registers {
         }
     }
 
-    pub fn get_program_counter(&self) -> Option<u32> {
+    pub fn get_return_address(&self) -> Option<u32> {
         match self.architecture {
             Architecture::Arm => self.values.get(&14).copied(),
             Architecture::Riscv => self.values.get(&1).copied(),
         }
     }
+    pub fn set_return_address(&mut self, value: Option<u32>) {
+        let register_address = match self.architecture {
+            Architecture::Arm => 14,
+            Architecture::Riscv => 1,
+        };
 
-    pub fn get_return_address(&self) -> Option<u32> {
-        match self.architecture {
-            Architecture::Arm => self.values.get(&15).copied(),
-            Architecture::Riscv => self.values.get(&1).copied(),
+        if let Some(value) = value {
+            self.values.insert(register_address, value);
+        } else {
+            self.values.remove(&register_address);
         }
     }
 
-    pub fn get_by_dwarf_register_number(&self, register_number: u32) -> Option<u32> {
+    pub fn get_value_by_dwarf_register_number(&self, register_number: u32) -> Option<u32> {
         self.values.get(&register_number).copied()
+    }
+
+    /// Lookup the register name from the RegisterDescriptions.
+    pub fn get_name_by_dwarf_register_number(&self, register_number: u32) -> Option<String> {
+        self.register_description
+            .get_platform_register(register_number as usize)
+            .map(|platform_register| platform_register.name().to_string())
     }
 
     pub fn set_by_dwarf_register_number(&mut self, register_number: u32, value: Option<u32>) {
@@ -213,7 +217,7 @@ impl Registers {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct SourceLocation {
     pub line: Option<u64>,
     pub column: Option<ColumnType>,
@@ -222,45 +226,41 @@ pub struct SourceLocation {
     pub directory: Option<PathBuf>,
 }
 
-#[derive(Debug, Clone)]
-enum InlineFunctionState {
-    /// We are at the state where the function was inlined.
-    InlinedCallSite {
-        call_line: Option<u64>,
-        call_file: Option<String>,
-        call_directory: Option<PathBuf>,
-        call_column: Option<u64>,
-    },
-    /// Not handling anything related to inlining.
-    NoInlining,
-}
-
+/// `StackFrameIterator` stores the information required to iterate through (`::next()`) each of the frames (`StackFrame`) involved in a `DebugInfo::try_unwind()` operation. The most valuable of these are pointers into the core's `DebugInfo`, as well as the register values for the current frame in the stack (per iteration).
 pub struct StackFrameIterator<'debuginfo, 'probe, 'core> {
-    debug_info: &'debuginfo DebugInfo,
+    debug_info: &'debuginfo mut DebugInfo,
     core: &'core mut Core<'probe>,
-    frame_count: u64,
-
-    /// Current program counter. If set to `None`, this indicates that no further stack frame can be determined.
-    pc: Option<u64>,
-    registers: Registers,
-    inlining_state: InlineFunctionState,
+    unwind_bases: gimli::BaseAddresses,
+    /// The `unwind_context` has the potential to be expensive, so storing it here allows it to be re-used for every iteration in the `next()` implementation.
+    unwind_context: Box<gimli::UnwindContext<DwarfReader>>,
+    /// Register state as updated for every iteration (previous function) of the unwind process.
+    unwind_registers: Registers,
+    /// If the most recent function in the unwind was an inlined function, we record the caller's [`SourceLocation`] here.
+    inlined_caller_source_location: Option<SourceLocation>,
 }
 
 impl<'debuginfo, 'probe, 'core> StackFrameIterator<'debuginfo, 'probe, 'core> {
+    /// In addition to providing the handle for iterating available `StackFrame`s, this function will also populate the `DebugInfo::VariableCache` with available `static` `Variable`s
     pub fn new(
-        debug_info: &'debuginfo DebugInfo,
+        debug_info: &'debuginfo mut DebugInfo,
         core: &'core mut Core<'probe>,
         address: u64,
     ) -> Self {
-        let registers = Registers::from_core(core);
-        let pc = address;
+        let mut current_registers = Registers::from_core(core);
+        if current_registers.get_program_counter().is_none() {
+            current_registers.set_program_counter(Some(address as u32));
+        }
+
+        let unwind_context: Box<UnwindContext<DwarfReader>> = Box::new(gimli::UnwindContext::new());
+        let unwind_bases = gimli::BaseAddresses::default();
+
         Self {
             debug_info,
             core,
-            frame_count: 0,
-            pc: Some(pc),
-            registers,
-            inlining_state: InlineFunctionState::NoInlining,
+            unwind_bases,
+            unwind_context,
+            unwind_registers: current_registers,
+            inlined_caller_source_location: None,
         }
     }
 }
@@ -268,294 +268,456 @@ impl<'debuginfo, 'probe, 'core> StackFrameIterator<'debuginfo, 'probe, 'core> {
 impl<'debuginfo, 'probe, 'core> Iterator for StackFrameIterator<'debuginfo, 'probe, 'core> {
     type Item = StackFrame;
 
+    /// Performs the logical unwind that is managed by the `StackFrameIterator`. The returned `StackFrame` is that of the **callee** (the frame at the top of the logical unwind process ), the ...
+    /// - First call to `::next()` returns the 'StackFrame' at the current PC (program counter), and ...
+    /// - Each subsequent call to `::next()` will unwind and return the **previous** `StackFrame` in the call stack.
+    /// - Every iteration of the `::next()` method will update the `StackFrameIterator` fields as needed, to ensure that the subsequent calls / iterations know how to correctly unwind the **caller** `StackFrame` (where the current iteration was called from)
+    /// - Iteration will continue until there are no more frames to unwind.
+    ///
+    /// [DWARF](https://dwarfstd.org) 6.4.4 - CIE defines the return register address used in the `gimli::RegisterRule` tables for unwind operations. Theoretically, if we encounter a function that has `Undefined` `gimli::RegisterRule` for the return register address, it means we have reached the bottom of the stack OR the function is a 'no return' type of function. I have found actual examples (e.g. local functions) where we get `Undefined` for register rule when we cannot apply this logic. Example 1: local functions in main.rs will have LR rule as `Undefined`. Example 2: main()-> ! that is called from a trampoline will have a valid LR rule.
+    /// The iterator will continue until we have an LR register value of `None`. This will be true under the following conditions:
+    /// - We encounter a LR register value of 0xFFFFFFFF which is the 'Reset` value for that register.
+    /// - TODO: Catch the situation where the PC value indicates a hard-fault or other non-recoverable exception
+    /// - We can not intelligently infer a valid LR register value from the other registers.
+    /// - We legitimately get an LR register value of None, indicating the bottom of the stack.
+    /// - Similarly, certain error conditions encountered in `StackFrameIterator` will also clear the LR register, to prevent further (likely faulty) iterations.
+    /// Note: In addition to populating the `StackFrame`s, this function will also populate the `DebugInfo::VariableCache` with `Variable`s for available Registers and function variables.
     fn next(&mut self) -> Option<Self::Item> {
-        let pc = match self.pc {
-            Some(pc) => pc,
-            None => {
-                log::debug!("Unable to determine next frame, program counter is unknown");
-                return None;
-            }
-        };
-
-        use gimli::UnwindSection;
-        let mut ctx = Box::new(gimli::UnwindContext::new());
-        let bases = gimli::BaseAddresses::default();
-
-        log::debug!("StackFrame: Unwinding at address {:#010x}", pc);
-
-        // Find function information, to check if we are in an inlined function.
-
-        let inline_call_site = match self.inlining_state {
-            InlineFunctionState::InlinedCallSite { .. } => true,
-            InlineFunctionState::NoInlining => false,
-        };
-
-        if inline_call_site {
-            log::debug!("At call site of inlined function.");
-        }
-
-        let mut in_inlined_function = false;
-
-        let mut inline_call_site_info = None;
-
-        if !inline_call_site {
-            let mut units = self.debug_info.get_units();
-            while let Some(unit_info) = self.debug_info.get_next_unit_info(&mut units) {
-                if let Some(die_cursor_state) = &mut unit_info.get_function_die(pc, true) {
-                    if die_cursor_state.is_inline {
-                        // Add a 'virtual' stack frame, for the inlined call.
-                        // For this, we need the following attributes:
-                        //
-                        // - DW_AT_call_file
-                        // - DW_AT_call_line
-                        // - DW_AT_call_column
-
-                        let call_column = die_cursor_state
-                            .get_attribute(gimli::DW_AT_call_column)
-                            .and_then(|attr| attr.udata_value());
-
-                        let call_file_index = die_cursor_state
-                            .get_attribute(gimli::DW_AT_call_file)
-                            .and_then(|attr| attr.udata_value());
-
-                        let call_line = die_cursor_state
-                            .get_attribute(gimli::DW_AT_call_line)
-                            .and_then(|attr| attr.udata_value());
-
-                        let (call_file, call_directory) = match call_file_index {
-                            Some(0) => (None, None),
-                            Some(n) => {
-                                // Lookup source file in the line number information table.
-
-                                if let Some(header) = unit_info
-                                    .unit
-                                    .line_program
-                                    .as_ref()
-                                    .map(|line_program| line_program.header())
-                                {
-                                    if let Some(file_entry) = header.file(n) {
-                                        self.debug_info
-                                            .find_file_and_directory(
-                                                &unit_info.unit,
-                                                header,
-                                                file_entry,
-                                            )
-                                            .unwrap()
-                                    } else {
-                                        (None, None)
-                                    }
-                                } else {
-                                    (None, None)
-                                }
-                            }
-                            None => (None, None),
-                        };
-
-                        self.inlining_state = InlineFunctionState::InlinedCallSite {
-                            call_column,
-                            call_file,
-                            call_line,
-                            call_directory,
-                        };
-
-                        log::debug!(
-                            "Current function {:?} is inlined at: {:?}",
-                            die_cursor_state.function_name(&unit_info),
-                            self.inlining_state
-                        );
-                        in_inlined_function = true;
-                    } else {
-                        // No inlined function
-                    }
-                    break;
-                }
-            }
+        // PART 0-a: If we've encountered an error in the previous iteration, the `PC` will be `None`.
+        let frame_pc = if let Some(frame_pc) = self.unwind_registers.get_program_counter() {
+            frame_pc as u64
         } else {
-            inline_call_site_info = Some(std::mem::replace(
-                &mut self.inlining_state,
-                InlineFunctionState::NoInlining,
-            ));
+            log::debug!(
+                "UNWIND: No available PC (program counter). Cannot continue stack unwinding."
+            );
+            return None;
+        };
+        // PART 0-b: If the LR is set to 0x0 or None, then we can't unwind anything further.
+        if self
+            .unwind_registers
+            .get_return_address()
+            .map_or(true, |lr_value| lr_value == 0x0)
+        {
+            log::warn!(
+                "UNWIND: We encountered an LR value of `None` or `0x0`, and cannot continue stack unwinding."
+            );
+            return None;
         };
 
-        let unwind_info = self.debug_info.frame_section.unwind_info_for_address(
-            &bases,
-            &mut ctx,
-            pc,
-            gimli::DebugFrame::cie_from_offset,
+        // PART 1: Construct the `StackFrame` for the current pc.
+        log::debug!(
+            "UNWIND: Will generate `StackFrame` for function at address (PC) {:#010x}",
+            frame_pc,
         );
 
-        let unwind_info = match unwind_info {
-            Ok(uw) => uw,
+        // PART 1-a: Prepare the `StackFrame` that holds the current frame information
+        let return_frame = match self.debug_info.get_stackframe_info(
+            self.core,
+            frame_pc,
+            &self.unwind_registers,
+            self.inlined_caller_source_location.clone(),
+        ) {
+            Ok(frame) => frame,
             Err(e) => {
-                log::info!(
-                    "Failed to retrieve debug information for program counter {:#x}: {}",
-                    pc,
-                    e
-                );
+                log::error!("UNWIND: Unable to complete `StackFrame` information: {}", e);
+                // There is no point in continuing with the unwind, so let's get out of here.
+                self.unwind_registers.set_return_address(None);
                 return None;
             }
         };
 
-        let current_cfa = match unwind_info.cfa() {
-            gimli::CfaRule::RegisterAndOffset { register, offset } => {
-                let reg_val = self
-                    .registers
-                    .get_by_dwarf_register_number(register.0 as u32);
-
-                match reg_val {
-                    Some(reg_val) => Some((i64::from(reg_val) + offset) as u32),
-                    None => {
-                        log::warn!(
-                            "Unable to calculate CFA: Missing value of register {}",
-                            register.0
-                        );
-                        return None;
-                    }
-                }
+        // Part 1-b: When we encounter the starting (after reset) return address, we've reached the bottom of the stack, so no more unwinding after this ...
+        // TODO: Validate that this applies to RISCV also.s
+        if let Some(check_return_address) = self.unwind_registers.get_return_address() {
+            if check_return_address == u32::MAX {
+                self.unwind_registers.set_return_address(None);
+                log::debug!(
+                    "UNWIND: Stack unwind complete - Reached the 'Reset' value of the LR register."
+                );
+                return Some(return_frame);
             }
-            gimli::CfaRule::Expression(_) => unimplemented!(),
-        };
-
-        if let Some(ref cfa) = &current_cfa {
-            log::debug!("Current CFA: {:#x}", cfa);
         }
 
-        let return_frame = match self.debug_info.get_stackframe_info(
-            self.core,
-            pc,
-            self.frame_count,
-            self.registers.clone(),
-            in_inlined_function,
+        // PART 2: Setup the registers for the `next()` iteration (a.k.a. unwind previous frame, a.k.a. "callee", in the call stack).
+        log::debug!("UNWIND Registers for previous function ...");
+        // Part2-a: We check if the StackFrame just processed was an INLINED function, in which case the unwind process below will take a different path than the one for NON-INLINED functions.
+        if let Some(inlined_call_site) = return_frame.inlined_call_site {
+            self.inlined_caller_source_location =
+                return_frame.inlined_caller_source_location.clone();
+            log::debug!(
+                "UNWIND - Preparing `StackFrameIterator` to unwind INLINED function {:?} at {:?}",
+                return_frame.function_name,
+                return_frame.source_location
+            );
+            // The only `unwind` we need to do, is to update the PC with the call site address of the inline function. The `StackFrameIterator::next()` iteration will then create a virtual `StackFrame` for the call-site.
+            let register_number = self
+                .unwind_registers
+                .register_description
+                .program_counter()
+                .address
+                .0 as u32;
+            log::debug!(
+                "UNWIND - {:04?}: Caller: {:#010x}\tCallee: {:#010x}\tRule: {}",
+                self.unwind_registers
+                    .get_name_by_dwarf_register_number(register_number),
+                inlined_call_site,
+                self.unwind_registers
+                    .get_value_by_dwarf_register_number(register_number)
+                    .unwrap_or_default(),
+                "PC= Inlined function `inlined_call_site`'",
+            );
+            self.unwind_registers
+                .set_program_counter(Some(inlined_call_site));
+            return Some(return_frame);
+        } else {
+            self.inlined_caller_source_location = None;
+        }
+
+        log::debug!(
+            "UNWIND - Preparing `StackFrameIterator` to unwind NON-INLINED function {:?} at {:?}",
+            return_frame.function_name,
+            return_frame.source_location
+        );
+        // PART 2-b: get the `gimli::FrameDescriptorEntry` for this address and then the unwind info associated with this row.
+        // TODO: The `gimli` docs for this function talks about cases where there might be more than one FDE for a function. Investigate if this affects RUST and how to solve.
+        use gimli::UnwindSection;
+        let frame_descriptor_entry = match self.debug_info.frame_section.fde_for_address(
+            &self.unwind_bases,
+            frame_pc,
+            gimli::DebugFrame::cie_from_offset,
         ) {
-            Ok(mut frame) => {
-                if let Some(InlineFunctionState::InlinedCallSite {
-                    call_line,
-                    call_column,
-                    call_file,
-                    call_directory,
-                }) = inline_call_site_info
-                {
-                    // Update location to match call site
-
-                    frame.source_location = Some(SourceLocation {
-                        line: call_line,
-                        column: call_column.map(|c| {
-                            if c == 0 {
-                                ColumnType::LeftEdge
-                            } else {
-                                ColumnType::Column(c)
-                            }
-                        }),
-                        file: call_file,
-                        directory: call_directory,
-                    })
-                }
-
-                Some(frame)
-            }
-
-            Err(e) => {
-                log::warn!("Unable to get stack frame information: {}", e);
-                None
+            Ok(frame_descriptor_entry) => frame_descriptor_entry,
+            Err(error) => {
+                log::error!(
+                    "UNWIND: Error reading FrameDescriptorEntry at PC={:#010x} : {}",
+                    frame_pc,
+                    error
+                );
+                self.unwind_registers.set_return_address(None);
+                return Some(return_frame);
             }
         };
 
-        if !in_inlined_function {
-            // generate previous registers
-
-            // TODO: This is only valid for ARM right now, this should be more general.
-            for i in 0..16 {
-                // Register 13 is the stack pointer / canonical frame address in ARM.
-                // There is a separate rule for this register, see above.
-                if i == 13 {
-                    continue;
-                }
-
-                use gimli::read::RegisterRule::*;
-
-                let register_rule = unwind_info.register(gimli::Register(i as u16));
-
-                log::trace!("Register {}: {:?}", i, &register_rule);
-
-                let new_value = match register_rule {
-                    Undefined => {
-                        // If we get undefined for the LR register (register 14) or any callee saved register,
-                        // we assume that it is unchanged. Gimli doesn't allow us
-                        // to distinguish if  a rule is not present or actually set to Undefined
-                        // in the call frame information.
-
-                        match i {
-                            4 | 5 | 6 | 7 | 8 | 10 | 11 | 14 => {
-                                self.registers.get_by_dwarf_register_number(i)
+        match frame_descriptor_entry.unwind_info_for_address(
+            &self.debug_info.frame_section,
+            &self.unwind_bases,
+            &mut self.unwind_context,
+            frame_pc,
+        ) {
+            Ok(unwind_info) => {
+                // Because we will be updating the `self.unwind_registers` with previous frame unwind info, we need to keep a copy of the current frame's registers that can be used to resolve [DWARF](https://dwarfstd.org) expressions.
+                let callee_frame_registers = self.unwind_registers.clone();
+                // PART 2-c: Determine the CFA (canonical frame address) to use for this unwind row.
+                let unwind_cfa = match unwind_info.cfa() {
+                    gimli::CfaRule::RegisterAndOffset { register, offset } => {
+                        let reg_val = self
+                            .unwind_registers
+                            .get_value_by_dwarf_register_number(register.0 as u32);
+                        match reg_val {
+                            Some(reg_val) => {
+                                let unwind_cfa = (i64::from(reg_val) + offset) as u32;
+                                log::debug!(
+                                    "UNWIND - CFA : {:#010x}\tRule: {:?}",
+                                    unwind_cfa,
+                                    unwind_info.cfa()
+                                );
+                                Some(unwind_cfa)
                             }
-                            15 => Some(pc as u32),
-                            _ => None,
+                            None => {
+                                log::error!("UNWIND: `StackFrameIterator` unable to determine the unwind CFA: Missing value of register {}",register.0);
+                                self.unwind_registers.set_return_address(None);
+                                return Some(return_frame);
+                            }
                         }
                     }
-                    SameValue => self.registers.get_by_dwarf_register_number(i),
-                    Offset(o) => {
-                        let addr = i64::from(current_cfa.unwrap()) + o;
-
-                        let mut buff = [0u8; 4];
-
-                        if let Err(e) = self.core.read(addr as u32, &mut buff) {
-                            log::info!(
-                                "Failed to read from address {:#010x} ({} bytes): {}",
-                                addr,
-                                4,
-                                e
-                            );
-                            log::debug!(
-                                "Rule: Offset {} from address {:#010x}",
-                                o,
-                                current_cfa.unwrap()
-                            );
-                            return None;
-                        }
-
-                        let val = u32::from_le_bytes(buff);
-
-                        log::debug!("reg[{: >}] @ {:#010x} = {:#08x}", i, addr, val);
-
-                        Some(val)
-                    }
-                    _ => unimplemented!(),
+                    gimli::CfaRule::Expression(_) => unimplemented!(),
                 };
 
-                self.registers.set_by_dwarf_register_number(i, new_value);
-            }
+                // PART 2-d: Unwind registers for the "previous/calling" frame.
+                // TODO: Test for RISCV ... This is only tested for ARM right now.
+                // TODO: Maybe do some cleanup on the `Registerfile` API, to make the following more ergonomic.
+                for register_number in 0..self
+                    .unwind_registers
+                    .register_description
+                    .platform_registers
+                    .len() as u32
+                {
+                    use gimli::read::RegisterRule::*;
 
-            self.registers.set_canonical_frame_address(current_cfa);
-        }
+                    let register_rule =
+                        unwind_info.register(gimli::Register(register_number as u16));
 
-        self.frame_count += 1;
+                    let mut register_rule_string = format!("{:?}", register_rule);
 
-        if !in_inlined_function {
-            // Next function is where our current return register is pointing to.
-            // We just have to remove the lowest bit (indicator for Thumb mode).
-            //
-            // We also have to subtract one, as we want the calling instruction for
-            // a backtrace, not the next instruction to be executed.
+                    let new_value = match register_rule {
+                        Undefined => {
+                            // In many cases, the DWARF has `Undefined` rules for variables like frame pointer, program counter, etc., so we hard-code some rules here to make sure unwinding can continue. If there is a valid rule, it will bypass these hardcoded ones.
+                            match register_number {
+                                _fp if register_number
+                                    == self
+                                        .unwind_registers
+                                        .register_description
+                                        .frame_pointer()
+                                        .address
+                                        .0 as u32 =>
+                                {
+                                    register_rule_string = "FP=CFA (dwarf Undefined)".to_string();
+                                    callee_frame_registers.get_frame_pointer()
+                                }
+                                _sp if register_number
+                                    == self
+                                        .unwind_registers
+                                        .register_description
+                                        .stack_pointer()
+                                        .address
+                                        .0 as u32 =>
+                                {
+                                    // TODO: ARM Specific - Add rules for RISCV
+                                    // NOTE: [ARMv7-M Architecture Reference Manual](https://developer.arm.com/documentation/ddi0403/ee), Section B.1.4.1: Treat bits [1:0] as `Should be Zero or Preserved`
+                                    register_rule_string = "SP=CFA (dwarf Undefined)".to_string();
+                                    unwind_cfa.map(|unwind_cfa| unwind_cfa & !0b11)
+                                }
+                                _lr if register_number
+                                    == self
+                                        .unwind_registers
+                                        .register_description
+                                        .return_address()
+                                        .address
+                                        .0 as u32 =>
+                                {
+                                    // This value is used to determine the Undefined PC value, and will be set correctly later on in this method.
+                                    register_rule_string =
+                                        "LR=current LR (dwarf Undefined)".to_string();
+                                    callee_frame_registers.get_return_address()
+                                }
+                                _pc if register_number
+                                    == self
+                                        .unwind_registers
+                                        .register_description
+                                        .program_counter()
+                                        .address
+                                        .0 as u32 =>
+                                {
+                                    // NOTE: [ARMv7-M Architecture Reference Manual](https://developer.arm.com/documentation/ddi0403/ee), Section A5.1.2: We have to clear the last bit to ensure the PC is half-word aligned. (on ARM architecture, when in Thumb state for certain instruction types will set the LSB to 1)
+                                    // NOTE: PC = Current instruction + 1 address, so to reverse this from LR return address, we have to subtract 4 bytes
+                                    // TODO: Ensure that this operation does not seem to have a negative effect on RISCV.
+                                    let address_size =
+                                        frame_descriptor_entry.cie().address_size() as u32;
+                                    register_rule_string = format!(
+                                        "PC=(unwound LR & !0b1) - {} (dwarf Undefined)",
+                                        address_size
+                                    );
+                                    self.unwind_registers.get_return_address().and_then(
+                                        |return_address| {
+                                            if return_address == u32::MAX {
+                                                // No reliable return is available.
+                                                None
+                                            } else if return_address.is_zero() {
+                                                Some(0)
+                                            } else {
+                                                Some((return_address - address_size) & !0b1)
+                                            }
+                                        },
+                                    )
+                                }
+                                _ => {
+                                    // This will result in the register value being cleared for the previous frame.
+                                    None
+                                }
+                            }
+                        }
+                        SameValue => callee_frame_registers
+                            .get_value_by_dwarf_register_number(register_number),
+                        Offset(address_offset) => {
+                            if let Some(unwind_cfa) = unwind_cfa {
+                                let previous_frame_register_address =
+                                    i64::from(unwind_cfa) + address_offset;
+                                let mut buff = [0u8; 4];
+                                if let Err(e) = self
+                                    .core
+                                    .read(previous_frame_register_address as u32, &mut buff)
+                                {
+                                    log::error!(
+                                                        "UNWIND: Failed to read from address {:#010x} ({} bytes): {}",
+                                                        previous_frame_register_address,
+                                                        4,
+                                                        e
+                                                    );
+                                    log::error!(
+                                        "UNWIND: Rule: Offset {} from address {:#010x}",
+                                        address_offset,
+                                        unwind_cfa
+                                    );
+                                    self.unwind_registers.set_return_address(None);
+                                    return Some(return_frame);
+                                }
+                                let previous_frame_register_value = u32::from_le_bytes(buff);
+                                Some(previous_frame_register_value as u32)
+                            } else {
+                                log::error!("UNWIND: Tried to unwind `RegisterRule` at CFA = None. Please report this as a bug.");
+                                self.unwind_registers.set_return_address(None);
+                                return Some(return_frame);
+                            }
+                        }
+                        //TODO: Implement the remainder of these `RegisterRule`s
+                        _ => unimplemented!(),
+                    };
 
-            // TODO: Setting bit to zero is only necessary on ARM, but probably doesn't hurt on other architectures.
-            self.pc = self
-                .registers
-                .get_program_counter()
-                .map(|pc| u64::from(pc & !1));
-
-            log::debug!("Called from pc={:#010x?}", self.pc);
-
-            // We need to ensure that the program counter changed, otherwise we are caught in an endless loop
-
-            if let Some(new_pc) = self.pc {
-                if new_pc == pc {
-                    log::debug!("Program counter did not change while unwinding, aborting.");
-                    self.pc = None;
+                    self.unwind_registers
+                        .set_by_dwarf_register_number(register_number, new_value);
+                    log::debug!(
+                        "UNWIND - {:04?}: Caller: {:#010x}\tCallee: {:#010x}\tRule: {}",
+                        self.unwind_registers
+                            .get_name_by_dwarf_register_number(register_number),
+                        self.unwind_registers
+                            .get_value_by_dwarf_register_number(register_number)
+                            .unwrap_or_default(),
+                        callee_frame_registers
+                            .get_value_by_dwarf_register_number(register_number)
+                            .unwrap_or_default(),
+                        register_rule_string,
+                    );
                 }
             }
+            Err(error) => {
+                log::debug!("UNWIND: Stack unwind complete. No available debug info for program counter {:#x}: {}", frame_pc, error);
+                self.unwind_registers.set_return_address(None);
+                return Some(return_frame);
+            }
+        };
+
+        // PART 3: In order to set the correct value of the previous frame we need to peek one frame deeper in the stack.
+        // NOTE: ARM Specific.
+        // TODO: Investigate and document why and under which circumstances this extra step is necessary. It was added during PR#895.
+        // TODO: Test on RISCV and fix as needed
+        if let Some(previous_frame_pc) = self.unwind_registers.get_program_counter() {
+            let previous_frame_descriptor_entry =
+                match self.debug_info.frame_section.fde_for_address(
+                    &self.unwind_bases,
+                    previous_frame_pc as u64,
+                    gimli::DebugFrame::cie_from_offset,
+                ) {
+                    Ok(frame_descriptor_entry) => frame_descriptor_entry,
+                    Err(error) => {
+                        log::error!(
+                        "UNWIND: Error reading previous FrameDescriptorEntry at PC={:#010x} : {}",
+                        previous_frame_pc,
+                        error
+                    );
+                        self.unwind_registers.set_return_address(None);
+                        return Some(return_frame);
+                    }
+                };
+
+            match previous_frame_descriptor_entry.unwind_info_for_address(
+                &self.debug_info.frame_section,
+                &self.unwind_bases,
+                &mut self.unwind_context,
+                previous_frame_pc as u64,
+            ) {
+                Ok(previous_unwind_info) => {
+                    let previous_unwind_cfa = match previous_unwind_info.cfa() {
+                        gimli::CfaRule::RegisterAndOffset { register, offset } => {
+                            let reg_val = self
+                                .unwind_registers
+                                .get_value_by_dwarf_register_number(register.0 as u32);
+                            match reg_val {
+                                Some(reg_val) => {
+                                    let unwind_cfa = (i64::from(reg_val) + offset) as u32;
+                                    log::debug!(
+                                        "UNWIND - CFA : {:#010x}\tRule: Previous Function {:?}",
+                                        unwind_cfa,
+                                        previous_unwind_info.cfa()
+                                    );
+                                    Some(unwind_cfa)
+                                }
+                                None => {
+                                    log::error!(
+                                                        "UNWIND: `StackFrameIterator` unable to determine the previous frame unwind CFA: Missing value of register {}",
+                                                        register.0
+                                                    );
+                                    self.unwind_registers.set_return_address(None);
+                                    return Some(return_frame);
+                                }
+                            }
+                        }
+                        gimli::CfaRule::Expression(_) => unimplemented!(),
+                    };
+                    use gimli::read::RegisterRule::*;
+
+                    let return_register_number = previous_frame_descriptor_entry
+                        .cie()
+                        .return_address_register()
+                        .0 as u32;
+                    let register_rule = previous_unwind_info
+                        .register(gimli::Register(return_register_number as u16));
+
+                    let register_rule_string = format!("{:?}", register_rule);
+
+                    let new_return_value = match register_rule {
+                        Undefined => None,
+                        SameValue => self
+                            .unwind_registers
+                            .get_value_by_dwarf_register_number(return_register_number),
+                        Offset(address_offset) => {
+                            if let Some(unwind_cfa) = previous_unwind_cfa {
+                                let previous_frame_register_address =
+                                    i64::from(unwind_cfa) + address_offset;
+                                let mut buff = [0u8; 4];
+                                if let Err(e) = self
+                                    .core
+                                    .read(previous_frame_register_address as u32, &mut buff)
+                                {
+                                    log::error!(
+                                                        "UNWIND: Failed to read from address {:#010x} ({} bytes): {}",
+                                                        previous_frame_register_address,
+                                                        4,
+                                                        e
+                                                    );
+                                    log::error!(
+                                        "UNWIND: Rule: Offset {} from address {:#010x}",
+                                        address_offset,
+                                        unwind_cfa
+                                    );
+                                    self.unwind_registers.set_return_address(None);
+                                    return Some(return_frame);
+                                }
+                                let previous_frame_register_value = u32::from_le_bytes(buff);
+                                Some(previous_frame_register_value as u32)
+                            } else {
+                                log::error!("UNWIND: Tried to unwind `RegisterRule` at CFA = None. Please report this as a bug.");
+                                self.unwind_registers.set_return_address(None);
+                                return Some(return_frame);
+                            }
+                        }
+                        //TODO: Implement the remainder of these `RegisterRule`s
+                        _ => unimplemented!(),
+                    };
+                    self.unwind_registers
+                        .set_by_dwarf_register_number(return_register_number, new_return_value);
+                    log::debug!(
+                        "UNWIND - {:04?}: Caller: {:#010x}\tRule: Override with previous frame {}",
+                        self.unwind_registers
+                            .get_name_by_dwarf_register_number(return_register_number),
+                        self.unwind_registers
+                            .get_value_by_dwarf_register_number(return_register_number)
+                            .unwrap_or_default(),
+                        register_rule_string,
+                    );
+                }
+                Err(error) => {
+                    log::debug!("UNWIND: Stack unwind complete. No available debug info for program counter {:#x}: {}",frame_pc, error);
+                    self.unwind_registers.set_return_address(None);
+                    return Some(return_frame);
+                }
+            };
+        } else {
+            log::error!("UNWIND: Cannot read previous FrameDescriptorEntry without a valid PC");
+            self.unwind_registers.set_return_address(None);
+            return Some(return_frame);
         }
 
-        return_frame
+        Some(return_frame)
     }
 }
 
@@ -574,6 +736,14 @@ type UnitIter =
 pub struct DebugInfo {
     dwarf: gimli::Dwarf<DwarfReader>,
     frame_section: gimli::DebugFrame<DwarfReader>,
+    /// A cache of all program `Variable`s that are in scope for the current PC (program counter).
+    /// It is initialized by `try_unwind()` and ...
+    /// It is populated whenever `UnitInfo::process_tree_node() is called to resove DWARF `Variable`s and runtime values. This is done from ...
+    /// - `try_unwind()` where we will resolve `static` scoped `Variable`s.
+    /// - `StackFrameIterator::next()` as each new stackframe is constructed. This will resolve `register` `Variable`s as well as all function scoped `Variable`s.
+    /// - `VariableCache::get_referenced_children()` when it is requested to expand the referenced children of a `Variable`
+    /// Note: All program `Variable`s are traversed recursively through their datatypes, until it reaches a base datatype, unless it encounters a datatype that is a pointer to another datatype. These pointers will only be further resolved when a user explicitly requests it.
+    pub variable_cache: VariableCache,
 }
 
 impl DebugInfo {
@@ -609,12 +779,19 @@ impl DebugInfo {
 
         // To support DWARF v2, where the address size is not encoded in the .debug_frame section,
         // we have to set the address size here.
+        // TODO: With current versions of RUST, do we still need to do this?
         frame_section.set_address_size(4);
 
         Ok(DebugInfo {
             dwarf: dwarf_cow,
             frame_section,
+            variable_cache: VariableCache::new(),
         })
+    }
+
+    // Get a reference to the private member `dwarf`
+    pub fn get_dwarf(&self) -> &gimli::Dwarf<DwarfReader> {
+        &self.dwarf
     }
 
     pub fn function_name(&self, address: u64, find_inlined: bool) -> Option<String> {
@@ -679,6 +856,8 @@ impl DebugInfo {
                                 .find_file_and_directory(&unit, header, row.file(header).unwrap())
                                 .unwrap();
 
+                            log::debug!("0x{:4x} - {:?}", address, row.isa());
+
                             return Some(SourceLocation {
                                 line: row.line().map(NonZeroU64::get),
                                 column: Some(row.column().into()),
@@ -691,6 +870,8 @@ impl DebugInfo {
                             let (file, directory) = self
                                 .find_file_and_directory(&unit, header, row.file(header).unwrap())
                                 .unwrap();
+
+                            log::debug!("0x{:4x} - {:?}", address, row.isa());
 
                             return Some(SourceLocation {
                                 line: row.line().map(NonZeroU64::get),
@@ -723,94 +904,395 @@ impl DebugInfo {
         None
     }
 
-    /// Returns a vector of all the static `Variable`s in the stack.
-    pub fn get_stack_statics(
+    /// We do not actually resolve the children of `<statics>` automatically, and only create the necessary header in the `VariableCache`.
+    /// This allows us to resolve the `<statics>` on demand/lazily, when a user requests it from the debug client.
+    /// This saves a lot of overhead when a user only wants to see the `<locals>` or `<registers>` while stepping through code (the most common use cases)
+    fn cache_static_variables(
         &self,
         core: &mut Core<'_>,
-        program_counter: u64,
-    ) -> Result<Vec<Variable>, DebugError> {
-        let mut static_root_variable = Variable::new();
-        static_root_variable.name = "<statics>".to_string();
-        let mut header_units = self.get_units();
-        // Iterate through the unit headers.
-        while let Some(unit_info) = self.get_next_unit_info(&mut header_units) {
-            let abbrevs = &unit_info.unit.abbreviations;
-            // Navigate the current unit from the header down.
-            if let Ok(mut header_tree) = unit_info.unit.header.entries_tree(abbrevs, None) {
-                let unit_node = header_tree.root()?;
-                unit_info.process_tree(
-                    unit_node,
-                    &mut static_root_variable,
-                    core,
-                    0,
-                    program_counter,
-                )?;
+        unit_info: &UnitInfo,
+        stack_frame_registers: &Registers,
+        stackframe_root_variable: &Variable,
+    ) -> Result<(), DebugError> {
+        // Only process statics for this unit header.
+        let abbrevs = &unit_info.unit.abbreviations;
+        // Navigate the current unit from the header down.
+        if let Ok(mut header_tree) = unit_info.unit.header.entries_tree(abbrevs, None) {
+            let unit_node = header_tree.root()?;
+            let mut static_root_variable = Variable::new(
+                unit_info.unit.header.offset().as_debug_info_offset(),
+                Some(unit_node.entry().offset()),
+            );
+            static_root_variable.referenced_node_offset = Some(unit_node.entry().offset());
+            static_root_variable.stack_frame_registers = Some(stack_frame_registers.clone());
+            static_root_variable.name = "<statics>".to_string();
+            self.variable_cache.cache_variable(
+                stackframe_root_variable.variable_key,
+                static_root_variable,
+                core,
+            )?;
+        }
+        Ok(())
+    }
+
+    /// Resolves and then loads all the `Register` variables into the `DebugInfo::VariableCache`.
+    fn cache_register_variables(
+        &self,
+        registers: &Registers,
+        stackframe_root_variable: &Variable,
+        core: &mut Core<'_>,
+    ) -> Result<(), DebugError> {
+        let mut register_root_variable = Variable::new(None, None);
+        register_root_variable.name = "<registers>".to_string();
+        register_root_variable = self.variable_cache.cache_variable(
+            stackframe_root_variable.variable_key,
+            register_root_variable,
+            core,
+        )?;
+
+        let mut sorted_registers = registers
+            .clone()
+            .values
+            .into_iter()
+            .collect::<Vec<(u32, u32)>>();
+        sorted_registers.sort_by_key(|(register_number, _register_value)| *register_number);
+
+        for (register_number, register_value) in sorted_registers {
+            let mut register_variable = Variable::new(None, None);
+            register_variable.parent_key = register_root_variable.variable_key;
+            register_variable.name = registers
+                .get_name_by_dwarf_register_number(register_number)
+                .unwrap_or_else(|| format!("r{}", register_number));
+            register_variable.type_name = "Platform Register".to_owned();
+            register_variable.byte_size = 4;
+            register_variable.set_value(format!("{:#010x}", register_value));
+            self.variable_cache.cache_variable(
+                register_root_variable.variable_key,
+                register_variable,
+                core,
+            )?;
+        }
+        Ok(())
+    }
+
+    /// Resolves and then loads all the `function` variables into the `DebugInfo::VariableCache`.
+    fn cache_function_variables(
+        &self,
+        core: &mut Core<'_>,
+        die_cursor_state: &mut FunctionDie,
+        unit_info: &UnitInfo,
+        stack_frame_registers: &Registers,
+        stackframe_root_variable: &Variable,
+    ) -> Result<(), DebugError> {
+        let abbrevs = &unit_info.unit.abbreviations;
+        let mut tree = unit_info
+            .unit
+            .header
+            .entries_tree(abbrevs, Some(die_cursor_state.function_die.offset()))?;
+        let function_node = tree.root()?;
+
+        let mut function_root_variable = Variable::new(
+            unit_info.unit.header.offset().as_debug_info_offset(),
+            Some(function_node.entry().offset()),
+        );
+        function_root_variable.name = "<locals>".to_string();
+        function_root_variable = self.variable_cache.cache_variable(
+            stackframe_root_variable.variable_key,
+            function_root_variable,
+            core,
+        )?;
+
+        unit_info.process_tree(
+            function_node,
+            function_root_variable,
+            core,
+            stack_frame_registers,
+        )?;
+        Ok(())
+    }
+
+    /// This is a lazy/deffered resolves and loads all the 'child' `Variable`s for a given unit.
+    /// This is used for:
+    /// - pointer variables (`DW_TAG_pointer_type`) into the `DebugInfo::VariableCache`.
+    /// - <statics> : The load of static variables and their namespaces in the debugger.
+    pub fn cache_referenced_variables(
+        &self,
+        core: &mut Core<'_>,
+        parent_variable: Variable,
+    ) -> Result<(), DebugError> {
+        // Only do attempt this part if the parent is a pointer and we have not yet resolved the referenced children.
+        if parent_variable.referenced_node_offset.is_some()
+            && !self.variable_cache.has_children(&parent_variable)?
+        {
+            if let Some(ref stack_frame_registers) = parent_variable.stack_frame_registers {
+                if let Some(header_offset) = parent_variable.header_offset {
+                    let unit_header = self.dwarf.debug_info.header_from_offset(header_offset)?;
+                    let unit_info = UnitInfo {
+                        debug_info: self,
+                        unit: gimli::Unit::new(&self.dwarf, unit_header)?,
+                    };
+                    // Reference to a type, or an node.entry() to another type or a type modifier which will point to another type.
+                    let mut type_tree = unit_info.unit.header.entries_tree(
+                        &unit_info.unit.abbreviations,
+                        parent_variable.referenced_node_offset,
+                    )?;
+                    let referenced_node = type_tree.root()?;
+                    let mut referenced_variable = self.variable_cache.cache_variable(
+                        parent_variable.variable_key,
+                        Variable::new(
+                            unit_info.unit.header.offset().as_debug_info_offset(),
+                            Some(referenced_node.entry().offset()),
+                        ),
+                        core,
+                    )?;
+                    if parent_variable.name.starts_with("Some") {
+                        referenced_variable.name = parent_variable.name.replacen("&", "*", 1);
+                    } else {
+                        referenced_variable.name = format!("*{}", parent_variable.name);
+                        // Now, retrieve the location by reading the adddress pointed to by the parent variable.
+                    }
+                    let mut buff = [0u8; 4];
+                    core.read(parent_variable.memory_location as u32, &mut buff)?;
+                    referenced_variable.memory_location = u32::from_le_bytes(buff) as u64;
+                    referenced_variable = self.variable_cache.cache_variable(
+                        referenced_variable.parent_key,
+                        referenced_variable,
+                        core,
+                    )?;
+                    referenced_variable = unit_info.extract_type(
+                        referenced_node,
+                        &parent_variable,
+                        referenced_variable,
+                        core,
+                        stack_frame_registers,
+                    )?;
+
+                    // Only use this, if it is NOT a unit datatype.
+                    if referenced_variable.type_name.contains("()") {
+                        self.variable_cache
+                            .remove_cache_entry(referenced_variable.variable_key)?;
+                    } else if parent_variable.name.eq("<statics>") {
+                        // If we are lazily resolving `<statics>`, then we need to eliminate the intermediate node
+                        self.variable_cache
+                            .adopt_grand_children(&parent_variable, &referenced_variable)?;
+                    }
+                }
             }
         }
-        match static_root_variable.children {
-            Some(function_variables) => Ok(function_variables),
-            None => Ok(vec![]),
-        }
+        Ok(())
     }
 
     /// Returns a populated (resolved) [`StackFrame`] struct.
+    /// This function will also populate the `DebugInfo::VariableCache` with in scope `Variable`s for each `StackFrame`
     fn get_stackframe_info(
         &self,
         core: &mut Core<'_>,
         address: u64,
-        frame_count: u64,
-        registers: Registers,
-        inlined_function: bool,
+        unwind_registers: &Registers,
+        // If we encountered an abstract source location (the location in the caller function where it calls and inline function), during the previous iteration, it was stored on the `StackFrameIterator` for passing to this function in the `::next()` iteration. This function then uses this as the source location for the caller.
+        abstract_source_location: Option<SourceLocation>,
     ) -> Result<StackFrame, DebugError> {
         let mut units = self.get_units();
 
         let unknown_function = format!("<unknown function @ {:#010x}>", address);
+        let stack_frame_registers = unwind_registers.clone();
 
+        let mut inlined_call_site: Option<u32> = None;
+        let mut inlined_caller_source_location: Option<SourceLocation> = None;
         while let Some(unit_info) = self.get_next_unit_info(&mut units) {
-            if let Some(die_cursor_state) =
-                &mut unit_info.get_function_die(address, inlined_function)
+            if let Some(function_die) =
+                &mut unit_info.get_function_die(address, abstract_source_location.is_none())
             {
-                let function_name = die_cursor_state
+                let function_name = function_die
                     .function_name(&unit_info)
                     .unwrap_or(unknown_function);
 
-                log::debug!("Function name: {}", function_name);
+                if function_die.is_inline {
+                    // Calculate the call site for this function, so that we can use it later to create an additional 'callee' `StackFrame` from that PC.
+                    let address_size =
+                        gimli::_UnwindSectionPrivate::address_size(&self.frame_section) as u64;
 
-                let variables = unit_info.get_function_variables(
+                    if function_die.low_pc > address_size && function_die.low_pc < u32::MAX.into() {
+                        inlined_call_site = Some(function_die.low_pc as u32);
+                        inlined_caller_source_location = if let Some(file_name_attr) =
+                            function_die.get_attribute(gimli::DW_AT_call_file)
+                        {
+                            if let Some((directory, file)) = extract_file(
+                                unit_info.debug_info,
+                                &unit_info.unit,
+                                file_name_attr.value(),
+                            ) {
+                                let line = function_die
+                                    .get_attribute(gimli::DW_AT_call_line)
+                                    .and_then(|line| line.udata_value());
+                                let column = function_die
+                                    .get_attribute(gimli::DW_AT_call_column)
+                                    .map(|column| match column.udata_value() {
+                                        None => ColumnType::LeftEdge,
+                                        Some(c) => ColumnType::Column(c),
+                                    });
+                                Some(SourceLocation {
+                                    line,
+                                    column,
+                                    file: Some(file),
+                                    directory: Some(directory),
+                                })
+                            } else {
+                                None
+                            }
+                        } else {
+                            log::warn!(
+                                "Failed to get `SourceLocation` for function {:?}",
+                                function_die.function_name(&unit_info)
+                            );
+                            None
+                        };
+                    } else {
+                        log::error!(
+                            "UNWIND: Unable to calculate call site information for function {}",
+                            function_name
+                        );
+                    }
+                };
+
+                // Resolve either :
+                // - The 'origin' [`SourceLocation`] for a given `PC` address, or ...
+                // - The 'abstract' [`SourceLocation`] if it is available
+                let function_source_location = if abstract_source_location.is_some() {
+                    abstract_source_location
+                } else {
+                    self.get_source_location(address)
+                };
+
+                log::debug!("UNWIND: Function name: {}", function_name);
+
+                // Now that we have the function_name and function_source_location, we can cache the in-scope `Variable`s (`<statics>` and `<locals>`) in `DebugInfo::VariableCache`
+                // We need an empty parent variable for the next operation, but do not need to store it in the cache.
+                let parent_variable = Variable::new(None, None);
+                let mut stackframe_root_variable = Variable::new(
+                    unit_info.unit.header.offset().as_debug_info_offset(),
+                    Some(function_die.function_die.offset()),
+                );
+                stackframe_root_variable.name = "<stack_frame>".to_string();
+                stackframe_root_variable.source_location = function_source_location.clone();
+                let function_display_name = if function_die.is_inline {
+                    format!("{} #[inline]", &function_name)
+                } else {
+                    format!("{} @{:#010x}", &function_name, address)
+                };
+                stackframe_root_variable.set_value(function_display_name);
+                stackframe_root_variable = unit_info.extract_location(
+                    &unit_info
+                        .unit
+                        .entries_tree(Some(function_die.function_die.offset()))?
+                        .root()?,
+                    &parent_variable,
+                    stackframe_root_variable,
                     core,
-                    die_cursor_state,
-                    u64::from(registers.get_canonical_frame_address().unwrap_or(0)),
-                    u64::from(registers.get_return_address().unwrap_or(0)),
+                    &stack_frame_registers,
+                )?;
+
+                stackframe_root_variable = self.variable_cache.cache_variable(
+                    parent_variable.variable_key,
+                    stackframe_root_variable,
+                    core,
+                )?;
+
+                if let Some(error) = self
+                    .cache_register_variables(
+                        &stack_frame_registers,
+                        &stackframe_root_variable,
+                        core,
+                    )
+                    .err()
+                {
+                    log::warn!(
+                        "Could not resolve register variables.{}. Continuing...",
+                        error
+                    );
+                }
+
+                // Next, resolve the statics that belong to the compilation unit that this function is in.
+                if let Some(error) = self
+                    .cache_static_variables(
+                        core,
+                        &unit_info,
+                        &stack_frame_registers,
+                        &stackframe_root_variable,
+                    )
+                    .err()
+                {
+                    log::warn!(
+                        "Error while resolving static variables.{}. Continuing...",
+                        error
+                    );
+                }
+
+                // Next, resolve and cache the function variables.
+                self.cache_function_variables(
+                    core,
+                    function_die,
+                    &unit_info,
+                    &stack_frame_registers,
+                    &stackframe_root_variable,
                 )?;
 
                 // Ready to go ...
                 return Ok(StackFrame {
-                    // MS DAP Specification requires the id to be unique accross all threads, so using the frame pointer as the id.
-                    id: registers.get_canonical_frame_address().unwrap_or(0) as u64,
+                    // MS DAP Specification requires the id to be unique accross all threads, so using  so using unique `Variable::variable_key` of the `stackframe_root_variable` as the id.
+                    id: stackframe_root_variable.variable_key as u64,
                     function_name,
-                    source_location: self.get_source_location(address),
-                    registers,
+                    source_location: function_source_location,
+                    registers: stack_frame_registers,
                     pc: address as u32,
-                    variables,
+                    inlined_call_site,
+                    inlined_caller_source_location,
                 });
             }
         }
 
+        // If we get here, we were not able to identify/unwind the function information.
+        // Before returning `unknown_function` [StackFrame], make sure we at least cache the Register values.
+        // We need an empty parent variable for the next operation, but do not need to store it in the cache.
+        let parent_variable = Variable::new(None, None);
+        let mut stackframe_root_variable = Variable::new(None, None);
+        stackframe_root_variable.name = "<stack_frame>".to_string();
+        stackframe_root_variable.source_location = self.get_source_location(address);
+        stackframe_root_variable.set_value(unknown_function.clone());
+        stackframe_root_variable.memory_location = address;
+
+        stackframe_root_variable = self.variable_cache.cache_variable(
+            parent_variable.variable_key,
+            stackframe_root_variable,
+            core,
+        )?;
+
+        if let Some(error) = self
+            .cache_register_variables(&stack_frame_registers, &stackframe_root_variable, core)
+            .err()
+        {
+            log::warn!(
+                "Could not resolve register variables.{}. Continuing...",
+                error
+            );
+        }
         Ok(StackFrame {
-            id: frame_count,
+            id: stackframe_root_variable.variable_key as u64,
             function_name: unknown_function,
             source_location: self.get_source_location(address),
-            registers,
+            registers: stack_frame_registers,
             pc: address as u32,
-            variables: vec![],
+            inlined_call_site,
+            inlined_caller_source_location,
         })
     }
 
     pub fn try_unwind<'probe, 'core>(
-        &self,
+        &mut self,
         core: &'core mut Core<'probe>,
         address: u64,
     ) -> StackFrameIterator<'_, 'probe, 'core> {
+        self.variable_cache = VariableCache::new();
         StackFrameIterator::new(self, core, address)
     }
 
@@ -885,7 +1367,7 @@ impl DebugInfo {
                 });
 
                 for loc in &locations {
-                    log::debug!("col={:?}, addr=0x{:08x}", loc.1, loc.0);
+                    log::debug!("col={:?}, addr={:#010x}", loc.1, loc.0);
                 }
 
                 match column {
@@ -975,11 +1457,13 @@ impl DebugInfo {
 /// Reference to a DIE for a function
 struct FunctionDie<'abbrev, 'unit> {
     function_die: FunctionDieType<'abbrev, 'unit>,
-
     is_inline: bool,
     abstract_die: Option<FunctionDieType<'abbrev, 'unit>>,
+    low_pc: u64,
+    high_pc: u64,
 }
 
+// TODO: We should consider replacing the `panic`s with proper error handling, that allows a user to be 'partially' successful with a debug session. If we use `panic`, then the user will have to wait until the bug is fixed before they can continue trying to use probe-rs
 impl<'debugunit, 'abbrev, 'unit: 'debugunit> FunctionDie<'abbrev, 'unit> {
     fn new(die: FunctionDieType<'abbrev, 'unit>) -> Self {
         let tag = die.tag();
@@ -990,6 +1474,8 @@ impl<'debugunit, 'abbrev, 'unit: 'debugunit> FunctionDie<'abbrev, 'unit> {
                     function_die: die,
                     is_inline: false,
                     abstract_die: None,
+                    low_pc: 0,
+                    high_pc: 0,
                 }
             }
             other_tag => panic!("FunctionDie has to has to have Tag DW_TAG_subprogram, but tag is {:?}. This is a bug, please report it.", other_tag.static_string())
@@ -1008,6 +1494,9 @@ impl<'debugunit, 'abbrev, 'unit: 'debugunit> FunctionDie<'abbrev, 'unit> {
                     function_die: concrete_die,
                     is_inline: true,
                     abstract_die: Some(abstract_die),
+                    low_pc: 0,
+                    high_pc: 0,
+
                 }
             }
             other_tag => panic!("FunctionDie has to has to have Tag DW_TAG_inlined_subroutine, but tag is {:?}. This is a bug, please report it.", other_tag.static_string())
@@ -1033,18 +1522,23 @@ impl<'debugunit, 'abbrev, 'unit: 'debugunit> FunctionDie<'abbrev, 'unit> {
         }
     }
 
+    /// Resolve an attribute by looking through both the origin or abstract die entries.
     fn get_attribute(&self, attribute_name: gimli::DwAt) -> Option<GimliAttribute> {
         let attribute = self
             .function_die
             .attr(attribute_name)
-            .expect(" Failed to parse entry");
+            .map_or(None, |attribute| attribute);
 
         // For inlined function, the *abstract instance* has to be checked if we cannot find the
         // attribute on the *concrete instance*.
         if self.is_inline && attribute.is_none() {
-            let origin = self.abstract_die.as_ref().unwrap();
-
-            origin.attr(attribute_name).expect("Failed to parse entry")
+            if let Some(origin) = self.abstract_die.as_ref() {
+                origin
+                    .attr(attribute_name)
+                    .map_or(None, |attribute| attribute)
+            } else {
+                None
+            }
         } else {
             attribute
         }
@@ -1075,19 +1569,19 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                     if (ranges.begin <= address) && (address < ranges.end) {
                         // Check if we are actually in an inlined function
 
-                        let die = FunctionDie::new(current.clone());
-
+                        let mut die = FunctionDie::new(current.clone());
+                        die.low_pc = ranges.begin;
+                        die.high_pc = ranges.end;
                         if find_inlined {
                             log::debug!(
                                 "Found DIE, now checking for inlined functions: name={:?}",
                                 die.function_name(self)
                             );
-
                             return self
                                 .find_inlined_function(address, current.offset())
                                 .or_else(|| {
                                     log::debug!("No inlined function found!");
-                                    Some(FunctionDie::new(current.clone()))
+                                    Some(die)
                                 });
                         } else {
                             log::debug!("Found DIE: name={:?}", die.function_name(self));
@@ -1127,17 +1621,19 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                         // Check if we are actually in an inlined function
 
                         // Find the abstract definition
-
-                        if let Some(abstract_origin) = current.attr(DW_AT_abstract_origin).unwrap()
+                        if let Some(abstract_origin) =
+                            current.attr(gimli::DW_AT_abstract_origin).unwrap()
                         {
                             match abstract_origin.value() {
                                 gimli::AttributeValue::UnitRef(unit_ref) => {
                                     let abstract_die = self.unit.entry(unit_ref).unwrap();
-
-                                    return Some(FunctionDie::new_inlined(
+                                    let mut die = FunctionDie::new_inlined(
                                         current.clone(),
                                         abstract_die.clone(),
-                                    ));
+                                    );
+                                    die.low_pc = ranges.begin;
+                                    die.high_pc = ranges.end;
+                                    return Some(die);
                                 }
                                 other_value => panic!("Unsupported value: {:?}", other_value),
                             }
@@ -1156,10 +1652,16 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
         &self,
         core: &mut Core<'_>,
         expression: gimli::Expression<GimliReader>,
-        frame_base: u64,
+        stack_frame_registers: &Registers,
     ) -> Result<Vec<gimli::Piece<GimliReader, usize>>, DebugError> {
         let mut evaluation = expression.evaluation(self.unit.encoding());
-
+        let frame_base = if let Some(frame_base) = stack_frame_registers.get_frame_pointer() {
+            u64::from(frame_base)
+        } else {
+            return Err(DebugError::Other(anyhow::anyhow!(
+                "Cannot unwind `Variable` location without a valid CFA (canonical frame address)"
+            )));
+        };
         // go for evaluation
         let mut result = evaluation.evaluate()?;
 
@@ -1194,18 +1696,38 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                         }
                     }
                 }
-                RequiresFrameBase => evaluation.resume_with_frame_base(frame_base).unwrap(),
+                RequiresFrameBase => match evaluation.resume_with_frame_base(frame_base) {
+                    Ok(evaluation_result) => evaluation_result,
+                    Err(error) => {
+                        return Err(DebugError::Other(anyhow::anyhow!(
+                            "Error while calculating `Variable::memory_location`:{}.",
+                            error
+                        )))
+                    }
+                },
                 RequiresRegister {
                     register,
                     base_type,
                 } => {
-                    let raw_value = core.read_core_reg(register.0 as u16)?;
-
-                    if base_type != gimli::UnitOffset(0) {
-                        todo!(
-                            "Support for units in RequiresRegister request is not yet implemented."
-                        )
-                    }
+                    let raw_value = match stack_frame_registers
+                        .get_value_by_dwarf_register_number(register.0 as u32)
+                    {
+                        Some(raw_value) => {
+                            if base_type != gimli::UnitOffset(0) {
+                                return Err(DebugError::Other(anyhow::anyhow!(
+                                    "UNIMPLEMENTED: Support for type {:?} in `RequiresRegister` request is not yet implemented.",
+                                    base_type
+                                )));
+                            }
+                            raw_value
+                        }
+                        None => {
+                            return Err(DebugError::Other(anyhow::anyhow!(
+                                    "Error while calculating `Variable::memory_location`. No value for register #:{}.",
+                                    register.0
+                                )));
+                        }
+                    };
 
                     evaluation.resume_with_register(gimli::Value::Generic(raw_value as u64))?
                 }
@@ -1226,262 +1748,388 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
         Ok(evaluation.result())
     }
 
+    /// Recurse the ELF structure below the `tree_node`, and ...
+    /// - Consumes the `child_variable`.
+    /// - Updates the `DebugInfo::VariableCache` with all appropriate `Variable` fields.
+    /// - Returns a clone of the most up-to-date `child_variable` in the cache.
     fn process_tree_node_attributes(
         &self,
         tree_node: &mut gimli::EntriesTreeNode<GimliReader>,
         parent_variable: &mut Variable,
-        child_variable: &mut Variable,
+        mut child_variable: Variable,
         core: &mut Core<'_>,
-        frame_base: u64,
-        program_counter: u64,
-    ) -> Result<(), DebugError> {
-        // We need to process the location attribute in advance of looping through all the attributes,
-        // to ensure that location is known before we calculate type.
-        self.extract_location(tree_node, parent_variable, child_variable, core, frame_base)?;
+        stack_frame_registers: &Registers,
+    ) -> Result<Variable, DebugError> {
+        // Identify the parent.
+        child_variable.parent_key = parent_variable.variable_key;
+
         // It often happens that intermediate nodes exist for structure reasons,
-        // so we need to pass values like 'memory_location' from the parent down to the next level child nodes.
-        if child_variable.memory_location.is_zero() {
-            child_variable.memory_location = parent_variable.memory_location;
-        }
+        // so we need to pass values like 'member_index' from the parent down to the next level child nodes.
         if parent_variable.member_index.is_some() {
             child_variable.member_index = parent_variable.member_index;
         }
-        let attrs = &mut tree_node.entry().attrs();
-        while let Some(attr) = attrs.next().unwrap() {
-            match attr.name() {
-                gimli::DW_AT_location | gimli::DW_AT_data_member_location => {
-                    // The child_variable.location is calculated higher up by invoking self.extract_location.
+
+        // For variable attribute resolution, we need to resolve a few attributes in advance of looping through all the other ones.
+
+        // We need to process the location attribute to ensure that location is known before we calculate type.
+        child_variable = self.extract_location(
+            tree_node,
+            parent_variable,
+            child_variable,
+            core,
+            stack_frame_registers,
+        )?;
+
+        // We need to determine if we are working with a 'abstract` location, and use that node for the attributes we need
+        // let mut origin_tree:Option<gimli::EntriesTree<GimliReader<>>> = None;
+        let attributes_entry = if let Ok(Some(abstract_origin)) =
+            tree_node.entry().attr(gimli::DW_AT_abstract_origin)
+        {
+            match abstract_origin.value() {
+                gimli::AttributeValue::UnitRef(unit_ref) => Some(
+                    self.unit
+                        .header
+                        .entries_tree(&self.unit.abbreviations, Some(unit_ref))?
+                        .root()?
+                        .entry()
+                        .clone(),
+                ),
+                other_attribute_value => {
+                    child_variable.set_value(format!(
+                        "UNIMPLEMENTED: Attribute Value for DW_AT_abstract_origin {:?}",
+                        other_attribute_value
+                    ));
+                    None
                 }
-                gimli::DW_AT_name => {
-                    child_variable.name = extract_name(self.debug_info, attr.value());
-                }
-                gimli::DW_AT_decl_file => {
-                    child_variable.file = extract_file(self.debug_info, &self.unit, attr.value())
-                        .unwrap_or_else(|| "<undefined>".to_string());
-                }
-                gimli::DW_AT_decl_line => {
-                    child_variable.line = extract_line(self.debug_info, attr.value()).unwrap_or(0);
-                }
-                gimli::DW_AT_decl_column => {
-                    // Unused.
-                }
-                gimli::DW_AT_containing_type => {
-                    // TODO: Resolve Traits.
-                }
-                gimli::DW_AT_type => {
-                    match attr.value() {
+            }
+        } else {
+            Some(tree_node.entry().clone())
+        };
+
+        if let Some(attributes_entry) = attributes_entry {
+            let mut variable_attributes = attributes_entry.attrs();
+
+            // Now loop through all the unit attributes to extract the remainder of the `Variable` definition.
+            while let Ok(Some(attr)) = variable_attributes.next() {
+                match attr.name() {
+                    gimli::DW_AT_location | gimli::DW_AT_data_member_location => {
+                        // The child_variable.location is calculated with attribute gimli::DW_AT_type, to ensure it gets done before DW_AT_type is processed
+                    }
+                    gimli::DW_AT_name => {
+                        child_variable.name = extract_name(self.debug_info, attr.value());
+                    }
+                    gimli::DW_AT_decl_file => {
+                        if let Some((directory, file_name)) =
+                            extract_file(self.debug_info, &self.unit, attr.value())
+                        {
+                            match child_variable.source_location {
+                                Some(existing_source_location) => {
+                                    child_variable.source_location = Some(SourceLocation {
+                                        line: existing_source_location.line,
+                                        column: existing_source_location.column,
+                                        file: Some(file_name),
+                                        directory: Some(directory),
+                                    });
+                                }
+                                None => {
+                                    child_variable.source_location = Some(SourceLocation {
+                                        line: None,
+                                        column: None,
+                                        file: Some(file_name),
+                                        directory: Some(directory),
+                                    });
+                                }
+                            }
+                        };
+                    }
+                    gimli::DW_AT_decl_line => {
+                        if let Some(line_number) = extract_line(attr.value()) {
+                            match child_variable.source_location {
+                                Some(existing_source_location) => {
+                                    child_variable.source_location = Some(SourceLocation {
+                                        line: Some(line_number),
+                                        column: existing_source_location.column,
+                                        file: existing_source_location.file,
+                                        directory: existing_source_location.directory,
+                                    });
+                                }
+                                None => {
+                                    child_variable.source_location = Some(SourceLocation {
+                                        line: Some(line_number),
+                                        column: None,
+                                        file: None,
+                                        directory: None,
+                                    });
+                                }
+                            }
+                        };
+                    }
+                    gimli::DW_AT_decl_column => {
+                        // Unused.
+                    }
+                    gimli::DW_AT_containing_type => {
+                        // TODO: Implement [documented RUST extensions to DWARF standard](https://rustc-dev-guide.rust-lang.org/debugging-support-in-rustc.html?highlight=dwarf#dwarf-and-rustc)
+                    }
+                    gimli::DW_AT_type => {
+                        match attr.value() {
+                            gimli::AttributeValue::UnitRef(unit_ref) => {
+                                // Reference to a type, or an entry to another type or a type modifier which will point to another type.
+                                let mut type_tree = self
+                                    .unit
+                                    .header
+                                    .entries_tree(&self.unit.abbreviations, Some(unit_ref))?;
+                                let tree_node = type_tree.root()?;
+                                child_variable = self.extract_type(
+                                    tree_node,
+                                    parent_variable,
+                                    child_variable,
+                                    core,
+                                    stack_frame_registers,
+                                )?;
+                            }
+                            other_attribute_value => {
+                                child_variable.set_value(format!(
+                                    "UNIMPLEMENTED: Attribute Value for DW_AT_type {:?}",
+                                    other_attribute_value
+                                ));
+                            }
+                        }
+                    }
+                    gimli::DW_AT_enum_class => match attr.value() {
+                        gimli::AttributeValue::Flag(is_enum_class) => {
+                            if is_enum_class {
+                                child_variable.set_value(child_variable.type_name.clone());
+                            } else {
+                                child_variable.set_value(format!(
+                                    "UNIMPLEMENTED: Flag Value for DW_AT_enum_class {:?}",
+                                    is_enum_class
+                                ));
+                            }
+                        }
+                        other_attribute_value => {
+                            child_variable.set_value(format!(
+                                "UNIMPLEMENTED: Attribute Value for DW_AT_enum_class: {:?}",
+                                other_attribute_value
+                            ));
+                        }
+                    },
+                    gimli::DW_AT_const_value => match attr.value() {
+                        gimli::AttributeValue::Udata(const_value) => {
+                            child_variable.set_value(const_value.to_string());
+                        }
+                        other_attribute_value => {
+                            child_variable.set_value(format!(
+                                "UNIMPLEMENTED: Attribute Value for DW_AT_const_value: {:?}",
+                                other_attribute_value
+                            ));
+                        }
+                    },
+                    gimli::DW_AT_alignment => {
+                        // TODO: Figure out when (if at all) we need to do anything with DW_AT_alignment for the purposes of decoding data values.
+                    }
+                    gimli::DW_AT_artificial => {
+                        // These are references for entries like discriminant values of `VariantParts`.
+                        child_variable.name = "<artificial>".to_string();
+                    }
+                    gimli::DW_AT_discr => match attr.value() {
+                        // This calculates the active discriminant value for the `VariantPart`.
                         gimli::AttributeValue::UnitRef(unit_ref) => {
-                            // Reference to a type, or an entry to another type or a type modifier which will point to another type.
                             let mut type_tree = self
                                 .unit
                                 .header
                                 .entries_tree(&self.unit.abbreviations, Some(unit_ref))?;
-                            let tree_node = type_tree.root().unwrap();
-                            self.extract_type(
-                                tree_node,
+                            let mut discriminant_node = type_tree.root()?;
+                            let mut discriminant_variable =
+                                self.debug_info.variable_cache.cache_variable(
+                                    parent_variable.variable_key,
+                                    Variable::new(
+                                        self.unit.header.offset().as_debug_info_offset(),
+                                        Some(discriminant_node.entry().offset()),
+                                    ),
+                                    core,
+                                )?;
+                            discriminant_variable = self.process_tree_node_attributes(
+                                &mut discriminant_node,
                                 parent_variable,
-                                child_variable,
+                                discriminant_variable,
                                 core,
-                                frame_base,
-                                program_counter,
+                                stack_frame_registers,
                             )?;
+                            parent_variable.role = VariantRole::VariantPart(
+                                discriminant_variable
+                                    .get_value(&self.debug_info.variable_cache)
+                                    .parse()
+                                    .unwrap_or(u64::MAX) as u64,
+                            );
+                            self.debug_info
+                                .variable_cache
+                                .remove_cache_entry(discriminant_variable.variable_key)?;
                         }
                         other_attribute_value => {
                             child_variable.set_value(format!(
-                                "UNIMPLEMENTED: Attribute Value for DW_AT_type {:?}",
+                                "UNIMPLEMENTED: Attribute Value for DW_AT_discr {:?}",
                                 other_attribute_value
                             ));
                         }
-                    }
-                }
-                gimli::DW_AT_enum_class => match attr.value() {
-                    gimli::AttributeValue::Flag(is_enum_class) => {
-                        if is_enum_class {
-                            child_variable.set_value(child_variable.type_name.clone());
-                        } else {
+                    },
+                    // Property of variables that are of DW_TAG_subrange_type.
+                    gimli::DW_AT_lower_bound => match attr.value().udata_value() {
+                        Some(lower_bound) => child_variable.range_lower_bound = lower_bound as i64,
+                        None => {
                             child_variable.set_value(format!(
-                                "UNIMPLEMENTED: Flag Value for DW_AT_enum_class {:?}",
-                                is_enum_class
+                                "UNIMPLEMENTED: Attribute Value for DW_AT_lower_bound: {:?}",
+                                attr.value()
                             ));
                         }
+                    },
+                    // Property of variables that are of DW_TAG_subrange_type.
+                    gimli::DW_AT_upper_bound | gimli::DW_AT_count => match attr
+                        .value()
+                        .udata_value()
+                    {
+                        Some(upper_bound) => child_variable.range_upper_bound = upper_bound as i64,
+                        None => {
+                            child_variable.set_value(format!(
+                                "UNIMPLEMENTED: Attribute Value for DW_AT_upper_bound: {:?}",
+                                attr.value()
+                            ));
+                        }
+                    },
+                    gimli::DW_AT_external => {
+                        // TODO: Implement globally visible variables.
                     }
-                    other_attribute_value => {
+                    gimli::DW_AT_declaration => {
+                        // Unimplemented.
+                    }
+                    gimli::DW_AT_encoding => {
+                        // Ignore these. RUST data types handle this intrinsicly.
+                    }
+                    gimli::DW_AT_discr_value => {
+                        // Processed by `extract_variant_discriminant()`.
+                    }
+                    gimli::DW_AT_byte_size => {
+                        // Processed by `extract_byte_size()`.
+                    }
+                    gimli::DW_AT_abstract_origin => {
+                        // Processed before looping through all attributes
+                    }
+                    gimli::DW_AT_linkage_name => {
+                        // Unused attribute of, for example, inlined DW_TAG_subroutine
+                    }
+                    gimli::DW_AT_address_class => {
+                        // Processed by `extract_type()`
+                    }
+                    other_attribute => {
                         child_variable.set_value(format!(
-                            "UNIMPLEMENTED: Attribute Value for DW_AT_enum_class: {:?}",
-                            other_attribute_value
+                            "UNIMPLEMENTED: Variable Attribute {:?} : {:?}, with children = {}",
+                            other_attribute.static_string(),
+                            tree_node
+                                .entry()
+                                .attr_value(other_attribute)
+                                .unwrap()
+                                .unwrap(),
+                            tree_node.entry().has_children()
                         ));
                     }
-                },
-                gimli::DW_AT_const_value => match attr.value() {
-                    gimli::AttributeValue::Udata(const_value) => {
-                        child_variable.set_value(const_value.to_string());
-                    }
-                    other_attribute_value => {
-                        child_variable.set_value(format!(
-                            "UNIMPLEMENTED: Attribute Value for DW_AT_const_value: {:?}",
-                            other_attribute_value
-                        ));
-                    }
-                },
-                gimli::DW_AT_alignment => {
-                    // TODO: Implement this.
-                }
-                // TODO: Figure out when (if at all) we need to do anything with DW_AT_alignment for the purposes of decoding data values.
-                gimli::DW_AT_artificial => {
-                    // These are references for entries like discriminant values of `VariantParts`.
-                    child_variable.name = "<artificial>".to_string();
-                    child_variable.inclusion = VariableInclusion::Exclude;
-                }
-                gimli::DW_AT_discr => match attr.value() {
-                    // This calculates the active discriminant value for the `VariantPart`.
-                    gimli::AttributeValue::UnitRef(unit_ref) => {
-                        let mut type_tree = self
-                            .unit
-                            .header
-                            .entries_tree(&self.unit.abbreviations, Some(unit_ref))?;
-                        let mut discriminant_node = type_tree.root().unwrap();
-                        let mut discriminant_variable = Variable::new();
-                        self.process_tree_node_attributes(
-                            &mut discriminant_node,
-                            parent_variable,
-                            &mut discriminant_variable,
-                            core,
-                            frame_base,
-                            program_counter,
-                        )?;
-                        discriminant_variable.extract_value(core);
-                        parent_variable.role = VariantRole::VariantPart(
-                            discriminant_variable
-                                .get_value()
-                                .parse()
-                                .unwrap_or(u64::MAX) as u64,
-                        );
-                    }
-                    other_attribute_value => {
-                        child_variable.set_value(format!(
-                            "UNIMPLEMENTED: Attribute Value for DW_AT_discr {:?}",
-                            other_attribute_value
-                        ));
-                    }
-                },
-                // Property of variables that are of DW_TAG_subrange_type.
-                gimli::DW_AT_lower_bound => match attr.value().udata_value() {
-                    Some(lower_bound) => child_variable.range_lower_bound = lower_bound as i64,
-                    None => {
-                        child_variable.set_value(format!(
-                            "UNIMPLEMENTED: Attribute Value for DW_AT_lower_bound: {:?}",
-                            attr.value()
-                        ));
-                    }
-                },
-                // Property of variables that are of DW_TAG_subrange_type.
-                gimli::DW_AT_upper_bound | gimli::DW_AT_count => match attr.value().udata_value() {
-                    Some(upper_bound) => child_variable.range_upper_bound = upper_bound as i64,
-                    None => {
-                        child_variable.set_value(format!(
-                            "UNIMPLEMENTED: Attribute Value for DW_AT_upper_bound: {:?}",
-                            attr.value()
-                        ));
-                    }
-                },
-                gimli::DW_AT_external => {
-                    // TODO: Implement globally visible variables.
-                }
-                gimli::DW_AT_declaration => {
-                    // Unimplemented. Setting this value ensure we do not such variables to the variable tree.
-                    child_variable.inclusion = VariableInclusion::Exclude;
-                }
-                gimli::DW_AT_encoding => {
-                    // Ignore these. RUST data types handle this intrinsicly.
-                }
-                gimli::DW_AT_discr_value => {
-                    // Processed by `extract_variant_discriminant()`.
-                }
-                gimli::DW_AT_byte_size => {
-                    // Processed by `extract_byte_size()`.
-                }
-                gimli::DW_AT_abstract_origin => {
-                    // TODO: DW_AT_abstract_origin attributes are only applicable to DW_TAG_subprogram (closures), and DW_TAG_inline_subroutine, and DW_TAG_formal_parameters.
-                }
-                gimli::DW_AT_linkage_name => {
-                    // Unused.
-                }
-                other_attribute => {
-                    child_variable.set_value(format!(
-                        "UNIMPLEMENTED: Variable Attribute {:?} : {:?}, with children = {}",
-                        other_attribute.static_string(),
-                        tree_node
-                            .entry()
-                            .attr_value(other_attribute)
-                            .unwrap()
-                            .unwrap(),
-                        tree_node.entry().has_children()
-                    ));
                 }
             }
         }
-        Ok(())
+        self.debug_info
+            .variable_cache
+            .cache_variable(child_variable.parent_key, child_variable, core)
+            .map_err(|error| error.into())
     }
 
+    /// Recurse the ELF structure below the `parent_node`, and ...
+    /// - Consumes the `parent_variable`.
+    /// - Updates the `DebugInfo::VariableCache` with all descendant `Variable`s.
+    /// - Returns a clone of the most up-to-date `parent_variable` in the cache.
     fn process_tree(
         &self,
         parent_node: gimli::EntriesTreeNode<GimliReader>,
-        parent_variable: &mut Variable,
+        mut parent_variable: Variable,
         core: &mut Core<'_>,
-        frame_base: u64,
-        program_counter: u64,
-    ) -> Result<(), DebugError> {
+        stack_frame_registers: &Registers,
+    ) -> Result<Variable, DebugError> {
+        let program_counter =
+            if let Some(program_counter) = stack_frame_registers.get_program_counter() {
+                u64::from(program_counter)
+            } else {
+                return Err(DebugError::Other(anyhow::anyhow!(
+                    "Cannot unwind `Variable` without a valid PC (program_counter)"
+                )));
+            };
         let mut child_nodes = parent_node.children();
         while let Some(mut child_node) = child_nodes.next()? {
             match child_node.entry().tag() {
                 gimli::DW_TAG_namespace => {
                     // Use these parents to extract `statics`.
-                    let mut namespace_variable = Variable::new();
+                    let mut namespace_variable = Variable::new(
+                        self.unit.header.offset().as_debug_info_offset(),
+                        Some(child_node.entry().offset()),
+                );
                     namespace_variable.name = if let Ok(Some(attr)) = child_node.entry().attr(gimli::DW_AT_name) {
                         extract_name(self.debug_info, attr.value())
                     } else {"<anonymous namespace>".to_string()};
-                    namespace_variable.type_name = "namespace".to_string();
+                    namespace_variable.type_name = "<namespace>".to_string();
                     namespace_variable.memory_location = 0;
+                    namespace_variable = self.debug_info.variable_cache.cache_variable(parent_variable.variable_key, namespace_variable, core)?;
                     let mut namespace_children_nodes = child_node.children();
                     while let Some(mut namespace_child_node) = namespace_children_nodes.next()? {
                         match namespace_child_node.entry().tag() {
                             gimli::DW_TAG_variable => {
                                 // We only want the TOP level variables of the namespace (statics).
-                                let mut static_child_variable = Variable::new();
-                                self.process_tree_node_attributes(&mut namespace_child_node, &mut namespace_variable, &mut static_child_variable, core, frame_base, program_counter)?;
-                                static_child_variable.inclusion = VariableInclusion::Include;
-                                namespace_variable.add_child_variable(&mut static_child_variable, core);
+                                let static_child_variable = self.debug_info.variable_cache.cache_variable(namespace_variable.variable_key, Variable::new(
+                                    self.unit.header.offset().as_debug_info_offset(),
+                                    Some(namespace_child_node.entry().offset()),), core)?;
+                                self.process_tree_node_attributes(&mut namespace_child_node, &mut namespace_variable, static_child_variable, core, stack_frame_registers)?;
                             }
                             gimli::DW_TAG_namespace => {
                                 // Recurse for additional namespace variables.
-                                let mut namespace_child_variable = Variable::new();
+                                let mut namespace_child_variable = Variable::new(
+                                    self.unit.header.offset().as_debug_info_offset(),
+                                    Some(namespace_child_node.entry().offset()),);
                                 namespace_child_variable.name = if let Ok(Some(attr)) = namespace_child_node.entry().attr(gimli::DW_AT_name) {
                                     format!("{}::{}", namespace_variable.name, extract_name(self.debug_info, attr.value()))
                                 } else {"<anonymous namespace>".to_string()};
-                                namespace_child_variable.type_name = "namespace".to_string();
+                                namespace_child_variable.type_name = "<namespace>".to_string();
                                 namespace_child_variable.memory_location = 0;
-                                self.process_tree(namespace_child_node, &mut namespace_child_variable, core, frame_base, program_counter)?;
-                                namespace_variable.add_child_variable(&mut namespace_child_variable, core);
+                                namespace_child_variable = self.debug_info.variable_cache.cache_variable(namespace_variable.variable_key, namespace_child_variable, core)?;
+                                namespace_child_variable = self.process_tree(namespace_child_node, namespace_child_variable, core, stack_frame_registers)?;
+                                if !self.debug_info.variable_cache.has_children(&namespace_child_variable)? {
+                                    self.debug_info.variable_cache.remove_cache_entry(namespace_child_variable.variable_key)?;
+                                }
                             }
                             _ => {
                                 // We only want namespace and variable children.
                             }
                         }
                     }
-                    parent_variable.add_child_variable(&mut namespace_variable, core);
+                    if !self.debug_info.variable_cache.has_children(&namespace_variable)? {
+                        self.debug_info.variable_cache.remove_cache_entry(namespace_variable.variable_key)?;
+                    }
                 }
                 gimli::DW_TAG_variable |    // Typical top-level variables.
                 gimli::DW_TAG_member |      // Members of structured types.
                 gimli::DW_TAG_enumerator    // Possible values for enumerators, used by extract_type() when processing DW_TAG_enumeration_type.
                 => {
-                    let mut child_variable = Variable::new();
-                    self.process_tree_node_attributes(&mut child_node, parent_variable, &mut child_variable, core, frame_base, program_counter)?;
-                    if ! (child_variable.type_name.starts_with("PhantomData") // Do not process PhantomData nodes
-                    || child_variable.inclusion == VariableInclusion::Exclude ) {
+                    let mut child_variable = self.debug_info.variable_cache.cache_variable(parent_variable.variable_key, Variable::new(
+                    self.unit.header.offset().as_debug_info_offset(),
+                    Some(child_node.entry().offset()),
+                ), core)?;
+                    child_variable = self.process_tree_node_attributes(&mut child_node, &mut parent_variable, child_variable, core, stack_frame_registers)?;
+                    // Do not keep or process PhantomData nodes, or variant parts that we have already used.
+                    if child_variable.type_name.starts_with("PhantomData") 
+                        ||  child_variable.name == "<artificial>"
+                    {
+                        self.debug_info.variable_cache.remove_cache_entry(child_variable.variable_key)?;
+                    } else if child_variable.type_name == "Some" {
+                        //This is an intermediate node. Once we've resolved the children, we can adopt them to their grandparent
+                        self.debug_info.variable_cache.adopt_grand_children(&parent_variable, &child_variable)?;
+                    }
+                    else {
                         // Recursively process each child.
-                        self.process_tree(child_node, &mut child_variable, core, frame_base, program_counter)?;
-                        child_variable.inclusion = VariableInclusion::Include;
-                        parent_variable.add_child_variable(&mut child_variable, core);
+                        self.process_tree(child_node, child_variable, core, stack_frame_registers)?;
                     }
                 }
                 gimli::DW_TAG_variant_part => {
@@ -1489,43 +2137,50 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                     // and ONLY add it's children to the parent variable. 
                     // The structure looks like this (there are other nodes in the structure that we use and discard before we get here):
                     // Level 1: --> An actual variable that has a variant value
-                    //      Level 2: --> this DW_TAG_variant_part node (some child nodes arer used to calc the active Variant discriminant)
+                    //      Level 2: --> this DW_TAG_variant_part node (some child nodes are used to calc the active Variant discriminant)
                     //          Level 3: --> Some DW_TAG_variant's that have discriminant values to be matched against the discriminant 
                     //              Level 4: --> The actual variables, with matching discriminant, which will be added to `parent_variable`
                     // TODO: Handle Level 3 nodes that belong to a DW_AT_discr_list, instead of having a discreet DW_AT_discr_value 
-                    let mut child_variable = Variable::new();
-                    // If there is a child with DW_AT_discr, the variable role will updated appropriately, otherwise we use 0 as the default ...
-                    parent_variable.role = VariantRole::VariantPart(0);
-                    self.process_tree_node_attributes(&mut child_node, parent_variable, &mut child_variable, core, frame_base, program_counter)?;
-                    // Pass it along through intermediate nodes.
-                    child_variable.role = parent_variable.role.clone();
-                    // Recursively process each child.
-                    self.process_tree(child_node, &mut child_variable, core, frame_base, program_counter)?;
-                    // Make sure we pass children up, past the intermediate.
-                    if child_variable.type_name.is_empty()
-                    && child_variable.children.is_some()  {
-                        for mut grand_child in child_variable.children.unwrap() {
-                            parent_variable.add_child_variable(&mut grand_child, core);
-                        }
-                    }
+                    let mut child_variable = self.debug_info.variable_cache.cache_variable(
+                        parent_variable.variable_key,
+                        Variable::new(self.unit.header.offset().as_debug_info_offset(),Some(child_node.entry().offset())),
+                        core
+                    )?;
+                    // To determine the discriminant, we use the following rules:
+                    // - If there is no DW_AT_discr, then there will be a single DW_TAG_variant, and this will be the matching value. In the code here, we assign a default value of u64::MAX to both, so that they will be matched as belonging together (https://dwarfstd.org/ShowIssue.php?issue=180517.2)
+                    // - TODO: The [DWARF] standard, 5.7.10, allows for a case where there is no DW_AT_discr attribute, but a DW_AT_type to represent the tag. I have not seen that generated from RUST yet.
+                    // - If there is a DW_AT_discr that has a value, then this is a reference to the member entry for the discriminant. This value will be resolved to match against the appropriate DW_TAG_variant.
+                    // - TODO: The [DWARF] standard, 5.7.10, allows for a DW_AT_discr_list, but I have not seen that generated from RUST yet. 
+                    parent_variable.role = VariantRole::VariantPart(u64::MAX);
+                    child_variable = self.process_tree_node_attributes(&mut child_node, &mut parent_variable, child_variable, core, stack_frame_registers)?;
+                    // At this point we have everything we need (It has updated the parent's `role`) from the child_variable, so elimnate it before we continue ...
+                    self.debug_info.variable_cache.remove_cache_entry(child_variable.variable_key)?;
+                    parent_variable = self.process_tree(child_node, parent_variable, core, stack_frame_registers)?;
                 }
                 gimli::DW_TAG_variant // variant is a child of a structure, and one of them should have a discriminant value to match the DW_TAG_variant_part 
                 => {
-                    let mut child_variable = Variable::new();
-                    // We need to do this here, to identify "default" variants for when the rust lang compiler doesn't encode them explicitly ... only by absence of a DW_AT_discr_value
-                    self.extract_variant_discriminant(&child_node, &mut child_variable, core, frame_base)?;
-                    self.process_tree_node_attributes(&mut child_node, parent_variable, &mut child_variable, core, frame_base, program_counter)?;
-                    if let VariantRole::Variant(discriminant) = child_variable.role {
-                        // Only process the discriminant variants.
-                        if parent_variable.role == VariantRole::VariantPart(discriminant) {
-                            // Recursively process each relevant child.
-                            self.process_tree(child_node, &mut child_variable, core, frame_base, program_counter)?;
-                            // Make sure we pass children up, past the intermediate.
-                            if child_variable.type_name.is_empty()
-                            && child_variable.children.is_some()  {
-                                for mut grand_child in child_variable.children.unwrap() {
-                                    parent_variable.add_child_variable(&mut grand_child, core);
-                                }
+                    // We only need to do this if we have not already found our variant,
+                    if !self.debug_info.variable_cache.has_children(&parent_variable)? {
+                        let mut child_variable = self.debug_info.variable_cache.cache_variable(
+                            parent_variable.variable_key,
+                            Variable::new(self.unit.header.offset().as_debug_info_offset(), Some(child_node.entry().offset())),
+                            core
+                        )?;
+                        self.extract_variant_discriminant(&child_node, &mut child_variable)?;
+                        child_variable = self.process_tree_node_attributes(&mut child_node, &mut parent_variable, child_variable, core, stack_frame_registers)?;
+                        if let VariantRole::Variant(discriminant) = child_variable.role {
+                            // Only process the discriminant variants or when we eventually   encounter the default 
+                            if parent_variable.role == VariantRole::VariantPart(discriminant) || discriminant == u64::MAX
+                            {
+                                // Pass some key values through intermediate nodes to valid desccendants.
+                                child_variable.memory_location = parent_variable.memory_location;
+                                // Recursively process each relevant child node.
+                                child_variable = self.process_tree(child_node, child_variable, core, stack_frame_registers)?;
+                                // Eliminate intermediate DWARF nodes, but keep their children
+                                self.debug_info.variable_cache.adopt_grand_children(&parent_variable, &child_variable)?;
+
+                            } else {
+                                self.debug_info.variable_cache.remove_cache_entry(child_variable.variable_key)?;
                             }
                         }
                     }
@@ -1533,34 +2188,31 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                 gimli::DW_TAG_subrange_type => {
                     // This tag is a child node fore parent types such as (array, vector, etc.).
                     // Recursively process each node, but pass the parent_variable so that new children are caught despite missing these tags.
-                    let mut range_variable = Variable::new();
-                    self.process_tree_node_attributes(&mut child_node, parent_variable, &mut range_variable, core, frame_base, program_counter)?;
+                    let mut range_variable = self.debug_info.variable_cache.cache_variable(parent_variable.variable_key,Variable::new(
+                    self.unit.header.offset().as_debug_info_offset(),
+                    Some(child_node.entry().offset()),
+                ), core)?;
+                    range_variable = self.process_tree_node_attributes(&mut child_node, &mut parent_variable, range_variable, core, stack_frame_registers)?;
                     // Pass the pertinent info up to the parent_variable.
                     parent_variable.type_name = range_variable.type_name;
                     parent_variable.range_lower_bound = range_variable.range_lower_bound;
                     parent_variable.range_upper_bound = range_variable.range_upper_bound;
+                    self.debug_info.variable_cache.remove_cache_entry(range_variable.variable_key)?;
                 }
                 gimli::DW_TAG_template_type_parameter => {
                     // The parent node for Rust generic type parameter
-                    // These show up as a child of structures they belong to, but currently don't lead to the member value or type.
-                    // Until rust lang implements this, we will ONLY process the ACTUAL structure member, to avoid a cluttered UI. 
-                    // let mut template_type_variable = Variable::new();
-                    // self.process_tree_node_attributes(&mut child_node, parent_variable, &mut template_type_variable, core, frame_base, program_counter)?;
-                    // parent_variable.add_child_variable(&mut template_type_variable, core);
-                    // self.process_tree(child_node, parent_variable, core, frame_base, program_counter)?;
+                    // These show up as a child of structures they belong to and points to the type that matches the template.
+                    // They are followed by a sibling of `DW_TAG_member` with name '__0' that has all the attributes needed to resolve the value.
+                    // TODO: If there are multiple types supported, then I suspect there will be additional `DW_TAG_member` siblings. We will need to match those correctly.
                 }
                 gimli::DW_TAG_formal_parameter => {
-                    // TODO: WIP Parameters for DW_TAG_inlined_subroutine
-                    // let mut child_variable = Variable::new();
-                    // self.process_tree_node_attributes(&mut child_node, parent_variable, &mut child_variable, core, frame_base)?;
-                    // // Recursively process each child.
-                    // self.process_tree(child_node, &mut child_variable, core, frame_base)?;
-                    // parent_variable.add_child_variable(&mut child_variable, core);
-                    self.process_tree(child_node, parent_variable, core, frame_base, program_counter)?;
+                    // TODO: WIP Parameters for functions, closures and inlined functions.
+                    // Recursively process each child.
+                    parent_variable = self.process_tree(child_node, parent_variable, core, stack_frame_registers)?;
                 }
                 gimli::DW_TAG_inlined_subroutine => {
-                    // These are handled by `find_inlined_function()` as part of the stack frame iteration process.
-                    self.process_tree(child_node, parent_variable, core, frame_base, program_counter)?;
+                    // Recurse the variables of inlined subroutines as normal, but beware that their name, type, etc. has to be resolved from DW_AT_abstract_origin nodes, and their location has to be passed from here (concrete location) to there (abstract location). 
+                    parent_variable = self.process_tree(child_node, parent_variable, core, stack_frame_registers)?;
                 }
                 gimli::DW_TAG_lexical_block => {
                     // Determine the low and high ranges for which this DIE and children are in scope. These can be specified discreetly, or in ranges. 
@@ -1618,9 +2270,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                     if in_scope {
                         // This is IN scope.
                         // Recursively process each child, but pass the parent_variable, so that we don't create intermediate nodes for scope identifiers.
-                        self.process_tree(child_node, parent_variable, core, frame_base, program_counter)?;
-                    } else {
-                        // Out of scope .
+                        parent_variable = self.process_tree(child_node, parent_variable, core, stack_frame_registers)?;
                     }
                 }
                 other => {
@@ -1633,7 +2283,6 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                         gimli::DW_TAG_array_type |
                         gimli::DW_TAG_subroutine_type |
                         gimli::DW_TAG_subprogram |
-                        gimli::DW_TAG_inlined_subroutine |
                         gimli::DW_TAG_union_type => {
                             // These will be processed elsewhere.
                         }
@@ -1644,35 +2293,10 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                 }
             }
         }
-        Ok(())
-    }
-
-    fn get_function_variables(
-        &self,
-        core: &mut Core<'_>,
-        die_cursor_state: &mut FunctionDie,
-        frame_base: u64,
-        program_counter: u64,
-    ) -> Result<Vec<Variable>, DebugError> {
-        let abbrevs = &self.unit.abbreviations;
-        let mut tree = self
-            .unit
-            .header
-            .entries_tree(abbrevs, Some(die_cursor_state.function_die.offset()))?;
-        let function_node = tree.root()?;
-        let mut root_variable = Variable::new();
-        root_variable.name = "<locals>".to_string();
-        self.process_tree(
-            function_node,
-            &mut root_variable,
-            core,
-            frame_base,
-            program_counter,
-        )?;
-        match root_variable.children {
-            Some(function_variables) => Ok(function_variables),
-            None => Ok(vec![]),
-        }
+        self.debug_info
+            .variable_cache
+            .cache_variable(parent_variable.parent_key, parent_variable, core)
+            .map_err(|error| error.into())
     }
 
     /// Compute the discriminant value of a DW_TAG_variant variable. If it is not explicitly captured in the DWARF, then it is the default value.
@@ -1680,8 +2304,6 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
         &self,
         node: &gimli::EntriesTreeNode<GimliReader>,
         variable: &mut Variable,
-        _core: &mut Core<'_>,
-        _frame_base: u64,
     ) -> Result<(), DebugError> {
         if node.entry().tag() == gimli::DW_TAG_variant {
             variable.role = match node.entry().attr(gimli::DW_AT_discr_value) {
@@ -1700,7 +2322,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                         }
                         None => {
                             // In the case where the variable is a DW_TAG_variant, but has NO DW_AT_discr_value, then this is the "default" to be used.
-                            VariantRole::Variant(0)
+                            VariantRole::Variant(u64::MAX)
                         }
                     }
                 }
@@ -1719,15 +2341,16 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
     /// Compute the type (base to complex) of a variable. Only base types have values.
     /// Complex types are references to node trees, that require traversal in similar ways to other DIE's like functions.
     /// This means both [`get_function_variables()`] and [`extract_type()`] will call the recursive [`process_tree()`] method to build an integrated `tree` of variables with types and values.
+    /// - Consumes the `child_variable`.
+    /// - Returns a clone of the most up-to-date `child_variable` in the cache.
     fn extract_type(
         &self,
         node: gimli::EntriesTreeNode<GimliReader>,
-        parent_variable: &mut Variable,
-        child_variable: &mut Variable,
+        parent_variable: &Variable,
+        mut child_variable: Variable,
         core: &mut Core<'_>,
-        frame_base: u64,
-        program_counter: u64,
-    ) -> Result<(), DebugError> {
+        stack_frame_registers: &Registers,
+    ) -> Result<Variable, DebugError> {
         child_variable.type_name = match node.entry().attr(gimli::DW_AT_name) {
             Ok(optional_name_attr) => match optional_name_attr {
                 Some(name_attr) => extract_name(self.debug_info, name_attr.value()),
@@ -1737,15 +2360,12 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                 format!("ERROR: evaluating name: {:?} ", error)
             }
         };
-
         child_variable.byte_size = extract_byte_size(self.debug_info, node.entry());
         match node.entry().tag() {
             gimli::DW_TAG_base_type => {
-                child_variable.children = None;
-
                 if let Some(child_member_index) = child_variable.member_index {
                     // This is a member of an array type, and needs special handling.
-                    let (location, has_overflowed) = child_variable
+                    let (location, has_overflowed) = parent_variable
                         .memory_location
                         .overflowing_add(child_member_index as u64 * child_variable.byte_size);
 
@@ -1757,7 +2377,6 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                         child_variable.memory_location = location;
                     }
                 }
-                Ok(())
             }
             gimli::DW_TAG_pointer_type => {
                 // This needs to resolve the pointer before the regular recursion can continue.
@@ -1767,52 +2386,27 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                             Some(data_type_attribute) => {
                                 match data_type_attribute.value() {
                                     gimli::AttributeValue::UnitRef(unit_ref) => {
-                                        // Reference to a type, or an node.entry() to another type or a type modifier which will point to another type.
-                                        let mut referenced_variable = Variable::new();
-                                        let mut type_tree = self.unit.header.entries_tree(
-                                            &self.unit.abbreviations,
-                                            Some(unit_ref),
-                                        )?;
-                                        let referenced_node = type_tree.root()?;
-                                        referenced_variable.name = match node
-                                            .entry()
-                                            .attr(gimli::DW_AT_name)
-                                        {
-                                            Ok(optional_name_attr) => match optional_name_attr {
-                                                Some(name_attr) => {
-                                                    extract_name(self.debug_info, name_attr.value())
-                                                }
-                                                None => "".to_owned(),
-                                            },
-                                            Err(error) => {
-                                                format!("ERROR: evaluating name: {:?} ", error)
-                                            }
-                                        };
-                                        // Now, retrieve the location by reading the adddress pointed to by the parent variable.
-                                        let mut buff = [0u8; 4];
-                                        core.read(
-                                            child_variable.memory_location as u32,
-                                            &mut buff,
-                                        )?;
-                                        referenced_variable.memory_location =
-                                            u32::from_le_bytes(buff) as u64;
-                                        self.extract_type(
-                                            referenced_node,
-                                            parent_variable,
-                                            &mut referenced_variable,
-                                            core,
-                                            frame_base,
-                                            program_counter,
-                                        )?;
-                                        if !referenced_variable.type_name.eq("()") {
-                                            // Halt further processing of unit types.
-                                            referenced_variable.kind = VariableKind::Referenced;
-                                            // Now add the referenced_variable as a child.
-                                            referenced_variable.inclusion =
-                                                VariableInclusion::Include;
-                                            child_variable
-                                                .add_child_variable(&mut referenced_variable, core);
+                                        child_variable.referenced_node_offset = Some(unit_ref);
+                                        child_variable.stack_frame_registers =
+                                            Some(stack_frame_registers.clone());
+                                        if child_variable.type_name.starts_with("*const") {
+                                            // Resolve the children of this variable, because they contain essential information required to resolve the value
+                                            self.debug_info.cache_referenced_variables(
+                                                core,
+                                                child_variable.clone(),
+                                            )?;
+                                        } else if parent_variable.type_name == "Some" {
+                                            // The parent `DW_TAG_structure_type` with name `Some` is an intermediate node that we only need for its children
+                                            // Update the child's name for when we adopt it to the grandparent later on.
+                                            child_variable.name =
+                                                format!("Some({})", child_variable.type_name);
                                         }
+                                        child_variable =
+                                            self.debug_info.variable_cache.cache_variable(
+                                                parent_variable.variable_key,
+                                                child_variable,
+                                                core,
+                                            )?;
                                     }
                                     other_attribute_value => {
                                         child_variable.set_value(format!(
@@ -1837,36 +2431,39 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                         ));
                     }
                 }
-                Ok(())
             }
             gimli::DW_TAG_structure_type => {
                 // Recursively process a child types.
+                // Unless something is already broken, then don't dig any deeper.
                 if child_variable.memory_location != u64::MAX {
-                    // Something is already broken, so don't dig any deeper.
-                    self.process_tree(node, child_variable, core, frame_base, program_counter)?;
+                    child_variable =
+                        self.process_tree(node, child_variable, core, stack_frame_registers)?;
                 }
-                if child_variable.children.is_none() {
+                if !self
+                    .debug_info
+                    .variable_cache
+                    .has_children(&child_variable)?
+                {
                     // Empty structs don't have values. Use the type_name as the display value.
                     child_variable.set_value(child_variable.type_name.clone());
                 }
-                Ok(())
             }
             gimli::DW_TAG_enumeration_type => {
                 // Recursively process a child types.
-                self.process_tree(node, child_variable, core, frame_base, program_counter)?;
-                let enumerator_values = match child_variable.children.clone() {
-                    Some(enumerator_values) => enumerator_values,
-                    None => {
-                        vec![]
-                    }
-                };
+                child_variable =
+                    self.process_tree(node, child_variable, core, stack_frame_registers)?;
+                let enumerator_values = self
+                    .debug_info
+                    .variable_cache
+                    .get_children(child_variable.variable_key)?;
                 // NOTE: hard-coding value of variable.byte_size to 1 ... replace with code if necessary.
                 let mut buff = [0u8; 1];
                 core.read(child_variable.memory_location as u32, &mut buff)?;
                 let this_enum_const_value = u8::from_le_bytes(buff).to_string();
                 let enumumerator_value =
                     match enumerator_values.into_iter().find(|enumerator_variable| {
-                        enumerator_variable.get_value() == this_enum_const_value
+                        enumerator_variable.get_value(&self.debug_info.variable_cache)
+                            == this_enum_const_value
                     }) {
                         Some(this_enum) => this_enum.name,
                         None => "<ERROR: Unresolved enum value>".to_string(),
@@ -1875,9 +2472,10 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                     "{}::{}",
                     child_variable.type_name, enumumerator_value
                 ));
-                // We don't need to keep these.
-                child_variable.children = None;
-                Ok(())
+                // We don't need to keep these children.
+                self.debug_info
+                    .variable_cache
+                    .remove_cache_entry_children(child_variable.variable_key)?;
             }
             gimli::DW_TAG_array_type => {
                 // This node is a pointer to the type of data stored in the array, with a direct child that contains the range information.
@@ -1888,13 +2486,23 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                 match data_type_attribute.value() {
                                     gimli::AttributeValue::UnitRef(unit_ref) => {
                                         // First get the DW_TAG_subrange child of this node. It has a DW_AT_type that points to DW_TAG_base_type:__ARRAY_SIZE_TYPE__.
-                                        let mut subrange_variable = Variable::new();
-                                        self.process_tree(
+                                        let mut subrange_variable =
+                                            self.debug_info.variable_cache.cache_variable(
+                                                child_variable.variable_key,
+                                                Variable::new(
+                                                    self.unit
+                                                        .header
+                                                        .offset()
+                                                        .as_debug_info_offset(),
+                                                    Some(node.entry().offset()),
+                                                ),
+                                                core,
+                                            )?;
+                                        subrange_variable = self.process_tree(
                                             node,
-                                            &mut subrange_variable,
+                                            subrange_variable,
                                             core,
-                                            frame_base,
-                                            program_counter,
+                                            stack_frame_registers,
                                         )?;
                                         child_variable.range_lower_bound =
                                             subrange_variable.range_lower_bound;
@@ -1908,12 +2516,14 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                                 child_variable.range_lower_bound, child_variable.range_upper_bound)
                                             );
                                         }
+                                        self.debug_info
+                                            .variable_cache
+                                            .remove_cache_entry(subrange_variable.variable_key)?;
                                         // - Next, process this DW_TAG_array_type's DW_AT_type full tree.
                                         // - We have to do this repeatedly, for every array member in the range.
                                         for array_member_index in child_variable.range_lower_bound
                                             ..child_variable.range_upper_bound
                                         {
-                                            let mut array_member_variable = Variable::new();
                                             let mut array_member_type_tree =
                                                 self.unit.header.entries_tree(
                                                     &self.unit.abbreviations,
@@ -1921,14 +2531,28 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                                 )?;
                                             let mut array_member_type_node =
                                                 array_member_type_tree.root().unwrap();
-                                            self.process_tree_node_attributes(
-                                                &mut array_member_type_node,
-                                                child_variable,
-                                                &mut array_member_variable,
-                                                core,
-                                                frame_base,
-                                                program_counter,
-                                            )?;
+                                            let mut array_member_variable =
+                                                self.debug_info.variable_cache.cache_variable(
+                                                    child_variable.variable_key,
+                                                    Variable::new(
+                                                        self.unit
+                                                            .header
+                                                            .offset()
+                                                            .as_debug_info_offset(),
+                                                        Some(
+                                                            array_member_type_node.entry().offset(),
+                                                        ),
+                                                    ),
+                                                    core,
+                                                )?;
+                                            array_member_variable = self
+                                                .process_tree_node_attributes(
+                                                    &mut array_member_type_node,
+                                                    &mut child_variable,
+                                                    array_member_variable,
+                                                    core,
+                                                    stack_frame_registers,
+                                                )?;
                                             child_variable.type_name = format!(
                                                 "[{};{}]",
                                                 array_member_variable.name,
@@ -1938,24 +2562,15 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                                 Some(array_member_index);
                                             array_member_variable.name =
                                                 format!("__{}", array_member_index);
-                                            array_member_variable.kind = VariableKind::Indexed;
-                                            array_member_variable.file =
-                                                child_variable.file.clone();
-                                            array_member_variable.line = child_variable.line;
+                                            array_member_variable.source_location =
+                                                child_variable.source_location.clone();
                                             self.extract_type(
                                                 array_member_type_node,
-                                                child_variable,
-                                                &mut array_member_variable,
+                                                &child_variable,
+                                                array_member_variable,
                                                 core,
-                                                frame_base,
-                                                program_counter,
+                                                stack_frame_registers,
                                             )?;
-                                            array_member_variable.inclusion =
-                                                VariableInclusion::Include;
-                                            child_variable.add_child_variable(
-                                                &mut array_member_variable,
-                                                core,
-                                            );
                                         }
                                     }
                                     other_attribute_value => {
@@ -1981,17 +2596,20 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                         ));
                     }
                 }
-                Ok(())
             }
             gimli::DW_TAG_union_type => {
                 // Recursively process a child types.
                 // TODO: The DWARF does not currently hold information that allows decoding of which UNION arm is instantiated, so we have to display all available.
-                self.process_tree(node, child_variable, core, frame_base, program_counter)?;
-                if child_variable.children.is_none() {
+                child_variable =
+                    self.process_tree(node, child_variable, core, stack_frame_registers)?;
+                if !self
+                    .debug_info
+                    .variable_cache
+                    .has_children(&child_variable)?
+                {
                     // Empty structs don't have values.
                     child_variable.set_value(child_variable.type_name.clone());
                 }
-                Ok(())
             }
             gimli::DW_TAG_subroutine_type => {
                 // The type_name will be found in the DW_AT_TYPE child of this entry.
@@ -2036,44 +2654,58 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                         ));
                     }
                 }
-                Ok(())
+            }
+            gimli::DW_TAG_compile_unit => {
+                // This only happens when we do a 'lazy' load of <statics>
+                child_variable =
+                    self.process_tree(node, child_variable, core, stack_frame_registers)?;
             }
             // Do not expand this type.
             other => {
                 child_variable.type_name =
                     format!("<UNIMPLEMENTED: type : {:?}>", other.static_string());
                 child_variable.set_value(child_variable.type_name.clone());
-                child_variable.children = None;
-                Ok(())
+                self.debug_info
+                    .variable_cache
+                    .remove_cache_entry_children(child_variable.variable_key)?;
             }
         }
+        self.debug_info
+            .variable_cache
+            .cache_variable(parent_variable.variable_key, child_variable, core)
+            .map_err(|error| error.into())
     }
 
-    /// Find the location using either DW_AT_location, or DW_AT_data_member_location, and store it in the &mut Variable. A value of 0 is a valid 0 reported from dwarf.
+    /// - Consumes the `child_variable`.
+    /// - Find the location using either DW_AT_location, or DW_AT_data_member_location, and store it in the Variable.
+    /// - Returns a clone of the most up-to-date `child_variable` in the cache.
     fn extract_location(
         &self,
         node: &gimli::EntriesTreeNode<GimliReader>,
-        parent_variable: &mut Variable,
-        child_variable: &mut Variable,
+        parent_variable: &Variable,
+        mut child_variable: Variable,
         core: &mut Core<'_>,
-        frame_base: u64,
-    ) -> Result<(), DebugError> {
+        stack_frame_registers: &Registers,
+    ) -> Result<Variable, DebugError> {
         let mut attrs = node.entry().attrs();
         while let Some(attr) = attrs.next().unwrap() {
             match attr.name() {
-                gimli::DW_AT_location | gimli::DW_AT_data_member_location => {
+                gimli::DW_AT_location
+                | gimli::DW_AT_data_member_location
+                | gimli::DW_AT_frame_base => {
                     match attr.value() {
                         gimli::AttributeValue::Exprloc(expression) => {
-                            let pieces = match self.expr_to_piece(core, expression, frame_base) {
-                                Ok(pieces) => pieces,
-                                Err(err) => {
-                                    child_variable.set_value(format!(
-                                        "ERROR: expr_to_piece() failed with: {:?}",
-                                        err
-                                    ));
-                                    vec![]
-                                }
-                            };
+                            let pieces =
+                                match self.expr_to_piece(core, expression, stack_frame_registers) {
+                                    Ok(pieces) => pieces,
+                                    Err(err) => {
+                                        child_variable.set_value(format!(
+                                            "ERROR: expr_to_piece() failed with: {:?}",
+                                            err
+                                        ));
+                                        vec![]
+                                    }
+                                };
                             if pieces.is_empty() {
                                 child_variable.memory_location = u64::MAX;
                                 child_variable.set_value(format!(
@@ -2142,13 +2774,11 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                             child_variable.set_value(value.to_string());
                                         }
                                     },
-                                    Location::Register { register: _ } => {
-                                        // TODO: I commented the below, because it needs work to read the correct register, NOT just 0 // match core.read_core_reg(register.0)
-                                        // let val = core
-                                        //     .read_core_reg(register.0 as u16)
-                                        //     .expect("Failed to read register from target");
-                                        child_variable.memory_location = u64::MAX;
-                                        child_variable.set_value("extract_location() found a register address as the location".to_owned());
+                                    Location::Register { register } => {
+                                        child_variable.memory_location = stack_frame_registers
+                                            .get_value_by_dwarf_register_number(register.0 as u32)
+                                            .expect("Failed to read register from `StackFrame::registers`")
+                                            as u64;
                                     }
                                     l => {
                                         child_variable.memory_location = u64::MAX;
@@ -2173,29 +2803,58 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                         }
                     }
                 }
+                gimli::DW_AT_address_class => {
+                    match attr.value() {
+                        gimli::AttributeValue::AddressClass(address_class) => {
+                            // Nothing to do in this case where it is zero
+                            if address_class != gimli::DwAddr(0) {
+                                child_variable.set_value(format!(
+                                    "UNIMPLEMENTED: extract_location() found unsupported DW_AT_address_class(gimli::DwAddr({:?}))",
+                                    address_class
+                                ));
+                            }
+                        }
+                        other_attribute_value => {
+                            child_variable.set_value(format!(
+                                "UNIMPLEMENTED: extract_location() found invalid DW_AT_address_class: {:?}",
+                                other_attribute_value
+                            ));
+                        }
+                    }
+                }
                 _other_attributes => {
                     // These will be handled elsewhere.
                 }
             }
         }
-        Ok(())
+        // If the `memory_location` is still 0 at this time, then we inherit from the parent.
+        if child_variable.memory_location.is_zero()
+            && !(parent_variable.memory_location.is_zero()
+                || parent_variable.memory_location == u64::MAX)
+        {
+            child_variable.memory_location = parent_variable.memory_location;
+        }
+        self.debug_info
+            .variable_cache
+            .cache_variable(child_variable.parent_key, child_variable, core)
+            .map_err(|error| error.into())
     }
 }
 
+/// If file information is available, it returns `Some(directory:PathBuf, file_name:String)`, otherwise `None`.
 fn extract_file(
     debug_info: &DebugInfo,
     unit: &gimli::Unit<GimliReader>,
     attribute_value: gimli::AttributeValue<GimliReader>,
-) -> Option<String> {
+) -> Option<(PathBuf, String)> {
     match attribute_value {
         gimli::AttributeValue::FileIndex(index) => unit.line_program.as_ref().and_then(|ilnp| {
             let header = ilnp.header();
             header.file(index).and_then(|file_entry| {
                 file_entry.directory(header).map(|directory| {
-                    format!(
-                        "{}/{}",
-                        extract_name(debug_info, directory),
-                        extract_name(debug_info, file_entry.path_name())
+                    (
+                        PathBuf::from(extract_name(debug_info, directory)),
+                        extract_name(debug_info, file_entry.path_name()),
                     )
                 })
             })
@@ -2230,10 +2889,8 @@ fn extract_byte_size(
         }
     }
 }
-fn extract_line(
-    _debug_info: &DebugInfo,
-    attribute_value: gimli::AttributeValue<GimliReader>,
-) -> Option<u64> {
+
+fn extract_line(attribute_value: gimli::AttributeValue<GimliReader>) -> Option<u64> {
     match attribute_value {
         gimli::AttributeValue::Udata(line) => Some(line),
         _ => None,
@@ -2256,7 +2913,7 @@ fn extract_name(
 
 pub(crate) fn _print_all_attributes(
     core: &mut Core<'_>,
-    frame_base: Option<u64>,
+    stackframe_cfa: Option<u64>,
     dwarf: &gimli::Dwarf<DwarfReader>,
     unit: &gimli::Unit<DwarfReader>,
     tag: &gimli::DebuggingInformationEntry<DwarfReader>,
@@ -2273,7 +2930,7 @@ pub(crate) fn _print_all_attributes(
         use gimli::AttributeValue::*;
 
         match attr.value() {
-            Addr(a) => println!("0x{:08x}", a),
+            Addr(a) => println!("{:#010x}", a),
             DebugStrRef(_) => {
                 let val = dwarf.attr_string(unit, attr.value()).unwrap();
                 println!("{}", std::str::from_utf8(&val).unwrap());
@@ -2322,7 +2979,7 @@ pub(crate) fn _print_all_attributes(
                             }
                         }
                         RequiresFrameBase => evaluation
-                            .resume_with_frame_base(frame_base.unwrap())
+                            .resume_with_frame_base(stackframe_cfa.unwrap())
                             .unwrap(),
                         RequiresRegister {
                             register,

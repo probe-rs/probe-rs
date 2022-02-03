@@ -71,6 +71,13 @@ static SP: RegisterDescription = RegisterDescription {
     address: CoreRegisterAddress(0x1002),
 };
 
+static FP: RegisterDescription = RegisterDescription {
+    name: "fp",
+    _kind: RegisterKind::General,
+    /// This is a CSR register
+    address: CoreRegisterAddress(0x1008),
+};
+
 pub static S0: RegisterDescription = RegisterDescription {
     name: "s0",
     _kind: RegisterKind::General,
@@ -254,6 +261,8 @@ pub(super) static RISCV_REGISTERS: RegisterFile = RegisterFile {
     return_address: &RA,
 
     stack_pointer: &SP,
+
+    frame_pointer: &FP,
 
     argument_registers: &[
         RegisterDescription {

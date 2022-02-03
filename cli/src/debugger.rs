@@ -261,12 +261,12 @@ impl DebugCli {
                     let regs = cli_data.core.registers();
                     let program_counter = cli_data.core.read_core_reg(regs.program_counter())?;
 
-                    if let Some(di) = &cli_data.debug_info {
+                    if let Some(di) = &mut cli_data.debug_info {
                         let frames = di.try_unwind(&mut cli_data.core, u64::from(program_counter));
-
-                        for frame in frames {
-                            println!("{}", frame);
+                        for _stack_frame in frames {
+                            // Iterate all the stack frames, so that `debug_info.variable_cache` gets populated.
                         }
+                        println!("{}", cli_data.debug_info.as_ref().unwrap().variable_cache);
                     } else {
                         println!("No debug information present!");
                     }

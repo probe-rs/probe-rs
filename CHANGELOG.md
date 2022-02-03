@@ -29,6 +29,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Fixed a panic when cmsisdap probes return more transfers than requested (#922, #923)
+- `probe-rs-debugger` Various fixes in PR. (#895)
+  - Fix stack overflow when unwinding circular references in data structures. (#894)
+  - Reworked the stack unwind in `StackFrameIterator::new()` and `StackFrameIterator::next()`
+    - More reliable backtrace and register values for previous frames in the stack.
+    - Lazy (on demand) load of &lt;statics&gt; variables to avoid overhead during debugging.
+    - More accurate breakpoint handling from VSCode extension.
+    - Virtual frames for `inlined` functions, that can step back to the call site.
+  - A fix to adapt to Rust 2021 encoding of Dwarf `DW_AT_discr_value` tags for variants.
+  - Updated MS DAP Protocol to 1.51.1.
+  - Adapt to `defmt` 0.3 'Rzcobs' encoding to fix [VSCode #26](https://github.com/probe-rs/vscode/issues/26).
+  - Support the new `defmt` 0.3 `DEFMT_LOG` environment variable.
+  - Requires `probe-rs/vscode` [PR #27](https://github.com/probe-rs/vscode/pull/27) 
 
 ## [0.12.0]
 

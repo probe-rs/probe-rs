@@ -240,12 +240,13 @@ pub struct SessionData {
     pub(crate) session: Session,
     #[allow(dead_code)]
     pub(crate) capstone: Capstone,
+    pub(crate) debug_info: DebugInfo,
 }
 
 pub struct CoreData<'p> {
     pub(crate) target_core: Core<'p>,
     pub(crate) target_name: String,
-    pub(crate) debug_info: Option<DebugInfo>,
+    pub(crate) debug_info: &'p mut DebugInfo,
 }
 
 /// Definition of commands that have been implemented in Debugger.
@@ -354,28 +355,33 @@ pub fn start_session(debugger_options: &DebuggerOptions) -> Result<SessionData, 
         .build()
         .map_err(|err| anyhow!("Error creating Capstone disassembler: {:?}", err))?;
 
+    // Configure the `DebugInfo`.
+    let debug_info = if let Some(binary_path) = &debugger_options.program_binary {
+        DebugInfo::from_file(binary_path).map_err(|error| DebuggerError::Other(anyhow!(error)))?
+    } else {
+        return Err(
+            anyhow!("Please provide a valid `program_binary` for this debug session").into(),
+        );
+    };
+
     Ok(SessionData {
         session: target_session,
         capstone,
+        debug_info,
     })
 }
 
 pub fn attach_core<'p>(
-    session: &'p mut Session,
+    session_data: &'p mut SessionData,
     debugger_options: &DebuggerOptions,
 ) -> Result<CoreData<'p>, DebuggerError> {
-    // Configure the `DebugInfo`.
-    let debug_info = debugger_options
-        .program_binary
-        .as_ref()
-        .and_then(|path| DebugInfo::from_file(path).ok());
-    let target_name = session.target().name.clone();
+    let target_name = session_data.session.target().name.clone();
     // Do no-op attach to the core and return it.
-    match session.core(debugger_options.core_index) {
+    match session_data.session.core(debugger_options.core_index) {
         Ok(target_core) => Ok(CoreData {
             target_core,
             target_name: format!("{}-{}", debugger_options.core_index, target_name),
-            debug_info,
+            debug_info: &mut session_data.debug_info,
         }),
         Err(_) => Err(DebuggerError::UnableToOpenProbe(Some(
             "No core at the specified index.",
@@ -558,14 +564,14 @@ impl Debugger {
                         Ok(DebuggerStatus::ContinueSession)
                     }
                     _other => {
-                        let mut core_data =
-                            match attach_core(&mut session_data.session, &self.debugger_options) {
-                                Ok(core_data) => core_data,
-                                Err(error) => {
-                                    let _ = debug_adapter.send_error_response(&error)?;
-                                    return Err(error);
-                                }
-                            };
+                        let mut core_data = match attach_core(session_data, &self.debugger_options)
+                        {
+                            Ok(core_data) => core_data,
+                            Err(error) => {
+                                let _ = debug_adapter.send_error_response(&error)?;
+                                return Err(error);
+                            }
+                        };
 
                         // Use every opportunity to poll the RTT channels for data
                         let mut received_rtt_data = false;
@@ -655,19 +661,14 @@ impl Debugger {
                     Ok(DebuggerStatus::TerminateSession)
                 }
                 "terminate" => {
-                    let mut core_data =
-                        match attach_core(&mut session_data.session, &self.debugger_options) {
-                            Ok(core_data) => core_data,
-                            Err(error) => {
-                                let error = Err(error);
-                                debug_adapter.send_response::<()>(request, error)?;
-
-                                // TODO: Nicer response
-                                return Err(DebuggerError::Other(anyhow!(
-                                    "Failed to attach to core"
-                                )));
-                            }
-                        };
+                    let mut core_data = match attach_core(session_data, &self.debugger_options) {
+                        Ok(core_data) => core_data,
+                        Err(error) => {
+                            let error = Err(error);
+                            debug_adapter.send_response::<()>(request, error)?;
+                            return Err(DebuggerError::Other(anyhow!("Unable to connect to the core, and therefor could not terminate the target program.")));
+                        }
+                    };
                     debug_adapter.pause(&mut core_data, request)?;
                     Ok(DebuggerStatus::TerminateSession)
                 }
@@ -691,15 +692,16 @@ impl Debugger {
                         Some(valid_command) => {
                             // First, attach to the core.
                             let mut core_data = match attach_core(
-                                &mut session_data.session,
+                                session_data,
                                 &self.debugger_options,
                             ) {
                                 Ok(core_data) => core_data,
                                 Err(error) => {
                                     debug_adapter.send_response::<()>(request, Err(error))?;
                                     return Err(DebuggerError::Other(anyhow!(
-                                        "Failed to attach to core"
-                                    )));
+                                            "Error while attaching to core. Could not complete command {}",
+                                            valid_command.dap_cmd
+                                        )));
                                 }
                             };
                             // For some operations, we need to make sure the core isn't sleeping, by calling `Core::halt()`.
@@ -743,7 +745,8 @@ impl Debugger {
 
                                             // TODO: Nicer response here
                                             return Err(DebuggerError::Other(anyhow!(
-                                                "Failed to get core status"
+                                                "Failed to get core status. Could not complete command: {:?}",
+                                                valid_command.dap_cmd
                                             )));
                                         }
                                     }
@@ -772,7 +775,11 @@ impl Debugger {
                                     debug_adapter.configuration_done(&mut core_data, request)
                                 }
                                 "threads" => debug_adapter.threads(&mut core_data, request),
-                                "restart" => debug_adapter.restart(&mut core_data, Some(request)),
+                                "restart" => {
+                                    // Reset RTT so that the link can be re-established
+                                    self.target_rtt = None;
+                                    debug_adapter.restart(&mut core_data, Some(request))
+                                }
                                 "set_breakpoints" => {
                                     debug_adapter.set_breakpoints(&mut core_data, request)
                                 }
@@ -934,12 +941,22 @@ impl Debugger {
                     debug_adapter.supports_progress_reporting = progress_support;
                 }
 
+                if let Some(lines_start_at_1) = initialize_arguments.lines_start_at_1 {
+                    debug_adapter.lines_start_at_1 = lines_start_at_1;
+                }
+
+                if let Some(columns_start_at_1) = initialize_arguments.columns_start_at_1 {
+                    debug_adapter.columns_start_at_1 = columns_start_at_1;
+                }
+
                 // Reply to Initialize with `Capabilities`.
                 let capabilities = Capabilities {
                     supports_configuration_done_request: Some(true),
                     supports_read_memory_request: Some(true),
                     supports_restart_request: Some(true),
                     supports_terminate_request: Some(true),
+                    // TODO: In order to supports_delayed_stack_trace_loading: Some(false), we need to honor the `levels` parameter of the `stacktrace` request from VSCode - see https://github.com/Microsoft/vscode/issues/62908. However, despite setting this to `false`, VSCode still sends duplicate `StackTrace` requests for each halt.
+                    supports_delayed_stack_trace_loading: Some(false),
                     // supports_value_formatting_options: Some(true),
                     // supports_function_breakpoints: Some(true),
                     // TODO: Use DEMCR register to implement exception breakpoints
@@ -1157,32 +1174,35 @@ impl Debugger {
                 download_options.keep_unwritten_bytes =
                     self.debugger_options.restore_unwritten_bytes;
                 download_options.do_chip_erase = self.debugger_options.full_chip_erase;
-                let rc_debug_adapter = Rc::new(RefCell::new(debug_adapter));
-                let rc_debug_adapter_clone = rc_debug_adapter.clone();
-                let flash_result = {
-                    struct ProgressState {
-                        total_page_size: usize,
-                        total_sector_size: usize,
-                        total_fill_size: usize,
-                        page_size_done: usize,
-                        sector_size_done: usize,
-                        fill_size_done: usize,
-                    }
+                let flash_result = match debug_adapter.adapter_type() {
+                    DebugAdapterType::DapClient => {
+                        let rc_debug_adapter = Rc::new(RefCell::new(debug_adapter));
+                        let rc_debug_adapter_clone = rc_debug_adapter.clone();
+                        let flash_result = {
+                            struct ProgressState {
+                                total_page_size: usize,
+                                total_sector_size: usize,
+                                total_fill_size: usize,
+                                page_size_done: usize,
+                                sector_size_done: usize,
+                                fill_size_done: usize,
+                            }
 
-                    let flash_progress = Rc::new(RefCell::new(ProgressState {
-                        total_page_size: 0,
-                        total_sector_size: 0,
-                        total_fill_size: 0,
-                        page_size_done: 0,
-                        sector_size_done: 0,
-                        fill_size_done: 0,
-                    }));
+                            let flash_progress = Rc::new(RefCell::new(ProgressState {
+                                total_page_size: 0,
+                                total_sector_size: 0,
+                                total_fill_size: 0,
+                                page_size_done: 0,
+                                sector_size_done: 0,
+                                fill_size_done: 0,
+                            }));
 
-                    let flash_progress = if let Some(id) = progress_id {
-                        FlashProgress::new(move |event| {
-                            let mut flash_progress = flash_progress.borrow_mut();
-                            let mut debug_adapter = rc_debug_adapter_clone.borrow_mut();
-                            match event {
+                            let flash_progress =
+                                if let Some(id) = progress_id {
+                                    FlashProgress::new(move |event| {
+                                        let mut flash_progress = flash_progress.borrow_mut();
+                                        let mut debug_adapter = rc_debug_adapter_clone.borrow_mut();
+                                        match event {
                                 probe_rs::flashing::ProgressEvent::Initialized { flash_layout } => {
                                     flash_progress.total_page_size = flash_layout
                                         .pages()
@@ -1292,27 +1312,39 @@ impl Debugger {
                                         .ok();
                                 }
                             }
-                        })
-                    } else {
-                        FlashProgress::new(|_event| {})
-                    };
-                    download_options.progress = Some(&flash_progress);
-                    download_file_with_options(
+                                    })
+                                } else {
+                                    FlashProgress::new(|_event| {})
+                                };
+                            download_options.progress = Some(&flash_progress);
+                            download_file_with_options(
+                                &mut session_data.session,
+                                &path_to_elf,
+                                Format::Elf,
+                                download_options,
+                            )
+                        };
+                        debug_adapter = match Rc::try_unwrap(rc_debug_adapter) {
+                            Ok(debug_adapter) => debug_adapter.into_inner(),
+                            Err(too_many_strong_references) => {
+                                let other_error = DebuggerError::Other(anyhow!("Unexpected error while dereferencing the `debug_adapter` (It has {} strong references). Please report this as a bug.", Rc::strong_count(&too_many_strong_references)));
+                                return Err(other_error);
+                            }
+                        };
+
+                        if let Some(id) = progress_id {
+                            let _ = debug_adapter.end_progress(id);
+                        }
+                        flash_result
+                    }
+                    DebugAdapterType::CommandLine => download_file_with_options(
+                        // TODO: Implement fancy CLI flash progress from probe-rs-cli-util
                         &mut session_data.session,
                         &path_to_elf,
                         Format::Elf,
                         download_options,
-                    )
+                    ),
                 };
-                debug_adapter = if let Ok(v) = Rc::try_unwrap(rc_debug_adapter) {
-                    v.into_inner()
-                } else {
-                    panic!("This is a bug. Please report it.")
-                };
-
-                if let Some(id) = progress_id {
-                    let _ = debug_adapter.end_progress(id);
-                }
 
                 match flash_result {
                     Ok(_) => {
@@ -1333,8 +1365,7 @@ impl Debugger {
         // This is the first attach to the requested core. If this one works, all subsequent ones will be no-op requests for a Core reference. Do NOT hold onto this reference for the duration of the session ... that is why this code is in a block of its own.
         {
             // First, attach to the core
-            let mut core_data = match attach_core(&mut session_data.session, &self.debugger_options)
-            {
+            let mut core_data = match attach_core(&mut session_data, &self.debugger_options) {
                 Ok(mut core_data) => {
                     // Immediately after attaching, halt the core, so that we can finish initalization without bumping into user code.
                     // Depending on supplied `debugger_options`, the core will be restarted at the end of initialization in the `configuration_done` request.
@@ -1389,7 +1420,7 @@ impl Debugger {
                     {
                         let target_memory_map = session_data.session.target().memory_map.clone();
                         let mut core_data =
-                            match attach_core(&mut session_data.session, &self.debugger_options) {
+                            match attach_core(&mut session_data, &self.debugger_options) {
                                 Ok(core_data) => core_data,
                                 Err(error) => {
                                     debug_adapter.send_error_response(&error)?;
@@ -1491,7 +1522,7 @@ pub fn reset_target_of_device(
     _assert: Option<bool>,
 ) -> Result<()> {
     let mut session_data = start_session(&debugger_options)?;
-    attach_core(&mut session_data.session, &debugger_options)?
+    attach_core(&mut session_data, &debugger_options)?
         .target_core
         .reset()?;
     Ok(())
@@ -1499,7 +1530,7 @@ pub fn reset_target_of_device(
 
 pub fn dump_memory(debugger_options: DebuggerOptions, loc: u32, words: u32) -> Result<()> {
     let mut session_data = start_session(&debugger_options)?;
-    let mut target_core = attach_core(&mut session_data.session, &debugger_options)?.target_core;
+    let mut target_core = attach_core(&mut session_data, &debugger_options)?.target_core;
 
     let mut data = vec![0_u32; words as usize];
 
@@ -1515,7 +1546,7 @@ pub fn dump_memory(debugger_options: DebuggerOptions, loc: u32, words: u32) -> R
     // Print read values.
     for word in 0..words {
         println!(
-            "Addr 0x{:08x?}: 0x{:08x}",
+            "Addr 0x{:08x?}: {:#010x}",
             loc + 4 * word,
             data[word as usize]
         );
@@ -1542,7 +1573,7 @@ pub fn trace_u32_on_target(debugger_options: DebuggerOptions, loc: u32) -> Resul
     let start = Instant::now();
 
     let mut session_data = start_session(&debugger_options)?;
-    let mut target_core = attach_core(&mut session_data.session, &debugger_options)?.target_core;
+    let mut target_core = attach_core(&mut session_data, &debugger_options)?.target_core;
 
     loop {
         // Prepare read.
@@ -1624,7 +1655,6 @@ pub fn debug(debugger_options: DebuggerOptions, dap: bool, vscode: bool) -> Resu
                                 format!("{}: ..Starting session from   :{}", &program_name, addr);
                             log::info!("{}", &message);
                             println!("{}", &message);
-
                             let reader = socket
                                 .try_clone()
                                 .context("Failed to establish a bi-directional Tcp connection.")?;
