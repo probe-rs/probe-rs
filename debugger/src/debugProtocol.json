@@ -3495,7 +3495,7 @@
 				},
 				"value": {
 					"type": "string",
-					"description": "The variable's value. This can be a multi-line text, e.g. for a function the body of a function."
+					"description": "The variable's value.\nThis can be a multi-line text, e.g. for a function the body of a function.\nFor structured variables (which do not have a simple value), it is recommended to provide a one line representation of the structured object. This helps to identify the structured object in the collapsed state when its children are not yet visible.\nAn empty string can be used if no value should be shown in the UI."
 				},
 				"type": {
 					"type": "string",
@@ -3829,6 +3829,10 @@
 				"sortText": {
 					"type": "string",
 					"description": "A string that should be used when comparing this item with other items. When `falsy` the label is used."
+				},
+				"detail": {
+					"type": "string",
+					"description": "A human-readable string with additional information about this item, like type or symbol information."
 				},
 				"type": {
 					"$ref": "#/definitions/CompletionItemType",
