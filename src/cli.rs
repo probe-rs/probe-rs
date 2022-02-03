@@ -91,12 +91,10 @@ pub(crate) fn handle_arguments() -> anyhow::Result<i32> {
             //   * 0: log everything from probe-run, with level "info" or higher
             //   * 1: log everything from probe-run
             //   * 2 or more: log everything
-            if verbose >= 2 {
-                true
-            } else if verbose >= 1 {
-                metadata.target().starts_with("probe_run")
-            } else {
-                metadata.target().starts_with("probe_run") && metadata.level() <= Level::Info
+            match verbose {
+                0 => metadata.target().starts_with("probe_run") && metadata.level() <= Level::Info,
+                1 => metadata.target().starts_with("probe_run"),
+                _ => true,
             }
         }
     });
