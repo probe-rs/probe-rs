@@ -489,23 +489,27 @@ fn main_try() -> Result<()> {
             .any(|elem| elem.format == DataFormat::Defmt);
         let defmt_state = if defmt_enable {
             let elf = fs::read(path).unwrap();
-            let table = defmt_decoder::Table::parse(&elf)?;
+            if let Some(table) = defmt_decoder::Table::parse(&elf)? {
+                let locs = {
+                    let locs = table.get_locations(&elf)?;
 
-            let locs = {
-                let table = table.as_ref().unwrap();
-                let locs = table.get_locations(&elf)?;
-
-                if !table.is_empty() && locs.is_empty() {
-                    log::warn!("Insufficient DWARF info; compile your program with `debug = 2` to enable location info.");
-                    None
-                } else if table.indices().all(|idx| locs.contains_key(&(idx as u64))) {
-                    Some(locs)
-                } else {
-                    log::warn!("Location info is incomplete; it will be omitted from the output.");
-                    None
-                }
-            };
-            Some((table.unwrap(), locs))
+                    if !table.is_empty() && locs.is_empty() {
+                        log::warn!("Insufficient DWARF info; compile your program with `debug = 2` to enable location info.");
+                        None
+                    } else if table.indices().all(|idx| locs.contains_key(&(idx as u64))) {
+                        Some(locs)
+                    } else {
+                        log::warn!(
+                            "Location info is incomplete; it will be omitted from the output."
+                        );
+                        None
+                    }
+                };
+                Some((table, locs))
+            } else {
+                log::error!("Defmt enabled in rtt channel config, but defmt table couldn't be loaded from binary.");
+                None
+            }
         } else {
             None
         };
