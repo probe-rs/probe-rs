@@ -2,10 +2,12 @@ use crate::*;
 use anyhow::{anyhow, Result};
 use chrono::Local;
 use num_traits::Zero;
+use probe_rs::config::MemoryRegion;
 use probe_rs::Core;
-use probe_rs_rtt::{DownChannel, UpChannel};
+use probe_rs_rtt::{DownChannel, Rtt, ScanRegion, UpChannel};
 use serde::Deserialize;
 use std::collections::HashMap;
+use std::fs::File;
 use std::{
     fmt,
     fmt::Write,
@@ -13,6 +15,33 @@ use std::{
     io::{Read, Seek},
     str::FromStr,
 };
+
+pub fn attach_to_rtt(
+    core: &mut Core,
+    memory_map: &[MemoryRegion],
+    elf_file: &Path,
+    rtt_config: &RttConfig,
+) -> Result<crate::rtt::RttActiveTarget, anyhow::Error> {
+    log::info!("Initializing RTT");
+    let rtt_header_address = if let Ok(mut file) = File::open(elf_file) {
+        if let Some(address) = RttActiveTarget::get_rtt_symbol(&mut file) {
+            ScanRegion::Exact(address as u32)
+        } else {
+            ScanRegion::Ram
+        }
+    } else {
+        ScanRegion::Ram
+    };
+
+    match Rtt::attach_region(core, memory_map, &rtt_header_address) {
+        Ok(rtt) => {
+            log::info!("RTT initialized.");
+            let app = RttActiveTarget::new(rtt, elf_file, rtt_config)?;
+            Ok(app)
+        }
+        Err(err) => Err(anyhow!("Error attempting to attach to RTT: {}", err)),
+    }
+}
 
 /// Used by serde to provide defaults for `RttConfig`
 fn default_channel_formats() -> Vec<RttChannelConfig> {
@@ -189,15 +218,18 @@ pub struct RttActiveTarget {
 
 impl RttActiveTarget {
     /// RttActiveTarget collects references to all the `RttActiveChannel`s, for latter polling/pushing of data.
-    pub fn new(mut rtt: probe_rs_rtt::Rtt, debugger_options: &DebuggerOptions) -> Result<Self> {
+    pub fn new(
+        mut rtt: probe_rs_rtt::Rtt,
+        elf_file: &Path,
+        rtt_config: &RttConfig,
+    ) -> Result<Self> {
         let mut active_channels = Vec::new();
         // For each channel configured in the RTT Control Block (`Rtt`), check if there are additional user configuration in a `RttChannelConfig`. If not, apply defaults.
         let up_channels = rtt.up_channels().drain();
         let down_channels = rtt.down_channels().drain();
         for channel in up_channels {
             let number = channel.number();
-            let channel_config = debugger_options
-                .rtt
+            let channel_config = rtt_config
                 .channels
                 .clone()
                 .into_iter()
@@ -207,8 +239,7 @@ impl RttActiveTarget {
 
         for channel in down_channels {
             let number = channel.number();
-            let channel_config = debugger_options
-                .rtt
+            let channel_config = rtt_config
                 .channels
                 .clone()
                 .into_iter()
@@ -227,13 +258,12 @@ impl RttActiveTarget {
             .iter()
             .any(|elem| elem.data_format == DataFormat::Defmt);
         let defmt_state = if defmt_enabled {
-            let elf = fs::read(debugger_options.program_binary.clone().unwrap()) // We can safely unwrap() program_binary here, because it is validated to exist at startup of the debugger
-                .map_err(|err| {
-                    anyhow!(
-                        "Error reading program binary while initalizing RTT: {}",
-                        err
-                    )
-                })?;
+            let elf = fs::read(elf_file).map_err(|err| {
+                anyhow!(
+                    "Error reading program binary while initalizing RTT: {}",
+                    err
+                )
+            })?;
             if let Some(table) = defmt_decoder::Table::parse(&elf)? {
                 let locs = {
                     let locs = table.get_locations(&elf)?;

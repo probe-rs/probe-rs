@@ -1,6 +1,7 @@
 pub mod common_options;
 pub mod flash;
 pub mod logging;
+pub mod rtt;
 
 use cargo_toml::Manifest;
 use serde::Deserialize;

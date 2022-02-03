@@ -19,10 +19,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added a command to print info about a chip, such as RAM and the number of cores. (#946)
 - ARM:`Session::swo_reader` that returns a wrapping implementation of `std::io::Read` around `Session::read_swo`. (#916)
 - Added CortexM23 to Armv8m mapping for `target-gen`. (#966)
+- Added get_target_voltage to the Probe struct to access the inner DebugProbe method. (#991)
 
 ### Changed
 
 - Chip names are now matched treating an 'x' as a wildcard. (#964)
+- GDB server is now available as a subcommand in the probe-rs-cli, not as a separate binary in the `gdb-server` package anymore . (#972)
 
 ### Fixed
 
@@ -62,6 +64,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added support for the built in JTAG on the ESP32C3 and other ESP32 devices (#863).
 - Added name field to memory regions. (#864)
 - debugger: Show progress notification while device is being flashed. (#871, #884)
+- Add optional ability to load fixed address flashing algorithms (non PIC). (#822)
+- Added `probe-rs-cli run` command, to flash and run a binary showing RTT output.
 
 ### Removed
 
