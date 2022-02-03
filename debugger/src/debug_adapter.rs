@@ -5,10 +5,8 @@ use crate::DebuggerError;
 use anyhow::{anyhow, Result};
 use dap_types::*;
 use parse_int::parse;
-use probe_rs::{
-    debug::{ColumnType, VariableKind},
-    CoreStatus, HaltReason, MemoryInterface,
-};
+use probe_rs::debug::DebugInfo;
+use probe_rs::{debug::ColumnType, CoreStatus, HaltReason, MemoryInterface};
 use probe_rs_cli_util::rtt;
 use serde::{de::DeserializeOwned, Serialize};
 use std::string::ToString;
