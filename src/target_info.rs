@@ -70,7 +70,8 @@ fn extract_stack_info(elf: &Elf, ram_region: Option<&RamRegion>) -> Option<Stack
     let initial_stack_pointer = elf.vector_table.initial_stack_pointer;
 
     // SP points one past the end of the stack.
-    let mut stack_range = ram_range.start..=initial_stack_pointer - 1;
+    let stack_end = initial_stack_pointer - 1;
+    let mut stack_start = ram_range.start;
 
     for section in elf.sections() {
         let size: u32 = section.size().try_into().expect("expected 32-bit ELF");
@@ -86,17 +87,19 @@ fn extract_stack_info(elf: &Elf, ram_region: Option<&RamRegion>) -> Option<Stack
         if ram_range.contains(section_range.end()) {
             log::debug!("section `{}` is in RAM at {:#010X?}", name, section_range);
 
-            if section_range.contains(stack_range.end()) {
+            if section_range.contains(&stack_end) {
                 log::debug!(
                     "initial SP is in section `{}`, cannot determine valid stack range",
                     name
                 );
                 return None;
-            } else if is_superset(&stack_range, &section_range) {
-                stack_range = section_range.end() + 1..=*stack_range.end();
+            } else if is_superset(&(stack_start..=stack_end), &section_range) {
+                stack_start = section_range.end() + 1;
             }
         }
     }
+
+    let stack_range = stack_start..=stack_end;
     log::debug!("valid SP range: {:#010X?}", stack_range);
     Some(StackInfo {
         data_below_stack: *stack_range.start() > ram_range.start,
