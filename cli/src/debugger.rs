@@ -3,7 +3,7 @@ use crate::common::CliError;
 use capstone::Capstone;
 use num_traits::Num;
 use probe_rs::architecture::arm::Dump;
-use probe_rs::debug::DebugInfo;
+use probe_rs::debug::{DebugInfo, VariableCache};
 use probe_rs::{Core, CoreRegisterAddress, MemoryInterface};
 
 use std::fs::File;
@@ -261,12 +261,19 @@ impl DebugCli {
                     let regs = cli_data.core.registers();
                     let program_counter = cli_data.core.read_core_reg(regs.program_counter())?;
 
+                    // TODO: Cache this, should only be cleared when core is running
+                    let mut cache = VariableCache::new();
+
                     if let Some(di) = &mut cli_data.debug_info {
-                        let frames = di.try_unwind(&mut cli_data.core, u64::from(program_counter));
+                        let frames = di.try_unwind(
+                            &mut cache,
+                            &mut cli_data.core,
+                            u64::from(program_counter),
+                        );
                         for _stack_frame in frames {
                             // Iterate all the stack frames, so that `debug_info.variable_cache` gets populated.
                         }
-                        println!("{}", cli_data.debug_info.as_ref().unwrap().variable_cache);
+                        println!("{}", cache);
                     } else {
                         println!("No debug information present!");
                     }

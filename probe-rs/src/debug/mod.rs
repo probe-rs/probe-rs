@@ -228,7 +228,8 @@ pub struct SourceLocation {
 
 /// `StackFrameIterator` stores the information required to iterate through (`::next()`) each of the frames (`StackFrame`) involved in a `DebugInfo::try_unwind()` operation. The most valuable of these are pointers into the core's `DebugInfo`, as well as the register values for the current frame in the stack (per iteration).
 pub struct StackFrameIterator<'debuginfo, 'probe, 'core> {
-    debug_info: &'debuginfo mut DebugInfo,
+    debug_info: &'debuginfo DebugInfo,
+    cache: &'debuginfo mut VariableCache,
     core: &'core mut Core<'probe>,
     unwind_bases: gimli::BaseAddresses,
     /// The `unwind_context` has the potential to be expensive, so storing it here allows it to be re-used for every iteration in the `next()` implementation.
@@ -242,7 +243,8 @@ pub struct StackFrameIterator<'debuginfo, 'probe, 'core> {
 impl<'debuginfo, 'probe, 'core> StackFrameIterator<'debuginfo, 'probe, 'core> {
     /// In addition to providing the handle for iterating available `StackFrame`s, this function will also populate the `DebugInfo::VariableCache` with available `static` `Variable`s
     pub fn new(
-        debug_info: &'debuginfo mut DebugInfo,
+        debug_info: &'debuginfo DebugInfo,
+        cache: &'debuginfo mut VariableCache,
         core: &'core mut Core<'probe>,
         address: u64,
     ) -> Self {
@@ -256,6 +258,7 @@ impl<'debuginfo, 'probe, 'core> StackFrameIterator<'debuginfo, 'probe, 'core> {
 
         Self {
             debug_info,
+            cache,
             core,
             unwind_bases,
             unwind_context,
@@ -312,6 +315,7 @@ impl<'debuginfo, 'probe, 'core> Iterator for StackFrameIterator<'debuginfo, 'pro
 
         // PART 1-a: Prepare the `StackFrame` that holds the current frame information
         let return_frame = match self.debug_info.get_stackframe_info(
+            self.cache,
             self.core,
             frame_pc,
             &self.unwind_registers,
@@ -736,14 +740,6 @@ type UnitIter =
 pub struct DebugInfo {
     dwarf: gimli::Dwarf<DwarfReader>,
     frame_section: gimli::DebugFrame<DwarfReader>,
-    /// A cache of all program `Variable`s that are in scope for the current PC (program counter).
-    /// It is initialized by `try_unwind()` and ...
-    /// It is populated whenever `UnitInfo::process_tree_node() is called to resove DWARF `Variable`s and runtime values. This is done from ...
-    /// - `try_unwind()` where we will resolve `static` scoped `Variable`s.
-    /// - `StackFrameIterator::next()` as each new stackframe is constructed. This will resolve `register` `Variable`s as well as all function scoped `Variable`s.
-    /// - `VariableCache::get_referenced_children()` when it is requested to expand the referenced children of a `Variable`
-    /// Note: All program `Variable`s are traversed recursively through their datatypes, until it reaches a base datatype, unless it encounters a datatype that is a pointer to another datatype. These pointers will only be further resolved when a user explicitly requests it.
-    pub variable_cache: VariableCache,
 }
 
 impl DebugInfo {
@@ -785,7 +781,6 @@ impl DebugInfo {
         Ok(DebugInfo {
             dwarf: dwarf_cow,
             frame_section,
-            variable_cache: VariableCache::new(),
         })
     }
 
@@ -909,6 +904,7 @@ impl DebugInfo {
     /// This saves a lot of overhead when a user only wants to see the `<locals>` or `<registers>` while stepping through code (the most common use cases)
     fn cache_static_variables(
         &self,
+        cache: &mut VariableCache,
         core: &mut Core<'_>,
         unit_info: &UnitInfo,
         stack_frame_registers: &Registers,
@@ -926,7 +922,7 @@ impl DebugInfo {
             static_root_variable.referenced_node_offset = Some(unit_node.entry().offset());
             static_root_variable.stack_frame_registers = Some(stack_frame_registers.clone());
             static_root_variable.name = "<statics>".to_string();
-            self.variable_cache.cache_variable(
+            cache.cache_variable(
                 stackframe_root_variable.variable_key,
                 static_root_variable,
                 core,
@@ -938,13 +934,14 @@ impl DebugInfo {
     /// Resolves and then loads all the `Register` variables into the `DebugInfo::VariableCache`.
     fn cache_register_variables(
         &self,
+        cache: &mut VariableCache,
         registers: &Registers,
         stackframe_root_variable: &Variable,
         core: &mut Core<'_>,
     ) -> Result<(), DebugError> {
         let mut register_root_variable = Variable::new(None, None);
         register_root_variable.name = "<registers>".to_string();
-        register_root_variable = self.variable_cache.cache_variable(
+        register_root_variable = cache.cache_variable(
             stackframe_root_variable.variable_key,
             register_root_variable,
             core,
@@ -966,11 +963,7 @@ impl DebugInfo {
             register_variable.type_name = "Platform Register".to_owned();
             register_variable.byte_size = 4;
             register_variable.set_value(format!("{:#010x}", register_value));
-            self.variable_cache.cache_variable(
-                register_root_variable.variable_key,
-                register_variable,
-                core,
-            )?;
+            cache.cache_variable(register_root_variable.variable_key, register_variable, core)?;
         }
         Ok(())
     }
@@ -978,6 +971,7 @@ impl DebugInfo {
     /// Resolves and then loads all the `function` variables into the `DebugInfo::VariableCache`.
     fn cache_function_variables(
         &self,
+        cache: &mut VariableCache,
         core: &mut Core<'_>,
         die_cursor_state: &mut FunctionDie,
         unit_info: &UnitInfo,
@@ -996,7 +990,7 @@ impl DebugInfo {
             Some(function_node.entry().offset()),
         );
         function_root_variable.name = "<locals>".to_string();
-        function_root_variable = self.variable_cache.cache_variable(
+        function_root_variable = cache.cache_variable(
             stackframe_root_variable.variable_key,
             function_root_variable,
             core,
@@ -1007,6 +1001,7 @@ impl DebugInfo {
             function_root_variable,
             core,
             stack_frame_registers,
+            cache,
         )?;
         Ok(())
     }
@@ -1017,12 +1012,13 @@ impl DebugInfo {
     /// - <statics> : The load of static variables and their namespaces in the debugger.
     pub fn cache_referenced_variables(
         &self,
+        cache: &mut VariableCache,
         core: &mut Core<'_>,
-        parent_variable: Variable,
+        parent_variable: &Variable,
     ) -> Result<(), DebugError> {
         // Only do attempt this part if the parent is a pointer and we have not yet resolved the referenced children.
         if parent_variable.referenced_node_offset.is_some()
-            && !self.variable_cache.has_children(&parent_variable)?
+            && !cache.has_children(&parent_variable)?
         {
             if let Some(ref stack_frame_registers) = parent_variable.stack_frame_registers {
                 if let Some(header_offset) = parent_variable.header_offset {
@@ -1037,7 +1033,7 @@ impl DebugInfo {
                         parent_variable.referenced_node_offset,
                     )?;
                     let referenced_node = type_tree.root()?;
-                    let mut referenced_variable = self.variable_cache.cache_variable(
+                    let mut referenced_variable = cache.cache_variable(
                         parent_variable.variable_key,
                         Variable::new(
                             unit_info.unit.header.offset().as_debug_info_offset(),
@@ -1054,7 +1050,7 @@ impl DebugInfo {
                     let mut buff = [0u8; 4];
                     core.read(parent_variable.memory_location as u32, &mut buff)?;
                     referenced_variable.memory_location = u32::from_le_bytes(buff) as u64;
-                    referenced_variable = self.variable_cache.cache_variable(
+                    referenced_variable = cache.cache_variable(
                         referenced_variable.parent_key,
                         referenced_variable,
                         core,
@@ -1065,16 +1061,15 @@ impl DebugInfo {
                         referenced_variable,
                         core,
                         stack_frame_registers,
+                        cache,
                     )?;
 
                     // Only use this, if it is NOT a unit datatype.
                     if referenced_variable.type_name.contains("()") {
-                        self.variable_cache
-                            .remove_cache_entry(referenced_variable.variable_key)?;
+                        cache.remove_cache_entry(referenced_variable.variable_key)?;
                     } else if parent_variable.name.eq("<statics>") {
                         // If we are lazily resolving `<statics>`, then we need to eliminate the intermediate node
-                        self.variable_cache
-                            .adopt_grand_children(&parent_variable, &referenced_variable)?;
+                        cache.adopt_grand_children(&parent_variable, &referenced_variable)?;
                     }
                 }
             }
@@ -1086,6 +1081,7 @@ impl DebugInfo {
     /// This function will also populate the `DebugInfo::VariableCache` with in scope `Variable`s for each `StackFrame`
     fn get_stackframe_info(
         &self,
+        cache: &mut VariableCache,
         core: &mut Core<'_>,
         address: u64,
         unwind_registers: &Registers,
@@ -1190,9 +1186,10 @@ impl DebugInfo {
                     stackframe_root_variable,
                     core,
                     &stack_frame_registers,
+                    cache,
                 )?;
 
-                stackframe_root_variable = self.variable_cache.cache_variable(
+                stackframe_root_variable = cache.cache_variable(
                     parent_variable.variable_key,
                     stackframe_root_variable,
                     core,
@@ -1200,6 +1197,7 @@ impl DebugInfo {
 
                 if let Some(error) = self
                     .cache_register_variables(
+                        cache,
                         &stack_frame_registers,
                         &stackframe_root_variable,
                         core,
@@ -1215,6 +1213,7 @@ impl DebugInfo {
                 // Next, resolve the statics that belong to the compilation unit that this function is in.
                 if let Some(error) = self
                     .cache_static_variables(
+                        cache,
                         core,
                         &unit_info,
                         &stack_frame_registers,
@@ -1230,6 +1229,7 @@ impl DebugInfo {
 
                 // Next, resolve and cache the function variables.
                 self.cache_function_variables(
+                    cache,
                     core,
                     function_die,
                     &unit_info,
@@ -1261,14 +1261,16 @@ impl DebugInfo {
         stackframe_root_variable.set_value(unknown_function.clone());
         stackframe_root_variable.memory_location = address;
 
-        stackframe_root_variable = self.variable_cache.cache_variable(
-            parent_variable.variable_key,
-            stackframe_root_variable,
-            core,
-        )?;
+        stackframe_root_variable =
+            cache.cache_variable(parent_variable.variable_key, stackframe_root_variable, core)?;
 
         if let Some(error) = self
-            .cache_register_variables(&stack_frame_registers, &stackframe_root_variable, core)
+            .cache_register_variables(
+                cache,
+                &stack_frame_registers,
+                &stackframe_root_variable,
+                core,
+            )
             .err()
         {
             log::warn!(
@@ -1287,13 +1289,13 @@ impl DebugInfo {
         })
     }
 
-    pub fn try_unwind<'probe, 'core>(
-        &mut self,
+    pub fn try_unwind<'debuginfo, 'probe, 'core>(
+        &'debuginfo self,
+        cache: &'debuginfo mut VariableCache,
         core: &'core mut Core<'probe>,
         address: u64,
     ) -> StackFrameIterator<'_, 'probe, 'core> {
-        self.variable_cache = VariableCache::new();
-        StackFrameIterator::new(self, core, address)
+        StackFrameIterator::new(self, cache, core, address)
     }
 
     /// Find the program counter where a breakpoint should be set,
@@ -1750,7 +1752,6 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
 
     /// Recurse the ELF structure below the `tree_node`, and ...
     /// - Consumes the `child_variable`.
-    /// - Updates the `DebugInfo::VariableCache` with all appropriate `Variable` fields.
     /// - Returns a clone of the most up-to-date `child_variable` in the cache.
     fn process_tree_node_attributes(
         &self,
@@ -1759,6 +1760,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
         mut child_variable: Variable,
         core: &mut Core<'_>,
         stack_frame_registers: &Registers,
+        cache: &mut VariableCache,
     ) -> Result<Variable, DebugError> {
         // Identify the parent.
         child_variable.parent_key = parent_variable.variable_key;
@@ -1778,6 +1780,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
             child_variable,
             core,
             stack_frame_registers,
+            cache,
         )?;
 
         // We need to determine if we are working with a 'abstract` location, and use that node for the attributes we need
@@ -1885,6 +1888,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                     child_variable,
                                     core,
                                     stack_frame_registers,
+                                    cache,
                                 )?;
                             }
                             other_attribute_value => {
@@ -1939,31 +1943,29 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                 .header
                                 .entries_tree(&self.unit.abbreviations, Some(unit_ref))?;
                             let mut discriminant_node = type_tree.root()?;
-                            let mut discriminant_variable =
-                                self.debug_info.variable_cache.cache_variable(
-                                    parent_variable.variable_key,
-                                    Variable::new(
-                                        self.unit.header.offset().as_debug_info_offset(),
-                                        Some(discriminant_node.entry().offset()),
-                                    ),
-                                    core,
-                                )?;
+                            let mut discriminant_variable = cache.cache_variable(
+                                parent_variable.variable_key,
+                                Variable::new(
+                                    self.unit.header.offset().as_debug_info_offset(),
+                                    Some(discriminant_node.entry().offset()),
+                                ),
+                                core,
+                            )?;
                             discriminant_variable = self.process_tree_node_attributes(
                                 &mut discriminant_node,
                                 parent_variable,
                                 discriminant_variable,
                                 core,
                                 stack_frame_registers,
+                                cache,
                             )?;
                             parent_variable.role = VariantRole::VariantPart(
                                 discriminant_variable
-                                    .get_value(&self.debug_info.variable_cache)
+                                    .get_value(cache)
                                     .parse()
                                     .unwrap_or(u64::MAX) as u64,
                             );
-                            self.debug_info
-                                .variable_cache
-                                .remove_cache_entry(discriminant_variable.variable_key)?;
+                            cache.remove_cache_entry(discriminant_variable.variable_key)?;
                         }
                         other_attribute_value => {
                             child_variable.set_value(format!(
@@ -2034,8 +2036,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                 }
             }
         }
-        self.debug_info
-            .variable_cache
+        cache
             .cache_variable(child_variable.parent_key, child_variable, core)
             .map_err(|error| error.into())
     }
@@ -2050,6 +2051,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
         mut parent_variable: Variable,
         core: &mut Core<'_>,
         stack_frame_registers: &Registers,
+        cache: &mut VariableCache,
     ) -> Result<Variable, DebugError> {
         let program_counter =
             if let Some(program_counter) = stack_frame_registers.get_program_counter() {
@@ -2073,16 +2075,16 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                     } else {"<anonymous namespace>".to_string()};
                     namespace_variable.type_name = "<namespace>".to_string();
                     namespace_variable.memory_location = 0;
-                    namespace_variable = self.debug_info.variable_cache.cache_variable(parent_variable.variable_key, namespace_variable, core)?;
+                    namespace_variable = cache.cache_variable(parent_variable.variable_key, namespace_variable, core)?;
                     let mut namespace_children_nodes = child_node.children();
                     while let Some(mut namespace_child_node) = namespace_children_nodes.next()? {
                         match namespace_child_node.entry().tag() {
                             gimli::DW_TAG_variable => {
                                 // We only want the TOP level variables of the namespace (statics).
-                                let static_child_variable = self.debug_info.variable_cache.cache_variable(namespace_variable.variable_key, Variable::new(
+                                let static_child_variable = cache.cache_variable(namespace_variable.variable_key, Variable::new(
                                     self.unit.header.offset().as_debug_info_offset(),
                                     Some(namespace_child_node.entry().offset()),), core)?;
-                                self.process_tree_node_attributes(&mut namespace_child_node, &mut namespace_variable, static_child_variable, core, stack_frame_registers)?;
+                                self.process_tree_node_attributes(&mut namespace_child_node, &mut namespace_variable, static_child_variable, core, stack_frame_registers, cache)?;
                             }
                             gimli::DW_TAG_namespace => {
                                 // Recurse for additional namespace variables.
@@ -2094,10 +2096,10 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                 } else {"<anonymous namespace>".to_string()};
                                 namespace_child_variable.type_name = "<namespace>".to_string();
                                 namespace_child_variable.memory_location = 0;
-                                namespace_child_variable = self.debug_info.variable_cache.cache_variable(namespace_variable.variable_key, namespace_child_variable, core)?;
-                                namespace_child_variable = self.process_tree(namespace_child_node, namespace_child_variable, core, stack_frame_registers)?;
-                                if !self.debug_info.variable_cache.has_children(&namespace_child_variable)? {
-                                    self.debug_info.variable_cache.remove_cache_entry(namespace_child_variable.variable_key)?;
+                                namespace_child_variable = cache.cache_variable(namespace_variable.variable_key, namespace_child_variable, core)?;
+                                namespace_child_variable = self.process_tree(namespace_child_node, namespace_child_variable, core, stack_frame_registers, cache)?;
+                                if !cache.has_children(&namespace_child_variable)? {
+                                    cache.remove_cache_entry(namespace_child_variable.variable_key)?;
                                 }
                             }
                             _ => {
@@ -2105,31 +2107,31 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                             }
                         }
                     }
-                    if !self.debug_info.variable_cache.has_children(&namespace_variable)? {
-                        self.debug_info.variable_cache.remove_cache_entry(namespace_variable.variable_key)?;
+                    if !cache.has_children(&namespace_variable)? {
+                        cache.remove_cache_entry(namespace_variable.variable_key)?;
                     }
                 }
                 gimli::DW_TAG_variable |    // Typical top-level variables.
                 gimli::DW_TAG_member |      // Members of structured types.
                 gimli::DW_TAG_enumerator    // Possible values for enumerators, used by extract_type() when processing DW_TAG_enumeration_type.
                 => {
-                    let mut child_variable = self.debug_info.variable_cache.cache_variable(parent_variable.variable_key, Variable::new(
+                    let mut child_variable = cache.cache_variable(parent_variable.variable_key, Variable::new(
                     self.unit.header.offset().as_debug_info_offset(),
                     Some(child_node.entry().offset()),
                 ), core)?;
-                    child_variable = self.process_tree_node_attributes(&mut child_node, &mut parent_variable, child_variable, core, stack_frame_registers)?;
+                    child_variable = self.process_tree_node_attributes(&mut child_node, &mut parent_variable, child_variable, core, stack_frame_registers, cache)?;
                     // Do not keep or process PhantomData nodes, or variant parts that we have already used.
                     if child_variable.type_name.starts_with("PhantomData") 
                         ||  child_variable.name == "<artificial>"
                     {
-                        self.debug_info.variable_cache.remove_cache_entry(child_variable.variable_key)?;
+                        cache.remove_cache_entry(child_variable.variable_key)?;
                     } else if child_variable.type_name == "Some" {
                         //This is an intermediate node. Once we've resolved the children, we can adopt them to their grandparent
-                        self.debug_info.variable_cache.adopt_grand_children(&parent_variable, &child_variable)?;
+                        cache.adopt_grand_children(&parent_variable, &child_variable)?;
                     }
                     else {
                         // Recursively process each child.
-                        self.process_tree(child_node, child_variable, core, stack_frame_registers)?;
+                        self.process_tree(child_node, child_variable, core, stack_frame_registers, cache)?;
                     }
                 }
                 gimli::DW_TAG_variant_part => {
@@ -2141,7 +2143,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                     //          Level 3: --> Some DW_TAG_variant's that have discriminant values to be matched against the discriminant 
                     //              Level 4: --> The actual variables, with matching discriminant, which will be added to `parent_variable`
                     // TODO: Handle Level 3 nodes that belong to a DW_AT_discr_list, instead of having a discreet DW_AT_discr_value 
-                    let mut child_variable = self.debug_info.variable_cache.cache_variable(
+                    let mut child_variable = cache.cache_variable(
                         parent_variable.variable_key,
                         Variable::new(self.unit.header.offset().as_debug_info_offset(),Some(child_node.entry().offset())),
                         core
@@ -2152,22 +2154,22 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                     // - If there is a DW_AT_discr that has a value, then this is a reference to the member entry for the discriminant. This value will be resolved to match against the appropriate DW_TAG_variant.
                     // - TODO: The [DWARF] standard, 5.7.10, allows for a DW_AT_discr_list, but I have not seen that generated from RUST yet. 
                     parent_variable.role = VariantRole::VariantPart(u64::MAX);
-                    child_variable = self.process_tree_node_attributes(&mut child_node, &mut parent_variable, child_variable, core, stack_frame_registers)?;
+                    child_variable = self.process_tree_node_attributes(&mut child_node, &mut parent_variable, child_variable, core, stack_frame_registers, cache)?;
                     // At this point we have everything we need (It has updated the parent's `role`) from the child_variable, so elimnate it before we continue ...
-                    self.debug_info.variable_cache.remove_cache_entry(child_variable.variable_key)?;
-                    parent_variable = self.process_tree(child_node, parent_variable, core, stack_frame_registers)?;
+                    cache.remove_cache_entry(child_variable.variable_key)?;
+                    parent_variable = self.process_tree(child_node, parent_variable, core, stack_frame_registers, cache)?;
                 }
                 gimli::DW_TAG_variant // variant is a child of a structure, and one of them should have a discriminant value to match the DW_TAG_variant_part 
                 => {
                     // We only need to do this if we have not already found our variant,
-                    if !self.debug_info.variable_cache.has_children(&parent_variable)? {
-                        let mut child_variable = self.debug_info.variable_cache.cache_variable(
+                    if !cache.has_children(&parent_variable)? {
+                        let mut child_variable = cache.cache_variable(
                             parent_variable.variable_key,
                             Variable::new(self.unit.header.offset().as_debug_info_offset(), Some(child_node.entry().offset())),
                             core
                         )?;
                         self.extract_variant_discriminant(&child_node, &mut child_variable)?;
-                        child_variable = self.process_tree_node_attributes(&mut child_node, &mut parent_variable, child_variable, core, stack_frame_registers)?;
+                        child_variable = self.process_tree_node_attributes(&mut child_node, &mut parent_variable, child_variable, core, stack_frame_registers, cache)?;
                         if let VariantRole::Variant(discriminant) = child_variable.role {
                             // Only process the discriminant variants or when we eventually   encounter the default 
                             if parent_variable.role == VariantRole::VariantPart(discriminant) || discriminant == u64::MAX
@@ -2175,12 +2177,12 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                 // Pass some key values through intermediate nodes to valid desccendants.
                                 child_variable.memory_location = parent_variable.memory_location;
                                 // Recursively process each relevant child node.
-                                child_variable = self.process_tree(child_node, child_variable, core, stack_frame_registers)?;
+                                child_variable = self.process_tree(child_node, child_variable, core, stack_frame_registers, cache)?;
                                 // Eliminate intermediate DWARF nodes, but keep their children
-                                self.debug_info.variable_cache.adopt_grand_children(&parent_variable, &child_variable)?;
+                                cache.adopt_grand_children(&parent_variable, &child_variable)?;
 
                             } else {
-                                self.debug_info.variable_cache.remove_cache_entry(child_variable.variable_key)?;
+                                cache.remove_cache_entry(child_variable.variable_key)?;
                             }
                         }
                     }
@@ -2188,16 +2190,16 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                 gimli::DW_TAG_subrange_type => {
                     // This tag is a child node fore parent types such as (array, vector, etc.).
                     // Recursively process each node, but pass the parent_variable so that new children are caught despite missing these tags.
-                    let mut range_variable = self.debug_info.variable_cache.cache_variable(parent_variable.variable_key,Variable::new(
+                    let mut range_variable = cache.cache_variable(parent_variable.variable_key,Variable::new(
                     self.unit.header.offset().as_debug_info_offset(),
                     Some(child_node.entry().offset()),
                 ), core)?;
-                    range_variable = self.process_tree_node_attributes(&mut child_node, &mut parent_variable, range_variable, core, stack_frame_registers)?;
+                    range_variable = self.process_tree_node_attributes(&mut child_node, &mut parent_variable, range_variable, core, stack_frame_registers, cache)?;
                     // Pass the pertinent info up to the parent_variable.
                     parent_variable.type_name = range_variable.type_name;
                     parent_variable.range_lower_bound = range_variable.range_lower_bound;
                     parent_variable.range_upper_bound = range_variable.range_upper_bound;
-                    self.debug_info.variable_cache.remove_cache_entry(range_variable.variable_key)?;
+                    cache.remove_cache_entry(range_variable.variable_key)?;
                 }
                 gimli::DW_TAG_template_type_parameter => {
                     // The parent node for Rust generic type parameter
@@ -2208,11 +2210,11 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                 gimli::DW_TAG_formal_parameter => {
                     // TODO: WIP Parameters for functions, closures and inlined functions.
                     // Recursively process each child.
-                    parent_variable = self.process_tree(child_node, parent_variable, core, stack_frame_registers)?;
+                    parent_variable = self.process_tree(child_node, parent_variable, core, stack_frame_registers, cache)?;
                 }
                 gimli::DW_TAG_inlined_subroutine => {
                     // Recurse the variables of inlined subroutines as normal, but beware that their name, type, etc. has to be resolved from DW_AT_abstract_origin nodes, and their location has to be passed from here (concrete location) to there (abstract location). 
-                    parent_variable = self.process_tree(child_node, parent_variable, core, stack_frame_registers)?;
+                    parent_variable = self.process_tree(child_node, parent_variable, core, stack_frame_registers,cache)?;
                 }
                 gimli::DW_TAG_lexical_block => {
                     // Determine the low and high ranges for which this DIE and children are in scope. These can be specified discreetly, or in ranges. 
@@ -2270,7 +2272,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                     if in_scope {
                         // This is IN scope.
                         // Recursively process each child, but pass the parent_variable, so that we don't create intermediate nodes for scope identifiers.
-                        parent_variable = self.process_tree(child_node, parent_variable, core, stack_frame_registers)?;
+                        parent_variable = self.process_tree(child_node, parent_variable, core, stack_frame_registers, cache)?;
                     }
                 }
                 other => {
@@ -2293,8 +2295,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                 }
             }
         }
-        self.debug_info
-            .variable_cache
+        cache
             .cache_variable(parent_variable.parent_key, parent_variable, core)
             .map_err(|error| error.into())
     }
@@ -2350,6 +2351,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
         mut child_variable: Variable,
         core: &mut Core<'_>,
         stack_frame_registers: &Registers,
+        cache: &mut VariableCache,
     ) -> Result<Variable, DebugError> {
         child_variable.type_name = match node.entry().attr(gimli::DW_AT_name) {
             Ok(optional_name_attr) => match optional_name_attr {
@@ -2392,8 +2394,9 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                         if child_variable.type_name.starts_with("*const") {
                                             // Resolve the children of this variable, because they contain essential information required to resolve the value
                                             self.debug_info.cache_referenced_variables(
+                                                cache,
                                                 core,
-                                                child_variable.clone(),
+                                                &child_variable,
                                             )?;
                                         } else if parent_variable.type_name == "Some" {
                                             // The parent `DW_TAG_structure_type` with name `Some` is an intermediate node that we only need for its children
@@ -2401,12 +2404,11 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                             child_variable.name =
                                                 format!("Some({})", child_variable.type_name);
                                         }
-                                        child_variable =
-                                            self.debug_info.variable_cache.cache_variable(
-                                                parent_variable.variable_key,
-                                                child_variable,
-                                                core,
-                                            )?;
+                                        child_variable = cache.cache_variable(
+                                            parent_variable.variable_key,
+                                            child_variable,
+                                            core,
+                                        )?;
                                     }
                                     other_attribute_value => {
                                         child_variable.set_value(format!(
@@ -2436,14 +2438,15 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                 // Recursively process a child types.
                 // Unless something is already broken, then don't dig any deeper.
                 if child_variable.memory_location != u64::MAX {
-                    child_variable =
-                        self.process_tree(node, child_variable, core, stack_frame_registers)?;
+                    child_variable = self.process_tree(
+                        node,
+                        child_variable,
+                        core,
+                        stack_frame_registers,
+                        cache,
+                    )?;
                 }
-                if !self
-                    .debug_info
-                    .variable_cache
-                    .has_children(&child_variable)?
-                {
+                if !cache.has_children(&child_variable)? {
                     // Empty structs don't have values. Use the type_name as the display value.
                     child_variable.set_value(child_variable.type_name.clone());
                 }
@@ -2451,19 +2454,15 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
             gimli::DW_TAG_enumeration_type => {
                 // Recursively process a child types.
                 child_variable =
-                    self.process_tree(node, child_variable, core, stack_frame_registers)?;
-                let enumerator_values = self
-                    .debug_info
-                    .variable_cache
-                    .get_children(child_variable.variable_key)?;
+                    self.process_tree(node, child_variable, core, stack_frame_registers, cache)?;
+                let enumerator_values = cache.get_children(child_variable.variable_key)?;
                 // NOTE: hard-coding value of variable.byte_size to 1 ... replace with code if necessary.
                 let mut buff = [0u8; 1];
                 core.read(child_variable.memory_location as u32, &mut buff)?;
                 let this_enum_const_value = u8::from_le_bytes(buff).to_string();
                 let enumumerator_value =
                     match enumerator_values.into_iter().find(|enumerator_variable| {
-                        enumerator_variable.get_value(&self.debug_info.variable_cache)
-                            == this_enum_const_value
+                        enumerator_variable.get_value(cache) == this_enum_const_value
                     }) {
                         Some(this_enum) => this_enum.name,
                         None => "<ERROR: Unresolved enum value>".to_string(),
@@ -2473,9 +2472,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                     child_variable.type_name, enumumerator_value
                 ));
                 // We don't need to keep these children.
-                self.debug_info
-                    .variable_cache
-                    .remove_cache_entry_children(child_variable.variable_key)?;
+                cache.remove_cache_entry_children(child_variable.variable_key)?;
             }
             gimli::DW_TAG_array_type => {
                 // This node is a pointer to the type of data stored in the array, with a direct child that contains the range information.
@@ -2486,23 +2483,20 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                 match data_type_attribute.value() {
                                     gimli::AttributeValue::UnitRef(unit_ref) => {
                                         // First get the DW_TAG_subrange child of this node. It has a DW_AT_type that points to DW_TAG_base_type:__ARRAY_SIZE_TYPE__.
-                                        let mut subrange_variable =
-                                            self.debug_info.variable_cache.cache_variable(
-                                                child_variable.variable_key,
-                                                Variable::new(
-                                                    self.unit
-                                                        .header
-                                                        .offset()
-                                                        .as_debug_info_offset(),
-                                                    Some(node.entry().offset()),
-                                                ),
-                                                core,
-                                            )?;
+                                        let mut subrange_variable = cache.cache_variable(
+                                            child_variable.variable_key,
+                                            Variable::new(
+                                                self.unit.header.offset().as_debug_info_offset(),
+                                                Some(node.entry().offset()),
+                                            ),
+                                            core,
+                                        )?;
                                         subrange_variable = self.process_tree(
                                             node,
                                             subrange_variable,
                                             core,
                                             stack_frame_registers,
+                                            cache,
                                         )?;
                                         child_variable.range_lower_bound =
                                             subrange_variable.range_lower_bound;
@@ -2516,9 +2510,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                                 child_variable.range_lower_bound, child_variable.range_upper_bound)
                                             );
                                         }
-                                        self.debug_info
-                                            .variable_cache
-                                            .remove_cache_entry(subrange_variable.variable_key)?;
+                                        cache.remove_cache_entry(subrange_variable.variable_key)?;
                                         // - Next, process this DW_TAG_array_type's DW_AT_type full tree.
                                         // - We have to do this repeatedly, for every array member in the range.
                                         for array_member_index in child_variable.range_lower_bound
@@ -2531,20 +2523,17 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                                 )?;
                                             let mut array_member_type_node =
                                                 array_member_type_tree.root().unwrap();
-                                            let mut array_member_variable =
-                                                self.debug_info.variable_cache.cache_variable(
-                                                    child_variable.variable_key,
-                                                    Variable::new(
-                                                        self.unit
-                                                            .header
-                                                            .offset()
-                                                            .as_debug_info_offset(),
-                                                        Some(
-                                                            array_member_type_node.entry().offset(),
-                                                        ),
-                                                    ),
-                                                    core,
-                                                )?;
+                                            let mut array_member_variable = cache.cache_variable(
+                                                child_variable.variable_key,
+                                                Variable::new(
+                                                    self.unit
+                                                        .header
+                                                        .offset()
+                                                        .as_debug_info_offset(),
+                                                    Some(array_member_type_node.entry().offset()),
+                                                ),
+                                                core,
+                                            )?;
                                             array_member_variable = self
                                                 .process_tree_node_attributes(
                                                     &mut array_member_type_node,
@@ -2552,6 +2541,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                                     array_member_variable,
                                                     core,
                                                     stack_frame_registers,
+                                                    cache,
                                                 )?;
                                             child_variable.type_name = format!(
                                                 "[{};{}]",
@@ -2570,6 +2560,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                                 array_member_variable,
                                                 core,
                                                 stack_frame_registers,
+                                                cache,
                                             )?;
                                         }
                                     }
@@ -2601,12 +2592,8 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                 // Recursively process a child types.
                 // TODO: The DWARF does not currently hold information that allows decoding of which UNION arm is instantiated, so we have to display all available.
                 child_variable =
-                    self.process_tree(node, child_variable, core, stack_frame_registers)?;
-                if !self
-                    .debug_info
-                    .variable_cache
-                    .has_children(&child_variable)?
-                {
+                    self.process_tree(node, child_variable, core, stack_frame_registers, cache)?;
+                if !cache.has_children(&child_variable)? {
                     // Empty structs don't have values.
                     child_variable.set_value(child_variable.type_name.clone());
                 }
@@ -2658,20 +2645,17 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
             gimli::DW_TAG_compile_unit => {
                 // This only happens when we do a 'lazy' load of <statics>
                 child_variable =
-                    self.process_tree(node, child_variable, core, stack_frame_registers)?;
+                    self.process_tree(node, child_variable, core, stack_frame_registers, cache)?;
             }
             // Do not expand this type.
             other => {
                 child_variable.type_name =
                     format!("<UNIMPLEMENTED: type : {:?}>", other.static_string());
                 child_variable.set_value(child_variable.type_name.clone());
-                self.debug_info
-                    .variable_cache
-                    .remove_cache_entry_children(child_variable.variable_key)?;
+                cache.remove_cache_entry_children(child_variable.variable_key)?;
             }
         }
-        self.debug_info
-            .variable_cache
+        cache
             .cache_variable(parent_variable.variable_key, child_variable, core)
             .map_err(|error| error.into())
     }
@@ -2686,6 +2670,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
         mut child_variable: Variable,
         core: &mut Core<'_>,
         stack_frame_registers: &Registers,
+        cache: &mut VariableCache,
     ) -> Result<Variable, DebugError> {
         let mut attrs = node.entry().attrs();
         while let Some(attr) = attrs.next().unwrap() {
@@ -2834,8 +2819,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
         {
             child_variable.memory_location = parent_variable.memory_location;
         }
-        self.debug_info
-            .variable_cache
+        cache
             .cache_variable(child_variable.parent_key, child_variable, core)
             .map_err(|error| error.into())
     }

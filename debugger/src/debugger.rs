@@ -7,6 +7,7 @@ use anyhow::{anyhow, Context, Result};
 use capstone::{arch::arm::ArchMode, prelude::*, Capstone, Endian};
 use probe_rs::config::TargetSelector;
 use probe_rs::debug::DebugInfo;
+use probe_rs::debug::VariableCache;
 use probe_rs::flashing::download_file;
 use probe_rs::flashing::download_file_with_options;
 use probe_rs::flashing::DownloadOptions;
@@ -246,7 +247,9 @@ pub struct SessionData {
 pub struct CoreData<'p> {
     pub(crate) target_core: Core<'p>,
     pub(crate) target_name: String,
-    pub(crate) debug_info: &'p mut DebugInfo,
+    pub(crate) debug_info: &'p DebugInfo,
+
+    pub(crate) variable_cache: VariableCache,
 }
 
 /// Definition of commands that have been implemented in Debugger.
@@ -381,7 +384,8 @@ pub fn attach_core<'p>(
         Ok(target_core) => Ok(CoreData {
             target_core,
             target_name: format!("{}-{}", debugger_options.core_index, target_name),
-            debug_info: &mut session_data.debug_info,
+            debug_info: &session_data.debug_info,
+            variable_cache: VariableCache::new(),
         }),
         Err(_) => Err(DebuggerError::UnableToOpenProbe(Some(
             "No core at the specified index.",
