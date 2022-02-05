@@ -5,7 +5,7 @@ use crate::DebuggerError;
 use anyhow::{anyhow, Result};
 use dap_types::*;
 use parse_int::parse;
-use probe_rs::debug::VariableCache;
+use probe_rs::debug::{VariableCache, VariableName};
 use probe_rs::{debug::ColumnType, CoreStatus, HaltReason, MemoryInterface};
 use probe_rs_cli_util::rtt;
 use serde::{de::DeserializeOwned, Serialize};
@@ -775,9 +775,11 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             .variable_cache
             .get_variable_by_key(arguments.frame_id)
         {
-            if let Some(static_root_variable) = core_data
-                .variable_cache
-                .get_variable_by_name_and_parent("<statics>", stackframe_root_variable.variable_key)
+            if let Some(static_root_variable) =
+                core_data.variable_cache.get_variable_by_name_and_parent(
+                    &VariableName::Statics,
+                    stackframe_root_variable.variable_key,
+                )
             {
                 let (static_variables_reference, static_named_variables, static_indexed_variables) =
                     self.get_variable_reference(
@@ -801,7 +803,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
 
             if let Some(register_root_variable) =
                 core_data.variable_cache.get_variable_by_name_and_parent(
-                    "<registers>",
+                    &VariableName::Registers,
                     stackframe_root_variable.variable_key,
                 )
             {
@@ -825,9 +827,11 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                     variables_reference: register_variables_reference,
                 });
             };
-            if let Some(locals_root_variable) = core_data
-                .variable_cache
-                .get_variable_by_name_and_parent("<locals>", stackframe_root_variable.variable_key)
+            if let Some(locals_root_variable) =
+                core_data.variable_cache.get_variable_by_name_and_parent(
+                    &VariableName::Locals,
+                    stackframe_root_variable.variable_key,
+                )
             {
                 let (locals_variables_reference, locals_named_variables, locals_indexed_variables) =
                     self.get_variable_reference(
@@ -948,7 +952,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                         indexed_child_variables_cnt,
                     ) = self.get_variable_reference(variable, &mut core_data.variable_cache);
                     Variable {
-                        name: variable.name.clone(),
+                        name: variable.name.to_string(),
                         evaluate_name: None,
                         memory_reference: Some(format!("{:#010x}", variable.memory_location)),
                         indexed_variables: Some(indexed_child_variables_cnt),

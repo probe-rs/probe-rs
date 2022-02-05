@@ -123,14 +123,14 @@ impl VariableCache {
     /// If there is more than one, it will be logged (log::error!), and only the last will be returned.
     pub fn get_variable_by_name_and_parent(
         &self,
-        variable_name: &str,
+        variable_name: &VariableName,
         parent_key: i64,
     ) -> Option<Variable> {
         let child_variables = self
             .variable_hash_map
             .values()
             .filter(|child_variable| {
-                child_variable.name == variable_name && child_variable.parent_key == parent_key
+                &child_variable.name == variable_name && child_variable.parent_key == parent_key
             })
             .cloned()
             .collect::<Vec<Variable>>();
@@ -177,8 +177,8 @@ impl VariableCache {
     ) -> Result<(), Error> {
         // If the `obsolete_child_variable` has a type other than `Some`, then silently do nothing.
         if obsolete_child_variable.type_name.is_empty()
-            || obsolete_child_variable.type_name.eq("Some")
-            || obsolete_child_variable.name.eq("*<statics>")
+            || obsolete_child_variable.type_name == "Some"
+            || obsolete_child_variable.name == VariableName::Statics
         {
             // Make sure we pass children up, past any intermediate nodes.
             self.variable_hash_map
@@ -225,7 +225,7 @@ impl std::fmt::Display for VariableCache {
             .values()
             .cloned()
             .filter(|child_variable| {
-                child_variable.name == *"<stack_frame>" && child_variable.parent_key == 0
+                child_variable.name == VariableName::StackFrame && child_variable.parent_key == 0
             })
             .collect::<Vec<Variable>>();
         stack_frames.sort();
@@ -314,6 +314,47 @@ impl Default for VariantRole {
     }
 }
 
+#[derive(Debug, PartialEq, Clone)]
+pub enum VariableName {
+    /// Top-level variable for a stack frame
+    StackFrame,
+    /// Top-level variable for static variables, child of a stack frame variable
+    Statics,
+    /// Top-level variable for registers, child of a stack frame variable
+    Registers,
+    /// Top-level variable for registers, child of a stack frame variable
+    Locals,
+    /// Artificial variable, without a name (e.g. enum discriminant)
+    Artifical,
+    /// Anonymous namespace
+    AnonymousNamespace,
+    /// Variable with a specific name
+    Named(String),
+    /// Variable with an unknown name
+    Unknown,
+}
+
+impl Default for VariableName {
+    fn default() -> Self {
+        VariableName::Unknown
+    }
+}
+
+impl std::fmt::Display for VariableName {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            VariableName::StackFrame => write!(f, "<stack_frame>"),
+            VariableName::Statics => write!(f, "<statics>"),
+            VariableName::Registers => write!(f, "<registers>"),
+            VariableName::Locals => write!(f, "<locals>"),
+            VariableName::Artifical => write!(f, "<artifical>"),
+            VariableName::AnonymousNamespace => write!(f, "<anonymous namespace>"),
+            VariableName::Named(name) => name.fmt(f),
+            VariableName::Unknown => write!(f, "<unknown>"),
+        }
+    }
+}
+
 /// The `Variable` struct is used in conjunction with `VariableCache` to cache data about variables.
 ///
 /// Any modifications to the `Variable` value will be transient (lost when it goes out of scope),
@@ -324,8 +365,10 @@ pub struct Variable {
     pub variable_key: i64,
     /// Every variable must have a unique parent assigned to it when stored in the VariableCache. A parent_key of 0 in the cache simply implies that this variable doesn't have a parent, i.e. it is the root of a tree.
     pub parent_key: i64,
+
     /// The variable name refers to the name of any of the types of values described in the [VariableCache]
-    pub name: String,
+    pub name: VariableName,
+
     /// The value will always be `None` unless the variable is a base type or there was an error during the unwind operation for the variable value. For all Variables that are complex types or references, the value will be a "fmt::Display" representation that attempts to assemble the base types into human readable form. Use `Variable::set_value()` and `Variable::get_value()` to correctly process this `value`
     value: Option<String>,
     pub source_location: Option<SourceLocation>,
@@ -512,17 +555,22 @@ impl Variable {
     /// The variable is considered to be an 'indexed' variable if the name starts with two underscores followed by a number. e.g. "__1".
     /// TODO: Consider replacing this logic with `std::str::pattern::Pattern` when that API stabilizes
     pub fn is_indexed(&self) -> bool {
-        self.name.starts_with("__")
-            && self
-                .name
-                .find(char::is_numeric)
-                .map_or(false, |zero_based_position| zero_based_position == 2)
+        match &self.name {
+            VariableName::Named(name) => {
+                name.starts_with("__")
+                    && name
+                        .find(char::is_numeric)
+                        .map_or(false, |zero_based_position| zero_based_position == 2)
+            }
+            // Other kind of variables are never indexed
+            _ => false,
+        }
     }
 
     fn formatted_variable_value(&self, variable_cache: &VariableCache) -> String {
-        if let Some(existing_value) = self.value.clone() {
+        if let Some(existing_value) = &self.value {
             // Use the supplied value.
-            existing_value
+            existing_value.clone()
         } else {
             let mut compound_value = "".to_string();
             // Only do this if we do not already have a value assigned.
@@ -635,21 +683,19 @@ impl Value for String {
         let mut str_value: String = "".to_owned();
         if let Ok(children) = variable_cache.get_children(variable.variable_key) {
             if !children.is_empty() {
-                let string_length = match children
-                    .clone()
-                    .into_iter()
-                    .find(|child_variable| child_variable.name == *"length")
-                {
+                let string_length = match children.iter().find(|child_variable| {
+                    child_variable.name == VariableName::Named("length".to_string())
+                }) {
                     Some(length_value) => length_value
                         .value
+                        .as_ref()
                         .map(|value| value.parse().unwrap_or(0))
                         .unwrap_or(0) as usize,
                     None => 0_usize,
                 };
-                let string_location = match children
-                    .into_iter()
-                    .find(|child_variable| child_variable.name == *"data_ptr")
-                {
+                let string_location = match children.iter().find(|child_variable| {
+                    child_variable.name == VariableName::Named("data_ptr".to_string())
+                }) {
                     Some(location_value) => {
                         if let Ok(child_variables) =
                             variable_cache.get_children(location_value.variable_key)

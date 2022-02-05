@@ -11,7 +11,7 @@ use crate::{
 };
 use num_traits::Zero;
 use probe_rs_target::Architecture;
-pub use variable::{Variable, VariableCache, VariantRole};
+pub use variable::{Variable, VariableCache, VariableName, VariantRole};
 
 use std::{
     borrow,
@@ -921,7 +921,7 @@ impl DebugInfo {
             );
             static_root_variable.referenced_node_offset = Some(unit_node.entry().offset());
             static_root_variable.stack_frame_registers = Some(stack_frame_registers.clone());
-            static_root_variable.name = "<statics>".to_string();
+            static_root_variable.name = VariableName::Statics;
             cache.cache_variable(
                 stackframe_root_variable.variable_key,
                 static_root_variable,
@@ -940,7 +940,7 @@ impl DebugInfo {
         core: &mut Core<'_>,
     ) -> Result<(), DebugError> {
         let mut register_root_variable = Variable::new(None, None);
-        register_root_variable.name = "<registers>".to_string();
+        register_root_variable.name = VariableName::Registers;
         register_root_variable = cache.cache_variable(
             stackframe_root_variable.variable_key,
             register_root_variable,
@@ -957,9 +957,11 @@ impl DebugInfo {
         for (register_number, register_value) in sorted_registers {
             let mut register_variable = Variable::new(None, None);
             register_variable.parent_key = register_root_variable.variable_key;
-            register_variable.name = registers
-                .get_name_by_dwarf_register_number(register_number)
-                .unwrap_or_else(|| format!("r{}", register_number));
+            register_variable.name = VariableName::Named(
+                registers
+                    .get_name_by_dwarf_register_number(register_number)
+                    .unwrap_or_else(|| format!("r{}", register_number)),
+            );
             register_variable.type_name = "Platform Register".to_owned();
             register_variable.byte_size = 4;
             register_variable.set_value(format!("{:#010x}", register_value));
@@ -989,7 +991,7 @@ impl DebugInfo {
             unit_info.unit.header.offset().as_debug_info_offset(),
             Some(function_node.entry().offset()),
         );
-        function_root_variable.name = "<locals>".to_string();
+        function_root_variable.name = VariableName::Locals;
         function_root_variable = cache.cache_variable(
             stackframe_root_variable.variable_key,
             function_root_variable,
@@ -1041,12 +1043,21 @@ impl DebugInfo {
                         ),
                         core,
                     )?;
-                    if parent_variable.name.starts_with("Some") {
-                        referenced_variable.name = parent_variable.name.replacen("&", "*", 1);
-                    } else {
-                        referenced_variable.name = format!("*{}", parent_variable.name);
-                        // Now, retrieve the location by reading the adddress pointed to by the parent variable.
+
+                    match &parent_variable.name {
+                        VariableName::Named(name) => {
+                            if name.starts_with("Some") {
+                                referenced_variable.name =
+                                    VariableName::Named(name.replacen("&", "*", 1));
+                            } else {
+                                referenced_variable.name =
+                                    VariableName::Named(format!("*{}", name));
+                                // Now, retrieve the location by reading the adddress pointed to by the parent variable.
+                            }
+                        }
+                        other => referenced_variable.name = VariableName::Named(format!("ERROR: Unable to generate name, parent variable does not have a name but is special variable {:?}", other)),
                     }
+
                     let mut buff = [0u8; 4];
                     core.read(parent_variable.memory_location as u32, &mut buff)?;
                     referenced_variable.memory_location = u32::from_le_bytes(buff) as u64;
@@ -1067,7 +1078,7 @@ impl DebugInfo {
                     // Only use this, if it is NOT a unit datatype.
                     if referenced_variable.type_name.contains("()") {
                         cache.remove_cache_entry(referenced_variable.variable_key)?;
-                    } else if parent_variable.name.eq("<statics>") {
+                    } else if parent_variable.name == VariableName::Statics {
                         // If we are lazily resolving `<statics>`, then we need to eliminate the intermediate node
                         cache.adopt_grand_children(&parent_variable, &referenced_variable)?;
                     }
@@ -1169,7 +1180,7 @@ impl DebugInfo {
                     unit_info.unit.header.offset().as_debug_info_offset(),
                     Some(function_die.function_die.offset()),
                 );
-                stackframe_root_variable.name = "<stack_frame>".to_string();
+                stackframe_root_variable.name = VariableName::StackFrame;
                 stackframe_root_variable.source_location = function_source_location.clone();
                 let function_display_name = if function_die.is_inline {
                     format!("{} #[inline]", &function_name)
@@ -1227,6 +1238,7 @@ impl DebugInfo {
                     );
                 }
 
+                /*
                 // Next, resolve and cache the function variables.
                 self.cache_function_variables(
                     cache,
@@ -1236,6 +1248,7 @@ impl DebugInfo {
                     &stack_frame_registers,
                     &stackframe_root_variable,
                 )?;
+                */
 
                 // Ready to go ...
                 return Ok(StackFrame {
@@ -1256,7 +1269,7 @@ impl DebugInfo {
         // We need an empty parent variable for the next operation, but do not need to store it in the cache.
         let parent_variable = Variable::new(None, None);
         let mut stackframe_root_variable = Variable::new(None, None);
-        stackframe_root_variable.name = "<stack_frame>".to_string();
+        stackframe_root_variable.name = VariableName::StackFrame;
         stackframe_root_variable.source_location = self.get_source_location(address);
         stackframe_root_variable.set_value(unknown_function.clone());
         stackframe_root_variable.memory_location = address;
@@ -1819,7 +1832,8 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                         // The child_variable.location is calculated with attribute gimli::DW_AT_type, to ensure it gets done before DW_AT_type is processed
                     }
                     gimli::DW_AT_name => {
-                        child_variable.name = extract_name(self.debug_info, attr.value());
+                        child_variable.name =
+                            VariableName::Named(extract_name(self.debug_info, attr.value()));
                     }
                     gimli::DW_AT_decl_file => {
                         if let Some((directory, file_name)) =
@@ -1933,7 +1947,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                     }
                     gimli::DW_AT_artificial => {
                         // These are references for entries like discriminant values of `VariantParts`.
-                        child_variable.name = "<artificial>".to_string();
+                        child_variable.name = VariableName::Artifical;
                     }
                     gimli::DW_AT_discr => match attr.value() {
                         // This calculates the active discriminant value for the `VariantPart`.
@@ -2071,8 +2085,8 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                         Some(child_node.entry().offset()),
                 );
                     namespace_variable.name = if let Ok(Some(attr)) = child_node.entry().attr(gimli::DW_AT_name) {
-                        extract_name(self.debug_info, attr.value())
-                    } else {"<anonymous namespace>".to_string()};
+                        VariableName::Named(extract_name(self.debug_info, attr.value()))
+                    } else { VariableName::AnonymousNamespace };
                     namespace_variable.type_name = "<namespace>".to_string();
                     namespace_variable.memory_location = 0;
                     namespace_variable = cache.cache_variable(parent_variable.variable_key, namespace_variable, core)?;
@@ -2092,8 +2106,15 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                     self.unit.header.offset().as_debug_info_offset(),
                                     Some(namespace_child_node.entry().offset()),);
                                 namespace_child_variable.name = if let Ok(Some(attr)) = namespace_child_node.entry().attr(gimli::DW_AT_name) {
-                                    format!("{}::{}", namespace_variable.name, extract_name(self.debug_info, attr.value()))
-                                } else {"<anonymous namespace>".to_string()};
+
+                                    match &namespace_variable.name {
+                                        VariableName::Named(name) => {
+                                    VariableName::Named(format!("{}::{}", name, extract_name(self.debug_info, attr.value())))
+                                        }
+                                        other => return Err(DebugError::Other(anyhow::anyhow!("Unable to construct namespace variable, unexpected parent name: {:?}", other)))
+                                    }
+
+                                } else { VariableName::AnonymousNamespace};
                                 namespace_child_variable.type_name = "<namespace>".to_string();
                                 namespace_child_variable.memory_location = 0;
                                 namespace_child_variable = cache.cache_variable(namespace_variable.variable_key, namespace_child_variable, core)?;
@@ -2122,7 +2143,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                     child_variable = self.process_tree_node_attributes(&mut child_node, &mut parent_variable, child_variable, core, stack_frame_registers, cache)?;
                     // Do not keep or process PhantomData nodes, or variant parts that we have already used.
                     if child_variable.type_name.starts_with("PhantomData") 
-                        ||  child_variable.name == "<artificial>"
+                        ||  child_variable.name == VariableName::Artifical
                     {
                         cache.remove_cache_entry(child_variable.variable_key)?;
                     } else if child_variable.type_name == "Some" {
@@ -2401,8 +2422,10 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                         } else if parent_variable.type_name == "Some" {
                                             // The parent `DW_TAG_structure_type` with name `Some` is an intermediate node that we only need for its children
                                             // Update the child's name for when we adopt it to the grandparent later on.
-                                            child_variable.name =
-                                                format!("Some({})", child_variable.type_name);
+                                            child_variable.name = VariableName::Named(format!(
+                                                "Some({})",
+                                                child_variable.type_name
+                                            ));
                                         }
                                         child_variable = cache.cache_variable(
                                             parent_variable.variable_key,
@@ -2465,7 +2488,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                         enumerator_variable.get_value(cache) == this_enum_const_value
                     }) {
                         Some(this_enum) => this_enum.name,
-                        None => "<ERROR: Unresolved enum value>".to_string(),
+                        None => VariableName::Named("<ERROR: Unresolved enum value>".to_string()),
                     };
                 child_variable.set_value(format!(
                     "{}::{}",
@@ -2550,8 +2573,9 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                             );
                                             array_member_variable.member_index =
                                                 Some(array_member_index);
-                                            array_member_variable.name =
-                                                format!("__{}", array_member_index);
+                                            array_member_variable.name = VariableName::Named(
+                                                format!("__{}", array_member_index),
+                                            );
                                             array_member_variable.source_location =
                                                 child_variable.source_location.clone();
                                             self.extract_type(
