@@ -1016,7 +1016,7 @@ impl DebugInfo {
     ) -> Result<(), DebugError> {
         // Only do attempt this part if the parent is a pointer and we have not yet resolved the referenced children.
         if parent_variable.referenced_node_offset.is_some()
-            && !cache.has_children(&parent_variable)?
+            && !cache.has_children(parent_variable)?
         {
             if let Some(ref stack_frame_registers) = parent_variable.stack_frame_registers {
                 if let Some(header_offset) = parent_variable.header_offset {
@@ -1051,6 +1051,11 @@ impl DebugInfo {
                                 // Now, retrieve the location by reading the adddress pointed to by the parent variable.
                             }
                         }
+                        // TODO: This should be fixed / removed, currently this creates an artifial variable which is always visible. But without this,
+                        //       no statics are visible at all.
+                        VariableName::Statics => {
+                            referenced_variable.name = VariableName::Named("*<statics>".to_string());
+                        }
                         other => referenced_variable.name = VariableName::Named(format!("ERROR: Unable to generate name, parent variable does not have a name but is special variable {:?}", other)),
                     }
 
@@ -1064,7 +1069,7 @@ impl DebugInfo {
                     )?;
                     referenced_variable = unit_info.extract_type(
                         referenced_node,
-                        &parent_variable,
+                        parent_variable,
                         referenced_variable,
                         core,
                         stack_frame_registers,
@@ -1076,7 +1081,7 @@ impl DebugInfo {
                         cache.remove_cache_entry(referenced_variable.variable_key)?;
                     } else if parent_variable.name == VariableName::Statics {
                         // If we are lazily resolving `<statics>`, then we need to eliminate the intermediate node
-                        cache.adopt_grand_children(&parent_variable, &referenced_variable)?;
+                        cache.adopt_grand_children(parent_variable, &referenced_variable)?;
                     }
                 }
             }

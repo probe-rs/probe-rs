@@ -648,7 +648,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         *core_data.variable_cache = VariableCache::new();
 
         let current_stackframes = core_data.debug_info.try_unwind(
-            &mut core_data.variable_cache,
+            core_data.variable_cache,
             &mut core_data.target_core,
             u64::from(pc),
         );
@@ -786,10 +786,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                 )
             {
                 let (static_variables_reference, static_named_variables, static_indexed_variables) =
-                    self.get_variable_reference(
-                        &static_root_variable,
-                        &mut core_data.variable_cache,
-                    );
+                    self.get_variable_reference(&static_root_variable, core_data.variable_cache);
                 dap_scopes.push(Scope {
                     line: None,
                     column: None,
@@ -815,8 +812,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                     register_variables_reference,
                     register_named_variables,
                     register_indexed_variables,
-                ) = self
-                    .get_variable_reference(&register_root_variable, &mut core_data.variable_cache);
+                ) = self.get_variable_reference(&register_root_variable, core_data.variable_cache);
                 dap_scopes.push(Scope {
                     line: None,
                     column: None,
@@ -838,10 +834,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                 )
             {
                 let (locals_variables_reference, locals_named_variables, locals_indexed_variables) =
-                    self.get_variable_reference(
-                        &locals_root_variable,
-                        &mut core_data.variable_cache,
-                    );
+                    self.get_variable_reference(&locals_root_variable, core_data.variable_cache);
                 dap_scopes.push(Scope {
                     line: stackframe_root_variable
                         .source_location
@@ -924,7 +917,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             {
                 if parent_variable.referenced_node_offset.is_some() {
                     core_data.debug_info.cache_referenced_variables(
-                        &mut core_data.variable_cache,
+                        core_data.variable_cache,
                         &mut core_data.target_core,
                         &parent_variable,
                     )?;
@@ -954,7 +947,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                         variables_reference,
                         named_child_variables_cnt,
                         indexed_child_variables_cnt,
-                    ) = self.get_variable_reference(variable, &mut core_data.variable_cache);
+                    ) = self.get_variable_reference(variable, core_data.variable_cache);
                     Variable {
                         name: variable.name.to_string(),
                         evaluate_name: None,
@@ -963,7 +956,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                         named_variables: Some(named_child_variables_cnt),
                         presentation_hint: None,
                         type_: Some(variable.type_name.clone()),
-                        value: variable.get_value(&core_data.variable_cache),
+                        value: variable.get_value(core_data.variable_cache),
                         variables_reference,
                     }
                 })

@@ -429,28 +429,6 @@ pub struct Variable {
     pub role: VariantRole,
 }
 
-/*
-impl PartialEq for Variable {
-    fn eq(&self, other: &Self) -> bool {
-        self.variable_key == other.variable_key
-    }
-}
-
-impl Eq for Variable {}
-
-impl Ord for Variable {
-    fn cmp(&self, other: &Self) -> Ordering {
-        self.variable_key.cmp(&other.variable_key)
-    }
-}
-
-impl PartialOrd for Variable {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.cmp(other))
-    }
-}
-*/
-
 impl Variable {
     /// In most cases, Variables will be initialized with their ELF references, so that we resolve their data types and values on demand.
     pub(crate) fn new(
@@ -749,7 +727,11 @@ impl Value for String {
                 if string_location.is_zero() {
                     str_value = "ERROR: Failed to determine &str memory location".to_string();
                 } else {
-                    // Limit string length to work around buggy information.
+                    // Limit string length to work around buggy information, otherwise the debugger
+                    // can hang due to buggy debug information.
+                    //
+                    // TODO: If implemented, the variable should not be fetched automatically,
+                    // but only when requested by the user. This workaround can then be removed.
                     if string_length > 200 {
                         log::warn!(
                             "Very long string ({} bytes), truncating to 200 bytes.",
