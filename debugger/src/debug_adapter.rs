@@ -5,7 +5,7 @@ use crate::DebuggerError;
 use anyhow::{anyhow, Result};
 use dap_types::*;
 use parse_int::parse;
-use probe_rs::debug::DebugInfo;
+use probe_rs::debug::{VariableCache, VariableName};
 use probe_rs::{debug::ColumnType, CoreStatus, HaltReason, MemoryInterface};
 use probe_rs_cli_util::rtt;
 use serde::{de::DeserializeOwned, Serialize};
@@ -643,9 +643,15 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             }
         };
 
-        let current_stackframes = core_data
-            .debug_info
-            .try_unwind(&mut core_data.target_core, u64::from(pc));
+        log::debug!("Replacing variable cache!");
+
+        *core_data.variable_cache = VariableCache::new();
+
+        let current_stackframes = core_data.debug_info.try_unwind(
+            core_data.variable_cache,
+            &mut core_data.target_core,
+            u64::from(pc),
+        );
 
         match self.adapter_type() {
             DebugAdapterType::CommandLine => {
@@ -653,7 +659,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                 for _stack_frame in current_stackframes {
                     // Iterate all the stack frames, so that `debug_info.variable_cache` gets populated.
                 }
-                body.push_str(format!("{}\n", core_data.debug_info.variable_cache).as_str());
+                body.push_str(format!("{}\n", &core_data.variable_cache).as_str());
                 self.send_response(request, Ok(Some(body)))
             }
             DebugAdapterType::DapClient => {
@@ -767,21 +773,20 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
 
         let mut dap_scopes: Vec<Scope> = vec![];
 
+        log::trace!("Getting scopes for frame {}", arguments.frame_id,);
+
         if let Some(stackframe_root_variable) = core_data
-            .debug_info
             .variable_cache
             .get_variable_by_key(arguments.frame_id)
         {
-            if let Some(static_root_variable) = core_data
-                .debug_info
-                .variable_cache
-                .get_variable_by_name_and_parent(
-                    "<statics>".to_owned(),
+            if let Some(static_root_variable) =
+                core_data.variable_cache.get_variable_by_name_and_parent(
+                    &VariableName::Statics,
                     stackframe_root_variable.variable_key,
                 )
             {
                 let (static_variables_reference, static_named_variables, static_indexed_variables) =
-                    self.get_variable_reference(core_data.debug_info, &static_root_variable);
+                    self.get_variable_reference(&static_root_variable, core_data.variable_cache);
                 dap_scopes.push(Scope {
                     line: None,
                     column: None,
@@ -797,11 +802,9 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                 });
             };
 
-            if let Some(register_root_variable) = core_data
-                .debug_info
-                .variable_cache
-                .get_variable_by_name_and_parent(
-                    "<registers>".to_owned(),
+            if let Some(register_root_variable) =
+                core_data.variable_cache.get_variable_by_name_and_parent(
+                    &VariableName::Registers,
                     stackframe_root_variable.variable_key,
                 )
             {
@@ -809,7 +812,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                     register_variables_reference,
                     register_named_variables,
                     register_indexed_variables,
-                ) = self.get_variable_reference(core_data.debug_info, &register_root_variable);
+                ) = self.get_variable_reference(&register_root_variable, core_data.variable_cache);
                 dap_scopes.push(Scope {
                     line: None,
                     column: None,
@@ -824,16 +827,14 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                     variables_reference: register_variables_reference,
                 });
             };
-            if let Some(locals_root_variable) = core_data
-                .debug_info
-                .variable_cache
-                .get_variable_by_name_and_parent(
-                    "<locals>".to_owned(),
+            if let Some(locals_root_variable) =
+                core_data.variable_cache.get_variable_by_name_and_parent(
+                    &VariableName::Locals,
                     stackframe_root_variable.variable_key,
                 )
             {
                 let (locals_variables_reference, locals_named_variables, locals_indexed_variables) =
-                    self.get_variable_reference(core_data.debug_info, &locals_root_variable);
+                    self.get_variable_reference(&locals_root_variable, core_data.variable_cache);
                 dap_scopes.push(Scope {
                     line: stackframe_root_variable
                         .source_location
@@ -911,19 +912,19 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             // During the intial stack unwind operation, if we encounter certain types of pointers as children of complex variables, they will not be auto-expanded and included in the variable cache. Please refer to the `is_pointer` member of [probe_rs::debug::Variable] for more information. If this is the case, we will store the `stack_frame_registers` as part of the variable definition, so that we can  resolve the variable and add it to the cache before continuing.
             // TODO: Use the DAP "Invalidated" event to refresh the variables for this stackframe. It will allow the UI to see updated compound values for pointer variables based on the newly resolved children.
             if let Some(parent_variable) = core_data
-                .debug_info
                 .variable_cache
                 .get_variable_by_key(arguments.variables_reference)
             {
                 if parent_variable.referenced_node_offset.is_some() {
-                    core_data
-                        .debug_info
-                        .cache_referenced_variables(&mut core_data.target_core, parent_variable)?;
+                    core_data.debug_info.cache_referenced_variables(
+                        core_data.variable_cache,
+                        &mut core_data.target_core,
+                        &parent_variable,
+                    )?;
                 }
             }
 
             let dap_variables: Vec<Variable> = core_data
-                .debug_info
                 .variable_cache
                 .get_children(arguments.variables_reference)?
                 .iter()
@@ -946,16 +947,16 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                         variables_reference,
                         named_child_variables_cnt,
                         indexed_child_variables_cnt,
-                    ) = self.get_variable_reference(core_data.debug_info, variable);
+                    ) = self.get_variable_reference(variable, core_data.variable_cache);
                     Variable {
-                        name: variable.name.clone(),
+                        name: variable.name.to_string(),
                         evaluate_name: None,
                         memory_reference: Some(format!("{:#010x}", variable.memory_location)),
                         indexed_variables: Some(indexed_child_variables_cnt),
                         named_variables: Some(named_child_variables_cnt),
                         presentation_hint: None,
                         type_: Some(variable.type_name.clone()),
-                        value: variable.get_value(&core_data.debug_info.variable_cache),
+                        value: variable.get_value(core_data.variable_cache),
                         variables_reference,
                     }
                 })
@@ -1079,15 +1080,12 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
     /// (`variable_reference`, `named_child_variables_cnt`, `indexed_child_variables_cnt`)
     fn get_variable_reference(
         &mut self,
-        debug_info: &DebugInfo,
         parent_variable: &probe_rs::debug::Variable,
+        cache: &mut VariableCache,
     ) -> (i64, i64, i64) {
         let mut named_child_variables_cnt = 0;
         let mut indexed_child_variables_cnt = 0;
-        if let Ok(children) = debug_info
-            .variable_cache
-            .get_children(parent_variable.variable_key)
-        {
+        if let Ok(children) = cache.get_children(parent_variable.variable_key) {
             for child_variable in children {
                 if child_variable.is_indexed() {
                     indexed_child_variables_cnt += 1;
@@ -1104,7 +1102,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                 indexed_child_variables_cnt,
             )
         } else if parent_variable.referenced_node_offset.is_some()
-            && parent_variable.get_value(&debug_info.variable_cache) != "()"
+            && parent_variable.get_value(cache) != "()"
         {
             // We have not yet cached the children for this reference.
             // Provide DAP Client with a reference so that it will explicitly ask for children when the user expands it.

@@ -37,7 +37,7 @@ pub struct CoreInformation {
     pub pc: u32,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct RegisterDescription {
     pub(crate) name: &'static str,
     pub(crate) _kind: RegisterKind,
@@ -62,14 +62,14 @@ impl From<&RegisterDescription> for CoreRegisterAddress {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub(crate) enum RegisterKind {
     General,
     PC,
 }
 
 /// Register description for a core.
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct RegisterFile {
     pub(crate) platform_registers: &'static [RegisterDescription],
 
