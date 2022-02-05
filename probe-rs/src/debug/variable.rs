@@ -3,7 +3,6 @@ use crate::Error;
 use anyhow::anyhow;
 use gimli::{DebugInfoOffset, UnitOffset};
 use num_traits::Zero;
-use std::cmp::Ordering;
 
 /// VariableCache stores every available `Variable`, and provides methods to create and navigate the parent-child relationships of the Variables.
 /// `VariableCache` is a member of `DebugInfo`, and it will be recreated/repopulated with appropriate data everytime `DebugInfo::try_unwind()` is called. Because of the multiple ways in which it is updated, all references to `VariableCache` are *immutable*, and can only be updated through its methods, which provide *interior mutability"
@@ -18,6 +17,7 @@ use std::cmp::Ordering;
 ///     - A `Variable` for each in-scope variable. Complex variables and pointers will have additional children.
 ///       - Child `Variable`s that make up a complex parent variable.
 ///         - This structure is recursive until a base type is encountered.
+#[derive(Debug)]
 pub struct VariableCache {
     variable_cache_key: i64,
     variable_hash_map: HashMap<i64, Variable>,
@@ -68,6 +68,14 @@ impl VariableCache {
             // The caller is telling us this is definitely a new `Variable`
             let new_cache_key: i64 = self.variable_cache_key + 1;
             variable_to_add.variable_key = new_cache_key;
+
+            log::debug!(
+                "VariableCache: Add Variable: key={}, parent={}, name={:?}",
+                new_cache_key,
+                variable_to_add.parent_key,
+                &variable_to_add.name
+            );
+
             match self
                 .variable_hash_map
                 .insert(variable_to_add.variable_key, variable_to_add)
@@ -83,15 +91,30 @@ impl VariableCache {
         } else {
             // Attempt to update an existing `Variable` in the cache
             let reused_cache_key = variable_to_add.variable_key;
-            if self
+
+            log::debug!(
+                "VariableCache: Update Variable, key={}, name={:?}",
+                reused_cache_key,
+                &variable_to_add.name
+            );
+
+            if let Some(prev_entry) = self
                 .variable_hash_map
-                .insert(variable_to_add.variable_key, variable_to_add)
-                .is_none()
+                .get_mut(&variable_to_add.variable_key)
             {
+                if &variable_to_add != prev_entry {
+                    log::trace!("Updated:  {:?}", variable_to_add);
+                    log::trace!("Previous: {:?}", prev_entry);
+                }
+
+                *prev_entry = variable_to_add
+            } else {
                 return Err(anyhow!("Attempt to update and existing `Variable`:{:?} with a non-existent cache key: {}. Please report this as a bug.", cache_variable.name, reused_cache_key).into());
             }
+
             reused_cache_key
         };
+
         // As the final act, we need to update the variable with an appropriate value.
         // This requires distinct steps to ensure we don't get `borrow` conflicts on the variable cache.
         if let Some(mut stored_variable) = self.get_variable_by_key(stored_key) {
@@ -157,7 +180,7 @@ impl VariableCache {
                 .cloned()
                 .collect::<Vec<Variable>>();
             // We have to incur the overhead of sort(), or else the variables in the UI are not in the same order as they appear in the source code.
-            children.sort();
+            children.sort_by_key(|var| var.variable_key);
             Ok(children)
         }
     }
@@ -228,7 +251,7 @@ impl std::fmt::Display for VariableCache {
                 child_variable.name == VariableName::StackFrame && child_variable.parent_key == 0
             })
             .collect::<Vec<Variable>>();
-        stack_frames.sort();
+        stack_frames.sort_by_key(|variable| variable.variable_key);
         if stack_frames.is_empty() {
             writeln!(
                 f,
@@ -359,7 +382,7 @@ impl std::fmt::Display for VariableName {
 ///
 /// Any modifications to the `Variable` value will be transient (lost when it goes out of scope),
 /// unless it is updated through one of the available methods on `VariableCache`.
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Default, Clone, PartialEq)]
 pub struct Variable {
     /// Every variable must have a unique key value assigned to it. The value will be zero until it is stored in VariableCache, at which time its value will be set to the same as the VariableCache::variable_cache_key
     pub variable_key: i64,
@@ -371,6 +394,10 @@ pub struct Variable {
 
     /// The value will always be `None` unless the variable is a base type or there was an error during the unwind operation for the variable value. For all Variables that are complex types or references, the value will be a "fmt::Display" representation that attempts to assemble the base types into human readable form. Use `Variable::set_value()` and `Variable::get_value()` to correctly process this `value`
     value: Option<String>,
+
+    /// If this is a variable for a stack frame, then this is the loation for the program counter in the stack frame.
+    ///
+    /// For other variables, this is the location of the declaration, if available.
     pub source_location: Option<SourceLocation>,
     pub type_name: String,
     /// When we encounter DW_TAG_pointer_type during ELF parsing, we store the `gimli::UnitOffset to the 'referened' node.
@@ -402,6 +429,7 @@ pub struct Variable {
     pub role: VariantRole,
 }
 
+/*
 impl PartialEq for Variable {
     fn eq(&self, other: &Self) -> bool {
         self.variable_key == other.variable_key
@@ -421,6 +449,7 @@ impl PartialOrd for Variable {
         Some(self.cmp(other))
     }
 }
+*/
 
 impl Variable {
     /// In most cases, Variables will be initialized with their ELF references, so that we resolve their data types and values on demand.
@@ -507,6 +536,12 @@ impl Variable {
             ));
             return;
         }
+
+        log::debug!(
+            "Extracting value for {:?}, type={}",
+            self.name,
+            self.type_name
+        );
 
         // This is the primary logic for decoding a variable's value, once we know the type and memory_location.
         let string_value = match self.type_name.as_str() {

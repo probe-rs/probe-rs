@@ -242,14 +242,16 @@ pub struct SessionData {
     #[allow(dead_code)]
     pub(crate) capstone: Capstone,
     pub(crate) debug_info: DebugInfo,
+
+    // TODO: This should be core specific!
+    pub(crate) variable_cache: VariableCache,
 }
 
 pub struct CoreData<'p> {
     pub(crate) target_core: Core<'p>,
     pub(crate) target_name: String,
     pub(crate) debug_info: &'p DebugInfo,
-
-    pub(crate) variable_cache: VariableCache,
+    pub(crate) variable_cache: &'p mut VariableCache,
 }
 
 /// Definition of commands that have been implemented in Debugger.
@@ -371,6 +373,7 @@ pub fn start_session(debugger_options: &DebuggerOptions) -> Result<SessionData, 
         session: target_session,
         capstone,
         debug_info,
+        variable_cache: VariableCache::new(),
     })
 }
 
@@ -385,7 +388,7 @@ pub fn attach_core<'p>(
             target_core,
             target_name: format!("{}-{}", debugger_options.core_index, target_name),
             debug_info: &session_data.debug_info,
-            variable_cache: VariableCache::new(),
+            variable_cache: &mut session_data.variable_cache,
         }),
         Err(_) => Err(DebuggerError::UnableToOpenProbe(Some(
             "No core at the specified index.",

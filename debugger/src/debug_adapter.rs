@@ -643,7 +643,9 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             }
         };
 
-        core_data.variable_cache = VariableCache::new();
+        log::debug!("Replacing variable cache!");
+
+        *core_data.variable_cache = VariableCache::new();
 
         let current_stackframes = core_data.debug_info.try_unwind(
             &mut core_data.variable_cache,
@@ -770,6 +772,8 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         };
 
         let mut dap_scopes: Vec<Scope> = vec![];
+
+        log::trace!("Getting scopes for frame {}", arguments.frame_id,);
 
         if let Some(stackframe_root_variable) = core_data
             .variable_cache

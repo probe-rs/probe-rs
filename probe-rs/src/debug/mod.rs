@@ -76,7 +76,7 @@ pub struct StackFrame {
     pub inlined_caller_source_location: Option<SourceLocation>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Registers {
     register_description: &'static RegisterFile,
 
@@ -947,11 +947,7 @@ impl DebugInfo {
             core,
         )?;
 
-        let mut sorted_registers = registers
-            .clone()
-            .values
-            .into_iter()
-            .collect::<Vec<(u32, u32)>>();
+        let mut sorted_registers = registers.values.iter().collect::<Vec<(&u32, &u32)>>();
         sorted_registers.sort_by_key(|(register_number, _register_value)| *register_number);
 
         for (register_number, register_value) in sorted_registers {
@@ -959,7 +955,7 @@ impl DebugInfo {
             register_variable.parent_key = register_root_variable.variable_key;
             register_variable.name = VariableName::Named(
                 registers
-                    .get_name_by_dwarf_register_number(register_number)
+                    .get_name_by_dwarf_register_number(*register_number)
                     .unwrap_or_else(|| format!("r{}", register_number)),
             );
             register_variable.type_name = "Platform Register".to_owned();
@@ -1238,7 +1234,6 @@ impl DebugInfo {
                     );
                 }
 
-                /*
                 // Next, resolve and cache the function variables.
                 self.cache_function_variables(
                     cache,
@@ -1248,7 +1243,6 @@ impl DebugInfo {
                     &stack_frame_registers,
                     &stackframe_root_variable,
                 )?;
-                */
 
                 // Ready to go ...
                 return Ok(StackFrame {
@@ -2075,6 +2069,9 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                     "Cannot unwind `Variable` without a valid PC (program_counter)"
                 )));
             };
+
+        log::debug!("process_tree for parent {}", parent_variable.variable_key);
+
         let mut child_nodes = parent_node.children();
         while let Some(mut child_node) = child_nodes.next()? {
             match child_node.entry().tag() {
@@ -2083,13 +2080,16 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                     let mut namespace_variable = Variable::new(
                         self.unit.header.offset().as_debug_info_offset(),
                         Some(child_node.entry().offset()),
-                );
+                    );
+
                     namespace_variable.name = if let Ok(Some(attr)) = child_node.entry().attr(gimli::DW_AT_name) {
                         VariableName::Named(extract_name(self.debug_info, attr.value()))
                     } else { VariableName::AnonymousNamespace };
+
                     namespace_variable.type_name = "<namespace>".to_string();
                     namespace_variable.memory_location = 0;
                     namespace_variable = cache.cache_variable(parent_variable.variable_key, namespace_variable, core)?;
+
                     let mut namespace_children_nodes = child_node.children();
                     while let Some(mut namespace_child_node) = namespace_children_nodes.next()? {
                         match namespace_child_node.entry().tag() {
@@ -2118,7 +2118,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                 namespace_child_variable.type_name = "<namespace>".to_string();
                                 namespace_child_variable.memory_location = 0;
                                 namespace_child_variable = cache.cache_variable(namespace_variable.variable_key, namespace_child_variable, core)?;
-                                namespace_child_variable = self.process_tree(namespace_child_node, namespace_child_variable, core, stack_frame_registers, cache)?;
+                                namespace_child_variable = self.process_tree(namespace_child_node, namespace_child_variable, core, stack_frame_registers, cache, )?;
                                 if !cache.has_children(&namespace_child_variable)? {
                                     cache.remove_cache_entry(namespace_child_variable.variable_key)?;
                                 }
@@ -2140,7 +2140,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                     self.unit.header.offset().as_debug_info_offset(),
                     Some(child_node.entry().offset()),
                 ), core)?;
-                    child_variable = self.process_tree_node_attributes(&mut child_node, &mut parent_variable, child_variable, core, stack_frame_registers, cache)?;
+                    child_variable = self.process_tree_node_attributes(&mut child_node, &mut parent_variable, child_variable, core, stack_frame_registers, cache,)?;
                     // Do not keep or process PhantomData nodes, or variant parts that we have already used.
                     if child_variable.type_name.starts_with("PhantomData") 
                         ||  child_variable.name == VariableName::Artifical
@@ -2152,7 +2152,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                     }
                     else {
                         // Recursively process each child.
-                        self.process_tree(child_node, child_variable, core, stack_frame_registers, cache)?;
+                        self.process_tree(child_node, child_variable, core, stack_frame_registers, cache, )?;
                     }
                 }
                 gimli::DW_TAG_variant_part => {
@@ -2175,7 +2175,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                     // - If there is a DW_AT_discr that has a value, then this is a reference to the member entry for the discriminant. This value will be resolved to match against the appropriate DW_TAG_variant.
                     // - TODO: The [DWARF] standard, 5.7.10, allows for a DW_AT_discr_list, but I have not seen that generated from RUST yet. 
                     parent_variable.role = VariantRole::VariantPart(u64::MAX);
-                    child_variable = self.process_tree_node_attributes(&mut child_node, &mut parent_variable, child_variable, core, stack_frame_registers, cache)?;
+                    child_variable = self.process_tree_node_attributes(&mut child_node, &mut parent_variable, child_variable, core, stack_frame_registers, cache, )?;
                     // At this point we have everything we need (It has updated the parent's `role`) from the child_variable, so elimnate it before we continue ...
                     cache.remove_cache_entry(child_variable.variable_key)?;
                     parent_variable = self.process_tree(child_node, parent_variable, core, stack_frame_registers, cache)?;
@@ -2687,6 +2687,8 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
     /// - Consumes the `child_variable`.
     /// - Find the location using either DW_AT_location, or DW_AT_data_member_location, and store it in the Variable.
     /// - Returns a clone of the most up-to-date `child_variable` in the cache.
+    ///
+    /// This will either set the memory location, or directly update the value of the variable, depending on the DWARF information.
     fn extract_location(
         &self,
         node: &gimli::EntriesTreeNode<GimliReader>,
