@@ -201,7 +201,7 @@ impl VariableCache {
         // If the `obsolete_child_variable` has a type other than `Some`, then silently do nothing.
         if obsolete_child_variable.type_name.is_empty()
             || obsolete_child_variable.type_name == "Some"
-            || obsolete_child_variable.name == VariableName::Statics
+            || obsolete_child_variable.name == VariableName::Named("*<statics>".to_string())
         {
             // Make sure we pass children up, past any intermediate nodes.
             self.variable_hash_map

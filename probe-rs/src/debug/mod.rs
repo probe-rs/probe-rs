@@ -1051,8 +1051,7 @@ impl DebugInfo {
                                 // Now, retrieve the location by reading the adddress pointed to by the parent variable.
                             }
                         }
-                        // TODO: This should be fixed / removed, currently this creates an artifial variable which is always visible. But without this,
-                        //       no statics are visible at all.
+                        // Create a dummy variable, which is filtered out again in `adopt_grand_children`.
                         VariableName::Statics => {
                             referenced_variable.name = VariableName::Named("*<statics>".to_string());
                         }
