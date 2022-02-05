@@ -4,19 +4,22 @@ use anyhow::anyhow;
 use gimli::{DebugInfoOffset, UnitOffset};
 use num_traits::Zero;
 
-/// VariableCache stores every available `Variable`, and provides methods to create and navigate the parent-child relationships of the Variables.
-/// `VariableCache` is a member of `DebugInfo`, and it will be recreated/repopulated with appropriate data everytime `DebugInfo::try_unwind()` is called. Because of the multiple ways in which it is updated, all references to `VariableCache` are *immutable*, and can only be updated through its methods, which provide *interior mutability"
+/// VariableCache stores every available `Variable`s, and provides methods to create and navigate the parent-child relationships of the Variables.
+/// NOTE: `VariableCache` must be refreshed (recreated) evertytime a stack trace is done.
 ///
-/// There are four 'dummy' `Variables`, named `<stack_frame>`, `<statics>`, `<registers>`, and `<locals>`. These are used to provide the header structure of how variables relate to different scopes in a particular stacktrace. This 'dummy' structure looks as follows
-/// - `<stack_frame>`: Every `StackFrame` will have one of these, with its function name captured in the `value` field of this dummy variable.
-///   - `<statics>`: The parent variable for all statics variables that are in the same compile unit, or in dependencies that are explicitly mentioned in the compile unit of the relevant stack frame.
-///     - A recursive `Variable` structure as described for `<locals>` below.
-///   - `<registers>`: Every `StackFrame` will have a collection of `Variable` registers.
-///     - A `Variable` for each available register
-///   - `<locals>`: Every `StackFrame` (function) will have a collection of locally scoped `Variable`s.
-///     - A `Variable` for each in-scope variable. Complex variables and pointers will have additional children.
-///       - Child `Variable`s that make up a complex parent variable.
-///         - This structure is recursive until a base type is encountered.
+/// We use 'special' `Variables`, to create a structure that models the tree strucutre used by MS DAP specification ( `Threads -> StackTrace -> Scopes -> Variables`), and later on allows the debugger to request these as parent-children structrues.)
+///
+/// In probe-rs, this `Variable` structure looks as follows (indentation represent parent-child structure)
+/// - [VariableName::CoreId] : Every [`Core::id()`] is represented as a top level thread. e.g. Core 0 is thread 0, and so on. This is used as if it is synonomous to the `Threads` level in the MS DAP specification.
+///   - [VariableName::StackFrame]: Every `StackFrame` in a stack trace will have one of these, with its function name captured in the `value` field of this variable.
+///     - [VariableName::StaticScope]: The parent variable for all static scoped variables that are in the same compile unit, or in dependencies that are explicitly mentioned in the compile unit of the relevant stack frame.
+///       - A recursive `Variable` structure as described for `[VariableName::LocalScope]` below.
+///     - [VariableName::Registers]: Every `StackFrame` will have a collection of `Variable` registers with values scoped to that frame.
+///       - A `Variable` for each available register
+///     - [VariableName::LocalScope]: Every `StackFrame` (function) will have a collection of locally scoped `Variable`s.
+///       - A `Variable` for each in-scope variable. Complex variables and pointers will have additional children.
+///         - Child `Variable`s that make up a complex parent variable.
+///           - This structure is recursive until a base type is encountered.
 #[derive(Debug)]
 pub struct VariableCache {
     variable_cache_key: i64,
@@ -339,14 +342,16 @@ impl Default for VariantRole {
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum VariableName {
-    /// Top-level variable for a stack frame
+    /// Every [`Core`] will have it's own set of hierarchy of entries in the cache.
+    CoreId,
+    /// Top-level variable for a stack frame (usually a function or inlined subroutine).
     StackFrame,
-    /// Top-level variable for static variables, child of a stack frame variable
-    Statics,
-    /// Top-level variable for registers, child of a stack frame variable
+    /// Top-level variable for static variables, child of a stack frame variable, and holds all the static scoped variables which are directly visible to the compile unit of the frame.
+    StaticScope,
+    /// Top-level variable for registers, child of a stack frame variable.
     Registers,
-    /// Top-level variable for registers, child of a stack frame variable
-    Locals,
+    /// Top-level variable for local scoped variables, child of a stack frame variable.
+    LocalScope,
     /// Artificial variable, without a name (e.g. enum discriminant)
     Artifical,
     /// Anonymous namespace
@@ -366,12 +371,13 @@ impl Default for VariableName {
 impl std::fmt::Display for VariableName {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
+            VariableName::CoreId => write!(f, "<core_id>"),
             VariableName::StackFrame => write!(f, "<stack_frame>"),
-            VariableName::Statics => write!(f, "<statics>"),
+            VariableName::StaticScope => write!(f, "<static_scope>"),
             VariableName::Registers => write!(f, "<registers>"),
-            VariableName::Locals => write!(f, "<locals>"),
+            VariableName::LocalScope => write!(f, "<local_scope>"),
             VariableName::Artifical => write!(f, "<artifical>"),
-            VariableName::AnonymousNamespace => write!(f, "<anonymous namespace>"),
+            VariableName::AnonymousNamespace => write!(f, "<anonymous_namespace>"),
             VariableName::Named(name) => name.fmt(f),
             VariableName::Unknown => write!(f, "<unknown>"),
         }
