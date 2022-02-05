@@ -911,9 +911,9 @@ impl DebugInfo {
         None
     }
 
-    /// We do not actually resolve the children of `<statics>` automatically, and only create the necessary header in the `VariableCache`.
-    /// This allows us to resolve the `<statics>` on demand/lazily, when a user requests it from the debug client.
-    /// This saves a lot of overhead when a user only wants to see the `<locals>` or `<registers>` while stepping through code (the most common use cases)
+    /// We do not actually resolve the children of `[VariableName::StaticScope]` automatically, and only create the necessary header in the `VariableCache`.
+    /// This allows us to resolve the `[VariableName::StaticScope]` on demand/lazily, when a user requests it from the debug client.
+    /// This saves a lot of overhead when a user only wants to see the `[VariableName::LocalScope]` or `[VariableName::Registers]` while stepping through code (the most common use cases)
     fn cache_static_variables(
         &self,
         cache: &mut VariableCache,
@@ -933,7 +933,7 @@ impl DebugInfo {
             );
             static_root_variable.referenced_node_offset = Some(unit_node.entry().offset());
             static_root_variable.stack_frame_registers = Some(stack_frame_registers.clone());
-            static_root_variable.name = VariableName::Statics;
+            static_root_variable.name = VariableName::StaticScope;
             cache.cache_variable(
                 stackframe_root_variable.variable_key,
                 static_root_variable,
@@ -999,7 +999,7 @@ impl DebugInfo {
             unit_info.unit.header.offset().as_debug_info_offset(),
             Some(function_node.entry().offset()),
         );
-        function_root_variable.name = VariableName::Locals;
+        function_root_variable.name = VariableName::LocalScope;
         function_root_variable = cache.cache_variable(
             stackframe_root_variable.variable_key,
             function_root_variable,
@@ -1019,7 +1019,7 @@ impl DebugInfo {
     /// This is a lazy/deffered resolves and loads all the 'child' `Variable`s for a given unit.
     /// This is used for:
     /// - pointer variables (`DW_TAG_pointer_type`) into the `DebugInfo::VariableCache`.
-    /// - <statics> : The load of static variables and their namespaces in the debugger.
+    /// - [VariableName::StaticScope] : The load of static variables and their namespaces in the debugger.
     pub fn cache_referenced_variables(
         &self,
         cache: &mut VariableCache,
@@ -1064,7 +1064,7 @@ impl DebugInfo {
                             }
                         }
                         // Create a dummy variable, which is filtered out again in `adopt_grand_children`.
-                        VariableName::Statics => {
+                        VariableName::StaticScope => {
                             referenced_variable.name = VariableName::Named("*<statics>".to_string());
                         }
                         other => referenced_variable.name = VariableName::Named(format!("ERROR: Unable to generate name, parent variable does not have a name but is special variable {:?}", other)),
@@ -1090,8 +1090,8 @@ impl DebugInfo {
                     // Only use this, if it is NOT a unit datatype.
                     if referenced_variable.type_name.contains("()") {
                         cache.remove_cache_entry(referenced_variable.variable_key)?;
-                    } else if parent_variable.name == VariableName::Statics {
-                        // If we are lazily resolving `<statics>`, then we need to eliminate the intermediate node
+                    } else if parent_variable.name == VariableName::StaticScope {
+                        // If we are lazily resolving `[VariableName::StaticScope]`, then we need to eliminate the intermediate node
                         cache.adopt_grand_children(parent_variable, &referenced_variable)?;
                     }
                 }
@@ -1157,6 +1157,7 @@ impl DebugInfo {
                 log::debug!("UNWIND: Call site: {:?}", inlined_caller_source_location);
 
                 // Now that we have the function_name and function_source_location, we can cache the in-scope `Variable`s (`<statics>` and `<locals>`) in `DebugInfo::VariableCache`
+                // Now that we have the function_name and function_source_location, we can cache the in-scope `Variable`s (`[VariableName::StaticScope]` and `[VariableName::LocalScope]`) in `DebugInfo::VariableCache`
                 // We need an empty parent variable for the next operation, but do not need to store it in the cache.
                 let parent_variable = Variable::new(None, None);
                 let mut stackframe_root_variable = Variable::new(
@@ -2830,7 +2831,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                 }
             }
             gimli::DW_TAG_compile_unit => {
-                // This only happens when we do a 'lazy' load of <statics>
+                // This only happens when we do a 'lazy' load of [VariableName::StaticScope]
                 child_variable =
                     self.process_tree(node, child_variable, core, stack_frame_registers, cache)?;
             }

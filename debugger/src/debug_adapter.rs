@@ -781,7 +781,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         {
             if let Some(static_root_variable) =
                 core_data.variable_cache.get_variable_by_name_and_parent(
-                    &VariableName::Statics,
+                    &VariableName::StaticScope,
                     stackframe_root_variable.variable_key,
                 )
             {
@@ -829,7 +829,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             };
             if let Some(locals_root_variable) =
                 core_data.variable_cache.get_variable_by_name_and_parent(
-                    &VariableName::Locals,
+                    &VariableName::LocalScope,
                     stackframe_root_variable.variable_key,
                 )
             {
