@@ -718,7 +718,7 @@ impl Value for String {
         let mut str_value: String = "".to_owned();
         if let Ok(children) = variable_cache.get_children(variable.variable_key) {
             if !children.is_empty() {
-                let string_length = match children.iter().find(|child_variable| {
+                let mut string_length = match children.iter().find(|child_variable| {
                     child_variable.name == VariableName::Named("length".to_string())
                 }) {
                     Some(length_value) => length_value
@@ -749,6 +749,15 @@ impl Value for String {
                 if string_location.is_zero() {
                     str_value = "ERROR: Failed to determine &str memory location".to_string();
                 } else {
+                    // Limit string length to work around buggy information.
+                    if string_length > 200 {
+                        log::warn!(
+                            "Very long string ({} bytes), truncating to 200 bytes.",
+                            string_length
+                        );
+                        string_length = 200;
+                    }
+
                     let mut buff = vec![0u8; string_length];
                     core.read(string_location as u32, &mut buff)?;
                     str_value = core::str::from_utf8(&buff)?.to_owned();
