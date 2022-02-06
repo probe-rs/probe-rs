@@ -1096,7 +1096,8 @@ impl DebugInfo {
         core: &mut Core<'_>,
         address: u64,
         unwind_registers: &Registers,
-        // If we encountered an abstract source location (the location in the caller function where it calls and inline function), during the previous iteration, it was stored on the `StackFrameIterator` for passing to this function in the `::next()` iteration. This function then uses this as the source location for the caller.
+        // If we encountered an abstract source location (the location in the caller function where it calls and inline function), during the previous iteration,
+        // it was stored on the `StackFrameIterator` for passing to this function in the `::next()` iteration. This function then uses this as the source location for the caller.
         abstract_source_location: Option<SourceLocation>,
     ) -> Result<StackFrame, DebugError> {
         let mut units = self.get_units();

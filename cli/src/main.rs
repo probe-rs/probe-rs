@@ -424,15 +424,13 @@ fn debug(shared_options: &CoreOptions, common: &ProbeOptions, exe: Option<PathBu
 
     let core = session.core(shared_options.core)?;
 
-    let mut cli_data = debugger::CliData {
-        core,
-        debug_info: di,
-        capstone: cs,
-    };
+    let mut cli_data = debugger::CliData::new(core, di, cs)?;
 
     let mut rl = Editor::<()>::new();
 
     loop {
+        cli_data.print_state()?;
+
         let readline = rl.readline(">> ");
         match readline {
             Ok(line) => {

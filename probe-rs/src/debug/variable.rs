@@ -69,7 +69,7 @@ impl VariableCache {
             let new_cache_key: i64 = self.variable_cache_key + 1;
             variable_to_add.variable_key = new_cache_key;
 
-            log::debug!(
+            log::trace!(
                 "VariableCache: Add Variable: key={}, parent={}, name={:?}",
                 new_cache_key,
                 variable_to_add.parent_key,
@@ -92,7 +92,7 @@ impl VariableCache {
             // Attempt to update an existing `Variable` in the cache
             let reused_cache_key = variable_to_add.variable_key;
 
-            log::debug!(
+            log::trace!(
                 "VariableCache: Update Variable, key={}, name={:?}",
                 reused_cache_key,
                 &variable_to_add.name

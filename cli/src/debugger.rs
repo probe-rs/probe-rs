@@ -3,7 +3,7 @@ use crate::common::CliError;
 use capstone::Capstone;
 use num_traits::Num;
 use probe_rs::architecture::arm::Dump;
-use probe_rs::debug::{DebugInfo, VariableCache};
+use probe_rs::debug::{DebugInfo, Registers, VariableCache, VariableName};
 use probe_rs::{Core, CoreRegisterAddress, MemoryInterface};
 
 use std::fs::File;
@@ -255,30 +255,93 @@ impl DebugCli {
             help_text: "Show backtrace",
 
             function: |cli_data, _args| {
-                let status = cli_data.core.status()?;
+                match cli_data.state {
+                    DebugState::Halted(ref mut halted_state) => {
+                        let regs = cli_data.core.registers();
+                        let program_counter =
+                            cli_data.core.read_core_reg(regs.program_counter())?;
 
-                if status.is_halted() {
-                    let regs = cli_data.core.registers();
-                    let program_counter = cli_data.core.read_core_reg(regs.program_counter())?;
+                        if let Some(di) = &mut cli_data.debug_info {
+                            let frames: Vec<_> = di
+                                .try_unwind(
+                                    &mut halted_state.variable_cache,
+                                    &mut cli_data.core,
+                                    u64::from(program_counter),
+                                )
+                                .collect();
 
-                    // TODO: Cache this, should only be cleared when core is running
-                    let mut cache = VariableCache::new();
+                            halted_state.frame_indices =
+                                frames.iter().map(|sf| sf.id as i64).collect();
 
-                    if let Some(di) = &mut cli_data.debug_info {
-                        let frames = di.try_unwind(
-                            &mut cache,
-                            &mut cli_data.core,
-                            u64::from(program_counter),
-                        );
-                        for _stack_frame in frames {
-                            // Iterate all the stack frames, so that `debug_info.variable_cache` gets populated.
+                            for (i, frame) in frames.iter().enumerate() {
+                                println!(
+                                    "Frame {}: {} @ {:#010x}",
+                                    i, frame.function_name, frame.pc
+                                );
+
+                                if let Some(location) = &frame.source_location {
+                                    if location.directory.is_some() || location.file.is_some() {
+                                        print!("       ");
+
+                                        if let Some(dir) = &location.directory {
+                                            print!("{}", dir.display());
+                                        }
+
+                                        if let Some(file) = &location.file {
+                                            print!("/{}", file)
+                                        }
+
+                                        println!();
+                                    }
+                                }
+                            }
+                        } else {
+                            println!("No debug information present!");
                         }
-                        println!("{}", cache);
-                    } else {
-                        println!("No debug information present!");
                     }
-                } else {
-                    println!("Core must be halted for a backtrace.");
+                    DebugState::Running => {
+                        println!("Core must be halted for this command.");
+                    }
+                }
+
+                Ok(CliState::Continue)
+            },
+        });
+
+        cli.add_command(Command {
+            name: "up",
+            help_text: "Move up a frame",
+
+            function: |cli_data, _args| {
+                match &mut cli_data.state {
+                    DebugState::Running => println!("Core must be halted for this command."),
+                    DebugState::Halted(halted_state) => {
+                        if halted_state.current_frame < halted_state.frame_indices.len() - 1 {
+                            halted_state.current_frame += 1;
+                        } else {
+                            println!("Already at top-most frame.");
+                        }
+                    }
+                }
+
+                Ok(CliState::Continue)
+            },
+        });
+
+        cli.add_command(Command {
+            name: "down",
+            help_text: "Move down a frame",
+
+            function: |cli_data, _args| {
+                match &mut cli_data.state {
+                    DebugState::Running => println!("Core must be halted for this command."),
+                    DebugState::Halted(halted_state) => {
+                        if halted_state.current_frame > 0 {
+                            halted_state.current_frame -= 1;
+                        } else {
+                            println!("Already at bottom-most frame.");
+                        }
+                    }
                 }
 
                 Ok(CliState::Continue)
@@ -296,6 +359,41 @@ impl DebugCli {
                     let value = cli_data.core.read_core_reg(register)?;
 
                     println!("{}: {:#010x}", register.name(), value)
+                }
+
+                Ok(CliState::Continue)
+            },
+        });
+
+        cli.add_command(Command {
+            name: "locals",
+            help_text: "List local variables",
+
+            function: |cli_data, _args| {
+                match &cli_data.state {
+                    &DebugState::Halted(ref halted_state) => {
+                        if let Some(locals) =
+                            halted_state.variable_cache.get_variable_by_name_and_parent(
+                                &VariableName::Locals,
+                                halted_state.current_frame_id(),
+                            )
+                        {
+                            let children = halted_state
+                                .variable_cache
+                                .get_children(locals.variable_key)?;
+
+                            for child in children {
+                                println!(
+                                    "{}: {}",
+                                    child.name,
+                                    child.get_value(&halted_state.variable_cache)
+                                );
+                            }
+                        } else {
+                            println!("No local variables available.")
+                        }
+                    }
+                    &DebugState::Running => println!("Core must be halted for this command."),
                 }
 
                 Ok(CliState::Continue)
@@ -426,6 +524,81 @@ pub struct CliData<'p> {
     pub core: Core<'p>,
     pub debug_info: Option<DebugInfo>,
     pub capstone: Capstone,
+
+    state: DebugState,
+}
+
+impl<'p> CliData<'p> {
+    pub fn new(
+        mut core: Core<'p>,
+        debug_info: Option<DebugInfo>,
+        capstone: Capstone,
+    ) -> Result<CliData, CliError> {
+        let status = core.status()?;
+
+        // TODO: In halted state we should get the backtrace here.
+        let debug_state = match status {
+            probe_rs::CoreStatus::Halted(_) => {
+                let registers = Registers::from_core(&mut core);
+
+                DebugState::Halted(HaltedState {
+                    program_counter: registers.get_program_counter().unwrap_or_default(),
+                    current_frame: 0,
+                    frame_indices: vec![1],
+                    variable_cache: VariableCache::new(),
+                })
+            }
+            _other => DebugState::Running,
+        };
+
+        // TODO: Find initial state
+        Ok(CliData {
+            core,
+            debug_info,
+            capstone,
+            state: debug_state,
+        })
+    }
+
+    pub fn print_state(&self) -> Result<(), CliError> {
+        match &self.state {
+            DebugState::Running => println!("Core is running."),
+            DebugState::Halted(halted_state) => {
+                if let Some(current_stack_frame) = halted_state
+                    .variable_cache
+                    .get_variable_by_key(halted_state.current_frame_id())
+                {
+                    println!(
+                        "Frame {}: {} @ {:#010x}",
+                        halted_state.current_frame,
+                        current_stack_frame.name,
+                        halted_state.program_counter
+                    );
+                }
+            }
+        }
+
+        Ok(())
+    }
+}
+
+enum DebugState {
+    Running,
+    Halted(HaltedState),
+}
+
+struct HaltedState {
+    program_counter: u32,
+
+    current_frame: usize,
+    frame_indices: Vec<i64>,
+    variable_cache: VariableCache,
+}
+
+impl HaltedState {
+    fn current_frame_id(&self) -> i64 {
+        self.frame_indices[self.current_frame]
+    }
 }
 
 pub enum CliState {
