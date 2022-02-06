@@ -237,16 +237,165 @@ impl DebuggerOptions {
     }
 }
 
-pub struct SessionData {
+/// DebugSession is designed to be similar to [probe_rs::Session], in as much that it provides handles to the [CoreData] instances for each of the available [probe_rs::Core] involved in the debug session.
+/// To get access to the [CoreData] for a specific [Core], the
+/// TODO: Adjust [DebuggerOptions] to allow multiple cores (and if appropriate, their binaries) to be specified.
+pub struct DebugSession {
     pub(crate) session: Session,
     #[allow(dead_code)]
     pub(crate) capstone: Capstone,
-    pub(crate) debug_info: DebugInfo,
-
-    // TODO: This should be core specific!
-    pub(crate) variable_cache: VariableCache,
+    pub(crate) debug_infos: Vec<DebugInfo>,
+    pub(crate) variable_caches: Vec<VariableCache>,
 }
 
+impl DebugSession {
+    pub(crate) fn new(debugger_options: &DebuggerOptions) -> Result<Self, DebuggerError> {
+        let mut target_probe = match debugger_options.probe_selector.clone() {
+            Some(selector) => Probe::open(selector.clone()).map_err(|e| match e {
+                DebugProbeError::ProbeCouldNotBeCreated(ProbeCreationError::NotFound) => {
+                    DebuggerError::Other(anyhow!(
+                        "Could not find the probe_selector specified as {:04x}:{:04x}:{:?}",
+                        selector.vendor_id,
+                        selector.product_id,
+                        selector.serial_number
+                    ))
+                }
+                other_error => DebuggerError::DebugProbe(other_error),
+            }),
+            None => {
+                // Only automatically select a probe if there is only a single probe detected.
+                let list = Probe::list_all();
+                if list.len() > 1 {
+                    return Err(DebuggerError::Other(anyhow!(
+                        "Found multiple ({}) probes",
+                        list.len()
+                    )));
+                }
+
+                if let Some(info) = list.first() {
+                    Probe::open(info).map_err(DebuggerError::DebugProbe)
+                } else {
+                    return Err(DebuggerError::Other(anyhow!(
+                        "No probes found. Please check your USB connections."
+                    )));
+                }
+            }
+        }?;
+
+        let target_selector = match &debugger_options.chip {
+            Some(identifier) => identifier.into(),
+            None => TargetSelector::Auto,
+        };
+
+        // Set the protocol, if the user explicitly selected a protocol. Otherwise, use the default protocol of the probe.
+        if let Some(protocol) = debugger_options.protocol {
+            target_probe.select_protocol(protocol)?;
+        }
+
+        // Set the speed.
+        if let Some(speed) = debugger_options.speed {
+            let actual_speed = target_probe.set_speed(speed)?;
+            if actual_speed != speed {
+                log::warn!(
+                    "Protocol speed {} kHz not supported, actual speed is {} kHz",
+                    speed,
+                    actual_speed
+                );
+            }
+        }
+
+        let mut permissions = Permissions::new();
+        if debugger_options.allow_erase_all {
+            permissions = permissions.allow_erase_all();
+        }
+
+        // Attach to the probe.
+        let target_session = if debugger_options.connect_under_reset {
+            target_probe.attach_under_reset(target_selector, permissions)?
+        } else {
+            target_probe
+                .attach(target_selector, permissions)
+                .map_err(|err| {
+                    anyhow!(
+                        "Error attaching to the probe: {:?}.\nTry the --connect-under-reset option",
+                        err
+                    )
+                })?
+        };
+
+        // Change the current working directory if `debugger_options.cwd` is `Some(T)`.
+        if let Some(new_cwd) = debugger_options.cwd.clone() {
+            set_current_dir(new_cwd.as_path()).map_err(|err| {
+                anyhow!(
+                    "Failed to set current working directory to: {:?}, {:?}",
+                    new_cwd,
+                    err
+                )
+            })?;
+        };
+
+        let capstone = Capstone::new()
+            .arm()
+            .mode(ArchMode::Thumb)
+            .endian(Endian::Little)
+            .build()
+            .map_err(|err| anyhow!("Error creating Capstone disassembler: {:?}", err))?;
+
+        // TODO: We currently only allow a single core & binary to be specified in [DebuggerOptions]. When this is extended to support multicore, the following should initialize [DebugInfo] and [VariableCache] for each available core.
+        // Configure the [DebugInfo].
+        let debug_infos = vec![
+            if let Some(binary_path) = &debugger_options.program_binary {
+                DebugInfo::from_file(binary_path)
+                    .map_err(|error| DebuggerError::Other(anyhow!(error)))?
+            } else {
+                return Err(anyhow!(
+                    "Please provide a valid `program_binary` for this debug session"
+                )
+                .into());
+            },
+        ];
+
+        // Configure the [VariableCache].
+        let variable_caches = vec![VariableCache::new(debugger_options.core_index)];
+
+        Ok(DebugSession {
+            session: target_session,
+            capstone,
+            debug_infos,
+            variable_caches,
+        })
+    }
+
+    pub fn attach_core(&mut self, core_index: usize) -> Result<CoreData, DebuggerError> {
+        let target_name = self.session.target().name.clone();
+        // Do a 'light weight'(just get references to existing data structures) attach to the core and return relevant debug data.
+        match self.session.core(core_index) {
+            Ok(target_core) => Ok(CoreData {
+                target_core,
+                target_name: format!("{}-{}", core_index, target_name),
+                debug_info: self.debug_infos.get(core_index).ok_or_else(|| {
+                    DebuggerError::Other(anyhow!(
+                        "No available `DebugInfo` for core # {}",
+                        core_index
+                    ))
+                })?,
+                variable_cache: self.variable_caches.get_mut(core_index).ok_or_else(|| {
+                    DebuggerError::Other(anyhow!(
+                        "No available `VariableCache` for core # {}",
+                        core_index
+                    ))
+                })?,
+            }),
+            Err(_) => Err(DebuggerError::UnableToOpenProbe(Some(
+                "No core at the specified index.",
+            ))),
+        }
+    }
+}
+
+/// [CoreData] provides handles to various data structures required to debug a single instance of a core. The actual state is stored in [SessionData].
+///
+/// Usage: To get access to this structure please use the [DebugSession::attach_core] method. Please keep access/locks to this to a minumum duration.
 pub struct CoreData<'p> {
     pub(crate) target_core: Core<'p>,
     pub(crate) target_name: String,
@@ -267,133 +416,6 @@ pub struct DebugCommand {
     pub(crate) function_name: &'static str,
     // TODO: Need to be able to pass `DebugAdapter<R,W>` as a parameter then we can simplify the `DebugAdapter::process_next_request()` match statement to invoke the function from a pointer.
     // pub(crate) function: fn(core_data: &mut CoreData, request: &Request) -> bool,
-}
-pub fn start_session(debugger_options: &DebuggerOptions) -> Result<SessionData, DebuggerError> {
-    let mut target_probe = match debugger_options.probe_selector.clone() {
-        Some(selector) => Probe::open(selector.clone()).map_err(|e| match e {
-            DebugProbeError::ProbeCouldNotBeCreated(ProbeCreationError::NotFound) => {
-                DebuggerError::Other(anyhow!(
-                    "Could not find the probe_selector specified as {:04x}:{:04x}:{:?}",
-                    selector.vendor_id,
-                    selector.product_id,
-                    selector.serial_number
-                ))
-            }
-            other_error => DebuggerError::DebugProbe(other_error),
-        }),
-        None => {
-            // Only automatically select a probe if there is only a single probe detected.
-            let list = Probe::list_all();
-            if list.len() > 1 {
-                return Err(DebuggerError::Other(anyhow!(
-                    "Found multiple ({}) probes",
-                    list.len()
-                )));
-            }
-
-            if let Some(info) = list.first() {
-                Probe::open(info).map_err(DebuggerError::DebugProbe)
-            } else {
-                return Err(DebuggerError::Other(anyhow!(
-                    "No probes found. Please check your USB connections."
-                )));
-            }
-        }
-    }?;
-
-    let target_selector = match &debugger_options.chip {
-        Some(identifier) => identifier.into(),
-        None => TargetSelector::Auto,
-    };
-
-    // Set the protocol, if the user explicitly selected a protocol. Otherwise, use the default protocol of the probe.
-    if let Some(protocol) = debugger_options.protocol {
-        target_probe.select_protocol(protocol)?;
-    }
-
-    // Set the speed.
-    if let Some(speed) = debugger_options.speed {
-        let actual_speed = target_probe.set_speed(speed)?;
-        if actual_speed != speed {
-            log::warn!(
-                "Protocol speed {} kHz not supported, actual speed is {} kHz",
-                speed,
-                actual_speed
-            );
-        }
-    }
-
-    let mut permissions = Permissions::new();
-    if debugger_options.allow_erase_all {
-        permissions = permissions.allow_erase_all();
-    }
-
-    // Attach to the probe.
-    let target_session = if debugger_options.connect_under_reset {
-        target_probe.attach_under_reset(target_selector, permissions)?
-    } else {
-        target_probe
-            .attach(target_selector, permissions)
-            .map_err(|err| {
-                anyhow!(
-                    "Error attaching to the probe: {:?}.\nTry the --connect-under-reset option",
-                    err
-                )
-            })?
-    };
-
-    // Change the current working directory if `debugger_options.cwd` is `Some(T)`.
-    if let Some(new_cwd) = debugger_options.cwd.clone() {
-        set_current_dir(new_cwd.as_path()).map_err(|err| {
-            anyhow!(
-                "Failed to set current working directory to: {:?}, {:?}",
-                new_cwd,
-                err
-            )
-        })?;
-    };
-
-    let capstone = Capstone::new()
-        .arm()
-        .mode(ArchMode::Thumb)
-        .endian(Endian::Little)
-        .build()
-        .map_err(|err| anyhow!("Error creating Capstone disassembler: {:?}", err))?;
-
-    // Configure the `DebugInfo`.
-    let debug_info = if let Some(binary_path) = &debugger_options.program_binary {
-        DebugInfo::from_file(binary_path).map_err(|error| DebuggerError::Other(anyhow!(error)))?
-    } else {
-        return Err(
-            anyhow!("Please provide a valid `program_binary` for this debug session").into(),
-        );
-    };
-
-    Ok(SessionData {
-        session: target_session,
-        capstone,
-        debug_info,
-        variable_cache: VariableCache::new(),
-    })
-}
-
-pub fn attach_core<'p>(
-    session_data: &'p mut SessionData,
-    debugger_options: &DebuggerOptions,
-) -> Result<CoreData<'p>, DebuggerError> {
-    let target_name = session_data.session.target().name.clone();
-    // Do no-op attach to the core and return it.
-    match session_data.session.core(debugger_options.core_index) {
-        Ok(target_core) => Ok(CoreData {
-            target_core,
-            target_name: format!("{}-{}", debugger_options.core_index, target_name),
-            debug_info: &session_data.debug_info,
-            variable_cache: &mut session_data.variable_cache,
-        }),
-        Err(_) => Err(DebuggerError::UnableToOpenProbe(Some(
-            "No core at the specified index.",
-        ))),
-    }
 }
 
 #[derive(Debug)]
@@ -548,7 +570,7 @@ impl Debugger {
 
     pub(crate) fn process_next_request<P: ProtocolAdapter>(
         &mut self,
-        session_data: &mut SessionData,
+        session_data: &mut DebugSession,
         debug_adapter: &mut DebugAdapter<P>,
     ) -> Result<DebuggerStatus, DebuggerError> {
         let request = debug_adapter.listen_for_request()?;
@@ -571,14 +593,14 @@ impl Debugger {
                         Ok(DebuggerStatus::ContinueSession)
                     }
                     _other => {
-                        let mut core_data = match attach_core(session_data, &self.debugger_options)
-                        {
-                            Ok(core_data) => core_data,
-                            Err(error) => {
-                                let _ = debug_adapter.send_error_response(&error)?;
-                                return Err(error);
-                            }
-                        };
+                        let mut core_data =
+                            match session_data.attach_core(self.debugger_options.core_index) {
+                                Ok(core_data) => core_data,
+                                Err(error) => {
+                                    let _ = debug_adapter.send_error_response(&error)?;
+                                    return Err(error);
+                                }
+                            };
 
                         // Use every opportunity to poll the RTT channels for data
                         let mut received_rtt_data = false;
@@ -668,7 +690,9 @@ impl Debugger {
                     Ok(DebuggerStatus::TerminateSession)
                 }
                 "terminate" => {
-                    let mut core_data = match attach_core(session_data, &self.debugger_options) {
+                    let mut core_data = match session_data
+                        .attach_core(self.debugger_options.core_index)
+                    {
                         Ok(core_data) => core_data,
                         Err(error) => {
                             let error = Err(error);
@@ -698,10 +722,9 @@ impl Debugger {
                     match valid_command {
                         Some(valid_command) => {
                             // First, attach to the core.
-                            let mut core_data = match attach_core(
-                                session_data,
-                                &self.debugger_options,
-                            ) {
+                            let mut core_data = match session_data
+                                .attach_core(self.debugger_options.core_index)
+                            {
                                 Ok(core_data) => core_data,
                                 Err(error) => {
                                     debug_adapter.send_response::<()>(request, Err(error))?;
@@ -1148,7 +1171,7 @@ impl Debugger {
             }
         }
 
-        let mut session_data = match start_session(&self.debugger_options) {
+        let mut session_data = match DebugSession::new(&self.debugger_options) {
             Ok(session_data) => session_data,
             Err(error) => {
                 debug_adapter.send_error_response(&error)?;
@@ -1372,7 +1395,7 @@ impl Debugger {
         // This is the first attach to the requested core. If this one works, all subsequent ones will be no-op requests for a Core reference. Do NOT hold onto this reference for the duration of the session ... that is why this code is in a block of its own.
         {
             // First, attach to the core
-            let mut core_data = match attach_core(&mut session_data, &self.debugger_options) {
+            let mut core_data = match session_data.attach_core(self.debugger_options.core_index) {
                 Ok(mut core_data) => {
                     // Immediately after attaching, halt the core, so that we can finish initalization without bumping into user code.
                     // Depending on supplied `debugger_options`, the core will be restarted at the end of initialization in the `configuration_done` request.
@@ -1427,7 +1450,7 @@ impl Debugger {
                     {
                         let target_memory_map = session_data.session.target().memory_map.clone();
                         let mut core_data =
-                            match attach_core(&mut session_data, &self.debugger_options) {
+                            match session_data.attach_core(self.debugger_options.core_index) {
                                 Ok(core_data) => core_data,
                                 Err(error) => {
                                     debug_adapter.send_error_response(&error)?;
@@ -1528,16 +1551,19 @@ pub fn reset_target_of_device(
     debugger_options: DebuggerOptions,
     _assert: Option<bool>,
 ) -> Result<()> {
-    let mut session_data = start_session(&debugger_options)?;
-    attach_core(&mut session_data, &debugger_options)?
+    let mut session_data = DebugSession::new(&debugger_options)?;
+    session_data
+        .attach_core(debugger_options.core_index)?
         .target_core
         .reset()?;
     Ok(())
 }
 
 pub fn dump_memory(debugger_options: DebuggerOptions, loc: u32, words: u32) -> Result<()> {
-    let mut session_data = start_session(&debugger_options)?;
-    let mut target_core = attach_core(&mut session_data, &debugger_options)?.target_core;
+    let mut session_data = DebugSession::new(&debugger_options)?;
+    let mut target_core = session_data
+        .attach_core(debugger_options.core_index)?
+        .target_core;
 
     let mut data = vec![0_u32; words as usize];
 
@@ -1564,7 +1590,7 @@ pub fn dump_memory(debugger_options: DebuggerOptions, loc: u32, words: u32) -> R
 }
 
 pub fn download_program_fast(debugger_options: DebuggerOptions, path: &str) -> Result<()> {
-    let mut session_data = start_session(&debugger_options)?;
+    let mut session_data = DebugSession::new(&debugger_options)?;
     download_file(&mut session_data.session, &path, Format::Elf)?;
     Ok(())
 }
@@ -1579,8 +1605,10 @@ pub fn trace_u32_on_target(debugger_options: DebuggerOptions, loc: u32) -> Resul
 
     let start = Instant::now();
 
-    let mut session_data = start_session(&debugger_options)?;
-    let mut target_core = attach_core(&mut session_data, &debugger_options)?.target_core;
+    let mut session_data = DebugSession::new(&debugger_options)?;
+    let mut target_core = session_data
+        .attach_core(debugger_options.core_index)?
+        .target_core;
 
     loop {
         // Prepare read.

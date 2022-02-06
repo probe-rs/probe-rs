@@ -280,84 +280,21 @@ impl DebugCli {
                                     print!(" inline");
                                 }
 
-                                println!();
+                if status.is_halted() {
+                    let regs = cli_data.core.registers();
+                    let program_counter = cli_data.core.read_core_reg(regs.program_counter())?;
 
-                                if let Some(location) = &frame.source_location {
-                                    if location.directory.is_some() || location.file.is_some() {
-                                        print!("       ");
+                    // TODO: Cache this, should only be cleared when core is running
+                    let mut cache = VariableCache::new(cli_data.core.id());
 
-                                        if let Some(dir) = &location.directory {
-                                            print!("{}", dir.display());
-                                        }
-
-                                        if let Some(file) = &location.file {
-                                            print!("/{}", file);
-
-                                            if let Some(line) = location.line {
-                                                print!(":{}", line);
-
-                                                if let Some(col) = location.column {
-                                                    match col {
-                                                        probe_rs::debug::ColumnType::LeftEdge => {
-                                                            print!(":1")
-                                                        }
-                                                        probe_rs::debug::ColumnType::Column(c) => {
-                                                            print!(":{}", c)
-                                                        }
-                                                    }
-                                                }
-                                            }
-                                        }
-
-                                        println!();
-                                    }
-                                }
-                            }
-                        } else {
-                            println!("No debug information present!");
-                        }
-                    }
-                    DebugState::Running => {
-                        println!("Core must be halted for this command.");
-                    }
-                }
-
-                Ok(CliState::Continue)
-            },
-        });
-
-        cli.add_command(Command {
-            name: "up",
-            help_text: "Move up a frame",
-
-            function: |cli_data, _args| {
-                match &mut cli_data.state {
-                    DebugState::Running => println!("Core must be halted for this command."),
-                    DebugState::Halted(halted_state) => {
-                        if halted_state.current_frame < halted_state.frame_indices.len() - 1 {
-                            halted_state.current_frame += 1;
-                        } else {
-                            println!("Already at top-most frame.");
-                        }
-                    }
-                }
-
-                Ok(CliState::Continue)
-            },
-        });
-
-        cli.add_command(Command {
-            name: "down",
-            help_text: "Move down a frame",
-
-            function: |cli_data, _args| {
-                match &mut cli_data.state {
-                    DebugState::Running => println!("Core must be halted for this command."),
-                    DebugState::Halted(halted_state) => {
-                        if halted_state.current_frame > 0 {
-                            halted_state.current_frame -= 1;
-                        } else {
-                            println!("Already at bottom-most frame.");
+                    if let Some(di) = &mut cli_data.debug_info {
+                        let frames = di.try_unwind(
+                            &mut cache,
+                            &mut cli_data.core,
+                            u64::from(program_counter),
+                        );
+                        for _stack_frame in frames {
+                            // Iterate all the stack frames, so that `debug_info.variable_cache` gets populated.
                         }
                     }
                 }

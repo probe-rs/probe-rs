@@ -645,7 +645,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
 
         log::debug!("Replacing variable cache!");
 
-        *core_data.variable_cache = VariableCache::new();
+        *core_data.variable_cache = VariableCache::new(core_data.target_core.id());
 
         let current_stackframes = core_data.debug_info.try_unwind(
             core_data.variable_cache,
