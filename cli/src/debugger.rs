@@ -262,7 +262,7 @@ impl DebugCli {
                     let program_counter = cli_data.core.read_core_reg(regs.program_counter())?;
 
                     // TODO: Cache this, should only be cleared when core is running
-                    let mut cache = VariableCache::new();
+                    let mut cache = VariableCache::new(cli_data.core.id());
 
                     if let Some(di) = &mut cli_data.debug_info {
                         let frames = di.try_unwind(
