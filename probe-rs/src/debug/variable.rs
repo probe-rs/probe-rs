@@ -32,41 +32,22 @@ impl Default for VariableCache {
 }
 
 impl VariableCache {
-    pub fn new(_core_index: usize) -> Self {
-        // This is WIP ... please leave commented code.
-        //let variable_cache =
-        VariableCache {
+    pub fn new(core_index: usize) -> Self {
+        let variable_cache = VariableCache {
             variable_cache_key: 0,
             variable_hash_map: HashMap::new(),
-        }
-        //;
+        };
         // The variable_cache will always be pre-populated with a [VariableName::CoreId] variable for the specified core.
-        // TODO: Implement this.
-        // let mut core_id_variable = Variable::new(None, None);
-        // core_id_variable.name = VariableName::CoreId;
-        // core_id_variable.source_location = function_source_location.clone();
-        // let function_display_name = if function_die.is_inline {
-        //     format!("{} #[inline]", &function_name)
-        // } else {
-        //     format!("{} @{:#010x}", &function_name, address)
-        // };
+        let mut core_id_variable = Variable::new(None, None);
+        core_id_variable.name = VariableName::CoreId;
+        core_id_variable.variable_key = core_index as i64;
+        
+        // TODO: set the value to be something human readable form ...
         // core_id_variable.set_value(function_display_name);
-        // core_id_variable = unit_info.extract_location(
-        //     &unit_info
-        //         .unit
-        //         .entries_tree(Some(function_die.function_die.offset()))?
-        //         .root()?,
-        //     &parent_variable,
-        //     core_id_variable,
-        //     core,
-        //     &stack_frame_registers,
-        //     cache,
-        // )?;
-
         //
         // core_id_variable =
         //     cache.cache_variable(parent_variable.variable_key, core_id_variable, core)?;
-        // variable_cache
+        variable_cache
     }
 
     /// Performs an *add* or *update* of a `probe_rs::debug::Variable` to the cache, consuming the input and returning a Clone.
