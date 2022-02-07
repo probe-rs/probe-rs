@@ -359,7 +359,7 @@ impl DebugSession {
         ];
 
         // Configure the [VariableCache].
-        let variable_caches = vec![VariableCache::new(debugger_options.core_index)];
+        let variable_caches = vec![VariableCache::new()];
 
         Ok(DebugSession {
             session: target_session,

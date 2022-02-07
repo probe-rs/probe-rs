@@ -645,7 +645,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
 
         log::debug!("Replacing variable cache!");
 
-        *core_data.variable_cache = VariableCache::new(core_data.target_core.id());
+        *core_data.variable_cache = VariableCache::new();
 
         let current_stackframes = core_data.debug_info.unwind(
             core_data.variable_cache,
@@ -783,7 +783,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             if let Some(static_root_variable) =
                 core_data.variable_cache.get_variable_by_name_and_parent(
                     &VariableName::StaticScope,
-                    stackframe_root_variable.variable_key,
+                    Some(stackframe_root_variable.variable_key),
                 )
             {
                 let (static_variables_reference, static_named_variables, static_indexed_variables) =
@@ -806,7 +806,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             if let Some(register_root_variable) =
                 core_data.variable_cache.get_variable_by_name_and_parent(
                     &VariableName::Registers,
-                    stackframe_root_variable.variable_key,
+                    Some(stackframe_root_variable.variable_key),
                 )
             {
                 let (
@@ -831,7 +831,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             if let Some(locals_root_variable) =
                 core_data.variable_cache.get_variable_by_name_and_parent(
                     &VariableName::LocalScope,
-                    stackframe_root_variable.variable_key,
+                    Some(stackframe_root_variable.variable_key),
                 )
             {
                 let (locals_variables_reference, locals_named_variables, locals_indexed_variables) =
@@ -927,7 +927,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
 
             let dap_variables: Vec<Variable> = core_data
                 .variable_cache
-                .get_children(arguments.variables_reference)?
+                .get_children(Some(arguments.variables_reference))?
                 .iter()
                 // Filter out requested children, then map them as DAP variables
                 .filter(|variable| match &arguments.filter {
@@ -1086,7 +1086,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
     ) -> (i64, i64, i64) {
         let mut named_child_variables_cnt = 0;
         let mut indexed_child_variables_cnt = 0;
-        if let Ok(children) = cache.get_children(parent_variable.variable_key) {
+        if let Ok(children) = cache.get_children(Some(parent_variable.variable_key)) {
             for child_variable in children {
                 if child_variable.is_indexed() {
                     indexed_child_variables_cnt += 1;
