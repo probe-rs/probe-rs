@@ -274,10 +274,13 @@ impl DebugCli {
                                 frames.iter().map(|sf| sf.id as i64).collect();
 
                             for (i, frame) in frames.iter().enumerate() {
-                                println!(
-                                    "Frame {}: {} @ {:#010x}",
-                                    i, frame.function_name, frame.pc
-                                );
+                                print!("Frame {}: {} @ {:#010x}", i, frame.function_name, frame.pc);
+
+                                if frame.is_inlined {
+                                    print!(" inline");
+                                }
+
+                                println!();
 
                                 if let Some(location) = &frame.source_location {
                                     if location.directory.is_some() || location.file.is_some() {
@@ -371,7 +374,7 @@ impl DebugCli {
 
             function: |cli_data, _args| {
                 match &cli_data.state {
-                    &DebugState::Halted(ref halted_state) => {
+                    DebugState::Halted(ref halted_state) => {
                         if let Some(locals) =
                             halted_state.variable_cache.get_variable_by_name_and_parent(
                                 &VariableName::Locals,
@@ -393,7 +396,7 @@ impl DebugCli {
                             println!("No local variables available.")
                         }
                     }
-                    &DebugState::Running => println!("Core must be halted for this command."),
+                    DebugState::Running => println!("Core must be halted for this command."),
                 }
 
                 Ok(CliState::Continue)
