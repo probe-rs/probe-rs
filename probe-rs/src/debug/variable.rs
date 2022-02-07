@@ -22,32 +22,19 @@ use num_traits::Zero;
 ///           - This structure is recursive until a base type is encountered.
 #[derive(Debug)]
 pub struct VariableCache {
-    variable_cache_key: i64,
     variable_hash_map: HashMap<i64, Variable>,
 }
 impl Default for VariableCache {
     fn default() -> Self {
-        Self::new(0)
+        Self::new()
     }
 }
 
 impl VariableCache {
-    pub fn new(core_index: usize) -> Self {
-        let variable_cache = VariableCache {
-            variable_cache_key: 0,
+    pub fn new() -> Self {
+        VariableCache {
             variable_hash_map: HashMap::new(),
-        };
-        // The variable_cache will always be pre-populated with a [VariableName::CoreId] variable for the specified core.
-        let mut core_id_variable = Variable::new(None, None);
-        core_id_variable.name = VariableName::CoreId;
-        core_id_variable.variable_key = core_index as i64;
-        
-        // TODO: set the value to be something human readable form ...
-        // core_id_variable.set_value(function_display_name);
-        //
-        // core_id_variable =
-        //     cache.cache_variable(parent_variable.variable_key, core_id_variable, core)?;
-        variable_cache
+        }
     }
 
     /// Performs an *add* or *update* of a `probe_rs::debug::Variable` to the cache, consuming the input and returning a Clone.
@@ -56,62 +43,55 @@ impl VariableCache {
     /// - *Update* operation: If the `Variable::variable_key` is > 0
     ///   - If the key value exists in the cache, update it, Return an updated Clone of the variable.
     ///   - If the key value doesn't exist in the cache, Return an error.
-    /// - For all operations, update the `parent_key`. A value of 0 means there are no parents for this variable.
+    /// - For all operations, update the `parent_key`. A value of None means there are no parents for this variable.
     ///   - Validate that the supplied `Variable::parent_key` is a valid entry in the cache.
     /// - If appropriate, the `Variable::value` is updated from the core memory, and can be used by the calling function.
     pub fn cache_variable(
         &mut self,
-        parent_key: i64,
+        parent_key: Option<i64>,
         cache_variable: Variable,
         core: &mut Core<'_>,
     ) -> Result<Variable, Error> {
         let mut variable_to_add = cache_variable.clone();
 
         // Validate that the parent_key exists ...
-        variable_to_add.parent_key = parent_key;
-        if variable_to_add.parent_key > 0
-            && (!self
-                .variable_hash_map
-                .contains_key(&variable_to_add.parent_key))
-        {
-            return Err(anyhow!("VariableCache: Attempted to add a new variable: {} with non existent `parent_key`: {}. Please report this as a bug", variable_to_add.name, variable_to_add.parent_key).into());
+        if let Some(new_parent_key) = parent_key {
+            if self.variable_hash_map.contains_key(&new_parent_key) {
+                variable_to_add.parent_key = parent_key;
+            } else {
+                return Err(anyhow!("VariableCache: Attempted to add a new variable: {} with non existent `parent_key`: {}. Please report this as a bug", variable_to_add.name, new_parent_key).into());
+            }
         }
 
         // Is this an *add* or *update* operation?
         let stored_key = if variable_to_add.variable_key == 0 {
             // The caller is telling us this is definitely a new `Variable`
-            let new_cache_key: i64 = self.variable_cache_key + 1;
-            variable_to_add.variable_key = new_cache_key;
+            variable_to_add.variable_key = get_sequential_key();
 
             log::trace!(
-                "VariableCache: Add Variable: key={}, parent={}, name={:?}",
-                new_cache_key,
+                "VariableCache: Add Variable: key={}, parent={:?}, name={:?}",
+                variable_to_add.variable_key,
                 variable_to_add.parent_key,
                 &variable_to_add.name
             );
 
-            match self
+            let new_entry_key = variable_to_add.variable_key;
+            if let Some(old_variable) = self
                 .variable_hash_map
                 .insert(variable_to_add.variable_key, variable_to_add)
             {
-                Some(old_variable) => {
-                    return Err(anyhow!("Attempt to insert a new `Variable`:{:?} with a duplicate cache key: {}. Please report this as a bug.", cache_variable.name, old_variable.variable_key).into());
-                }
-                None => {
-                    self.variable_cache_key = new_cache_key;
-                }
+                return Err(anyhow!("Attempt to insert a new `Variable`:{:?} with a duplicate cache key: {}. Please report this as a bug.", cache_variable.name, old_variable.variable_key).into());
             }
-            self.variable_cache_key
+            new_entry_key
         } else {
             // Attempt to update an existing `Variable` in the cache
-            let reused_cache_key = variable_to_add.variable_key;
-
-            log::trace!(
+            log::debug!(
                 "VariableCache: Update Variable, key={}, name={:?}",
-                reused_cache_key,
+                variable_to_add.variable_key,
                 &variable_to_add.name
             );
 
+            let updated_entry_key = variable_to_add.variable_key;
             if let Some(prev_entry) = self
                 .variable_hash_map
                 .get_mut(&variable_to_add.variable_key)
@@ -123,10 +103,10 @@ impl VariableCache {
 
                 *prev_entry = variable_to_add
             } else {
-                return Err(anyhow!("Attempt to update and existing `Variable`:{:?} with a non-existent cache key: {}. Please report this as a bug.", cache_variable.name, reused_cache_key).into());
+                return Err(anyhow!("Attempt to update and existing `Variable`:{:?} with a non-existent cache key: {}. Please report this as a bug.", cache_variable.name, variable_to_add.variable_key).into());
             }
 
-            reused_cache_key
+            updated_entry_key
         };
 
         // As the final act, we need to update the variable with an appropriate value.
@@ -161,7 +141,7 @@ impl VariableCache {
     pub fn get_variable_by_name_and_parent(
         &self,
         variable_name: &VariableName,
-        parent_key: i64,
+        parent_key: Option<i64>,
     ) -> Option<Variable> {
         let child_variables = self
             .variable_hash_map
@@ -175,33 +155,29 @@ impl VariableCache {
             0 => None,
             1 => child_variables.first().cloned(),
             child_count => {
-                log::error!("Found {} variables with parent_key={} and name={}. Please report this as a bug.", child_count, parent_key, variable_name);
+                log::error!("Found {} variables with parent_key={:?} and name={}. Please report this as a bug.", child_count, parent_key, variable_name);
                 child_variables.last().cloned()
             }
         }
     }
 
     /// Retrieve `clone`d version of all the children of a `Variable`.
-    /// This also validates that the parent exists in the cache, before attempting to retrieve children.
-    pub fn get_children(&self, parent_key: i64) -> Result<Vec<Variable>, Error> {
-        if parent_key == 0 && (!self.variable_hash_map.contains_key(&parent_key)) {
-            return Err(anyhow!("VariableCache: Attempted to retrieve children for a non existent `variable_key`: {}.", parent_key).into());
-        } else {
-            let mut children: Vec<Variable> = self
-                .variable_hash_map
-                .values()
-                .filter(|child_variable| child_variable.parent_key == parent_key)
-                .cloned()
-                .collect::<Vec<Variable>>();
-            // We have to incur the overhead of sort(), or else the variables in the UI are not in the same order as they appear in the source code.
-            children.sort_by_key(|var| var.variable_key);
-            Ok(children)
-        }
+    /// If `parent_key == None`, it will return all the top level variables (no parents) in this cache.
+    pub fn get_children(&self, parent_key: Option<i64>) -> Result<Vec<Variable>, Error> {
+        let mut children: Vec<Variable> = self
+            .variable_hash_map
+            .values()
+            .filter(|child_variable| child_variable.parent_key == parent_key)
+            .cloned()
+            .collect::<Vec<Variable>>();
+        // We have to incur the overhead of sort(), or else the variables in the UI are not in the same order as they appear in the source code.
+        children.sort_by_key(|var| var.variable_key);
+        Ok(children)
     }
 
     // Check if a `Variable` has any children. This also validates that the parent exists in the cache, before attempting to check for children.
     pub fn has_children(&self, parent_variable: &Variable) -> Result<bool, Error> {
-        self.get_children(parent_variable.variable_key)
+        self.get_children(Some(parent_variable.variable_key))
             .map(|children| !children.is_empty())
     }
 
@@ -221,9 +197,11 @@ impl VariableCache {
             self.variable_hash_map
                 .values_mut()
                 .filter(|search_variable| {
-                    search_variable.parent_key == obsolete_child_variable.variable_key
+                    search_variable.parent_key == Some(obsolete_child_variable.variable_key)
                 })
-                .for_each(|grand_child| grand_child.parent_key = parent_variable.variable_key);
+                .for_each(|grand_child| {
+                    grand_child.parent_key = Some(parent_variable.variable_key)
+                });
             // Remove the intermediate variable from the cache
             self.remove_cache_entry(obsolete_child_variable.variable_key)?;
         }
@@ -235,7 +213,7 @@ impl VariableCache {
         let children: Vec<Variable> = self
             .variable_hash_map
             .values()
-            .filter(|search_variable| search_variable.parent_key == parent_variable_key)
+            .filter(|search_variable| search_variable.parent_key == Some(parent_variable_key))
             .cloned()
             .collect();
         for child in children {
@@ -262,7 +240,7 @@ impl std::fmt::Display for VariableCache {
             .values()
             .cloned()
             .filter(|child_variable| {
-                child_variable.name == VariableName::StackFrame && child_variable.parent_key == 0
+                child_variable.name == VariableName::StackFrame && child_variable.parent_key == None
             })
             .collect::<Vec<Variable>>();
         stack_frames.sort_by_key(|variable| variable.variable_key);
@@ -326,7 +304,7 @@ fn _fmt_recurse_variables(
         parent_variable.value.as_ref().unwrap_or(&"".to_string()),
         parent_variable.type_name
     );
-    if let Ok(children) = variable_cache.get_children(parent_variable.variable_key) {
+    if let Ok(children) = variable_cache.get_children(Some(parent_variable.variable_key)) {
         for variable in &children {
             _fmt_recurse_variables(variable_cache, variable, new_level, f)?;
         }
@@ -403,8 +381,8 @@ impl std::fmt::Display for VariableName {
 pub struct Variable {
     /// Every variable must have a unique key value assigned to it. The value will be zero until it is stored in VariableCache, at which time its value will be set to the same as the VariableCache::variable_cache_key
     pub variable_key: i64,
-    /// Every variable must have a unique parent assigned to it when stored in the VariableCache. A parent_key of 0 in the cache simply implies that this variable doesn't have a parent, i.e. it is the root of a tree.
-    pub parent_key: i64,
+    /// Every variable must have a unique parent assigned to it when stored in the VariableCache. A parent_key of None in the cache simply implies that this variable doesn't have a parent, i.e. it is the root of a tree.
+    pub parent_key: Option<i64>,
 
     /// The variable name refers to the name of any of the types of values described in the [VariableCache]
     pub name: VariableName,
@@ -604,7 +582,7 @@ impl Variable {
         } else {
             let mut compound_value = "".to_string();
             // Only do this if we do not already have a value assigned.
-            if let Ok(children) = variable_cache.get_children(self.variable_key) {
+            if let Ok(children) = variable_cache.get_children(Some(self.variable_key)) {
                 // Make sure we can safely unwrap() children.
                 if self.type_name.starts_with('&') {
                     // Pointers
@@ -711,7 +689,7 @@ impl Value for String {
         variable_cache: &VariableCache,
     ) -> Result<Self, DebugError> {
         let mut str_value: String = "".to_owned();
-        if let Ok(children) = variable_cache.get_children(variable.variable_key) {
+        if let Ok(children) = variable_cache.get_children(Some(variable.variable_key)) {
             if !children.is_empty() {
                 let mut string_length = match children.iter().find(|child_variable| {
                     child_variable.name == VariableName::Named("length".to_string())
@@ -728,7 +706,7 @@ impl Value for String {
                 }) {
                     Some(location_value) => {
                         if let Ok(child_variables) =
-                            variable_cache.get_children(location_value.variable_key)
+                            variable_cache.get_children(Some(location_value.variable_key))
                         {
                             if let Some(first_child) = child_variables.first() {
                                 first_child.memory_location as u32
