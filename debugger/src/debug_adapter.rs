@@ -647,11 +647,11 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
 
         *core_data.variable_cache = VariableCache::new(core_data.target_core.id());
 
-        let current_stackframes = core_data.debug_info.try_unwind(
+        let current_stackframes = core_data.debug_info.unwind(
             core_data.variable_cache,
             &mut core_data.target_core,
             u64::from(pc),
-        );
+        )?;
 
         match self.adapter_type() {
             DebugAdapterType::CommandLine => {
@@ -664,6 +664,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             }
             DebugAdapterType::DapClient => {
                 let mut frame_list: Vec<StackFrame> = current_stackframes
+                    .iter()
                     .map(|frame| {
                         let column = frame
                             .source_location

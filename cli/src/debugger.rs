@@ -5,7 +5,6 @@ use num_traits::Num;
 use probe_rs::architecture::arm::Dump;
 use probe_rs::debug::{DebugInfo, Registers, VariableCache, VariableName};
 use probe_rs::{Core, CoreRegisterAddress, MemoryInterface};
-
 use std::fs::File;
 use std::{io::prelude::*, time::Duration};
 
@@ -288,14 +287,11 @@ impl DebugCli {
                     let mut cache = VariableCache::new(cli_data.core.id());
 
                     if let Some(di) = &mut cli_data.debug_info {
-                        let frames = di.try_unwind(
-                            &mut cache,
-                            &mut cli_data.core,
-                            u64::from(program_counter),
-                        );
-                        for _stack_frame in frames {
-                            // Iterate all the stack frames, so that `debug_info.variable_cache` gets populated.
-                        }
+                        let _frames =
+                            di.unwind(&mut cache, &mut cli_data.core, u64::from(program_counter))?;
+                        println!("{}", cache);
+                    } else {
+                        println!("No debug information present!");
                     }
                 }
 

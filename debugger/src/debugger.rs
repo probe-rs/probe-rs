@@ -244,7 +244,10 @@ pub struct DebugSession {
     pub(crate) session: Session,
     #[allow(dead_code)]
     pub(crate) capstone: Capstone,
+    /// [DebugSession] will manage one [DebugInfo] per [DebuggerOptions::program_binary]
     pub(crate) debug_infos: Vec<DebugInfo>,
+    /// [DebugSession] will manage one [VariableCache] per [Core] in [Session::cores].
+    /// NOTE: Logically, the relationship should be 'one [VariableCache] per [DebugInfo]', but the overhead of a recursive delete from [VariableCache] made it desireable to have a unique cache for each [Core], so that it can be recreated everytime a stacktrace is requested for a core.
     pub(crate) variable_caches: Vec<VariableCache>,
 }
 
