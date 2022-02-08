@@ -291,7 +291,22 @@ impl DebugCli {
                                         }
 
                                         if let Some(file) = &location.file {
-                                            print!("/{}", file)
+                                            print!("/{}", file);
+
+                                            if let Some(line) = location.line {
+                                                print!(":{}", line);
+
+                                                if let Some(col) = location.column {
+                                                    match col {
+                                                        probe_rs::debug::ColumnType::LeftEdge => {
+                                                            print!(":1")
+                                                        }
+                                                        probe_rs::debug::ColumnType::Column(c) => {
+                                                            print!(":{}", c)
+                                                        }
+                                                    }
+                                                }
+                                            }
                                         }
 
                                         println!();

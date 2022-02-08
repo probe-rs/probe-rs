@@ -337,7 +337,7 @@ impl<'debuginfo, 'probe, 'core> Iterator for StackFrameIterator<'debuginfo, 'pro
             if return_frames.len() > 1 {
                 log::debug!("Multiple stack frames:");
                 for frame in &return_frames {
-                    log::debug!(" - name={}, pc={}", frame.function_name, frame.pc);
+                    log::debug!(" - name={}, pc={:#010x}", frame.function_name, frame.pc);
                 }
             }
 
@@ -1110,15 +1110,15 @@ impl DebugInfo {
 
         let mut frames = Vec::new();
 
-        let mut inlined_call_site: Option<u32> = None;
-        let mut inlined_caller_source_location: Option<SourceLocation> = None;
-
         while let Some(unit_info) = self.get_next_unit_info(&mut units) {
             let functions = unit_info.get_function_dies(address, true)?;
 
             if functions.is_empty() {
                 continue;
             }
+
+            let mut inlined_call_site: Option<u32> = None;
+            let mut inlined_caller_source_location: Option<SourceLocation> = None;
 
             // Debugging, remove afterwards
             if functions.len() > 1 {
@@ -1139,17 +1139,23 @@ impl DebugInfo {
                     .function_name(&unit_info)
                     .unwrap_or_else(|| unknown_function.clone());
 
+                log::debug!("UNWIND: Function name: {}", function_name);
+
                 let next_function = &functions[index + 1];
 
                 assert!(next_function.is_inline);
 
                 // Calculate the call site for this function, so that we can use it later to create an additional 'callee' `StackFrame` from that PC.
-                let address_size =
-                    gimli::_UnwindSectionPrivate::address_size(&self.frame_section) as u64;
+                let address_size = unit_info.unit.header.address_size() as u64;
 
                 if next_function.low_pc > address_size && next_function.low_pc < u32::MAX.into() {
                     // The first instruction of the inlined function is used as the call saite
-                    inlined_call_site = Some(function_die.low_pc as u32);
+                    inlined_call_site = Some(next_function.low_pc as u32);
+
+                    log::debug!(
+                        "UNWIND: Callsite for inlined function {:?}",
+                        next_function.function_name(&unit_info)
+                    );
 
                     inlined_caller_source_location = if let Some(file_name_attr) =
                         next_function.get_attribute(gimli::DW_AT_call_file)
@@ -1159,10 +1165,11 @@ impl DebugInfo {
                             &unit_info.unit,
                             file_name_attr.value(),
                         ) {
-                            let line = function_die
+                            let line = next_function
                                 .get_attribute(gimli::DW_AT_call_line)
                                 .and_then(|line| line.udata_value());
-                            let column = function_die.get_attribute(gimli::DW_AT_call_column).map(
+
+                            let column = next_function.get_attribute(gimli::DW_AT_call_column).map(
                                 |column| match column.udata_value() {
                                     None => ColumnType::LeftEdge,
                                     Some(c) => ColumnType::Column(c),
@@ -1191,7 +1198,7 @@ impl DebugInfo {
                     );
                 }
 
-                log::debug!("UNWIND: Function name: {}", function_name);
+                log::debug!("UNWIND: Call site: {:?}", inlined_caller_source_location);
 
                 // Now that we have the function_name and function_source_location, we can cache the in-scope `Variable`s (`<statics>` and `<locals>`) in `DebugInfo::VariableCache`
                 // We need an empty parent variable for the next operation, but do not need to store it in the cache.
@@ -3010,16 +3017,20 @@ fn extract_file(
     match attribute_value {
         gimli::AttributeValue::FileIndex(index) => unit.line_program.as_ref().and_then(|ilnp| {
             let header = ilnp.header();
-            header.file(index).and_then(|file_entry| {
-                file_entry.directory(header).map(|directory| {
-                    (
-                        PathBuf::from(extract_name(debug_info, directory)),
-                        extract_name(debug_info, file_entry.path_name()),
-                    )
-                })
-            })
+
+            let file_entry = header.file(index);
+
+            debug_info
+                .find_file_and_directory(&unit, header, file_entry.unwrap())
+                .map(|(file, path)| (path.unwrap(), file.unwrap()))
         }),
-        _ => None,
+        other => {
+            log::debug!(
+                "Unable to extract file information from attribute value {:?}: Not implemented.",
+                other
+            );
+            None
+        }
     }
 }
 
