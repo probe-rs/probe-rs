@@ -949,7 +949,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             let dap_variables: Vec<Variable> = if let Some(variable_cache) = variable_cache {
                 if let Some(parent_variable) = parent_variable.as_mut() {
                     if parent_variable.variable_node_type.is_deferred()
-                        && !variable_cache.has_children(&parent_variable)?
+                        && !variable_cache.has_children(parent_variable)?
                     {
                         core_data.debug_info.cache_deferred_variables(
                             variable_cache,
