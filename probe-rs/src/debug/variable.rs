@@ -4,22 +4,7 @@ use anyhow::anyhow;
 use gimli::{DebugInfoOffset, UnitOffset};
 use num_traits::Zero;
 
-/// VariableCache stores every available `Variable`s, and provides methods to create and navigate the parent-child relationships of the Variables.
-/// NOTE: `VariableCache` must be refreshed (recreated) evertytime a stack trace is done.
-///
-/// We use 'special' `Variables`, to create a structure that models the tree strucutre used by MS DAP specification ( `Threads -> StackTrace -> Scopes -> Variables`), and later on allows the debugger to request these as parent-children structrues.)
-///
-/// In probe-rs, this `Variable` structure looks as follows (indentation represent parent-child structure)
-/// - [VariableName::CoreId] : Every [`Core::id()`] is represented as a top level thread. e.g. Core 0 is thread 0, and so on. This is used as if it is synonomous to the `Threads` level in the MS DAP specification.
-///   - [VariableName::StackFrame]: Every `StackFrame` in a stack trace will have one of these, with its function name captured in the `value` field of this variable.
-///     - [VariableName::StaticScope]: The parent variable for all static scoped variables that are in the same compile unit, or in dependencies that are explicitly mentioned in the compile unit of the relevant stack frame.
-///       - A recursive `Variable` structure as described for `[VariableName::LocalScope]` below.
-///     - [VariableName::Registers]: Every `StackFrame` will have a collection of `Variable` registers with values scoped to that frame.
-///       - A `Variable` for each available register
-///     - [VariableName::LocalScope]: Every `StackFrame` (function) will have a collection of locally scoped `Variable`s.
-///       - A `Variable` for each in-scope variable. Complex variables and pointers will have additional children.
-///         - Child `Variable`s that make up a complex parent variable.
-///           - This structure is recursive until a base type is encountered.
+/// VariableCache stores available `Variable`s, and provides methods to create and navigate the parent-child relationships of the Variables.
 #[derive(Debug)]
 pub struct VariableCache {
     variable_hash_map: HashMap<i64, Variable>,
@@ -230,59 +215,6 @@ impl VariableCache {
             return Err(anyhow!("Failed to remove a `VariableCache` entry with key: {}. Please report this as a bug.", variable_key).into());
         };
         Ok(())
-    }
-}
-
-impl std::fmt::Display for VariableCache {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        let mut stack_frames = self
-            .variable_hash_map
-            .values()
-            .cloned()
-            .filter(|child_variable| {
-                child_variable.name == VariableName::StackFrame && child_variable.parent_key == None
-            })
-            .collect::<Vec<Variable>>();
-        stack_frames.sort_by_key(|variable| variable.variable_key);
-        if stack_frames.is_empty() {
-            writeln!(
-                f,
-                "`DebugInfo::VariableCache` contains no `StackFrame` data."
-            )?;
-        }
-
-        for stackframe_root_variable in stack_frames {
-            // Header info for the StackFrame
-            writeln!(f)?;
-            writeln!(
-                f,
-                "StackFrame data for {}",
-                stackframe_root_variable
-                    .value
-                    .unwrap_or_else(|| "unknown function".to_string())
-            )?;
-            if let Some(si) = stackframe_root_variable.source_location {
-                write!(
-                    f,
-                    "\t{}/{}",
-                    si.directory
-                        .as_ref()
-                        .map(|p| p.to_string_lossy())
-                        .unwrap_or_else(|| std::borrow::Cow::from("<unknown dir>")),
-                    si.file.as_ref().unwrap_or(&"<unknown file>".to_owned())
-                )?;
-
-                if let (Some(column), Some(line)) = (si.column, si.line) {
-                    match column {
-                        ColumnType::Column(c) => write!(f, ":{}:{}", line, c)?,
-                        ColumnType::LeftEdge => write!(f, ":{}", line)?,
-                    }
-                }
-
-                writeln!(f)?;
-            }
-        }
-        writeln!(f)
     }
 }
 

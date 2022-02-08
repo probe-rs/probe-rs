@@ -80,8 +80,38 @@ pub struct StackFrame {
     pub is_inlined: bool,
     /// A cache of 'static' scoped variables for this stackframe
     pub static_variables: Option<VariableCache>,
-    /// A cache of 'local' scoped variables for this stafckframe
+    /// A cache of 'local' scoped variables for this stafckframe, with a `Variable` for each in-scope variable.
+    /// - Complex variables and pointers will have additional children.
+    ///   - This structure is recursive until a base type is encountered.
     pub local_variables: Option<VariableCache>,
+    /// A cache of variables to represent the `registers` for this stafckframe. We essentially duplicate data stored in `registers`, but this allows us to assign unique id's that can be used by the DAP client to reference variables during DAP API calls. VSCode treats these registers in the same way as any other variable, so we need to 'mimic' that.
+    pub register_variables: Option<VariableCache>,
+}
+
+impl std::fmt::Display for StackFrame {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        // Header info for the StackFrame
+        writeln!(f, "Frame: {}", self.function_name)?;
+        if let Some(si) = &self.source_location {
+            write!(
+                f,
+                "\t{}/{}",
+                si.directory
+                    .as_ref()
+                    .map(|p| p.to_string_lossy())
+                    .unwrap_or_else(|| std::borrow::Cow::from("<unknown dir>")),
+                si.file.as_ref().unwrap_or(&"<unknown file>".to_owned())
+            )?;
+
+            if let (Some(column), Some(line)) = (si.column, si.line) {
+                match column {
+                    ColumnType::Column(c) => write!(f, ":{}:{}", line, c)?,
+                    ColumnType::LeftEdge => write!(f, ":{}", line)?,
+                }
+            }
+        }
+        writeln!(f)
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -928,12 +958,12 @@ impl DebugInfo {
     /// This saves a lot of overhead when a user only wants to see the `[VariableName::LocalScope]` or `[VariableName::Registers]` while stepping through code (the most common use cases)
     fn cache_static_variables(
         &self,
-        cache: &mut VariableCache,
         core: &mut Core<'_>,
         unit_info: &UnitInfo,
         stack_frame_registers: &Registers,
-        stackframe_root_variable: &Variable,
-    ) -> Result<(), DebugError> {
+    ) -> Result<VariableCache, DebugError> {
+        let mut static_variable_cache = VariableCache::new();
+
         // Only process statics for this unit header.
         let abbrevs = &unit_info.unit.abbreviations;
         // Navigate the current unit from the header down.
@@ -946,30 +976,22 @@ impl DebugInfo {
             static_root_variable.referenced_node_offset = Some(unit_node.entry().offset());
             static_root_variable.stack_frame_registers = Some(stack_frame_registers.clone());
             static_root_variable.name = VariableName::StaticScope;
-            cache.cache_variable(
-                Some(stackframe_root_variable.variable_key),
-                static_root_variable,
-                core,
-            )?;
+            static_variable_cache.cache_variable(None, static_root_variable, core)?;
         }
-        Ok(())
+        Ok(static_variable_cache)
     }
 
     /// Resolves and then loads all the `Register` variables into the `DebugInfo::VariableCache`.
     fn cache_register_variables(
         &self,
-        cache: &mut VariableCache,
         registers: &Registers,
-        stackframe_root_variable: &Variable,
         core: &mut Core<'_>,
-    ) -> Result<(), DebugError> {
+    ) -> Result<VariableCache, DebugError> {
+        let mut register_variable_cache = VariableCache::new();
         let mut register_root_variable = Variable::new(None, None);
         register_root_variable.name = VariableName::Registers;
-        register_root_variable = cache.cache_variable(
-            Some(stackframe_root_variable.variable_key),
-            register_root_variable,
-            core,
-        )?;
+        register_root_variable =
+            register_variable_cache.cache_variable(None, register_root_variable, core)?;
 
         let mut sorted_registers = registers.values.iter().collect::<Vec<(&u32, &u32)>>();
         sorted_registers.sort_by_key(|(register_number, _register_value)| *register_number);
@@ -985,25 +1007,25 @@ impl DebugInfo {
             register_variable.type_name = "Platform Register".to_owned();
             register_variable.byte_size = 4;
             register_variable.set_value(format!("{:#010x}", register_value));
-            cache.cache_variable(
+            register_variable_cache.cache_variable(
                 Some(register_root_variable.variable_key),
                 register_variable,
                 core,
             )?;
         }
-        Ok(())
+        Ok(register_variable_cache)
     }
 
     /// Resolves and then loads all the `function` variables into the `DebugInfo::VariableCache`.
     fn cache_function_variables(
         &self,
-        cache: &mut VariableCache,
         core: &mut Core<'_>,
         die_cursor_state: &FunctionDie,
         unit_info: &UnitInfo,
         stack_frame_registers: &Registers,
-        stackframe_root_variable: &Variable,
-    ) -> Result<(), DebugError> {
+    ) -> Result<VariableCache, DebugError> {
+        let mut function_variable_cache = VariableCache::new();
+
         let abbrevs = &unit_info.unit.abbreviations;
         let mut tree = unit_info
             .unit
@@ -1016,20 +1038,17 @@ impl DebugInfo {
             Some(function_node.entry().offset()),
         );
         function_root_variable.name = VariableName::LocalScope;
-        function_root_variable = cache.cache_variable(
-            Some(stackframe_root_variable.variable_key),
-            function_root_variable,
-            core,
-        )?;
+        function_root_variable =
+            function_variable_cache.cache_variable(None, function_root_variable, core)?;
 
         unit_info.process_tree(
             function_node,
             function_root_variable,
             core,
             stack_frame_registers,
-            cache,
+            &mut function_variable_cache,
         )?;
-        Ok(())
+        Ok(function_variable_cache)
     }
 
     /// This is a lazy/deffered resolves and loads all the 'child' `Variable`s for a given unit.
@@ -1120,7 +1139,6 @@ impl DebugInfo {
     /// This function will also populate the `DebugInfo::VariableCache` with in scope `Variable`s for each `StackFrame`
     fn get_stackframe_info(
         &self,
-        cache: &mut VariableCache,
         core: &mut Core<'_>,
         address: u64,
         unwind_registers: &Registers,
@@ -1207,58 +1225,65 @@ impl DebugInfo {
                     core,
                 )?;
 
-                if let Some(error) = self
-                    .cache_register_variables(
-                        cache,
-                        &stack_frame_registers,
-                        &stackframe_root_variable,
-                        core,
-                    )
-                    .err()
-                {
-                    log::warn!(
-                        "Could not resolve register variables.{}. Continuing...",
-                        error
+                // Now that we have the function_name and function_source_location, we can create the appropriate variable caches for this stack frame.
+
+                let register_variables = self
+                    .cache_register_variables(&stack_frame_registers, core)
+                    .map_or_else(
+                        |error| {
+                            log::error!(
+                                "Could not resolve register variables. {}. Continuing...",
+                                error
+                            );
+                            None
+                        },
+                        Some,
                     );
-                }
 
                 // Next, resolve the statics that belong to the compilation unit that this function is in.
-                if let Some(error) = self
-                    .cache_static_variables(
-                        cache,
-                        core,
-                        &unit_info,
-                        &stack_frame_registers,
-                        &stackframe_root_variable,
-                    )
-                    .err()
-                {
-                    log::warn!(
-                        "Error while resolving static variables.{}. Continuing...",
-                        error
+                let static_variables = self
+                    .cache_static_variables(core, &unit_info, &stack_frame_registers)
+                    .map_or_else(
+                        |error| {
+                            log::error!(
+                                "Could not resolve static variables. {}. Continuing...",
+                                error
+                            );
+                            None
+                        },
+                        Some,
                     );
-                }
 
                 // Next, resolve and cache the function variables.
-                self.cache_function_variables(
-                    cache,
-                    core,
-                    function_die,
-                    &unit_info,
-                    &stack_frame_registers,
-                    &stackframe_root_variable,
-                )?;
+                let local_variables = self
+                    .cache_function_variables(
+                        core,
+                        function_die,
+                        &unit_info,
+                        &stack_frame_registers,
+                    )
+                    .map_or_else(
+                        |error| {
+                            log::error!(
+                                "Could not resolve function variables. {}. Continuing...",
+                                error
+                            );
+                            None
+                        },
+                        Some,
+                    );
 
                 frames.push(StackFrame {
                     // MS DAP Specification requires the id to be unique accross all threads, so using  so using unique `Variable::variable_key` of the `stackframe_root_variable` as the id.
                     id: get_sequential_key(),
                     function_name,
                     source_location: inlined_caller_source_location,
-                    registers: stack_frame_registers.clone(),
+                    registers: stack_frame_registers,
                     pc: inlined_call_site.unwrap(),
                     is_inlined: function_die.is_inline(),
                     static_variables: None,
                     local_variables: None,
+                    register_variables,
                 });
             }
 
@@ -1359,47 +1384,31 @@ impl DebugInfo {
             break;
         }
 
-        // If we get here, we were not able to identify/unwind the function information.
         // Before returning `unknown_function` [StackFrame], make sure we at least cache the Register values.
-        // We need an empty parent variable for the next operation, but do not need to store it in the cache.
+        let register_variables = self
+            .cache_register_variables(&stack_frame_registers, core)
+            .map_or_else(
+                |error| {
+                    log::warn!(
+                        "Could not resolve register variables. {}. Continuing...",
+                        error
+                    );
+                    None
+                },
+                Some,
+            );
 
         if frames.is_empty() {
-            let parent_variable = Variable::new(None, None);
-            let mut stackframe_root_variable = Variable::new(None, None);
-            stackframe_root_variable.name = VariableName::StackFrame;
-            stackframe_root_variable.source_location = self.get_source_location(address);
-            stackframe_root_variable.set_value(unknown_function.clone());
-            stackframe_root_variable.memory_location = address;
-
-            stackframe_root_variable = cache.cache_variable(
-                Some(parent_variable.variable_key),
-                stackframe_root_variable,
-                core,
-            )?;
-
-            if let Some(error) = self
-                .cache_register_variables(
-                    cache,
-                    &stack_frame_registers,
-                    &stackframe_root_variable,
-                    core,
-                )
-                .err()
-            {
-                log::warn!(
-                    "Could not resolve register variables.{}. Continuing...",
-                    error
-                );
-            }
             Ok(vec![StackFrame {
-                id: stackframe_root_variable.variable_key as u64,
+                id: get_sequential_key(),
                 function_name: unknown_function,
                 source_location: self.get_source_location(address),
-                registers: stack_frame_registers.clone(),
+                registers: stack_frame_registers,
                 pc: address as u32,
                 is_inlined: false,
                 static_variables: None,
                 local_variables: None,
+                register_variables,
             }])
         } else {
             Ok(frames)
@@ -1419,12 +1428,7 @@ impl DebugInfo {
     /// - Similarly, certain error conditions encountered in `StackFrameIterator` will also break out of the unwind loop.
     /// Note: In addition to populating the `StackFrame`s, this function will also populate the `DebugInfo::VariableCache` with `Variable`s for available Registers as well as static and function variables.
     /// TODO: Separate logic for stackframe creation and cache population
-    pub fn unwind(
-        &self,
-        cache: &mut VariableCache,
-        core: &mut Core,
-        address: u64,
-    ) -> Result<Vec<StackFrame>, crate::Error> {
+    pub fn unwind(&self, core: &mut Core, address: u64) -> Result<Vec<StackFrame>, crate::Error> {
         let mut stack_frames = Vec::<StackFrame>::new();
         let mut unwind_registers = Registers::from_core(core);
         // Register state as updated for every iteration (previous function) of the unwind process.
@@ -1462,7 +1466,6 @@ impl DebugInfo {
 
             // PART 1-a: Prepare the `StackFrame` that holds the current frame information
             let return_frame = match self.get_stackframe_info(
-                cache,
                 core,
                 frame_pc,
                 &unwind_registers,

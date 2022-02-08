@@ -27,9 +27,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Chip names are now matched treating an 'x' as a wildcard. (#964)
 - GDB server is now available as a subcommand in the probe-rs-cli, not as a separate binary in the `gdb-server` package anymore . (#972)
 - `probe_rs::debug` and `probe-rs-debugger` changes/cleanup to the internals (#999)
-  - `VariableCache` structure now models the tree stucture of the MS DAP Specification for `Threads -> StackTrace -> Scopes -> Variables`
+  - Removed `StackFrameIterator` and incorporated its logic into `DebugInfo::unwind()`
+  - `StackFrame` now has `VariableCache` entries for locals, statics and registers
   - Modify `DebugSession` and `CoreData` to handle multiple cores.
-  - WIP: Modify `Variable::parent_key` to be `Option<i64>` and use `None` rather than `0` values to control logic.
+  - Modify `Variable::parent_key` to be `Option<i64>` and use `None` rather than `0` values to control logic.
   - WIP: Use the updated `VariableCache` to facilitate 'lazy' loading of all variables during stack trace operations. VSCode and MS DAP will request one 'level' of variables at a time, and there is no need to resolve and cache variable data unless the user is going to view/use it.
 
 ### Fixed

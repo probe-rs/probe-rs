@@ -7,7 +7,7 @@ use anyhow::{anyhow, Context, Result};
 use capstone::{arch::arm::ArchMode, prelude::*, Capstone, Endian};
 use probe_rs::config::TargetSelector;
 use probe_rs::debug::DebugInfo;
-use probe_rs::debug::VariableCache;
+
 use probe_rs::flashing::download_file;
 use probe_rs::flashing::download_file_with_options;
 use probe_rs::flashing::DownloadOptions;
@@ -246,9 +246,8 @@ pub struct DebugSession {
     pub(crate) capstone: Capstone,
     /// [DebugSession] will manage one [DebugInfo] per [DebuggerOptions::program_binary]
     pub(crate) debug_infos: Vec<DebugInfo>,
-    /// [DebugSession] will manage one [VariableCache] per [Core] in [Session::cores].
-    /// NOTE: Logically, the relationship should be 'one [VariableCache] per [DebugInfo]', but the overhead of a recursive delete from [VariableCache] made it desireable to have a unique cache for each [Core], so that it can be recreated everytime a stacktrace is requested for a core.
-    pub(crate) variable_caches: Vec<VariableCache>,
+    /// [DebugSession] will manage a `Vec<StackFrame>` per [Core]. Each core's collection of StackFrames will be recreated whenever a stacktrace is performed, using the results of [DebugInfo::unwind]
+    pub(crate) stack_frames: Vec<Vec<probe_rs::debug::StackFrame>>,
 }
 
 impl DebugSession {
@@ -359,13 +358,21 @@ impl DebugSession {
         ];
 
         // Configure the [VariableCache].
-        let variable_caches = vec![VariableCache::new()];
+        let mut stack_frames = vec![];
+        for (core_id, core_type) in target_session.list_cores() {
+            log::debug!(
+                "Preparing DebugSession and CoreData for core #{} of type: {:?}",
+                core_id,
+                core_type
+            );
+            stack_frames.push(Vec::<probe_rs::debug::StackFrame>::new());
+        }
 
         Ok(DebugSession {
             session: target_session,
             capstone,
             debug_infos,
-            variable_caches,
+            stack_frames,
         })
     }
 
@@ -382,9 +389,9 @@ impl DebugSession {
                         core_index
                     ))
                 })?,
-                variable_cache: self.variable_caches.get_mut(core_index).ok_or_else(|| {
+                stack_frames: self.stack_frames.get_mut(core_index).ok_or_else(|| {
                     DebuggerError::Other(anyhow!(
-                        "No available `VariableCache` for core # {}",
+                        "No available `StackFrame`s for core # {}",
                         core_index
                     ))
                 })?,
@@ -403,7 +410,16 @@ pub struct CoreData<'p> {
     pub(crate) target_core: Core<'p>,
     pub(crate) target_name: String,
     pub(crate) debug_info: &'p DebugInfo,
-    pub(crate) variable_cache: &'p mut VariableCache,
+    pub(crate) stack_frames: &'p mut Vec<probe_rs::debug::StackFrame>,
+}
+
+impl<'p> CoreData<'p> {
+    /// Search available [StackFrame]'s for the given `id`
+    pub(crate) fn get_stackframe(&'p self, id: i64) -> Option<&'p probe_rs::debug::StackFrame> {
+        self.stack_frames
+            .iter()
+            .find(|stack_frame| stack_frame.id == id)
+    }
 }
 
 /// Definition of commands that have been implemented in Debugger.
