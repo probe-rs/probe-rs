@@ -1143,7 +1143,7 @@ impl DebugInfo {
 
                 let next_function = &functions[index + 1];
 
-                assert!(next_function.is_inline);
+                assert!(next_function.is_inline());
 
                 // Calculate the call site for this function, so that we can use it later to create an additional 'callee' `StackFrame` from that PC.
                 let address_size = unit_info.unit.header.address_size() as u64;
@@ -1157,45 +1157,7 @@ impl DebugInfo {
                         next_function.function_name(&unit_info)
                     );
 
-                    inlined_caller_source_location = if let Some(file_name_attr) =
-                        next_function.get_attribute(gimli::DW_AT_call_file)
-                    {
-                        if let Some((directory, file)) = extract_file(
-                            unit_info.debug_info,
-                            &unit_info.unit,
-                            file_name_attr.value(),
-                        ) {
-                            let line = next_function
-                                .get_attribute(gimli::DW_AT_call_line)
-                                .and_then(|line| line.udata_value());
-
-                            let column = next_function.get_attribute(gimli::DW_AT_call_column).map(
-                                |column| match column.udata_value() {
-                                    None => ColumnType::LeftEdge,
-                                    Some(c) => ColumnType::Column(c),
-                                },
-                            );
-                            Some(SourceLocation {
-                                line,
-                                column,
-                                file: Some(file),
-                                directory: Some(directory),
-                            })
-                        } else {
-                            None
-                        }
-                    } else {
-                        log::warn!(
-                            "Failed to get `SourceLocation` for function {:?}",
-                            function_die.function_name(&unit_info)
-                        );
-                        None
-                    };
-                } else {
-                    log::error!(
-                        "UNWIND: Unable to calculate call site information for function {}",
-                        function_name
-                    );
+                    inlined_caller_source_location = next_function.inline_call_location(&unit_info);
                 }
 
                 log::debug!("UNWIND: Call site: {:?}", inlined_caller_source_location);
@@ -1209,7 +1171,7 @@ impl DebugInfo {
                 );
                 stackframe_root_variable.name = VariableName::StackFrame;
                 stackframe_root_variable.source_location = inlined_caller_source_location.clone();
-                let function_display_name = if function_die.is_inline {
+                let function_display_name = if function_die.is_inline() {
                     format!("{} #[inline]", &function_name)
                 } else {
                     format!("{} @{:#010x}", &function_name, address)
@@ -1282,7 +1244,7 @@ impl DebugInfo {
                     source_location: inlined_caller_source_location.clone(),
                     registers: stack_frame_registers.clone(),
                     pc: inlined_call_site.unwrap(),
-                    is_inlined: function_die.is_inline,
+                    is_inlined: function_die.is_inline(),
                 });
             }
 
@@ -1304,7 +1266,7 @@ impl DebugInfo {
             );
             stackframe_root_variable.name = VariableName::StackFrame;
             stackframe_root_variable.source_location = function_location.clone();
-            let function_display_name = if last_function.is_inline {
+            let function_display_name = if last_function.is_inline() {
                 format!("{} #[inline]", &function_name)
             } else {
                 format!("{} @{:#010x}", &function_name, address)
@@ -1377,7 +1339,7 @@ impl DebugInfo {
                 source_location: function_location,
                 registers: stack_frame_registers.clone(),
                 pc: address as u32,
-                is_inlined: last_function.is_inline,
+                is_inlined: last_function.is_inline(),
             });
 
             break;
@@ -1598,7 +1560,9 @@ impl DebugInfo {
 /// Reference to a DIE for a function
 struct FunctionDie<'abbrev, 'unit> {
     function_die: FunctionDieType<'abbrev, 'unit>,
-    is_inline: bool,
+
+    /// Only present for inlined functions, where this is a reference
+    /// to the declaration of the function.
     abstract_die: Option<FunctionDieType<'abbrev, 'unit>>,
     low_pc: u64,
     high_pc: u64,
@@ -1613,7 +1577,6 @@ impl<'debugunit, 'abbrev, 'unit: 'debugunit> FunctionDie<'abbrev, 'unit> {
             gimli::DW_TAG_subprogram => {
                 Self {
                     function_die: die,
-                    is_inline: false,
                     abstract_die: None,
                     low_pc: 0,
                     high_pc: 0,
@@ -1633,7 +1596,6 @@ impl<'debugunit, 'abbrev, 'unit: 'debugunit> FunctionDie<'abbrev, 'unit> {
             gimli::DW_TAG_inlined_subroutine => {
                 Self {
                     function_die: concrete_die,
-                    is_inline: true,
                     abstract_die: Some(abstract_die),
                     low_pc: 0,
                     high_pc: 0,
@@ -1642,6 +1604,10 @@ impl<'debugunit, 'abbrev, 'unit: 'debugunit> FunctionDie<'abbrev, 'unit> {
             }
             other_tag => panic!("FunctionDie has to has to have Tag DW_TAG_inlined_subroutine, but tag is {:?}. This is a bug, please report it.", other_tag.static_string())
         }
+    }
+
+    fn is_inline(&self) -> bool {
+        self.abstract_die.is_some()
     }
 
     fn function_name(&self, unit: &UnitInfo<'_>) -> Option<String> {
@@ -1663,6 +1629,40 @@ impl<'debugunit, 'abbrev, 'unit: 'debugunit> FunctionDie<'abbrev, 'unit> {
         }
     }
 
+    /// Get the call site of an inlined function.
+    ///
+    /// If this function is not inlined (`is_inline()` returns false),
+    /// this function returns `None`.
+    fn inline_call_location(&self, unit_info: &UnitInfo) -> Option<SourceLocation> {
+        if !self.is_inline() {
+            return None;
+        }
+
+        let file_name_attr = self.get_attribute(gimli::DW_AT_call_file)?;
+
+        let (directory, file) = extract_file(
+            unit_info.debug_info,
+            &unit_info.unit,
+            file_name_attr.value(),
+        )?;
+        let line = self
+            .get_attribute(gimli::DW_AT_call_line)
+            .and_then(|line| line.udata_value());
+
+        let column =
+            self.get_attribute(gimli::DW_AT_call_column)
+                .map(|column| match column.udata_value() {
+                    None => ColumnType::LeftEdge,
+                    Some(c) => ColumnType::Column(c),
+                });
+        Some(SourceLocation {
+            line,
+            column,
+            file: Some(file),
+            directory: Some(directory),
+        })
+    }
+
     /// Resolve an attribute by looking through both the origin or abstract die entries.
     fn get_attribute(&self, attribute_name: gimli::DwAt) -> Option<GimliAttribute> {
         let attribute = self
@@ -1672,7 +1672,7 @@ impl<'debugunit, 'abbrev, 'unit: 'debugunit> FunctionDie<'abbrev, 'unit> {
 
         // For inlined function, the *abstract instance* has to be checked if we cannot find the
         // attribute on the *concrete instance*.
-        if self.is_inline && attribute.is_none() {
+        if self.is_inline() && attribute.is_none() {
             if let Some(origin) = self.abstract_die.as_ref() {
                 origin
                     .attr(attribute_name)
