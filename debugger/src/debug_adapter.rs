@@ -5,6 +5,7 @@ use crate::DebuggerError;
 use anyhow::{anyhow, Result};
 use dap_types::*;
 use parse_int::parse;
+use probe_rs::debug::Registers;
 use probe_rs::debug::{VariableCache, VariableName};
 use probe_rs::{debug::ColumnType, CoreStatus, HaltReason, MemoryInterface};
 use probe_rs_cli_util::rtt;
@@ -914,6 +915,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             // The MS DAP Specification only gives us the unique reference of the variable, and does not tell us which StackFrame it belongs to, nor does it specify if this variable is in the local, register or static scope. Unfortunately this means we have to search through all the available [VariableCache]'s until we find it. To minimize the impact of this, we will search in the most 'likely' places first (first stack frame's locals, then statics, then registers, then move to next stack frame, and so on ...)
             let mut parent_variable: Option<probe_rs::debug::Variable> = None;
             let mut variable_cache: Option<&mut VariableCache> = None;
+            let mut stack_frame_registers: Option<&Registers> = None;
             for stack_frame in core_data.stack_frames.iter_mut() {
                 if let Some(search_cache) = &mut stack_frame.local_variables {
                     if let Some(search_variable) =
@@ -921,6 +923,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                     {
                         parent_variable = Some(search_variable);
                         variable_cache = Some(search_cache);
+                        stack_frame_registers = Some(&stack_frame.registers);
                         break;
                     }
                 }
@@ -930,6 +933,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                     {
                         parent_variable = Some(search_variable);
                         variable_cache = Some(search_cache);
+                        stack_frame_registers = Some(&stack_frame.registers);
                         break;
                     }
                 }
@@ -939,6 +943,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                     {
                         parent_variable = Some(search_variable);
                         variable_cache = Some(search_cache);
+                        stack_frame_registers = Some(&stack_frame.registers);
                         break;
                     }
                 }
@@ -951,11 +956,16 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                     if parent_variable.variable_node_type.is_deferred()
                         && !variable_cache.has_children(parent_variable)?
                     {
-                        core_data.debug_info.cache_deferred_variables(
-                            variable_cache,
-                            &mut core_data.target_core,
-                            parent_variable,
-                        )?;
+                        if let Some(stack_frame_registers) = stack_frame_registers {
+                            core_data.debug_info.cache_deferred_variables(
+                                variable_cache,
+                                &mut core_data.target_core,
+                                parent_variable,
+                                stack_frame_registers,
+                            )?;
+                        } else {
+                            log::error!("Could not cache deferred child variables for variable: {}. No register data available.", parent_variable.name );
+                        }
                     }
                 }
 

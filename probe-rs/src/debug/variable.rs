@@ -372,8 +372,6 @@ pub struct Variable {
     /// TODO: Is there a more efficient method to get on demand access to gimli::Unit through stored references to it?
     pub header_offset: Option<DebugInfoOffset>,
     pub entries_offset: Option<UnitOffset>,
-    /// The register values are needed to resolve the debug information and calculate memory locations and run-time data values. This is only needed for referenced nodes of variables with `DW_TAG_pointer_type`
-    pub stack_frame_registers: Option<Registers>,
     /// The starting location/address in memory where this Variable's value is stored.
     pub memory_location: u64,
     pub byte_size: u64,
@@ -387,7 +385,7 @@ pub struct Variable {
 }
 
 impl Variable {
-    /// In most cases, Variables will be initialized with their ELF references, so that we resolve their data types and values on demand.
+    /// In most cases, Variables will be initialized with their ELF references so that we resolve their data types and values on demand.
     pub(crate) fn new(
         header_offset: Option<DebugInfoOffset>,
         entries_offset: Option<UnitOffset>,
