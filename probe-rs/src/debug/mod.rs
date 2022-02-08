@@ -962,7 +962,6 @@ impl DebugInfo {
         &self,
         core: &mut Core<'_>,
         unit_info: &UnitInfo,
-        stack_frame_registers: &Registers,
     ) -> Result<VariableCache, DebugError> {
         let mut static_variable_cache = VariableCache::new();
 
@@ -976,7 +975,6 @@ impl DebugInfo {
                 Some(unit_node.entry().offset()),
             );
             static_root_variable.variable_node_type = VariableNodeType::DirectLookup;
-            static_root_variable.stack_frame_registers = Some(stack_frame_registers.clone());
             static_root_variable.name = VariableName::StaticScope;
             static_variable_cache.cache_variable(None, static_root_variable, core)?;
         }
@@ -1024,7 +1022,6 @@ impl DebugInfo {
         core: &mut Core<'_>,
         die_cursor_state: &FunctionDie,
         unit_info: &UnitInfo,
-        stack_frame_registers: &Registers,
     ) -> Result<VariableCache, DebugError> {
         let mut function_variable_cache = VariableCache::new();
 
@@ -1040,7 +1037,6 @@ impl DebugInfo {
             Some(function_node.entry().offset()),
         );
         function_root_variable.variable_node_type = VariableNodeType::DirectLookup;
-        function_root_variable.stack_frame_registers = Some(stack_frame_registers.clone());
         function_root_variable.name = VariableName::LocalScope;
         function_variable_cache.cache_variable(None, function_root_variable, core)?;
         Ok(function_variable_cache)
@@ -1052,35 +1048,35 @@ impl DebugInfo {
         cache: &mut VariableCache,
         core: &mut Core<'_>,
         parent_variable: &mut Variable,
+        stack_frame_registers: &Registers,
     ) -> Result<(), DebugError> {
         match parent_variable.variable_node_type {
             VariableNodeType::Offset(reference_offset) => {
                 // Only attempt this part if the parent is a pointer and we have not yet resolved the referenced children.
                 if !cache.has_children(parent_variable)? {
-                    if let Some(ref stack_frame_registers) = parent_variable.stack_frame_registers {
-                        if let Some(header_offset) = parent_variable.header_offset {
-                            let unit_header =
-                                self.dwarf.debug_info.header_from_offset(header_offset)?;
-                            let unit_info = UnitInfo {
-                                debug_info: self,
-                                unit: gimli::Unit::new(&self.dwarf, unit_header)?,
-                            };
-                            // Reference to a type, or an node.entry() to another type or a type modifier which will point to another type.
-                            let mut type_tree = unit_info.unit.header.entries_tree(
-                                &unit_info.unit.abbreviations,
-                                Some(reference_offset),
-                            )?;
-                            let referenced_node = type_tree.root()?;
-                            let mut referenced_variable = cache.cache_variable(
-                                Some(parent_variable.variable_key),
-                                Variable::new(
-                                    unit_info.unit.header.offset().as_debug_info_offset(),
-                                    Some(referenced_node.entry().offset()),
-                                ),
-                                core,
-                            )?;
+                    if let Some(header_offset) = parent_variable.header_offset {
+                        let unit_header =
+                            self.dwarf.debug_info.header_from_offset(header_offset)?;
+                        let unit_info = UnitInfo {
+                            debug_info: self,
+                            unit: gimli::Unit::new(&self.dwarf, unit_header)?,
+                        };
+                        // Reference to a type, or an node.entry() to another type or a type modifier which will point to another type.
+                        let mut type_tree = unit_info
+                            .unit
+                            .header
+                            .entries_tree(&unit_info.unit.abbreviations, Some(reference_offset))?;
+                        let referenced_node = type_tree.root()?;
+                        let mut referenced_variable = cache.cache_variable(
+                            Some(parent_variable.variable_key),
+                            Variable::new(
+                                unit_info.unit.header.offset().as_debug_info_offset(),
+                                Some(referenced_node.entry().offset()),
+                            ),
+                            core,
+                        )?;
 
-                            match &parent_variable.name {
+                        match &parent_variable.name {
                                 VariableName::Named(name) => {
                                     if name.starts_with("Some") {
                                         referenced_variable.name =
@@ -1093,27 +1089,26 @@ impl DebugInfo {
                                 }
                                 other => referenced_variable.name = VariableName::Named(format!("ERROR: Unable to generate name, parent variable does not have a name but is special variable {:?}", other)),
                             }
-                            let mut buff = [0u8; 4];
-                            core.read(parent_variable.memory_location as u32, &mut buff)?;
-                            referenced_variable.memory_location = u32::from_le_bytes(buff) as u64;
-                            referenced_variable = cache.cache_variable(
-                                referenced_variable.parent_key,
-                                referenced_variable,
-                                core,
-                            )?;
-                            referenced_variable = unit_info.extract_type(
-                                referenced_node,
-                                parent_variable,
-                                referenced_variable,
-                                core,
-                                stack_frame_registers,
-                                cache,
-                            )?;
+                        let mut buff = [0u8; 4];
+                        core.read(parent_variable.memory_location as u32, &mut buff)?;
+                        referenced_variable.memory_location = u32::from_le_bytes(buff) as u64;
+                        referenced_variable = cache.cache_variable(
+                            referenced_variable.parent_key,
+                            referenced_variable,
+                            core,
+                        )?;
+                        referenced_variable = unit_info.extract_type(
+                            referenced_node,
+                            parent_variable,
+                            referenced_variable,
+                            core,
+                            stack_frame_registers,
+                            cache,
+                        )?;
 
-                            // Only use this, if it is NOT a unit datatype.
-                            if referenced_variable.type_name.contains("()") {
-                                cache.remove_cache_entry(referenced_variable.variable_key)?;
-                            }
+                        // Only use this, if it is NOT a unit datatype.
+                        if referenced_variable.type_name.contains("()") {
+                            cache.remove_cache_entry(referenced_variable.variable_key)?;
                         }
                     }
                 }
@@ -1121,42 +1116,40 @@ impl DebugInfo {
             VariableNodeType::DirectLookup => {
                 // Only attempt this if the children are not already resolved.
                 if !cache.has_children(parent_variable)? {
-                    if let Some(ref stack_frame_registers) = parent_variable.stack_frame_registers {
-                        if let Some(header_offset) = parent_variable.header_offset {
-                            let unit_header =
-                                self.dwarf.debug_info.header_from_offset(header_offset)?;
-                            let unit_info = UnitInfo {
-                                debug_info: self,
-                                unit: gimli::Unit::new(&self.dwarf, unit_header)?,
-                            };
-                            // Find the parent node
-                            let mut type_tree = unit_info.unit.header.entries_tree(
-                                &unit_info.unit.abbreviations,
-                                parent_variable.entries_offset,
-                            )?;
-                            let parent_node = type_tree.root()?;
+                    if let Some(header_offset) = parent_variable.header_offset {
+                        let unit_header =
+                            self.dwarf.debug_info.header_from_offset(header_offset)?;
+                        let unit_info = UnitInfo {
+                            debug_info: self,
+                            unit: gimli::Unit::new(&self.dwarf, unit_header)?,
+                        };
+                        // Find the parent node
+                        let mut type_tree = unit_info.unit.header.entries_tree(
+                            &unit_info.unit.abbreviations,
+                            parent_variable.entries_offset,
+                        )?;
+                        let parent_node = type_tree.root()?;
 
-                            // For process_tree we need to create a temporary parent that will later be eliminated with VariableCache::adopt_grand_children
-                            // TODO: Investigate if UnitInfo::process_tree can be modified to use `&mut parent_variable`, then we would not need this temporary variable.
-                            let mut temporary_variable = parent_variable.clone();
-                            temporary_variable.variable_key = 0;
-                            temporary_variable.parent_key = Some(parent_variable.variable_key);
-                            temporary_variable = cache.cache_variable(
-                                Some(parent_variable.variable_key),
-                                temporary_variable,
-                                core,
-                            )?;
+                        // For process_tree we need to create a temporary parent that will later be eliminated with VariableCache::adopt_grand_children
+                        // TODO: Investigate if UnitInfo::process_tree can be modified to use `&mut parent_variable`, then we would not need this temporary variable.
+                        let mut temporary_variable = parent_variable.clone();
+                        temporary_variable.variable_key = 0;
+                        temporary_variable.parent_key = Some(parent_variable.variable_key);
+                        temporary_variable = cache.cache_variable(
+                            Some(parent_variable.variable_key),
+                            temporary_variable,
+                            core,
+                        )?;
 
-                            temporary_variable = unit_info.process_tree(
-                                parent_node,
-                                temporary_variable,
-                                core,
-                                stack_frame_registers,
-                                cache,
-                            )?;
+                        temporary_variable = unit_info.process_tree(
+                            parent_node,
+                            temporary_variable,
+                            core,
+                            stack_frame_registers,
+                            cache,
+                        )?;
 
-                            cache.adopt_grand_children(parent_variable, &temporary_variable)?;
-                        }
+                        cache.adopt_grand_children(parent_variable, &temporary_variable)?;
                     }
                 }
             }
@@ -1275,7 +1268,7 @@ impl DebugInfo {
 
                 // Next, resolve the statics that belong to the compilation unit that this function is in.
                 let static_variables = self
-                    .create_static_scope_cache(core, &unit_info, &stack_frame_registers)
+                    .create_static_scope_cache(core, &unit_info)
                     .map_or_else(
                         |error| {
                             log::error!(
@@ -1289,12 +1282,7 @@ impl DebugInfo {
 
                 // Next, resolve and cache the function variables.
                 let local_variables = self
-                    .create_function_scope_cache(
-                        core,
-                        function_die,
-                        &unit_info,
-                        &stack_frame_registers,
-                    )
+                    .create_function_scope_cache(core, function_die, &unit_info)
                     .map_or_else(
                         |error| {
                             log::error!(
@@ -3081,14 +3069,13 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                     gimli::AttributeValue::UnitRef(unit_ref) => {
                                         child_variable.variable_node_type =
                                             VariableNodeType::Offset(unit_ref);
-                                        child_variable.stack_frame_registers =
-                                            Some(stack_frame_registers.clone());
                                         if child_variable.type_name.starts_with("*const") {
                                             // Resolve the children of this variable, because they contain essential information required to resolve the value
                                             self.debug_info.cache_deferred_variables(
                                                 cache,
                                                 core,
                                                 &mut child_variable,
+                                                stack_frame_registers,
                                             )?;
                                         } else if parent_variable.type_name == "Some" {
                                             // The parent `DW_TAG_structure_type` with name `Some` is an intermediate node that we only need for its children
