@@ -305,6 +305,46 @@ impl std::fmt::Display for VariableName {
     }
 }
 
+/// Encode the nature of the Debug Information Entry in a way that we can resolve child nodes of a [Variable]
+/// The rules for 'lazy loading'/deferred recursion of [Variable] children are described under each of the enum values.
+#[derive(Debug, PartialEq, Clone)]
+pub enum VariableNodeType {
+    /// For pointer values, their referenced variables are found at an [gimli::UnitOffset] in the [DebugInfo].
+    /// - Rule: Pointers to `struct` variables WILL NOT BE recursed, because  this may lead to infinite loops/stack overflows in `struct`s that self-reference.
+    /// - Rule: Pointers to "base" datatypes SHOULD BE, but ARE NOT resolved, because it would keep the UX simple, but DWARF doesn't make it easy to determine when a pointer points to a base data type. We can read ahead in the DIE children, but that feels rather inefficient.
+    Offset(UnitOffset),
+    /// Use the `header_offset` and `entries_offset` as direct references for recursing the variable children.
+    /// - Rule: For structured variables, we WILL NOT automatically expand their children, but we have enough information to expand it on demand.
+    /// - Rule: All top level variables in a [StackFrame] are automatically deferred, i.e [VariableName::StaticScope], [VariableName::Registers], [VariableName::LocalScope].
+    DirectLookup,
+    /// Sometimes it doesn't make sense to recurse the children of a specific node type
+    /// - Rule: Pointers to `unit` datatypes WILL NOT BE resolved, because it doesn't make sense.
+    /// - Rule: Once we determine that a variable can not be recursed further, we update the variable_node_type to indicate that no further recursion is possible/required. This can be because the variable is a 'base' data type, or because there was some kind of error in processing the current node, so we don't want to incur cascading errors.
+    /// TODO: Find code instances where we use magic values (e.g. u32::MAX) and replace with DoNotRecurse logic if appropriate.
+    DoNotRecurse,
+    /// Unless otherwise specified, always recurse the children of every node until we get to the base data type.
+    /// - Rule: (Default) Unless it is prevented by any of the other rules, we always recurse the children of these variables.
+    /// - Rule: Pointers to `const` variables WILL ALWAYS BE recursed, because they provide essential information, for example about the length of strings, or the size of arrays.
+    RecurseToBaseType,
+}
+
+impl VariableNodeType {
+    pub fn is_deferred(&self) -> bool {
+        match self {
+            VariableNodeType::Offset(_) => true,
+            VariableNodeType::DirectLookup => true,
+            VariableNodeType::DoNotRecurse => false,
+            VariableNodeType::RecurseToBaseType => false,
+        }
+    }
+}
+
+impl Default for VariableNodeType {
+    fn default() -> Self {
+        VariableNodeType::RecurseToBaseType
+    }
+}
+
 /// The `Variable` struct is used in conjunction with `VariableCache` to cache data about variables.
 ///
 /// Any modifications to the `Variable` value will be transient (lost when it goes out of scope),
@@ -315,26 +355,16 @@ pub struct Variable {
     pub variable_key: i64,
     /// Every variable must have a unique parent assigned to it when stored in the VariableCache. A parent_key of None in the cache simply implies that this variable doesn't have a parent, i.e. it is the root of a tree.
     pub parent_key: Option<i64>,
-
     /// The variable name refers to the name of any of the types of values described in the [VariableCache]
     pub name: VariableName,
-
     /// The value will always be `None` unless the variable is a base type or there was an error during the unwind operation for the variable value. For all Variables that are complex types or references, the value will be a "fmt::Display" representation that attempts to assemble the base types into human readable form. Use `Variable::set_value()` and `Variable::get_value()` to correctly process this `value`
     value: Option<String>,
-
-    /// If this is a variable for a stack frame, then this is the loation for the program counter in the stack frame.
-    ///
-    /// For other variables, this is the location of the declaration, if available.
+    /// The source location of the declaration of this variable, if available.
     pub source_location: Option<SourceLocation>,
     pub type_name: String,
-    /// When we encounter DW_TAG_pointer_type during ELF parsing, we store the `gimli::UnitOffset to the 'referened' node.
-    /// This will later be used to determine if we need to **automatically** recurse the children of pointer types, or to "lazily" wait until a user explicitly requests the children of such a pointer type.
-    /// By default, the automatic recursion follows these rules:
-    /// - Pointers to `struct` `Variable`s WILL NOT BE recursed, because  this may lead to infinite loops/stack overflows in `struct`s that self-reference.
-    /// - Pointers to `const` `Variable`s WILL BE recursed, because they provide essential information, for example about the length of strings, or the size of arrays.
-    /// - Pointers to "base" datatypes SHOULD BE resolved, because it would keep the UX simple, but DWARF doesn't make it easy to determine when a pointer points to a base data type. We can read ahead in the DIE children, but that feels rather inefficient.
-    /// - Pointers to `unit` datatypes WILL NOT BE resolved, because it doesn't make sense.
-    pub referenced_node_offset: Option<UnitOffset>,
+    /// For 'lazy loading' of certain variable types we have to determine if the variable recursion should be deferred, and if so, how to resolve it when the request for further recursion happens.
+    /// See [VariableNodeType] for more information.
+    pub variable_node_type: VariableNodeType,
     /// The header_offset and entries_offset are cached to allow on-demand access to the gimli::Unit, through functions like:
     ///   `gimli::Read::DebugInfo.header_from_offset()`, and   
     ///   `gimli::Read::UnitHeader.entries_tree()`
@@ -396,7 +426,7 @@ impl Variable {
                     if has_children {
                         self.formatted_variable_value(variable_cache)
                     } else if self.type_name.is_empty() || self.memory_location.is_zero() {
-                        if self.referenced_node_offset.is_some() {
+                        if self.variable_node_type.is_deferred() {
                             // When we will do a lazy-load of variable children, and they have not yet been requested by the user
                             "".to_string()
                         } else {
@@ -432,7 +462,7 @@ impl Variable {
         || self.memory_location.is_zero()
         {
             return;
-        } else if self.referenced_node_offset.is_some() {
+        } else if self.variable_node_type.is_deferred() {
             // And we have not previously assigned the value, then assign the type and address as the value
             self.value = Some(format!(
                 "{} @ {:#010X}",
