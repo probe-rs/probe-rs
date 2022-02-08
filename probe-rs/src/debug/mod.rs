@@ -70,6 +70,7 @@ pub struct StackFrame {
     pub registers: Registers,
     pub pc: u32,
 
+    /// Indicate if this stack frame belongs to an inlined function.
     pub is_inlined: bool,
 }
 
@@ -223,7 +224,8 @@ pub struct SourceLocation {
     pub directory: Option<PathBuf>,
 }
 
-/// `StackFrameIterator` stores the information required to iterate through (`::next()`) each of the frames (`StackFrame`) involved in a `DebugInfo::try_unwind()` operation. The most valuable of these are pointers into the core's `DebugInfo`, as well as the register values for the current frame in the stack (per iteration).
+/// `StackFrameIterator` stores the information required to iterate through (`::next()`) each of the frames (`StackFrame`) involved in a `DebugInfo::try_unwind()` operation.
+/// The most valuable of these are pointers into the core's [`DebugInfo`], as well as the register values for the current frame in the stack (per iteration).
 pub struct StackFrameIterator<'debuginfo, 'probe, 'core> {
     debug_info: &'debuginfo DebugInfo,
     cache: &'debuginfo mut VariableCache,
@@ -234,7 +236,8 @@ pub struct StackFrameIterator<'debuginfo, 'probe, 'core> {
     /// Register state as updated for every iteration (previous function) of the unwind process.
     unwind_registers: Registers,
 
-    // Used for handling inlined functions
+    /// Used for handling inlined functions. If inlined functions are found, stack frames for all inlined functions and the containing, non-inlined function are
+    /// generated at the same time.
     cached_stack_frames: Vec<StackFrame>,
 }
 
@@ -311,7 +314,9 @@ impl<'debuginfo, 'probe, 'core> Iterator for StackFrameIterator<'debuginfo, 'pro
             frame_pc,
         );
 
-        // If we have cached stack frames (due to inlining), just return the cached frames
+        // If we have cached stack frames (due to inlining), just return the cached frames if there
+        // are multiple left. The last cached frame is from the non-inlined function, and will
+        // be unwound normally.
         if self.cached_stack_frames.len() > 1 {
             log::info!("Using cached stack frame for inlined function.");
             return self.cached_stack_frames.pop();
@@ -352,7 +357,7 @@ impl<'debuginfo, 'probe, 'core> Iterator for StackFrameIterator<'debuginfo, 'pro
 
             return_frame
         } else {
-            log::info!("Last cached stack frame, current funtion is not inlined.");
+            log::debug!("Last cached stack frame, current funtion is not inlined.");
             self.cached_stack_frames.pop().unwrap()
         };
 
@@ -368,12 +373,13 @@ impl<'debuginfo, 'probe, 'core> Iterator for StackFrameIterator<'debuginfo, 'pro
             }
         }
 
+        // PART 2: Setup the registers for the `next()` iteration (a.k.a. unwind previous frame, a.k.a. "callee", in the call stack).
         log::debug!(
             "UNWIND - Preparing `StackFrameIterator` to unwind NON-INLINED function {:?} at {:?}",
             return_frame.function_name,
             return_frame.source_location
         );
-        // PART 2-b: get the `gimli::FrameDescriptorEntry` for this address and then the unwind info associated with this row.
+        // PART 2-a: get the `gimli::FrameDescriptorEntry` for this address and then the unwind info associated with this row.
         // TODO: The `gimli` docs for this function talks about cases where there might be more than one FDE for a function. Investigate if this affects RUST and how to solve.
         use gimli::UnwindSection;
         let frame_descriptor_entry = match self.debug_info.frame_section.fde_for_address(
@@ -402,7 +408,7 @@ impl<'debuginfo, 'probe, 'core> Iterator for StackFrameIterator<'debuginfo, 'pro
             Ok(unwind_info) => {
                 // Because we will be updating the `self.unwind_registers` with previous frame unwind info, we need to keep a copy of the current frame's registers that can be used to resolve [DWARF](https://dwarfstd.org) expressions.
                 let callee_frame_registers = self.unwind_registers.clone();
-                // PART 2-c: Determine the CFA (canonical frame address) to use for this unwind row.
+                // PART 2-b: Determine the CFA (canonical frame address) to use for this unwind row.
                 let unwind_cfa = match unwind_info.cfa() {
                     gimli::CfaRule::RegisterAndOffset { register, offset } => {
                         let reg_val = self
@@ -428,7 +434,7 @@ impl<'debuginfo, 'probe, 'core> Iterator for StackFrameIterator<'debuginfo, 'pro
                     gimli::CfaRule::Expression(_) => unimplemented!(),
                 };
 
-                // PART 2-d: Unwind registers for the "previous/calling" frame.
+                // PART 2-c: Unwind registers for the "previous/calling" frame.
                 // TODO: Test for RISCV ... This is only tested for ARM right now.
                 // TODO: Maybe do some cleanup on the `Registerfile` API, to make the following more ergonomic.
                 for register_number in 0..self
@@ -1117,20 +1123,8 @@ impl DebugInfo {
                 continue;
             }
 
-            // Debugging, remove afterwards
-            if functions.len() > 1 {
-                let function_names: Vec<_> = functions
-                    .iter()
-                    .map(|f| {
-                        f.function_name()
-                            .unwrap_or_else(|| "<err getting name>".to_string())
-                    })
-                    .collect();
-
-                log::info!("Multiple inlined functions: {:?}", function_names);
-            }
-
-            // Handle all functions which contain further inlined functions
+            // Handle all functions which contain further inlined functions. For
+            // these functions, the location is the call site of the inlined function.
             for (index, function_die) in functions[0..functions.len() - 1].iter().enumerate() {
                 let mut inlined_call_site: Option<u32> = None;
                 let mut inlined_caller_source_location: Option<SourceLocation> = None;
@@ -1149,7 +1143,7 @@ impl DebugInfo {
                 let address_size = unit_info.unit.header.address_size() as u64;
 
                 if next_function.low_pc > address_size && next_function.low_pc < u32::MAX.into() {
-                    // The first instruction of the inlined function is used as the call saite
+                    // The first instruction of the inlined function is used as the call site
                     inlined_call_site = Some(next_function.low_pc as u32);
 
                     log::debug!(
