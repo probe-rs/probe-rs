@@ -800,7 +800,7 @@ impl DebugInfo {
             // Use the last functions from the list, this is the function which most closely
             // corresponds to the PC in case of multiple inlined functions.
             if let Some(die_cursor_state) = functions.pop() {
-                let function_name = die_cursor_state.function_name(&unit_info);
+                let function_name = die_cursor_state.function_name();
 
                 if function_name.is_some() {
                     return Ok(function_name);
@@ -1117,15 +1117,12 @@ impl DebugInfo {
                 continue;
             }
 
-            let mut inlined_call_site: Option<u32> = None;
-            let mut inlined_caller_source_location: Option<SourceLocation> = None;
-
             // Debugging, remove afterwards
             if functions.len() > 1 {
                 let function_names: Vec<_> = functions
                     .iter()
                     .map(|f| {
-                        f.function_name(&unit_info)
+                        f.function_name()
                             .unwrap_or_else(|| "<err getting name>".to_string())
                     })
                     .collect();
@@ -1135,8 +1132,11 @@ impl DebugInfo {
 
             // Handle all functions which contain further inlined functions
             for (index, function_die) in functions[0..functions.len() - 1].iter().enumerate() {
+                let mut inlined_call_site: Option<u32> = None;
+                let mut inlined_caller_source_location: Option<SourceLocation> = None;
+
                 let function_name = function_die
-                    .function_name(&unit_info)
+                    .function_name()
                     .unwrap_or_else(|| unknown_function.clone());
 
                 log::debug!("UNWIND: Function name: {}", function_name);
@@ -1154,10 +1154,10 @@ impl DebugInfo {
 
                     log::debug!(
                         "UNWIND: Callsite for inlined function {:?}",
-                        next_function.function_name(&unit_info)
+                        next_function.function_name()
                     );
 
-                    inlined_caller_source_location = next_function.inline_call_location(&unit_info);
+                    inlined_caller_source_location = next_function.inline_call_location();
                 }
 
                 log::debug!("UNWIND: Call site: {:?}", inlined_caller_source_location);
@@ -1171,6 +1171,7 @@ impl DebugInfo {
                 );
                 stackframe_root_variable.name = VariableName::StackFrame;
                 stackframe_root_variable.source_location = inlined_caller_source_location.clone();
+
                 let function_display_name = if function_die.is_inline() {
                     format!("{} #[inline]", &function_name)
                 } else {
@@ -1241,7 +1242,7 @@ impl DebugInfo {
                     // MS DAP Specification requires the id to be unique accross all threads, so using  so using unique `Variable::variable_key` of the `stackframe_root_variable` as the id.
                     id: stackframe_root_variable.variable_key as u64,
                     function_name,
-                    source_location: inlined_caller_source_location.clone(),
+                    source_location: inlined_caller_source_location,
                     registers: stack_frame_registers.clone(),
                     pc: inlined_call_site.unwrap(),
                     is_inlined: function_die.is_inline(),
@@ -1252,7 +1253,7 @@ impl DebugInfo {
             let last_function = functions.last().unwrap(); //UNWRAP: Checked at beginning of loop, functions must contain at least one value
 
             let function_name = last_function
-                .function_name(&unit_info)
+                .function_name()
                 .unwrap_or_else(|| unknown_function.clone());
 
             let function_location = self.get_source_location(address);
@@ -1558,7 +1559,9 @@ impl DebugInfo {
 }
 
 /// Reference to a DIE for a function
-struct FunctionDie<'abbrev, 'unit> {
+struct FunctionDie<'abbrev, 'unit, 'unit_info, 'debug_info> {
+    unit_info: &'unit_info UnitInfo<'debug_info>,
+
     function_die: FunctionDieType<'abbrev, 'unit>,
 
     /// Only present for inlined functions, where this is a reference
@@ -1569,13 +1572,19 @@ struct FunctionDie<'abbrev, 'unit> {
 }
 
 // TODO: We should consider replacing the `panic`s with proper error handling, that allows a user to be 'partially' successful with a debug session. If we use `panic`, then the user will have to wait until the bug is fixed before they can continue trying to use probe-rs
-impl<'debugunit, 'abbrev, 'unit: 'debugunit> FunctionDie<'abbrev, 'unit> {
-    fn new(die: FunctionDieType<'abbrev, 'unit>) -> Self {
+impl<'debugunit, 'abbrev, 'unit: 'debugunit, 'unit_info, 'debug_info>
+    FunctionDie<'abbrev, 'unit, 'unit_info, 'debug_info>
+{
+    fn new(
+        die: FunctionDieType<'abbrev, 'unit>,
+        unit_info: &'unit_info UnitInfo<'debug_info>,
+    ) -> Self {
         let tag = die.tag();
 
         match tag {
             gimli::DW_TAG_subprogram => {
                 Self {
+                    unit_info,
                     function_die: die,
                     abstract_die: None,
                     low_pc: 0,
@@ -1589,12 +1598,14 @@ impl<'debugunit, 'abbrev, 'unit: 'debugunit> FunctionDie<'abbrev, 'unit> {
     fn new_inlined(
         concrete_die: FunctionDieType<'abbrev, 'unit>,
         abstract_die: FunctionDieType<'abbrev, 'unit>,
+        unit_info: &'unit_info UnitInfo<'debug_info>,
     ) -> Self {
         let tag = concrete_die.tag();
 
         match tag {
             gimli::DW_TAG_inlined_subroutine => {
                 Self {
+                    unit_info,
                     function_die: concrete_die,
                     abstract_die: Some(abstract_die),
                     low_pc: 0,
@@ -1610,11 +1621,11 @@ impl<'debugunit, 'abbrev, 'unit: 'debugunit> FunctionDie<'abbrev, 'unit> {
         self.abstract_die.is_some()
     }
 
-    fn function_name(&self, unit: &UnitInfo<'_>) -> Option<String> {
+    fn function_name(&self) -> Option<String> {
         if let Some(fn_name_attr) = self.get_attribute(gimli::DW_AT_name) {
             match fn_name_attr.value() {
                 gimli::AttributeValue::DebugStrRef(fn_name_ref) => {
-                    let fn_name_raw = unit.debug_info.dwarf.string(fn_name_ref).unwrap();
+                    let fn_name_raw = self.unit_info.debug_info.dwarf.string(fn_name_ref).unwrap();
 
                     Some(String::from_utf8_lossy(&fn_name_raw).to_string())
                 }
@@ -1633,7 +1644,7 @@ impl<'debugunit, 'abbrev, 'unit: 'debugunit> FunctionDie<'abbrev, 'unit> {
     ///
     /// If this function is not inlined (`is_inline()` returns false),
     /// this function returns `None`.
-    fn inline_call_location(&self, unit_info: &UnitInfo) -> Option<SourceLocation> {
+    fn inline_call_location(&self) -> Option<SourceLocation> {
         if !self.is_inline() {
             return None;
         }
@@ -1641,8 +1652,8 @@ impl<'debugunit, 'abbrev, 'unit: 'debugunit> FunctionDie<'abbrev, 'unit> {
         let file_name_attr = self.get_attribute(gimli::DW_AT_call_file)?;
 
         let (directory, file) = extract_file(
-            unit_info.debug_info,
-            &unit_info.unit,
+            self.unit_info.debug_info,
+            &self.unit_info.unit,
             file_name_attr.value(),
         )?;
         let line = self
@@ -1712,7 +1723,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                     if (ranges.begin <= address) && (address < ranges.end) {
                         // Check if we are actually in an inlined function
 
-                        let mut die = FunctionDie::new(current.clone());
+                        let mut die = FunctionDie::new(current.clone(), self);
                         die.low_pc = ranges.begin;
                         die.high_pc = ranges.end;
 
@@ -1721,7 +1732,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                         if find_inlined {
                             log::debug!(
                                 "Found DIE, now checking for inlined functions: name={:?}",
-                                functions[0].function_name(self)
+                                functions[0].function_name()
                             );
 
                             let inlined_functions =
@@ -1740,7 +1751,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
 
                             return Ok(functions);
                         } else {
-                            log::debug!("Found DIE: name={:?}", functions[0].function_name(self));
+                            log::debug!("Found DIE: name={:?}", functions[0].function_name());
                         }
 
                         return Ok(functions);
@@ -1794,6 +1805,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                     let mut die = FunctionDie::new_inlined(
                                         current.clone(),
                                         abstract_die.clone(),
+                                        self,
                                     );
                                     die.low_pc = ranges.begin;
                                     die.high_pc = ranges.end;
@@ -3021,7 +3033,7 @@ fn extract_file(
             let file_entry = header.file(index);
 
             debug_info
-                .find_file_and_directory(&unit, header, file_entry.unwrap())
+                .find_file_and_directory(unit, header, file_entry.unwrap())
                 .map(|(file, path)| (path.unwrap(), file.unwrap()))
         }),
         other => {
