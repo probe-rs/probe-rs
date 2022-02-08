@@ -643,27 +643,36 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             }
         };
 
-        log::debug!("Replacing variable cache!");
+        log::debug!(
+            "Updating the stack frame data for core #{}",
+            core_data.target_core.id()
+        );
 
-        *core_data.variable_cache = VariableCache::new();
-
-        let current_stackframes = core_data.debug_info.unwind(
-            core_data.variable_cache,
-            &mut core_data.target_core,
-            u64::from(pc),
-        )?;
+        *core_data.stack_frames = core_data
+            .debug_info
+            .unwind(&mut core_data.target_core, u64::from(pc))?;
 
         match self.adapter_type() {
             DebugAdapterType::CommandLine => {
                 let mut body = "".to_string();
-                for _stack_frame in current_stackframes {
-                    // Iterate all the stack frames, so that `debug_info.variable_cache` gets populated.
+                if core_data.stack_frames.is_empty() {
+                    body.push_str(
+                        format!(
+                            "No backtrace information available for program counter = {:#010x}!\n",
+                            pc
+                        )
+                        .as_str(),
+                    );
+                } else {
+                    for stack_frame in core_data.stack_frames.iter() {
+                        body.push_str(format!("{}\n", stack_frame).as_str());
+                    }
                 }
-                body.push_str(format!("{}\n", &core_data.variable_cache).as_str());
                 self.send_response(request, Ok(Some(body)))
             }
             DebugAdapterType::DapClient => {
-                let mut frame_list: Vec<StackFrame> = current_stackframes
+                let mut frame_list: Vec<StackFrame> = core_data
+                    .stack_frames
                     .iter()
                     .map(|frame| {
                         let column = frame
@@ -776,89 +785,81 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
 
         log::trace!("Getting scopes for frame {}", arguments.frame_id,);
 
-        if let Some(stackframe_root_variable) = core_data
-            .variable_cache
-            .get_variable_by_key(arguments.frame_id)
-        {
+        if let Some(stack_frame) = core_data.get_stackframe(arguments.frame_id) {
             if let Some(static_root_variable) =
-                core_data.variable_cache.get_variable_by_name_and_parent(
-                    &VariableName::StaticScope,
-                    Some(stackframe_root_variable.variable_key),
-                )
+                stack_frame
+                    .static_variables
+                    .as_ref()
+                    .and_then(|stack_frame| {
+                        stack_frame
+                            .get_variable_by_name_and_parent(&VariableName::StaticScope, None)
+                    })
             {
-                let (static_variables_reference, static_named_variables, static_indexed_variables) =
-                    self.get_variable_reference(&static_root_variable, core_data.variable_cache);
                 dap_scopes.push(Scope {
                     line: None,
                     column: None,
                     end_column: None,
                     end_line: None,
                     expensive: true, // VSCode won't open this tree by default.
-                    indexed_variables: Some(static_indexed_variables),
+                    indexed_variables: None,
                     name: "Static".to_string(),
                     presentation_hint: Some("statics".to_string()),
-                    named_variables: Some(static_named_variables),
+                    named_variables: None,
                     source: None,
-                    variables_reference: static_variables_reference,
+                    variables_reference: static_root_variable.variable_key,
                 });
             };
 
             if let Some(register_root_variable) =
-                core_data.variable_cache.get_variable_by_name_and_parent(
-                    &VariableName::Registers,
-                    Some(stackframe_root_variable.variable_key),
-                )
+                stack_frame
+                    .register_variables
+                    .as_ref()
+                    .and_then(|stack_frame| {
+                        stack_frame.get_variable_by_name_and_parent(&VariableName::Registers, None)
+                    })
             {
-                let (
-                    register_variables_reference,
-                    register_named_variables,
-                    register_indexed_variables,
-                ) = self.get_variable_reference(&register_root_variable, core_data.variable_cache);
                 dap_scopes.push(Scope {
                     line: None,
                     column: None,
                     end_column: None,
                     end_line: None,
                     expensive: true, // VSCode won't open this tree by default.
-                    indexed_variables: Some(register_indexed_variables),
+                    indexed_variables: None,
                     name: "Registers".to_string(),
                     presentation_hint: Some("registers".to_string()),
-                    named_variables: Some(register_named_variables),
+                    named_variables: None,
                     source: None,
-                    variables_reference: register_variables_reference,
+                    variables_reference: register_root_variable.variable_key,
                 });
             };
             if let Some(locals_root_variable) =
-                core_data.variable_cache.get_variable_by_name_and_parent(
-                    &VariableName::LocalScope,
-                    Some(stackframe_root_variable.variable_key),
-                )
+                stack_frame
+                    .local_variables
+                    .as_ref()
+                    .and_then(|stack_frame| {
+                        stack_frame.get_variable_by_name_and_parent(&VariableName::LocalScope, None)
+                    })
             {
-                let (locals_variables_reference, locals_named_variables, locals_indexed_variables) =
-                    self.get_variable_reference(&locals_root_variable, core_data.variable_cache);
                 dap_scopes.push(Scope {
-                    line: stackframe_root_variable
+                    line: stack_frame
                         .source_location
                         .as_ref()
                         .and_then(|location| location.line.map(|line| line as i64)),
-                    column: stackframe_root_variable
-                        .source_location
-                        .as_ref()
-                        .and_then(|l| {
-                            l.column.map(|c| match c {
-                                ColumnType::LeftEdge => 0,
-                                ColumnType::Column(c) => c as i64,
-                            })
-                        }),
+                    column: stack_frame.source_location.as_ref().and_then(|l| {
+                        l.column.map(|c| match c {
+                            ColumnType::LeftEdge => 0,
+                            ColumnType::Column(c) => c as i64,
+                        })
+                    }),
                     end_column: None,
                     end_line: None,
                     expensive: false, // VSCode will open this tree by default.
-                    indexed_variables: Some(locals_indexed_variables),
+                    indexed_variables: None,
                     name: "Variables".to_string(),
                     presentation_hint: Some("locals".to_string()),
-                    named_variables: Some(locals_named_variables),
+                    named_variables: None,
                     source: None,
-                    variables_reference: locals_variables_reference,
+                    variables_reference: locals_root_variable.variable_key,
                 });
             };
         }
@@ -910,58 +911,91 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         };
 
         let response = {
-            // During the intial stack unwind operation, if we encounter certain types of pointers as children of complex variables, they will not be auto-expanded and included in the variable cache. Please refer to the `is_pointer` member of [probe_rs::debug::Variable] for more information. If this is the case, we will store the `stack_frame_registers` as part of the variable definition, so that we can  resolve the variable and add it to the cache before continuing.
-            // TODO: Use the DAP "Invalidated" event to refresh the variables for this stackframe. It will allow the UI to see updated compound values for pointer variables based on the newly resolved children.
-            if let Some(parent_variable) = core_data
-                .variable_cache
-                .get_variable_by_key(arguments.variables_reference)
-            {
-                if parent_variable.referenced_node_offset.is_some() {
-                    core_data.debug_info.cache_referenced_variables(
-                        core_data.variable_cache,
-                        &mut core_data.target_core,
-                        &parent_variable,
-                    )?;
+            // The MS DAP Specification only gives us the unique reference of the variable, and does not tell us which StackFrame it belongs to, nor does it specify if this variable is in the local, register or static scope. Unfortunately this means we have to search through all the available [VariableCache]'s until we find it. To minimize the impact of this, we will search in the most 'likely' places first (first stack frame's locals, then statics, then registers, then move to next stack frame, and so on ...)
+            let mut parent_variable: Option<probe_rs::debug::Variable> = None;
+            let mut variable_cache: Option<&mut VariableCache> = None;
+            for stack_frame in core_data.stack_frames.iter_mut() {
+                if let Some(search_cache) = &mut stack_frame.local_variables {
+                    if let Some(search_variable) =
+                        search_cache.get_variable_by_key(arguments.variables_reference)
+                    {
+                        parent_variable = Some(search_variable);
+                        variable_cache = Some(search_cache);
+                        break;
+                    }
+                }
+                if let Some(search_cache) = &mut stack_frame.static_variables {
+                    if let Some(search_variable) =
+                        search_cache.get_variable_by_key(arguments.variables_reference)
+                    {
+                        parent_variable = Some(search_variable);
+                        variable_cache = Some(search_cache);
+                        break;
+                    }
+                }
+                if let Some(search_cache) = &mut stack_frame.register_variables {
+                    if let Some(search_variable) =
+                        search_cache.get_variable_by_key(arguments.variables_reference)
+                    {
+                        parent_variable = Some(search_variable);
+                        variable_cache = Some(search_cache);
+                        break;
+                    }
                 }
             }
 
-            let dap_variables: Vec<Variable> = core_data
-                .variable_cache
-                .get_children(Some(arguments.variables_reference))?
-                .iter()
-                // Filter out requested children, then map them as DAP variables
-                .filter(|variable| match &arguments.filter {
-                    Some(filter) => match filter.as_str() {
-                        "indexed" => variable.is_indexed(),
-                        "named" => !variable.is_indexed(),
-                        other => {
-                            // This will yield an empty Vec, which will result in a user facing error as well as the log below.
-                            log::error!("Received invalid variable filter: {}", other);
-                            false
-                        }
-                    },
-                    None => true,
-                })
-                // Convert the `probe_rs::debug::Variable` to `probe_rs_debugger::dap_types::Variable`
-                .map(|variable| {
-                    let (
-                        variables_reference,
-                        named_child_variables_cnt,
-                        indexed_child_variables_cnt,
-                    ) = self.get_variable_reference(variable, core_data.variable_cache);
-                    Variable {
-                        name: variable.name.to_string(),
-                        evaluate_name: None,
-                        memory_reference: Some(format!("{:#010x}", variable.memory_location)),
-                        indexed_variables: Some(indexed_child_variables_cnt),
-                        named_variables: Some(named_child_variables_cnt),
-                        presentation_hint: None,
-                        type_: Some(variable.type_name.clone()),
-                        value: variable.get_value(core_data.variable_cache),
-                        variables_reference,
+            // During the intial stack unwind operation, if we encounter certain types of pointers as children of complex variables, they will not be auto-expanded and included in the variable cache. Please refer to the `is_pointer` member of [probe_rs::debug::Variable] for more information. If this is the case, we will store the `stack_frame_registers` as part of the variable definition, so that we can  resolve the variable and add it to the cache before continuing.
+            // TODO: Use the DAP "Invalidated" event to refresh the variables for this stackframe. It will allow the UI to see updated compound values for pointer variables based on the newly resolved children.
+            let dap_variables: Vec<Variable> = if let Some(variable_cache) = variable_cache {
+                if let Some(parent_variable) = parent_variable {
+                    if parent_variable.referenced_node_offset.is_some() {
+                        core_data.debug_info.cache_referenced_variables(
+                            variable_cache,
+                            &mut core_data.target_core,
+                            &parent_variable,
+                        )?;
                     }
-                })
-                .collect();
+                }
+
+                variable_cache
+                    .get_children(Some(arguments.variables_reference))?
+                    .iter()
+                    // Filter out requested children, then map them as DAP variables
+                    .filter(|variable| match &arguments.filter {
+                        Some(filter) => match filter.as_str() {
+                            "indexed" => variable.is_indexed(),
+                            "named" => !variable.is_indexed(),
+                            other => {
+                                // This will yield an empty Vec, which will result in a user facing error as well as the log below.
+                                log::error!("Received invalid variable filter: {}", other);
+                                false
+                            }
+                        },
+                        None => true,
+                    })
+                    // Convert the `probe_rs::debug::Variable` to `probe_rs_debugger::dap_types::Variable`
+                    .map(|variable| {
+                        let (
+                            variables_reference,
+                            named_child_variables_cnt,
+                            indexed_child_variables_cnt,
+                        ) = self.get_variable_reference(variable, variable_cache);
+                        Variable {
+                            name: variable.name.to_string(),
+                            evaluate_name: None,
+                            memory_reference: Some(format!("{:#010x}", variable.memory_location)),
+                            indexed_variables: Some(indexed_child_variables_cnt),
+                            named_variables: Some(named_child_variables_cnt),
+                            presentation_hint: None,
+                            type_: Some(variable.type_name.clone()),
+                            value: variable.get_value(variable_cache),
+                            variables_reference,
+                        }
+                    })
+                    .collect()
+            } else {
+                vec![]
+            };
             match dap_variables.len() {
                 0 => Err(DebuggerError::Other(anyhow!(
                     "No variable information found for {}!",

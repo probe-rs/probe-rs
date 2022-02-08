@@ -3,7 +3,7 @@ use crate::common::CliError;
 use capstone::Capstone;
 use num_traits::Num;
 use probe_rs::architecture::arm::Dump;
-use probe_rs::debug::{DebugInfo, VariableCache};
+use probe_rs::debug::DebugInfo;
 use probe_rs::{Core, CoreRegisterAddress, MemoryInterface};
 use std::fs::File;
 use std::{io::prelude::*, time::Duration};
@@ -260,13 +260,18 @@ impl DebugCli {
                     let regs = cli_data.core.registers();
                     let program_counter = cli_data.core.read_core_reg(regs.program_counter())?;
 
-                    // TODO: Cache this, should only be cleared when core is running
-                    let mut cache = VariableCache::new();
-
                     if let Some(di) = &mut cli_data.debug_info {
-                        let _frames =
-                            di.unwind(&mut cache, &mut cli_data.core, u64::from(program_counter))?;
-                        println!("{}", cache);
+                        let frames = di.unwind(&mut cli_data.core, u64::from(program_counter))?;
+                        if frames.is_empty() {
+                            println!(
+                                "No backtrace information available for program counter = {:#010x}!",
+                                program_counter
+                            );
+                        } else {
+                            for stack_frame in frames {
+                                println!("{}", stack_frame);
+                            }
+                        }
                     } else {
                         println!("No debug information present!");
                     }
