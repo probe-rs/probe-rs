@@ -69,11 +69,9 @@ pub struct StackFrame {
     pub source_location: Option<SourceLocation>,
     pub registers: Registers,
     pub pc: u32,
-    /// If this StackFrame was for an inlined function, then the call site addresss (the point where the calling function invoked this function) will be stored here, to be used as the PC value for the calling StackFrame. This allows us to create virtual StackFrames for inlined functions, and improves the logical flow of a stepping experience during debug.
-    /// TODO: This only works for one-level of inlined function. When we have nested inlined functions, it collapses them into a single logical `StackFrame`. We need to find a better mechanism to enable nesting.
-    pub inlined_call_site: Option<u32>,
-    /// If this function is an inlined function, we record the caller's [`SourceLocation`] here.
-    pub inlined_caller_source_location: Option<SourceLocation>,
+
+    /// Indicate if this stack frame belongs to an inlined function.
+    pub is_inlined: bool,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -226,7 +224,8 @@ pub struct SourceLocation {
     pub directory: Option<PathBuf>,
 }
 
-/// `StackFrameIterator` stores the information required to iterate through (`::next()`) each of the frames (`StackFrame`) involved in a `DebugInfo::try_unwind()` operation. The most valuable of these are pointers into the core's `DebugInfo`, as well as the register values for the current frame in the stack (per iteration).
+/// `StackFrameIterator` stores the information required to iterate through (`::next()`) each of the frames (`StackFrame`) involved in a `DebugInfo::try_unwind()` operation.
+/// The most valuable of these are pointers into the core's [`DebugInfo`], as well as the register values for the current frame in the stack (per iteration).
 pub struct StackFrameIterator<'debuginfo, 'probe, 'core> {
     debug_info: &'debuginfo DebugInfo,
     cache: &'debuginfo mut VariableCache,
@@ -236,8 +235,10 @@ pub struct StackFrameIterator<'debuginfo, 'probe, 'core> {
     unwind_context: Box<gimli::UnwindContext<DwarfReader>>,
     /// Register state as updated for every iteration (previous function) of the unwind process.
     unwind_registers: Registers,
-    /// If the most recent function in the unwind was an inlined function, we record the caller's [`SourceLocation`] here.
-    inlined_caller_source_location: Option<SourceLocation>,
+
+    /// Used for handling inlined functions. If inlined functions are found, stack frames for all inlined functions and the containing, non-inlined function are
+    /// generated at the same time.
+    cached_stack_frames: Vec<StackFrame>,
 }
 
 impl<'debuginfo, 'probe, 'core> StackFrameIterator<'debuginfo, 'probe, 'core> {
@@ -263,7 +264,7 @@ impl<'debuginfo, 'probe, 'core> StackFrameIterator<'debuginfo, 'probe, 'core> {
             unwind_bases,
             unwind_context,
             unwind_registers: current_registers,
-            inlined_caller_source_location: None,
+            cached_stack_frames: Vec::new(),
         }
     }
 }
@@ -313,21 +314,51 @@ impl<'debuginfo, 'probe, 'core> Iterator for StackFrameIterator<'debuginfo, 'pro
             frame_pc,
         );
 
-        // PART 1-a: Prepare the `StackFrame` that holds the current frame information
-        let return_frame = match self.debug_info.get_stackframe_info(
-            self.cache,
-            self.core,
-            frame_pc,
-            &self.unwind_registers,
-            self.inlined_caller_source_location.clone(),
-        ) {
-            Ok(frame) => frame,
-            Err(e) => {
-                log::error!("UNWIND: Unable to complete `StackFrame` information: {}", e);
-                // There is no point in continuing with the unwind, so let's get out of here.
-                self.unwind_registers.set_return_address(None);
-                return None;
+        // If we have cached stack frames (due to inlining), just return the cached frames if there
+        // are multiple left. The last cached frame is from the non-inlined function, and will
+        // be unwound normally.
+        if self.cached_stack_frames.len() > 1 {
+            log::info!("Using cached stack frame for inlined function.");
+            return self.cached_stack_frames.pop();
+        }
+
+        let return_frame = if self.cached_stack_frames.is_empty() {
+            // PART 1-a: Prepare the `StackFrame` that holds the current frame information
+            let mut return_frames = match self.debug_info.get_stackframe_info(
+                self.cache,
+                self.core,
+                frame_pc,
+                &self.unwind_registers,
+            ) {
+                Ok(frame) => frame,
+                Err(e) => {
+                    log::error!("UNWIND: Unable to complete `StackFrame` information: {}", e);
+                    // There is no point in continuing with the unwind, so let's get out of here.
+                    self.unwind_registers.set_return_address(None);
+                    return None;
+                }
+            };
+
+            if return_frames.len() > 1 {
+                log::debug!("Multiple stack frames:");
+                for frame in &return_frames {
+                    log::debug!(" - name={}, pc={:#010x}", frame.function_name, frame.pc);
+                }
             }
+
+            let return_frame = return_frames.pop().unwrap();
+
+            self.cached_stack_frames = return_frames;
+
+            if !self.cached_stack_frames.is_empty() {
+                log::debug!("UNWIND: In inlined function, returning virtual frame.");
+                return Some(return_frame);
+            }
+
+            return_frame
+        } else {
+            log::debug!("Last cached stack frame, current funtion is not inlined.");
+            self.cached_stack_frames.pop().unwrap()
         };
 
         // Part 1-b: When we encounter the starting (after reset) return address, we've reached the bottom of the stack, so no more unwinding after this ...
@@ -343,46 +374,12 @@ impl<'debuginfo, 'probe, 'core> Iterator for StackFrameIterator<'debuginfo, 'pro
         }
 
         // PART 2: Setup the registers for the `next()` iteration (a.k.a. unwind previous frame, a.k.a. "callee", in the call stack).
-        log::debug!("UNWIND Registers for previous function ...");
-        // Part2-a: We check if the StackFrame just processed was an INLINED function, in which case the unwind process below will take a different path than the one for NON-INLINED functions.
-        if let Some(inlined_call_site) = return_frame.inlined_call_site {
-            self.inlined_caller_source_location =
-                return_frame.inlined_caller_source_location.clone();
-            log::debug!(
-                "UNWIND - Preparing `StackFrameIterator` to unwind INLINED function {:?} at {:?}",
-                return_frame.function_name,
-                return_frame.source_location
-            );
-            // The only `unwind` we need to do, is to update the PC with the call site address of the inline function. The `StackFrameIterator::next()` iteration will then create a virtual `StackFrame` for the call-site.
-            let register_number = self
-                .unwind_registers
-                .register_description
-                .program_counter()
-                .address
-                .0 as u32;
-            log::debug!(
-                "UNWIND - {:04?}: Caller: {:#010x}\tCallee: {:#010x}\tRule: {}",
-                self.unwind_registers
-                    .get_name_by_dwarf_register_number(register_number),
-                inlined_call_site,
-                self.unwind_registers
-                    .get_value_by_dwarf_register_number(register_number)
-                    .unwrap_or_default(),
-                "PC= Inlined function `inlined_call_site`'",
-            );
-            self.unwind_registers
-                .set_program_counter(Some(inlined_call_site));
-            return Some(return_frame);
-        } else {
-            self.inlined_caller_source_location = None;
-        }
-
         log::debug!(
             "UNWIND - Preparing `StackFrameIterator` to unwind NON-INLINED function {:?} at {:?}",
             return_frame.function_name,
             return_frame.source_location
         );
-        // PART 2-b: get the `gimli::FrameDescriptorEntry` for this address and then the unwind info associated with this row.
+        // PART 2-a: get the `gimli::FrameDescriptorEntry` for this address and then the unwind info associated with this row.
         // TODO: The `gimli` docs for this function talks about cases where there might be more than one FDE for a function. Investigate if this affects RUST and how to solve.
         use gimli::UnwindSection;
         let frame_descriptor_entry = match self.debug_info.frame_section.fde_for_address(
@@ -411,7 +408,7 @@ impl<'debuginfo, 'probe, 'core> Iterator for StackFrameIterator<'debuginfo, 'pro
             Ok(unwind_info) => {
                 // Because we will be updating the `self.unwind_registers` with previous frame unwind info, we need to keep a copy of the current frame's registers that can be used to resolve [DWARF](https://dwarfstd.org) expressions.
                 let callee_frame_registers = self.unwind_registers.clone();
-                // PART 2-c: Determine the CFA (canonical frame address) to use for this unwind row.
+                // PART 2-b: Determine the CFA (canonical frame address) to use for this unwind row.
                 let unwind_cfa = match unwind_info.cfa() {
                     gimli::CfaRule::RegisterAndOffset { register, offset } => {
                         let reg_val = self
@@ -437,7 +434,7 @@ impl<'debuginfo, 'probe, 'core> Iterator for StackFrameIterator<'debuginfo, 'pro
                     gimli::CfaRule::Expression(_) => unimplemented!(),
                 };
 
-                // PART 2-d: Unwind registers for the "previous/calling" frame.
+                // PART 2-c: Unwind registers for the "previous/calling" frame.
                 // TODO: Test for RISCV ... This is only tested for ARM right now.
                 // TODO: Maybe do some cleanup on the `Registerfile` API, to make the following more ergonomic.
                 for register_number in 0..self
@@ -789,20 +786,35 @@ impl DebugInfo {
         &self.dwarf
     }
 
-    pub fn function_name(&self, address: u64, find_inlined: bool) -> Option<String> {
+    /// Get the name of the function at the given address.
+    ///
+    /// If no function is found, `None` will be returend.
+    ///
+    /// ## Inlined functions
+    /// Multiple nested inline functions could exist at the given address.
+    /// This function will currently return the innermost function in that case.
+    pub fn function_name(
+        &self,
+        address: u64,
+        find_inlined: bool,
+    ) -> Result<Option<String>, DebugError> {
         let mut units = self.dwarf.units();
 
         while let Some(unit_info) = self.get_next_unit_info(&mut units) {
-            if let Some(die_cursor_state) = &mut unit_info.get_function_die(address, find_inlined) {
-                let function_name = die_cursor_state.function_name(&unit_info);
+            let mut functions = unit_info.get_function_dies(address, find_inlined)?;
+
+            // Use the last functions from the list, this is the function which most closely
+            // corresponds to the PC in case of multiple inlined functions.
+            if let Some(die_cursor_state) = functions.pop() {
+                let function_name = die_cursor_state.function_name();
 
                 if function_name.is_some() {
-                    return function_name;
+                    return Ok(function_name);
                 }
             }
         }
 
-        None
+        Ok(None)
     }
 
     /// Try get the [`SourceLocation`] for a given address.
@@ -971,7 +983,7 @@ impl DebugInfo {
         &self,
         cache: &mut VariableCache,
         core: &mut Core<'_>,
-        die_cursor_state: &mut FunctionDie,
+        die_cursor_state: &FunctionDie,
         unit_info: &UnitInfo,
         stack_frame_registers: &Registers,
         stackframe_root_variable: &Variable,
@@ -1096,82 +1108,53 @@ impl DebugInfo {
         core: &mut Core<'_>,
         address: u64,
         unwind_registers: &Registers,
-        // If we encountered an abstract source location (the location in the caller function where it calls and inline function), during the previous iteration, it was stored on the `StackFrameIterator` for passing to this function in the `::next()` iteration. This function then uses this as the source location for the caller.
-        abstract_source_location: Option<SourceLocation>,
-    ) -> Result<StackFrame, DebugError> {
+    ) -> Result<Vec<StackFrame>, DebugError> {
         let mut units = self.get_units();
 
         let unknown_function = format!("<unknown function @ {:#010x}>", address);
         let stack_frame_registers = unwind_registers.clone();
 
-        let mut inlined_call_site: Option<u32> = None;
-        let mut inlined_caller_source_location: Option<SourceLocation> = None;
+        let mut frames = Vec::new();
+
         while let Some(unit_info) = self.get_next_unit_info(&mut units) {
-            if let Some(function_die) =
-                &mut unit_info.get_function_die(address, abstract_source_location.is_none())
-            {
+            let functions = unit_info.get_function_dies(address, true)?;
+
+            if functions.is_empty() {
+                continue;
+            }
+
+            // Handle all functions which contain further inlined functions. For
+            // these functions, the location is the call site of the inlined function.
+            for (index, function_die) in functions[0..functions.len() - 1].iter().enumerate() {
+                let mut inlined_call_site: Option<u32> = None;
+                let mut inlined_caller_source_location: Option<SourceLocation> = None;
+
                 let function_name = function_die
-                    .function_name(&unit_info)
-                    .unwrap_or(unknown_function);
-
-                if function_die.is_inline {
-                    // Calculate the call site for this function, so that we can use it later to create an additional 'callee' `StackFrame` from that PC.
-                    let address_size =
-                        gimli::_UnwindSectionPrivate::address_size(&self.frame_section) as u64;
-
-                    if function_die.low_pc > address_size && function_die.low_pc < u32::MAX.into() {
-                        inlined_call_site = Some(function_die.low_pc as u32);
-                        inlined_caller_source_location = if let Some(file_name_attr) =
-                            function_die.get_attribute(gimli::DW_AT_call_file)
-                        {
-                            if let Some((directory, file)) = extract_file(
-                                unit_info.debug_info,
-                                &unit_info.unit,
-                                file_name_attr.value(),
-                            ) {
-                                let line = function_die
-                                    .get_attribute(gimli::DW_AT_call_line)
-                                    .and_then(|line| line.udata_value());
-                                let column = function_die
-                                    .get_attribute(gimli::DW_AT_call_column)
-                                    .map(|column| match column.udata_value() {
-                                        None => ColumnType::LeftEdge,
-                                        Some(c) => ColumnType::Column(c),
-                                    });
-                                Some(SourceLocation {
-                                    line,
-                                    column,
-                                    file: Some(file),
-                                    directory: Some(directory),
-                                })
-                            } else {
-                                None
-                            }
-                        } else {
-                            log::warn!(
-                                "Failed to get `SourceLocation` for function {:?}",
-                                function_die.function_name(&unit_info)
-                            );
-                            None
-                        };
-                    } else {
-                        log::error!(
-                            "UNWIND: Unable to calculate call site information for function {}",
-                            function_name
-                        );
-                    }
-                };
-
-                // Resolve either :
-                // - The 'origin' [`SourceLocation`] for a given `PC` address, or ...
-                // - The 'abstract' [`SourceLocation`] if it is available
-                let function_source_location = if abstract_source_location.is_some() {
-                    abstract_source_location
-                } else {
-                    self.get_source_location(address)
-                };
+                    .function_name()
+                    .unwrap_or_else(|| unknown_function.clone());
 
                 log::debug!("UNWIND: Function name: {}", function_name);
+
+                let next_function = &functions[index + 1];
+
+                assert!(next_function.is_inline());
+
+                // Calculate the call site for this function, so that we can use it later to create an additional 'callee' `StackFrame` from that PC.
+                let address_size = unit_info.unit.header.address_size() as u64;
+
+                if next_function.low_pc > address_size && next_function.low_pc < u32::MAX.into() {
+                    // The first instruction of the inlined function is used as the call site
+                    inlined_call_site = Some(next_function.low_pc as u32);
+
+                    log::debug!(
+                        "UNWIND: Callsite for inlined function {:?}",
+                        next_function.function_name()
+                    );
+
+                    inlined_caller_source_location = next_function.inline_call_location();
+                }
+
+                log::debug!("UNWIND: Call site: {:?}", inlined_caller_source_location);
 
                 // Now that we have the function_name and function_source_location, we can cache the in-scope `Variable`s (`<statics>` and `<locals>`) in `DebugInfo::VariableCache`
                 // We need an empty parent variable for the next operation, but do not need to store it in the cache.
@@ -1181,8 +1164,9 @@ impl DebugInfo {
                     Some(function_die.function_die.offset()),
                 );
                 stackframe_root_variable.name = VariableName::StackFrame;
-                stackframe_root_variable.source_location = function_source_location.clone();
-                let function_display_name = if function_die.is_inline {
+                stackframe_root_variable.source_location = inlined_caller_source_location.clone();
+
+                let function_display_name = if function_die.is_inline() {
                     format!("{} #[inline]", &function_name)
                 } else {
                     format!("{} @{:#010x}", &function_name, address)
@@ -1248,56 +1232,157 @@ impl DebugInfo {
                     &stackframe_root_variable,
                 )?;
 
-                // Ready to go ...
-                return Ok(StackFrame {
+                frames.push(StackFrame {
                     // MS DAP Specification requires the id to be unique accross all threads, so using  so using unique `Variable::variable_key` of the `stackframe_root_variable` as the id.
                     id: stackframe_root_variable.variable_key as u64,
                     function_name,
-                    source_location: function_source_location,
-                    registers: stack_frame_registers,
-                    pc: address as u32,
-                    inlined_call_site,
-                    inlined_caller_source_location,
+                    source_location: inlined_caller_source_location,
+                    registers: stack_frame_registers.clone(),
+                    pc: inlined_call_site.unwrap(),
+                    is_inlined: function_die.is_inline(),
                 });
             }
+
+            // Handle last function, which contains no further inlined functions
+            let last_function = functions.last().unwrap(); //UNWRAP: Checked at beginning of loop, functions must contain at least one value
+
+            let function_name = last_function
+                .function_name()
+                .unwrap_or_else(|| unknown_function.clone());
+
+            let function_location = self.get_source_location(address);
+
+            // Now that we have the function_name and function_source_location, we can cache the in-scope `Variable`s (`<statics>` and `<locals>`) in `DebugInfo::VariableCache`
+            // We need an empty parent variable for the next operation, but do not need to store it in the cache.
+            let parent_variable = Variable::new(None, None);
+            let mut stackframe_root_variable = Variable::new(
+                unit_info.unit.header.offset().as_debug_info_offset(),
+                Some(last_function.function_die.offset()),
+            );
+            stackframe_root_variable.name = VariableName::StackFrame;
+            stackframe_root_variable.source_location = function_location.clone();
+            let function_display_name = if last_function.is_inline() {
+                format!("{} #[inline]", &function_name)
+            } else {
+                format!("{} @{:#010x}", &function_name, address)
+            };
+            stackframe_root_variable.set_value(function_display_name);
+            stackframe_root_variable = unit_info.extract_location(
+                &unit_info
+                    .unit
+                    .entries_tree(Some(last_function.function_die.offset()))?
+                    .root()?,
+                &parent_variable,
+                stackframe_root_variable,
+                core,
+                &stack_frame_registers,
+                cache,
+            )?;
+
+            stackframe_root_variable = cache.cache_variable(
+                parent_variable.variable_key,
+                stackframe_root_variable,
+                core,
+            )?;
+
+            if let Some(error) = self
+                .cache_register_variables(
+                    cache,
+                    &stack_frame_registers,
+                    &stackframe_root_variable,
+                    core,
+                )
+                .err()
+            {
+                log::warn!(
+                    "Could not resolve register variables.{}. Continuing...",
+                    error
+                );
+            }
+
+            // Next, resolve the statics that belong to the compilation unit that this function is in.
+            if let Some(error) = self
+                .cache_static_variables(
+                    cache,
+                    core,
+                    &unit_info,
+                    &stack_frame_registers,
+                    &stackframe_root_variable,
+                )
+                .err()
+            {
+                log::warn!(
+                    "Error while resolving static variables.{}. Continuing...",
+                    error
+                );
+            }
+
+            // Next, resolve and cache the function variables.
+            self.cache_function_variables(
+                cache,
+                core,
+                last_function,
+                &unit_info,
+                &stack_frame_registers,
+                &stackframe_root_variable,
+            )?;
+
+            frames.push(StackFrame {
+                // MS DAP Specification requires the id to be unique accross all threads, so using  so using unique `Variable::variable_key` of the `stackframe_root_variable` as the id.
+                id: stackframe_root_variable.variable_key as u64,
+                function_name,
+                source_location: function_location,
+                registers: stack_frame_registers.clone(),
+                pc: address as u32,
+                is_inlined: last_function.is_inline(),
+            });
+
+            break;
         }
 
         // If we get here, we were not able to identify/unwind the function information.
         // Before returning `unknown_function` [StackFrame], make sure we at least cache the Register values.
         // We need an empty parent variable for the next operation, but do not need to store it in the cache.
-        let parent_variable = Variable::new(None, None);
-        let mut stackframe_root_variable = Variable::new(None, None);
-        stackframe_root_variable.name = VariableName::StackFrame;
-        stackframe_root_variable.source_location = self.get_source_location(address);
-        stackframe_root_variable.set_value(unknown_function.clone());
-        stackframe_root_variable.memory_location = address;
 
-        stackframe_root_variable =
-            cache.cache_variable(parent_variable.variable_key, stackframe_root_variable, core)?;
+        if frames.is_empty() {
+            let parent_variable = Variable::new(None, None);
+            let mut stackframe_root_variable = Variable::new(None, None);
+            stackframe_root_variable.name = VariableName::StackFrame;
+            stackframe_root_variable.source_location = self.get_source_location(address);
+            stackframe_root_variable.set_value(unknown_function.clone());
+            stackframe_root_variable.memory_location = address;
 
-        if let Some(error) = self
-            .cache_register_variables(
-                cache,
-                &stack_frame_registers,
-                &stackframe_root_variable,
+            stackframe_root_variable = cache.cache_variable(
+                parent_variable.variable_key,
+                stackframe_root_variable,
                 core,
-            )
-            .err()
-        {
-            log::warn!(
-                "Could not resolve register variables.{}. Continuing...",
-                error
-            );
+            )?;
+
+            if let Some(error) = self
+                .cache_register_variables(
+                    cache,
+                    &stack_frame_registers,
+                    &stackframe_root_variable,
+                    core,
+                )
+                .err()
+            {
+                log::warn!(
+                    "Could not resolve register variables.{}. Continuing...",
+                    error
+                );
+            }
+            Ok(vec![StackFrame {
+                id: stackframe_root_variable.variable_key as u64,
+                function_name: unknown_function,
+                source_location: self.get_source_location(address),
+                registers: stack_frame_registers.clone(),
+                pc: address as u32,
+                is_inlined: false,
+            }])
+        } else {
+            Ok(frames)
         }
-        Ok(StackFrame {
-            id: stackframe_root_variable.variable_key as u64,
-            function_name: unknown_function,
-            source_location: self.get_source_location(address),
-            registers: stack_frame_registers,
-            pc: address as u32,
-            inlined_call_site,
-            inlined_caller_source_location,
-        })
     }
 
     pub fn try_unwind<'debuginfo, 'probe, 'core>(
@@ -1468,24 +1553,33 @@ impl DebugInfo {
 }
 
 /// Reference to a DIE for a function
-struct FunctionDie<'abbrev, 'unit> {
+struct FunctionDie<'abbrev, 'unit, 'unit_info, 'debug_info> {
+    unit_info: &'unit_info UnitInfo<'debug_info>,
+
     function_die: FunctionDieType<'abbrev, 'unit>,
-    is_inline: bool,
+
+    /// Only present for inlined functions, where this is a reference
+    /// to the declaration of the function.
     abstract_die: Option<FunctionDieType<'abbrev, 'unit>>,
     low_pc: u64,
     high_pc: u64,
 }
 
 // TODO: We should consider replacing the `panic`s with proper error handling, that allows a user to be 'partially' successful with a debug session. If we use `panic`, then the user will have to wait until the bug is fixed before they can continue trying to use probe-rs
-impl<'debugunit, 'abbrev, 'unit: 'debugunit> FunctionDie<'abbrev, 'unit> {
-    fn new(die: FunctionDieType<'abbrev, 'unit>) -> Self {
+impl<'debugunit, 'abbrev, 'unit: 'debugunit, 'unit_info, 'debug_info>
+    FunctionDie<'abbrev, 'unit, 'unit_info, 'debug_info>
+{
+    fn new(
+        die: FunctionDieType<'abbrev, 'unit>,
+        unit_info: &'unit_info UnitInfo<'debug_info>,
+    ) -> Self {
         let tag = die.tag();
 
         match tag {
             gimli::DW_TAG_subprogram => {
                 Self {
+                    unit_info,
                     function_die: die,
-                    is_inline: false,
                     abstract_die: None,
                     low_pc: 0,
                     high_pc: 0,
@@ -1498,14 +1592,15 @@ impl<'debugunit, 'abbrev, 'unit: 'debugunit> FunctionDie<'abbrev, 'unit> {
     fn new_inlined(
         concrete_die: FunctionDieType<'abbrev, 'unit>,
         abstract_die: FunctionDieType<'abbrev, 'unit>,
+        unit_info: &'unit_info UnitInfo<'debug_info>,
     ) -> Self {
         let tag = concrete_die.tag();
 
         match tag {
             gimli::DW_TAG_inlined_subroutine => {
                 Self {
+                    unit_info,
                     function_die: concrete_die,
-                    is_inline: true,
                     abstract_die: Some(abstract_die),
                     low_pc: 0,
                     high_pc: 0,
@@ -1516,11 +1611,15 @@ impl<'debugunit, 'abbrev, 'unit: 'debugunit> FunctionDie<'abbrev, 'unit> {
         }
     }
 
-    fn function_name(&self, unit: &UnitInfo<'_>) -> Option<String> {
+    fn is_inline(&self) -> bool {
+        self.abstract_die.is_some()
+    }
+
+    fn function_name(&self) -> Option<String> {
         if let Some(fn_name_attr) = self.get_attribute(gimli::DW_AT_name) {
             match fn_name_attr.value() {
                 gimli::AttributeValue::DebugStrRef(fn_name_ref) => {
-                    let fn_name_raw = unit.debug_info.dwarf.string(fn_name_ref).unwrap();
+                    let fn_name_raw = self.unit_info.debug_info.dwarf.string(fn_name_ref).unwrap();
 
                     Some(String::from_utf8_lossy(&fn_name_raw).to_string())
                 }
@@ -1535,6 +1634,40 @@ impl<'debugunit, 'abbrev, 'unit: 'debugunit> FunctionDie<'abbrev, 'unit> {
         }
     }
 
+    /// Get the call site of an inlined function.
+    ///
+    /// If this function is not inlined (`is_inline()` returns false),
+    /// this function returns `None`.
+    fn inline_call_location(&self) -> Option<SourceLocation> {
+        if !self.is_inline() {
+            return None;
+        }
+
+        let file_name_attr = self.get_attribute(gimli::DW_AT_call_file)?;
+
+        let (directory, file) = extract_file(
+            self.unit_info.debug_info,
+            &self.unit_info.unit,
+            file_name_attr.value(),
+        )?;
+        let line = self
+            .get_attribute(gimli::DW_AT_call_line)
+            .and_then(|line| line.udata_value());
+
+        let column =
+            self.get_attribute(gimli::DW_AT_call_column)
+                .map(|column| match column.udata_value() {
+                    None => ColumnType::LeftEdge,
+                    Some(c) => ColumnType::Column(c),
+                });
+        Some(SourceLocation {
+            line,
+            column,
+            file: Some(file),
+            directory: Some(directory),
+        })
+    }
+
     /// Resolve an attribute by looking through both the origin or abstract die entries.
     fn get_attribute(&self, attribute_name: gimli::DwAt) -> Option<GimliAttribute> {
         let attribute = self
@@ -1544,7 +1677,7 @@ impl<'debugunit, 'abbrev, 'unit: 'debugunit> FunctionDie<'abbrev, 'unit> {
 
         // For inlined function, the *abstract instance* has to be checked if we cannot find the
         // attribute on the *concrete instance*.
-        if self.is_inline && attribute.is_none() {
+        if self.is_inline() && attribute.is_none() {
             if let Some(origin) = self.abstract_die.as_ref() {
                 origin
                     .attr(attribute_name)
@@ -1565,73 +1698,96 @@ struct UnitInfo<'debuginfo> {
 
 impl<'debuginfo> UnitInfo<'debuginfo> {
     /// Get the DIE for the function containing the given address.
-    fn get_function_die(&self, address: u64, find_inlined: bool) -> Option<FunctionDie> {
+    ///
+    /// If `find_inlined` is `false`, then the result will contain a single [`FunctionDie`]
+    fn get_function_dies(
+        &self,
+        address: u64,
+        find_inlined: bool,
+    ) -> Result<Vec<FunctionDie>, DebugError> {
         log::trace!("Searching Function DIE for address {:#010x}", address);
 
         let mut entries_cursor = self.unit.entries();
 
         while let Ok(Some((_depth, current))) = entries_cursor.next_dfs() {
             if current.tag() == gimli::DW_TAG_subprogram {
-                let mut ranges = self
-                    .debug_info
-                    .dwarf
-                    .die_ranges(&self.unit, current)
-                    .unwrap();
+                let mut ranges = self.debug_info.dwarf.die_ranges(&self.unit, current)?;
 
                 while let Ok(Some(ranges)) = ranges.next() {
                     if (ranges.begin <= address) && (address < ranges.end) {
                         // Check if we are actually in an inlined function
 
-                        let mut die = FunctionDie::new(current.clone());
+                        let mut die = FunctionDie::new(current.clone(), self);
                         die.low_pc = ranges.begin;
                         die.high_pc = ranges.end;
+
+                        let mut functions = vec![die];
+
                         if find_inlined {
                             log::debug!(
                                 "Found DIE, now checking for inlined functions: name={:?}",
-                                die.function_name(self)
+                                functions[0].function_name()
                             );
-                            return self
-                                .find_inlined_function(address, current.offset())
-                                .or_else(|| {
-                                    log::debug!("No inlined function found!");
-                                    Some(die)
-                                });
-                        } else {
-                            log::debug!("Found DIE: name={:?}", die.function_name(self));
 
-                            return Some(die);
+                            let inlined_functions =
+                                self.find_inlined_functions(address, current.offset())?;
+
+                            if inlined_functions.is_empty() {
+                                log::debug!("No inlined function found!");
+                            } else {
+                                log::debug!(
+                                    "{} inlined functions for address {:#010x}",
+                                    inlined_functions.len(),
+                                    address
+                                );
+                                functions.extend(inlined_functions.into_iter());
+                            }
+
+                            return Ok(functions);
+                        } else {
+                            log::debug!("Found DIE: name={:?}", functions[0].function_name());
                         }
+
+                        return Ok(functions);
                     }
                 }
             }
         }
-        None
+        Ok(vec![])
     }
 
-    /// Check if the function located at the given offset contains an inlined function at the
+    /// Check if the function located at the given offset contains inlined functions at the
     /// given address.
-    fn find_inlined_function(&self, address: u64, offset: UnitOffset) -> Option<FunctionDie> {
+    fn find_inlined_functions(
+        &self,
+        address: u64,
+        offset: UnitOffset,
+    ) -> Result<Vec<FunctionDie>, DebugError> {
         let mut current_depth = 0;
 
+        let mut abort_depth = 0;
+
         let mut cursor = self.unit.entries_at_offset(offset).unwrap();
+
+        let mut functions = Vec::new();
 
         while let Ok(Some((depth, current))) = cursor.next_dfs() {
             current_depth += depth;
 
-            if current_depth < 0 {
+            if current_depth < abort_depth {
                 break;
             }
 
             if current.tag() == gimli::DW_TAG_inlined_subroutine {
-                let mut ranges = self
-                    .debug_info
-                    .dwarf
-                    .die_ranges(&self.unit, current)
-                    .unwrap();
+                let mut ranges = self.debug_info.dwarf.die_ranges(&self.unit, current)?;
 
                 while let Ok(Some(ranges)) = ranges.next() {
                     if (ranges.begin <= address) && (address < ranges.end) {
                         // Check if we are actually in an inlined function
+
+                        // We don't have to search further up in the tree, if there are multiple inlined functions,
+                        // they will be children of the current function.
+                        abort_depth = current_depth;
 
                         // Find the abstract definition
                         if let Some(abstract_origin) =
@@ -1643,22 +1799,25 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                     let mut die = FunctionDie::new_inlined(
                                         current.clone(),
                                         abstract_die.clone(),
+                                        self,
                                     );
                                     die.low_pc = ranges.begin;
                                     die.high_pc = ranges.end;
-                                    return Some(die);
+
+                                    functions.push(die);
                                 }
                                 other_value => panic!("Unsupported value: {:?}", other_value),
                             }
                         } else {
-                            return None;
+                            log::debug!("No abstract origin for inlined function, skipping.");
+                            return Ok(vec![]);
                         }
                     }
                 }
             }
         }
 
-        None
+        Ok(functions)
     }
 
     fn expr_to_piece(
@@ -2074,7 +2233,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                 )));
             };
 
-        log::debug!("process_tree for parent {}", parent_variable.variable_key);
+        log::trace!("process_tree for parent {}", parent_variable.variable_key);
 
         let mut child_nodes = parent_node.children();
         while let Some(mut child_node) = child_nodes.next()? {
@@ -2864,16 +3023,20 @@ fn extract_file(
     match attribute_value {
         gimli::AttributeValue::FileIndex(index) => unit.line_program.as_ref().and_then(|ilnp| {
             let header = ilnp.header();
-            header.file(index).and_then(|file_entry| {
-                file_entry.directory(header).map(|directory| {
-                    (
-                        PathBuf::from(extract_name(debug_info, directory)),
-                        extract_name(debug_info, file_entry.path_name()),
-                    )
-                })
-            })
+
+            let file_entry = header.file(index);
+
+            debug_info
+                .find_file_and_directory(unit, header, file_entry.unwrap())
+                .map(|(file, path)| (path.unwrap(), file.unwrap()))
         }),
-        _ => None,
+        other => {
+            log::debug!(
+                "Unable to extract file information from attribute value {:?}: Not implemented.",
+                other
+            );
+            None
+        }
     }
 }
 

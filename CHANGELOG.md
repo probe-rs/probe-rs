@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - ARM:`Session::swo_reader` that returns a wrapping implementation of `std::io::Read` around `Session::read_swo`. (#916)
 - Added CortexM23 to Armv8m mapping for `target-gen`. (#966)
 - Added get_target_voltage to the Probe struct to access the inner DebugProbe method. (#991)
+- Debugger: Added support for showing multiple inlined functions in backtrace. (#1002)
 
 ### Changed
 

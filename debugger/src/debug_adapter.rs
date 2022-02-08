@@ -710,7 +710,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                             .as_ref()
                             .and_then(|sl| sl.line)
                             .unwrap_or(0) as i64;
-                        let function_display_name = if frame.inlined_call_site.is_some() {
+                        let function_display_name = if frame.is_inlined {
                             format!("{} #[inline]", frame.function_name)
                         } else {
                             format!("{} @{:#010x}", frame.function_name, frame.pc)
