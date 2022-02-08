@@ -773,7 +773,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
     }
     /// Retrieve available scopes  
     /// - static scope  : Variables with `static` modifier
-    /// - registers     : Currently supports core registers 0-15
+    /// - registers     : The [probe_rs::Core::registers] for the target [probe_rs::CoreType]
     /// - local scope   : Variables defined between start of current frame, and the current pc (program counter)
     pub(crate) fn scopes(&mut self, core_data: &mut CoreData, request: Request) -> Result<()> {
         let arguments: ScopesArguments = match get_arguments(&request) {
@@ -944,15 +944,17 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                 }
             }
 
-            // During the intial stack unwind operation, if we encounter certain types of pointers as children of complex variables, they will not be auto-expanded and included in the variable cache. Please refer to the `is_pointer` member of [probe_rs::debug::Variable] for more information. If this is the case, we will store the `stack_frame_registers` as part of the variable definition, so that we can  resolve the variable and add it to the cache before continuing.
+            // During the intial stack unwind operation, if encounter [Variable]'s with [VariableNodeType::is_deferred()], they will not be auto-expanded and included in the variable cache.
             // TODO: Use the DAP "Invalidated" event to refresh the variables for this stackframe. It will allow the UI to see updated compound values for pointer variables based on the newly resolved children.
             let dap_variables: Vec<Variable> = if let Some(variable_cache) = variable_cache {
-                if let Some(parent_variable) = parent_variable {
-                    if parent_variable.referenced_node_offset.is_some() {
-                        core_data.debug_info.cache_referenced_variables(
+                if let Some(parent_variable) = parent_variable.as_mut() {
+                    if parent_variable.variable_node_type.is_deferred()
+                        && !variable_cache.has_children(&parent_variable)?
+                    {
+                        core_data.debug_info.cache_deferred_variables(
                             variable_cache,
                             &mut core_data.target_core,
-                            &parent_variable,
+                            parent_variable,
                         )?;
                     }
                 }
@@ -1136,9 +1138,10 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                 named_child_variables_cnt,
                 indexed_child_variables_cnt,
             )
-        } else if parent_variable.referenced_node_offset.is_some()
+        } else if parent_variable.variable_node_type.is_deferred()
             && parent_variable.get_value(cache) != "()"
         {
+            // TODO: We should implement changing unit types to VariableNodeType::DoNotRecurse
             // We have not yet cached the children for this reference.
             // Provide DAP Client with a reference so that it will explicitly ask for children when the user expands it.
             (parent_variable.variable_key, 0, 0)
