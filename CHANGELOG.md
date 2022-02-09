@@ -101,6 +101,7 @@ Released 2023-03-31
 ### Fixed
 
 - Add reset catch sequence for Silicon Labs EFM32/EFR32 Series 2 chips.
+- Support for detecting WCH-Link as CMSIS-DAP v1 probe
 
 - target-gen: Use the correct flash base address when testing flash algorithm (#1542)
 
