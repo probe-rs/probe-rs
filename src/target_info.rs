@@ -97,7 +97,7 @@ fn extract_stack_info(elf: &Elf, ram_range: &Range<u32>) -> Option<StackInfo> {
                     name
                 );
                 return None;
-            } else if is_superset(&(stack_start..=stack_end), &section_range) {
+            } else if section_range.contains(&stack_start) {
                 stack_start = section_range.end() + 1;
             }
         }
@@ -109,31 +109,4 @@ fn extract_stack_info(elf: &Elf, ram_range: &Range<u32>) -> Option<StackInfo> {
         data_below_stack: *stack_range.start() > ram_range.start,
         range: stack_range,
     })
-}
-
-fn is_superset(superset: &RangeInclusive<u32>, subset: &RangeInclusive<u32>) -> bool {
-    subset.start() >= superset.start() && subset.end() <= superset.end()
-}
-
-#[cfg(test)]
-mod tests {
-    use rstest::rstest;
-
-    use super::*;
-
-    #[rstest]
-    #[case(0..=10, 0..=10, true)]
-    #[case(0..=10, 1..=9, true)]
-    #[case(0..=10, 0..=5, true)]
-    #[case(0..=10, 5..=10, true)]
-    #[case(0..=10, 0..=11, false)]
-    #[case(0..=10, 5..=11, false)]
-    fn should_extract_hash_from_description(
-        #[case] superset: RangeInclusive<u32>,
-        #[case] subset: RangeInclusive<u32>,
-        #[case] expected: bool,
-    ) {
-        let is_superset = is_superset(&superset, &subset);
-        assert_eq!(is_superset, expected)
-    }
 }
