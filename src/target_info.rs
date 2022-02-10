@@ -1,6 +1,10 @@
+use std::{
+    convert::TryInto,
+    ops::{Range, RangeInclusive},
+};
+
 use object::{Object, ObjectSection as _};
 use probe_rs::config::{MemoryRegion, RamRegion};
-use std::{convert::TryInto, ops::RangeInclusive};
 
 use crate::elf::Elf;
 
@@ -22,11 +26,9 @@ impl TargetInfo {
         let probe_target = probe_rs::config::get_target_by_name(chip)?;
         let active_ram_region =
             extract_active_ram_region(&probe_target, elf.vector_table.initial_stack_pointer);
-        let stack_info = extract_stack_info(
-            elf,
-            active_ram_region.as_ref(),
-            elf.vector_table.initial_stack_pointer,
-        );
+        let stack_info = active_ram_region
+            .as_ref()
+            .and_then(|ram_region| extract_stack_info(elf, &ram_region.range));
 
         Ok(Self {
             probe_target,
@@ -64,15 +66,15 @@ fn extract_active_ram_region(
         .cloned()
 }
 
-fn extract_stack_info(
-    elf: &object::read::File,
-    active_ram_region: Option<&RamRegion>,
-    initial_stack_pointer: u32,
-) -> Option<StackInfo> {
-    let active_ram_region = active_ram_region?;
+fn extract_stack_info(elf: &Elf, ram_range: &Range<u32>) -> Option<StackInfo> {
+    // How does it work?
+    // - the upper end of the stack is the initial SP, minus one
+    // - the lower end of the stack is the highest address any section in the elf file uses, plus one
+
+    let initial_stack_pointer = elf.vector_table.initial_stack_pointer;
 
     // SP points one past the end of the stack.
-    let mut stack_range = active_ram_region.range.start..=initial_stack_pointer - 1;
+    let mut stack_range = ram_range.start..=initial_stack_pointer - 1;
 
     for section in elf.sections() {
         let size: u32 = section.size().try_into().expect("expected 32-bit ELF");
@@ -85,34 +87,24 @@ fn extract_stack_info(
         let section_range = lowest_address..=highest_address;
         let name = section.name().unwrap_or("<unknown>");
 
-        if active_ram_region.range.contains(&highest_address) {
-            log::debug!(
-                "section `{}` is in RAM at {:#010X} ..= {:#010X}",
-                name,
-                lowest_address,
-                highest_address,
-            );
+        if ram_range.contains(section_range.end()) {
+            log::debug!("section `{}` is in RAM at {:#010X?}", name, section_range);
 
-            if section_range.contains(&(initial_stack_pointer - 1)) {
+            if section_range.contains(stack_range.end()) {
                 log::debug!(
                     "initial SP is in section `{}`, cannot determine valid stack range",
                     name
                 );
                 return None;
-            }
-
-            if initial_stack_pointer > lowest_address && *stack_range.start() <= highest_address {
-                stack_range = highest_address + 1..=initial_stack_pointer;
+            } else if stack_range.contains(section_range.end()) {
+                stack_range = section_range.end() + 1..=*stack_range.end();
             }
         }
     }
-    log::debug!(
-        "valid SP range: {:#010X} ..= {:#010X}",
-        stack_range.start(),
-        stack_range.end(),
-    );
+
+    log::debug!("valid SP range: {:#010X?}", stack_range);
     Some(StackInfo {
-        data_below_stack: *stack_range.start() > active_ram_region.range.start,
+        data_below_stack: *stack_range.start() > ram_range.start,
         range: stack_range,
     })
 }
