@@ -75,7 +75,7 @@ fn extract_stack_info(elf: &Elf, ram_range: &Range<u32>) -> Option<StackInfo> {
 
     // SP points one past the end of the stack.
     let stack_end = initial_stack_pointer - 1;
-    let mut stack_start = ram_range.start;
+    let mut stack_range = ram_range.start..=stack_end;
 
     for section in elf.sections() {
         let size: u32 = section.size().try_into().expect("expected 32-bit ELF");
@@ -97,13 +97,12 @@ fn extract_stack_info(elf: &Elf, ram_range: &Range<u32>) -> Option<StackInfo> {
                     name
                 );
                 return None;
-            } else if section_range.contains(&stack_start) {
-                stack_start = section_range.end() + 1;
+            } else if stack_range.contains(section_range.end()) {
+                stack_range = section_range.end() + 1..=*stack_range.end();
             }
         }
     }
 
-    let stack_range = stack_start..=stack_end;
     log::debug!("valid SP range: {:#010X?}", stack_range);
     Some(StackInfo {
         data_below_stack: *stack_range.start() > ram_range.start,
