@@ -97,7 +97,7 @@ fn extract_stack_info(elf: &Elf, ram_range: &Range<u32>) -> Option<StackInfo> {
                     name
                 );
                 return None;
-            } else if section_range.contains(&stack_start) {
+            } else if stack_start <= *section_range.end() {
                 stack_start = section_range.end() + 1;
             }
         }
