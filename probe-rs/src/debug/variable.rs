@@ -70,7 +70,7 @@ impl VariableCache {
             new_entry_key
         } else {
             // Attempt to update an existing `Variable` in the cache
-            log::debug!(
+            log::trace!(
                 "VariableCache: Update Variable, key={}, name={:?}",
                 variable_to_add.variable_key,
                 &variable_to_add.name
@@ -168,15 +168,17 @@ impl VariableCache {
 
     /// Sometimes DWARF uses intermediate nodes that are not part of the coded variable structure.
     /// When we encounter them, the children of such intermediate nodes are assigned to the parent of the intermediate node, and we discard the intermediate nodes from the `DebugInfo::VariableCache`
+    ///
+    /// Similarly, while resolving [VariableNodeType::is_deferred()], i.e. 'lazy load' of variables, we need to create intermediate variables that are eliminated here.
+    ///
+    /// NOTE: For all other situations, this function will silently do nothing.
     pub fn adopt_grand_children(
         &mut self,
         parent_variable: &Variable,
         obsolete_child_variable: &Variable,
     ) -> Result<(), Error> {
-        // If the `obsolete_child_variable` has a type other than `Some`, then silently do nothing.
         if obsolete_child_variable.type_name.is_empty()
-            || obsolete_child_variable.type_name == "Some"
-            || obsolete_child_variable.name == VariableName::Named("*<statics>".to_string())
+            || obsolete_child_variable.variable_node_type.is_deferred()
         {
             // Make sure we pass children up, past any intermediate nodes.
             self.variable_hash_map
@@ -263,10 +265,6 @@ impl Default for VariantRole {
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum VariableName {
-    /// Every [`Core`] will have it's own set of hierarchy of entries in the cache.
-    CoreId,
-    /// Top-level variable for a stack frame (usually a function or inlined subroutine).
-    StackFrame,
     /// Top-level variable for static variables, child of a stack frame variable, and holds all the static scoped variables which are directly visible to the compile unit of the frame.
     StaticScope,
     /// Top-level variable for registers, child of a stack frame variable.
@@ -292,8 +290,6 @@ impl Default for VariableName {
 impl std::fmt::Display for VariableName {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            VariableName::CoreId => write!(f, "<core_id>"),
-            VariableName::StackFrame => write!(f, "<stack_frame>"),
             VariableName::StaticScope => write!(f, "<static_scope>"),
             VariableName::Registers => write!(f, "<registers>"),
             VariableName::LocalScope => write!(f, "<local_scope>"),
@@ -312,9 +308,11 @@ pub enum VariableNodeType {
     /// For pointer values, their referenced variables are found at an [gimli::UnitOffset] in the [DebugInfo].
     /// - Rule: Pointers to `struct` variables WILL NOT BE recursed, because  this may lead to infinite loops/stack overflows in `struct`s that self-reference.
     /// - Rule: Pointers to "base" datatypes SHOULD BE, but ARE NOT resolved, because it would keep the UX simple, but DWARF doesn't make it easy to determine when a pointer points to a base data type. We can read ahead in the DIE children, but that feels rather inefficient.
-    Offset(UnitOffset),
+    ReferenceOffset(UnitOffset),
+    /// Use the `header_offset` and `type_offset` as direct references for recursing the variable children.
+    /// - Rule: For structured variables, we WILL NOT automatically expand their children, but we have enough information to expand it on demand. Except if they fall into one of the special cases handled by [VariableNodeType::RecurseAsIntermediate]
+    TypeOffset(UnitOffset),
     /// Use the `header_offset` and `entries_offset` as direct references for recursing the variable children.
-    /// - Rule: For structured variables, we WILL NOT automatically expand their children, but we have enough information to expand it on demand.
     /// - Rule: All top level variables in a [StackFrame] are automatically deferred, i.e [VariableName::StaticScope], [VariableName::Registers], [VariableName::LocalScope].
     DirectLookup,
     /// Sometimes it doesn't make sense to recurse the children of a specific node type
@@ -324,17 +322,21 @@ pub enum VariableNodeType {
     DoNotRecurse,
     /// Unless otherwise specified, always recurse the children of every node until we get to the base data type.
     /// - Rule: (Default) Unless it is prevented by any of the other rules, we always recurse the children of these variables.
+    /// - Rule: Certain structured variables (e.g. `&str`, `Some`, `Ok`, `Err`, etc.) are set to [VariableNodeType::RecurseToBaseType] to improve the debugger UX.
     /// - Rule: Pointers to `const` variables WILL ALWAYS BE recursed, because they provide essential information, for example about the length of strings, or the size of arrays.
+    /// - Rule: Enumerated types WILL ALWAYS BE recursed, because we only ever want to see the 'active' child as the value.
+    /// - Rule: For now, Array types WILL ALWAYS BE recursed. TODO: Evaluate if it is beneficial to defer these.
+    /// - Rule: For now, Union types WILL ALWAYS BE recursed. TODO: Evaluate if it is beneficial to defer these.
     RecurseToBaseType,
 }
 
 impl VariableNodeType {
     pub fn is_deferred(&self) -> bool {
         match self {
-            VariableNodeType::Offset(_) => true,
-            VariableNodeType::DirectLookup => true,
-            VariableNodeType::DoNotRecurse => false,
-            VariableNodeType::RecurseToBaseType => false,
+            VariableNodeType::ReferenceOffset(_)
+            | VariableNodeType::TypeOffset(_)
+            | VariableNodeType::DirectLookup => true,
+            _other => false,
         }
     }
 }
@@ -362,16 +364,14 @@ pub struct Variable {
     /// The source location of the declaration of this variable, if available.
     pub source_location: Option<SourceLocation>,
     pub type_name: String,
+    /// The unit_header_offset and variable_unit_offset are cached to allow on-demand access to the variable's gimli::Unit, through functions like:
+    ///   `gimli::Read::DebugInfo.header_from_offset()`, and   
+    ///   `gimli::Read::UnitHeader.entries_tree()`
+    pub unit_header_offset: Option<DebugInfoOffset>,
+    pub variable_unit_offset: Option<UnitOffset>,
     /// For 'lazy loading' of certain variable types we have to determine if the variable recursion should be deferred, and if so, how to resolve it when the request for further recursion happens.
     /// See [VariableNodeType] for more information.
     pub variable_node_type: VariableNodeType,
-    /// The header_offset and entries_offset are cached to allow on-demand access to the gimli::Unit, through functions like:
-    ///   `gimli::Read::DebugInfo.header_from_offset()`, and   
-    ///   `gimli::Read::UnitHeader.entries_tree()`
-    ///
-    /// TODO: Is there a more efficient method to get on demand access to gimli::Unit through stored references to it?
-    pub header_offset: Option<DebugInfoOffset>,
-    pub entries_offset: Option<UnitOffset>,
     /// The starting location/address in memory where this Variable's value is stored.
     pub memory_location: u64,
     pub byte_size: u64,
@@ -391,8 +391,8 @@ impl Variable {
         entries_offset: Option<UnitOffset>,
     ) -> Variable {
         Variable {
-            header_offset,
-            entries_offset,
+            unit_header_offset: header_offset,
+            variable_unit_offset: entries_offset,
             ..Default::default()
         }
     }
@@ -425,8 +425,8 @@ impl Variable {
                         self.formatted_variable_value(variable_cache)
                     } else if self.type_name.is_empty() || self.memory_location.is_zero() {
                         if self.variable_node_type.is_deferred() {
-                            // When we will do a lazy-load of variable children, and they have not yet been requested by the user
-                            "".to_string()
+                            // When we will do a lazy-load of variable children, and they have not yet been requested by the user, just display the type_name as the value
+                            self.type_name.clone()
                         } else {
                             // This condition should only be true for intermediate nodes from DWARF. These should not show up in the final `VariableCache`
                             // If a user sees this error, then there is a logic problem in the stack unwind
@@ -470,54 +470,88 @@ impl Variable {
             return;
         }
 
-        log::debug!(
+        log::trace!(
             "Extracting value for {:?}, type={}",
             self.name,
             self.type_name
         );
 
         // This is the primary logic for decoding a variable's value, once we know the type and memory_location.
-        let string_value = match self.type_name.as_str() {
-            "!" => "<Never returns>".to_string(),
-            "()" => "()".to_string(),
-            "bool" => bool::get_value(self, core, variable_cache)
-                .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.to_string()),
-            "char" => char::get_value(self, core, variable_cache)
-                .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.to_string()),
-            "&str" => String::get_value(self, core, variable_cache)
-                .map_or_else(|err| format!("ERROR: {:?}", err), |value| value),
-            "i8" => i8::get_value(self, core, variable_cache)
-                .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.to_string()),
-            "i16" => i16::get_value(self, core, variable_cache)
-                .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.to_string()),
-            "i32" => i32::get_value(self, core, variable_cache)
-                .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.to_string()),
-            "i64" => i64::get_value(self, core, variable_cache)
-                .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.to_string()),
-            "i128" => i128::get_value(self, core, variable_cache)
-                .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.to_string()),
-            "isize" => isize::get_value(self, core, variable_cache)
-                .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.to_string()),
-            "u8" => u8::get_value(self, core, variable_cache)
-                .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.to_string()),
-            "u16" => u16::get_value(self, core, variable_cache)
-                .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.to_string()),
-            "u32" => u32::get_value(self, core, variable_cache)
-                .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.to_string()),
-            "u64" => u64::get_value(self, core, variable_cache)
-                .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.to_string()),
-            "u128" => u128::get_value(self, core, variable_cache)
-                .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.to_string()),
-            "usize" => usize::get_value(self, core, variable_cache)
-                .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.to_string()),
-            "f32" => f32::get_value(self, core, variable_cache)
-                .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.to_string()),
-            "f64" => f64::get_value(self, core, variable_cache)
-                .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.to_string()),
-            "None" => "None".to_string(),
-            _undetermined_value => "".to_owned(),
+        let known_value = match self.type_name.as_str() {
+            "!" => Some("<Never returns>".to_string()),
+            "()" => Some("()".to_string()),
+            "bool" => Some(
+                bool::get_value(self, core, variable_cache)
+                    .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.to_string()),
+            ),
+            "char" => Some(
+                char::get_value(self, core, variable_cache)
+                    .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.to_string()),
+            ),
+            "&str" => Some(
+                String::get_value(self, core, variable_cache)
+                    .map_or_else(|err| format!("ERROR: {:?}", err), |value| value),
+            ),
+            "i8" => Some(
+                i8::get_value(self, core, variable_cache)
+                    .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.to_string()),
+            ),
+            "i16" => Some(
+                i16::get_value(self, core, variable_cache)
+                    .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.to_string()),
+            ),
+            "i32" => Some(
+                i32::get_value(self, core, variable_cache)
+                    .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.to_string()),
+            ),
+            "i64" => Some(
+                i64::get_value(self, core, variable_cache)
+                    .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.to_string()),
+            ),
+            "i128" => Some(
+                i128::get_value(self, core, variable_cache)
+                    .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.to_string()),
+            ),
+            "isize" => Some(
+                isize::get_value(self, core, variable_cache)
+                    .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.to_string()),
+            ),
+            "u8" => Some(
+                u8::get_value(self, core, variable_cache)
+                    .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.to_string()),
+            ),
+            "u16" => Some(
+                u16::get_value(self, core, variable_cache)
+                    .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.to_string()),
+            ),
+            "u32" => Some(
+                u32::get_value(self, core, variable_cache)
+                    .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.to_string()),
+            ),
+            "u64" => Some(
+                u64::get_value(self, core, variable_cache)
+                    .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.to_string()),
+            ),
+            "u128" => Some(
+                u128::get_value(self, core, variable_cache)
+                    .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.to_string()),
+            ),
+            "usize" => Some(
+                usize::get_value(self, core, variable_cache)
+                    .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.to_string()),
+            ),
+            "f32" => Some(
+                f32::get_value(self, core, variable_cache)
+                    .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.to_string()),
+            ),
+            "f64" => Some(
+                f64::get_value(self, core, variable_cache)
+                    .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.to_string()),
+            ),
+            "None" => Some("None".to_string()),
+            _undetermined_value => None,
         };
-        self.value = Some(string_value);
+        self.value = known_value;
     }
 
     /// The variable is considered to be an 'indexed' variable if the name starts with two underscores followed by a number. e.g. "__1".
