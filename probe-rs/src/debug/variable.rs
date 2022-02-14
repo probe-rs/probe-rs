@@ -178,7 +178,7 @@ impl VariableCache {
         obsolete_child_variable: &Variable,
     ) -> Result<(), Error> {
         if obsolete_child_variable.type_name.is_empty()
-            || obsolete_child_variable.variable_node_type.is_deferred()
+            || obsolete_child_variable.variable_node_type != VariableNodeType::DoNotRecurse
         {
             // Make sure we pass children up, past any intermediate nodes.
             self.variable_hash_map
@@ -590,45 +590,98 @@ impl Variable {
                         }
                     );
                     compound_value
-                } else if self.type_name.starts_with('(') {
-                    // Tuples
-                    compound_value = format!("{}(", compound_value);
+                } else if self.type_name.starts_with('[') {
+                    // Arrays
+                    compound_value = format!("{}[", compound_value);
+                    let mut child_count: usize = 0;
+                    for child in children.iter() {
+                        child_count += 1;
+                        if child_count == children.len() {
+                            // Do not add a separator at the end of the list
+                            compound_value = format!(
+                                "{}{}",
+                                compound_value,
+                                child.formatted_variable_value(variable_cache)
+                            );
+                        } else {
+                            compound_value = format!(
+                                "{}{}, ",
+                                compound_value,
+                                child.formatted_variable_value(variable_cache)
+                            );
+                        }
+                    }
+                    format!("{}]", compound_value)
+                } else if self.type_name.starts_with("Option")
+                    || self.type_name.starts_with("Result")
+                {
+                    // For special structure types `Option<>` and `Result<>`, we only format their children
                     for child in children {
                         compound_value = format!(
-                            "{}{}, ",
+                            "{}{}",
+                            compound_value,
+                            child.formatted_variable_value(variable_cache)
+                        );
+                    }
+                    format!("{}", compound_value)
+                } else if self.type_name.as_str() == "Some"
+                    || self.type_name.as_str() == "Ok"
+                    || self.type_name.as_str() == "Err"
+                {
+                    // Handle special structure types like the variant values of `Option<>` and `Result<>`
+                    compound_value = format!("{} {}(", self.type_name, compound_value);
+                    for child in children {
+                        compound_value = format!(
+                            "{}{}",
                             compound_value,
                             child.formatted_variable_value(variable_cache)
                         );
                     }
                     format!("{})", compound_value)
-                } else if self.type_name.starts_with('[') {
-                    // Arrays
-                    compound_value = format!("{}[", compound_value);
-                    for child in children {
-                        compound_value = format!(
-                            "{}{}, ",
-                            compound_value,
-                            child.formatted_variable_value(variable_cache)
-                        );
-                    }
-                    format!("{}]", compound_value)
                 } else {
                     // Generic handling of other structured types.
-                    // TODO: This is 'ok' for most, but could benefit from some custom formatting, e.g. Unions, Result<> and Option<>
-                    if self.is_indexed() {
-                        // Indexed variables look different ...
-                        compound_value = format!("{}{}:{{", compound_value, self.name);
-                    } else {
-                        compound_value = format!("{}{{", compound_value);
+                    // The pre- and post- fix is determined by the type of children.
+                    // compound_value = format!("{} {}", compound_value, self.type_name);
+                    let (mut pre_fix, mut post_fix): (Option<String>, Option<String>) =
+                        (None, None);
+                    let mut child_count: usize = 0;
+                    for child in children.iter() {
+                        child_count += 1;
+                        if pre_fix.is_none() && post_fix.is_none() {
+                            if let VariableName::Named(child_name) = child.name.clone() {
+                                if child_name.starts_with("__0") {
+                                    // Treat this structure as a tuple
+                                    pre_fix = Some("(".to_string());
+                                    post_fix = Some(")".to_string());
+                                } else {
+                                    // Treat this structure as a `struct`
+                                    pre_fix = Some("{".to_string());
+                                    post_fix = Some("}".to_string());
+                                }
+                            };
+                            if let Some(pre_fix) = &pre_fix {
+                                compound_value = format!("{}{}", compound_value, pre_fix);
+                            };
+                        }
+                        if child_count == children.len() {
+                            // Do not add a separator at the end of the list
+                            compound_value = format!(
+                                "{}{}",
+                                compound_value,
+                                child.formatted_variable_value(variable_cache)
+                            );
+                        } else {
+                            compound_value = format!(
+                                "{}{}, ",
+                                compound_value,
+                                child.formatted_variable_value(variable_cache)
+                            );
+                        }
                     }
-                    for child in children {
-                        compound_value = format!(
-                            "{}{}, ",
-                            compound_value,
-                            child.formatted_variable_value(variable_cache)
-                        );
-                    }
-                    format!("{}}}", compound_value)
+                    if let Some(post_fix) = &post_fix {
+                        compound_value = format!("{}{}", compound_value, post_fix);
+                    };
+                    format!("{}", compound_value)
                 }
             } else {
                 // We don't have a value, and we can't generate one from children values, so use the type_name
