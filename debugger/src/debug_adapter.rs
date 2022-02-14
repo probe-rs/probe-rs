@@ -649,9 +649,13 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             core_data.target_core.id()
         );
 
-        *core_data.stack_frames = core_data
-            .debug_info
-            .unwind(&mut core_data.target_core, u64::from(pc))?;
+        if core_data.pc_of_most_recent_unwind().unwrap_or(0) != pc {
+            // If the program_counter has changed since the last unwind, then refresh the stack frames.
+            // NOTE: We do this, because VSCode sometimes sends duplicate stack_trace requests, and that results in overhead, as well as different ID's for the new stackframes.
+            *core_data.stack_frames = core_data
+                .debug_info
+                .unwind(&mut core_data.target_core, u64::from(pc))?;
+        }
 
         match self.adapter_type() {
             DebugAdapterType::CommandLine => {
@@ -951,7 +955,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
 
             // During the intial stack unwind operation, if encounter [Variable]'s with [VariableNodeType::is_deferred()], they will not be auto-expanded and included in the variable cache.
             // TODO: Use the DAP "Invalidated" event to refresh the variables for this stackframe. It will allow the UI to see updated compound values for pointer variables based on the newly resolved children.
-            let dap_variables: Vec<Variable> = if let Some(variable_cache) = variable_cache {
+            if let Some(variable_cache) = variable_cache {
                 if let Some(parent_variable) = parent_variable.as_mut() {
                     if parent_variable.variable_node_type.is_deferred()
                         && !variable_cache.has_children(parent_variable)?
@@ -969,7 +973,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                     }
                 }
 
-                variable_cache
+                let dap_variables: Vec<Variable> = variable_cache
                     .get_children(Some(arguments.variables_reference))?
                     .iter()
                     // Filter out requested children, then map them as DAP variables
@@ -1004,18 +1008,15 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                             variables_reference,
                         }
                     })
-                    .collect()
+                    .collect();
+                Ok(Some(VariablesResponseBody {
+                    variables: dap_variables,
+                }))
             } else {
-                vec![]
-            };
-            match dap_variables.len() {
-                0 => Err(DebuggerError::Other(anyhow!(
+                Err(DebuggerError::Other(anyhow!(
                     "No variable information found for {}!",
                     arguments.variables_reference
-                ))),
-                _ => Ok(Some(VariablesResponseBody {
-                    variables: dap_variables,
-                })),
+                )))
             }
         };
 

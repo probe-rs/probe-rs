@@ -414,6 +414,11 @@ pub struct CoreData<'p> {
 }
 
 impl<'p> CoreData<'p> {
+    /// The first [StackFrame]'s `pc` value, is the value of the program counter at the most recent unwind.
+    pub(crate) fn pc_of_most_recent_unwind(&'p self) -> Option<u32> {
+        self.stack_frames.first().map(|stack_frame| stack_frame.pc)
+    }
+
     /// Search available [StackFrame]'s for the given `id`
     pub(crate) fn get_stackframe(&'p self, id: i64) -> Option<&'p probe_rs::debug::StackFrame> {
         self.stack_frames
