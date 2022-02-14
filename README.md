@@ -147,7 +147,7 @@ See [the vcpkg crate documentation](https://docs.rs/vcpkg/) for more information
 
 ### Adding Targets
 
-Target files are generated using [probe-rs/target-gen](https://github.com/probe-rs/target-gen) from CMSIS packs provided [here](https://developer.arm.com/tools-and-software/embedded/cmsis/cmsis-search).
+Target files are generated using [target-gen](https://github.com/probe-rs/probe-rs/tree/master/target-gen) from CMSIS packs provided [here](https://developer.arm.com/tools-and-software/embedded/cmsis/cmsis-search).
 Generated files are then placed in `probe-rs/targets` for inclusion in the probe-rs project.
 
 ## Sponsors
