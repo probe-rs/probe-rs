@@ -34,6 +34,25 @@ where
     devices.sort_by(|a, b| a.0.cmp(&b.0));
 
     for (device_name, device) in devices {
+        // Check if this device family is already known.
+        let mut potential_family = families
+            .iter_mut()
+            .find(|family| family.name == device.family);
+
+        let family = if let Some(ref mut family) = potential_family {
+            family
+        } else {
+            families.push(ChipFamily {
+                name: device.family.clone(),
+                manufacturer: None,
+                variants: Vec::new(),
+                flash_algorithms: Vec::new(),
+                source: probe_rs::config::TargetDescriptionSource::BuiltIn,
+            });
+            // This unwrap is always safe as we insert at least one item previously.
+            families.last_mut().unwrap()
+        };
+
         // Extract the RAM info from the .pdsc file.
         let ram = get_ram(&device);
 
@@ -54,6 +73,15 @@ where
                         flash_algorithm.default,
                     ),
                 }?;
+
+                // We add this algo directly to the algos of the family if it's not already added.
+                // Make sure we never add an algo twice to save file size.
+                if !family.flash_algorithms.contains(&algo) {
+                    family.flash_algorithms.push(algo.clone());
+                }
+
+                // This algo will still be added to the specific chip algos by name.
+                // We just need to deduplicate the entire flash algorithm and reference to it by name at other places.
 
                 Ok(algo)
             })
@@ -76,33 +104,10 @@ where
             println!("{:#?}", device.processors);
         }
 
-        // Check if this device family is already known.
-        let mut potential_family = families
-            .iter_mut()
-            .find(|family| family.name == device.family);
-
-        let family = if let Some(ref mut family) = potential_family {
-            family
-        } else {
-            families.push(ChipFamily {
-                name: device.family,
-                manufacturer: None,
-                variants: Vec::new(),
-                flash_algorithms: Vec::new(),
-                source: probe_rs::config::TargetDescriptionSource::BuiltIn,
-            });
-            // This unwrap is always safe as we insert at least one item previously.
-            families.last_mut().unwrap()
-        };
-
         let flash_algorithm_names: Vec<_> = variant_flash_algorithms
             .iter()
             .map(|fa| fa.name.to_string())
             .collect();
-
-        for fa in variant_flash_algorithms {
-            family.flash_algorithms.push(fa);
-        }
 
         let mut memory_map: Vec<MemoryRegion> = Vec::new();
         if let Some(mem) = ram {

@@ -7,7 +7,7 @@ use std::ops::Range;
 ///
 /// These values are read from the
 /// YAML target description files.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub struct FlashProperties {
     /// The range of the device flash.
     pub address_range: Range<u32>,
