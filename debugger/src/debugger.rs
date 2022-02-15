@@ -414,11 +414,6 @@ pub struct CoreData<'p> {
 }
 
 impl<'p> CoreData<'p> {
-    /// The first [StackFrame]'s `pc` value, is the value of the program counter at the most recent unwind.
-    pub(crate) fn pc_of_most_recent_unwind(&'p self) -> Option<u32> {
-        self.stack_frames.first().map(|stack_frame| stack_frame.pc)
-    }
-
     /// Search available [StackFrame]'s for the given `id`
     pub(crate) fn get_stackframe(&'p self, id: i64) -> Option<&'p probe_rs::debug::StackFrame> {
         self.stack_frames
@@ -1009,8 +1004,7 @@ impl Debugger {
                     supports_read_memory_request: Some(true),
                     supports_restart_request: Some(true),
                     supports_terminate_request: Some(true),
-                    // TODO: In order to supports_delayed_stack_trace_loading: Some(false), we need to honor the `levels` parameter of the `stacktrace` request from VSCode - see https://github.com/Microsoft/vscode/issues/62908. However, despite setting this to `false`, VSCode still sends duplicate `StackTrace` requests for each halt.
-                    supports_delayed_stack_trace_loading: Some(false),
+                    supports_delayed_stack_trace_loading: Some(true),
                     // supports_value_formatting_options: Some(true),
                     // supports_function_breakpoints: Some(true),
                     // TODO: Use DEMCR register to implement exception breakpoints
