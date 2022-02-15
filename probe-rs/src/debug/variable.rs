@@ -623,7 +623,7 @@ impl Variable {
                             child.formatted_variable_value(variable_cache)
                         );
                     }
-                    format!("{}", compound_value)
+                    compound_value
                 } else if self.type_name.as_str() == "Some"
                     || self.type_name.as_str() == "Ok"
                     || self.type_name.as_str() == "Err"
@@ -681,7 +681,7 @@ impl Variable {
                     if let Some(post_fix) = &post_fix {
                         compound_value = format!("{}{}", compound_value, post_fix);
                     };
-                    format!("{}", compound_value)
+                    compound_value
                 }
             } else {
                 // We don't have a value, and we can't generate one from children values, so use the type_name

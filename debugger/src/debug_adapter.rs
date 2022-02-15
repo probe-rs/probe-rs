@@ -432,7 +432,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         _core_data: &mut CoreData,
         request: Request,
     ) -> Result<()> {
-        self.send_response::<()>(request.clone(), Ok(None))
+        self.send_response::<()>(request, Ok(None))
     }
 
     pub(crate) fn threads(&mut self, core_data: &mut CoreData, request: Request) -> Result<()> {
@@ -1130,13 +1130,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                             self.send_response(
                                 request,
                                 Ok(Some(ContinueResponseBody {
-                                    all_threads_continued: if self.last_known_status
-                                        == CoreStatus::Running
-                                    {
-                                        Some(false) // TODO: Implement multi-core logic here
-                                    } else {
-                                        Some(false)
-                                    },
+                                    all_threads_continued: Some(false), // TODO: Implement multi-core logic here
                                 })),
                             )?;
                         }
