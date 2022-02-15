@@ -80,6 +80,8 @@ fn main() -> Result<()> {
 
     let options = TargetGen::parse();
 
+    let t = std::time::Instant::now();
+
     match options {
         TargetGen::Pack { input, output_dir } => cmd_pack(&input, &output_dir)?,
         TargetGen::Elf {
@@ -90,6 +92,8 @@ fn main() -> Result<()> {
         } => cmd_elf(elf, output, update, name)?,
         TargetGen::Arm { output_dir } => cmd_arm(output_dir.as_path())?,
     }
+
+    println!("Finished in {:?}", t.elapsed());
 
     Ok(())
 }
