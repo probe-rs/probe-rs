@@ -26,7 +26,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Chip names are now matched treating an 'x' as a wildcard. (#964)
 - GDB server is now available as a subcommand in the probe-rs-cli, not as a separate binary in the `gdb-server` package anymore . (#972)
-- `probe_rs::debug` and `probe-rs-debugger` changes/cleanup to the internals (#999)
+- `probe_rs::debug` and `probe-rs-debugger` changes/cleanup to the internals (#1013)
   - Removed StackFrameIterator and incorporated its logic into DebugInfo::unwind()
   - StackFrame now has VariableCache entries for locals, statics and registers
   - Modify DebugSession and CoreData to handle multiple cores.
