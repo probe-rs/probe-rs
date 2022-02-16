@@ -31,7 +31,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - StackFrame now has VariableCache entries for locals, statics and registers
   - Modify DebugSession and CoreData to handle multiple cores.
   - Modify Variable::parent_key to be Option<i64> and use None rather than 0 values to control logic.
-  - [WIP] Use the updated StackFrame, and new VariableNodeType to facilitate 'lazy' loading of variables during stack trace operations. VSCode and MS DAP will request one 'level' of variables at a time, and there is no need to resolve and cache variable data unless the user is going to view/use it.
+  - Use the updated StackFrame, and new VariableNodeType to facilitate 'lazy' loading of variables during stack trace operations. VSCode and MS DAP will request one 'level' of variables at a time, and there is no need to resolve and cache variable data unless the user is going to view/use it.
+  - Improved `Variable` value formatting for complex variable types.
 
 ### Fixed
 
