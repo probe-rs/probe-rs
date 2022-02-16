@@ -3,7 +3,7 @@ use crate::common::CliError;
 use capstone::Capstone;
 use num_traits::Num;
 use probe_rs::architecture::arm::Dump;
-use probe_rs::debug::{DebugInfo, Registers, VariableCache, VariableName};
+use probe_rs::debug::{DebugInfo, Registers, VariableName};
 use probe_rs::{Core, CoreRegisterAddress, MemoryInterface};
 use std::fs::File;
 use std::{io::prelude::*, time::Duration};
@@ -261,45 +261,63 @@ impl DebugCli {
                             cli_data.core.read_core_reg(regs.program_counter())?;
 
                         if let Some(di) = &mut cli_data.debug_info {
-                            let frames: Vec<_> = di
-                                .try_unwind(
-                                    &mut halted_state.variable_cache,
-                                    &mut cli_data.core,
-                                    u64::from(program_counter),
-                                )
+                            halted_state.stack_frames = di
+                                .unwind(&mut cli_data.core, u64::from(program_counter))
+                                .unwrap();
+
+                            halted_state.frame_indices = halted_state
+                                .stack_frames
+                                .iter()
+                                .map(|sf| sf.id as i64)
                                 .collect();
 
-                            halted_state.frame_indices =
-                                frames.iter().map(|sf| sf.id as i64).collect();
-
-                            for (i, frame) in frames.iter().enumerate() {
+                            for (i, frame) in halted_state.stack_frames.iter().enumerate() {
                                 print!("Frame {}: {} @ {:#010x}", i, frame.function_name, frame.pc);
 
                                 if frame.is_inlined {
                                     print!(" inline");
                                 }
+                                println!();
 
-                if status.is_halted() {
-                    let regs = cli_data.core.registers();
-                    let program_counter = cli_data.core.read_core_reg(regs.program_counter())?;
+                                if let Some(location) = &frame.source_location {
+                                    if location.directory.is_some() || location.file.is_some() {
+                                        print!("       ");
 
-                    if let Some(di) = &mut cli_data.debug_info {
-                        let frames = di.unwind(&mut cli_data.core, u64::from(program_counter))?;
-                        if frames.is_empty() {
-                            println!(
-                                "No backtrace information available for program counter = {:#010x}!",
-                                program_counter
-                            );
-                        } else {
-                            for stack_frame in frames {
-                                println!("{}", stack_frame);
+                                        if let Some(dir) = &location.directory {
+                                            print!("{}", dir.display());
+                                        }
+
+                                        if let Some(file) = &location.file {
+                                            print!("/{}", file);
+
+                                            if let Some(line) = location.line {
+                                                print!(":{}", line);
+
+                                                if let Some(col) = location.column {
+                                                    match col {
+                                                        probe_rs::debug::ColumnType::LeftEdge => {
+                                                            print!(":1")
+                                                        }
+                                                        probe_rs::debug::ColumnType::Column(c) => {
+                                                            print!(":{}", c)
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+
+                                        println!();
+                                    }
+                                }
                             }
+                        } else {
+                            println!("No debug information present!");
                         }
-                    } else {
-                        println!("No debug information present!");
+                    }
+                    DebugState::Running => {
+                        println!("Core must be halted for this command.");
                     }
                 }
-
                 Ok(CliState::Continue)
             },
         });
@@ -328,21 +346,23 @@ impl DebugCli {
             function: |cli_data, _args| {
                 match &cli_data.state {
                     DebugState::Halted(ref halted_state) => {
-                        if let Some(locals) =
-                            halted_state.variable_cache.get_variable_by_name_and_parent(
-                                &VariableName::Locals,
-                                halted_state.current_frame_id(),
-                            )
+                        let local_variable_cache = halted_state
+                            .get_current_frame()
+                            .expect("StackFrame not found.")
+                            .local_variables
+                            .as_ref()
+                            .expect("No Local variables available");
+                        if let Some(locals) = local_variable_cache
+                            .get_variable_by_name_and_parent(&VariableName::LocalScope, None)
                         {
-                            let children = halted_state
-                                .variable_cache
-                                .get_children(locals.variable_key)?;
+                            let children =
+                                local_variable_cache.get_children(Some(locals.variable_key))?;
 
                             for child in children {
                                 println!(
                                     "{}: {}",
                                     child.name,
-                                    child.get_value(&halted_state.variable_cache)
+                                    child.get_value(local_variable_cache)
                                 );
                             }
                         } else {
@@ -501,7 +521,7 @@ impl<'p> CliData<'p> {
                     program_counter: registers.get_program_counter().unwrap_or_default(),
                     current_frame: 0,
                     frame_indices: vec![1],
-                    variable_cache: VariableCache::new(),
+                    stack_frames: vec![],
                 })
             }
             _other => DebugState::Running,
@@ -520,14 +540,11 @@ impl<'p> CliData<'p> {
         match &self.state {
             DebugState::Running => println!("Core is running."),
             DebugState::Halted(halted_state) => {
-                if let Some(current_stack_frame) = halted_state
-                    .variable_cache
-                    .get_variable_by_key(halted_state.current_frame_id())
-                {
+                if let Some(current_stack_frame) = halted_state.get_current_frame() {
                     println!(
                         "Frame {}: {} @ {:#010x}",
                         halted_state.current_frame,
-                        current_stack_frame.name,
+                        current_stack_frame.function_name,
                         halted_state.program_counter
                     );
                 }
@@ -545,15 +562,14 @@ enum DebugState {
 
 struct HaltedState {
     program_counter: u32,
-
     current_frame: usize,
     frame_indices: Vec<i64>,
-    variable_cache: VariableCache,
+    stack_frames: Vec<probe_rs::debug::StackFrame>,
 }
 
 impl HaltedState {
-    fn current_frame_id(&self) -> i64 {
-        self.frame_indices[self.current_frame]
+    fn get_current_frame(&self) -> Option<&probe_rs::debug::StackFrame> {
+        self.stack_frames.get(self.current_frame)
     }
 }
 
