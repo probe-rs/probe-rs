@@ -42,7 +42,7 @@ pub enum WireProtocol {
     /// Serial Wire Debug is ARMs proprietary standard for communicating with ARM cores.
     /// You can find specifics in the [`ARM Debug Interface v5.2`](https://developer.arm.com/documentation/ihi0031/f/?lang=en) specification.
     Swd,
-    /// JTAG is a standard which is supported by many chips independant of architecture.
+    /// JTAG is a standard which is supported by many chips independent of architecture.
     /// See [`Wikipedia`](https://en.wikipedia.org/wiki/JTAG) for more info.
     Jtag,
 }
