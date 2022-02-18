@@ -1,3 +1,5 @@
+#![warn(missing_docs)]
+
 pub(crate) mod cmsisdap;
 pub(crate) mod espusbjtag;
 pub(crate) mod fake_probe;
@@ -32,9 +34,16 @@ use self::espusbjtag::list_espjtag_devices;
 /// lower than 1.4V, if at all measureable.
 const LOW_TARGET_VOLTAGE_WARNING_THRESHOLD: f32 = 1.4;
 
+/// The protocol that is to be used by the probe when communicating with the target.
+///
+/// For ARM select `Swd` and for RISC-V select `Jtag`.
 #[derive(Copy, Clone, PartialEq, Debug, serde::Serialize, serde::Deserialize)]
 pub enum WireProtocol {
+    /// Serial Wire Debug is ARMs proprietary standard for communicating with ARM cores.
+    /// You can find specifics in the [`ARM Debug Interface v5.2`](https://developer.arm.com/documentation/ihi0031/f/?lang=en) specification.
     Swd,
+    /// JTAG is a standard which is supported by many chips independent of architecture.
+    /// See [`Wikipedia`](https://en.wikipedia.org/wiki/JTAG) for more info.
     Jtag,
 }
 
@@ -85,63 +94,107 @@ impl fmt::Display for BatchCommand {
     }
 }
 
+/// This error occurs whenever the debug probe logic encounters an error while operating the relevant debug probe.
 #[derive(thiserror::Error, Debug)]
 pub enum DebugProbeError {
+    /// Something with the USB communication went wrong.
     #[error("USB Communication Error")]
     Usb(#[source] Option<Box<dyn std::error::Error + Send + Sync>>),
+    /// The firmware of the probe is outdated. This error is especially prominent with ST-Links.
+    /// You can use their official updater utility to update your probe firmware.
     #[error("The firmware on the probe is outdated")]
     ProbeFirmwareOutdated,
+    /// An error which is specific to the debug probe in use occured.
     #[error("An error specific to a probe type occurred")]
     ProbeSpecific(#[source] Box<dyn std::error::Error + Send + Sync>),
+    /// The debug probe handle could not be created as specified.
     #[error("Probe could not be created")]
     ProbeCouldNotBeCreated(#[from] ProbeCreationError),
-    #[error("Probe does not support protocol")]
+    /// The selected wire protocol is not supported with given probe.
+    #[error("Probe does not support {0}")]
     UnsupportedProtocol(WireProtocol),
     // TODO: This is core specific, so should probably be moved there.
+    /// A timeout occured during an operation.
     #[error("Operation timed out")]
     Timeout,
+    /// An error that is specific to the selected  target core architecture occoured.
     #[error("An error specific to the selected architecture occurred")]
     ArchitectureSpecific(#[source] Box<dyn std::error::Error + Send + Sync>),
+    /// The selected probe does not support the selected interface.
+    /// This happens if a probe does not support certain functionality, such as:
+    /// - ARM debugging
+    /// - RISC-V debugging
+    /// - SWO
     #[error("The connected probe does not support the interface '{0}'")]
     InterfaceNotAvailable(&'static str),
+    /// Some interaction with the target registry failed.
+    /// This happens when an invalid chip name is given for example.
     #[error("An error occurred while working with the registry")]
     Registry(#[from] RegistryError),
-    #[error("Tried to close interface while it was still in use")]
-    InterfaceInUse,
+    /// The debug probe does not support the speed that was chosen.
+    /// Try to alter the selected speed.
     #[error("The requested speed setting ({0} kHz) is not supported by the probe")]
     UnsupportedSpeed(u32),
+    /// The debug probe did not yet perform the init sequence.
+    /// Try calling [`DebugProbe::attach`] before trying again.
     #[error("You need to be attached to the target to perform this action")]
     NotAttached,
+    /// The debug probe already performed the init sequence.
+    /// Try runnoing the failing command before [`DebugProbe::attach`].
     #[error("You need to be detached from the target to perform this action")]
     Attached,
+    /// Performing the init sequence on the target failed.
+    /// Check the wiring before continuing.
     #[error("Failed to find the target or attach to the target")]
     TargetNotFound,
+    /// The variant of the function you called is not yet implemented.
+    /// This can happen if some debug probe has some unimplemented functionality for a specific protocol or architecture.
     #[error("Some functionality was not implemented yet: {0}")]
     NotImplemented(&'static str),
+    /// The called debug sequence is not supported on given probe.
+    /// This is most likely happening because you are using an ST-Link, which are severely limited in functionality.
+    /// If possible, try using another probe.
     #[error("This debug sequence is not supported on the used probe: {0}")]
     DebugSequenceNotSupported(&'static str),
+    /// An error occured during the previously batched command.
     #[error("Error in previous batched command")]
     BatchError(BatchCommand),
+    /// The used functionality is not supported by the selected probe.
+    /// This can happen when a probe does not allow for setting speed manually for example.
     #[error("Command not supported by probe: {0}")]
     CommandNotSupportedByProbe(&'static str),
+    /// The hardware breakpoint could not be set because all breakpoint units are in use.
     #[error("Unable to set hardware breakpoint, all available breakpoint units are in use.")]
     BreakpointUnitsExceeded,
+    /// Some other error occurred.
     #[error(transparent)]
     Other(#[from] anyhow::Error),
 }
 
+/// An error during probe creation accured.
+/// This is almost always a sign of a bad USB setup.
+/// Check UDEV rules if you are on Linux and try installing Zadig
+/// (This will disable vendor specific drivers for your probe!) if you are on Windows.
 #[derive(thiserror::Error, Debug)]
 pub enum ProbeCreationError {
+    /// The selected debug probe was not found.
+    /// This can be due to permissions.
     #[error("Probe was not found.")]
     NotFound,
+    /// The selected probe USB device could not be opened.
+    /// Make sure you have all necessary permissions.
     #[error("USB device could not be opened. Please check the permissions.")]
     CouldNotOpen,
+    /// Some error with HID API occurred.
     #[error("{0}")]
     HidApi(#[from] hidapi::HidError),
+    /// Some error with rusb occurred.
     #[error("{0}")]
     Rusb(#[from] rusb::Error),
+    /// An error specific with the selected probe occurred.
     #[error("An error specific to a probe type occurred: {0}")]
     ProbeSpecific(#[source] Box<dyn std::error::Error + Send + Sync>),
+    /// Something else happened.
     #[error("{0}")]
     Other(&'static str),
 }
@@ -169,6 +222,7 @@ pub struct Probe {
 }
 
 impl Probe {
+    /// Create a new probe from a more specific probe driver.
     pub fn new(probe: impl DebugProbe + 'static) -> Self {
         Self {
             inner: Box::new(probe),
@@ -183,6 +237,7 @@ impl Probe {
         }
     }
 
+    /// Same as [`Probe::new`] but without automatic boxing in case you already have a box.
     pub fn from_specific_probe(probe: Box<dyn DebugProbe>) -> Self {
         Probe {
             inner: probe,
@@ -208,8 +263,8 @@ impl Probe {
         list
     }
 
-    /// Create a `Probe` from `DebugProbeInfo`. Use the
-    /// `Probe::list_all()` function to get the information
+    /// Create a [`Probe`] from [`DebugProbeInfo`]. Use the
+    /// [`Probe::list_all()`] function to get the information
     /// about all probes available.
     pub fn open(selector: impl Into<DebugProbeSelector> + Clone) -> Result<Self, DebugProbeError> {
         match cmsisdap::CmsisDap::new_from_selector(selector.clone()) {
@@ -244,7 +299,7 @@ impl Probe {
         ))
     }
 
-    /// Get human readable name for the probe
+    /// Get the human readable name for the probe.
     pub fn get_name(&self) -> String {
         self.inner.get_name().to_string()
     }
@@ -253,7 +308,7 @@ impl Probe {
     ///
     /// This runs all the necessary protocol init routines.
     ///
-    /// If this doesn't work, you might want to try `attach_under_reset`
+    /// If this doesn't work, you might want to try [`Probe::attach_under_reset`]
     pub fn attach(
         mut self,
         target: impl Into<TargetSelector>,
@@ -264,12 +319,15 @@ impl Probe {
         Session::new(self, target.into(), AttachMethod::Normal, permissions)
     }
 
+    /// Attach to a target without knowing what target you have at hand.
+    /// This can be used for automatic device discovery or performing operations on an unspecified target.
     pub fn attach_to_unspecified(&mut self) -> Result<(), Error> {
         self.inner.attach()?;
         self.attached = true;
         Ok(())
     }
 
+    /// A combination of [`Probe::attach_to_unspecified`] and [`Probe::attach_under_reset`].
     pub fn attach_to_unspecified_under_reset(&mut self) -> Result<(), Error> {
         if let Some(dap_probe) = self.try_as_dap_probe() {
             DefaultArmSequence(()).reset_hardware_assert(dap_probe)?;
@@ -327,11 +385,19 @@ impl Probe {
         self.inner.target_reset()
     }
 
-    pub(crate) fn target_reset_assert(&mut self) -> Result<(), DebugProbeError> {
+    /// Asserts the reset of the target.
+    /// This is always the hard reset which means the reset wire has to be connected to work.
+    ///
+    /// This is not supported on all probes.
+    pub fn target_reset_assert(&mut self) -> Result<(), DebugProbeError> {
         log::debug!("Asserting target reset");
         self.inner.target_reset_assert()
     }
 
+    /// Deasserts the reset of the target.
+    /// This is always the hard reset which means the reset wire has to be connected to work.
+    ///
+    /// This is not supported on all probes.
     pub fn target_reset_deassert(&mut self) -> Result<(), DebugProbeError> {
         log::debug!("Deasserting target reset");
         self.inner.target_reset_deassert()
@@ -396,31 +462,49 @@ impl Probe {
         }
     }
 
+    /// Gets a SWO interface from the debug probe.
+    ///
+    /// This does not work on all probes.
     pub fn get_swo_interface(&self) -> Option<&dyn SwoAccess> {
         self.inner.get_swo_interface()
     }
 
+    /// Gets a mutable SWO interface from the debug probe.
+    ///
+    /// This does not work on all probes.
     pub fn get_swo_interface_mut(&mut self) -> Option<&mut dyn SwoAccess> {
         self.inner.get_swo_interface_mut()
     }
 
+    /// Gets a DAP interface from the debug probe.
+    ///
+    /// This does not work on all probes.
     pub fn try_as_dap_probe(&mut self) -> Option<&mut dyn DapProbe> {
         self.inner.try_as_dap_probe()
     }
 
+    /// Try reading the target voltage of via the connected volgate pin.
+    ///
+    /// This does not work on all probes.
     pub fn get_target_voltage(&mut self) -> Result<Option<f32>, DebugProbeError> {
         self.inner.get_target_voltage()
     }
 }
 
+/// An abstraction over general debug probe functionality.
+///
+/// This trait has to be implemented by ever debug probe driver.
 pub trait DebugProbe: Send + fmt::Debug {
+    /// Creates a new boxed [`DebugProbe`] from a given [`DebugProbeSelector`].
+    /// This will be called for all available debug drivers when discovering probes.
+    /// When opening, it will open the first probe which succeds during this call.
     fn new_from_selector(
         selector: impl Into<DebugProbeSelector>,
     ) -> Result<Box<Self>, DebugProbeError>
     where
         Self: Sized;
 
-    /// Get human readable name for the probe
+    /// Get human readable name for the probe.
     fn get_name(&self) -> &str;
 
     /// Get the currently used maximum speed for the debug protocol in kHz.
@@ -498,16 +582,26 @@ pub trait DebugProbe: Send + fmt::Debug {
         false
     }
 
+    /// Get a SWO interface from the debug probe.
+    ///
+    /// This is not available on all debug probes.
     fn get_swo_interface(&self) -> Option<&dyn SwoAccess> {
         None
     }
 
+    /// Get a mutable SWO interface from the debug probe.
+    ///
+    /// This is not available on all debug probes.
     fn get_swo_interface_mut(&mut self) -> Option<&mut dyn SwoAccess> {
         None
     }
 
+    /// Boxes itself.
     fn into_probe(self: Box<Self>) -> Box<dyn DebugProbe>;
 
+    /// Try creating a DAP interface for the given probe.
+    ///
+    /// This is not available on all probes.
     fn try_as_dap_probe(&mut self) -> Option<&mut dyn DapProbe> {
         None
     }
@@ -519,25 +613,37 @@ pub trait DebugProbe: Send + fmt::Debug {
     }
 }
 
+/// Denotes the type of a given [`DebugProbe`].
 #[derive(Debug, Clone, PartialEq)]
 pub enum DebugProbeType {
+    /// CMSIS-DAP
     CmsisDap,
+    /// FTDI based debug probe
     Ftdi,
+    /// ST-Link
     StLink,
+    /// J-Link
     JLink,
+    /// Built in RISC-V ESP JTAG debug probe
     EspJtag,
 }
 
+/// Gathers some information about a debug probe which was found during a scan.
 #[derive(Clone)]
 pub struct DebugProbeInfo {
+    /// The name of the debug probe.
     pub identifier: String,
+    /// The USB vendor ID of the debug probe.
     pub vendor_id: u16,
+    /// The USB product ID of the debug probe.
     pub product_id: u16,
+    /// The serial number of the debug probe.
     pub serial_number: Option<String>,
+    /// The probe type of the debug probe.
     pub probe_type: DebugProbeType,
 
-    /// USB HID interface which should be used.
-    /// Necessary for composite HID devices.
+    /// The USB HID interface which should be used.
+    /// This is necessary for composite HID devices.
     pub hid_interface: Option<u8>,
 }
 
@@ -601,11 +707,14 @@ pub enum DebugProbeSelectorParseError {
 /// let selector: probe_rs::DebugProbeSelector = "1337:1337:SERIAL".try_into().unwrap();
 /// ```
 #[derive(Debug, Clone, Serialize, Deserialize)]
-// We need this so that serde will first converst from the string `PID:VID:<Serial>` to a struct before deserializing.
+// We need this so that serde will first convert from the string `PID:VID:<Serial>` to a struct before deserializing.
 #[serde(try_from = "String")]
 pub struct DebugProbeSelector {
+    /// The the USB vendor id of the debug probe to be used.
     pub vendor_id: u16,
+    /// The the USB product id of the debug probe to be used.
     pub product_id: u16,
+    /// The the serial number of the debug probe to be used.
     pub serial_number: Option<String>,
 }
 
@@ -767,8 +876,13 @@ pub enum CommandResult {
     VecU8(Vec<u8>),
 }
 
+/// The method that should be used for attaching.
 #[derive(PartialEq, Debug, Copy, Clone)]
 pub enum AttachMethod {
+    /// Attach normally with no special behavior.
     Normal,
+    /// Attach to the target while it is in reset.
+    ///
+    /// This is required on targets that can remap SWD pins or disable the SWD interface in sleep.
     UnderReset,
 }

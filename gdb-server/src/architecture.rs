@@ -168,7 +168,6 @@ impl GdbTargetExt for probe_rs::Target {
 #[cfg(test)]
 mod test {
     use crate::architecture::GdbTargetExt;
-    use insta;
 
     #[test]
     fn test_target_description_microbit() {

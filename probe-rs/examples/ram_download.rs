@@ -1,6 +1,5 @@
 use probe_rs::{config::TargetSelector, MemoryInterface, Permissions, Probe, WireProtocol};
 
-use clap;
 use clap::Parser;
 use std::num::ParseIntError;
 use std::time::{Duration, Instant};
