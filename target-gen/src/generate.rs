@@ -109,6 +109,15 @@ where
             .map(|fa| fa.name.to_string())
             .collect();
 
+        // Sometimes the algos are referenced twice, for example in the multicore H7s
+        // Deduplicate while keeping order.
+        let flash_algorithm_names: Vec<_> = flash_algorithm_names
+            .iter()
+            .enumerate()
+            .filter(|(i, s)| !flash_algorithm_names[..*i].contains(s))
+            .map(|(_, s)| s.clone())
+            .collect();
+
         let mut memory_map: Vec<MemoryRegion> = Vec::new();
         if let Some(mem) = ram {
             memory_map.push(MemoryRegion::Ram(mem));
