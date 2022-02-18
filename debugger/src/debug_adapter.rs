@@ -462,6 +462,11 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                                 });
                                 self.send_event("stopped", event_body)?;
                             } else {
+                                let single_thread = Thread {
+                                    id: core_data.target_core.id() as i64,
+                                    name: core_data.target_name.clone(),
+                                };
+                                threads.push(single_thread);
                                 self.send_response(
                                     request.clone(),
                                     Ok(Some(ThreadsResponseBody { threads })),

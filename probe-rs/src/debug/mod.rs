@@ -142,7 +142,7 @@ impl Registers {
             match core.read_core_reg(register_file.platform_register(i)) {
                 Ok(value) => registers.values.insert(i as u32, value),
                 Err(e) => {
-                    log::debug!("Failed to read value for register {}: {}", i, e);
+                    log::warn!("Failed to read value for register {}: {}", i, e);
                     None
                 }
             };
@@ -959,7 +959,7 @@ impl DebugInfo {
             };
 
             // PART 1: Construct the `StackFrame` for the current pc.
-            log::debug!(
+            log::trace!(
                 "UNWIND: Will generate `StackFrame` for function at address (PC) {:#010x}",
                 frame_pc,
             );
@@ -971,7 +971,7 @@ impl DebugInfo {
                     while cached_stack_frames.len() > 1 {
                         // If we encountered INLINED functions (all `StackFrames`s in this Vec, except for the last one, which is the containing NON-INLINED function), these are simply added to the list of stack_frames we return.
                         let inlined_frame = cached_stack_frames.pop().unwrap(); // unwrap is safe while .len() > 1
-                        log::debug!(
+                        log::trace!(
                             "UNWIND: Found inlined function - name={}, pc={:#010x}",
                             inlined_frame.function_name,
                             inlined_frame.pc
@@ -1000,7 +1000,7 @@ impl DebugInfo {
             if let Some(check_return_address) = unwind_registers.get_return_address() {
                 if check_return_address == u32::MAX {
                     unwind_registers.set_return_address(None);
-                    log::debug!(
+                    log::trace!(
                     "UNWIND: Stack unwind complete - Reached the 'Reset' value of the LR register."
                 );
                     stack_frames.push(return_frame);
@@ -1009,7 +1009,7 @@ impl DebugInfo {
             }
 
             // PART 2: Setup the registers for the `next()` iteration (a.k.a. unwind previous frame, a.k.a. "callee", in the call stack).
-            log::debug!(
+            log::trace!(
             "UNWIND - Preparing `StackFrameIterator` to unwind NON-INLINED function {:?} at {:?}",
             return_frame.function_name,
             return_frame.source_location
@@ -1051,7 +1051,7 @@ impl DebugInfo {
                             match reg_val {
                                 Some(reg_val) => {
                                     let unwind_cfa = (i64::from(reg_val) + offset) as u32;
-                                    log::debug!(
+                                    log::trace!(
                                         "UNWIND - CFA : {:#010x}\tRule: {:?}",
                                         unwind_cfa,
                                         unwind_info.cfa()
@@ -1199,7 +1199,7 @@ impl DebugInfo {
                         };
 
                         unwind_registers.set_by_dwarf_register_number(register_number, new_value);
-                        log::debug!(
+                        log::trace!(
                             "UNWIND - {:04?}: Caller: {:#010x}\tCallee: {:#010x}\tRule: {}",
                             unwind_registers.get_name_by_dwarf_register_number(register_number),
                             unwind_registers
@@ -1255,7 +1255,7 @@ impl DebugInfo {
                                 match reg_val {
                                     Some(reg_val) => {
                                         let unwind_cfa = (i64::from(reg_val) + offset) as u32;
-                                        log::debug!(
+                                        log::trace!(
                                             "UNWIND - CFA : {:#010x}\tRule: Previous Function {:?}",
                                             unwind_cfa,
                                             previous_unwind_info.cfa()
@@ -1324,7 +1324,7 @@ impl DebugInfo {
                         };
                         unwind_registers
                             .set_by_dwarf_register_number(return_register_number, new_return_value);
-                        log::debug!(
+                        log::trace!(
                         "UNWIND - {:04?}: Caller: {:#010x}\tRule: Override with previous frame {}",
                         unwind_registers
                             .get_name_by_dwarf_register_number(return_register_number),
@@ -2993,7 +2993,7 @@ fn extract_file(
                 .map(|(file, path)| (path.unwrap(), file.unwrap()))
         }),
         other => {
-            log::debug!(
+            log::warn!(
                 "Unable to extract file information from attribute value {:?}: Not implemented.",
                 other
             );
