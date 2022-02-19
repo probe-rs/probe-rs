@@ -344,17 +344,36 @@ impl DebugCli {
             help_text: "List local variables",
 
             function: |cli_data, _args| {
-                match &cli_data.state {
-                    DebugState::Halted(ref halted_state) => {
-                        let local_variable_cache = halted_state
+                match cli_data.state {
+                    DebugState::Halted(ref mut halted_state) => {
+                        let current_frame = halted_state
                             .get_current_frame()
-                            .expect("StackFrame not found.")
+                            .expect("StackFrame not found.");
+
+                        let local_variable_cache = current_frame
                             .local_variables
-                            .as_ref()
+                            .as_mut()
                             .expect("No Local variables available");
-                        if let Some(locals) = local_variable_cache
+
+                        if let Some(mut locals) = local_variable_cache
                             .get_variable_by_name_and_parent(&VariableName::LocalScope, None)
                         {
+                            // By default, the first level children are always are lazy loaded, so we will force a load here.
+                            if locals.variable_node_type.is_deferred()
+                                && !local_variable_cache.has_children(&locals)?
+                            {
+                                cli_data
+                                    .debug_info
+                                    .as_ref()
+                                    .unwrap()
+                                    .cache_deferred_variables(
+                                        local_variable_cache,
+                                        &mut cli_data.core,
+                                        &mut locals,
+                                        &current_frame.registers,
+                                    )
+                                    .expect("Failed to cache Local variables.");
+                            }
                             let children =
                                 local_variable_cache.get_children(Some(locals.variable_key))?;
 
@@ -366,7 +385,7 @@ impl DebugCli {
                                 );
                             }
                         } else {
-                            println!("No local variables available.")
+                            println!("Local variable cache was not initialized.")
                         }
                     }
                     DebugState::Running => println!("Core must be halted for this command."),
@@ -536,16 +555,15 @@ impl<'p> CliData<'p> {
         })
     }
 
-    pub fn print_state(&self) -> Result<(), CliError> {
-        match &self.state {
+    pub fn print_state(&mut self) -> Result<(), CliError> {
+        match self.state {
             DebugState::Running => println!("Core is running."),
-            DebugState::Halted(halted_state) => {
+            DebugState::Halted(ref mut halted_state) => {
+                let pc = halted_state.program_counter;
                 if let Some(current_stack_frame) = halted_state.get_current_frame() {
                     println!(
                         "Frame {}: {} @ {:#010x}",
-                        halted_state.current_frame,
-                        current_stack_frame.function_name,
-                        halted_state.program_counter
+                        current_stack_frame, current_stack_frame.function_name, pc,
                     );
                 }
             }
@@ -568,8 +586,8 @@ struct HaltedState {
 }
 
 impl HaltedState {
-    fn get_current_frame(&self) -> Option<&probe_rs::debug::StackFrame> {
-        self.stack_frames.get(self.current_frame)
+    fn get_current_frame(&mut self) -> Option<&mut probe_rs::debug::StackFrame> {
+        self.stack_frames.get_mut(self.current_frame)
     }
 }
 
