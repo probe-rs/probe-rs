@@ -14,6 +14,7 @@ use crate::{
     DebugProbe, DebugProbeError, DebugProbeSelector, Error, Memory, Probe, WireProtocol,
 };
 
+/// This is a mock probe which can be used for mocking things in tests or for dry runs.
 #[allow(clippy::type_complexity)]
 pub struct FakeProbe {
     protocol: WireProtocol,
@@ -36,6 +37,7 @@ impl Debug for FakeProbe {
 }
 
 impl FakeProbe {
+    /// Creates a new [`FakeProbe`] for mocking.
     pub fn new() -> Self {
         FakeProbe {
             protocol: WireProtocol::Swd,
@@ -46,20 +48,25 @@ impl FakeProbe {
         }
     }
 
-    pub fn handle_dap_register_read(
+    /// This sets the read handler for DAP register reads.
+    /// Can be used to hook into the read.
+    pub fn set_dap_register_read_handler(
         &mut self,
         handler: Box<dyn Fn(PortType, u8) -> Result<u32, DebugProbeError> + Send>,
     ) {
         self.dap_register_read_handler = Some(handler);
     }
 
-    pub fn handle_dap_register_write(
+    /// This sets the write handler for DAP register writes.
+    /// Can be used to hook into the write.
+    pub fn set_dap_register_write_handler(
         &mut self,
         handler: Box<dyn Fn(PortType, u8, u32) -> Result<(), DebugProbeError> + Send>,
     ) {
         self.dap_register_write_handler = Some(handler);
     }
 
+    /// Makes a generic probe out of the [`FakeProbe`]
     pub fn into_probe(self) -> Probe {
         Probe::from_specific_probe(Box::new(self))
     }

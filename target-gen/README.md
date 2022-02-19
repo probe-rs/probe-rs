@@ -10,7 +10,7 @@ is the following ARM website: https://developer.arm.com/tools-and-software/embed
 
 From a CMSIS-Pack, you can extract the target descriptions for probe-rs:
 
-    cargo run -- pack <CMSIS-PACK> out/
+    cargo run --release -- pack <CMSIS-PACK> out/
 
 This wil generate YAML files containing the target descriptions, which can be used with probe-rs.
 
@@ -23,7 +23,7 @@ can be found at: https://arm-software.github.io/CMSIS_5/Pack/html/algorithmFunc.
 
 Running
 
-    cargo run -- elf <ELF FILE> target.yml
+    cargo run --release -- elf <ELF FILE> target.yml
 
 will create a target description containing the extracted flash algorithm. The values
 for the chip description itself have to be adjusted manually in the generated Yaml file.

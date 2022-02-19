@@ -10,7 +10,7 @@ use crate::{
 use anyhow::{Context, Result};
 use colored::Colorize;
 
-use clap::{App, Arg};
+use clap::{Arg, Command};
 use probe_rs::{Error, Permissions};
 
 mod dut_definition;
@@ -20,7 +20,7 @@ mod tests;
 fn main() -> Result<()> {
     pretty_env_logger::init();
 
-    let app = App::new("smoke tester")
+    let app = Command::new("smoke tester")
         .arg(
             Arg::new("dut_definitions")
                 .long("dut-definitions")

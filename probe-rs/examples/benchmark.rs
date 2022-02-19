@@ -7,7 +7,6 @@ use std::{
     time::{Duration, Instant, UNIX_EPOCH},
 };
 
-use clap;
 use clap::Parser;
 use rand::prelude::*;
 
