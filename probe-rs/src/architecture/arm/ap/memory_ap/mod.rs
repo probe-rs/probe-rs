@@ -8,13 +8,16 @@ use crate::{architecture::arm::ApAddress, DebugProbeError};
 use enum_primitive_derive::Primitive;
 use num_traits::{FromPrimitive, ToPrimitive};
 
-// Memory AP
-//
-// The memory AP can be used to access a memory-mapped
-// set of debug resouces of the attached system.
-define_ap!(MemoryAp);
+define_ap!(
+    /// Memory AP
+    ///
+    /// The memory AP can be used to access a memory-mapped
+    /// set of debug resouces of the attached system.
+    MemoryAp
+);
 
 impl MemoryAp {
+    /// The base address of this AP which is used to then access all relative control registers.
     pub fn base_address<A>(&self, interface: &mut A) -> Result<u64, DebugProbeError>
     where
         A: ApAccess,
@@ -42,17 +45,30 @@ impl From<GenericAp> for MemoryAp {
     }
 }
 
+/// The unit of data that is transferred in one transfer via the DRW commands.
+///
+/// This can be configured with the CSW command.
+///
+/// ALL MCUs support `U32`. All other transfer sizes are optionally implemented.
 #[derive(Debug, Primitive, Clone, Copy, PartialEq)]
 pub enum DataSize {
+    /// 1 byte transfers are supported.
     U8 = 0b000,
+    /// 2 byte transfers are supported.
     U16 = 0b001,
+    /// 4 byte transfers are supported.
     U32 = 0b010,
+    /// 8 byte transfers are supported.
     U64 = 0b011,
+    /// 16 byte transfers are supported.
     U128 = 0b100,
+    /// 32 byte transfers are supported.
     U256 = 0b101,
 }
 
 impl DataSize {
+    /// Create a new `DataSize` from a number of bytes.
+    /// Defaults to 4 bytes if the given number of bytes is not available. See [`DataSize`] for available data sizes.
     pub fn from_bytes(bytes: u8) -> Self {
         if bytes == 1 {
             DataSize::U8
@@ -78,10 +94,22 @@ impl Default for DataSize {
     }
 }
 
+/// The increment to the TAR that is performed after each DRW read or write.
+///
+/// This can be used to avoid successive TAR transfers for writes of consecutive addresses.
+/// This will effectively save half the bandwidth!
+///
+/// Can be configured in the CSW.
 #[derive(Debug, Primitive, Clone, Copy, PartialEq)]
 pub enum AddressIncrement {
+    /// No increments are happening after the DRW access. TAR always stays the same.
+    /// Always supported.
     Off = 0b00,
+    /// Increments the TAR by the size of the access after each DRW access.
+    /// Always supported.
     Single = 0b01,
+    /// Enables packed access to the DRW (see C2.2.7).
+    /// Only available if sub-word access is supported by the core.
     Packed = 0b10,
 }
 
@@ -91,9 +119,12 @@ impl Default for AddressIncrement {
     }
 }
 
+/// The format of the BASE register (see C2.6.1).
 #[derive(Debug, PartialEq, Primitive, Clone, Copy)]
 pub enum BaseaddrFormat {
+    /// The legacy format of very old cores. Very little cores use this.
     Legacy = 0,
+    /// The format all newer MCUs use.
     ADIv5 = 1,
 }
 
@@ -116,18 +147,22 @@ impl Default for DebugEntryState {
 }
 
 define_ap_register!(
+    type: MemoryAp,
     /// Base register
-    MemoryAp,
-    BASE,
-    0xF8,
-    [
-        (BASEADDR: u32),
-        (_RES0: u8),
-        (Format: BaseaddrFormat),
-        (present: bool),
+    name: BASE,
+    address: 0xF8,
+    fields: [
+        /// The base address of this access point.
+        BASEADDR: u32,
+        /// Reserved.
+        _RES0: u8,
+        /// The base address format of this access point.
+        Format: BaseaddrFormat,
+        /// Does this access point exists?
+        /// This field can be used to detect access points by iterating over all possible ones until one is found which has `exists == false`.
+        present: bool,
     ],
-    value,
-    BASE {
+    from: value => BASE {
         BASEADDR: (value & 0xFFFF_F000) >> 12,
         _RES0: 0,
         Format: match ((value >> 1) & 0x01) as u8 {
@@ -141,111 +176,151 @@ define_ap_register!(
             _ => panic!("This is a bug. Please report it."),
         },
     },
-    (value.BASEADDR << 12)
-    // _RES0
-    | (u32::from(value.Format as u8   ) << 1)
-    | (if value.present { 1 } else { 0 })
+   to: value =>
+        (value.BASEADDR << 12)
+        // _RES0
+        | (u32::from(value.Format as u8   ) << 1)
+        | (if value.present { 1 } else { 0 })
 );
 
 define_ap_register!(
+    type: MemoryAp,
     /// Base register
-    MemoryAp,
-    BASE2,
-    0xF0,
-    [(BASEADDR: u32),],
-    value,
-    BASE2 { BASEADDR: value },
-    value.BASEADDR
+    name: BASE2,
+    address: 0xF0,
+    fields: [
+        /// The second part of the base address of this access point if required.
+        BASEADDR: u32
+    ],
+    from: value => BASE2 { BASEADDR: value },
+    to: value => value.BASEADDR
 );
 
 define_ap_register!(
+    type: MemoryAp,
     /// Banked Data 0 register
-    MemoryAp,
-    BD0,
-    0x10,
-    [(data: u32),],
-    value,
-    BD0 { data: value },
-    value.data
+    name: BD0,
+    address: 0x10,
+    fields: [
+        /// The data held in this bank.
+        data: u32,
+    ],
+    from: value => BD0 { data: value },
+    to: value => value.data
 );
 
 define_ap_register!(
+    type: MemoryAp,
     /// Banked Data 1 register
-    MemoryAp,
-    BD1,
-    0x14,
-    [(data: u32),],
-    value,
-    BD1 { data: value },
-    value.data
+    name: BD1,
+    address: 0x14,
+    fields: [
+        /// The data held in this bank.
+        data: u32,
+    ],
+    from: value => BD1 { data: value },
+    to: value => value.data
 );
 
 define_ap_register!(
+    type: MemoryAp,
     /// Banked Data 2 register
-    MemoryAp,
-    BD2,
-    0x18,
-    [(data: u32),],
-    value,
-    BD2 { data: value },
-    value.data
+    name: BD2,
+    address: 0x18,
+    fields: [
+        /// The data held in this bank.
+        data: u32,
+    ],
+    from: value => BD2 { data: value },
+    to: value => value.data
 );
 
 define_ap_register!(
+    type: MemoryAp,
     /// Banked Data 3 register
-    MemoryAp,
-    BD3,
-    0x1C,
-    [(data: u32),],
-    value,
-    BD3 { data: value },
-    value.data
+    name: BD3,
+    address: 0x1C,
+    fields: [
+        /// The data held in this bank.
+        data: u32,
+    ],
+    from: value => BD3 { data: value },
+    to: value => value.data
 );
 
 define_ap_register!(
+    type: MemoryAp,
     /// Configuration register
     ///
     /// The configuration register (CFG) is used to determine
     /// which extensions are included in the memory AP.
-    MemoryAp,
-    CFG,
-    0xF4,
-    [(LD: u8), (LA: u8), (BE: u8),],
-    value,
-    CFG {
+    name: CFG,
+    address: 0xF4,
+    fields: [
+        /// Specifies whether this access port includes the large data extension (access larger than 32 bits).
+        LD: u8,
+        /// Specifies whether this access port includes the large address extension (64 bit addressing).
+        LA: u8,
+        /// Specifies whether this architecture uses big endian. Must always be zero for modern chips as the ADI v5.2 deprecates big endian.
+        BE: u8,
+    ],
+    from: value => CFG {
         LD: ((value >> 2) & 0x01) as u8,
         LA: ((value >> 1) & 0x01) as u8,
         BE: (value & 0x01) as u8,
     },
-    u32::from((value.LD << 2) | (value.LA << 1) | value.BE)
+    to: value => u32::from((value.LD << 2) | (value.LA << 1) | value.BE)
 );
 
 define_ap_register!(
+    type: MemoryAp,
     /// Control and Status Word register
     ///
     /// The control and status word register (CSW) is used
     /// to configure memory access through the memory AP.
-    MemoryAp,
-    CSW,
-    0x00,
-    [
-        (DbgSwEnable: u8),           // 1 bit
-        (HNONSEC: u8),               // 1 bit
-        (PROT: u8),                  // 2 bits
-        (CACHE: u8),                 // 4 bits
-        (SPIDEN: u8),                // 1 bit
-        (_RES0: u8),                 // 7 bits
-        (MTE: u8),                   // 1 bits
-        (Type: u8),                  // 3 bits
-        (Mode: u8),                  // 4 bits
-        (TrinProg: u8),              // 1 bit
-        (DeviceEn: u8),              // 1 bit
-        (AddrInc: AddressIncrement), // 2 bits
-        (_RES1: u8),                 // 1 bit
-        (SIZE: DataSize),            // 3 bits
+    name: CSW,
+    address: 0x00,
+    fields: [
+        /// Is debug software access enabled.
+        DbgSwEnable: u8,           // 1 bit
+        /// Specifies whether HNONSEC is enabled.
+        HNONSEC: u8,               // 1 bit
+        /// Prot
+        PROT: u8,                  // 2 bits
+        /// Cache
+        CACHE: u8,                 // 4 bits
+        /// Secure Debug Enabled. This field has one of the following values:
+        /// - `0b0` Secure access is disabled.
+        /// - `0b1` Secure access is enabled.
+        /// This field is optional, and read-only. If not implemented, the bit is RES0.
+        /// If CSW.DEVICEEN is 0b0, SDEVICEEN is ignored and the effective value of SDEVICEEN is 0b1.
+        /// For more information, see Enabling access to the connected debug device or memory system on page C2-154.
+        /// Note
+        /// In ADIv5 and older versions of the architecture, the CSW.SPIDEN field is in the same bit position as CSW.SDeviceEn, and has the same meaning. From ADIv6, the name SDeviceEn is used to avoid confusion between this field and the SPIDEN signal on the authentication interface.
+        SPIDEN: u8,                // 1 bit
+        /// Reserved.
+        _RES0: u8,                 // 7 bits
+        /// `1` if memory tagging access is enabled.
+        MTE: u8,                   // 1 bits
+        /// Memory tagging type. Implementation defined.
+        Type: u8,                  // 3 bits
+        /// Mode of operation. Is set to `0b0000` normally.
+        Mode: u8,                  // 4 bits
+        /// A transfer is in progress.
+        /// Can be used to poll whether an aborted transaction has completed.
+        /// Read only.
+        TrinProg: u8,              // 1 bit
+        /// `1` if transactions can be issued through this access port at the moment.
+        /// Read only.
+        DeviceEn: u8,              // 1 bit
+        /// The address increment on DRW access.
+        AddrInc: AddressIncrement, // 2 bits
+        /// Reserved
+        _RES1: u8,                 // 1 bit
+        /// The access size of this memory AP.
+        SIZE: DataSize,            // 3 bits
     ],
-    value,
-    CSW {
+    from: value => CSW {
         DbgSwEnable: ((value >> 31) & 0x01) as u8,
         HNONSEC: ((value >> 30) & 0x01) as u8,
         PROT: ((value >> 28) & 0x03) as u8,
@@ -263,7 +338,7 @@ define_ap_register!(
         // If not it's good to crash for now.
         SIZE: DataSize::from_u8((value & 0x07) as u8).unwrap(),
     },
-    (u32::from(value.DbgSwEnable) << 31)
+    to: value => (u32::from(value.DbgSwEnable) << 31)
     | (u32::from(value.HNONSEC    ) << 30)
     | (u32::from(value.PROT       ) << 28)
     | (u32::from(value.CACHE      ) << 24)
@@ -281,20 +356,25 @@ define_ap_register!(
 );
 
 impl CSW {
+    /// Creates a new CSW content with default values and a configurable [`DataSize`].
+    /// See in code documentation for more info.
+    ///
+    /// The CSW Register is set for an AMBA AHB Acccess, according to
+    /// the ARM Debug Interface Architecture Specification.
+    ///
+    /// The PROT bits are set as follows:
+    ///
+    /// HNONSEC[30]          = 1  - Should be One, if not supported.\
+    /// MasterType, bit [29] = 1  - Access as default AHB Master\
+    /// HPROT[4]             = 0  - Non-allocating access
+    ///
+    /// The CACHE bits are set for the following AHB access:
+    ///
+    /// HPROT[0] == 1   - data           access\
+    /// HPROT[1] == 1   - privileged     access\
+    /// HPROT[2] == 0   - non-cacheable  access\
+    /// HPROT[3] == 0   - non-bufferable access
     pub fn new(data_size: DataSize) -> Self {
-        // The CSW Register is set for an AMBA AHB Acccess, according to
-        // the ARM Debug Interface Architecture Specification.
-        //
-        // The PROT bits are set as follows:
-        //  HNONSEC[30]          = 1  - Should be One, if not supported.
-        //  MasterType, bit [29] = 1  - Access as default AHB Master
-        //  HPROT[4]             = 0  - Non-allocating access
-        //
-        // The CACHE bits are set for the following AHB access:
-        //   HPROT[0] == 1   - data           access
-        //   HPROT[1] == 1   - privileged     access
-        //   HPROT[2] == 0   - non-cacheable  access
-        //   HPROT[3] == 0   - non-bufferable access
         CSW {
             DbgSwEnable: 0b1,
             HNONSEC: 0b1,
@@ -308,6 +388,7 @@ impl CSW {
 }
 
 define_ap_register!(
+    type: MemoryAp,
     /// Data Read/Write register
     ///
     /// The data read/write register (DRW) can be used to read
@@ -317,17 +398,18 @@ define_ap_register!(
     /// to the address specified in the TAR register.
     ///
     /// A read from the *DRW* register is translated to a memory read
-    /// from the address specified in the TAR register.
-    MemoryAp,
-    DRW,
-    0x0C,
-    [(data: u32),],
-    value,
-    DRW { data: value },
-    value.data
+    name: DRW,
+    address: 0x0C,
+    fields: [
+        /// The data held in the DRW corresponding to the address held in TAR.
+        data: u32,
+    ],
+    from: value => DRW { data: value },
+    to: value => value.data
 );
 
 define_ap_register!(
+    type: MemoryAp,
     /// Memory Barrier Transfer register
     ///
     /// The memory barrier transfer register (MBT) can
@@ -336,27 +418,29 @@ define_ap_register!(
     ///
     /// Writes to this register only have an effect if
     /// the *Barrier Operations Extension* is implemented
-    /// by the AP.
-    MemoryAp,
-    MBT,
-    0x20,
-    [(data: u32)],
-    value,
-    MBT { data: value },
-    value.data
+    name: MBT,
+    address: 0x20,
+    fields: [
+        /// This value is implementation defined and the ADIv5.2 spec does not explain what it does for targets with the Barrier Operations Extension implemented.
+        data: u32,
+    ],
+    from: value => MBT { data: value },
+    to: value => value.data
 );
 
 define_ap_register!(
+    type: MemoryAp,
     /// Transfer Address Register
     ///
     /// The transfer address register (TAR) holds the memory
     /// address which will be accessed through a read or
     /// write of the DRW register.
-    MemoryAp,
-    TAR,
-    0x04,
-    [(address: u32),],
-    value,
-    TAR { address: value },
-    value.address
+    name: TAR,
+    address: 0x04,
+    fields: [
+        /// The register address to be used for the next access to DRW.
+        address: u32,
+    ],
+    from: value => TAR { address: value },
+    to: value => value.address
 );

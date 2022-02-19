@@ -1,5 +1,6 @@
 //! Helper macros to implement an access port
 #[macro_export]
+/// Defines a new debug port register for typed access.
 macro_rules! define_dp_register {
     (
         $(#[$outer:meta])*

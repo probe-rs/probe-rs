@@ -1,3 +1,5 @@
+//! Sequences for NXP chips.
+
 use std::{
     sync::Arc,
     thread,
@@ -17,9 +19,11 @@ use crate::{
 
 use super::ArmDebugSequence;
 
+/// The sequence handle for the LPC55S69.
 pub struct LPC55S69(());
 
 impl LPC55S69 {
+    /// Create a sequence handle for the LPC55S69.
     pub fn create() -> Arc<dyn ArmDebugSequence> {
         Arc::new(Self(()))
     }
@@ -247,7 +251,7 @@ fn wait_for_stop_after_reset(memory: &mut crate::Memory) -> Result<(), crate::Er
     Ok(())
 }
 
-pub fn enable_debug_mailbox(
+fn enable_debug_mailbox(
     interface: &mut ArmCommunicationInterface<Initialized>,
     dp: DpAddress,
 ) -> Result<(), DebugProbeError> {

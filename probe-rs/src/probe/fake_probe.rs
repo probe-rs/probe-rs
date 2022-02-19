@@ -303,7 +303,7 @@ impl ArmProbeInterface for FakeArmInterface<Initialized> {
         Ok(1)
     }
 
-    fn read_from_rom_table(
+    fn read_chip_info_from_rom_table(
         &mut self,
         _dp: DpAddress,
     ) -> Result<Option<crate::architecture::arm::ArmChipInfo>, Error> {

@@ -1,3 +1,5 @@
+//! Sequences for the nRF53.
+
 use std::sync::Arc;
 
 use super::ArmDebugSequence;
@@ -6,6 +8,7 @@ use crate::architecture::arm::{
     communication_interface::Initialized, ApAddress, ArmCommunicationInterface, DapAccess,
 };
 
+/// The sequence handle for the nRF5340.
 pub struct Nrf5340(());
 
 impl Nrf5340 {
@@ -15,6 +18,7 @@ impl Nrf5340 {
     const APPLICATION_RESET_S_NETWORK_FORCEOFF_REGISTER: u32 = 0x50005614;
     const RELEASE_FORCEOFF: u32 = 0;
 
+    /// Create a new sequence handle for the nRF5340.
     pub fn create() -> Arc<dyn ArmDebugSequence> {
         Arc::new(Self(()))
     }

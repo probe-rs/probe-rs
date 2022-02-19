@@ -1,3 +1,5 @@
+//! Debug sequences to operate special requirements ARM targets.
+
 pub mod nrf53;
 pub mod nxp;
 
@@ -16,9 +18,11 @@ use super::{
     ArmCommunicationInterface, DpAddress, Pins, PortType, Register,
 };
 
+/// The default sequences that is used for ARM chips that do not specify a specific sequence.
 pub struct DefaultArmSequence(pub(crate) ());
 
 impl DefaultArmSequence {
+    /// Creates a new default ARM debug sequence.
     pub fn create() -> Arc<dyn ArmDebugSequence> {
         Arc::new(Self(()))
     }
@@ -26,6 +30,9 @@ impl DefaultArmSequence {
 
 impl ArmDebugSequence for DefaultArmSequence {}
 
+/// A interface to operate debug sequences for ARM targets.
+///
+/// Should be implemented on a custom handle for chips that require special sequence code.
 pub trait ArmDebugSequence: Send + Sync {
     /// Assert a system-wide reset line nRST. This is based on the
     /// `ResetHardwareAssert` function from the [ARM SVD Debug Description].
@@ -258,7 +265,7 @@ pub trait ArmDebugSequence: Send + Sync {
                 Ok(val) => Dhcsr(val),
                 Err(err) => {
                     if let crate::Error::ArchitectureSpecific(ref arch_err) = err {
-                        if let Some(AccessPortError::RegisterReadError { .. }) =
+                        if let Some(AccessPortError::RegisterRead { .. }) =
                             arch_err.downcast_ref::<AccessPortError>()
                         {
                             // Some combinations of debug probe and target (in

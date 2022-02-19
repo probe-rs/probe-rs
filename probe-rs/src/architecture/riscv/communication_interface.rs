@@ -23,30 +23,43 @@ use std::{
     time::{Duration, Instant},
 };
 
+/// Something error occurered when working with the RISC-V core.
 #[derive(thiserror::Error, Debug)]
 pub enum RiscvError {
+    /// An error during read/write of the DMI register happened.
     #[error("Error during read/write to the DMI register: {0:?}")]
     DmiTransfer(DmiOperationStatus),
+    /// An error with operating the debug probe occurred.
     #[error("Debug Probe Error")]
     DebugProbe(#[from] DebugProbeError),
+    /// A timeout occurred during JTAG register access.
     #[error("Timeout during JTAG register access.")]
     Timeout,
+    /// An error occurred during the execution of an abstract command.
     #[error("Error occurred during execution of an abstract command: {0:?}")]
     AbstractCommand(AbstractCommandErrorKind),
+    /// The request for reset, resume or halt was not acknowledged.
     #[error("The core did not acknowledge a request for reset, resume or halt")]
     RequestNotAcknowledged,
+    /// This debug transport module (DTM) version is currently not supported.
     #[error("The version '{0}' of the debug transport module (DTM) is currently not supported.")]
     UnsupportedDebugTransportModuleVersion(u8),
+    /// This version of the debug module is not supported.
     #[error("The version '{0:?}' of the debug module is currently not supported.")]
     UnsupportedDebugModuleVersion(DebugModuleVersion),
+    /// The given program buffer register is not supported.
     #[error("Program buffer register '{0}' is currently not supported.")]
     UnsupportedProgramBufferRegister(usize),
+    /// The program buffer is too small for the supplied program.
     #[error("Program buffer is too small for supplied program.")]
     ProgramBufferTooSmall,
+    /// Memory width larger than 32 bits is not supported yet.
     #[error("Memory width larger than 32 bits is not supported yet.")]
     UnsupportedBusAccessWidth(RiscvBusAccess),
+    /// An error during system bus access occurred.
     #[error("Error using system bus")]
     SystemBusAccess,
+    /// The given trigger type is not available for the address breakpoint.
     #[error("Unexpected trigger type {0} for address breakpoint.")]
     UnexpectedTriggerType(u32),
 }
@@ -60,16 +73,31 @@ impl From<RiscvError> for ProbeRsError {
     }
 }
 
-/// Errors which can occur while executing an abstract command
+/// Errors which can occur while executing an abstract command.
 #[derive(Debug)]
 pub enum AbstractCommandErrorKind {
+    /// No error happened.
     None = 0,
+    /// An abstract command was executing
+    /// while command, abstractcs, or abstractauto
+    /// was written, or when one of the data or progbuf
+    /// registers was read or written. This status is only
+    /// written if cmderr contains 0.
     Busy = 1,
+    /// The requested command is not supported, reg
     NotSupported = 2,
+    /// An exception occurred while executing the command (e.g. while executing the Program Buffer).
     Exception = 3,
+    /// The abstract command couldn’t
+    /// execute because the hart wasn’t in the required
+    /// state (running/halted), or unavailable.
     HaltResume = 4,
+    /// The abstract command failed due to a
+    /// bus error (e.g. alignment, access size, or timeout).
     Bus = 5,
+    /// A reserved code. Should not occur.
     _Reserved = 6,
+    /// The command failed for another reason.
     Other = 7,
 }
 
@@ -105,6 +133,7 @@ pub enum DebugModuleVersion {
     Version0_13,
     /// The debug module is present, but does not conform to any available version of the RISCV Debug Specification.
     NonConforming,
+    /// Unknown debug module version.
     Unknown(u8),
 }
 
@@ -137,6 +166,7 @@ impl CoreRegisterAbstractCmdSupport {
     }
 }
 
+/// A state to carry all the state data across multiple core switches in a session.
 #[derive(Debug)]
 pub struct RiscvCommunicationInterfaceState {
     /// Debug specification version
@@ -179,6 +209,7 @@ pub struct RiscvCommunicationInterfaceState {
 const RISCV_TIMEOUT: Duration = Duration::from_secs(5);
 
 impl RiscvCommunicationInterfaceState {
+    /// Create a new interface state.
     pub fn new() -> Self {
         RiscvCommunicationInterfaceState {
             // Set to the minimum here, will be set to the correct value below
@@ -227,6 +258,7 @@ impl Default for RiscvCommunicationInterfaceState {
     }
 }
 
+/// A interface that implements controls for RISC-V cores.
 #[derive(Debug)]
 pub struct RiscvCommunicationInterface {
     /// The Debug Transport Module (DTM) is used to
@@ -236,6 +268,7 @@ pub struct RiscvCommunicationInterface {
 }
 
 impl<'probe> RiscvCommunicationInterface {
+    /// Creates a new RISC-V communication interface with a given probe driver.
     pub fn new(probe: Box<dyn JTAGAccess>) -> Result<Self, (Box<dyn JTAGAccess>, DebugProbeError)> {
         let state = RiscvCommunicationInterfaceState::new();
         let dtm = Dtm::new(probe).map_err(|(probe, e)| match e {
@@ -255,10 +288,12 @@ impl<'probe> RiscvCommunicationInterface {
         Ok(s)
     }
 
+    /// Deassert the target reset.
     pub fn target_reset_deassert(&mut self) -> Result<(), DebugProbeError> {
         self.dtm.target_reset_deassert()
     }
 
+    /// Read the targets IDCODE.
     pub fn read_idcode(&mut self) -> Result<u32, DebugProbeError> {
         self.dtm.read_idcode()
     }
@@ -1101,6 +1136,7 @@ impl<'probe> RiscvCommunicationInterface {
         }
     }
 
+    /// Read the CSR progbuf register.
     pub fn read_csr_progbuf(&mut self, address: u16) -> Result<u32, RiscvError> {
         log::debug!("Reading CSR {:#04x}", address);
 
@@ -1126,6 +1162,7 @@ impl<'probe> RiscvCommunicationInterface {
         Ok(reg_value)
     }
 
+    /// Write the CSR progbuf register.
     pub fn write_csr_progbuf(&mut self, address: u16, value: u32) -> Result<(), RiscvError> {
         log::debug!("Writing CSR {:#04x}={}", address, value);
 
@@ -1234,6 +1271,7 @@ impl<'probe> RiscvCommunicationInterface {
         Ok(())
     }
 
+    /// Destruct the interface and return the stored probe driver.
     pub fn close(self) -> Probe {
         Probe::from_attached_probe(self.dtm.probe.into_probe())
     }
@@ -1712,10 +1750,15 @@ impl MemoryInterface for RiscvCommunicationInterface {
 /// as well for abstract commands.
 #[derive(Copy, Clone, PartialEq, PartialOrd, Hash, Eq, Debug)]
 pub enum RiscvBusAccess {
+    /// 1 byte
     A8 = 0,
+    /// 2 bytes
     A16 = 1,
+    /// 4 bytes
     A32 = 2,
+    /// 8 bytes
     A64 = 3,
+    /// 16 bytes.
     A128 = 4,
 }
 
@@ -1759,12 +1802,39 @@ bitfield! {
     /// from the debug spec.
     pub struct AccessRegisterCommand(u32);
     impl Debug;
+    /// This is 0 to indicate Access Register Command.
     pub _, set_cmd_type: 31, 24;
+    /// 2: Access the lowest 32 bits of the register.\
+    /// 3: Access the lowest 64 bits of the register.\
+    /// 4: Access the lowest 128 bits of the register.
+    ///
+    /// If aarsize specifies a size larger than the register’s
+    /// actual size, then the access must fail. If a register is accessible, then reads of aarsize less than
+    /// or equal to the register’s actual size must be supported.
+    ///
+    /// This field controls the Argument Width as referenced in Table 3.1.
     pub u8, from into RiscvBusAccess, _, set_aarsize: 22, 20;
+    /// 0: No effect. This variant must be supported.\
+    /// 1: After a successful register access, regno is incremented (wrapping around to 0). Supporting
+    /// this variant is optional.
     pub _, set_aarpostincrement: 19;
+    /// 0: No effect. This variant must be supported, and
+    /// is the only supported one if progbufsize is 0.\
+    /// 1: Execute the program in the Program Buffer
+    /// exactly once after performing the transfer, if any.
+    /// Supporting this variant is optional.
     pub _, set_postexec: 18;
+    /// 0: Don’t do the operation specified by write.\
+    /// 1: Do the operation specified by write.
+    /// This bit can be used to just execute the Program Buffer without having to worry about placing valid values into aarsize or regno
     pub _, set_transfer: 17;
+    /// When transfer is set: 0: Copy data from the specified register into arg0 portion of data.
+    /// 1: Copy data from arg0 portion of data into the
+    /// specified register.
     pub _, set_write: 16;
+    /// Number of the register to access, as described in
+    /// Table 3.3. dpc may be used as an alias for PC if
+    /// this command is supported on a non-halted hart.
     pub _, set_regno: 15, 0;
 }
 
@@ -1791,23 +1861,76 @@ pub(super) trait DebugRegister: Into<u32> + From<u32> + std::fmt::Debug {
 }
 
 bitfield! {
+    /// System Bus Access Control and Status (see 3.12.18)
     #[derive(Copy, Clone)]
     pub struct Sbcs(u32);
     impl Debug;
-
+    /// 0: The System Bus interface conforms to mainline
+    /// drafts of this spec older than 1 January, 2018.\
+    /// 1: The System Bus interface conforms to this version of the spec.
+    ///
+    /// Other values are reserved for future versions
     sbversion, _: 31, 29;
+    /// Set when the debugger attempts to read data
+    /// while a read is in progress, or when the debugger initiates a new access while one is already in
+    /// progress (while sbbusy is set). It remains set until
+    /// it’s explicitly cleared by the debugger.
+    /// While this field is set, no more system bus accesses
+    /// can be initiated by the Debug Module.
     sbbusyerror, set_sbbusyerror: 22;
+    /// When 1, indicates the system bus master is busy.
+    /// (Whether the system bus itself is busy is related,
+    /// but not the same thing.) This bit goes high immediately when a read or write is requested for
+    /// any reason, and does not go low until the access
+    /// is fully completed.
+    ///
+    /// Writes to sbcs while sbbusy is high result in undefined behavior. A debugger must not write to
+    /// sbcs until it reads sbbusy as 0.
     sbbusy, _: 21;
+    /// When 1, every write to sbaddress0 automatically
+    /// triggers a system bus read at the new address.
     sbreadonaddr, set_sbreadonaddr: 20;
+    /// Select the access size to use for system bus accesses.
+    ///
+    /// 0: 8-bit\
+    /// 1: 16-bit\
+    /// 2: 32-bit\
+    /// 3: 64-bit\
+    /// 4: 128-bit
+    ///
+    /// If sbaccess has an unsupported value when the
+    /// DM starts a bus access, the access is not performed and sberror is set to 4.
     sbaccess, set_sbaccess: 19, 17;
+    /// When 1, sbaddress is incremented by the access
+    /// size (in bytes) selected in sbaccess after every system bus access.
     sbautoincrement, set_sbautoincrement: 16;
+    /// When 1, every read from sbdata0 automatically
+    /// triggers a system bus read at the (possibly autoincremented) address.
     sbreadondata, set_sbreadondata: 15;
+    /// When the Debug Module’s system bus master encounters an error, this field gets set. The bits in
+    /// this field remain set until they are cleared by writing 1 to them. While this field is non-zero, no
+    /// more system bus accesses can be initiated by the
+    /// Debug Module.
+    /// An implementation may report “Other” (7) for any error condition.
+    ///
+    /// 0: There was no bus error.\
+    /// 1: There was a timeout.\
+    /// 2: A bad address was accessed.\
+    /// 3: There was an alignment error.\
+    /// 4: An access of unsupported size was requested.\
+    /// 7: Other.
     sberror, set_sberror: 14, 12;
+    /// Width of system bus addresses in bits. (0 indicates there is no bus access support.)
     sbasize, _: 11, 5;
+    /// 1 when 128-bit system bus accesses are supported.
     sbaccess128, _: 4;
+    /// 1 when 64-bit system bus accesses are supported.
     sbaccess64, _: 3;
+    /// 1 when 32-bit system bus accesses are supported.
     sbaccess32, _: 2;
+    /// 1 when 16-bit system bus accesses are supported.
     sbaccess16, _: 1;
+    /// 1 when 8-bit system bus accesses are supported.
     sbaccess8, _: 0;
 }
 
@@ -1823,11 +1946,15 @@ impl From<Sbcs> for u32 {
 }
 
 bitfield! {
+    /// Abstract Command Autoexec (see 3.12.8)
     #[derive(Copy, Clone, PartialEq)]
     pub struct Abstractauto(u32);
     impl Debug;
-
+    /// When a bit in this field is 1, read or write accesses to the corresponding progbuf word cause
+    /// the command in command to be executed again.
     autoexecprogbuf, set_autoexecprogbuf: 31, 16;
+    /// When a bit in this field is 1, read or write accesses to the corresponding data word cause the
+    /// command in command to be executed again.
     autoexecdata, set_autoexecdata: 11, 0;
 }
 
@@ -1857,14 +1984,36 @@ impl From<u32> for Sbcs {
 bitfield! {
     /// Abstract command register, located at address 0x17
     /// This is not for all commands, only for the ones
-    /// from the debug spec.
+    /// from the debug spec. (see 3.6.1.3)
     pub struct AccessMemoryCommand(u32);
     impl Debug;
+    /// This is 2 to indicate Access Memory Command.
     _, set_cmd_type: 31, 24;
+    /// An implementation does not have to implement
+    /// both virtual and physical accesses, but it must
+    /// fail accesses that it doesn’t support.
+
+    /// 0: Addresses are physical (to the hart they are
+    /// performed on).\
+    /// 1: Addresses are virtual, and translated the way
+    /// they would be from M-mode, with MPRV set.
     pub _, set_aamvirtual: 23;
+    /// 0: Access the lowest 8 bits of the memory location.\
+    /// 1: Access the lowest 16 bits of the memory location.\
+    /// 2: Access the lowest 32 bits of the memory location.\
+    /// 3: Access the lowest 64 bits of the memory location.\
+    /// 4: Access the lowest 128 bits of the memory location.
     pub _, set_aamsize: 22,20;
+    /// After a memory access has completed, if this bit
+    /// is 1, increment arg1 (which contains the address
+    /// used) by the number of bytes encoded in aamsize.
     pub _, set_aampostincrement: 19;
+    /// 0: Copy data from the memory location specified
+    /// in arg1 into arg0 portion of data.\
+    /// 1: Copy data from arg0 portion of data into the
+    /// memory location specified in arg1.
     pub _, set_write: 16;
+    /// These bits are reserved for target-specific uses.
     pub _, set_target_specific: 15, 14;
 }
 

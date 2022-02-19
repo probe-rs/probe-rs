@@ -1,4 +1,4 @@
-//! RISCV Support
+//! All the interface bits for RISC-V.
 
 #![allow(clippy::inconsistent_digit_grouping)]
 
@@ -23,11 +23,13 @@ mod dtm;
 pub mod communication_interface;
 pub mod sequences;
 
+/// A interface to operate RISC-V cores.
 pub struct Riscv32<'probe> {
     interface: &'probe mut RiscvCommunicationInterface,
 }
 
 impl<'probe> Riscv32<'probe> {
+    /// Create a new RISC-V interface.
     pub fn new(interface: &'probe mut RiscvCommunicationInterface) -> Self {
         Self { interface }
     }
@@ -555,8 +557,8 @@ impl<'probe> MemoryInterface for Riscv32<'probe> {
 }
 
 bitfield! {
-    // `dmcontrol` register, located at
-    // address 0x10
+    /// `dmcontrol` register, located at
+    /// address 0x10
     #[derive(Copy, Clone)]
     pub struct Dmcontrol(u32);
     impl Debug;
@@ -672,6 +674,7 @@ bitfield! {
 }
 
 bitfield! {
+    /// Abstract Control and Status (see 3.12.6)
     pub struct Abstractcs(u32);
     impl Debug;
 
@@ -699,6 +702,7 @@ impl From<u32> for Abstractcs {
 }
 
 bitfield! {
+    /// Hart Info (see 3.12.3)
     pub struct Hartinfo(u32);
     impl Debug;
 

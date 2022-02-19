@@ -1,3 +1,5 @@
+//! Types and functions for interacting with access ports.
+
 #[macro_use]
 pub mod register_generation;
 pub(crate) mod generic_ap;
@@ -10,78 +12,106 @@ pub use generic_ap::{ApClass, ApType, GenericAp, IDR};
 pub use memory_ap::{
     AddressIncrement, BaseaddrFormat, DataSize, MemoryAp, BASE, BASE2, CSW, DRW, TAR,
 };
-use probe_rs_target::Core;
 
 use super::{ApAddress, DapAccess, DpAddress, Register};
 
+/// Some error during AP handling occurred.
 #[derive(Debug, thiserror::Error)]
 pub enum AccessPortError {
+    /// The given register address to perform an access on was not memory aligned.
+    /// Make sure it is aligned to the size of the access (`address & access_size == 0`).
     #[error("Failed to access address 0x{address:08x} as it is not aligned to the requirement of {alignment} bytes.")]
-    MemoryNotAligned { address: u32, alignment: usize },
+    MemoryNotAligned {
+        /// The address of the register.
+        address: u32,
+        /// The required alignment in bytes (address increments).
+        alignment: usize,
+    },
+    /// An error occured when trying to read a register.
     #[error("Failed to read register {name} at address 0x{address:08x}")]
-    RegisterReadError {
+    RegisterRead {
+        /// The address of the register.
         address: u8,
+        /// The name if the register.
         name: &'static str,
+        /// The underlying root error of this access error.
         #[source]
         source: Box<dyn std::error::Error + Send + Sync>,
     },
+    /// An error occured when trying to write a register.
     #[error("Failed to write register {name} at address 0x{address:08x}")]
-    RegisterWriteError {
+    RegisterWrite {
+        /// The address of the register.
         address: u8,
+        /// The name if the register.
         name: &'static str,
+        /// The underlying root error of this access error.
         #[source]
         source: Box<dyn std::error::Error + Send + Sync>,
     },
+    /// A region ouside of the AP address space was accessed.
     #[error("Out of bounds access")]
-    OutOfBoundsError,
+    OutOfBounds,
+    /// Some error with the operation of the APs DP occurred.
     #[error("Error while communicating with debug port")]
     DebugPort(#[from] DebugPortError),
+    /// An error occurred when trying to flush batched writes of to the AP.
     #[error("Failed to flush batched writes")]
-    FlushError(#[from] DebugProbeError),
-    #[error("The target for this core has defined invalid core access options. This is a bug, please file an issue. {0:?}")]
-    InvalidCoreAccessOption(Core),
+    Flush(#[from] DebugProbeError),
 }
 
 impl AccessPortError {
+    /// Constructs a [`AccessPortError::RegisterRead`] from just the source error and the register type.
     pub fn register_read_error<R: Register, E: std::error::Error + Send + Sync + 'static>(
         source: E,
     ) -> Self {
-        AccessPortError::RegisterReadError {
+        AccessPortError::RegisterRead {
             address: R::ADDRESS,
             name: R::NAME,
             source: Box::new(source),
         }
     }
 
+    /// Constructs a [`AccessPortError::RegisterWrite`] from just the source error and the register type.
     pub fn register_write_error<R: Register, E: std::error::Error + Send + Sync + 'static>(
         source: E,
     ) -> Self {
-        AccessPortError::RegisterWriteError {
+        AccessPortError::RegisterWrite {
             address: R::ADDRESS,
             name: R::NAME,
             source: Box::new(source),
         }
     }
 
+    /// Constructs a [`AccessPortError::MemoryNotAligned`] from the address and the required alignment.
     pub fn alignment_error(address: u32, alignment: usize) -> Self {
         AccessPortError::MemoryNotAligned { address, alignment }
     }
 }
 
+/// A trait to be implemented by access port register types.
+///
+/// Use the [`register_generation::define_ap_register`] macro to implement this.
 pub trait ApRegister<PORT: AccessPort>: Register + Sized {}
 
+/// A trait to be implemented on access port types.
+///
+/// Use the [`register_generation::define_ap`] macro to implement this.
 pub trait AccessPort {
+    /// Returns the address of the access port.
     fn ap_address(&self) -> ApAddress;
 }
 
+/// A trait to be implemented by access port drivers to implement access port operations.
 pub trait ApAccess {
+    /// Read a register of the access port.
     fn read_ap_register<PORT, R>(&mut self, port: impl Into<PORT>) -> Result<R, DebugProbeError>
     where
         PORT: AccessPort,
         R: ApRegister<PORT>;
 
-    /// Read a register using a block transfer. This can be used
-    /// to read multiple values from the same register.
+    /// Read a register of the access port using a block transfer.
+    /// This can be used to read multiple values from the same register.
     fn read_ap_register_repeated<PORT, R>(
         &mut self,
         port: impl Into<PORT> + Clone,
@@ -92,6 +122,7 @@ pub trait ApAccess {
         PORT: AccessPort,
         R: ApRegister<PORT>;
 
+    /// Write a register of the access port.
     fn write_ap_register<PORT, R>(
         &mut self,
         port: impl Into<PORT>,
@@ -101,8 +132,8 @@ pub trait ApAccess {
         PORT: AccessPort,
         R: ApRegister<PORT>;
 
-    /// Write a register using a block transfer. This can be used
-    /// to write multiple values to the same register.
+    /// Write a register of the access port using a block transfer.
+    /// This can be used to write multiple values to the same register.
     fn write_ap_register_repeated<PORT, R>(
         &mut self,
         port: impl Into<PORT> + Clone,

@@ -22,18 +22,25 @@ use std::{
     time::Duration,
 };
 
+/// An error with the DAP protocol occured.
 #[derive(Debug, thiserror::Error, Clone, PartialEq)]
 pub enum DapError {
+    /// An error occured during SWD communication.
     #[error("An error occurred in the SWD communication between probe and device.")]
     SwdProtocol,
+    /// The target device did not respond to the request.
     #[error("Target device did not respond to request.")]
     NoAcknowledge,
-    #[error("Target device responded with FAULT response to request.")]
+    /// The target device responded with a FAULT response to the request.
+    #[error("Target device responded with a FAULT response to the request.")]
     FaultResponse,
-    #[error("Target device responded with WAIT response to request.")]
+    /// Target device responded with a WAIT response to the request.
+    #[error("Target device responded with a WAIT response to the request.")]
     WaitResponse,
+    /// Powerup of the target device failed.
     #[error("Target power-up failed.")]
     TargetPowerUpFailed,
+    /// The parity bit on the read request was incorrect.
     #[error("Incorrect parity on READ request.")]
     IncorrectParity,
 }
@@ -44,20 +51,32 @@ impl From<DapError> for DebugProbeError {
     }
 }
 
+/// A trait to be implemented on register types for typed device access.
 pub trait Register: Clone + From<u32> + Into<u32> + Sized + Debug {
+    /// The address of the register (in bytes).
     const ADDRESS: u8;
+    /// The name of the register as string.
     const NAME: &'static str;
 }
 
+/// To be implemented by debug probe drivers that support debugging ARM cores.
 pub trait ArmProbeInterface: DapAccess + SwdSequence + SwoAccess + Send {
+    /// Returns a memory interface to access the target's memory.
     fn memory_interface(&mut self, access_port: MemoryAp) -> Result<Memory<'_>, ProbeRsError>;
 
+    /// Returns information about a specific access port.
     fn ap_information(&mut self, access_port: GenericAp) -> Result<&ApInformation, ProbeRsError>;
 
+    /// Returns the number of access ports the debug port has.
     fn num_access_ports(&mut self, dp: DpAddress) -> Result<usize, ProbeRsError>;
 
-    fn read_from_rom_table(&mut self, dp: DpAddress) -> Result<Option<ArmChipInfo>, ProbeRsError>;
+    /// Reads the chip info from the romtable of given debug port.
+    fn read_chip_info_from_rom_table(
+        &mut self,
+        dp: DpAddress,
+    ) -> Result<Option<ArmChipInfo>, ProbeRsError>;
 
+    /// Closes the interface and returns back the generic probe it consumed.
     fn close(self: Box<Self>) -> Probe;
 }
 
@@ -144,6 +163,7 @@ impl DpState {
     }
 }
 
+/// Information about an access port. Can be used for target discovery.
 #[derive(Clone, Debug)]
 pub enum ApInformation {
     /// Information about a Memory AP, which allows access to target memory. See Chapter C2 in the [ARM Debug Interface Architecture Specification].
@@ -219,6 +239,8 @@ impl ApInformation {
     }
 }
 
+/// Information about a memory access port. Can be used for target discovery.
+/// Useful for detecting supported memory access of a target.
 #[derive(Debug, Clone)]
 pub struct MemoryApInformation {
     /// Zero-based port number of the access port. This is used in the debug port to select an AP.
@@ -242,6 +264,9 @@ pub struct MemoryApInformation {
     pub supports_hnonsec: bool,
 }
 
+/// An implementation of the communication protocol between probe and target.
+/// Can be used to perform all sorts of generic debug access on ARM targets with probes that support low level access.
+/// (E.g. CMSIS-DAP and J-Link support this, ST-Link does not)
 #[derive(Debug)]
 pub struct ArmCommunicationInterface<S: ArmDebugState> {
     probe: Box<dyn DapProbe>,
@@ -263,8 +288,11 @@ impl ArmProbeInterface for ArmCommunicationInterface<Initialized> {
         ArmCommunicationInterface::ap_information(self, access_port)
     }
 
-    fn read_from_rom_table(&mut self, dp: DpAddress) -> Result<Option<ArmChipInfo>, ProbeRsError> {
-        ArmCommunicationInterface::read_from_rom_table(self, dp)
+    fn read_chip_info_from_rom_table(
+        &mut self,
+        dp: DpAddress,
+    ) -> Result<Option<ArmChipInfo>, ProbeRsError> {
+        ArmCommunicationInterface::read_chip_info_from_rom_table(self, dp)
     }
 
     fn num_access_ports(&mut self, dp: DpAddress) -> Result<usize, ProbeRsError> {
@@ -355,6 +383,7 @@ impl<'interface> ArmCommunicationInterface<Initialized> {
         Ok(initialized_interface)
     }
 
+    /// Tries to obtain a memory interface which can be used to read memory from ARM targets.
     pub fn memory_interface(
         &'interface mut self,
         access_port: MemoryAp,
@@ -635,14 +664,23 @@ impl DapAccess for ArmCommunicationInterface<Initialized> {
     }
 }
 
+/// Information about the chip target we are currently attached to.
+/// This can be used for discovery, tho, for now it does not work optimally,
+/// as some manufacturers (e.g. ST Microelectronics) violate the spec and thus need special discovery procedures.
 #[derive(Debug)]
 pub struct ArmChipInfo {
+    /// The JEP106 code of the manufacturer of this chip target.
     pub manufacturer: JEP106Code,
+    /// The unique part numer of the chip target. Unfortunately this only unique in the spec.
+    /// In practice some manufacturers violate the spec and assign a part number to an entire family.
+    ///
+    /// Consider this not unique when working with targets!
     pub part: u16,
 }
 
 impl ArmCommunicationInterface<Initialized> {
-    pub fn read_from_rom_table(
+    /// Reads the chip info from the romtable of given debug port.
+    pub fn read_chip_info_from_rom_table(
         &mut self,
         dp: DpAddress,
     ) -> Result<Option<ArmChipInfo>, ProbeRsError> {

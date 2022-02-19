@@ -1,17 +1,24 @@
 //! Helper macros to implement an access port
 //!
 
+/// Defines a new typed access port register for a specific access port.
+/// Takes
+/// - type: The type of the port.
+/// - name: The name of the constructed type for the register. Also accepts a doc comment to be added to the type.
+/// - address: The address relative to the base address of the access port.
+/// - fields: A list of fields of the register type.
+/// - from: a closure to transform from an `u32` to the typed register.
+/// - to: A closure to transform from they typed register to an `u32`.
 #[macro_export]
 macro_rules! define_ap_register {
     (
+        type: $port_type:ident,
         $(#[$outer:meta])*
-        $port_type:ident,
-        $name:ident,
-        $address:expr,
-        [$(($field:ident: $type:ty)$(,)?)*],
-        $param:ident,
-        $from:expr,
-        $to:expr
+        name: $name:ident,
+        address: $address:expr,
+        fields: [$($(#[$inner:meta])*$field:ident: $type:ty$(,)?)*],
+        from: $from_param:ident => $from:expr,
+        to: $to_param:ident => $to:expr
     )
     => {
         $(#[$outer])*
@@ -19,7 +26,7 @@ macro_rules! define_ap_register {
         #[allow(clippy::upper_case_acronyms)]
         #[derive(Debug, Default, Clone, Copy, PartialEq)]
         pub struct $name {
-            $(pub $field: $type,)*
+            $($(#[$inner])*pub $field: $type,)*
         }
 
         impl Register for $name {
@@ -29,13 +36,13 @@ macro_rules! define_ap_register {
         }
 
         impl From<u32> for $name {
-            fn from($param: u32) -> $name {
+            fn from($from_param: u32) -> $name {
                 $from
             }
         }
 
         impl From<$name> for u32 {
-            fn from($param: $name) -> u32 {
+            fn from($to_param: $name) -> u32 {
                 $to
             }
         }
@@ -45,14 +52,21 @@ macro_rules! define_ap_register {
     }
 }
 
+/// Defines a new typed access port.
+#[macro_export]
 macro_rules! define_ap {
-    ($name:ident) => {
+    (
+        $(#[$outer:meta])*
+        $name:ident
+    ) => {
+        $(#[$outer])*
         #[derive(Clone, Copy, Debug)]
         pub struct $name {
             address: ApAddress,
         }
 
         impl $name {
+            #[doc = concat!("Creates a new ", stringify!($name), " with `address` as base address.")]
             pub const fn new(address: ApAddress) -> Self {
                 Self { address }
             }

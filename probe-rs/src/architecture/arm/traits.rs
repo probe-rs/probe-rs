@@ -1,8 +1,11 @@
 use crate::{DebugProbe, DebugProbeError};
 
+/// The type of port we are using.
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub enum PortType {
+    /// Debug Port (e.g. SWD or JTAG)
     DebugPort,
+    /// Access Port (e.g. Memory Access Port)
     AccessPort,
 }
 
@@ -11,11 +14,17 @@ bitfield::bitfield! {
     #[derive(Copy, Clone)]
     pub struct Pins(u8);
     impl Debug;
+    /// The active low reset of the debug probe.
     pub nreset, set_nreset: 7;
+    /// The negative target reset pin of JTAG.
     pub ntrst, set_ntrst: 5;
+    /// The TDO or SWO pin.
     pub tdo, set_tdo: 3;
+    /// The TDI pin.
     pub tdi, set_tdi: 2;
+    /// The SWDIO or TMS pin.
     pub swdio_tms, set_swdio_tms: 1;
+    /// The clock pin.
     pub swclk_tck, set_swclk_tck: 0;
 }
 
@@ -33,7 +42,9 @@ pub enum DpAddress {
 /// Access port address.
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub struct ApAddress {
+    /// The address of the debug port this access port belongs to.
     pub dp: DpAddress,
+    /// The access port number.
     pub ap: u8,
 }
 
@@ -45,6 +56,7 @@ pub struct ApAddress {
 /// Almost everything is the responsibility of the caller. For example, the caller must
 /// handle bank switching and AP selection.
 pub trait RawDapAccess {
+    /// Select the debug port to operate on.
     fn select_dp(&mut self, dp: DpAddress) -> Result<(), DebugProbeError>;
 
     /// Read a DAP register.
@@ -131,6 +143,7 @@ pub trait RawDapAccess {
         pin_wait: u32,
     ) -> Result<u32, DebugProbeError>;
 
+    /// Cast this interface into a generic [`DebugProbe`].
     fn into_probe(self: Box<Self>) -> Box<dyn DebugProbe>;
 }
 

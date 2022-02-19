@@ -1,3 +1,5 @@
+//! All the interface bits for ARM.
+
 pub mod ap;
 pub(crate) mod communication_interface;
 pub mod component;

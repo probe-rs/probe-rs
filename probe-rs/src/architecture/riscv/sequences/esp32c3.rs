@@ -1,11 +1,15 @@
+//! Sequences for the ESP32C3.
+
 use std::sync::Arc;
 
 use super::RiscvDebugSequence;
 use crate::MemoryInterface;
 
+/// The debug sequence implementation for the ESP32C3.
 pub struct ESP32C3(());
 
 impl ESP32C3 {
+    /// Creates a new debug sequence handle for the ESP32C3.
     pub fn create() -> Arc<dyn RiscvDebugSequence> {
         Arc::new(Self(()))
     }
