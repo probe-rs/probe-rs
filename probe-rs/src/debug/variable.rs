@@ -309,7 +309,7 @@ pub enum VariableNodeType {
     /// - Rule: Pointers to `struct` variables WILL NOT BE recursed, because  this may lead to infinite loops/stack overflows in `struct`s that self-reference.
     /// - Rule: Pointers to "base" datatypes SHOULD BE, but ARE NOT resolved, because it would keep the UX simple, but DWARF doesn't make it easy to determine when a pointer points to a base data type. We can read ahead in the DIE children, but that feels rather inefficient.
     ReferenceOffset(UnitOffset),
-    /// Use the `header_offset` and `type_offset` as direct references for recursing the variable children.
+    /// Use the `header_offset` and `type_offset` as direct references for recursing the variable children. With the current implementation, the `type_offset` will point to a DIE with a tag of `DW_TAG_structure_type`.
     /// - Rule: For structured variables, we WILL NOT automatically expand their children, but we have enough information to expand it on demand. Except if they fall into one of the special cases handled by [VariableNodeType::RecurseAsIntermediate]
     TypeOffset(UnitOffset),
     /// Use the `header_offset` and `entries_offset` as direct references for recursing the variable children.

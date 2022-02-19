@@ -396,6 +396,46 @@ impl DebugCli {
         });
 
         cli.add_command(Command {
+            name: "up",
+            help_text: "Move up a frame",
+
+            function: |cli_data, _args| {
+                match &mut cli_data.state {
+                    DebugState::Running => println!("Core must be halted for this command."),
+                    DebugState::Halted(halted_state) => {
+                        if halted_state.current_frame < halted_state.frame_indices.len() - 1 {
+                            halted_state.current_frame += 1;
+                        } else {
+                            println!("Already at top-most frame.");
+                        }
+                    }
+                }
+
+                Ok(CliState::Continue)
+            },
+        });
+
+        cli.add_command(Command {
+            name: "down",
+            help_text: "Move down a frame",
+
+            function: |cli_data, _args| {
+                match &mut cli_data.state {
+                    DebugState::Running => println!("Core must be halted for this command."),
+                    DebugState::Halted(halted_state) => {
+                        if halted_state.current_frame > 0 {
+                            halted_state.current_frame -= 1;
+                        } else {
+                            println!("Already at bottom-most frame.");
+                        }
+                    }
+                }
+
+                Ok(CliState::Continue)
+            },
+        });
+
+        cli.add_command(Command {
             name: "dump",
             help_text: "Store a dump of the current CPU state",
 

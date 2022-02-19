@@ -542,7 +542,7 @@ impl DebugInfo {
         Ok(function_variable_cache)
     }
 
-    /// This effects the on-demand expansion of lazy/deffered load of all the 'child' `Variable`s for a given 'parent'.
+    /// This effects the on-demand expansion of lazy/deferred load of all the 'child' `Variable`s for a given 'parent'.
     pub fn cache_deferred_variables(
         &self,
         cache: &mut VariableCache,
