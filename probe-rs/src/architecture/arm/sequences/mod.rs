@@ -10,6 +10,7 @@ use std::{
 use crate::{architecture::arm::DapError, core::CoreRegister, DebugProbeError, Memory};
 
 use super::{
+    ap::AccessPortError,
     communication_interface::{DapProbe, Initialized},
     dp::{Abort, Ctrl, DpAccess, Select, DPIDR},
     ArmCommunicationInterface, DpAddress, Pins, PortType, Register,
@@ -253,7 +254,23 @@ pub trait ArmDebugSequence: Send + Sync {
         let start = Instant::now();
 
         while start.elapsed() < Duration::from_micros(50_0000) {
-            let dhcsr = Dhcsr(interface.read_word_32(Dhcsr::ADDRESS)?);
+            let dhcsr = match interface.read_word_32(Dhcsr::ADDRESS) {
+                Ok(val) => Dhcsr(val),
+                Err(err) => {
+                    if let crate::Error::ArchitectureSpecific(ref arch_err) = err {
+                        if let Some(AccessPortError::RegisterReadError { .. }) =
+                            arch_err.downcast_ref::<AccessPortError>()
+                        {
+                            // Some combinations of debug probe and target (in
+                            // particular, hs-probe and ATSAMD21) result in
+                            // register read errors while the target is
+                            // resetting.
+                            continue;
+                        }
+                    }
+                    return Err(err);
+                }
+            };
 
             // Wait until the S_RESET_ST bit is cleared on a read
             if !dhcsr.s_reset_st() {
