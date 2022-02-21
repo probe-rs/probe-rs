@@ -193,18 +193,16 @@ fn paint_stack(core: &mut Core, start: u32, mut end: u32) -> Result<(), probe_rs
         end += end % 4;
     }
 
-    // construct subroutine
-    let subroutine = subroutine(start + SUBROUTINE_LENGTH, end);
-
     // does the subroutine fit inside the stack?
     let stack_size = (end - start) as usize;
     assert!(
-        subroutine.len() < stack_size,
+        SUBROUTINE_LENGTH < stack_size,
         "subroutine doesn't fit inside stack"
     );
 
     // write subroutine to RAM
-    core.write_8(start, &subroutine)?;
+    // NOTE: add `SUBROUTINE_LENGTH` to `start`, to avoid the subroutine overwriting itself
+    core.write_8(start, &subroutine(start + SUBROUTINE_LENGTH as u32, end))?;
 
     // store current PC and set PC to beginning of subroutine
     let previous_pc = core.read_core_reg(PC)?;
@@ -215,7 +213,7 @@ fn paint_stack(core: &mut Core, start: u32, mut end: u32) -> Result<(), probe_rs
     core.wait_for_core_halted(TIMEOUT).unwrap();
 
     // overwrite subroutine
-    core.write_8(start, &vec![CANARY_VALUE; subroutine.len()])?;
+    core.write_8(start, &[CANARY_VALUE; SUBROUTINE_LENGTH])?;
 
     // reset PC to where it was before
     core.write_core_reg(PC, previous_pc)?;
@@ -224,9 +222,7 @@ fn paint_stack(core: &mut Core, start: u32, mut end: u32) -> Result<(), probe_rs
 }
 
 /// The length of the subroutine.
-///
-/// This is checked on runtime and needs to be updated when changing the subroutine.
-const SUBROUTINE_LENGTH: u32 = 28;
+const SUBROUTINE_LENGTH: usize = 28;
 
 /// Create a subroutine to paint [`CANARY_VALUE`] from `start` till `end`.
 ///
@@ -250,16 +246,17 @@ const SUBROUTINE_LENGTH: u32 = 28;
 //  118:   20000100    .word   0x20000100  ; start
 //  11c:   20000200    .word   0x20000200  ; end
 //  120:   aaaaaaaa    .word   0xaaaaaaaa  ; pattern
-fn subroutine(start: u32, end: u32) -> Vec<u8> {
+fn subroutine(start: u32, end: u32) -> [u8; SUBROUTINE_LENGTH] {
     assert!(start < end, "start needs to be smaller than end address");
     assert_eq!(start % 4, 0, "`start` needs to be 4-byte-aligned");
     assert_eq!(end % 4, 0, "`end` needs to be 4-byte-aligned");
 
     // convert start and end address to bytes
-    let start_bytes = start.to_le_bytes();
-    let end_bytes = end.to_le_bytes();
+    let [s1, s2, s3, s4] = start.to_le_bytes();
+    let [e1, e2, e3, e4] = end.to_le_bytes();
 
-    let mut subroutine = vec![
+    const CV: u8 = CANARY_VALUE;
+    [
         0x03, 0x48, // ldr
         0x04, 0x49, // ldr
         0x04, 0x4a, // ldr
@@ -268,16 +265,8 @@ fn subroutine(start: u32, end: u32) -> Vec<u8> {
         0x04, 0xC0, // stmia
         0xFB, 0xE7, // b.n
         0x00, 0xBE, // bkpt
-    ];
-
-    // add the start and end address
-    subroutine.extend(start_bytes);
-    subroutine.extend(end_bytes);
-
-    // add the pattern to be painted
-    subroutine.extend([CANARY_VALUE; 4]);
-
-    assert_eq!(subroutine.len() as u32, SUBROUTINE_LENGTH);
-
-    subroutine
+        s1, s2, s3, s4, // start address
+        e1, e2, e3, e4, // end address
+        CV, CV, CV, CV, // canary value
+    ]
 }
