@@ -910,28 +910,21 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                 });
             };
 
-            if let Some(register_root_variable) =
-                stack_frame
-                    .register_variables
-                    .as_ref()
-                    .and_then(|stack_frame| {
-                        stack_frame.get_variable_by_name_and_parent(&VariableName::Registers, None)
-                    })
-            {
-                dap_scopes.push(Scope {
-                    line: None,
-                    column: None,
-                    end_column: None,
-                    end_line: None,
-                    expensive: true, // VSCode won't open this tree by default.
-                    indexed_variables: None,
-                    name: "Registers".to_string(),
-                    presentation_hint: Some("registers".to_string()),
-                    named_variables: None,
-                    source: None,
-                    variables_reference: register_root_variable.variable_key,
-                });
-            };
+            dap_scopes.push(Scope {
+                line: None,
+                column: None,
+                end_column: None,
+                end_line: None,
+                expensive: true, // VSCode won't open this tree by default.
+                indexed_variables: None,
+                name: "Registers".to_string(),
+                presentation_hint: Some("registers".to_string()),
+                named_variables: None,
+                source: None,
+                // We use the stack_frame.id for registers, so that we don't need to cache copies of the registers.
+                variables_reference: stack_frame.id,
+            });
+
             if let Some(locals_root_variable) =
                 stack_frame
                     .local_variables
@@ -1036,15 +1029,39 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                         break;
                     }
                 }
-                if let Some(search_cache) = &mut stack_frame.register_variables {
-                    if let Some(search_variable) =
-                        search_cache.get_variable_by_key(arguments.variables_reference)
-                    {
-                        parent_variable = Some(search_variable);
-                        variable_cache = Some(search_cache);
-                        stack_frame_registers = Some(&stack_frame.registers);
-                        break;
-                    }
+                if stack_frame.id == arguments.variables_reference {
+                    // This is a special case, where we just want to return the stack frame registers.
+
+                    let mut sorted_registers = stack_frame
+                        .registers
+                        .registers()
+                        .collect::<Vec<(&u32, &u32)>>();
+                    sorted_registers
+                        .sort_by_key(|(register_number, _register_value)| *register_number);
+
+                    let dap_variables: Vec<Variable> = sorted_registers
+                        .iter()
+                        .map(|(&register_number, &register_value)| Variable {
+                            name: stack_frame
+                                .registers
+                                .get_name_by_dwarf_register_number(register_number)
+                                .unwrap_or_else(|| format!("r{}", register_number)),
+                            evaluate_name: None,
+                            memory_reference: None,
+                            indexed_variables: None,
+                            named_variables: None,
+                            presentation_hint: None,
+                            type_: Some("Platform Register".to_owned()),
+                            value: format!("{:#010x}", register_value),
+                            variables_reference: 0,
+                        })
+                        .collect();
+                    return self.send_response(
+                        request,
+                        Ok(Some(VariablesResponseBody {
+                            variables: dap_variables,
+                        })),
+                    );
                 }
             }
 

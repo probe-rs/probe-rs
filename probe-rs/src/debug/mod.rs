@@ -86,8 +86,6 @@ pub struct StackFrame {
     /// - Complex variables and pointers will have additional children.
     ///   - This structure is recursive until a base type is encountered.
     pub local_variables: Option<VariableCache>,
-    /// A cache of variables to represent the `registers` for this stafckframe. We essentially duplicate data stored in `registers`, but this allows us to assign unique id's that can be used by the DAP client to reference variables during DAP API calls. VSCode treats these registers in the same way as any other variable, so we need to 'mimic' that.
-    pub register_variables: Option<VariableCache>,
 }
 
 impl std::fmt::Display for StackFrame {
@@ -481,41 +479,6 @@ impl DebugInfo {
         Ok(static_variable_cache)
     }
 
-    /// Resolves and then loads all the `Register` variables into the `DebugInfo::VariableCache`.
-    fn create_register_scope_cache(
-        &self,
-        registers: &Registers,
-        core: &mut Core<'_>,
-    ) -> Result<VariableCache, DebugError> {
-        let mut register_variable_cache = VariableCache::new();
-        let mut register_root_variable = Variable::new(None, None);
-        register_root_variable.name = VariableName::Registers;
-        register_root_variable =
-            register_variable_cache.cache_variable(None, register_root_variable, core)?;
-
-        let mut sorted_registers = registers.values.iter().collect::<Vec<(&u32, &u32)>>();
-        sorted_registers.sort_by_key(|(register_number, _register_value)| *register_number);
-
-        for (register_number, register_value) in sorted_registers {
-            let mut register_variable = Variable::new(None, None);
-            register_variable.parent_key = Some(register_root_variable.variable_key);
-            register_variable.name = VariableName::Named(
-                registers
-                    .get_name_by_dwarf_register_number(*register_number)
-                    .unwrap_or_else(|| format!("r{}", register_number)),
-            );
-            register_variable.type_name = "Platform Register".to_owned();
-            register_variable.byte_size = 4;
-            register_variable.set_value(format!("{:#010x}", register_value));
-            register_variable_cache.cache_variable(
-                Some(register_root_variable.variable_key),
-                register_variable,
-                core,
-            )?;
-        }
-        Ok(register_variable_cache)
-    }
-
     /// Creates the unpopulated cache for `function` variables
     fn create_function_scope_cache(
         &self,
@@ -762,21 +725,7 @@ impl DebugInfo {
                 log::trace!("UNWIND: Function name: {}", function_name);
 
                 // Now that we have the function_name and function_source_location, we can create the appropriate variable caches for this stack frame.
-
-                let register_variables = self
-                    .create_register_scope_cache(&stack_frame_registers, core)
-                    .map_or_else(
-                        |error| {
-                            log::error!(
-                                "Could not resolve register variables. {}. Continuing...",
-                                error
-                            );
-                            None
-                        },
-                        Some,
-                    );
-
-                // Next, resolve the statics that belong to the compilation unit that this function is in.
+                // Resolve the statics that belong to the compilation unit that this function is in.
                 let static_variables = self
                     .create_static_scope_cache(core, &unit_info)
                     .map_or_else(
@@ -814,7 +763,6 @@ impl DebugInfo {
                     is_inlined: function_die.is_inline(),
                     static_variables,
                     local_variables,
-                    register_variables,
                 });
             }
 
@@ -828,21 +776,7 @@ impl DebugInfo {
             let function_location = self.get_source_location(address);
 
             // Now that we have the function_name and function_source_location, we can create the appropriate variable caches for this stack frame.
-
-            let register_variables = self
-                .create_register_scope_cache(&stack_frame_registers, core)
-                .map_or_else(
-                    |error| {
-                        log::error!(
-                            "Could not resolve register variables. {}. Continuing...",
-                            error
-                        );
-                        None
-                    },
-                    Some,
-                );
-
-            // Next, resolve the statics that belong to the compilation unit that this function is in.
+            // Resolve the statics that belong to the compilation unit that this function is in.
             let static_variables = self
                 .create_static_scope_cache(core, &unit_info)
                 .map_or_else(
@@ -880,27 +814,12 @@ impl DebugInfo {
                 is_inlined: last_function.is_inline(),
                 static_variables,
                 local_variables,
-                register_variables,
             });
 
             break;
         }
 
         if frames.is_empty() {
-            // Before returning `unknown_function` [StackFrame], make sure we at least cache the Register values.
-            let register_variables = self
-                .create_register_scope_cache(&stack_frame_registers, core)
-                .map_or_else(
-                    |error| {
-                        log::warn!(
-                            "Could not resolve register variables. {}. Continuing...",
-                            error
-                        );
-                        None
-                    },
-                    Some,
-                );
-
             Ok(vec![StackFrame {
                 id: get_sequential_key(),
                 function_name: unknown_function,
@@ -910,7 +829,6 @@ impl DebugInfo {
                 is_inlined: false,
                 static_variables: None,
                 local_variables: None,
-                register_variables,
             }])
         } else {
             Ok(frames)
