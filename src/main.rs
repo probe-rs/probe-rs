@@ -52,6 +52,9 @@ fn run_target_program(elf_path: &Path, chip_name: &str, opts: &cli::Opts) -> any
     let elf_bytes = fs::read(elf_path)?;
     let elf = &Elf::parse(&elf_bytes)?;
 
+    if let Some(ref cdp) = opts.chip_description_path {
+        probe_rs::config::add_target_from_yaml(Path::new(cdp))?;
+    }
     let target_info = TargetInfo::new(chip_name, elf)?;
 
     let probe = probe::open(opts)?;

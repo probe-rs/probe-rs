@@ -27,6 +27,9 @@ pub(crate) struct Opts {
     #[structopt(long, required_unless_one(&["list-chips", "list-probes", "version"]), env = "PROBE_RUN_CHIP")]
     chip: Option<String>,
 
+    #[structopt(name = "chip description file path", long = "chip-description-path")]
+    pub(crate) chip_description_path: Option<PathBuf>,
+
     /// The probe to use (eg. `VID:PID`, `VID:PID:Serial`, or just `Serial`).
     #[structopt(long, env = "PROBE_RUN_PROBE")]
     pub(crate) probe: Option<String>,
