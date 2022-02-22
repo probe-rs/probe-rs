@@ -256,8 +256,8 @@ fn extract_and_print_logs(
         .map_or(false, |channel| channel.name() == Some("defmt"));
 
     if use_defmt && opts.no_flash {
-        bail!(
-            "attempted to use `--no-flash` and `defmt` logging -- this combination is not allowed. Remove the `--no-flash` flag"
+        log::warn!(
+            "You are using `--no-flash` and `defmt` logging -- this combination can lead to malformed defmt data!"
         );
     } else if use_defmt && elf.defmt_table.is_none() {
         bail!("\"defmt\" RTT channel is in use, but the firmware binary contains no defmt data");
