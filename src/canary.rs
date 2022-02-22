@@ -258,16 +258,19 @@ fn subroutine(start: u32, end: u32) -> [u8; SUBROUTINE_LENGTH] {
 
     const CV: u8 = CANARY_VALUE;
     [
-        0x03, 0x48, // ldr
-        0x04, 0x49, // ldr
-        0x04, 0x4a, // ldr
-        0x81, 0x42, // cmp
-        0x01, 0xD0, // beq.n
-        0x04, 0xC0, // stmia
-        0xFB, 0xE7, // b.n
-        0x00, 0xBE, // bkpt
-        s1, s2, s3, s4, // start address
-        e1, e2, e3, e4, // end address
-        CV, CV, CV, CV, // canary value
+        0x03, 0x48, // ldr r0, [pc, #12]
+        0x04, 0x49, // ldr r1, [pc, #16]
+        0x04, 0x4a, // ldr r2, [pc, #16]
+        // <loop>
+        0x81, 0x42, // cmp r1, r0
+        0x01, 0xD0, // beq.n   116 <end>
+        0x04, 0xC0, // stmia   r0!, {r2}
+        0xFB, 0xE7, // b.n 10e <loop>
+        // <end>
+        0x00, 0xBE, // bkpt    0x0000
+        //
+        s1, s2, s3, s4, // .word ; start address
+        e1, e2, e3, e4, // .word ; end address
+        CV, CV, CV, CV, // .word ; canary value
     ]
 }
