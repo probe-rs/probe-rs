@@ -56,7 +56,7 @@ impl Canary {
         core.reset_and_halt(TIMEOUT)?;
 
         let stack_info = match &target_info.stack_info {
-            Some(range) => range,
+            Some(stack_info) => stack_info,
             None => {
                 log::debug!("couldn't find valid stack range, not placing stack canary");
                 return Ok(None);
@@ -212,7 +212,7 @@ fn paint_stack(core: &mut Core, start: u32, mut end: u32) -> Result<(), probe_rs
 
     // execute the subroutine and wait for it to finish
     core.run()?;
-    core.wait_for_core_halted(TIMEOUT).unwrap();
+    core.wait_for_core_halted(TIMEOUT)?;
 
     // overwrite subroutine
     core.write_8(start, &[CANARY_VALUE; SUBROUTINE_LENGTH])?;
