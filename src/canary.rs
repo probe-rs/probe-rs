@@ -188,6 +188,8 @@ impl Canary {
 
 /// Write [`CANARY_VALUE`] to the stack.
 fn paint_stack(core: &mut Core, start: u32, mut end: u32) -> Result<(), probe_rs::Error> {
+    assert!(start < end, "start needs to be smaller than end address");
+
     // make sure stack_end is properly aligned
     if end % 4 != 0 {
         end += end % 4;
@@ -247,7 +249,6 @@ const SUBROUTINE_LENGTH: usize = 28;
 //  11c:   20000200    .word   0x20000200  ; end
 //  120:   aaaaaaaa    .word   0xaaaaaaaa  ; pattern
 fn subroutine(start: u32, end: u32) -> [u8; SUBROUTINE_LENGTH] {
-    assert!(start < end, "start needs to be smaller than end address");
     assert_eq!(start % 4, 0, "`start` needs to be 4-byte-aligned");
     assert_eq!(end % 4, 0, "`end` needs to be 4-byte-aligned");
 
