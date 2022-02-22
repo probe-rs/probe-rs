@@ -557,7 +557,7 @@ impl DebugInfo {
                         {
                             Ok(memory_location) => memory_location as u64,
                             Err(error) => {
-                                log::warn!("Failed to read referenced variable address from memory location {:#010x} : {}.", parent_variable.memory_location as u32, error);
+                                log::error!("Failed to read referenced variable address from memory location {:#010x} : {}.", parent_variable.memory_location as u32, error);
                                 0_u64
                             }
                         };

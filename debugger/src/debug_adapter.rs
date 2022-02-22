@@ -754,7 +754,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                             );
                         };
 
-                        let mut frame_list: Vec<StackFrame> = frame_slice
+                        let frame_list: Vec<StackFrame> = frame_slice
                             .map(|frame| {
                                 let column = frame
                                     .source_location
@@ -825,26 +825,6 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                                 }
                             })
                             .collect();
-
-                        // TODO: UNWIND : I don't believe we need this any longer.
-                        // If we get an empty stack frame list,
-                        // add a frame so that something is visible in the
-                        // debugger.
-                        if frame_list.is_empty() {
-                            frame_list.push(StackFrame {
-                                can_restart: None,
-                                column: 0,
-                                end_column: None,
-                                end_line: None,
-                                id: pc as i64,
-                                instruction_pointer_reference: None,
-                                line: 0,
-                                module_id: None,
-                                name: format!("<unknown function @ {:#010x}>", pc),
-                                presentation_hint: None,
-                                source: None,
-                            })
-                        }
 
                         let body = StackTraceResponseBody {
                             stack_frames: frame_list,
