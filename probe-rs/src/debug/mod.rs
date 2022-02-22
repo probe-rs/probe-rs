@@ -552,9 +552,15 @@ impl DebugInfo {
                                 other => referenced_variable.name = VariableName::Named(format!("ERROR: Unable to generate name, parent variable does not have a name but is special variable {:?}", other)),
                             }
                         // Now, retrieve the location by reading the adddress pointed to by the parent variable.
-                        let mut buff = [0u8; 4];
-                        core.read(parent_variable.memory_location as u32, &mut buff)?;
-                        referenced_variable.memory_location = u32::from_le_bytes(buff) as u64;
+                        referenced_variable.memory_location = match core
+                            .read_word_32(parent_variable.memory_location as u32)
+                        {
+                            Ok(memory_location) => memory_location as u64,
+                            Err(error) => {
+                                log::warn!("Failed to read referenced variable address from memory location {:#010x} : {}.", parent_variable.memory_location as u32, error);
+                                0_u64
+                            }
+                        };
                         referenced_variable = cache.cache_variable(
                             referenced_variable.parent_key,
                             referenced_variable,

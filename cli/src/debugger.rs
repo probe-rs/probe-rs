@@ -346,14 +346,22 @@ impl DebugCli {
             function: |cli_data, _args| {
                 match cli_data.state {
                     DebugState::Halted(ref mut halted_state) => {
-                        let current_frame = halted_state
-                            .get_current_frame()
-                            .expect("StackFrame not found.");
+                        let current_frame =
+                            if let Some(current_frame) = halted_state.get_current_frame() {
+                                current_frame
+                            } else {
+                                println!("StackFrame not found.");
+                                return Ok(CliState::Continue);
+                            };
 
-                        let local_variable_cache = current_frame
-                            .local_variables
-                            .as_mut()
-                            .expect("No Local variables available");
+                        let local_variable_cache = if let Some(local_variable_cache) =
+                            current_frame.local_variables.as_mut()
+                        {
+                            local_variable_cache
+                        } else {
+                            print!("No Local variables available");
+                            return Ok(CliState::Continue);
+                        };
 
                         if let Some(mut locals) = local_variable_cache
                             .get_variable_by_name_and_parent(&VariableName::LocalScope, None)
@@ -362,7 +370,7 @@ impl DebugCli {
                             if locals.variable_node_type.is_deferred()
                                 && !local_variable_cache.has_children(&locals)?
                             {
-                                cli_data
+                                if let Err(error) = cli_data
                                     .debug_info
                                     .as_ref()
                                     .unwrap()
@@ -372,7 +380,10 @@ impl DebugCli {
                                         &mut locals,
                                         &current_frame.registers,
                                     )
-                                    .expect("Failed to cache Local variables.");
+                                {
+                                    println!("Failed to cache local variables: {}", error);
+                                    return Ok(CliState::Continue);
+                                }
                             }
                             let children =
                                 local_variable_cache.get_children(Some(locals.variable_key))?;
