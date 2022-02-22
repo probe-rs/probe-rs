@@ -69,7 +69,8 @@ impl Canary {
         }
 
         let stack_start = *stack_info.range.start();
-        let stack_end = *stack_info.range.end() - 1;
+        // add 1 to end up with the initial stack pointer, which is always 4-byte-aligned
+        let stack_end = *stack_info.range.end() + 1;
         let stack_available = stack_end - stack_start;
 
         let size = if measure_stack {
@@ -187,13 +188,12 @@ impl Canary {
 }
 
 /// Write [`CANARY_VALUE`] to the stack.
-fn paint_stack(core: &mut Core, start: u32, mut end: u32) -> Result<(), probe_rs::Error> {
+///
+/// Both `start` and `end` need to be 4-byte-aligned.
+fn paint_stack(core: &mut Core, start: u32, end: u32) -> Result<(), probe_rs::Error> {
     assert!(start < end, "start needs to be smaller than end address");
-
-    // make sure stack_end is properly aligned
-    if end % 4 != 0 {
-        end += end % 4;
-    }
+    assert_eq!(start % 4, 0, "`start` needs to be 4-byte-aligned");
+    assert_eq!(end % 4, 0, "`end` needs to be 4-byte-aligned");
 
     // does the subroutine fit inside the stack?
     let stack_size = (end - start) as usize;
@@ -227,8 +227,6 @@ fn paint_stack(core: &mut Core, start: u32, mut end: u32) -> Result<(), probe_rs
 const SUBROUTINE_LENGTH: usize = 28;
 
 /// Create a subroutine to paint [`CANARY_VALUE`] from `start` till `end`.
-///
-/// Both `start` and `end` need to be 4-byte-aligned.
 //
 // Roughly corresponds to following assembly:
 //
@@ -249,9 +247,6 @@ const SUBROUTINE_LENGTH: usize = 28;
 //  11c:   20000200    .word   0x20000200  ; end
 //  120:   aaaaaaaa    .word   0xaaaaaaaa  ; pattern
 fn subroutine(start: u32, end: u32) -> [u8; SUBROUTINE_LENGTH] {
-    assert_eq!(start % 4, 0, "`start` needs to be 4-byte-aligned");
-    assert_eq!(end % 4, 0, "`end` needs to be 4-byte-aligned");
-
     // convert start and end address to bytes
     let [s1, s2, s3, s4] = start.to_le_bytes();
     let [e1, e2, e3, e4] = end.to_le_bytes();
