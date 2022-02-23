@@ -69,9 +69,7 @@ impl Canary {
         }
 
         let stack_start = *stack_info.range.start();
-        // add 1 to end up with the initial stack pointer, which is always 4-byte-aligned
-        let stack_end = *stack_info.range.end() + 1;
-        let stack_available = stack_end - stack_start;
+        let stack_available = *stack_info.range.end() - stack_start;
 
         let size = if measure_stack {
             // When measuring stack consumption, we have to color the whole stack.
