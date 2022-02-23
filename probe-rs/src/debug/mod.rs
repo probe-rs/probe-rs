@@ -870,18 +870,6 @@ impl DebugInfo {
             .get_program_counter()
             .map(|frame_pc| frame_pc as u64)
         {
-            // PART 0: If the LR is set to 0x0 or None, then we can't unwind anything further.
-            // TODO: ARM has special ranges of LR addresses to indicate fault conditions. We should check those also.
-            if unwind_registers
-                .get_return_address()
-                .map_or(true, |lr_value| lr_value == 0x0)
-            {
-                log::warn!(
-                    "UNWIND: We encountered an LR value of `None` or `0x0`, and cannot continue stack unwinding."
-                );
-                break;
-            };
-
             // PART 1: Construct the `StackFrame` for the current pc.
             log::trace!(
                 "UNWIND: Will generate `StackFrame` for function at address (PC) {:#010x}",
@@ -919,20 +907,24 @@ impl DebugInfo {
                 }
             };
 
-            // Part 1-b: When we encounter the starting (after reset) return address, we've reached the bottom of the stack, so no more unwinding after this ...
-            // TODO: Validate that this applies to RISCV also.
+            // Part 1-b: Check LR values to determine if we can continue unwinding.
+            // TODO: ARM has special ranges of LR addresses to indicate fault conditions. We should check those also.
             if let Some(check_return_address) = unwind_registers.get_return_address() {
                 if check_return_address == u32::MAX {
-                    unwind_registers.set_return_address(None);
-                    log::trace!(
-                    "UNWIND: Stack unwind complete - Reached the 'Reset' value of the LR register."
-                );
+                    // When we encounter the starting (after reset) return address, we've reached the bottom of the stack, so no more unwinding after this.
+                    // TODO: Validate that this applies to RISCV also.
                     stack_frames.push(return_frame);
+                    log::trace!("UNWIND: Stack unwind complete - Reached the 'Reset' value of the LR register.");
                     break;
                 }
+            } else {
+                // If the debug info rules result in a None return address, we cannot continue unwinding.
+                stack_frames.push(return_frame);
+                log::trace!("UNWIND: Stack unwind complete - LR register value is 'None.");
+                break;
             }
 
-            // PART 2: Setup the registers for the `next()` iteration (a.k.a. unwind previous frame, a.k.a. "callee", in the call stack).
+            // PART 2: Setup the registers for the next iteration (a.k.a. unwind previous frame, a.k.a. "callee", in the call stack).
             log::trace!(
             "UNWIND - Preparing `StackFrameIterator` to unwind NON-INLINED function {:?} at {:?}",
             return_frame.function_name,
@@ -2857,9 +2849,11 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                         }
                         other_attribute_value => {
                             child_variable.set_value(format!(
-                                "ERROR: extract_location() Could not extract location from: {:?}",
+                                "UNIMPLEMENTED: extract_location() Could not extract location from: {:?}",
                                 other_attribute_value
                             ));
+                            child_variable.memory_location = u64::MAX;
+                            child_variable.variable_node_type = VariableNodeType::DoNotRecurse;
                         }
                     }
                 }
