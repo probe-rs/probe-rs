@@ -3,9 +3,8 @@ use crate::common::CliError;
 use capstone::Capstone;
 use num_traits::Num;
 use probe_rs::architecture::arm::Dump;
-use probe_rs::debug::{DebugInfo, Registers, VariableCache, VariableName};
+use probe_rs::debug::{DebugInfo, Registers, VariableName};
 use probe_rs::{Core, CoreRegisterAddress, MemoryInterface};
-
 use std::fs::File;
 use std::{io::prelude::*, time::Duration};
 
@@ -262,24 +261,22 @@ impl DebugCli {
                             cli_data.core.read_core_reg(regs.program_counter())?;
 
                         if let Some(di) = &mut cli_data.debug_info {
-                            let frames: Vec<_> = di
-                                .try_unwind(
-                                    &mut halted_state.variable_cache,
-                                    &mut cli_data.core,
-                                    u64::from(program_counter),
-                                )
+                            halted_state.stack_frames = di
+                                .unwind(&mut cli_data.core, u64::from(program_counter))
+                                .unwrap();
+
+                            halted_state.frame_indices = halted_state
+                                .stack_frames
+                                .iter()
+                                .map(|sf| sf.id as i64)
                                 .collect();
 
-                            halted_state.frame_indices =
-                                frames.iter().map(|sf| sf.id as i64).collect();
-
-                            for (i, frame) in frames.iter().enumerate() {
+                            for (i, frame) in halted_state.stack_frames.iter().enumerate() {
                                 print!("Frame {}: {} @ {:#010x}", i, frame.function_name, frame.pc);
 
                                 if frame.is_inlined {
                                     print!(" inline");
                                 }
-
                                 println!();
 
                                 if let Some(location) = &frame.source_location {
@@ -321,6 +318,89 @@ impl DebugCli {
                         println!("Core must be halted for this command.");
                     }
                 }
+                Ok(CliState::Continue)
+            },
+        });
+
+        cli.add_command(Command {
+            name: "regs",
+            help_text: "Show CPU register values",
+
+            function: |cli_data, _args| {
+                let register_file = cli_data.core.registers();
+
+                for register in register_file.registers() {
+                    let value = cli_data.core.read_core_reg(register)?;
+
+                    println!("{}: {:#010x}", register.name(), value)
+                }
+
+                Ok(CliState::Continue)
+            },
+        });
+
+        cli.add_command(Command {
+            name: "locals",
+            help_text: "List local variables",
+
+            function: |cli_data, _args| {
+                match cli_data.state {
+                    DebugState::Halted(ref mut halted_state) => {
+                        let current_frame =
+                            if let Some(current_frame) = halted_state.get_current_frame() {
+                                current_frame
+                            } else {
+                                println!("StackFrame not found.");
+                                return Ok(CliState::Continue);
+                            };
+
+                        let local_variable_cache = if let Some(local_variable_cache) =
+                            current_frame.local_variables.as_mut()
+                        {
+                            local_variable_cache
+                        } else {
+                            print!("No Local variables available");
+                            return Ok(CliState::Continue);
+                        };
+
+                        if let Some(mut locals) = local_variable_cache
+                            .get_variable_by_name_and_parent(&VariableName::LocalScope, None)
+                        {
+                            // By default, the first level children are always are lazy loaded, so we will force a load here.
+                            if locals.variable_node_type.is_deferred()
+                                && !local_variable_cache.has_children(&locals)?
+                            {
+                                if let Err(error) = cli_data
+                                    .debug_info
+                                    .as_ref()
+                                    .unwrap()
+                                    .cache_deferred_variables(
+                                        local_variable_cache,
+                                        &mut cli_data.core,
+                                        &mut locals,
+                                        &current_frame.registers,
+                                    )
+                                {
+                                    println!("Failed to cache local variables: {}", error);
+                                    return Ok(CliState::Continue);
+                                }
+                            }
+                            let children =
+                                local_variable_cache.get_children(Some(locals.variable_key))?;
+
+                            for child in children {
+                                println!(
+                                    "{}: {}",
+                                    child.name,
+                                    child.get_value(local_variable_cache)
+                                );
+                            }
+                        } else {
+                            println!("Local variable cache was not initialized.")
+                        }
+                    }
+                    DebugState::Running => println!("Core must be halted for this command."),
+                }
 
                 Ok(CliState::Continue)
             },
@@ -360,58 +440,6 @@ impl DebugCli {
                             println!("Already at bottom-most frame.");
                         }
                     }
-                }
-
-                Ok(CliState::Continue)
-            },
-        });
-
-        cli.add_command(Command {
-            name: "regs",
-            help_text: "Show CPU register values",
-
-            function: |cli_data, _args| {
-                let register_file = cli_data.core.registers();
-
-                for register in register_file.registers() {
-                    let value = cli_data.core.read_core_reg(register)?;
-
-                    println!("{}: {:#010x}", register.name(), value)
-                }
-
-                Ok(CliState::Continue)
-            },
-        });
-
-        cli.add_command(Command {
-            name: "locals",
-            help_text: "List local variables",
-
-            function: |cli_data, _args| {
-                match &cli_data.state {
-                    DebugState::Halted(ref halted_state) => {
-                        if let Some(locals) =
-                            halted_state.variable_cache.get_variable_by_name_and_parent(
-                                &VariableName::Locals,
-                                halted_state.current_frame_id(),
-                            )
-                        {
-                            let children = halted_state
-                                .variable_cache
-                                .get_children(locals.variable_key)?;
-
-                            for child in children {
-                                println!(
-                                    "{}: {}",
-                                    child.name,
-                                    child.get_value(&halted_state.variable_cache)
-                                );
-                            }
-                        } else {
-                            println!("No local variables available.")
-                        }
-                    }
-                    DebugState::Running => println!("Core must be halted for this command."),
                 }
 
                 Ok(CliState::Continue)
@@ -563,7 +591,7 @@ impl<'p> CliData<'p> {
                     program_counter: registers.get_program_counter().unwrap_or_default(),
                     current_frame: 0,
                     frame_indices: vec![1],
-                    variable_cache: VariableCache::new(),
+                    stack_frames: vec![],
                 })
             }
             _other => DebugState::Running,
@@ -578,19 +606,15 @@ impl<'p> CliData<'p> {
         })
     }
 
-    pub fn print_state(&self) -> Result<(), CliError> {
-        match &self.state {
+    pub fn print_state(&mut self) -> Result<(), CliError> {
+        match self.state {
             DebugState::Running => println!("Core is running."),
-            DebugState::Halted(halted_state) => {
-                if let Some(current_stack_frame) = halted_state
-                    .variable_cache
-                    .get_variable_by_key(halted_state.current_frame_id())
-                {
+            DebugState::Halted(ref mut halted_state) => {
+                let pc = halted_state.program_counter;
+                if let Some(current_stack_frame) = halted_state.get_current_frame() {
                     println!(
                         "Frame {}: {} @ {:#010x}",
-                        halted_state.current_frame,
-                        current_stack_frame.name,
-                        halted_state.program_counter
+                        current_stack_frame, current_stack_frame.function_name, pc,
                     );
                 }
             }
@@ -607,15 +631,14 @@ enum DebugState {
 
 struct HaltedState {
     program_counter: u32,
-
     current_frame: usize,
     frame_indices: Vec<i64>,
-    variable_cache: VariableCache,
+    stack_frames: Vec<probe_rs::debug::StackFrame>,
 }
 
 impl HaltedState {
-    fn current_frame_id(&self) -> i64 {
-        self.frame_indices[self.current_frame]
+    fn get_current_frame(&mut self) -> Option<&mut probe_rs::debug::StackFrame> {
+        self.stack_frames.get_mut(self.current_frame)
     }
 }
 

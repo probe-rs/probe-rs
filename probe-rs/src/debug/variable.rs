@@ -4,22 +4,9 @@ use anyhow::anyhow;
 use gimli::{DebugInfoOffset, UnitOffset};
 use num_traits::Zero;
 
-/// VariableCache stores every available `Variable`, and provides methods to create and navigate the parent-child relationships of the Variables.
-/// `VariableCache` is a member of `DebugInfo`, and it will be recreated/repopulated with appropriate data everytime `DebugInfo::try_unwind()` is called. Because of the multiple ways in which it is updated, all references to `VariableCache` are *immutable*, and can only be updated through its methods, which provide *interior mutability"
-///
-/// There are four 'dummy' `Variables`, named `<stack_frame>`, `<statics>`, `<registers>`, and `<locals>`. These are used to provide the header structure of how variables relate to different scopes in a particular stacktrace. This 'dummy' structure looks as follows
-/// - `<stack_frame>`: Every `StackFrame` will have one of these, with its function name captured in the `value` field of this dummy variable.
-///   - `<statics>`: The parent variable for all statics variables that are in the same compile unit, or in dependencies that are explicitly mentioned in the compile unit of the relevant stack frame.
-///     - A recursive `Variable` structure as described for `<locals>` below.
-///   - `<registers>`: Every `StackFrame` will have a collection of `Variable` registers.
-///     - A `Variable` for each available register
-///   - `<locals>`: Every `StackFrame` (function) will have a collection of locally scoped `Variable`s.
-///     - A `Variable` for each in-scope variable. Complex variables and pointers will have additional children.
-///       - Child `Variable`s that make up a complex parent variable.
-///         - This structure is recursive until a base type is encountered.
+/// VariableCache stores available `Variable`s, and provides methods to create and navigate the parent-child relationships of the Variables.
 #[derive(Debug)]
 pub struct VariableCache {
-    variable_cache_key: i64,
     variable_hash_map: HashMap<i64, Variable>,
 }
 impl Default for VariableCache {
@@ -30,8 +17,7 @@ impl Default for VariableCache {
 
 impl VariableCache {
     pub fn new() -> Self {
-        Self {
-            variable_cache_key: 0,
+        VariableCache {
             variable_hash_map: HashMap::new(),
         }
     }
@@ -42,62 +28,55 @@ impl VariableCache {
     /// - *Update* operation: If the `Variable::variable_key` is > 0
     ///   - If the key value exists in the cache, update it, Return an updated Clone of the variable.
     ///   - If the key value doesn't exist in the cache, Return an error.
-    /// - For all operations, update the `parent_key`. A value of 0 means there are no parents for this variable.
+    /// - For all operations, update the `parent_key`. A value of None means there are no parents for this variable.
     ///   - Validate that the supplied `Variable::parent_key` is a valid entry in the cache.
     /// - If appropriate, the `Variable::value` is updated from the core memory, and can be used by the calling function.
     pub fn cache_variable(
         &mut self,
-        parent_key: i64,
+        parent_key: Option<i64>,
         cache_variable: Variable,
         core: &mut Core<'_>,
     ) -> Result<Variable, Error> {
         let mut variable_to_add = cache_variable.clone();
 
         // Validate that the parent_key exists ...
-        variable_to_add.parent_key = parent_key;
-        if variable_to_add.parent_key > 0
-            && (!self
-                .variable_hash_map
-                .contains_key(&variable_to_add.parent_key))
-        {
-            return Err(anyhow!("VariableCache: Attempted to add a new variable: {} with non existent `parent_key`: {}. Please report this as a bug", variable_to_add.name, variable_to_add.parent_key).into());
+        if let Some(new_parent_key) = parent_key {
+            if self.variable_hash_map.contains_key(&new_parent_key) {
+                variable_to_add.parent_key = parent_key;
+            } else {
+                return Err(anyhow!("VariableCache: Attempted to add a new variable: {} with non existent `parent_key`: {}. Please report this as a bug", variable_to_add.name, new_parent_key).into());
+            }
         }
 
         // Is this an *add* or *update* operation?
         let stored_key = if variable_to_add.variable_key == 0 {
             // The caller is telling us this is definitely a new `Variable`
-            let new_cache_key: i64 = self.variable_cache_key + 1;
-            variable_to_add.variable_key = new_cache_key;
+            variable_to_add.variable_key = get_sequential_key();
 
             log::trace!(
-                "VariableCache: Add Variable: key={}, parent={}, name={:?}",
-                new_cache_key,
+                "VariableCache: Add Variable: key={}, parent={:?}, name={:?}",
+                variable_to_add.variable_key,
                 variable_to_add.parent_key,
                 &variable_to_add.name
             );
 
-            match self
+            let new_entry_key = variable_to_add.variable_key;
+            if let Some(old_variable) = self
                 .variable_hash_map
                 .insert(variable_to_add.variable_key, variable_to_add)
             {
-                Some(old_variable) => {
-                    return Err(anyhow!("Attempt to insert a new `Variable`:{:?} with a duplicate cache key: {}. Please report this as a bug.", cache_variable.name, old_variable.variable_key).into());
-                }
-                None => {
-                    self.variable_cache_key = new_cache_key;
-                }
+                return Err(anyhow!("Attempt to insert a new `Variable`:{:?} with a duplicate cache key: {}. Please report this as a bug.", cache_variable.name, old_variable.variable_key).into());
             }
-            self.variable_cache_key
+            new_entry_key
         } else {
             // Attempt to update an existing `Variable` in the cache
-            let reused_cache_key = variable_to_add.variable_key;
-
             log::trace!(
                 "VariableCache: Update Variable, key={}, name={:?}",
-                reused_cache_key,
+                variable_to_add.variable_key,
                 &variable_to_add.name
             );
 
+            let updated_entry_key = variable_to_add.variable_key;
             if let Some(prev_entry) = self
                 .variable_hash_map
                 .get_mut(&variable_to_add.variable_key)
@@ -109,10 +88,10 @@ impl VariableCache {
 
                 *prev_entry = variable_to_add
             } else {
-                return Err(anyhow!("Attempt to update and existing `Variable`:{:?} with a non-existent cache key: {}. Please report this as a bug.", cache_variable.name, reused_cache_key).into());
+                return Err(anyhow!("Attempt to update and existing `Variable`:{:?} with a non-existent cache key: {}. Please report this as a bug.", cache_variable.name, variable_to_add.variable_key).into());
             }
 
-            reused_cache_key
+            updated_entry_key
         };
 
         // As the final act, we need to update the variable with an appropriate value.
@@ -147,7 +126,7 @@ impl VariableCache {
     pub fn get_variable_by_name_and_parent(
         &self,
         variable_name: &VariableName,
-        parent_key: i64,
+        parent_key: Option<i64>,
     ) -> Option<Variable> {
         let child_variables = self
             .variable_hash_map
@@ -161,55 +140,55 @@ impl VariableCache {
             0 => None,
             1 => child_variables.first().cloned(),
             child_count => {
-                log::error!("Found {} variables with parent_key={} and name={}. Please report this as a bug.", child_count, parent_key, variable_name);
+                log::error!("Found {} variables with parent_key={:?} and name={}. Please report this as a bug.", child_count, parent_key, variable_name);
                 child_variables.last().cloned()
             }
         }
     }
 
     /// Retrieve `clone`d version of all the children of a `Variable`.
-    /// This also validates that the parent exists in the cache, before attempting to retrieve children.
-    pub fn get_children(&self, parent_key: i64) -> Result<Vec<Variable>, Error> {
-        if parent_key == 0 && (!self.variable_hash_map.contains_key(&parent_key)) {
-            return Err(anyhow!("VariableCache: Attempted to retrieve children for a non existent `variable_key`: {}.", parent_key).into());
-        } else {
-            let mut children: Vec<Variable> = self
-                .variable_hash_map
-                .values()
-                .filter(|child_variable| child_variable.parent_key == parent_key)
-                .cloned()
-                .collect::<Vec<Variable>>();
-            // We have to incur the overhead of sort(), or else the variables in the UI are not in the same order as they appear in the source code.
-            children.sort_by_key(|var| var.variable_key);
-            Ok(children)
-        }
+    /// If `parent_key == None`, it will return all the top level variables (no parents) in this cache.
+    pub fn get_children(&self, parent_key: Option<i64>) -> Result<Vec<Variable>, Error> {
+        let mut children: Vec<Variable> = self
+            .variable_hash_map
+            .values()
+            .filter(|child_variable| child_variable.parent_key == parent_key)
+            .cloned()
+            .collect::<Vec<Variable>>();
+        // We have to incur the overhead of sort(), or else the variables in the UI are not in the same order as they appear in the source code.
+        children.sort_by_key(|var| var.variable_key);
+        Ok(children)
     }
 
     // Check if a `Variable` has any children. This also validates that the parent exists in the cache, before attempting to check for children.
     pub fn has_children(&self, parent_variable: &Variable) -> Result<bool, Error> {
-        self.get_children(parent_variable.variable_key)
+        self.get_children(Some(parent_variable.variable_key))
             .map(|children| !children.is_empty())
     }
 
     /// Sometimes DWARF uses intermediate nodes that are not part of the coded variable structure.
     /// When we encounter them, the children of such intermediate nodes are assigned to the parent of the intermediate node, and we discard the intermediate nodes from the `DebugInfo::VariableCache`
+    ///
+    /// Similarly, while resolving [VariableNodeType::is_deferred()], i.e. 'lazy load' of variables, we need to create intermediate variables that are eliminated here.
+    ///
+    /// NOTE: For all other situations, this function will silently do nothing.
     pub fn adopt_grand_children(
         &mut self,
         parent_variable: &Variable,
         obsolete_child_variable: &Variable,
     ) -> Result<(), Error> {
-        // If the `obsolete_child_variable` has a type other than `Some`, then silently do nothing.
         if obsolete_child_variable.type_name.is_empty()
-            || obsolete_child_variable.type_name == "Some"
-            || obsolete_child_variable.name == VariableName::Named("*<statics>".to_string())
+            || obsolete_child_variable.variable_node_type != VariableNodeType::DoNotRecurse
         {
             // Make sure we pass children up, past any intermediate nodes.
             self.variable_hash_map
                 .values_mut()
                 .filter(|search_variable| {
-                    search_variable.parent_key == obsolete_child_variable.variable_key
+                    search_variable.parent_key == Some(obsolete_child_variable.variable_key)
                 })
-                .for_each(|grand_child| grand_child.parent_key = parent_variable.variable_key);
+                .for_each(|grand_child| {
+                    grand_child.parent_key = Some(parent_variable.variable_key)
+                });
             // Remove the intermediate variable from the cache
             self.remove_cache_entry(obsolete_child_variable.variable_key)?;
         }
@@ -221,7 +200,7 @@ impl VariableCache {
         let children: Vec<Variable> = self
             .variable_hash_map
             .values()
-            .filter(|search_variable| search_variable.parent_key == parent_variable_key)
+            .filter(|search_variable| search_variable.parent_key == Some(parent_variable_key))
             .cloned()
             .collect();
         for child in children {
@@ -238,59 +217,6 @@ impl VariableCache {
             return Err(anyhow!("Failed to remove a `VariableCache` entry with key: {}. Please report this as a bug.", variable_key).into());
         };
         Ok(())
-    }
-}
-
-impl std::fmt::Display for VariableCache {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        let mut stack_frames = self
-            .variable_hash_map
-            .values()
-            .cloned()
-            .filter(|child_variable| {
-                child_variable.name == VariableName::StackFrame && child_variable.parent_key == 0
-            })
-            .collect::<Vec<Variable>>();
-        stack_frames.sort_by_key(|variable| variable.variable_key);
-        if stack_frames.is_empty() {
-            writeln!(
-                f,
-                "`DebugInfo::VariableCache` contains no `StackFrame` data."
-            )?;
-        }
-
-        for stackframe_root_variable in stack_frames {
-            // Header info for the StackFrame
-            writeln!(f)?;
-            writeln!(
-                f,
-                "StackFrame data for {}",
-                stackframe_root_variable
-                    .value
-                    .unwrap_or_else(|| "unknown function".to_string())
-            )?;
-            if let Some(si) = stackframe_root_variable.source_location {
-                write!(
-                    f,
-                    "\t{}/{}",
-                    si.directory
-                        .as_ref()
-                        .map(|p| p.to_string_lossy())
-                        .unwrap_or_else(|| std::borrow::Cow::from("<unknown dir>")),
-                    si.file.as_ref().unwrap_or(&"<unknown file>".to_owned())
-                )?;
-
-                if let (Some(column), Some(line)) = (si.column, si.line) {
-                    match column {
-                        ColumnType::Column(c) => write!(f, ":{}:{}", line, c)?,
-                        ColumnType::LeftEdge => write!(f, ":{}", line)?,
-                    }
-                }
-
-                writeln!(f)?;
-            }
-        }
-        writeln!(f)
     }
 }
 
@@ -312,7 +238,7 @@ fn _fmt_recurse_variables(
         parent_variable.value.as_ref().unwrap_or(&"".to_string()),
         parent_variable.type_name
     );
-    if let Ok(children) = variable_cache.get_children(parent_variable.variable_key) {
+    if let Ok(children) = variable_cache.get_children(Some(parent_variable.variable_key)) {
         for variable in &children {
             _fmt_recurse_variables(variable_cache, variable, new_level, f)?;
         }
@@ -339,14 +265,12 @@ impl Default for VariantRole {
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum VariableName {
-    /// Top-level variable for a stack frame
-    StackFrame,
-    /// Top-level variable for static variables, child of a stack frame variable
-    Statics,
-    /// Top-level variable for registers, child of a stack frame variable
+    /// Top-level variable for static variables, child of a stack frame variable, and holds all the static scoped variables which are directly visible to the compile unit of the frame.
+    StaticScope,
+    /// Top-level variable for registers, child of a stack frame variable.
     Registers,
-    /// Top-level variable for registers, child of a stack frame variable
-    Locals,
+    /// Top-level variable for local scoped variables, child of a stack frame variable.
+    LocalScope,
     /// Artificial variable, without a name (e.g. enum discriminant)
     Artifical,
     /// Anonymous namespace
@@ -366,15 +290,60 @@ impl Default for VariableName {
 impl std::fmt::Display for VariableName {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            VariableName::StackFrame => write!(f, "<stack_frame>"),
-            VariableName::Statics => write!(f, "<statics>"),
+            VariableName::StaticScope => write!(f, "<static_scope>"),
             VariableName::Registers => write!(f, "<registers>"),
-            VariableName::Locals => write!(f, "<locals>"),
+            VariableName::LocalScope => write!(f, "<local_scope>"),
             VariableName::Artifical => write!(f, "<artifical>"),
-            VariableName::AnonymousNamespace => write!(f, "<anonymous namespace>"),
+            VariableName::AnonymousNamespace => write!(f, "<anonymous_namespace>"),
             VariableName::Named(name) => name.fmt(f),
             VariableName::Unknown => write!(f, "<unknown>"),
         }
+    }
+}
+
+/// Encode the nature of the Debug Information Entry in a way that we can resolve child nodes of a [Variable]
+/// The rules for 'lazy loading'/deferred recursion of [Variable] children are described under each of the enum values.
+#[derive(Debug, PartialEq, Clone)]
+pub enum VariableNodeType {
+    /// For pointer values, their referenced variables are found at an [gimli::UnitOffset] in the [DebugInfo].
+    /// - Rule: Pointers to `struct` variables WILL NOT BE recursed, because  this may lead to infinite loops/stack overflows in `struct`s that self-reference.
+    /// - Rule: Pointers to "base" datatypes SHOULD BE, but ARE NOT resolved, because it would keep the UX simple, but DWARF doesn't make it easy to determine when a pointer points to a base data type. We can read ahead in the DIE children, but that feels rather inefficient.
+    ReferenceOffset(UnitOffset),
+    /// Use the `header_offset` and `type_offset` as direct references for recursing the variable children. With the current implementation, the `type_offset` will point to a DIE with a tag of `DW_TAG_structure_type`.
+    /// - Rule: For structured variables, we WILL NOT automatically expand their children, but we have enough information to expand it on demand. Except if they fall into one of the special cases handled by [VariableNodeType::RecurseAsIntermediate]
+    TypeOffset(UnitOffset),
+    /// Use the `header_offset` and `entries_offset` as direct references for recursing the variable children.
+    /// - Rule: All top level variables in a [StackFrame] are automatically deferred, i.e [VariableName::StaticScope], [VariableName::Registers], [VariableName::LocalScope].
+    DirectLookup,
+    /// Sometimes it doesn't make sense to recurse the children of a specific node type
+    /// - Rule: Pointers to `unit` datatypes WILL NOT BE resolved, because it doesn't make sense.
+    /// - Rule: Once we determine that a variable can not be recursed further, we update the variable_node_type to indicate that no further recursion is possible/required. This can be because the variable is a 'base' data type, or because there was some kind of error in processing the current node, so we don't want to incur cascading errors.
+    /// TODO: Find code instances where we use magic values (e.g. u32::MAX) and replace with DoNotRecurse logic if appropriate.
+    DoNotRecurse,
+    /// Unless otherwise specified, always recurse the children of every node until we get to the base data type.
+    /// - Rule: (Default) Unless it is prevented by any of the other rules, we always recurse the children of these variables.
+    /// - Rule: Certain structured variables (e.g. `&str`, `Some`, `Ok`, `Err`, etc.) are set to [VariableNodeType::RecurseToBaseType] to improve the debugger UX.
+    /// - Rule: Pointers to `const` variables WILL ALWAYS BE recursed, because they provide essential information, for example about the length of strings, or the size of arrays.
+    /// - Rule: Enumerated types WILL ALWAYS BE recursed, because we only ever want to see the 'active' child as the value.
+    /// - Rule: For now, Array types WILL ALWAYS BE recursed. TODO: Evaluate if it is beneficial to defer these.
+    /// - Rule: For now, Union types WILL ALWAYS BE recursed. TODO: Evaluate if it is beneficial to defer these.
+    RecurseToBaseType,
+}
+
+impl VariableNodeType {
+    pub fn is_deferred(&self) -> bool {
+        match self {
+            VariableNodeType::ReferenceOffset(_)
+            | VariableNodeType::TypeOffset(_)
+            | VariableNodeType::DirectLookup => true,
+            _other => false,
+        }
+    }
+}
+
+impl Default for VariableNodeType {
+    fn default() -> Self {
+        VariableNodeType::RecurseToBaseType
     }
 }
 
@@ -386,37 +355,23 @@ impl std::fmt::Display for VariableName {
 pub struct Variable {
     /// Every variable must have a unique key value assigned to it. The value will be zero until it is stored in VariableCache, at which time its value will be set to the same as the VariableCache::variable_cache_key
     pub variable_key: i64,
-    /// Every variable must have a unique parent assigned to it when stored in the VariableCache. A parent_key of 0 in the cache simply implies that this variable doesn't have a parent, i.e. it is the root of a tree.
-    pub parent_key: i64,
-
+    /// Every variable must have a unique parent assigned to it when stored in the VariableCache. A parent_key of None in the cache simply implies that this variable doesn't have a parent, i.e. it is the root of a tree.
+    pub parent_key: Option<i64>,
     /// The variable name refers to the name of any of the types of values described in the [VariableCache]
     pub name: VariableName,
-
     /// The value will always be `None` unless the variable is a base type or there was an error during the unwind operation for the variable value. For all Variables that are complex types or references, the value will be a "fmt::Display" representation that attempts to assemble the base types into human readable form. Use `Variable::set_value()` and `Variable::get_value()` to correctly process this `value`
     value: Option<String>,
-
-    /// If this is a variable for a stack frame, then this is the loation for the program counter in the stack frame.
-    ///
-    /// For other variables, this is the location of the declaration, if available.
+    /// The source location of the declaration of this variable, if available.
     pub source_location: Option<SourceLocation>,
     pub type_name: String,
-    /// When we encounter DW_TAG_pointer_type during ELF parsing, we store the `gimli::UnitOffset to the 'referened' node.
-    /// This will later be used to determine if we need to **automatically** recurse the children of pointer types, or to "lazily" wait until a user explicitly requests the children of such a pointer type.
-    /// By default, the automatic recursion follows these rules:
-    /// - Pointers to `struct` `Variable`s WILL NOT BE recursed, because  this may lead to infinite loops/stack overflows in `struct`s that self-reference.
-    /// - Pointers to `const` `Variable`s WILL BE recursed, because they provide essential information, for example about the length of strings, or the size of arrays.
-    /// - Pointers to "base" datatypes SHOULD BE resolved, because it would keep the UX simple, but DWARF doesn't make it easy to determine when a pointer points to a base data type. We can read ahead in the DIE children, but that feels rather inefficient.
-    /// - Pointers to `unit` datatypes WILL NOT BE resolved, because it doesn't make sense.
-    pub referenced_node_offset: Option<UnitOffset>,
-    /// The header_offset and entries_offset are cached to allow on-demand access to the gimli::Unit, through functions like:
+    /// The unit_header_offset and variable_unit_offset are cached to allow on-demand access to the variable's gimli::Unit, through functions like:
     ///   `gimli::Read::DebugInfo.header_from_offset()`, and   
     ///   `gimli::Read::UnitHeader.entries_tree()`
-    ///
-    /// TODO: Is there a more efficient method to get on demand access to gimli::Unit through stored references to it?
-    pub header_offset: Option<DebugInfoOffset>,
-    pub entries_offset: Option<UnitOffset>,
-    /// The register values are needed to resolve the debug information and calculate memory locations and run-time data values. This is only needed for referenced nodes of variables with `DW_TAG_pointer_type`
-    pub stack_frame_registers: Option<Registers>,
+    pub unit_header_offset: Option<DebugInfoOffset>,
+    pub variable_unit_offset: Option<UnitOffset>,
+    /// For 'lazy loading' of certain variable types we have to determine if the variable recursion should be deferred, and if so, how to resolve it when the request for further recursion happens.
+    /// See [VariableNodeType] for more information.
+    pub variable_node_type: VariableNodeType,
     /// The starting location/address in memory where this Variable's value is stored.
     pub memory_location: u64,
     pub byte_size: u64,
@@ -430,14 +385,14 @@ pub struct Variable {
 }
 
 impl Variable {
-    /// In most cases, Variables will be initialized with their ELF references, so that we resolve their data types and values on demand.
+    /// In most cases, Variables will be initialized with their ELF references so that we resolve their data types and values on demand.
     pub(crate) fn new(
         header_offset: Option<DebugInfoOffset>,
         entries_offset: Option<UnitOffset>,
     ) -> Variable {
         Variable {
-            header_offset,
-            entries_offset,
+            unit_header_offset: header_offset,
+            variable_unit_offset: entries_offset,
             ..Default::default()
         }
     }
@@ -469,9 +424,9 @@ impl Variable {
                     if has_children {
                         self.formatted_variable_value(variable_cache)
                     } else if self.type_name.is_empty() || self.memory_location.is_zero() {
-                        if self.referenced_node_offset.is_some() {
-                            // When we will do a lazy-load of variable children, and they have not yet been requested by the user
-                            "".to_string()
+                        if self.variable_node_type.is_deferred() {
+                            // When we will do a lazy-load of variable children, and they have not yet been requested by the user, just display the type_name as the value
+                            self.type_name.clone()
                         } else {
                             // This condition should only be true for intermediate nodes from DWARF. These should not show up in the final `VariableCache`
                             // If a user sees this error, then there is a logic problem in the stack unwind
@@ -505,7 +460,7 @@ impl Variable {
         || self.memory_location.is_zero()
         {
             return;
-        } else if self.referenced_node_offset.is_some() {
+        } else if self.variable_node_type.is_deferred() {
             // And we have not previously assigned the value, then assign the type and address as the value
             self.value = Some(format!(
                 "{} @ {:#010X}",
@@ -515,54 +470,88 @@ impl Variable {
             return;
         }
 
-        log::debug!(
+        log::trace!(
             "Extracting value for {:?}, type={}",
             self.name,
             self.type_name
         );
 
         // This is the primary logic for decoding a variable's value, once we know the type and memory_location.
-        let string_value = match self.type_name.as_str() {
-            "!" => "<Never returns>".to_string(),
-            "()" => "()".to_string(),
-            "bool" => bool::get_value(self, core, variable_cache)
-                .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.to_string()),
-            "char" => char::get_value(self, core, variable_cache)
-                .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.to_string()),
-            "&str" => String::get_value(self, core, variable_cache)
-                .map_or_else(|err| format!("ERROR: {:?}", err), |value| value),
-            "i8" => i8::get_value(self, core, variable_cache)
-                .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.to_string()),
-            "i16" => i16::get_value(self, core, variable_cache)
-                .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.to_string()),
-            "i32" => i32::get_value(self, core, variable_cache)
-                .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.to_string()),
-            "i64" => i64::get_value(self, core, variable_cache)
-                .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.to_string()),
-            "i128" => i128::get_value(self, core, variable_cache)
-                .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.to_string()),
-            "isize" => isize::get_value(self, core, variable_cache)
-                .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.to_string()),
-            "u8" => u8::get_value(self, core, variable_cache)
-                .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.to_string()),
-            "u16" => u16::get_value(self, core, variable_cache)
-                .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.to_string()),
-            "u32" => u32::get_value(self, core, variable_cache)
-                .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.to_string()),
-            "u64" => u64::get_value(self, core, variable_cache)
-                .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.to_string()),
-            "u128" => u128::get_value(self, core, variable_cache)
-                .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.to_string()),
-            "usize" => usize::get_value(self, core, variable_cache)
-                .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.to_string()),
-            "f32" => f32::get_value(self, core, variable_cache)
-                .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.to_string()),
-            "f64" => f64::get_value(self, core, variable_cache)
-                .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.to_string()),
-            "None" => "None".to_string(),
-            _undetermined_value => "".to_owned(),
+        let known_value = match self.type_name.as_str() {
+            "!" => Some("<Never returns>".to_string()),
+            "()" => Some("()".to_string()),
+            "bool" => Some(
+                bool::get_value(self, core, variable_cache)
+                    .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.to_string()),
+            ),
+            "char" => Some(
+                char::get_value(self, core, variable_cache)
+                    .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.to_string()),
+            ),
+            "&str" => Some(
+                String::get_value(self, core, variable_cache)
+                    .map_or_else(|err| format!("ERROR: {:?}", err), |value| value),
+            ),
+            "i8" => Some(
+                i8::get_value(self, core, variable_cache)
+                    .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.to_string()),
+            ),
+            "i16" => Some(
+                i16::get_value(self, core, variable_cache)
+                    .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.to_string()),
+            ),
+            "i32" => Some(
+                i32::get_value(self, core, variable_cache)
+                    .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.to_string()),
+            ),
+            "i64" => Some(
+                i64::get_value(self, core, variable_cache)
+                    .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.to_string()),
+            ),
+            "i128" => Some(
+                i128::get_value(self, core, variable_cache)
+                    .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.to_string()),
+            ),
+            "isize" => Some(
+                isize::get_value(self, core, variable_cache)
+                    .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.to_string()),
+            ),
+            "u8" => Some(
+                u8::get_value(self, core, variable_cache)
+                    .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.to_string()),
+            ),
+            "u16" => Some(
+                u16::get_value(self, core, variable_cache)
+                    .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.to_string()),
+            ),
+            "u32" => Some(
+                u32::get_value(self, core, variable_cache)
+                    .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.to_string()),
+            ),
+            "u64" => Some(
+                u64::get_value(self, core, variable_cache)
+                    .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.to_string()),
+            ),
+            "u128" => Some(
+                u128::get_value(self, core, variable_cache)
+                    .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.to_string()),
+            ),
+            "usize" => Some(
+                usize::get_value(self, core, variable_cache)
+                    .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.to_string()),
+            ),
+            "f32" => Some(
+                f32::get_value(self, core, variable_cache)
+                    .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.to_string()),
+            ),
+            "f64" => Some(
+                f64::get_value(self, core, variable_cache)
+                    .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.to_string()),
+            ),
+            "None" => Some("None".to_string()),
+            _undetermined_value => None,
         };
-        self.value = Some(string_value);
+        self.value = known_value;
     }
 
     /// The variable is considered to be an 'indexed' variable if the name starts with two underscores followed by a number. e.g. "__1".
@@ -587,7 +576,7 @@ impl Variable {
         } else {
             let mut compound_value = "".to_string();
             // Only do this if we do not already have a value assigned.
-            if let Ok(children) = variable_cache.get_children(self.variable_key) {
+            if let Ok(children) = variable_cache.get_children(Some(self.variable_key)) {
                 // Make sure we can safely unwrap() children.
                 if self.type_name.starts_with('&') {
                     // Pointers
@@ -601,45 +590,98 @@ impl Variable {
                         }
                     );
                     compound_value
-                } else if self.type_name.starts_with('(') {
-                    // Tuples
-                    compound_value = format!("{}(", compound_value);
+                } else if self.type_name.starts_with('[') {
+                    // Arrays
+                    compound_value = format!("{}[", compound_value);
+                    let mut child_count: usize = 0;
+                    for child in children.iter() {
+                        child_count += 1;
+                        if child_count == children.len() {
+                            // Do not add a separator at the end of the list
+                            compound_value = format!(
+                                "{}{}",
+                                compound_value,
+                                child.formatted_variable_value(variable_cache)
+                            );
+                        } else {
+                            compound_value = format!(
+                                "{}{}, ",
+                                compound_value,
+                                child.formatted_variable_value(variable_cache)
+                            );
+                        }
+                    }
+                    format!("{}]", compound_value)
+                } else if self.type_name.starts_with("Option")
+                    || self.type_name.starts_with("Result")
+                {
+                    // For special structure types `Option<>` and `Result<>`, we only format their children
                     for child in children {
                         compound_value = format!(
-                            "{}{}, ",
+                            "{}{}",
+                            compound_value,
+                            child.formatted_variable_value(variable_cache)
+                        );
+                    }
+                    compound_value
+                } else if self.type_name.as_str() == "Some"
+                    || self.type_name.as_str() == "Ok"
+                    || self.type_name.as_str() == "Err"
+                {
+                    // Handle special structure types like the variant values of `Option<>` and `Result<>`
+                    compound_value = format!("{} {}(", self.type_name, compound_value);
+                    for child in children {
+                        compound_value = format!(
+                            "{}{}",
                             compound_value,
                             child.formatted_variable_value(variable_cache)
                         );
                     }
                     format!("{})", compound_value)
-                } else if self.type_name.starts_with('[') {
-                    // Arrays
-                    compound_value = format!("{}[", compound_value);
-                    for child in children {
-                        compound_value = format!(
-                            "{}{}, ",
-                            compound_value,
-                            child.formatted_variable_value(variable_cache)
-                        );
-                    }
-                    format!("{}]", compound_value)
                 } else {
                     // Generic handling of other structured types.
-                    // TODO: This is 'ok' for most, but could benefit from some custom formatting, e.g. Unions, Result<> and Option<>
-                    if self.is_indexed() {
-                        // Indexed variables look different ...
-                        compound_value = format!("{}{}:{{", compound_value, self.name);
-                    } else {
-                        compound_value = format!("{}{{", compound_value);
+                    // The pre- and post- fix is determined by the type of children.
+                    // compound_value = format!("{} {}", compound_value, self.type_name);
+                    let (mut pre_fix, mut post_fix): (Option<String>, Option<String>) =
+                        (None, None);
+                    let mut child_count: usize = 0;
+                    for child in children.iter() {
+                        child_count += 1;
+                        if pre_fix.is_none() && post_fix.is_none() {
+                            if let VariableName::Named(child_name) = child.name.clone() {
+                                if child_name.starts_with("__0") {
+                                    // Treat this structure as a tuple
+                                    pre_fix = Some("(".to_string());
+                                    post_fix = Some(")".to_string());
+                                } else {
+                                    // Treat this structure as a `struct`
+                                    pre_fix = Some("{".to_string());
+                                    post_fix = Some("}".to_string());
+                                }
+                            };
+                            if let Some(pre_fix) = &pre_fix {
+                                compound_value = format!("{}{}", compound_value, pre_fix);
+                            };
+                        }
+                        if child_count == children.len() {
+                            // Do not add a separator at the end of the list
+                            compound_value = format!(
+                                "{}{}",
+                                compound_value,
+                                child.formatted_variable_value(variable_cache)
+                            );
+                        } else {
+                            compound_value = format!(
+                                "{}{}, ",
+                                compound_value,
+                                child.formatted_variable_value(variable_cache)
+                            );
+                        }
                     }
-                    for child in children {
-                        compound_value = format!(
-                            "{}{}, ",
-                            compound_value,
-                            child.formatted_variable_value(variable_cache)
-                        );
-                    }
-                    format!("{}}}", compound_value)
+                    if let Some(post_fix) = &post_fix {
+                        compound_value = format!("{}{}", compound_value, post_fix);
+                    };
+                    compound_value
                 }
             } else {
                 // We don't have a value, and we can't generate one from children values, so use the type_name
@@ -694,7 +736,7 @@ impl Value for String {
         variable_cache: &VariableCache,
     ) -> Result<Self, DebugError> {
         let mut str_value: String = "".to_owned();
-        if let Ok(children) = variable_cache.get_children(variable.variable_key) {
+        if let Ok(children) = variable_cache.get_children(Some(variable.variable_key)) {
             if !children.is_empty() {
                 let mut string_length = match children.iter().find(|child_variable| {
                     child_variable.name == VariableName::Named("length".to_string())
@@ -711,7 +753,7 @@ impl Value for String {
                 }) {
                     Some(location_value) => {
                         if let Ok(child_variables) =
-                            variable_cache.get_children(location_value.variable_key)
+                            variable_cache.get_children(Some(location_value.variable_key))
                         {
                             if let Some(first_child) = child_variables.first() {
                                 first_child.memory_location as u32

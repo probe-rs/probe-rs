@@ -5,6 +5,7 @@ use crate::DebuggerError;
 use anyhow::{anyhow, Result};
 use dap_types::*;
 use parse_int::parse;
+use probe_rs::debug::Registers;
 use probe_rs::debug::{VariableCache, VariableName};
 use probe_rs::{debug::ColumnType, CoreStatus, HaltReason, MemoryInterface};
 use probe_rs_cli_util::rtt;
@@ -112,7 +113,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                     thread_id: Some(core_data.target_core.id() as i64),
                     preserve_focus_hint: Some(false),
                     text: None,
-                    all_threads_stopped: Some(true),
+                    all_threads_stopped: Some(false), // TODO: Implement multi-core logic here
                     hit_breakpoint_ids: None,
                 });
                 self.send_event("stopped", event_body)?;
@@ -347,7 +348,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                 Ok(_) => {
                     self.last_known_status = CoreStatus::Running;
                     let event_body = Some(ContinuedEventBody {
-                        all_threads_continued: Some(true),
+                        all_threads_continued: Some(false), // TODO: Implement multi-core logic here
                         thread_id: core_data.target_core.id() as i64,
                     });
 
@@ -390,7 +391,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                             thread_id: Some(core_data.target_core.id() as i64),
                             preserve_focus_hint: None,
                             text: None,
-                            all_threads_stopped: Some(true),
+                            all_threads_stopped: Some(false), // TODO: Implement multi-core logic here
                             hit_breakpoint_ids: None,
                         });
                         self.send_event("stopped", event_body)?;
@@ -415,59 +416,93 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         }
     }
 
+    /// NOTE: VSCode sends a 'threads' request when it receives the response from this request, irrespective of target state.
+    /// This can lead to duplicate `threads->stacktrace->etc.` sequences if & when the target halts and sends a 'stopped' event.
+    /// See [https://github.com/golang/vscode-go/issues/940] for more info.
+    /// In order to avoid overhead and duplicate responses, we will implement the following logic.
+    /// - `configuration_done` will ignore target status, and simply notify VSCode that we're done.
+    /// - `threads` will check for [DebugAdapter::last_known_status] and ...
+    ///   - If it is `Unknown`, it will ...
+    ///     - send back a threads response, with `all_threds_stopped=Some(false)`
+    ///     - check on actual core status, and update [DebugAdapter::last_known_status] as well as synch status with the VSCode client.
+    ///   - If it is `Halted`, it will respond with thread information as expected.
+    ///   - Any other status will send and error.
     pub(crate) fn configuration_done(
         &mut self,
-        core_data: &mut CoreData,
+        _core_data: &mut CoreData,
         request: Request,
     ) -> Result<()> {
-        // Make sure the DAP Client and the DAP Server are in sync with the status of the core.
-        match core_data.target_core.status() {
-            Ok(core_status) => {
-                self.last_known_status = core_status;
-                if core_status.is_halted() {
-                    if self.halt_after_reset
-                        || core_status == CoreStatus::Halted(HaltReason::Breakpoint)
-                    {
-                        self.send_response::<()>(request, Ok(None))?;
-
-                        let event_body = Some(StoppedEventBody {
-                            reason: core_status.short_long_status().0.to_owned(),
-                            description: Some(core_status.short_long_status().1.to_string()),
-                            thread_id: Some(core_data.target_core.id() as i64),
-                            preserve_focus_hint: None,
-                            text: None,
-                            all_threads_stopped: Some(true),
-                            hit_breakpoint_ids: None,
-                        });
-                        self.send_event("stopped", event_body)
-                    } else {
-                        self.r#continue(core_data, request)
-                    }
-                } else {
-                    self.send_response::<()>(request, Ok(None))
-                }
-            }
-            Err(error) => {
-                self.send_response::<()>(
-                    request,
-                    Err(DebuggerError::Other(anyhow!(
-                        "Could not read core status to synchronize the client and the probe. {:?}",
-                        error
-                    ))),
-                )?;
-                Err(anyhow!("Failed to get core status."))
-            }
-        }
+        self.send_response::<()>(request, Ok(None))
     }
+
     pub(crate) fn threads(&mut self, core_data: &mut CoreData, request: Request) -> Result<()> {
         // TODO: Implement actual thread resolution. For now, we just use the core id as the thread id.
-
-        let single_thread = Thread {
-            id: core_data.target_core.id() as i64,
-            name: core_data.target_name.clone(),
-        };
-
-        let threads = vec![single_thread];
+        let mut threads: Vec<Thread> = vec![];
+        match self.last_known_status {
+            CoreStatus::Unknown => {
+                // We are probably here because the `configuration_done` request just happened, so we can make sure the client and debugger are in synch.
+                match core_data.target_core.status() {
+                    Ok(core_status) => {
+                        self.last_known_status = core_status;
+                        // Make sure the DAP Client and the DAP Server are in sync with the status of the core.
+                        if core_status.is_halted() {
+                            if self.halt_after_reset
+                                || core_status == CoreStatus::Halted(HaltReason::Breakpoint)
+                            {
+                                let event_body = Some(StoppedEventBody {
+                                    reason: core_status.short_long_status().0.to_owned(),
+                                    description: Some(
+                                        core_status.short_long_status().1.to_string(),
+                                    ),
+                                    thread_id: Some(core_data.target_core.id() as i64),
+                                    preserve_focus_hint: None,
+                                    text: None,
+                                    all_threads_stopped: Some(false), // TODO: Implement multi-core logic here
+                                    hit_breakpoint_ids: None,
+                                });
+                                self.send_event("stopped", event_body)?;
+                            } else {
+                                let single_thread = Thread {
+                                    id: core_data.target_core.id() as i64,
+                                    name: core_data.target_name.clone(),
+                                };
+                                threads.push(single_thread);
+                                self.send_response(
+                                    request.clone(),
+                                    Ok(Some(ThreadsResponseBody { threads })),
+                                )?;
+                                return self.r#continue(core_data, request);
+                            }
+                        }
+                    }
+                    Err(error) => {
+                        return self.send_response::<()>(
+                            request,
+                            Err(DebuggerError::Other(anyhow!(
+                                "Could not read core status to synchronize the client and the probe. {:?}",
+                                error
+                            ))),
+                        );
+                    }
+                }
+            }
+            CoreStatus::Halted(_) => {
+                let single_thread = Thread {
+                    id: core_data.target_core.id() as i64,
+                    name: core_data.target_name.clone(),
+                };
+                threads.push(single_thread);
+            }
+            CoreStatus::Running | CoreStatus::LockedUp | CoreStatus::Sleeping => {
+                return self.send_response::<()>(
+                    request,
+                    Err(DebuggerError::Other(anyhow!(
+                        "Received request for `threads`, while last known core status was {:?}",
+                        self.last_known_status
+                    ))),
+                );
+            }
+        }
         self.send_response(request, Ok(Some(ThreadsResponseBody { threads })))
     }
 
@@ -613,7 +648,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             }
         };
 
-        let _arguments: StackTraceArguments = match self.adapter_type() {
+        let arguments: StackTraceArguments = match self.adapter_type() {
             DebugAdapterType::CommandLine => StackTraceArguments {
                 format: None,
                 levels: None,
@@ -643,127 +678,182 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             }
         };
 
-        log::debug!("Replacing variable cache!");
-
-        *core_data.variable_cache = VariableCache::new();
-
-        let current_stackframes = core_data.debug_info.try_unwind(
-            core_data.variable_cache,
-            &mut core_data.target_core,
-            u64::from(pc),
+        log::debug!(
+            "Updating the stack frame data for core #{}",
+            core_data.target_core.id()
         );
 
         match self.adapter_type() {
             DebugAdapterType::CommandLine => {
+                *core_data.stack_frames = core_data
+                    .debug_info
+                    .unwind(&mut core_data.target_core, u64::from(pc))?;
                 let mut body = "".to_string();
-                for _stack_frame in current_stackframes {
-                    // Iterate all the stack frames, so that `debug_info.variable_cache` gets populated.
+                if core_data.stack_frames.is_empty() {
+                    body.push_str(
+                        format!(
+                            "No backtrace information available for program counter = {:#010x}!\n",
+                            pc
+                        )
+                        .as_str(),
+                    );
+                } else {
+                    for stack_frame in core_data.stack_frames.iter() {
+                        body.push_str(format!("{}\n", stack_frame).as_str());
+                    }
                 }
-                body.push_str(format!("{}\n", &core_data.variable_cache).as_str());
                 self.send_response(request, Ok(Some(body)))
             }
             DebugAdapterType::DapClient => {
-                let mut frame_list: Vec<StackFrame> = current_stackframes
-                    .map(|frame| {
-                        let column = frame
-                            .source_location
-                            .as_ref()
-                            .and_then(|sl| sl.column)
-                            .map(|col| match col {
-                                ColumnType::LeftEdge => 0,
-                                ColumnType::Column(c) => c,
-                            })
-                            .unwrap_or(0);
-
-                        let source = if let Some(source_location) = &frame.source_location {
-                            let path: Option<PathBuf> =
-                                source_location.directory.as_ref().map(|path| {
-                                    let mut path = if path.is_relative() {
-                                        std::env::current_dir().unwrap().join(path)
-                                    } else {
-                                        path.to_owned()
-                                    };
-
-                                    if let Some(file) = &source_location.file {
-                                        path.push(file);
-                                    }
-
-                                    path
-                                });
-                            Some(Source {
-                                name: source_location.file.clone(),
-                                path: path.map(|p| p.to_string_lossy().to_string()),
-                                source_reference: None,
-                                presentation_hint: None,
-                                origin: None,
-                                sources: None,
-                                adapter_data: None,
-                                checksums: None,
-                            })
-                        } else {
-                            log::debug!("No source location present for frame!");
-                            None
-                        };
-
-                        let line = frame
-                            .source_location
-                            .as_ref()
-                            .and_then(|sl| sl.line)
-                            .unwrap_or(0) as i64;
-                        let function_display_name = if frame.is_inlined {
-                            format!("{} #[inline]", frame.function_name)
-                        } else {
-                            format!("{} @{:#010x}", frame.function_name, frame.pc)
-                        };
-                        // TODO: Can we add more meaningful info to `module_id`, etc.
-                        StackFrame {
-                            id: frame.id as i64,
-                            name: function_display_name,
-                            source,
-                            line,
-                            column: column as i64,
-                            end_column: None,
-                            end_line: None,
-                            module_id: None,
-                            presentation_hint: Some("normal".to_owned()),
-                            can_restart: Some(false),
-                            instruction_pointer_reference: Some(format!("{:#010x}", frame.pc)),
+                if let Some(levels) = arguments.levels {
+                    if let Some(start_frame) = arguments.start_frame {
+                        if levels == 20 && start_frame == 0 {
+                            // This is a invalid stack_trace from VSCode, so let's respond in kind.
+                            let body = StackTraceResponseBody {
+                                stack_frames: vec![],
+                                total_frames: Some(0i64),
+                            };
+                            return self.send_response(request, Ok(Some(body)));
+                        } else if levels == 1 && start_frame == 0 {
+                            // This is a legit request for the first frame in a new stack_trace, so do a new unwind.
+                            *core_data.stack_frames = core_data
+                                .debug_info
+                                .unwind(&mut core_data.target_core, u64::from(pc))?;
                         }
-                    })
-                    .collect();
+                        // Determine the correct 'slice' of available [StackFrame]s to serve up ...
+                        let total_frames = core_data.stack_frames.len() as i64;
+                        let frame_slice = if levels == 1 && start_frame == 0 {
+                            // Just the first frame - use the LHS of the split at `levels`
+                            core_data.stack_frames.split_at(levels as usize).0.iter()
+                        } else if total_frames <= 20
+                            && start_frame >= 0
+                            && start_frame <= total_frames
+                        {
+                            // When we have less than 20 frames - use the RHS of of the split at `start_frame`
+                            core_data
+                                .stack_frames
+                                .split_at(start_frame as usize)
+                                .1
+                                .iter()
+                        } else if total_frames > 20 && start_frame + levels <= total_frames {
+                            // When we have more than 20 frames - we can safely split twice
+                            core_data
+                                .stack_frames
+                                .split_at(start_frame as usize)
+                                .1
+                                .split_at(levels as usize)
+                                .0
+                                .iter()
+                        } else {
+                            return self.send_response::<()>(
+                                request,
+                                Err(DebuggerError::Other(anyhow!(
+                                    "Request for stack trace failed with invalid arguments: {:?}",
+                                    arguments
+                                ))),
+                            );
+                        };
 
-                // If we get an empty stack frame list,
-                // add a frame so that something is visible in the
-                // debugger.
-                if frame_list.is_empty() {
-                    frame_list.push(StackFrame {
-                        can_restart: None,
-                        column: 0,
-                        end_column: None,
-                        end_line: None,
-                        id: pc as i64,
-                        instruction_pointer_reference: None,
-                        line: 0,
-                        module_id: None,
-                        name: format!("<unknown function @ {:#010x}>", pc),
-                        presentation_hint: None,
-                        source: None,
-                    })
+                        let frame_list: Vec<StackFrame> = frame_slice
+                            .map(|frame| {
+                                let column = frame
+                                    .source_location
+                                    .as_ref()
+                                    .and_then(|sl| sl.column)
+                                    .map(|col| match col {
+                                        ColumnType::LeftEdge => 0,
+                                        ColumnType::Column(c) => c,
+                                    })
+                                    .unwrap_or(0);
+
+                                let source = if let Some(source_location) = &frame.source_location {
+                                    let path: Option<PathBuf> =
+                                        source_location.directory.as_ref().map(|path| {
+                                            let mut path = if path.is_relative() {
+                                                std::env::current_dir().unwrap().join(path)
+                                            } else {
+                                                path.to_owned()
+                                            };
+
+                                            if let Some(file) = &source_location.file {
+                                                path.push(file);
+                                            }
+
+                                            path
+                                        });
+                                    Some(Source {
+                                        name: source_location.file.clone(),
+                                        path: path.map(|p| p.to_string_lossy().to_string()),
+                                        source_reference: None,
+                                        presentation_hint: None,
+                                        origin: None,
+                                        sources: None,
+                                        adapter_data: None,
+                                        checksums: None,
+                                    })
+                                } else {
+                                    log::debug!("No source location present for frame!");
+                                    None
+                                };
+
+                                let line = frame
+                                    .source_location
+                                    .as_ref()
+                                    .and_then(|sl| sl.line)
+                                    .unwrap_or(0) as i64;
+                                let function_display_name = if frame.is_inlined {
+                                    format!("{} #[inline]", frame.function_name)
+                                } else {
+                                    format!("{} @{:#010x}", frame.function_name, frame.pc)
+                                };
+                                // TODO: Can we add more meaningful info to `module_id`, etc.
+                                StackFrame {
+                                    id: frame.id as i64,
+                                    name: function_display_name,
+                                    source,
+                                    line,
+                                    column: column as i64,
+                                    end_column: None,
+                                    end_line: None,
+                                    module_id: None,
+                                    presentation_hint: Some("normal".to_owned()),
+                                    can_restart: Some(false),
+                                    instruction_pointer_reference: Some(format!(
+                                        "{:#010x}",
+                                        frame.pc
+                                    )),
+                                }
+                            })
+                            .collect();
+
+                        let body = StackTraceResponseBody {
+                            stack_frames: frame_list,
+                            total_frames: Some(total_frames),
+                        };
+                        self.send_response(request, Ok(Some(body)))
+                    } else {
+                        self.send_response::<()>(
+                            request,
+                            Err(DebuggerError::Other(anyhow!(
+                                "Request for stack trace failed with invalid start_frame argument: {:?}",
+                                arguments.start_frame
+                            ))))
+                    }
+                } else {
+                    self.send_response::<()>(
+                        request,
+                        Err(DebuggerError::Other(anyhow!(
+                            "Request for stack trace failed with invalid levels argument: {:?}",
+                            arguments.levels
+                        ))),
+                    )
                 }
-
-                let frame_len = frame_list.len();
-
-                let body = StackTraceResponseBody {
-                    stack_frames: frame_list,
-                    total_frames: Some(frame_len as i64),
-                };
-                self.send_response(request, Ok(Some(body)))
             }
         }
     }
     /// Retrieve available scopes  
     /// - static scope  : Variables with `static` modifier
-    /// - registers     : Currently supports core registers 0-15
+    /// - registers     : The [probe_rs::Core::registers] for the target [probe_rs::CoreType]
     /// - local scope   : Variables defined between start of current frame, and the current pc (program counter)
     pub(crate) fn scopes(&mut self, core_data: &mut CoreData, request: Request) -> Result<()> {
         let arguments: ScopesArguments = match get_arguments(&request) {
@@ -775,89 +865,74 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
 
         log::trace!("Getting scopes for frame {}", arguments.frame_id,);
 
-        if let Some(stackframe_root_variable) = core_data
-            .variable_cache
-            .get_variable_by_key(arguments.frame_id)
-        {
+        if let Some(stack_frame) = core_data.get_stackframe(arguments.frame_id) {
             if let Some(static_root_variable) =
-                core_data.variable_cache.get_variable_by_name_and_parent(
-                    &VariableName::Statics,
-                    stackframe_root_variable.variable_key,
-                )
+                stack_frame
+                    .static_variables
+                    .as_ref()
+                    .and_then(|stack_frame| {
+                        stack_frame
+                            .get_variable_by_name_and_parent(&VariableName::StaticScope, None)
+                    })
             {
-                let (static_variables_reference, static_named_variables, static_indexed_variables) =
-                    self.get_variable_reference(&static_root_variable, core_data.variable_cache);
                 dap_scopes.push(Scope {
                     line: None,
                     column: None,
                     end_column: None,
                     end_line: None,
                     expensive: true, // VSCode won't open this tree by default.
-                    indexed_variables: Some(static_indexed_variables),
+                    indexed_variables: None,
                     name: "Static".to_string(),
                     presentation_hint: Some("statics".to_string()),
-                    named_variables: Some(static_named_variables),
+                    named_variables: None,
                     source: None,
-                    variables_reference: static_variables_reference,
+                    variables_reference: static_root_variable.variable_key,
                 });
             };
 
-            if let Some(register_root_variable) =
-                core_data.variable_cache.get_variable_by_name_and_parent(
-                    &VariableName::Registers,
-                    stackframe_root_variable.variable_key,
-                )
-            {
-                let (
-                    register_variables_reference,
-                    register_named_variables,
-                    register_indexed_variables,
-                ) = self.get_variable_reference(&register_root_variable, core_data.variable_cache);
-                dap_scopes.push(Scope {
-                    line: None,
-                    column: None,
-                    end_column: None,
-                    end_line: None,
-                    expensive: true, // VSCode won't open this tree by default.
-                    indexed_variables: Some(register_indexed_variables),
-                    name: "Registers".to_string(),
-                    presentation_hint: Some("registers".to_string()),
-                    named_variables: Some(register_named_variables),
-                    source: None,
-                    variables_reference: register_variables_reference,
-                });
-            };
+            dap_scopes.push(Scope {
+                line: None,
+                column: None,
+                end_column: None,
+                end_line: None,
+                expensive: true, // VSCode won't open this tree by default.
+                indexed_variables: None,
+                name: "Registers".to_string(),
+                presentation_hint: Some("registers".to_string()),
+                named_variables: None,
+                source: None,
+                // We use the stack_frame.id for registers, so that we don't need to cache copies of the registers.
+                variables_reference: stack_frame.id,
+            });
+
             if let Some(locals_root_variable) =
-                core_data.variable_cache.get_variable_by_name_and_parent(
-                    &VariableName::Locals,
-                    stackframe_root_variable.variable_key,
-                )
+                stack_frame
+                    .local_variables
+                    .as_ref()
+                    .and_then(|stack_frame| {
+                        stack_frame.get_variable_by_name_and_parent(&VariableName::LocalScope, None)
+                    })
             {
-                let (locals_variables_reference, locals_named_variables, locals_indexed_variables) =
-                    self.get_variable_reference(&locals_root_variable, core_data.variable_cache);
                 dap_scopes.push(Scope {
-                    line: stackframe_root_variable
+                    line: stack_frame
                         .source_location
                         .as_ref()
                         .and_then(|location| location.line.map(|line| line as i64)),
-                    column: stackframe_root_variable
-                        .source_location
-                        .as_ref()
-                        .and_then(|l| {
-                            l.column.map(|c| match c {
-                                ColumnType::LeftEdge => 0,
-                                ColumnType::Column(c) => c as i64,
-                            })
-                        }),
+                    column: stack_frame.source_location.as_ref().and_then(|l| {
+                        l.column.map(|c| match c {
+                            ColumnType::LeftEdge => 0,
+                            ColumnType::Column(c) => c as i64,
+                        })
+                    }),
                     end_column: None,
                     end_line: None,
                     expensive: false, // VSCode will open this tree by default.
-                    indexed_variables: Some(locals_indexed_variables),
+                    indexed_variables: None,
                     name: "Variables".to_string(),
                     presentation_hint: Some("locals".to_string()),
-                    named_variables: Some(locals_named_variables),
+                    named_variables: None,
                     source: None,
-                    variables_reference: locals_variables_reference,
+                    variables_reference: locals_root_variable.variable_key,
                 });
             };
         }
@@ -909,66 +984,131 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         };
 
         let response = {
-            // During the intial stack unwind operation, if we encounter certain types of pointers as children of complex variables, they will not be auto-expanded and included in the variable cache. Please refer to the `is_pointer` member of [probe_rs::debug::Variable] for more information. If this is the case, we will store the `stack_frame_registers` as part of the variable definition, so that we can  resolve the variable and add it to the cache before continuing.
-            // TODO: Use the DAP "Invalidated" event to refresh the variables for this stackframe. It will allow the UI to see updated compound values for pointer variables based on the newly resolved children.
-            if let Some(parent_variable) = core_data
-                .variable_cache
-                .get_variable_by_key(arguments.variables_reference)
-            {
-                if parent_variable.referenced_node_offset.is_some() {
-                    core_data.debug_info.cache_referenced_variables(
-                        core_data.variable_cache,
-                        &mut core_data.target_core,
-                        &parent_variable,
-                    )?;
+            // The MS DAP Specification only gives us the unique reference of the variable, and does not tell us which StackFrame it belongs to, nor does it specify if this variable is in the local, register or static scope. Unfortunately this means we have to search through all the available [VariableCache]'s until we find it. To minimize the impact of this, we will search in the most 'likely' places first (first stack frame's locals, then statics, then registers, then move to next stack frame, and so on ...)
+            let mut parent_variable: Option<probe_rs::debug::Variable> = None;
+            let mut variable_cache: Option<&mut VariableCache> = None;
+            let mut stack_frame_registers: Option<&Registers> = None;
+            for stack_frame in core_data.stack_frames.iter_mut() {
+                if let Some(search_cache) = &mut stack_frame.local_variables {
+                    if let Some(search_variable) =
+                        search_cache.get_variable_by_key(arguments.variables_reference)
+                    {
+                        parent_variable = Some(search_variable);
+                        variable_cache = Some(search_cache);
+                        stack_frame_registers = Some(&stack_frame.registers);
+                        break;
+                    }
+                }
+                if let Some(search_cache) = &mut stack_frame.static_variables {
+                    if let Some(search_variable) =
+                        search_cache.get_variable_by_key(arguments.variables_reference)
+                    {
+                        parent_variable = Some(search_variable);
+                        variable_cache = Some(search_cache);
+                        stack_frame_registers = Some(&stack_frame.registers);
+                        break;
+                    }
+                }
+                if stack_frame.id == arguments.variables_reference {
+                    // This is a special case, where we just want to return the stack frame registers.
+
+                    let mut sorted_registers = stack_frame
+                        .registers
+                        .registers()
+                        .collect::<Vec<(&u32, &u32)>>();
+                    sorted_registers
+                        .sort_by_key(|(register_number, _register_value)| *register_number);
+
+                    let dap_variables: Vec<Variable> = sorted_registers
+                        .iter()
+                        .map(|(&register_number, &register_value)| Variable {
+                            name: stack_frame
+                                .registers
+                                .get_name_by_dwarf_register_number(register_number)
+                                .unwrap_or_else(|| format!("r{}", register_number)),
+                            evaluate_name: None,
+                            memory_reference: None,
+                            indexed_variables: None,
+                            named_variables: None,
+                            presentation_hint: None,
+                            type_: Some("Platform Register".to_owned()),
+                            value: format!("{:#010x}", register_value),
+                            variables_reference: 0,
+                        })
+                        .collect();
+                    return self.send_response(
+                        request,
+                        Ok(Some(VariablesResponseBody {
+                            variables: dap_variables,
+                        })),
+                    );
                 }
             }
 
-            let dap_variables: Vec<Variable> = core_data
-                .variable_cache
-                .get_children(arguments.variables_reference)?
-                .iter()
-                // Filter out requested children, then map them as DAP variables
-                .filter(|variable| match &arguments.filter {
-                    Some(filter) => match filter.as_str() {
-                        "indexed" => variable.is_indexed(),
-                        "named" => !variable.is_indexed(),
-                        other => {
-                            // This will yield an empty Vec, which will result in a user facing error as well as the log below.
-                            log::error!("Received invalid variable filter: {}", other);
-                            false
+            // During the intial stack unwind operation, if encounter [Variable]'s with [VariableNodeType::is_deferred()], they will not be auto-expanded and included in the variable cache.
+            // TODO: Use the DAP "Invalidated" event to refresh the variables for this stackframe. It will allow the UI to see updated compound values for pointer variables based on the newly resolved children.
+            if let Some(variable_cache) = variable_cache {
+                if let Some(parent_variable) = parent_variable.as_mut() {
+                    if parent_variable.variable_node_type.is_deferred()
+                        && !variable_cache.has_children(parent_variable)?
+                    {
+                        if let Some(stack_frame_registers) = stack_frame_registers {
+                            core_data.debug_info.cache_deferred_variables(
+                                variable_cache,
+                                &mut core_data.target_core,
+                                parent_variable,
+                                stack_frame_registers,
+                            )?;
+                        } else {
+                            log::error!("Could not cache deferred child variables for variable: {}. No register data available.", parent_variable.name );
                         }
-                    },
-                    None => true,
-                })
-                // Convert the `probe_rs::debug::Variable` to `probe_rs_debugger::dap_types::Variable`
-                .map(|variable| {
-                    let (
-                        variables_reference,
-                        named_child_variables_cnt,
-                        indexed_child_variables_cnt,
-                    ) = self.get_variable_reference(variable, core_data.variable_cache);
-                    Variable {
-                        name: variable.name.to_string(),
-                        evaluate_name: None,
-                        memory_reference: Some(format!("{:#010x}", variable.memory_location)),
-                        indexed_variables: Some(indexed_child_variables_cnt),
-                        named_variables: Some(named_child_variables_cnt),
-                        presentation_hint: None,
-                        type_: Some(variable.type_name.clone()),
-                        value: variable.get_value(core_data.variable_cache),
-                        variables_reference,
                     }
-                })
-                .collect();
-            match dap_variables.len() {
-                0 => Err(DebuggerError::Other(anyhow!(
+                }
+
+                let dap_variables: Vec<Variable> = variable_cache
+                    .get_children(Some(arguments.variables_reference))?
+                    .iter()
+                    // Filter out requested children, then map them as DAP variables
+                    .filter(|variable| match &arguments.filter {
+                        Some(filter) => match filter.as_str() {
+                            "indexed" => variable.is_indexed(),
+                            "named" => !variable.is_indexed(),
+                            other => {
+                                // This will yield an empty Vec, which will result in a user facing error as well as the log below.
+                                log::error!("Received invalid variable filter: {}", other);
+                                false
+                            }
+                        },
+                        None => true,
+                    })
+                    // Convert the `probe_rs::debug::Variable` to `probe_rs_debugger::dap_types::Variable`
+                    .map(|variable| {
+                        let (
+                            variables_reference,
+                            named_child_variables_cnt,
+                            indexed_child_variables_cnt,
+                        ) = self.get_variable_reference(variable, variable_cache);
+                        Variable {
+                            name: variable.name.to_string(),
+                            evaluate_name: None,
+                            memory_reference: Some(format!("{:#010x}", variable.memory_location)),
+                            indexed_variables: Some(indexed_child_variables_cnt),
+                            named_variables: Some(named_child_variables_cnt),
+                            presentation_hint: None,
+                            type_: Some(variable.type_name.clone()),
+                            value: variable.get_value(variable_cache),
+                            variables_reference,
+                        }
+                    })
+                    .collect();
+                Ok(Some(VariablesResponseBody {
+                    variables: dap_variables,
+                }))
+            } else {
+                Err(DebuggerError::Other(anyhow!(
                     "No variable information found for {}!",
                     arguments.variables_reference
-                ))),
-                _ => Ok(Some(VariablesResponseBody {
-                    variables: dap_variables,
-                })),
+                )))
             }
         };
 
@@ -988,18 +1128,15 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                         Ok(Some(self.last_known_status.short_long_status().1)),
                     ),
                     DebugAdapterType::DapClient => {
-                        self.send_response(
-                            request,
-                            Ok(Some(ContinueResponseBody {
-                                all_threads_continued: if self.last_known_status
-                                    == CoreStatus::Running
-                                {
-                                    Some(true)
-                                } else {
-                                    Some(false)
-                                },
-                            })),
-                        )?;
+                        if request.command.as_str() == "continue" {
+                            // If this continue was initiated as part of some other request, then do not respond.
+                            self.send_response(
+                                request,
+                                Ok(Some(ContinueResponseBody {
+                                    all_threads_continued: Some(false), // TODO: Implement multi-core logic here
+                                })),
+                            )?;
+                        }
                         // We have to consider the fact that sometimes the `run()` is successfull,
                         // but "immediately" after the MCU hits a breakpoint or exception.
                         // So we have to check the status again to be sure.
@@ -1015,7 +1152,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                                         thread_id: Some(core_data.target_core.id() as i64),
                                         preserve_focus_hint: None,
                                         text: None,
-                                        all_threads_stopped: Some(true),
+                                        all_threads_stopped: Some(false), // TODO: Implement multi-core logic here
                                         hit_breakpoint_ids: None,
                                     });
                                     self.send_event("stopped", event_body)?;
@@ -1064,7 +1201,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                     thread_id: Some(core_data.target_core.id() as i64),
                     preserve_focus_hint: None,
                     text: None,
-                    all_threads_stopped: Some(true),
+                    all_threads_stopped: Some(false), // TODO: Implement multi-core logic here
                     hit_breakpoint_ids: None,
                 });
                 self.send_event("stopped", event_body)
@@ -1085,7 +1222,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
     ) -> (i64, i64, i64) {
         let mut named_child_variables_cnt = 0;
         let mut indexed_child_variables_cnt = 0;
-        if let Ok(children) = cache.get_children(parent_variable.variable_key) {
+        if let Ok(children) = cache.get_children(Some(parent_variable.variable_key)) {
             for child_variable in children {
                 if child_variable.is_indexed() {
                     indexed_child_variables_cnt += 1;
@@ -1101,9 +1238,10 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                 named_child_variables_cnt,
                 indexed_child_variables_cnt,
             )
-        } else if parent_variable.referenced_node_offset.is_some()
+        } else if parent_variable.variable_node_type.is_deferred()
             && parent_variable.get_value(cache) != "()"
         {
+            // TODO: We should implement changing unit types to VariableNodeType::DoNotRecurse
             // We have not yet cached the children for this reference.
             // Provide DAP Client with a reference so that it will explicitly ask for children when the user expands it.
             (parent_variable.variable_key, 0, 0)

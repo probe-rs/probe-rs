@@ -21,12 +21,16 @@ use std::{
     path::{Path, PathBuf},
     rc::Rc,
     str::{from_utf8, Utf8Error},
+    sync::atomic::{AtomicI64, Ordering},
+    vec,
 };
 
 use gimli::{
     DebuggingInformationEntry, FileEntry, LineProgramHeader, Location, UnitOffset, UnwindContext,
 };
 use object::read::{Object, ObjectSection};
+
+use self::variable::VariableNodeType;
 
 #[derive(Debug, thiserror::Error)]
 pub enum DebugError {
@@ -62,16 +66,52 @@ impl From<gimli::ColumnType> for ColumnType {
     }
 }
 
-#[derive(Clone, Debug)]
+static CACHE_KEY: AtomicI64 = AtomicI64::new(1);
+fn get_sequential_key() -> i64 {
+    CACHE_KEY.fetch_add(1, Ordering::SeqCst)
+}
+
+#[derive(Debug)]
 pub struct StackFrame {
-    pub id: u64,
+    pub id: i64,
     pub function_name: String,
     pub source_location: Option<SourceLocation>,
     pub registers: Registers,
     pub pc: u32,
-
     /// Indicate if this stack frame belongs to an inlined function.
     pub is_inlined: bool,
+    /// A cache of 'static' scoped variables for this stackframe
+    pub static_variables: Option<VariableCache>,
+    /// A cache of 'local' scoped variables for this stafckframe, with a `Variable` for each in-scope variable.
+    /// - Complex variables and pointers will have additional children.
+    ///   - This structure is recursive until a base type is encountered.
+    pub local_variables: Option<VariableCache>,
+}
+
+impl std::fmt::Display for StackFrame {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        // Header info for the StackFrame
+        writeln!(f, "Frame: {}", self.function_name)?;
+        if let Some(si) = &self.source_location {
+            write!(
+                f,
+                "\t{}/{}",
+                si.directory
+                    .as_ref()
+                    .map(|p| p.to_string_lossy())
+                    .unwrap_or_else(|| std::borrow::Cow::from("<unknown dir>")),
+                si.file.as_ref().unwrap_or(&"<unknown file>".to_owned())
+            )?;
+
+            if let (Some(column), Some(line)) = (si.column, si.line) {
+                match column {
+                    ColumnType::Column(c) => write!(f, ":{}:{}", line, c)?,
+                    ColumnType::LeftEdge => write!(f, ":{}", line)?,
+                }
+            }
+        }
+        writeln!(f)
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -100,7 +140,7 @@ impl Registers {
             match core.read_core_reg(register_file.platform_register(i)) {
                 Ok(value) => registers.values.insert(i as u32, value),
                 Err(e) => {
-                    log::debug!("Failed to read value for register {}: {}", i, e);
+                    log::warn!("Failed to read value for register {}: {}", i, e);
                     None
                 }
             };
@@ -222,504 +262,6 @@ pub struct SourceLocation {
 
     pub file: Option<String>,
     pub directory: Option<PathBuf>,
-}
-
-/// `StackFrameIterator` stores the information required to iterate through (`::next()`) each of the frames (`StackFrame`) involved in a `DebugInfo::try_unwind()` operation.
-/// The most valuable of these are pointers into the core's [`DebugInfo`], as well as the register values for the current frame in the stack (per iteration).
-pub struct StackFrameIterator<'debuginfo, 'probe, 'core> {
-    debug_info: &'debuginfo DebugInfo,
-    cache: &'debuginfo mut VariableCache,
-    core: &'core mut Core<'probe>,
-    unwind_bases: gimli::BaseAddresses,
-    /// The `unwind_context` has the potential to be expensive, so storing it here allows it to be re-used for every iteration in the `next()` implementation.
-    unwind_context: Box<gimli::UnwindContext<DwarfReader>>,
-    /// Register state as updated for every iteration (previous function) of the unwind process.
-    unwind_registers: Registers,
-
-    /// Used for handling inlined functions. If inlined functions are found, stack frames for all inlined functions and the containing, non-inlined function are
-    /// generated at the same time.
-    cached_stack_frames: Vec<StackFrame>,
-}
-
-impl<'debuginfo, 'probe, 'core> StackFrameIterator<'debuginfo, 'probe, 'core> {
-    /// In addition to providing the handle for iterating available `StackFrame`s, this function will also populate the `DebugInfo::VariableCache` with available `static` `Variable`s
-    pub fn new(
-        debug_info: &'debuginfo DebugInfo,
-        cache: &'debuginfo mut VariableCache,
-        core: &'core mut Core<'probe>,
-        address: u64,
-    ) -> Self {
-        let mut current_registers = Registers::from_core(core);
-        if current_registers.get_program_counter().is_none() {
-            current_registers.set_program_counter(Some(address as u32));
-        }
-
-        let unwind_context: Box<UnwindContext<DwarfReader>> = Box::new(gimli::UnwindContext::new());
-        let unwind_bases = gimli::BaseAddresses::default();
-
-        Self {
-            debug_info,
-            cache,
-            core,
-            unwind_bases,
-            unwind_context,
-            unwind_registers: current_registers,
-            cached_stack_frames: Vec::new(),
-        }
-    }
-}
-
-impl<'debuginfo, 'probe, 'core> Iterator for StackFrameIterator<'debuginfo, 'probe, 'core> {
-    type Item = StackFrame;
-
-    /// Performs the logical unwind that is managed by the `StackFrameIterator`. The returned `StackFrame` is that of the **callee** (the frame at the top of the logical unwind process ), the ...
-    /// - First call to `::next()` returns the 'StackFrame' at the current PC (program counter), and ...
-    /// - Each subsequent call to `::next()` will unwind and return the **previous** `StackFrame` in the call stack.
-    /// - Every iteration of the `::next()` method will update the `StackFrameIterator` fields as needed, to ensure that the subsequent calls / iterations know how to correctly unwind the **caller** `StackFrame` (where the current iteration was called from)
-    /// - Iteration will continue until there are no more frames to unwind.
-    ///
-    /// [DWARF](https://dwarfstd.org) 6.4.4 - CIE defines the return register address used in the `gimli::RegisterRule` tables for unwind operations. Theoretically, if we encounter a function that has `Undefined` `gimli::RegisterRule` for the return register address, it means we have reached the bottom of the stack OR the function is a 'no return' type of function. I have found actual examples (e.g. local functions) where we get `Undefined` for register rule when we cannot apply this logic. Example 1: local functions in main.rs will have LR rule as `Undefined`. Example 2: main()-> ! that is called from a trampoline will have a valid LR rule.
-    /// The iterator will continue until we have an LR register value of `None`. This will be true under the following conditions:
-    /// - We encounter a LR register value of 0xFFFFFFFF which is the 'Reset` value for that register.
-    /// - TODO: Catch the situation where the PC value indicates a hard-fault or other non-recoverable exception
-    /// - We can not intelligently infer a valid LR register value from the other registers.
-    /// - We legitimately get an LR register value of None, indicating the bottom of the stack.
-    /// - Similarly, certain error conditions encountered in `StackFrameIterator` will also clear the LR register, to prevent further (likely faulty) iterations.
-    /// Note: In addition to populating the `StackFrame`s, this function will also populate the `DebugInfo::VariableCache` with `Variable`s for available Registers and function variables.
-    fn next(&mut self) -> Option<Self::Item> {
-        // PART 0-a: If we've encountered an error in the previous iteration, the `PC` will be `None`.
-        let frame_pc = if let Some(frame_pc) = self.unwind_registers.get_program_counter() {
-            frame_pc as u64
-        } else {
-            log::debug!(
-                "UNWIND: No available PC (program counter). Cannot continue stack unwinding."
-            );
-            return None;
-        };
-        // PART 0-b: If the LR is set to 0x0 or None, then we can't unwind anything further.
-        if self
-            .unwind_registers
-            .get_return_address()
-            .map_or(true, |lr_value| lr_value == 0x0)
-        {
-            log::warn!(
-                "UNWIND: We encountered an LR value of `None` or `0x0`, and cannot continue stack unwinding."
-            );
-            return None;
-        };
-
-        // PART 1: Construct the `StackFrame` for the current pc.
-        log::debug!(
-            "UNWIND: Will generate `StackFrame` for function at address (PC) {:#010x}",
-            frame_pc,
-        );
-
-        // If we have cached stack frames (due to inlining), just return the cached frames if there
-        // are multiple left. The last cached frame is from the non-inlined function, and will
-        // be unwound normally.
-        if self.cached_stack_frames.len() > 1 {
-            log::info!("Using cached stack frame for inlined function.");
-            return self.cached_stack_frames.pop();
-        }
-
-        let return_frame = if self.cached_stack_frames.is_empty() {
-            // PART 1-a: Prepare the `StackFrame` that holds the current frame information
-            let mut return_frames = match self.debug_info.get_stackframe_info(
-                self.cache,
-                self.core,
-                frame_pc,
-                &self.unwind_registers,
-            ) {
-                Ok(frame) => frame,
-                Err(e) => {
-                    log::error!("UNWIND: Unable to complete `StackFrame` information: {}", e);
-                    // There is no point in continuing with the unwind, so let's get out of here.
-                    self.unwind_registers.set_return_address(None);
-                    return None;
-                }
-            };
-
-            if return_frames.len() > 1 {
-                log::debug!("Multiple stack frames:");
-                for frame in &return_frames {
-                    log::debug!(" - name={}, pc={:#010x}", frame.function_name, frame.pc);
-                }
-            }
-
-            let return_frame = return_frames.pop().unwrap();
-
-            self.cached_stack_frames = return_frames;
-
-            if !self.cached_stack_frames.is_empty() {
-                log::debug!("UNWIND: In inlined function, returning virtual frame.");
-                return Some(return_frame);
-            }
-
-            return_frame
-        } else {
-            log::debug!("Last cached stack frame, current funtion is not inlined.");
-            self.cached_stack_frames.pop().unwrap()
-        };
-
-        // Part 1-b: When we encounter the starting (after reset) return address, we've reached the bottom of the stack, so no more unwinding after this ...
-        // TODO: Validate that this applies to RISCV also.s
-        if let Some(check_return_address) = self.unwind_registers.get_return_address() {
-            if check_return_address == u32::MAX {
-                self.unwind_registers.set_return_address(None);
-                log::debug!(
-                    "UNWIND: Stack unwind complete - Reached the 'Reset' value of the LR register."
-                );
-                return Some(return_frame);
-            }
-        }
-
-        // PART 2: Setup the registers for the `next()` iteration (a.k.a. unwind previous frame, a.k.a. "callee", in the call stack).
-        log::debug!(
-            "UNWIND - Preparing `StackFrameIterator` to unwind NON-INLINED function {:?} at {:?}",
-            return_frame.function_name,
-            return_frame.source_location
-        );
-        // PART 2-a: get the `gimli::FrameDescriptorEntry` for this address and then the unwind info associated with this row.
-        // TODO: The `gimli` docs for this function talks about cases where there might be more than one FDE for a function. Investigate if this affects RUST and how to solve.
-        use gimli::UnwindSection;
-        let frame_descriptor_entry = match self.debug_info.frame_section.fde_for_address(
-            &self.unwind_bases,
-            frame_pc,
-            gimli::DebugFrame::cie_from_offset,
-        ) {
-            Ok(frame_descriptor_entry) => frame_descriptor_entry,
-            Err(error) => {
-                log::error!(
-                    "UNWIND: Error reading FrameDescriptorEntry at PC={:#010x} : {}",
-                    frame_pc,
-                    error
-                );
-                self.unwind_registers.set_return_address(None);
-                return Some(return_frame);
-            }
-        };
-
-        match frame_descriptor_entry.unwind_info_for_address(
-            &self.debug_info.frame_section,
-            &self.unwind_bases,
-            &mut self.unwind_context,
-            frame_pc,
-        ) {
-            Ok(unwind_info) => {
-                // Because we will be updating the `self.unwind_registers` with previous frame unwind info, we need to keep a copy of the current frame's registers that can be used to resolve [DWARF](https://dwarfstd.org) expressions.
-                let callee_frame_registers = self.unwind_registers.clone();
-                // PART 2-b: Determine the CFA (canonical frame address) to use for this unwind row.
-                let unwind_cfa = match unwind_info.cfa() {
-                    gimli::CfaRule::RegisterAndOffset { register, offset } => {
-                        let reg_val = self
-                            .unwind_registers
-                            .get_value_by_dwarf_register_number(register.0 as u32);
-                        match reg_val {
-                            Some(reg_val) => {
-                                let unwind_cfa = (i64::from(reg_val) + offset) as u32;
-                                log::debug!(
-                                    "UNWIND - CFA : {:#010x}\tRule: {:?}",
-                                    unwind_cfa,
-                                    unwind_info.cfa()
-                                );
-                                Some(unwind_cfa)
-                            }
-                            None => {
-                                log::error!("UNWIND: `StackFrameIterator` unable to determine the unwind CFA: Missing value of register {}",register.0);
-                                self.unwind_registers.set_return_address(None);
-                                return Some(return_frame);
-                            }
-                        }
-                    }
-                    gimli::CfaRule::Expression(_) => unimplemented!(),
-                };
-
-                // PART 2-c: Unwind registers for the "previous/calling" frame.
-                // TODO: Test for RISCV ... This is only tested for ARM right now.
-                // TODO: Maybe do some cleanup on the `Registerfile` API, to make the following more ergonomic.
-                for register_number in 0..self
-                    .unwind_registers
-                    .register_description
-                    .platform_registers
-                    .len() as u32
-                {
-                    use gimli::read::RegisterRule::*;
-
-                    let register_rule =
-                        unwind_info.register(gimli::Register(register_number as u16));
-
-                    let mut register_rule_string = format!("{:?}", register_rule);
-
-                    let new_value = match register_rule {
-                        Undefined => {
-                            // In many cases, the DWARF has `Undefined` rules for variables like frame pointer, program counter, etc., so we hard-code some rules here to make sure unwinding can continue. If there is a valid rule, it will bypass these hardcoded ones.
-                            match register_number {
-                                _fp if register_number
-                                    == self
-                                        .unwind_registers
-                                        .register_description
-                                        .frame_pointer()
-                                        .address
-                                        .0 as u32 =>
-                                {
-                                    register_rule_string = "FP=CFA (dwarf Undefined)".to_string();
-                                    callee_frame_registers.get_frame_pointer()
-                                }
-                                _sp if register_number
-                                    == self
-                                        .unwind_registers
-                                        .register_description
-                                        .stack_pointer()
-                                        .address
-                                        .0 as u32 =>
-                                {
-                                    // TODO: ARM Specific - Add rules for RISCV
-                                    // NOTE: [ARMv7-M Architecture Reference Manual](https://developer.arm.com/documentation/ddi0403/ee), Section B.1.4.1: Treat bits [1:0] as `Should be Zero or Preserved`
-                                    register_rule_string = "SP=CFA (dwarf Undefined)".to_string();
-                                    unwind_cfa.map(|unwind_cfa| unwind_cfa & !0b11)
-                                }
-                                _lr if register_number
-                                    == self
-                                        .unwind_registers
-                                        .register_description
-                                        .return_address()
-                                        .address
-                                        .0 as u32 =>
-                                {
-                                    // This value is used to determine the Undefined PC value, and will be set correctly later on in this method.
-                                    register_rule_string =
-                                        "LR=current LR (dwarf Undefined)".to_string();
-                                    callee_frame_registers.get_return_address()
-                                }
-                                _pc if register_number
-                                    == self
-                                        .unwind_registers
-                                        .register_description
-                                        .program_counter()
-                                        .address
-                                        .0 as u32 =>
-                                {
-                                    // NOTE: [ARMv7-M Architecture Reference Manual](https://developer.arm.com/documentation/ddi0403/ee), Section A5.1.2: We have to clear the last bit to ensure the PC is half-word aligned. (on ARM architecture, when in Thumb state for certain instruction types will set the LSB to 1)
-                                    // NOTE: PC = Current instruction + 1 address, so to reverse this from LR return address, we have to subtract 4 bytes
-                                    // TODO: Ensure that this operation does not seem to have a negative effect on RISCV.
-                                    let address_size =
-                                        frame_descriptor_entry.cie().address_size() as u32;
-                                    register_rule_string = format!(
-                                        "PC=(unwound LR & !0b1) - {} (dwarf Undefined)",
-                                        address_size
-                                    );
-                                    self.unwind_registers.get_return_address().and_then(
-                                        |return_address| {
-                                            if return_address == u32::MAX {
-                                                // No reliable return is available.
-                                                None
-                                            } else if return_address.is_zero() {
-                                                Some(0)
-                                            } else {
-                                                Some((return_address - address_size) & !0b1)
-                                            }
-                                        },
-                                    )
-                                }
-                                _ => {
-                                    // This will result in the register value being cleared for the previous frame.
-                                    None
-                                }
-                            }
-                        }
-                        SameValue => callee_frame_registers
-                            .get_value_by_dwarf_register_number(register_number),
-                        Offset(address_offset) => {
-                            if let Some(unwind_cfa) = unwind_cfa {
-                                let previous_frame_register_address =
-                                    i64::from(unwind_cfa) + address_offset;
-                                let mut buff = [0u8; 4];
-                                if let Err(e) = self
-                                    .core
-                                    .read(previous_frame_register_address as u32, &mut buff)
-                                {
-                                    log::error!(
-                                                        "UNWIND: Failed to read from address {:#010x} ({} bytes): {}",
-                                                        previous_frame_register_address,
-                                                        4,
-                                                        e
-                                                    );
-                                    log::error!(
-                                        "UNWIND: Rule: Offset {} from address {:#010x}",
-                                        address_offset,
-                                        unwind_cfa
-                                    );
-                                    self.unwind_registers.set_return_address(None);
-                                    return Some(return_frame);
-                                }
-                                let previous_frame_register_value = u32::from_le_bytes(buff);
-                                Some(previous_frame_register_value as u32)
-                            } else {
-                                log::error!("UNWIND: Tried to unwind `RegisterRule` at CFA = None. Please report this as a bug.");
-                                self.unwind_registers.set_return_address(None);
-                                return Some(return_frame);
-                            }
-                        }
-                        //TODO: Implement the remainder of these `RegisterRule`s
-                        _ => unimplemented!(),
-                    };
-
-                    self.unwind_registers
-                        .set_by_dwarf_register_number(register_number, new_value);
-                    log::debug!(
-                        "UNWIND - {:04?}: Caller: {:#010x}\tCallee: {:#010x}\tRule: {}",
-                        self.unwind_registers
-                            .get_name_by_dwarf_register_number(register_number),
-                        self.unwind_registers
-                            .get_value_by_dwarf_register_number(register_number)
-                            .unwrap_or_default(),
-                        callee_frame_registers
-                            .get_value_by_dwarf_register_number(register_number)
-                            .unwrap_or_default(),
-                        register_rule_string,
-                    );
-                }
-            }
-            Err(error) => {
-                log::debug!("UNWIND: Stack unwind complete. No available debug info for program counter {:#x}: {}", frame_pc, error);
-                self.unwind_registers.set_return_address(None);
-                return Some(return_frame);
-            }
-        };
-
-        // PART 3: In order to set the correct value of the previous frame we need to peek one frame deeper in the stack.
-        // NOTE: ARM Specific.
-        // TODO: Investigate and document why and under which circumstances this extra step is necessary. It was added during PR#895.
-        // TODO: Test on RISCV and fix as needed
-        if let Some(previous_frame_pc) = self.unwind_registers.get_program_counter() {
-            let previous_frame_descriptor_entry =
-                match self.debug_info.frame_section.fde_for_address(
-                    &self.unwind_bases,
-                    previous_frame_pc as u64,
-                    gimli::DebugFrame::cie_from_offset,
-                ) {
-                    Ok(frame_descriptor_entry) => frame_descriptor_entry,
-                    Err(error) => {
-                        log::error!(
-                        "UNWIND: Error reading previous FrameDescriptorEntry at PC={:#010x} : {}",
-                        previous_frame_pc,
-                        error
-                    );
-                        self.unwind_registers.set_return_address(None);
-                        return Some(return_frame);
-                    }
-                };
-
-            match previous_frame_descriptor_entry.unwind_info_for_address(
-                &self.debug_info.frame_section,
-                &self.unwind_bases,
-                &mut self.unwind_context,
-                previous_frame_pc as u64,
-            ) {
-                Ok(previous_unwind_info) => {
-                    let previous_unwind_cfa = match previous_unwind_info.cfa() {
-                        gimli::CfaRule::RegisterAndOffset { register, offset } => {
-                            let reg_val = self
-                                .unwind_registers
-                                .get_value_by_dwarf_register_number(register.0 as u32);
-                            match reg_val {
-                                Some(reg_val) => {
-                                    let unwind_cfa = (i64::from(reg_val) + offset) as u32;
-                                    log::debug!(
-                                        "UNWIND - CFA : {:#010x}\tRule: Previous Function {:?}",
-                                        unwind_cfa,
-                                        previous_unwind_info.cfa()
-                                    );
-                                    Some(unwind_cfa)
-                                }
-                                None => {
-                                    log::error!(
-                                                        "UNWIND: `StackFrameIterator` unable to determine the previous frame unwind CFA: Missing value of register {}",
-                                                        register.0
-                                                    );
-                                    self.unwind_registers.set_return_address(None);
-                                    return Some(return_frame);
-                                }
-                            }
-                        }
-                        gimli::CfaRule::Expression(_) => unimplemented!(),
-                    };
-                    use gimli::read::RegisterRule::*;
-
-                    let return_register_number = previous_frame_descriptor_entry
-                        .cie()
-                        .return_address_register()
-                        .0 as u32;
-                    let register_rule = previous_unwind_info
-                        .register(gimli::Register(return_register_number as u16));
-
-                    let register_rule_string = format!("{:?}", register_rule);
-
-                    let new_return_value = match register_rule {
-                        Undefined => None,
-                        SameValue => self
-                            .unwind_registers
-                            .get_value_by_dwarf_register_number(return_register_number),
-                        Offset(address_offset) => {
-                            if let Some(unwind_cfa) = previous_unwind_cfa {
-                                let previous_frame_register_address =
-                                    i64::from(unwind_cfa) + address_offset;
-                                let mut buff = [0u8; 4];
-                                if let Err(e) = self
-                                    .core
-                                    .read(previous_frame_register_address as u32, &mut buff)
-                                {
-                                    log::error!(
-                                                        "UNWIND: Failed to read from address {:#010x} ({} bytes): {}",
-                                                        previous_frame_register_address,
-                                                        4,
-                                                        e
-                                                    );
-                                    log::error!(
-                                        "UNWIND: Rule: Offset {} from address {:#010x}",
-                                        address_offset,
-                                        unwind_cfa
-                                    );
-                                    self.unwind_registers.set_return_address(None);
-                                    return Some(return_frame);
-                                }
-                                let previous_frame_register_value = u32::from_le_bytes(buff);
-                                Some(previous_frame_register_value as u32)
-                            } else {
-                                log::error!("UNWIND: Tried to unwind `RegisterRule` at CFA = None. Please report this as a bug.");
-                                self.unwind_registers.set_return_address(None);
-                                return Some(return_frame);
-                            }
-                        }
-                        //TODO: Implement the remainder of these `RegisterRule`s
-                        _ => unimplemented!(),
-                    };
-                    self.unwind_registers
-                        .set_by_dwarf_register_number(return_register_number, new_return_value);
-                    log::debug!(
-                        "UNWIND - {:04?}: Caller: {:#010x}\tRule: Override with previous frame {}",
-                        self.unwind_registers
-                            .get_name_by_dwarf_register_number(return_register_number),
-                        self.unwind_registers
-                            .get_value_by_dwarf_register_number(return_register_number)
-                            .unwrap_or_default(),
-                        register_rule_string,
-                    );
-                }
-                Err(error) => {
-                    log::debug!("UNWIND: Stack unwind complete. No available debug info for program counter {:#x}: {}",frame_pc, error);
-                    self.unwind_registers.set_return_address(None);
-                    return Some(return_frame);
-                }
-            };
-        } else {
-            log::error!("UNWIND: Cannot read previous FrameDescriptorEntry without a valid PC");
-            self.unwind_registers.set_return_address(None);
-            return Some(return_frame);
-        }
-
-        Some(return_frame)
-    }
 }
 
 type GimliReader = gimli::EndianReader<gimli::LittleEndian, std::rc::Rc<[u8]>>;
@@ -911,17 +453,16 @@ impl DebugInfo {
         None
     }
 
-    /// We do not actually resolve the children of `<statics>` automatically, and only create the necessary header in the `VariableCache`.
-    /// This allows us to resolve the `<statics>` on demand/lazily, when a user requests it from the debug client.
-    /// This saves a lot of overhead when a user only wants to see the `<locals>` or `<registers>` while stepping through code (the most common use cases)
-    fn cache_static_variables(
+    /// We do not actually resolve the children of `[VariableName::StaticScope]` automatically, and only create the necessary header in the `VariableCache`.
+    /// This allows us to resolve the `[VariableName::StaticScope]` on demand/lazily, when a user requests it from the debug client.
+    /// This saves a lot of overhead when a user only wants to see the `[VariableName::LocalScope]` or `[VariableName::Registers]` while stepping through code (the most common use cases)
+    fn create_static_scope_cache(
         &self,
-        cache: &mut VariableCache,
         core: &mut Core<'_>,
         unit_info: &UnitInfo,
-        stack_frame_registers: &Registers,
-        stackframe_root_variable: &Variable,
-    ) -> Result<(), DebugError> {
+    ) -> Result<VariableCache, DebugError> {
+        let mut static_variable_cache = VariableCache::new();
+
         // Only process statics for this unit header.
         let abbrevs = &unit_info.unit.abbreviations;
         // Navigate the current unit from the header down.
@@ -931,63 +472,22 @@ impl DebugInfo {
                 unit_info.unit.header.offset().as_debug_info_offset(),
                 Some(unit_node.entry().offset()),
             );
-            static_root_variable.referenced_node_offset = Some(unit_node.entry().offset());
-            static_root_variable.stack_frame_registers = Some(stack_frame_registers.clone());
-            static_root_variable.name = VariableName::Statics;
-            cache.cache_variable(
-                stackframe_root_variable.variable_key,
-                static_root_variable,
-                core,
-            )?;
+            static_root_variable.variable_node_type = VariableNodeType::DirectLookup;
+            static_root_variable.name = VariableName::StaticScope;
+            static_variable_cache.cache_variable(None, static_root_variable, core)?;
         }
-        Ok(())
+        Ok(static_variable_cache)
     }
 
-    /// Resolves and then loads all the `Register` variables into the `DebugInfo::VariableCache`.
-    fn cache_register_variables(
+    /// Creates the unpopulated cache for `function` variables
+    fn create_function_scope_cache(
         &self,
-        cache: &mut VariableCache,
-        registers: &Registers,
-        stackframe_root_variable: &Variable,
-        core: &mut Core<'_>,
-    ) -> Result<(), DebugError> {
-        let mut register_root_variable = Variable::new(None, None);
-        register_root_variable.name = VariableName::Registers;
-        register_root_variable = cache.cache_variable(
-            stackframe_root_variable.variable_key,
-            register_root_variable,
-            core,
-        )?;
-
-        let mut sorted_registers = registers.values.iter().collect::<Vec<(&u32, &u32)>>();
-        sorted_registers.sort_by_key(|(register_number, _register_value)| *register_number);
-
-        for (register_number, register_value) in sorted_registers {
-            let mut register_variable = Variable::new(None, None);
-            register_variable.parent_key = register_root_variable.variable_key;
-            register_variable.name = VariableName::Named(
-                registers
-                    .get_name_by_dwarf_register_number(*register_number)
-                    .unwrap_or_else(|| format!("r{}", register_number)),
-            );
-            register_variable.type_name = "Platform Register".to_owned();
-            register_variable.byte_size = 4;
-            register_variable.set_value(format!("{:#010x}", register_value));
-            cache.cache_variable(register_root_variable.variable_key, register_variable, core)?;
-        }
-        Ok(())
-    }
-
-    /// Resolves and then loads all the `function` variables into the `DebugInfo::VariableCache`.
-    fn cache_function_variables(
-        &self,
-        cache: &mut VariableCache,
         core: &mut Core<'_>,
         die_cursor_state: &FunctionDie,
         unit_info: &UnitInfo,
-        stack_frame_registers: &Registers,
-        stackframe_root_variable: &Variable,
-    ) -> Result<(), DebugError> {
+    ) -> Result<VariableCache, DebugError> {
+        let mut function_variable_cache = VariableCache::new();
+
         let abbrevs = &unit_info.unit.abbreviations;
         let mut tree = unit_info
             .unit
@@ -999,102 +499,175 @@ impl DebugInfo {
             unit_info.unit.header.offset().as_debug_info_offset(),
             Some(function_node.entry().offset()),
         );
-        function_root_variable.name = VariableName::Locals;
-        function_root_variable = cache.cache_variable(
-            stackframe_root_variable.variable_key,
-            function_root_variable,
-            core,
-        )?;
-
-        unit_info.process_tree(
-            function_node,
-            function_root_variable,
-            core,
-            stack_frame_registers,
-            cache,
-        )?;
-        Ok(())
+        function_root_variable.variable_node_type = VariableNodeType::DirectLookup;
+        function_root_variable.name = VariableName::LocalScope;
+        function_variable_cache.cache_variable(None, function_root_variable, core)?;
+        Ok(function_variable_cache)
     }
 
-    /// This is a lazy/deffered resolves and loads all the 'child' `Variable`s for a given unit.
-    /// This is used for:
-    /// - pointer variables (`DW_TAG_pointer_type`) into the `DebugInfo::VariableCache`.
-    /// - <statics> : The load of static variables and their namespaces in the debugger.
-    pub fn cache_referenced_variables(
+    /// This effects the on-demand expansion of lazy/deferred load of all the 'child' `Variable`s for a given 'parent'.
+    pub fn cache_deferred_variables(
         &self,
         cache: &mut VariableCache,
         core: &mut Core<'_>,
-        parent_variable: &Variable,
+        parent_variable: &mut Variable,
+        stack_frame_registers: &Registers,
     ) -> Result<(), DebugError> {
-        // Only do attempt this part if the parent is a pointer and we have not yet resolved the referenced children.
-        if parent_variable.referenced_node_offset.is_some()
-            && !cache.has_children(parent_variable)?
-        {
-            if let Some(ref stack_frame_registers) = parent_variable.stack_frame_registers {
-                if let Some(header_offset) = parent_variable.header_offset {
-                    let unit_header = self.dwarf.debug_info.header_from_offset(header_offset)?;
-                    let unit_info = UnitInfo {
-                        debug_info: self,
-                        unit: gimli::Unit::new(&self.dwarf, unit_header)?,
-                    };
-                    // Reference to a type, or an node.entry() to another type or a type modifier which will point to another type.
-                    let mut type_tree = unit_info.unit.header.entries_tree(
-                        &unit_info.unit.abbreviations,
-                        parent_variable.referenced_node_offset,
-                    )?;
-                    let referenced_node = type_tree.root()?;
-                    let mut referenced_variable = cache.cache_variable(
-                        parent_variable.variable_key,
-                        Variable::new(
-                            unit_info.unit.header.offset().as_debug_info_offset(),
-                            Some(referenced_node.entry().offset()),
-                        ),
-                        core,
-                    )?;
+        match parent_variable.variable_node_type {
+            VariableNodeType::ReferenceOffset(reference_offset) => {
+                // Only attempt this part if the parent is a pointer and we have not yet resolved the referenced children.
+                if !cache.has_children(parent_variable)? {
+                    if let Some(header_offset) = parent_variable.unit_header_offset {
+                        let unit_header =
+                            self.dwarf.debug_info.header_from_offset(header_offset)?;
+                        let unit_info = UnitInfo {
+                            debug_info: self,
+                            unit: gimli::Unit::new(&self.dwarf, unit_header)?,
+                        };
+                        // Reference to a type, or an node.entry() to another type or a type modifier which will point to another type.
+                        let mut type_tree = unit_info
+                            .unit
+                            .header
+                            .entries_tree(&unit_info.unit.abbreviations, Some(reference_offset))?;
+                        let referenced_node = type_tree.root()?;
+                        let mut referenced_variable = cache.cache_variable(
+                            Some(parent_variable.variable_key),
+                            Variable::new(
+                                unit_info.unit.header.offset().as_debug_info_offset(),
+                                Some(referenced_node.entry().offset()),
+                            ),
+                            core,
+                        )?;
 
-                    match &parent_variable.name {
-                        VariableName::Named(name) => {
-                            if name.starts_with("Some") {
-                                referenced_variable.name =
-                                    VariableName::Named(name.replacen("&", "*", 1));
-                            } else {
-                                referenced_variable.name =
-                                    VariableName::Named(format!("*{}", name));
-                                // Now, retrieve the location by reading the adddress pointed to by the parent variable.
+                        match &parent_variable.name {
+                                VariableName::Named(name) => {
+                                    if name.starts_with("Some") {
+                                        referenced_variable.name =
+                                            VariableName::Named(name.replacen("&", "*", 1));
+                                    } else {
+                                        referenced_variable.name =
+                                            VariableName::Named(format!("*{}", name));
+                                    }
+                                }
+                                other => referenced_variable.name = VariableName::Named(format!("ERROR: Unable to generate name, parent variable does not have a name but is special variable {:?}", other)),
                             }
+                        // Now, retrieve the location by reading the adddress pointed to by the parent variable.
+                        referenced_variable.memory_location = match core
+                            .read_word_32(parent_variable.memory_location as u32)
+                        {
+                            Ok(memory_location) => memory_location as u64,
+                            Err(error) => {
+                                log::error!("Failed to read referenced variable address from memory location {:#010x} : {}.", parent_variable.memory_location as u32, error);
+                                0_u64
+                            }
+                        };
+                        referenced_variable = cache.cache_variable(
+                            referenced_variable.parent_key,
+                            referenced_variable,
+                            core,
+                        )?;
+                        if referenced_variable.memory_location == 0 {
+                            // TODO: It is not clear why this happens ... needs more investigation. in the mean time ...
+                            cache.remove_cache_entry(referenced_variable.variable_key)?;
+                            parent_variable.variable_node_type = VariableNodeType::DoNotRecurse;
+                        } else if referenced_variable.type_name.contains("()") {
+                            // Only use this, if it is NOT a unit datatype.
+                            cache.remove_cache_entry(referenced_variable.variable_key)?;
+                        } else {
+                            unit_info.extract_type(
+                                referenced_node,
+                                parent_variable,
+                                referenced_variable,
+                                core,
+                                stack_frame_registers,
+                                cache,
+                            )?;
                         }
-                        // Create a dummy variable, which is filtered out again in `adopt_grand_children`.
-                        VariableName::Statics => {
-                            referenced_variable.name = VariableName::Named("*<statics>".to_string());
-                        }
-                        other => referenced_variable.name = VariableName::Named(format!("ERROR: Unable to generate name, parent variable does not have a name but is special variable {:?}", other)),
-                    }
-
-                    let mut buff = [0u8; 4];
-                    core.read(parent_variable.memory_location as u32, &mut buff)?;
-                    referenced_variable.memory_location = u32::from_le_bytes(buff) as u64;
-                    referenced_variable = cache.cache_variable(
-                        referenced_variable.parent_key,
-                        referenced_variable,
-                        core,
-                    )?;
-                    referenced_variable = unit_info.extract_type(
-                        referenced_node,
-                        parent_variable,
-                        referenced_variable,
-                        core,
-                        stack_frame_registers,
-                        cache,
-                    )?;
-
-                    // Only use this, if it is NOT a unit datatype.
-                    if referenced_variable.type_name.contains("()") {
-                        cache.remove_cache_entry(referenced_variable.variable_key)?;
-                    } else if parent_variable.name == VariableName::Statics {
-                        // If we are lazily resolving `<statics>`, then we need to eliminate the intermediate node
-                        cache.adopt_grand_children(parent_variable, &referenced_variable)?;
                     }
                 }
+            }
+            VariableNodeType::TypeOffset(type_offset) => {
+                // Only attempt this if the children are not already resolved.
+                if !cache.has_children(parent_variable)? {
+                    if let Some(header_offset) = parent_variable.unit_header_offset {
+                        let unit_header =
+                            self.dwarf.debug_info.header_from_offset(header_offset)?;
+                        let unit_info = UnitInfo {
+                            debug_info: self,
+                            unit: gimli::Unit::new(&self.dwarf, unit_header)?,
+                        };
+                        // Find the parent node
+                        let mut type_tree = unit_info
+                            .unit
+                            .header
+                            .entries_tree(&unit_info.unit.abbreviations, Some(type_offset))?;
+                        let parent_node = type_tree.root()?;
+
+                        // For process_tree we need to create a temporary parent that will later be eliminated with VariableCache::adopt_grand_children
+                        // TODO: Investigate if UnitInfo::process_tree can be modified to use `&mut parent_variable`, then we would not need this temporary variable.
+                        let mut temporary_variable = parent_variable.clone();
+                        temporary_variable.variable_key = 0;
+                        temporary_variable.parent_key = Some(parent_variable.variable_key);
+                        temporary_variable = cache.cache_variable(
+                            Some(parent_variable.variable_key),
+                            temporary_variable,
+                            core,
+                        )?;
+
+                        temporary_variable = unit_info.process_tree(
+                            parent_node,
+                            temporary_variable,
+                            core,
+                            stack_frame_registers,
+                            cache,
+                        )?;
+
+                        cache.adopt_grand_children(parent_variable, &temporary_variable)?;
+                    }
+                }
+            }
+            VariableNodeType::DirectLookup => {
+                // Only attempt this if the children are not already resolved.
+                if !cache.has_children(parent_variable)? {
+                    if let Some(header_offset) = parent_variable.unit_header_offset {
+                        let unit_header =
+                            self.dwarf.debug_info.header_from_offset(header_offset)?;
+                        let unit_info = UnitInfo {
+                            debug_info: self,
+                            unit: gimli::Unit::new(&self.dwarf, unit_header)?,
+                        };
+                        // Find the parent node
+                        let mut type_tree = unit_info.unit.header.entries_tree(
+                            &unit_info.unit.abbreviations,
+                            parent_variable.variable_unit_offset,
+                        )?;
+                        let parent_node = type_tree.root()?;
+
+                        // For process_tree we need to create a temporary parent that will later be eliminated with VariableCache::adopt_grand_children
+                        // TODO: Investigate if UnitInfo::process_tree can be modified to use `&mut parent_variable`, then we would not need this temporary variable.
+                        let mut temporary_variable = parent_variable.clone();
+                        temporary_variable.variable_key = 0;
+                        temporary_variable.parent_key = Some(parent_variable.variable_key);
+                        temporary_variable = cache.cache_variable(
+                            Some(parent_variable.variable_key),
+                            temporary_variable,
+                            core,
+                        )?;
+
+                        temporary_variable = unit_info.process_tree(
+                            parent_node,
+                            temporary_variable,
+                            core,
+                            stack_frame_registers,
+                            cache,
+                        )?;
+
+                        cache.adopt_grand_children(parent_variable, &temporary_variable)?;
+                    }
+                }
+            }
+            VariableNodeType::DoNotRecurse | VariableNodeType::RecurseToBaseType => {
+                // Do nothing. These have already been recursed to their maximum.
             }
         }
         Ok(())
@@ -1104,7 +677,6 @@ impl DebugInfo {
     /// This function will also populate the `DebugInfo::VariableCache` with in scope `Variable`s for each `StackFrame`
     fn get_stackframe_info(
         &self,
-        cache: &mut VariableCache,
         core: &mut Core<'_>,
         address: u64,
         unwind_registers: &Registers,
@@ -1156,90 +728,47 @@ impl DebugInfo {
 
                 log::debug!("UNWIND: Call site: {:?}", inlined_caller_source_location);
 
-                // Now that we have the function_name and function_source_location, we can cache the in-scope `Variable`s (`<statics>` and `<locals>`) in `DebugInfo::VariableCache`
-                // We need an empty parent variable for the next operation, but do not need to store it in the cache.
-                let parent_variable = Variable::new(None, None);
-                let mut stackframe_root_variable = Variable::new(
-                    unit_info.unit.header.offset().as_debug_info_offset(),
-                    Some(function_die.function_die.offset()),
-                );
-                stackframe_root_variable.name = VariableName::StackFrame;
-                stackframe_root_variable.source_location = inlined_caller_source_location.clone();
+                log::trace!("UNWIND: Function name: {}", function_name);
 
-                let function_display_name = if function_die.is_inline() {
-                    format!("{} #[inline]", &function_name)
-                } else {
-                    format!("{} @{:#010x}", &function_name, address)
-                };
-                stackframe_root_variable.set_value(function_display_name);
-                stackframe_root_variable = unit_info.extract_location(
-                    &unit_info
-                        .unit
-                        .entries_tree(Some(function_die.function_die.offset()))?
-                        .root()?,
-                    &parent_variable,
-                    stackframe_root_variable,
-                    core,
-                    &stack_frame_registers,
-                    cache,
-                )?;
-
-                stackframe_root_variable = cache.cache_variable(
-                    parent_variable.variable_key,
-                    stackframe_root_variable,
-                    core,
-                )?;
-
-                if let Some(error) = self
-                    .cache_register_variables(
-                        cache,
-                        &stack_frame_registers,
-                        &stackframe_root_variable,
-                        core,
-                    )
-                    .err()
-                {
-                    log::warn!(
-                        "Could not resolve register variables.{}. Continuing...",
-                        error
+                // Now that we have the function_name and function_source_location, we can create the appropriate variable caches for this stack frame.
+                // Resolve the statics that belong to the compilation unit that this function is in.
+                let static_variables = self
+                    .create_static_scope_cache(core, &unit_info)
+                    .map_or_else(
+                        |error| {
+                            log::error!(
+                                "Could not resolve static variables. {}. Continuing...",
+                                error
+                            );
+                            None
+                        },
+                        Some,
                     );
-                }
-
-                // Next, resolve the statics that belong to the compilation unit that this function is in.
-                if let Some(error) = self
-                    .cache_static_variables(
-                        cache,
-                        core,
-                        &unit_info,
-                        &stack_frame_registers,
-                        &stackframe_root_variable,
-                    )
-                    .err()
-                {
-                    log::warn!(
-                        "Error while resolving static variables.{}. Continuing...",
-                        error
-                    );
-                }
 
                 // Next, resolve and cache the function variables.
-                self.cache_function_variables(
-                    cache,
-                    core,
-                    function_die,
-                    &unit_info,
-                    &stack_frame_registers,
-                    &stackframe_root_variable,
-                )?;
+                let local_variables = self
+                    .create_function_scope_cache(core, function_die, &unit_info)
+                    .map_or_else(
+                        |error| {
+                            log::error!(
+                                "Could not resolve function variables. {}. Continuing...",
+                                error
+                            );
+                            None
+                        },
+                        Some,
+                    );
 
                 frames.push(StackFrame {
                     // MS DAP Specification requires the id to be unique accross all threads, so using  so using unique `Variable::variable_key` of the `stackframe_root_variable` as the id.
-                    id: stackframe_root_variable.variable_key as u64,
+                    id: get_sequential_key(),
                     function_name,
                     source_location: inlined_caller_source_location,
                     registers: stack_frame_registers.clone(),
                     pc: inlined_call_site.unwrap(),
                     is_inlined: function_die.is_inline(),
+                    static_variables,
+                    local_variables,
                 });
             }
 
@@ -1252,146 +781,490 @@ impl DebugInfo {
 
             let function_location = self.get_source_location(address);
 
-            // Now that we have the function_name and function_source_location, we can cache the in-scope `Variable`s (`<statics>` and `<locals>`) in `DebugInfo::VariableCache`
-            // We need an empty parent variable for the next operation, but do not need to store it in the cache.
-            let parent_variable = Variable::new(None, None);
-            let mut stackframe_root_variable = Variable::new(
-                unit_info.unit.header.offset().as_debug_info_offset(),
-                Some(last_function.function_die.offset()),
-            );
-            stackframe_root_variable.name = VariableName::StackFrame;
-            stackframe_root_variable.source_location = function_location.clone();
-            let function_display_name = if last_function.is_inline() {
-                format!("{} #[inline]", &function_name)
-            } else {
-                format!("{} @{:#010x}", &function_name, address)
-            };
-            stackframe_root_variable.set_value(function_display_name);
-            stackframe_root_variable = unit_info.extract_location(
-                &unit_info
-                    .unit
-                    .entries_tree(Some(last_function.function_die.offset()))?
-                    .root()?,
-                &parent_variable,
-                stackframe_root_variable,
-                core,
-                &stack_frame_registers,
-                cache,
-            )?;
-
-            stackframe_root_variable = cache.cache_variable(
-                parent_variable.variable_key,
-                stackframe_root_variable,
-                core,
-            )?;
-
-            if let Some(error) = self
-                .cache_register_variables(
-                    cache,
-                    &stack_frame_registers,
-                    &stackframe_root_variable,
-                    core,
-                )
-                .err()
-            {
-                log::warn!(
-                    "Could not resolve register variables.{}. Continuing...",
-                    error
+            // Now that we have the function_name and function_source_location, we can create the appropriate variable caches for this stack frame.
+            // Resolve the statics that belong to the compilation unit that this function is in.
+            let static_variables = self
+                .create_static_scope_cache(core, &unit_info)
+                .map_or_else(
+                    |error| {
+                        log::error!(
+                            "Could not resolve static variables. {}. Continuing...",
+                            error
+                        );
+                        None
+                    },
+                    Some,
                 );
-            }
-
-            // Next, resolve the statics that belong to the compilation unit that this function is in.
-            if let Some(error) = self
-                .cache_static_variables(
-                    cache,
-                    core,
-                    &unit_info,
-                    &stack_frame_registers,
-                    &stackframe_root_variable,
-                )
-                .err()
-            {
-                log::warn!(
-                    "Error while resolving static variables.{}. Continuing...",
-                    error
-                );
-            }
 
             // Next, resolve and cache the function variables.
-            self.cache_function_variables(
-                cache,
-                core,
-                last_function,
-                &unit_info,
-                &stack_frame_registers,
-                &stackframe_root_variable,
-            )?;
+            let local_variables = self
+                .create_function_scope_cache(core, last_function, &unit_info)
+                .map_or_else(
+                    |error| {
+                        log::error!(
+                            "Could not resolve function variables. {}. Continuing...",
+                            error
+                        );
+                        None
+                    },
+                    Some,
+                );
 
             frames.push(StackFrame {
                 // MS DAP Specification requires the id to be unique accross all threads, so using  so using unique `Variable::variable_key` of the `stackframe_root_variable` as the id.
-                id: stackframe_root_variable.variable_key as u64,
+                id: get_sequential_key(),
                 function_name,
                 source_location: function_location,
                 registers: stack_frame_registers.clone(),
                 pc: address as u32,
                 is_inlined: last_function.is_inline(),
+                static_variables,
+                local_variables,
             });
 
             break;
         }
 
-        // If we get here, we were not able to identify/unwind the function information.
-        // Before returning `unknown_function` [StackFrame], make sure we at least cache the Register values.
-        // We need an empty parent variable for the next operation, but do not need to store it in the cache.
-
         if frames.is_empty() {
-            let parent_variable = Variable::new(None, None);
-            let mut stackframe_root_variable = Variable::new(None, None);
-            stackframe_root_variable.name = VariableName::StackFrame;
-            stackframe_root_variable.source_location = self.get_source_location(address);
-            stackframe_root_variable.set_value(unknown_function.clone());
-            stackframe_root_variable.memory_location = address;
-
-            stackframe_root_variable = cache.cache_variable(
-                parent_variable.variable_key,
-                stackframe_root_variable,
-                core,
-            )?;
-
-            if let Some(error) = self
-                .cache_register_variables(
-                    cache,
-                    &stack_frame_registers,
-                    &stackframe_root_variable,
-                    core,
-                )
-                .err()
-            {
-                log::warn!(
-                    "Could not resolve register variables.{}. Continuing...",
-                    error
-                );
-            }
             Ok(vec![StackFrame {
-                id: stackframe_root_variable.variable_key as u64,
+                id: get_sequential_key(),
                 function_name: unknown_function,
                 source_location: self.get_source_location(address),
-                registers: stack_frame_registers.clone(),
+                registers: stack_frame_registers,
                 pc: address as u32,
                 is_inlined: false,
+                static_variables: None,
+                local_variables: None,
             }])
         } else {
             Ok(frames)
         }
     }
 
-    pub fn try_unwind<'debuginfo, 'probe, 'core>(
-        &'debuginfo self,
-        cache: &'debuginfo mut VariableCache,
-        core: &'core mut Core<'probe>,
-        address: u64,
-    ) -> StackFrameIterator<'_, 'probe, 'core> {
-        StackFrameIterator::new(self, cache, core, address)
+    /// Performs the logical unwind of the stack and returns a `Vec<StackFrame>`
+    /// - The first 'StackFrame' represents the frame at the current PC (program counter), and ...
+    /// - Each subsequent `StackFrame` represents the **previous or calling** `StackFrame` in the call stack.
+    /// - The majority of the work happens in the `'unwind: while` loop, where each iteration will create a `StackFrame` where possible, and update the `unwind_registers` to prepare for the next iteration.
+    ///
+    /// The unwind loop will continue until we meet one of the following conditions:
+    /// - We can no longer unwind a valid PC value to be used for the next frame.
+    /// - We encounter a LR register value of 0xFFFFFFFF which is the 'Reset` value for that register.
+    /// - TODO: Catch the situation where the PC value indicates a hard-fault or other non-recoverable exception
+    /// - We can not intelligently calculate a valid LR register value from the other registers, or the gimli::RegisterRule result is a value of 0x0. Note: [DWARF](https://dwarfstd.org) 6.4.4 - CIE defines the return register address used in the `gimli::RegisterRule` tables for unwind operations. Theoretically, if we encounter a function that has `Undefined` `gimli::RegisterRule` for the return register address, it means we have reached the bottom of the stack OR the function is a 'no return' type of function. I have found actual examples (e.g. local functions) where we get `Undefined` for register rule when we cannot apply this logic. Example 1: local functions in main.rs will have LR rule as `Undefined`. Example 2: main()-> ! that is called from a trampoline will have a valid LR rule.
+    /// - Similarly, certain error conditions encountered in `StackFrameIterator` will also break out of the unwind loop.
+    /// Note: In addition to populating the `StackFrame`s, this function will also populate the `DebugInfo::VariableCache` with `Variable`s for available Registers as well as static and function variables.
+    /// TODO: Separate logic for stackframe creation and cache population
+    pub fn unwind(&self, core: &mut Core, address: u64) -> Result<Vec<StackFrame>, crate::Error> {
+        let mut stack_frames = Vec::<StackFrame>::new();
+        let mut unwind_registers = Registers::from_core(core);
+        // Register state as updated for every iteration (previous function) of the unwind process.
+        if unwind_registers.get_program_counter().is_none() {
+            unwind_registers.set_program_counter(Some(address as u32));
+        }
+        let mut unwind_context: Box<UnwindContext<DwarfReader>> =
+            Box::new(gimli::UnwindContext::new());
+        let unwind_bases = gimli::BaseAddresses::default();
+
+        // Unwind [StackFrame]'s for as long as we can unwind a valid PC value.
+        'unwind: while let Some(frame_pc) = unwind_registers
+            .get_program_counter()
+            .map(|frame_pc| frame_pc as u64)
+        {
+            // PART 1: Construct the `StackFrame` for the current pc.
+            log::trace!(
+                "UNWIND: Will generate `StackFrame` for function at address (PC) {:#010x}",
+                frame_pc,
+            );
+
+            //
+            // PART 1-a: Prepare the `StackFrame` that holds the current frame information.
+            let return_frame = match self.get_stackframe_info(core, frame_pc, &unwind_registers) {
+                Ok(mut cached_stack_frames) => {
+                    while cached_stack_frames.len() > 1 {
+                        // If we encountered INLINED functions (all `StackFrames`s in this Vec, except for the last one, which is the containing NON-INLINED function), these are simply added to the list of stack_frames we return.
+                        let inlined_frame = cached_stack_frames.pop().unwrap(); // unwrap is safe while .len() > 1
+                        log::trace!(
+                            "UNWIND: Found inlined function - name={}, pc={:#010x}",
+                            inlined_frame.function_name,
+                            inlined_frame.pc
+                        );
+                        stack_frames.push(inlined_frame);
+                    }
+                    if cached_stack_frames.len() == 1 {
+                        // If there is only one stack frame, then it is a NON-INLINED function, and we will attempt to unwind further.
+                        cached_stack_frames.pop().unwrap() // unwrap is safe for .len==1
+                    } else {
+                        // Obviously something has gone wrong and zero stackframes were returned in the vector.
+                        log::error!("UNWIND: No `StackFrame` information: available");
+                        // There is no point in continuing with the unwind, so let's get out of here.
+                        break;
+                    }
+                }
+                Err(e) => {
+                    log::error!("UNWIND: Unable to complete `StackFrame` information: {}", e);
+                    // There is no point in continuing with the unwind, so let's get out of here.
+                    break;
+                }
+            };
+
+            // Part 1-b: Check LR values to determine if we can continue unwinding.
+            // TODO: ARM has special ranges of LR addresses to indicate fault conditions. We should check those also.
+            if let Some(check_return_address) = unwind_registers.get_return_address() {
+                if check_return_address == u32::MAX {
+                    // When we encounter the starting (after reset) return address, we've reached the bottom of the stack, so no more unwinding after this.
+                    // TODO: Validate that this applies to RISCV also.
+                    stack_frames.push(return_frame);
+                    log::trace!("UNWIND: Stack unwind complete - Reached the 'Reset' value of the LR register.");
+                    break;
+                }
+            } else {
+                // If the debug info rules result in a None return address, we cannot continue unwinding.
+                stack_frames.push(return_frame);
+                log::trace!("UNWIND: Stack unwind complete - LR register value is 'None.");
+                break;
+            }
+
+            // PART 2: Setup the registers for the next iteration (a.k.a. unwind previous frame, a.k.a. "callee", in the call stack).
+            log::trace!(
+            "UNWIND - Preparing `StackFrameIterator` to unwind NON-INLINED function {:?} at {:?}",
+            return_frame.function_name,
+            return_frame.source_location
+        );
+            // PART 2-a: get the `gimli::FrameDescriptorEntry` for this address and then the unwind info associated with this row.
+            // TODO: The `gimli` docs for this function talks about cases where there might be more than one FDE for a function. Investigate if this affects RUST and how to solve.
+            use gimli::UnwindSection;
+            let frame_descriptor_entry = match self.frame_section.fde_for_address(
+                &unwind_bases,
+                frame_pc,
+                gimli::DebugFrame::cie_from_offset,
+            ) {
+                Ok(frame_descriptor_entry) => frame_descriptor_entry,
+                Err(error) => {
+                    log::error!(
+                        "UNWIND: Error reading FrameDescriptorEntry at PC={:#010x} : {}",
+                        frame_pc,
+                        error
+                    );
+                    stack_frames.push(return_frame);
+                    break;
+                }
+            };
+
+            match frame_descriptor_entry.unwind_info_for_address(
+                &self.frame_section,
+                &unwind_bases,
+                &mut unwind_context,
+                frame_pc,
+            ) {
+                Ok(unwind_info) => {
+                    // Because we will be updating the `unwind_registers` with previous frame unwind info, we need to keep a copy of the current frame's registers that can be used to resolve [DWARF](https://dwarfstd.org) expressions.
+                    let callee_frame_registers = unwind_registers.clone();
+                    // PART 2-b: Determine the CFA (canonical frame address) to use for this unwind row.
+                    let unwind_cfa = match unwind_info.cfa() {
+                        gimli::CfaRule::RegisterAndOffset { register, offset } => {
+                            let reg_val = unwind_registers
+                                .get_value_by_dwarf_register_number(register.0 as u32);
+                            match reg_val {
+                                Some(reg_val) => {
+                                    let unwind_cfa = (i64::from(reg_val) + offset) as u32;
+                                    log::trace!(
+                                        "UNWIND - CFA : {:#010x}\tRule: {:?}",
+                                        unwind_cfa,
+                                        unwind_info.cfa()
+                                    );
+                                    Some(unwind_cfa)
+                                }
+                                None => {
+                                    log::error!("UNWIND: `StackFrameIterator` unable to determine the unwind CFA: Missing value of register {}",register.0);
+                                    stack_frames.push(return_frame);
+                                    break;
+                                }
+                            }
+                        }
+                        gimli::CfaRule::Expression(_) => unimplemented!(),
+                    };
+
+                    // PART 2-c: Unwind registers for the "previous/calling" frame.
+                    // TODO: Test for RISCV ... This is only tested for ARM right now.
+                    // TODO: Maybe do some cleanup on the `Registerfile` API, to make the following more ergonomic.
+                    for register_number in 0..unwind_registers
+                        .register_description
+                        .platform_registers
+                        .len() as u32
+                    {
+                        use gimli::read::RegisterRule::*;
+
+                        let register_rule =
+                            unwind_info.register(gimli::Register(register_number as u16));
+
+                        let mut register_rule_string = format!("{:?}", register_rule);
+
+                        let new_value = match register_rule {
+                            Undefined => {
+                                // In many cases, the DWARF has `Undefined` rules for variables like frame pointer, program counter, etc., so we hard-code some rules here to make sure unwinding can continue. If there is a valid rule, it will bypass these hardcoded ones.
+                                match register_number {
+                                    _fp if register_number
+                                        == unwind_registers
+                                            .register_description
+                                            .frame_pointer()
+                                            .address
+                                            .0
+                                            as u32 =>
+                                    {
+                                        register_rule_string =
+                                            "FP=CFA (dwarf Undefined)".to_string();
+                                        callee_frame_registers.get_frame_pointer()
+                                    }
+                                    _sp if register_number
+                                        == unwind_registers
+                                            .register_description
+                                            .stack_pointer()
+                                            .address
+                                            .0
+                                            as u32 =>
+                                    {
+                                        // TODO: ARM Specific - Add rules for RISCV
+                                        // NOTE: [ARMv7-M Architecture Reference Manual](https://developer.arm.com/documentation/ddi0403/ee), Section B.1.4.1: Treat bits [1:0] as `Should be Zero or Preserved`
+                                        register_rule_string =
+                                            "SP=CFA (dwarf Undefined)".to_string();
+                                        unwind_cfa.map(|unwind_cfa| unwind_cfa & !0b11)
+                                    }
+                                    _lr if register_number
+                                        == unwind_registers
+                                            .register_description
+                                            .return_address()
+                                            .address
+                                            .0
+                                            as u32 =>
+                                    {
+                                        // This value is used to determine the Undefined PC value, and will be set correctly later on in this method.
+                                        register_rule_string =
+                                            "LR=current LR (dwarf Undefined)".to_string();
+                                        callee_frame_registers.get_return_address()
+                                    }
+                                    _pc if register_number
+                                        == unwind_registers
+                                            .register_description
+                                            .program_counter()
+                                            .address
+                                            .0
+                                            as u32 =>
+                                    {
+                                        // NOTE: [ARMv7-M Architecture Reference Manual](https://developer.arm.com/documentation/ddi0403/ee), Section A5.1.2: We have to clear the last bit to ensure the PC is half-word aligned. (on ARM architecture, when in Thumb state for certain instruction types will set the LSB to 1)
+                                        // NOTE: PC = Current instruction + 1 address, so to reverse this from LR return address, we have to subtract 4 bytes
+                                        // TODO: Ensure that this operation does not seem to have a negative effect on RISCV.
+                                        let address_size =
+                                            frame_descriptor_entry.cie().address_size() as u32;
+                                        register_rule_string = format!(
+                                            "PC=(unwound LR & !0b1) - {} (dwarf Undefined)",
+                                            address_size
+                                        );
+                                        unwind_registers.get_return_address().and_then(
+                                            |return_address| {
+                                                if return_address == u32::MAX {
+                                                    // No reliable return is available.
+                                                    None
+                                                } else if return_address.is_zero() {
+                                                    Some(0)
+                                                } else {
+                                                    Some((return_address - address_size) & !0b1)
+                                                }
+                                            },
+                                        )
+                                    }
+                                    _ => {
+                                        // This will result in the register value being cleared for the previous frame.
+                                        None
+                                    }
+                                }
+                            }
+                            SameValue => callee_frame_registers
+                                .get_value_by_dwarf_register_number(register_number),
+                            Offset(address_offset) => {
+                                if let Some(unwind_cfa) = unwind_cfa {
+                                    let previous_frame_register_address =
+                                        i64::from(unwind_cfa) + address_offset;
+                                    let mut buff = [0u8; 4];
+                                    if let Err(e) =
+                                        core.read(previous_frame_register_address as u32, &mut buff)
+                                    {
+                                        log::error!(
+                                                        "UNWIND: Failed to read from address {:#010x} ({} bytes): {}",
+                                                        previous_frame_register_address,
+                                                        4,
+                                                        e
+                                                    );
+                                        log::error!(
+                                            "UNWIND: Rule: Offset {} from address {:#010x}",
+                                            address_offset,
+                                            unwind_cfa
+                                        );
+                                        stack_frames.push(return_frame);
+                                        break 'unwind;
+                                    }
+                                    let previous_frame_register_value = u32::from_le_bytes(buff);
+                                    Some(previous_frame_register_value as u32)
+                                } else {
+                                    log::error!("UNWIND: Tried to unwind `RegisterRule` at CFA = None. Please report this as a bug.");
+                                    stack_frames.push(return_frame);
+                                    break 'unwind;
+                                }
+                            }
+                            //TODO: Implement the remainder of these `RegisterRule`s
+                            _ => unimplemented!(),
+                        };
+
+                        unwind_registers.set_by_dwarf_register_number(register_number, new_value);
+                        log::trace!(
+                            "UNWIND - {:04?}: Caller: {:#010x}\tCallee: {:#010x}\tRule: {}",
+                            unwind_registers.get_name_by_dwarf_register_number(register_number),
+                            unwind_registers
+                                .get_value_by_dwarf_register_number(register_number)
+                                .unwrap_or_default(),
+                            callee_frame_registers
+                                .get_value_by_dwarf_register_number(register_number)
+                                .unwrap_or_default(),
+                            register_rule_string,
+                        );
+                    }
+                }
+                Err(error) => {
+                    log::trace!("UNWIND: Stack unwind complete. No available debug info for program counter {:#x}: {}", frame_pc, error);
+                    stack_frames.push(return_frame);
+                    break;
+                }
+            };
+
+            // PART 3: In order to set the correct value of the previous frame we need to peek one frame deeper in the stack.
+            // NOTE: ARM Specific.
+            // TODO: Investigate and document why and under which circumstances this extra step is necessary. It was added during PR#895.
+            // TODO: Test on RISCV and fix as needed
+            if let Some(previous_frame_pc) = unwind_registers.get_program_counter() {
+                let previous_frame_descriptor_entry = match self.frame_section.fde_for_address(
+                    &unwind_bases,
+                    previous_frame_pc as u64,
+                    gimli::DebugFrame::cie_from_offset,
+                ) {
+                    Ok(frame_descriptor_entry) => frame_descriptor_entry,
+                    Err(error) => {
+                        log::error!(
+                        "UNWIND: Error reading previous FrameDescriptorEntry at PC={:#010x} : {}",
+                        previous_frame_pc,
+                        error
+                    );
+                        stack_frames.push(return_frame);
+                        break;
+                    }
+                };
+
+                match previous_frame_descriptor_entry.unwind_info_for_address(
+                    &self.frame_section,
+                    &unwind_bases,
+                    &mut unwind_context,
+                    previous_frame_pc as u64,
+                ) {
+                    Ok(previous_unwind_info) => {
+                        let previous_unwind_cfa = match previous_unwind_info.cfa() {
+                            gimli::CfaRule::RegisterAndOffset { register, offset } => {
+                                let reg_val = unwind_registers
+                                    .get_value_by_dwarf_register_number(register.0 as u32);
+                                match reg_val {
+                                    Some(reg_val) => {
+                                        let unwind_cfa = (i64::from(reg_val) + offset) as u32;
+                                        log::trace!(
+                                            "UNWIND - CFA : {:#010x}\tRule: Previous Function {:?}",
+                                            unwind_cfa,
+                                            previous_unwind_info.cfa()
+                                        );
+                                        Some(unwind_cfa)
+                                    }
+                                    None => {
+                                        log::error!(
+                                                        "UNWIND: `StackFrameIterator` unable to determine the previous frame unwind CFA: Missing value of register {}",
+                                                        register.0
+                                                    );
+                                        stack_frames.push(return_frame);
+                                        break;
+                                    }
+                                }
+                            }
+                            gimli::CfaRule::Expression(_) => unimplemented!(),
+                        };
+                        use gimli::read::RegisterRule::*;
+
+                        let return_register_number = previous_frame_descriptor_entry
+                            .cie()
+                            .return_address_register()
+                            .0 as u32;
+                        let register_rule = previous_unwind_info
+                            .register(gimli::Register(return_register_number as u16));
+
+                        let register_rule_string = format!("{:?}", register_rule);
+
+                        let new_return_value = match register_rule {
+                            Undefined => None,
+                            SameValue => unwind_registers
+                                .get_value_by_dwarf_register_number(return_register_number),
+                            Offset(address_offset) => {
+                                if let Some(unwind_cfa) = previous_unwind_cfa {
+                                    let previous_frame_register_address =
+                                        i64::from(unwind_cfa) + address_offset;
+                                    let mut buff = [0u8; 4];
+                                    if let Err(e) =
+                                        core.read(previous_frame_register_address as u32, &mut buff)
+                                    {
+                                        log::error!(
+                                                        "UNWIND: Failed to read from address {:#010x} ({} bytes): {}",
+                                                        previous_frame_register_address,
+                                                        4,
+                                                        e
+                                                    );
+                                        log::error!(
+                                            "UNWIND: Rule: Offset {} from address {:#010x}",
+                                            address_offset,
+                                            unwind_cfa
+                                        );
+                                        stack_frames.push(return_frame);
+                                        break;
+                                    }
+                                    let previous_frame_register_value = u32::from_le_bytes(buff);
+                                    Some(previous_frame_register_value as u32)
+                                } else {
+                                    log::error!("UNWIND: Tried to unwind `RegisterRule` at CFA = None. Please report this as a bug.");
+                                    stack_frames.push(return_frame);
+                                    break;
+                                }
+                            }
+                            //TODO: Implement the remainder of these `RegisterRule`s
+                            _ => unimplemented!(),
+                        };
+                        unwind_registers
+                            .set_by_dwarf_register_number(return_register_number, new_return_value);
+                        log::trace!(
+                        "UNWIND - {:04?}: Caller: {:#010x}\tRule: Override with previous frame {}",
+                        unwind_registers
+                            .get_name_by_dwarf_register_number(return_register_number),
+                        unwind_registers
+                            .get_value_by_dwarf_register_number(return_register_number)
+                            .unwrap_or_default(),
+                        register_rule_string,
+                    );
+                    }
+                    Err(error) => {
+                        log::trace!("UNWIND: Stack unwind complete. No available debug info for program counter {:#x}: {}",frame_pc, error);
+                        stack_frames.push(return_frame);
+                        break;
+                    }
+                };
+            } else {
+                log::error!("UNWIND: Cannot read previous FrameDescriptorEntry without a valid PC");
+                stack_frames.push(return_frame);
+                break;
+            }
+            stack_frames.push(return_frame);
+        }
+
+        Ok(stack_frames)
     }
 
     /// Find the program counter where a breakpoint should be set,
@@ -1933,7 +1806,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
         cache: &mut VariableCache,
     ) -> Result<Variable, DebugError> {
         // Identify the parent.
-        child_variable.parent_key = parent_variable.variable_key;
+        child_variable.parent_key = Some(parent_variable.variable_key);
 
         // It often happens that intermediate nodes exist for structure reasons,
         // so we need to pass values like 'member_index' from the parent down to the next level child nodes.
@@ -2115,7 +1988,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                 .entries_tree(&self.unit.abbreviations, Some(unit_ref))?;
                             let mut discriminant_node = type_tree.root()?;
                             let mut discriminant_variable = cache.cache_variable(
-                                parent_variable.variable_key,
+                                Some(parent_variable.variable_key),
                                 Variable::new(
                                     self.unit.header.offset().as_debug_info_offset(),
                                     Some(discriminant_node.entry().offset()),
@@ -2251,14 +2124,14 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
 
                     namespace_variable.type_name = "<namespace>".to_string();
                     namespace_variable.memory_location = 0;
-                    namespace_variable = cache.cache_variable(parent_variable.variable_key, namespace_variable, core)?;
+                    namespace_variable = cache.cache_variable(Some(parent_variable.variable_key), namespace_variable, core)?;
 
                     let mut namespace_children_nodes = child_node.children();
                     while let Some(mut namespace_child_node) = namespace_children_nodes.next()? {
                         match namespace_child_node.entry().tag() {
                             gimli::DW_TAG_variable => {
                                 // We only want the TOP level variables of the namespace (statics).
-                                let static_child_variable = cache.cache_variable(namespace_variable.variable_key, Variable::new(
+                                let static_child_variable = cache.cache_variable(Some(namespace_variable.variable_key), Variable::new(
                                     self.unit.header.offset().as_debug_info_offset(),
                                     Some(namespace_child_node.entry().offset()),), core)?;
                                 self.process_tree_node_attributes(&mut namespace_child_node, &mut namespace_variable, static_child_variable, core, stack_frame_registers, cache)?;
@@ -2280,7 +2153,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                 } else { VariableName::AnonymousNamespace};
                                 namespace_child_variable.type_name = "<namespace>".to_string();
                                 namespace_child_variable.memory_location = 0;
-                                namespace_child_variable = cache.cache_variable(namespace_variable.variable_key, namespace_child_variable, core)?;
+                                namespace_child_variable = cache.cache_variable(Some(namespace_variable.variable_key), namespace_child_variable, core)?;
                                 namespace_child_variable = self.process_tree(namespace_child_node, namespace_child_variable, core, stack_frame_registers, cache, )?;
                                 if !cache.has_children(&namespace_child_variable)? {
                                     cache.remove_cache_entry(namespace_child_variable.variable_key)?;
@@ -2299,7 +2172,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                 gimli::DW_TAG_member |      // Members of structured types.
                 gimli::DW_TAG_enumerator    // Possible values for enumerators, used by extract_type() when processing DW_TAG_enumeration_type.
                 => {
-                    let mut child_variable = cache.cache_variable(parent_variable.variable_key, Variable::new(
+                    let mut child_variable = cache.cache_variable(Some(parent_variable.variable_key), Variable::new(
                     self.unit.header.offset().as_debug_info_offset(),
                     Some(child_node.entry().offset()),
                 ), core)?;
@@ -2309,11 +2182,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                         ||  child_variable.name == VariableName::Artifical
                     {
                         cache.remove_cache_entry(child_variable.variable_key)?;
-                    } else if child_variable.type_name == "Some" {
-                        //This is an intermediate node. Once we've resolved the children, we can adopt them to their grandparent
-                        cache.adopt_grand_children(&parent_variable, &child_variable)?;
-                    }
-                    else {
+                    } else {
                         // Recursively process each child.
                         self.process_tree(child_node, child_variable, core, stack_frame_registers, cache, )?;
                     }
@@ -2328,7 +2197,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                     //              Level 4: --> The actual variables, with matching discriminant, which will be added to `parent_variable`
                     // TODO: Handle Level 3 nodes that belong to a DW_AT_discr_list, instead of having a discreet DW_AT_discr_value 
                     let mut child_variable = cache.cache_variable(
-                        parent_variable.variable_key,
+                        Some(parent_variable.variable_key),
                         Variable::new(self.unit.header.offset().as_debug_info_offset(),Some(child_node.entry().offset())),
                         core
                     )?;
@@ -2348,7 +2217,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                     // We only need to do this if we have not already found our variant,
                     if !cache.has_children(&parent_variable)? {
                         let mut child_variable = cache.cache_variable(
-                            parent_variable.variable_key,
+                            Some(parent_variable.variable_key),
                             Variable::new(self.unit.header.offset().as_debug_info_offset(), Some(child_node.entry().offset())),
                             core
                         )?;
@@ -2374,7 +2243,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                 gimli::DW_TAG_subrange_type => {
                     // This tag is a child node fore parent types such as (array, vector, etc.).
                     // Recursively process each node, but pass the parent_variable so that new children are caught despite missing these tags.
-                    let mut range_variable = cache.cache_variable(parent_variable.variable_key,Variable::new(
+                    let mut range_variable = cache.cache_variable(Some(parent_variable.variable_key),Variable::new(
                     self.unit.header.offset().as_debug_info_offset(),
                     Some(child_node.entry().offset()),
                 ), core)?;
@@ -2546,6 +2415,18 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                 format!("ERROR: evaluating name: {:?} ", error)
             }
         };
+        if child_variable.type_name.starts_with("&str")
+            || child_variable.type_name.starts_with("Option")
+            || child_variable.type_name.starts_with("Some")
+            || child_variable.type_name.starts_with("Result")
+            || child_variable.type_name.starts_with("Ok")
+            || child_variable.type_name.starts_with("Err")
+            || child_variable.type_name.starts_with("*const")
+            || child_variable.type_name.starts_with("*mut")
+        {
+            // In some cases, it really simplifies the UX if we can auto resolve the children and derive a value that is visible at first glance to the user.
+            child_variable.variable_node_type = VariableNodeType::RecurseToBaseType;
+        }
         child_variable.byte_size = extract_byte_size(self.debug_info, node.entry());
         match node.entry().tag() {
             gimli::DW_TAG_base_type => {
@@ -2572,29 +2453,22 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                             Some(data_type_attribute) => {
                                 match data_type_attribute.value() {
                                     gimli::AttributeValue::UnitRef(unit_ref) => {
-                                        child_variable.referenced_node_offset = Some(unit_ref);
-                                        child_variable.stack_frame_registers =
-                                            Some(stack_frame_registers.clone());
-                                        if child_variable.type_name.starts_with("*const") {
+                                        if child_variable.variable_node_type
+                                            == VariableNodeType::RecurseToBaseType
+                                        {
                                             // Resolve the children of this variable, because they contain essential information required to resolve the value
-                                            self.debug_info.cache_referenced_variables(
+                                            child_variable.variable_node_type =
+                                                VariableNodeType::ReferenceOffset(unit_ref);
+                                            self.debug_info.cache_deferred_variables(
                                                 cache,
                                                 core,
-                                                &child_variable,
+                                                &mut child_variable,
+                                                stack_frame_registers,
                                             )?;
-                                        } else if parent_variable.type_name == "Some" {
-                                            // The parent `DW_TAG_structure_type` with name `Some` is an intermediate node that we only need for its children
-                                            // Update the child's name for when we adopt it to the grandparent later on.
-                                            child_variable.name = VariableName::Named(format!(
-                                                "Some({})",
-                                                child_variable.type_name
-                                            ));
+                                        } else {
+                                            child_variable.variable_node_type =
+                                                VariableNodeType::ReferenceOffset(unit_ref);
                                         }
-                                        child_variable = cache.cache_variable(
-                                            parent_variable.variable_key,
-                                            child_variable,
-                                            core,
-                                        )?;
                                     }
                                     other_attribute_value => {
                                         child_variable.set_value(format!(
@@ -2621,27 +2495,31 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                 }
             }
             gimli::DW_TAG_structure_type => {
-                // Recursively process a child types.
-                // Unless something is already broken, then don't dig any deeper.
                 if child_variable.memory_location != u64::MAX {
-                    child_variable = self.process_tree(
-                        node,
-                        child_variable,
-                        core,
-                        stack_frame_registers,
-                        cache,
-                    )?;
-                }
-                if !cache.has_children(&child_variable)? {
-                    // Empty structs don't have values. Use the type_name as the display value.
-                    child_variable.set_value(child_variable.type_name.clone());
+                    if child_variable.variable_node_type == VariableNodeType::RecurseToBaseType {
+                        // In some cases, it really simplifies the UX if we can auto resolve the children and dreive a value that is visible at first glance to the user.
+                        child_variable = self.process_tree(
+                            node,
+                            child_variable,
+                            core,
+                            stack_frame_registers,
+                            cache,
+                        )?;
+                    } else {
+                        // Defer the processing of child types.
+                        child_variable.variable_node_type =
+                            VariableNodeType::TypeOffset(node.entry().offset());
+                    }
+                } else {
+                    // If something is already broken, then do nothing ...
+                    child_variable.variable_node_type = VariableNodeType::DoNotRecurse;
                 }
             }
             gimli::DW_TAG_enumeration_type => {
                 // Recursively process a child types.
                 child_variable =
                     self.process_tree(node, child_variable, core, stack_frame_registers, cache)?;
-                let enumerator_values = cache.get_children(child_variable.variable_key)?;
+                let enumerator_values = cache.get_children(Some(child_variable.variable_key))?;
                 // NOTE: hard-coding value of variable.byte_size to 1 ... replace with code if necessary.
                 let mut buff = [0u8; 1];
                 core.read(child_variable.memory_location as u32, &mut buff)?;
@@ -2670,7 +2548,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                     gimli::AttributeValue::UnitRef(unit_ref) => {
                                         // First get the DW_TAG_subrange child of this node. It has a DW_AT_type that points to DW_TAG_base_type:__ARRAY_SIZE_TYPE__.
                                         let mut subrange_variable = cache.cache_variable(
-                                            child_variable.variable_key,
+                                            Some(child_variable.variable_key),
                                             Variable::new(
                                                 self.unit.header.offset().as_debug_info_offset(),
                                                 Some(node.entry().offset()),
@@ -2710,7 +2588,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                             let mut array_member_type_node =
                                                 array_member_type_tree.root().unwrap();
                                             let mut array_member_variable = cache.cache_variable(
-                                                child_variable.variable_key,
+                                                Some(child_variable.variable_key),
                                                 Variable::new(
                                                     self.unit
                                                         .header
@@ -2830,7 +2708,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                 }
             }
             gimli::DW_TAG_compile_unit => {
-                // This only happens when we do a 'lazy' load of <statics>
+                // This only happens when we do a 'lazy' load of [VariableName::StaticScope]
                 child_variable =
                     self.process_tree(node, child_variable, core, stack_frame_registers, cache)?;
             }
@@ -2843,7 +2721,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
             }
         }
         cache
-            .cache_variable(parent_variable.variable_key, child_variable, core)
+            .cache_variable(Some(parent_variable.variable_key), child_variable, core)
             .map_err(|error| error.into())
     }
 
@@ -2971,9 +2849,11 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                         }
                         other_attribute_value => {
                             child_variable.set_value(format!(
-                                "ERROR: extract_location() Could not extract location from: {:?}",
+                                "UNIMPLEMENTED: extract_location() Could not extract location from: {:?}",
                                 other_attribute_value
                             ));
+                            child_variable.memory_location = u64::MAX;
+                            child_variable.variable_node_type = VariableNodeType::DoNotRecurse;
                         }
                     }
                 }
@@ -3031,7 +2911,7 @@ fn extract_file(
                 .map(|(file, path)| (path.unwrap(), file.unwrap()))
         }),
         other => {
-            log::debug!(
+            log::warn!(
                 "Unable to extract file information from attribute value {:?}: Not implemented.",
                 other
             );
