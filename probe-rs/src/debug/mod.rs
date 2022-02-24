@@ -2789,7 +2789,11 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
         let pieces = match self.expression_to_piece(core, expression, stack_frame_registers) {
             Ok(pieces) => pieces,
             Err(err) => {
-                child_variable.set_value(format!("ERROR: expr_to_piece() failed with: {:?}", err));
+                child_variable.memory_location = u64::MAX;
+                child_variable.set_value(format!(
+                    "ERROR: expression_to_piece() failed with: {:?}",
+                    err
+                ));
                 vec![]
             }
         };
@@ -2975,8 +2979,11 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                         evaluation.resume_with_relocated_address(address_index)?
                     }
                 }
-                x => {
-                    todo!("expr_to_piece {:?}", x)
+                unimplemented_expression => {
+                    return Err(DebugError::Other(anyhow::anyhow!(
+                        "UNIMPLEMENTED: Expressions that include {:?} are not currently supported.",
+                        unimplemented_expression
+                    )));
                 }
             }
         }
