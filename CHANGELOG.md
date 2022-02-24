@@ -21,6 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added CortexM23 to Armv8m mapping for `target-gen`. (#966)
 - Added get_target_voltage to the Probe struct to access the inner DebugProbe method. (#991)
 - Debugger: Added support for showing multiple inlined functions in backtrace. (#1002)
+- Debugger: Add support for function parameters (DW_TAG_formal_parameters) and LocLists (attribute value of DW_AT_location) (#1025)
 
 ### Changed
 
