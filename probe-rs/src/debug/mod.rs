@@ -279,6 +279,8 @@ type UnitIter =
 pub struct DebugInfo {
     dwarf: gimli::Dwarf<DwarfReader>,
     frame_section: gimli::DebugFrame<DwarfReader>,
+    locations_section: gimli::LocationLists<DwarfReader>,
+    address_section: gimli::DebugAddr<DwarfReader>,
 }
 
 impl DebugInfo {
@@ -312,6 +314,10 @@ impl DebugInfo {
         use gimli::Section;
         let mut frame_section = gimli::DebugFrame::load(load_section)?;
 
+        let address_section = gimli::DebugAddr::load(load_section)?;
+        let debug_loc = gimli::DebugLoc::load(load_section)?;
+        let debug_loc_lists = gimli::DebugLocLists::load(load_section)?;
+        let locations_section = gimli::LocationLists::new(debug_loc, debug_loc_lists);
         // To support DWARF v2, where the address size is not encoded in the .debug_frame section,
         // we have to set the address size here.
         // TODO: With current versions of RUST, do we still need to do this?
@@ -320,6 +326,8 @@ impl DebugInfo {
         Ok(DebugInfo {
             dwarf: dwarf_cow,
             frame_section,
+            locations_section,
+            address_section,
         })
     }
 
@@ -1693,106 +1701,6 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
         Ok(functions)
     }
 
-    fn expr_to_piece(
-        &self,
-        core: &mut Core<'_>,
-        expression: gimli::Expression<GimliReader>,
-        stack_frame_registers: &Registers,
-    ) -> Result<Vec<gimli::Piece<GimliReader, usize>>, DebugError> {
-        let mut evaluation = expression.evaluation(self.unit.encoding());
-        let frame_base = if let Some(frame_base) = stack_frame_registers.get_frame_pointer() {
-            u64::from(frame_base)
-        } else {
-            return Err(DebugError::Other(anyhow::anyhow!(
-                "Cannot unwind `Variable` location without a valid CFA (canonical frame address)"
-            )));
-        };
-        // go for evaluation
-        let mut result = evaluation.evaluate()?;
-
-        loop {
-            use gimli::EvaluationResult::*;
-
-            result = match result {
-                Complete => break,
-                RequiresMemory { address, size, .. } => {
-                    let mut buff = vec![0u8; size as usize];
-                    core.read(address as u32, &mut buff).map_err(|_| {
-                        DebugError::Other(anyhow::anyhow!("Unexpected error while reading debug expressions from target memory. Please report this as a bug."))
-                    })?;
-                    match size {
-                        1 => evaluation.resume_with_memory(gimli::Value::U8(buff[0]))?,
-                        2 => {
-                            let val = (u16::from(buff[0]) << 8) | (u16::from(buff[1]) as u16);
-                            evaluation.resume_with_memory(gimli::Value::U16(val))?
-                        }
-                        4 => {
-                            let val = (u32::from(buff[0]) << 24)
-                                | (u32::from(buff[1]) << 16)
-                                | (u32::from(buff[2]) << 8)
-                                | u32::from(buff[3]);
-                            evaluation.resume_with_memory(gimli::Value::U32(val))?
-                        }
-                        x => {
-                            todo!(
-                                "Requested memory with size {}, which is not supported yet.",
-                                x
-                            );
-                        }
-                    }
-                }
-                RequiresFrameBase => match evaluation.resume_with_frame_base(frame_base) {
-                    Ok(evaluation_result) => evaluation_result,
-                    Err(error) => {
-                        return Err(DebugError::Other(anyhow::anyhow!(
-                            "Error while calculating `Variable::memory_location`:{}.",
-                            error
-                        )))
-                    }
-                },
-                RequiresRegister {
-                    register,
-                    base_type,
-                } => {
-                    let raw_value = match stack_frame_registers
-                        .get_value_by_dwarf_register_number(register.0 as u32)
-                    {
-                        Some(raw_value) => {
-                            if base_type != gimli::UnitOffset(0) {
-                                return Err(DebugError::Other(anyhow::anyhow!(
-                                    "UNIMPLEMENTED: Support for type {:?} in `RequiresRegister` request is not yet implemented.",
-                                    base_type
-                                )));
-                            }
-                            raw_value
-                        }
-                        None => {
-                            return Err(DebugError::Other(anyhow::anyhow!(
-                                    "Error while calculating `Variable::memory_location`. No value for register #:{}.",
-                                    register.0
-                                )));
-                        }
-                    };
-
-                    evaluation.resume_with_register(gimli::Value::Generic(raw_value as u64))?
-                }
-                RequiresRelocatedAddress(address_index) => {
-                    if address_index.is_zero() {
-                        // This is a rust-lang bug for statics ... https://github.com/rust-lang/rust/issues/32574.
-                        evaluation.resume_with_relocated_address(u64::MAX)?
-                    } else {
-                        // The address_index as an offset from 0, so just pass it into the next step.
-                        evaluation.resume_with_relocated_address(address_index)?
-                    }
-                }
-                x => {
-                    todo!("expr_to_piece {:?}", x)
-                }
-            }
-        }
-        Ok(evaluation.result())
-    }
-
     /// Recurse the ELF structure below the `tree_node`, and ...
     /// - Consumes the `child_variable`.
     /// - Returns a clone of the most up-to-date `child_variable` in the cache.
@@ -2170,6 +2078,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                 }
                 gimli::DW_TAG_variable |    // Typical top-level variables.
                 gimli::DW_TAG_member |      // Members of structured types.
+                gimli::DW_TAG_formal_parameter | // Parameters to functions
                 gimli::DW_TAG_enumerator    // Possible values for enumerators, used by extract_type() when processing DW_TAG_enumeration_type.
                 => {
                     let mut child_variable = cache.cache_variable(Some(parent_variable.variable_key), Variable::new(
@@ -2259,11 +2168,6 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                     // These show up as a child of structures they belong to and points to the type that matches the template.
                     // They are followed by a sibling of `DW_TAG_member` with name '__0' that has all the attributes needed to resolve the value.
                     // TODO: If there are multiple types supported, then I suspect there will be additional `DW_TAG_member` siblings. We will need to match those correctly.
-                }
-                gimli::DW_TAG_formal_parameter => {
-                    // TODO: WIP Parameters for functions, closures and inlined functions.
-                    // Recursively process each child.
-                    parent_variable = self.process_tree(child_node, parent_variable, core, stack_frame_registers, cache)?;
                 }
                 gimli::DW_TAG_inlined_subroutine => {
                     // Recurse the variables of inlined subroutines as normal, but beware that their name, type, etc. has to be resolved from DW_AT_abstract_origin nodes, and their location has to be passed from here (concrete location) to there (abstract location). 
@@ -2744,119 +2648,100 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
             match attr.name() {
                 gimli::DW_AT_location
                 | gimli::DW_AT_data_member_location
-                | gimli::DW_AT_frame_base => {
-                    match attr.value() {
-                        gimli::AttributeValue::Exprloc(expression) => {
-                            let pieces =
-                                match self.expr_to_piece(core, expression, stack_frame_registers) {
-                                    Ok(pieces) => pieces,
-                                    Err(err) => {
-                                        child_variable.set_value(format!(
-                                            "ERROR: expr_to_piece() failed with: {:?}",
-                                            err
-                                        ));
-                                        vec![]
-                                    }
-                                };
-                            if pieces.is_empty() {
-                                child_variable.memory_location = u64::MAX;
-                                child_variable.set_value(format!(
-                                    "ERROR: expr_to_piece() returned 0 results: {:?}",
-                                    pieces
-                                ));
-                            } else if pieces.len() > 1 {
-                                child_variable.memory_location = u64::MAX;
-                                child_variable.set_value(format!("UNIMPLEMENTED: expr_to_piece() returned more than 1 result: {:?}", pieces));
-                            } else {
-                                match &pieces[0].location {
-                                    Location::Empty => {
-                                        child_variable.memory_location = 0_u64;
-                                    }
-                                    Location::Address { address } => {
-                                        if *address == u32::MAX as u64 {
-                                            child_variable.memory_location = u64::MAX;
-                                            child_variable.set_value("BUG: Cannot resolve due to rust-lang issue https://github.com/rust-lang/rust/issues/32574".to_string());
-                                        } else {
-                                            child_variable.memory_location = *address;
-                                        }
-                                    }
-                                    Location::Value { value } => match value {
-                                        gimli::Value::Generic(value) => {
-                                            child_variable.memory_location = u64::MAX;
-                                            child_variable.set_value(value.to_string());
-                                        }
-                                        gimli::Value::I8(value) => {
-                                            child_variable.memory_location = u64::MAX;
-                                            child_variable.set_value(value.to_string());
-                                        }
-                                        gimli::Value::U8(value) => {
-                                            child_variable.memory_location = u64::MAX;
-                                            child_variable.set_value(value.to_string());
-                                        }
-                                        gimli::Value::I16(value) => {
-                                            child_variable.memory_location = u64::MAX;
-                                            child_variable.set_value(value.to_string());
-                                        }
-                                        gimli::Value::U16(value) => {
-                                            child_variable.memory_location = u64::MAX;
-                                            child_variable.set_value(value.to_string());
-                                        }
-                                        gimli::Value::I32(value) => {
-                                            child_variable.memory_location = u64::MAX;
-                                            child_variable.set_value(value.to_string());
-                                        }
-                                        gimli::Value::U32(value) => {
-                                            child_variable.memory_location = u64::MAX;
-                                            child_variable.set_value(value.to_string());
-                                        }
-                                        gimli::Value::I64(value) => {
-                                            child_variable.memory_location = u64::MAX;
-                                            child_variable.set_value(value.to_string());
-                                        }
-                                        gimli::Value::U64(value) => {
-                                            child_variable.memory_location = u64::MAX;
-                                            child_variable.set_value(value.to_string());
-                                        }
-                                        gimli::Value::F32(value) => {
-                                            child_variable.memory_location = u64::MAX;
-                                            child_variable.set_value(value.to_string());
-                                        }
-                                        gimli::Value::F64(value) => {
-                                            child_variable.memory_location = u64::MAX;
-                                            child_variable.set_value(value.to_string());
-                                        }
-                                    },
-                                    Location::Register { register } => {
-                                        child_variable.memory_location = stack_frame_registers
-                                            .get_value_by_dwarf_register_number(register.0 as u32)
-                                            .expect("Failed to read register from `StackFrame::registers`")
-                                            as u64;
-                                    }
-                                    l => {
-                                        child_variable.memory_location = u64::MAX;
-                                        child_variable.set_value(format!("UNIMPLEMENTED: extract_location() found a location type: {:?}", l));
-                                    }
-                                }
-                            }
-                        }
-                        gimli::AttributeValue::Udata(offset_from_parent) => {
-                            if parent_variable.memory_location != u64::MAX {
-                                child_variable.memory_location =
-                                    parent_variable.memory_location + offset_from_parent as u64;
-                            } else {
-                                child_variable.memory_location = offset_from_parent as u64;
-                            }
-                        }
-                        other_attribute_value => {
+                | gimli::DW_AT_frame_base => match attr.value() {
+                    gimli::AttributeValue::Exprloc(expression) => {
+                        if let Err(error) = self.evaluate_expression(
+                            core,
+                            &mut child_variable,
+                            expression,
+                            stack_frame_registers,
+                        ) {
                             child_variable.set_value(format!(
-                                "UNIMPLEMENTED: extract_location() Could not extract location from: {:?}",
-                                other_attribute_value
+                                "ERROR: Determining memory location for this variable: {:?}",
+                                &error
                             ));
                             child_variable.memory_location = u64::MAX;
                             child_variable.variable_node_type = VariableNodeType::DoNotRecurse;
                         }
                     }
-                }
+                    gimli::AttributeValue::Udata(offset_from_parent) => {
+                        if parent_variable.memory_location != u64::MAX {
+                            child_variable.memory_location =
+                                parent_variable.memory_location + offset_from_parent as u64;
+                        } else {
+                            child_variable.memory_location = offset_from_parent as u64;
+                        }
+                    }
+                    gimli::AttributeValue::LocationListsRef(location_list_offset) => {
+                        match self.debug_info.locations_section.locations(
+                            location_list_offset,
+                            self.unit.header.encoding(),
+                            self.unit.low_pc,
+                            &self.debug_info.address_section,
+                            self.unit.addr_base,
+                        ) {
+                            Ok(mut locations) => {
+                                let program_counter =
+                                    stack_frame_registers.get_program_counter().unwrap_or(0) as u64;
+                                let mut expression: Option<gimli::Expression<GimliReader>> = None;
+                                while let Some(location) = match locations.next() {
+                                    Ok(location_lists_entry) => location_lists_entry,
+                                    Err(error) => {
+                                        child_variable.set_value(format!("ERROR: Iterating LocationLists for this variable: {:?}", &error));
+                                        child_variable.memory_location = u64::MAX;
+                                        child_variable.variable_node_type =
+                                            VariableNodeType::DoNotRecurse;
+                                        None
+                                    }
+                                } {
+                                    if program_counter >= location.range.begin
+                                        && program_counter < location.range.end
+                                    {
+                                        expression = Some(location.data);
+                                        break;
+                                    }
+                                }
+
+                                if let Some(valid_expression) = expression {
+                                    if let Err(error) = self.evaluate_expression(
+                                        core,
+                                        &mut child_variable,
+                                        valid_expression,
+                                        stack_frame_registers,
+                                    ) {
+                                        child_variable.set_value(format!("ERROR: Determining memory location for this variable: {:?}", &error));
+                                        child_variable.memory_location = u64::MAX;
+                                        child_variable.variable_node_type =
+                                            VariableNodeType::DoNotRecurse;
+                                    }
+                                } else {
+                                    child_variable.set_value(
+                                        "<value out of scope - moved or dropped>".to_string(),
+                                    );
+                                    child_variable.memory_location = u64::MAX;
+                                    child_variable.variable_node_type =
+                                        VariableNodeType::DoNotRecurse;
+                                }
+                            }
+                            Err(error) => {
+                                child_variable.set_value(format!(
+                                    "ERROR: Resolving variable Location: {:?}",
+                                    &error
+                                ));
+                                child_variable.memory_location = u64::MAX;
+                                child_variable.variable_node_type = VariableNodeType::DoNotRecurse;
+                            }
+                        };
+                    }
+                    other_attribute_value => {
+                        child_variable.set_value(format!(
+                                "UNIMPLEMENTED: extract_location() Could not extract location from: {:?}",
+                                other_attribute_value
+                            ));
+                        child_variable.memory_location = u64::MAX;
+                        child_variable.variable_node_type = VariableNodeType::DoNotRecurse;
+                    }
+                },
                 gimli::DW_AT_address_class => {
                     match attr.value() {
                         gimli::AttributeValue::AddressClass(address_class) => {
@@ -2891,6 +2776,211 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
         cache
             .cache_variable(child_variable.parent_key, child_variable, core)
             .map_err(|error| error.into())
+    }
+
+    /// Evaluate a gimli::Expression as a valid memory location
+    fn evaluate_expression(
+        &self,
+        core: &mut Core<'_>,
+        child_variable: &mut Variable,
+        expression: gimli::Expression<GimliReader>,
+        stack_frame_registers: &Registers,
+    ) -> Result<(), DebugError> {
+        let pieces = match self.expression_to_piece(core, expression, stack_frame_registers) {
+            Ok(pieces) => pieces,
+            Err(err) => {
+                child_variable.set_value(format!("ERROR: expr_to_piece() failed with: {:?}", err));
+                vec![]
+            }
+        };
+        if pieces.is_empty() {
+            child_variable.memory_location = u64::MAX;
+            child_variable.set_value(format!(
+                "ERROR: expr_to_piece() returned 0 results: {:?}",
+                pieces
+            ));
+        } else if pieces.len() > 1 {
+            child_variable.memory_location = u64::MAX;
+            child_variable.set_value(format!(
+                "UNIMPLEMENTED: expr_to_piece() returned more than 1 result: {:?}",
+                pieces
+            ));
+        } else {
+            match &pieces[0].location {
+                Location::Empty => {
+                    child_variable.memory_location = 0_u64;
+                }
+                Location::Address { address } => {
+                    if *address == u32::MAX as u64 {
+                        child_variable.memory_location = u64::MAX;
+                        child_variable.set_value("BUG: Cannot resolve due to rust-lang issue https://github.com/rust-lang/rust/issues/32574".to_string());
+                    } else {
+                        child_variable.memory_location = *address;
+                    }
+                }
+                Location::Value { value } => match value {
+                    gimli::Value::Generic(value) => {
+                        child_variable.memory_location = u64::MAX;
+                        child_variable.set_value(value.to_string());
+                    }
+                    gimli::Value::I8(value) => {
+                        child_variable.memory_location = u64::MAX;
+                        child_variable.set_value(value.to_string());
+                    }
+                    gimli::Value::U8(value) => {
+                        child_variable.memory_location = u64::MAX;
+                        child_variable.set_value(value.to_string());
+                    }
+                    gimli::Value::I16(value) => {
+                        child_variable.memory_location = u64::MAX;
+                        child_variable.set_value(value.to_string());
+                    }
+                    gimli::Value::U16(value) => {
+                        child_variable.memory_location = u64::MAX;
+                        child_variable.set_value(value.to_string());
+                    }
+                    gimli::Value::I32(value) => {
+                        child_variable.memory_location = u64::MAX;
+                        child_variable.set_value(value.to_string());
+                    }
+                    gimli::Value::U32(value) => {
+                        child_variable.memory_location = u64::MAX;
+                        child_variable.set_value(value.to_string());
+                    }
+                    gimli::Value::I64(value) => {
+                        child_variable.memory_location = u64::MAX;
+                        child_variable.set_value(value.to_string());
+                    }
+                    gimli::Value::U64(value) => {
+                        child_variable.memory_location = u64::MAX;
+                        child_variable.set_value(value.to_string());
+                    }
+                    gimli::Value::F32(value) => {
+                        child_variable.memory_location = u64::MAX;
+                        child_variable.set_value(value.to_string());
+                    }
+                    gimli::Value::F64(value) => {
+                        child_variable.memory_location = u64::MAX;
+                        child_variable.set_value(value.to_string());
+                    }
+                },
+                Location::Register { register } => {
+                    child_variable.memory_location = stack_frame_registers
+                        .get_value_by_dwarf_register_number(register.0 as u32)
+                        .expect("Failed to read register from `StackFrame::registers`")
+                        as u64;
+                }
+                l => {
+                    child_variable.memory_location = u64::MAX;
+                    child_variable.set_value(format!(
+                        "UNIMPLEMENTED: extract_location() found a location type: {:?}",
+                        l
+                    ));
+                }
+            }
+        }
+        Ok(())
+    }
+
+    /// Update a [Variable] location, given a gimli::Expression
+    fn expression_to_piece(
+        &self,
+        core: &mut Core<'_>,
+        expression: gimli::Expression<GimliReader>,
+        stack_frame_registers: &Registers,
+    ) -> Result<Vec<gimli::Piece<GimliReader, usize>>, DebugError> {
+        let mut evaluation = expression.evaluation(self.unit.encoding());
+        let frame_base = if let Some(frame_base) = stack_frame_registers.get_frame_pointer() {
+            u64::from(frame_base)
+        } else {
+            return Err(DebugError::Other(anyhow::anyhow!(
+                "Cannot unwind `Variable` location without a valid CFA (canonical frame address)"
+            )));
+        };
+        // go for evaluation
+        let mut result = evaluation.evaluate()?;
+
+        loop {
+            use gimli::EvaluationResult::*;
+
+            result = match result {
+                Complete => break,
+                RequiresMemory { address, size, .. } => {
+                    let mut buff = vec![0u8; size as usize];
+                    core.read(address as u32, &mut buff).map_err(|_| {
+                        DebugError::Other(anyhow::anyhow!("Unexpected error while reading debug expressions from target memory. Please report this as a bug."))
+                    })?;
+                    match size {
+                        1 => evaluation.resume_with_memory(gimli::Value::U8(buff[0]))?,
+                        2 => {
+                            let val = (u16::from(buff[0]) << 8) | (u16::from(buff[1]) as u16);
+                            evaluation.resume_with_memory(gimli::Value::U16(val))?
+                        }
+                        4 => {
+                            let val = (u32::from(buff[0]) << 24)
+                                | (u32::from(buff[1]) << 16)
+                                | (u32::from(buff[2]) << 8)
+                                | u32::from(buff[3]);
+                            evaluation.resume_with_memory(gimli::Value::U32(val))?
+                        }
+                        x => {
+                            todo!(
+                                "Requested memory with size {}, which is not supported yet.",
+                                x
+                            );
+                        }
+                    }
+                }
+                RequiresFrameBase => match evaluation.resume_with_frame_base(frame_base) {
+                    Ok(evaluation_result) => evaluation_result,
+                    Err(error) => {
+                        return Err(DebugError::Other(anyhow::anyhow!(
+                            "Error while calculating `Variable::memory_location`:{}.",
+                            error
+                        )))
+                    }
+                },
+                RequiresRegister {
+                    register,
+                    base_type,
+                } => {
+                    let raw_value = match stack_frame_registers
+                        .get_value_by_dwarf_register_number(register.0 as u32)
+                    {
+                        Some(raw_value) => {
+                            if base_type != gimli::UnitOffset(0) {
+                                return Err(DebugError::Other(anyhow::anyhow!(
+                                    "UNIMPLEMENTED: Support for type {:?} in `RequiresRegister` request is not yet implemented.",
+                                    base_type
+                                )));
+                            }
+                            raw_value
+                        }
+                        None => {
+                            return Err(DebugError::Other(anyhow::anyhow!(
+                                    "Error while calculating `Variable::memory_location`. No value for register #:{}.",
+                                    register.0
+                                )));
+                        }
+                    };
+
+                    evaluation.resume_with_register(gimli::Value::Generic(raw_value as u64))?
+                }
+                RequiresRelocatedAddress(address_index) => {
+                    if address_index.is_zero() {
+                        // This is a rust-lang bug for statics ... https://github.com/rust-lang/rust/issues/32574.
+                        evaluation.resume_with_relocated_address(u64::MAX)?
+                    } else {
+                        // The address_index as an offset from 0, so just pass it into the next step.
+                        evaluation.resume_with_relocated_address(address_index)?
+                    }
+                }
+                x => {
+                    todo!("expr_to_piece {:?}", x)
+                }
+            }
+        }
+        Ok(evaluation.result())
     }
 }
 
