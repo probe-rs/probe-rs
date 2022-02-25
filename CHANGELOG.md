@@ -6,7 +6,23 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/) and this p
 
 ## [Unreleased]
 
-- None
+- [#303] Don't bail, but only warn if using `--no-flash` with `defmt`
+- [#302] Make stack painting fast again! 🇪🇺
+- [#301] Add way to pass chip description file
+- [#300] Simplify verbose matching
+- [#299] Fix and refactor `fn extract_stack_info`
+- [#296] turn some `println!` into `writeln!`
+- [#295] probe-run json output
+- [#294] Update `Cargo.lock`
+
+[#303]: https://github.com/knurling-rs/probe-run/pull/303
+[#302]: https://github.com/knurling-rs/probe-run/pull/302
+[#301]: https://github.com/knurling-rs/probe-run/pull/301
+[#300]: https://github.com/knurling-rs/probe-run/pull/300
+[#299]: https://github.com/knurling-rs/probe-run/pull/299
+[#296]: https://github.com/knurling-rs/probe-run/pull/296
+[#295]: https://github.com/knurling-rs/probe-run/pull/295
+[#294]: https://github.com/knurling-rs/probe-run/pull/294
 
 # [v0.3.1] - 2021-11-26
 
@@ -353,7 +369,8 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/) and this p
 
 Initial release
 
-[Unreleased]: https://github.com/knurling-rs/probe-run/compare/v0.3.0...main
+[Unreleased]: https://github.com/knurling-rs/probe-run/compare/v0.3.1...main
+[v0.3.1]: https://github.com/knurling-rs/probe-run/compare/v0.3.0...v0.3.1
 [v0.3.0]: https://github.com/knurling-rs/probe-run/compare/v0.2.5...v0.3.0
 [v0.2.4]: https://github.com/knurling-rs/probe-run/compare/v0.2.4...v0.2.5
 [v0.2.3]: https://github.com/knurling-rs/probe-run/compare/v0.2.3...v0.2.4
