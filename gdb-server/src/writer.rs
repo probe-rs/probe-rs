@@ -67,8 +67,8 @@ where
         let escape2 = memchr::memchr(b'*', remaining);
 
         let escape = std::cmp::min(
-            escape1.unwrap_or_else(|| remaining.len()),
-            escape2.unwrap_or_else(|| remaining.len()),
+            escape1.unwrap_or(remaining.len()),
+            escape2.unwrap_or(remaining.len()),
         );
 
         w.write_all(&remaining[..escape]).await?;
