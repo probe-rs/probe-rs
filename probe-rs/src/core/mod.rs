@@ -13,11 +13,15 @@ use crate::{Error, Memory, MemoryInterface};
 use anyhow::{anyhow, Result};
 use std::time::Duration;
 
+/// A core register (e.g. Stack Pointer).
 pub trait CoreRegister: Clone + From<u32> + Into<u32> + Sized + std::fmt::Debug {
+    /// The register's address.
     const ADDRESS: u32;
+    /// The register's name.
     const NAME: &'static str;
 }
 
+/// The address of a core register.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct CoreRegisterAddress(pub u16);
 
@@ -32,11 +36,15 @@ impl From<u16> for CoreRegisterAddress {
         CoreRegisterAddress(value)
     }
 }
+
+/// An struct for storing the current state of a core.
 #[derive(Debug, Clone)]
 pub struct CoreInformation {
+    /// The current Program Counter.
     pub pc: u32,
 }
 
+/// Describes a register with its properties.
 #[derive(Debug, Clone, PartialEq)]
 pub struct RegisterDescription {
     pub(crate) name: &'static str,
@@ -95,54 +103,79 @@ pub struct RegisterFile {
 }
 
 impl RegisterFile {
+    /// Returns an iterator over the descriptions of all the registers of this core.
     pub fn registers(&self) -> impl Iterator<Item = &RegisterDescription> {
         self.platform_registers.iter()
     }
 
+    /// The frame pointer.
     pub fn frame_pointer(&self) -> &RegisterDescription {
         self.frame_pointer
     }
 
+    /// The program counter.
     pub fn program_counter(&self) -> &RegisterDescription {
         self.program_counter
     }
 
+    /// The stack pointer.
     pub fn stack_pointer(&self) -> &RegisterDescription {
         self.stack_pointer
     }
 
+    /// The link register.
     pub fn return_address(&self) -> &RegisterDescription {
         self.return_address
     }
 
+    /// Returns the nth argument register.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the register at given index does not exist.
     pub fn argument_register(&self, index: usize) -> &RegisterDescription {
         &self.argument_registers[index]
     }
 
+    /// Returns the nth argument register if it is exists, `None` otherwise.
     pub fn get_argument_register(&self, index: usize) -> Option<&RegisterDescription> {
         self.argument_registers.get(index)
     }
 
+    /// Returns the nth result register.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the register at given index does not exist.
     pub fn result_register(&self, index: usize) -> &RegisterDescription {
         &self.result_registers[index]
     }
 
+    /// Returns the nth result register if it is exists, `None` otherwise.
     pub fn get_result_register(&self, index: usize) -> Option<&RegisterDescription> {
         self.result_registers.get(index)
     }
 
+    /// Returns the nth platform register.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the register at given index does not exist.
     pub fn platform_register(&self, index: usize) -> &RegisterDescription {
         &self.platform_registers[index]
     }
 
+    /// Returns the nth platform register if it is exists, `None` otherwise.
     pub fn get_platform_register(&self, index: usize) -> Option<&RegisterDescription> {
         self.platform_registers.get(index)
     }
 
+    /// The main stack pointer.
     pub fn msp(&self) -> Option<&RegisterDescription> {
         self.msp
     }
 
+    /// The process stack pointer.
     pub fn psp(&self) -> Option<&RegisterDescription> {
         self.psp
     }
@@ -154,10 +187,10 @@ impl RegisterFile {
     // Bits[15:8]  BASEPRI.
     // Bits[7:0]   PRIMASK.
     // In each field, the valid bits are packed with leading zeros. For example,
-    // FAULTMASK is always a single bit, DCRDR[16], and DCRDR[23:17] is 0b0000000.
-    pub fn extra(&self) -> Option<&RegisterDescription> {
-        self.extra
-    }
+    // // FAULTMASK is always a single bit, DCRDR[16], and DCRDR[23:17] is 0b0000000.
+    // pub fn extra(&self) -> Option<&RegisterDescription> {
+    //     self.extra
+    // }
 
     // TODO: support for floating point registers
     // 0b0100001            Floating-point Status and Control Register, FPSCR.
@@ -168,6 +201,7 @@ impl RegisterFile {
     // bits[6:5] are Reserved, SBZ.
 }
 
+/// A generic interface to control a MCU core.
 pub trait CoreInterface: MemoryInterface {
     /// Wait until the core is halted. If the core does not halt on its own,
     /// a [`DebugProbeError::Timeout`](crate::DebugProbeError::Timeout) error will be returned.
@@ -177,12 +211,14 @@ pub trait CoreInterface: MemoryInterface {
     /// a [`DebugProbeError::Timeout`](crate::DebugProbeError::Timeout) error will be returned.
     fn core_halted(&mut self) -> Result<bool, error::Error>;
 
+    /// Returns the current status of the core.
     fn status(&mut self) -> Result<CoreStatus, error::Error>;
 
     /// Try to halt the core. This function ensures the core is actually halted, and
     /// returns a [`DebugProbeError::Timeout`](crate::DebugProbeError::Timeout) otherwise.
     fn halt(&mut self, timeout: Duration) -> Result<CoreInformation, error::Error>;
 
+    /// Continue to execute instructions.
     fn run(&mut self) -> Result<(), error::Error>;
 
     /// Reset the core, and then continue to execute instructions. If the core
@@ -200,25 +236,33 @@ pub trait CoreInterface: MemoryInterface {
     /// Steps one instruction and then enters halted state again.
     fn step(&mut self) -> Result<CoreInformation, error::Error>;
 
+    /// Read the value of a core register.
     fn read_core_reg(&mut self, address: CoreRegisterAddress) -> Result<u32, error::Error>;
 
+    /// Write the value of a core register.
     fn write_core_reg(&mut self, address: CoreRegisterAddress, value: u32) -> Result<()>;
 
-    fn get_available_breakpoint_units(&mut self) -> Result<u32, error::Error>;
+    /// Returns all the available breakpoint units of the core.
+    fn available_breakpoint_units(&mut self) -> Result<u32, error::Error>;
 
     /// Read the hardware breakpoints from FpComp registers, and adds them to the Result Vector.
     /// A value of None in any position of the Vector indicates that the position is unset/available.
     /// We intentionally return all breakpoints, irrespective of whether they are enabled or not.
-    fn get_hw_breakpoints(&mut self) -> Result<Vec<Option<u32>>, error::Error>;
+    fn hw_breakpoints(&mut self) -> Result<Vec<Option<u32>>, error::Error>;
 
+    /// Enables breakpoints on this core. If a breakpoint is set, it will halt as soon as it is hit.
     fn enable_breakpoints(&mut self, state: bool) -> Result<(), error::Error>;
 
-    fn set_hw_breakpoint(&mut self, bp_unit_index: usize, addr: u32) -> Result<(), error::Error>;
+    /// Sets a breakpoint at `addr`. It does so by using unit `bp_unit_index`.
+    fn set_hw_breakpoint(&mut self, unit_index: usize, addr: u32) -> Result<(), error::Error>;
 
+    /// Clears the breakpoint configured in unit `unit_index`.
     fn clear_hw_breakpoint(&mut self, unit_index: usize) -> Result<(), error::Error>;
 
+    /// Returns a list of all the registers of this core.
     fn registers(&self) -> &'static RegisterFile;
 
+    /// Returns `true` if hwardware breakpoints are enabled, `false` otherwise.
     fn hw_breakpoints_enabled(&self) -> bool;
 
     /// Get the `Architecture` of the Core.
@@ -263,27 +307,37 @@ impl<'probe> MemoryInterface for Core<'probe> {
     }
 }
 
+/// A generic core state with caches the generic parts of the core state.
 #[derive(Debug)]
 pub struct CoreState {
     id: usize,
 }
 
 impl CoreState {
+    /// Creates a new core state from the core ID.
     pub fn new(id: usize) -> Self {
         Self { id }
     }
+
+    /// Returns the core ID.
 
     pub fn id(&self) -> usize {
         self.id
     }
 }
 
+/// The architecture specific core state.
 #[derive(Debug)]
 pub enum SpecificCoreState {
+    /// The state of an ARMv6-M core.
     Armv6m(State),
+    /// The state of an ARMv7-M core.
     Armv7m(State),
+    /// The state of an ARMv7-EM core.
     Armv7em(State),
+    /// The state of an ARMv8-M core.
     Armv8m(State),
+    /// The state of an RISC-V core.
     Riscv,
 }
 
@@ -344,7 +398,7 @@ impl SpecificCoreState {
         })
     }
 
-    pub fn attach_riscv<'probe>(
+    pub(crate) fn attach_riscv<'probe>(
         &self,
         state: &'probe mut CoreState,
         interface: &'probe mut RiscvCommunicationInterface,
@@ -362,12 +416,19 @@ impl SpecificCoreState {
     }
 }
 
+/// Generic core handle representing a physical core on an MCU.
+///
+/// This should be considere as a temporary view of the core which locks the debug probe driver to as single consumer by borrowing it.
+///
+/// As soon as you did your atomic task (e.g. halt the core, read the core state and all other debug relevant info) you should drop this object,
+/// to allow potential other shareholders of the session struct to grab a core handle too.
 pub struct Core<'probe> {
     inner: Box<dyn CoreInterface + 'probe>,
     state: &'probe mut CoreState,
 }
 
 impl<'probe> Core<'probe> {
+    /// Create a new [`Core`].
     pub fn new(core: impl CoreInterface + 'probe, state: &'probe mut CoreState) -> Core<'probe> {
         Self {
             inner: Box::new(core),
@@ -375,10 +436,12 @@ impl<'probe> Core<'probe> {
         }
     }
 
+    /// Creates a new [`CoreState`]
     pub fn create_state(id: usize) -> CoreState {
         CoreState::new(id)
     }
 
+    /// Returns the ID of this core.
     pub fn id(&self) -> usize {
         self.state.id
     }
@@ -401,6 +464,7 @@ impl<'probe> Core<'probe> {
         self.inner.halt(timeout)
     }
 
+    /// Continue to execute instructions.
     pub fn run(&mut self) -> Result<(), error::Error> {
         self.inner.run()
     }
@@ -426,10 +490,12 @@ impl<'probe> Core<'probe> {
         self.inner.step()
     }
 
+    /// Returns the current status of the core.
     pub fn status(&mut self) -> Result<CoreStatus, error::Error> {
         self.inner.status()
     }
 
+    /// Read the value of a core register.
     pub fn read_core_reg(
         &mut self,
         address: impl Into<CoreRegisterAddress>,
@@ -437,6 +503,7 @@ impl<'probe> Core<'probe> {
         self.inner.read_core_reg(address.into())
     }
 
+    /// Write the value of a core register.
     pub fn write_core_reg(
         &mut self,
         address: CoreRegisterAddress,
@@ -445,14 +512,17 @@ impl<'probe> Core<'probe> {
         Ok(self.inner.write_core_reg(address, value)?)
     }
 
-    pub fn get_available_breakpoint_units(&mut self) -> Result<u32, error::Error> {
-        self.inner.get_available_breakpoint_units()
+    /// Returns all the available breakpoint units of the core.
+    pub fn available_breakpoint_units(&mut self) -> Result<u32, error::Error> {
+        self.inner.available_breakpoint_units()
     }
 
+    /// Enables breakpoints on this core. If a breakpoint is set, it will halt as soon as it is hit.
     fn enable_breakpoints(&mut self, state: bool) -> Result<(), error::Error> {
         self.inner.enable_breakpoints(state)
     }
 
+    /// Returns a list of all the registers of this core.
     pub fn registers(&self) -> &'static RegisterFile {
         self.inner.registers()
     }
@@ -460,7 +530,7 @@ impl<'probe> Core<'probe> {
     /// Find the index of the next available HW breakpoint comparator.
     fn find_free_breakpoint_comparator_index(&mut self) -> Result<usize, error::Error> {
         let mut next_available_hw_breakpoint = 0;
-        for breakpoint in self.inner.get_hw_breakpoints()? {
+        for breakpoint in self.inner.hw_breakpoints()? {
             if breakpoint.is_none() {
                 return Ok(next_available_hw_breakpoint);
             } else {
@@ -474,8 +544,9 @@ impl<'probe> Core<'probe> {
 
     /// Set a hardware breakpoint
     ///
-    /// This function will try to set a hardware breakpoint. The amount
-    /// of hardware breakpoints which are supported is chip specific,
+    /// This function will try to set a hardware breakpoint att `address`.
+    ///
+    /// The amount of hardware breakpoints which are supported is chip specific,
     /// and can be queried using the `get_available_breakpoint_units` function.
     pub fn set_hw_breakpoint(&mut self, address: u32) -> Result<(), error::Error> {
         if !self.inner.hw_breakpoints_enabled() {
@@ -485,7 +556,7 @@ impl<'probe> Core<'probe> {
         // If there is a breakpoint set already, return its bp_unit_index, else find the next free index.
         let breakpoint_comparator_index = match self
             .inner
-            .get_hw_breakpoints()?
+            .hw_breakpoints()?
             .iter()
             .position(|&bp| bp == Some(address))
         {
@@ -505,10 +576,13 @@ impl<'probe> Core<'probe> {
         Ok(())
     }
 
+    /// Set a hardware breakpoint
+    ///
+    /// This function will try to clear a hardware breakpoint at `address` if there exists a breakpoint at that address.
     pub fn clear_hw_breakpoint(&mut self, address: u32) -> Result<(), error::Error> {
         let bp_position = self
             .inner
-            .get_hw_breakpoints()?
+            .hw_breakpoints()?
             .iter()
             .position(|bp| bp.is_some() && bp.unwrap() == address);
 
@@ -536,57 +610,52 @@ impl<'probe> Core<'probe> {
     /// regardless if they are set by probe-rs, AND regardless if they are enabled or not.
     /// Also used as a helper function in [`Session::drop`](crate::session::Session).
     pub fn clear_all_hw_breakpoints(&mut self) -> Result<(), error::Error> {
-        for breakpoint in (self.inner.get_hw_breakpoints()?).into_iter().flatten() {
+        for breakpoint in (self.inner.hw_breakpoints()?).into_iter().flatten() {
             self.clear_hw_breakpoint(breakpoint)?
         }
         Ok(())
     }
 
+    /// Returns the architecture of the core.
     pub fn architecture(&self) -> Architecture {
         self.inner.architecture()
     }
 }
 
-pub struct CoreList<'probe>(&'probe [CoreType]);
-
-impl<'probe> CoreList<'probe> {
-    pub fn new(cores: &'probe [CoreType]) -> Self {
-        Self(cores)
-    }
-}
-
-impl<'probe> std::ops::Deref for CoreList<'probe> {
-    type Target = [CoreType];
-    fn deref(&self) -> &Self::Target {
-        self.0
-    }
-}
-
+/// The id of a breakpoint.
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub struct BreakpointId(usize);
 
 impl BreakpointId {
+    /// Creates a new breakpoint ID from an `usize`.
     pub fn new(id: usize) -> Self {
         BreakpointId(id)
     }
 }
 
+/// The status of the core.
 #[derive(Debug, PartialEq, Copy, Clone)]
 pub enum CoreStatus {
+    /// The core is currently running.
     Running,
+    /// The core is currently halted. This also specifies the reason as a payload.
     Halted(HaltReason),
     /// This is a Cortex-M specific status, and will not be set or handled by RISCV code.
     LockedUp,
+    /// The core is currently sleeping.
     Sleeping,
+    /// The core state is currently unknown. This is always the case when the core is first created.
     Unknown,
 }
 
 impl CoreStatus {
+    /// Returns `true` if the core is currently halted.
     pub fn is_halted(&self) -> bool {
         matches!(self, CoreStatus::Halted(_))
     }
 }
 
+/// The reason why a core was halted.
 #[derive(Debug, PartialEq, Copy, Clone)]
 pub enum HaltReason {
     /// Multiple reasons for a halt.

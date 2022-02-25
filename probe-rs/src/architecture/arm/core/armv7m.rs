@@ -862,7 +862,7 @@ impl<'probe> CoreInterface for Armv7m<'probe> {
         Ok(CoreInformation { pc: pc_value })
     }
 
-    fn get_available_breakpoint_units(&mut self) -> Result<u32, Error> {
+    fn available_breakpoint_units(&mut self) -> Result<u32, Error> {
         let raw_val = self.memory.read_word_32(FpCtrl::ADDRESS)?;
 
         let reg = FpCtrl::from(raw_val);
@@ -945,10 +945,10 @@ impl<'probe> CoreInterface for Armv7m<'probe> {
         Architecture::Arm
     }
 
-    /// See docs on the [`CoreInterface::get_hw_breakpoints`] trait.
-    fn get_hw_breakpoints(&mut self) -> Result<Vec<Option<u32>>, Error> {
+    /// See docs on the [`CoreInterface::hw_breakpoints`] trait.
+    fn hw_breakpoints(&mut self) -> Result<Vec<Option<u32>>, Error> {
         let mut breakpoints = vec![];
-        let num_hw_breakpoints = self.get_available_breakpoint_units()? as usize;
+        let num_hw_breakpoints = self.available_breakpoint_units()? as usize;
         { 0..num_hw_breakpoints }.try_for_each(|bp_unit_index| {
             let raw_val = self.memory.read_word_32(FpCtrl::ADDRESS)?;
             let ctrl_reg = FpCtrl::from(raw_val);

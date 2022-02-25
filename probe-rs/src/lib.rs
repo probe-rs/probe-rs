@@ -70,6 +70,8 @@ extern crate serde;
 /// All the interface bits for the different architectures.
 pub mod architecture;
 pub mod config;
+
+#[warn(missing_docs)]
 mod core;
 pub mod debug;
 mod error;
@@ -81,7 +83,7 @@ mod session;
 pub use crate::config::{CoreType, Target};
 pub use crate::core::{
     Architecture, BreakpointId, CommunicationInterface, Core, CoreInformation, CoreInterface,
-    CoreList, CoreRegister, CoreRegisterAddress, CoreState, CoreStatus, HaltReason, RegisterFile,
+    CoreRegister, CoreRegisterAddress, CoreState, CoreStatus, HaltReason, RegisterFile,
     SpecificCoreState,
 };
 pub use crate::error::Error;

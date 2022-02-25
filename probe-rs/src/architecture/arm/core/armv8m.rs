@@ -213,7 +213,7 @@ impl<'probe> CoreInterface for Armv8m<'probe> {
         Ok(())
     }
 
-    fn get_available_breakpoint_units(&mut self) -> Result<u32, Error> {
+    fn available_breakpoint_units(&mut self) -> Result<u32, Error> {
         let raw_val = self.memory.read_word_32(FpCtrl::ADDRESS)?;
 
         let reg = FpCtrl::from(raw_val);
@@ -340,10 +340,10 @@ impl<'probe> CoreInterface for Armv8m<'probe> {
         Ok(CoreStatus::Running)
     }
 
-    /// See docs on the [`CoreInterface::get_hw_breakpoints`] trait
-    fn get_hw_breakpoints(&mut self) -> Result<Vec<Option<u32>>, Error> {
+    /// See docs on the [`CoreInterface::hw_breakpoints`] trait
+    fn hw_breakpoints(&mut self) -> Result<Vec<Option<u32>>, Error> {
         let mut breakpoints = vec![];
-        let num_hw_breakpoints = self.get_available_breakpoint_units()? as usize;
+        let num_hw_breakpoints = self.available_breakpoint_units()? as usize;
         for bp_unit_index in 0..num_hw_breakpoints {
             let reg_addr = FpCompN::ADDRESS + (bp_unit_index * size_of::<u32>()) as u32;
             // The raw breakpoint address as read from memory
