@@ -73,8 +73,8 @@ fn extract_stack_info(elf: &Elf, ram_range: &Range<u32>) -> Option<StackInfo> {
 
     let initial_stack_pointer = elf.vector_table.initial_stack_pointer;
 
-    // SP points one past the end of the stack.
-    let mut stack_range = ram_range.start..=initial_stack_pointer - 1;
+    // SP points one word (4-byte) past the end of the stack.
+    let mut stack_range = ram_range.start..=initial_stack_pointer - 4;
 
     for section in elf.sections() {
         let size: u32 = section.size().try_into().expect("expected 32-bit ELF");
