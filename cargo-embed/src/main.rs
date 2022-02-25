@@ -19,7 +19,7 @@ use std::{
 use probe_rs::{
     config::TargetSelector,
     flashing::{download_file_with_options, DownloadOptions, FlashProgress, Format, ProgressEvent},
-    DebugProbeSelector, Probe,
+    DebugProbeSelector, Permissions, Probe,
 };
 #[cfg(feature = "sentry")]
 use probe_rs_cli_util::logging::{ask_to_log_crash, capture_anyhow, capture_panic};
@@ -276,12 +276,18 @@ fn main_try() -> Result<()> {
 
     log::info!("Protocol speed {} kHz", protocol_speed);
 
+    let permissions = if config.flashing.enabled || config.gdb.enabled {
+        Permissions::new().allow_erase_all()
+    } else {
+        Permissions::new()
+    };
+
     let mut session = if config.general.connect_under_reset {
         probe
-            .attach_under_reset(chip)
+            .attach_under_reset(chip, permissions)
             .context("failed attaching to target")?
     } else {
-        let potential_session = probe.attach(chip);
+        let potential_session = probe.attach(chip, permissions);
         match potential_session {
             Ok(session) => session,
             Err(err) => {
