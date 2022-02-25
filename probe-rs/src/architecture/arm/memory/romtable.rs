@@ -604,7 +604,7 @@ impl PeripheralID {
     /// If it is not known, None is returned.
     #[rustfmt::skip]
     pub fn determine_part(&self) -> Option<PartInfo> {
-        let code = self.JEP106.map(|jep106| jep106.get()).flatten().unwrap_or("");
+        let code = self.JEP106.and_then(|jep106| jep106.get()).unwrap_or("");
 
         // Source of the table: https://github.com/blacksphere/blackmagic/blob/master/src/target/adiv5.c#L189
         // Not all are present and this table could be expanded

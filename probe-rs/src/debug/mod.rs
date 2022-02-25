@@ -543,7 +543,7 @@ impl DebugInfo {
                                 VariableName::Named(name) => {
                                     if name.starts_with("Some") {
                                         referenced_variable.name =
-                                            VariableName::Named(name.replacen("&", "*", 1));
+                                            VariableName::Named(name.replacen('&', "*", 1));
                                     } else {
                                         referenced_variable.name =
                                             VariableName::Named(format!("*{}", name));

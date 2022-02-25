@@ -401,7 +401,7 @@ impl RttBuffer {
             buffer_size -= 1;
             rtt_buffer.push(0u8);
         }
-        RttBuffer { 0: rtt_buffer }
+        RttBuffer(rtt_buffer)
     }
 }
 impl fmt::Debug for RttBuffer {

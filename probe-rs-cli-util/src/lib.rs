@@ -60,7 +60,7 @@ pub fn read_metadata(work_dir: &Path) -> Result<Metadata, ArtifactError> {
     })?;
 
     let meta = match Manifest::<Meta>::from_slice_with_metadata(&cargo_toml_content) {
-        Ok(m) => m.package.map(|p| p.metadata).flatten(),
+        Ok(m) => m.package.and_then(|p| p.metadata),
         Err(_e) => None,
     };
 
