@@ -382,6 +382,10 @@ pub struct Variable {
     /// If this is a subrange (array, vector, etc.), we need to temporarily store the the upper bound of the range.
     pub range_upper_bound: i64,
     pub role: VariantRole,
+    /// If anything goes wrong during processing the debug info of this variable, then we store the error here.
+    /// The idea is to catch errors on a per- [Variable] basis, and then continue processing the rest of debug information.
+    /// By doing this, we ensure the user can get partial success on stack traces, even when some individual variables are not able to resolve successfully.
+    pub debug_error: Option<String>,
 }
 
 impl Variable {
@@ -412,10 +416,11 @@ impl Variable {
 
     /// Implementing get_value(), because Variable.value has to be private (a requirement of updating the value without overriding earlier values ... see set_value()).
     pub fn get_value(&self, variable_cache: &VariableCache) -> String {
-        if let Some(existing_value) = self.value.clone() {
-            // The `value` for this `Variable` is non empty because it is either:
-            // - A base data type for which a value was determined based on the core runtime
-            // - Contains an error that was encountered while resolving the `Variable`'s `DebugInfo`
+        if let Some(debug_error) = self.debug_error.clone() {
+            // We encountered an error somewhere, so report it to the user
+            debug_error
+        } else if let Some(existing_value) = self.value.clone() {
+            // The `value` for this `Variable` is non empty because it is base data type for which a value was determined based on the core runtime
             existing_value
         } else {
             // We need to construct a 'human readable' value using `fmt::Display` to represent the values of complex types and pointers.
@@ -450,8 +455,9 @@ impl Variable {
     /// Evaluate the variable's result if possible and set self.value, or else set self.value as the error String.
     fn extract_value(&mut self, core: &mut Core<'_>, variable_cache: &VariableCache) {
         // Quick exit if we don't really need to do much more.
+        if self.debug_error.is_some()
         // The value was set by get_location(), so just leave it as is.
-        if self.memory_location == u64::MAX
+        || self.memory_location == u64::MAX
         // The value was set elsewhere in this library - probably because of an error - so just leave it as is.
         || self.value.is_some()
         // Early on in the process of `Variable` evaluation
