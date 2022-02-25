@@ -6,7 +6,7 @@ use once_cell::sync::Lazy;
 use probe_rs_target::{CoreAccessOptions, RiscvCoreAccessOptions};
 use std::fs::File;
 use std::path::Path;
-use std::sync::{Arc, Mutex, TryLockError};
+use std::sync::{Arc, Mutex};
 
 static REGISTRY: Lazy<Arc<Mutex<Registry>>> =
     Lazy::new(|| Arc::new(Mutex::new(Registry::from_builtin_families())));
@@ -35,18 +35,9 @@ pub enum RegistryError {
     /// An error occurred while deserializing a YAML target description file.
     #[error("Deserializing the yaml encountered an error")]
     Yaml(#[from] serde_yaml::Error),
-    /// Unable to lock the registry.
-    #[error("Unable to lock registry")]
-    LockUnavailable,
     /// An invalid [`ChipFamily`] was encountered.
     #[error("Invalid chip family definition ({})", .0.name)]
     InvalidChipFamilyDefinition(ChipFamily, String),
-}
-
-impl<R> From<TryLockError<R>> for RegistryError {
-    fn from(_: TryLockError<R>) -> Self {
-        RegistryError::LockUnavailable
-    }
 }
 
 fn add_generic_targets(vec: &mut Vec<ChipFamily>) {
@@ -298,29 +289,29 @@ impl Registry {
 
 /// Get a target from the internal registry based on its name.
 pub fn get_target_by_name(name: impl AsRef<str>) -> Result<Target, RegistryError> {
-    REGISTRY.try_lock()?.get_target_by_name(name)
+    REGISTRY.lock().unwrap().get_target_by_name(name)
 }
 
 /// Get a target from the internal registry based on its name.
 pub fn search_chips(name: impl AsRef<str>) -> Result<Vec<String>, RegistryError> {
-    Ok(REGISTRY.try_lock()?.search_chips(name.as_ref()))
+    Ok(REGISTRY.lock().unwrap().search_chips(name.as_ref()))
 }
 
 /// Try to retrieve a target based on [ChipInfo] read from a target.
 pub(crate) fn get_target_by_chip_info(chip_info: ChipInfo) -> Result<Target, RegistryError> {
-    REGISTRY.try_lock()?.get_target_by_chip_info(chip_info)
+    REGISTRY.lock().unwrap().get_target_by_chip_info(chip_info)
 }
 
 /// Parse a target description file and add the contained targets
 /// to the internal target registry.
 pub fn add_target_from_yaml(path_to_yaml: &Path) -> Result<(), RegistryError> {
-    REGISTRY.try_lock()?.add_target_from_yaml(path_to_yaml)
+    REGISTRY.lock().unwrap().add_target_from_yaml(path_to_yaml)
 }
 
 /// Get a list of all families which are contained in the internal
 /// registry.
 pub fn families() -> Result<Vec<ChipFamily>, RegistryError> {
-    Ok(REGISTRY.try_lock()?.families().clone())
+    Ok(REGISTRY.lock().unwrap().families().clone())
 }
 
 /// See if `name` matches the start of `pattern`, treating any lower-case `x`
