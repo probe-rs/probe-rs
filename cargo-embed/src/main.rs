@@ -544,7 +544,47 @@ fn main_try() -> Result<()> {
             let mut core = session_handle.core(0)?;
 
             match Rtt::attach_region(&mut core, &memory_map, &rtt_header_address) {
-                Ok(rtt) => {
+                Ok(mut rtt) => {
+                    // RTT supports three different "modes" for channels, which
+                    // describe how the firmware should handle writes that won't
+                    // fit in the available buffer.  The config file can
+                    // optionally specify a mode to use for all up channels,
+                    // and/or a mode for specific channels.
+                    let default_up_mode = config.rtt.up_mode;
+
+                    for up_channel in rtt.up_channels().iter() {
+                        let mut specific_mode = None;
+                        for channel_config in config
+                            .rtt
+                            .channels
+                            .iter()
+                            .filter(|ch_conf| ch_conf.up == Some(up_channel.number()))
+                        {
+                            if let Some(mode) = channel_config.up_mode {
+                                if specific_mode.is_some()
+                                    && specific_mode != channel_config.up_mode
+                                {
+                                    // Can't safely resolve this generally...
+                                    return Err(anyhow!("Conflicting modes specified for RTT up channel {}: {:?} and {:?}",
+                                        up_channel.number(), specific_mode.unwrap(), mode));
+                                }
+
+                                specific_mode = Some(mode);
+                            }
+                        }
+
+                        if let Some(mode) = specific_mode.or(default_up_mode) {
+                            // Only set the mode when the config file says to,
+                            // when not set explicitly, the firmware picks.
+                            log::debug!(
+                                "Setting RTT channel {} to {:?}",
+                                up_channel.number(),
+                                &mode
+                            );
+                            up_channel.set_mode(&mut core, mode.into())?;
+                        }
+                    }
+
                     drop(core);
                     drop(session_handle);
                     log::info!("RTT initialized.");

@@ -2,7 +2,7 @@ use std::fmt;
 
 use chrono::Local;
 use probe_rs::Core;
-use probe_rs_rtt::{DownChannel, UpChannel};
+use probe_rs_rtt::{ChannelMode, DownChannel, UpChannel};
 
 #[derive(Debug, Copy, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub enum DataFormat {
@@ -16,6 +16,7 @@ pub struct ChannelConfig {
     pub up: Option<usize>,
     pub down: Option<usize>,
     pub name: Option<String>,
+    pub up_mode: Option<ChannelMode>,
     pub format: DataFormat,
 }
 

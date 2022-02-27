@@ -5,6 +5,7 @@ use figment::{
     Figment,
 };
 use probe_rs::WireProtocol;
+use probe_rs_rtt::ChannelMode;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
@@ -77,6 +78,9 @@ pub struct General {
 #[serde(deny_unknown_fields)]
 pub struct Rtt {
     pub enabled: bool,
+    /// Up mode, when not specified per-channel.  Target picks if neither is set
+    pub up_mode: Option<ChannelMode>,
+    /// Channels to be displayed, and options for them
     pub channels: Vec<ChannelConfig>,
     /// Connection timeout in ms.
     pub timeout: usize,
