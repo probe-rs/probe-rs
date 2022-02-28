@@ -2092,7 +2092,6 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                 }
                 gimli::DW_TAG_variable |    // Typical top-level variables.
                 gimli::DW_TAG_member |      // Members of structured types.
-                gimli::DW_TAG_formal_parameter | // Parameters to functions
                 gimli::DW_TAG_enumerator    // Possible values for enumerators, used by extract_type() when processing DW_TAG_enumeration_type.
                 => {
                     let mut child_variable = cache.cache_variable(Some(parent_variable.variable_key), Variable::new(
@@ -2178,16 +2177,6 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                     parent_variable.range_upper_bound = range_variable.range_upper_bound;
                     cache.remove_cache_entry(range_variable.variable_key)?;
                 }
-                gimli::DW_TAG_template_type_parameter => {
-                    // The parent node for Rust generic type parameter
-                    // These show up as a child of structures they belong to and points to the type that matches the template.
-                    // They are followed by a sibling of `DW_TAG_member` with name '__0' that has all the attributes needed to resolve the value.
-                    // TODO: If there are multiple types supported, then I suspect there will be additional `DW_TAG_member` siblings. We will need to match those correctly.
-                }
-                gimli::DW_TAG_inlined_subroutine => {
-                    // Recurse the variables of inlined subroutines as normal, but beware that their name, type, etc. has to be resolved from DW_AT_abstract_origin nodes, and their location has to be passed from here (concrete location) to there (abstract location). 
-                    parent_variable = self.process_tree(child_node, parent_variable, core, stack_frame_registers,cache)?;
-                }
                 gimli::DW_TAG_lexical_block => {
                     // Determine the low and high ranges for which this DIE and children are in scope. These can be specified discreetly, or in ranges. 
                     let mut in_scope =  false;
@@ -2246,6 +2235,18 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                         // Recursively process each child, but pass the parent_variable, so that we don't create intermediate nodes for scope identifiers.
                         parent_variable = self.process_tree(child_node, parent_variable, core, stack_frame_registers, cache)?;
                     }
+                }
+                gimli::DW_TAG_template_type_parameter => {
+                    // The parent node for Rust generic type parameter
+                    // These show up as a child of structures they belong to and points to the type that matches the template.
+                    // They are followed by a sibling of `DW_TAG_member` with name '__0' that has all the attributes needed to resolve the value.
+                    // TODO: If there are multiple types supported, then I suspect there will be additional `DW_TAG_member` siblings. We will need to match those correctly.
+                }
+                gimli::DW_TAG_formal_parameter | // Parameters to functions
+                gimli::DW_TAG_inlined_subroutine // Inlined subroutines are handled at the [StackFame] level
+                    => {
+                    // Recurse the variables of inlined subroutines as normal, but beware that their name, type, etc. has to be resolved from DW_AT_abstract_origin nodes, and their location has to be passed from here (concrete location) to there (abstract location). 
+                    // parent_variable = self.process_tree(child_node, parent_variable, core, stack_frame_registers,cache)?;
                 }
                 other => {
                     // One of two things are true here. Either we've encountered a DwTag that is implemented in `extract_type`, and whould be ignored, or we have encountered an UNIMPLEMENTED  DwTag.
