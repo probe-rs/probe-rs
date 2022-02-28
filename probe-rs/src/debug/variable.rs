@@ -264,6 +264,23 @@ impl Default for VariantRole {
 }
 
 #[derive(Debug, PartialEq, Clone)]
+pub enum VariableError {
+    /// We encountered an error while resolving the variable definition or value, AND WILL include it as a valid child of its parent.
+    IncludeAsChild(String),
+    /// We encountered an error while resolving the variable definition or value, AND DO NOT wish to include it as a valid child of its parent.
+    RemoveFromParent(String),
+}
+
+impl std::fmt::Display for VariableError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            VariableError::IncludeAsChild(error) => error.fmt(f),
+            VariableError::RemoveFromParent(error) => error.fmt(f),
+        }
+    }
+}
+
+#[derive(Debug, PartialEq, Clone)]
 pub enum VariableName {
     /// Top-level variable for static variables, child of a stack frame variable, and holds all the static scoped variables which are directly visible to the compile unit of the frame.
     StaticScope,
@@ -385,7 +402,7 @@ pub struct Variable {
     /// If anything goes wrong during processing the debug info of this variable, then we store the error here.
     /// The idea is to catch errors on a per- [Variable] basis, and then continue processing the rest of debug information.
     /// By doing this, we ensure the user can get partial success on stack traces, even when some individual variables are not able to resolve successfully.
-    pub debug_error: Option<String>,
+    pub variable_error: Option<VariableError>,
 }
 
 impl Variable {
@@ -416,7 +433,12 @@ impl Variable {
 
     /// Implementing get_value(), because Variable.value has to be private (a requirement of updating the value without overriding earlier values ... see set_value()).
     pub fn get_value(&self, variable_cache: &VariableCache) -> String {
-        if let Some(debug_error) = self.debug_error.clone() {
+        if let Some(VariableError::IncludeAsChild(debug_error)) = self.variable_error.clone() {
+            // We encountered an error somewhere, so report it to the user
+            debug_error
+        } else if let Some(VariableError::RemoveFromParent(debug_error)) =
+            self.variable_error.clone()
+        {
             // We encountered an error somewhere, so report it to the user
             debug_error
         } else if let Some(existing_value) = self.value.clone() {
@@ -455,7 +477,7 @@ impl Variable {
     /// Evaluate the variable's result if possible and set self.value, or else set self.value as the error String.
     fn extract_value(&mut self, core: &mut Core<'_>, variable_cache: &VariableCache) {
         // Quick exit if we don't really need to do much more.
-        if self.debug_error.is_some()
+        if self.variable_error.is_some()
         // The value was set by get_location(), so just leave it as is.
         || self.memory_location == u64::MAX
         // The value was set elsewhere in this library - probably because of an error - so just leave it as is.

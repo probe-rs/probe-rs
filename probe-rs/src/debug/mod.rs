@@ -30,7 +30,7 @@ use gimli::{
 };
 use object::read::{Object, ObjectSection};
 
-use self::variable::VariableNodeType;
+use self::variable::{VariableError, VariableNodeType};
 
 #[derive(Debug, thiserror::Error)]
 pub enum DebugError {
@@ -521,7 +521,7 @@ impl DebugInfo {
         parent_variable: &mut Variable,
         stack_frame_registers: &Registers,
     ) -> Result<(), DebugError> {
-        if parent_variable.debug_error.is_some() {
+        if parent_variable.variable_error.is_some() {
             // Do nothing. The parent_variable.get_value() will already report back the debug_error value.
             return Ok(());
         }
@@ -555,7 +555,7 @@ impl DebugInfo {
                                 VariableName::Named(name) => {
                                     if name.starts_with("Some") {
                                         referenced_variable.name =
-                                            VariableName::Named(name.replacen("&", "*", 1));
+                                            VariableName::Named(name.replacen('&', "*", 1));
                                     } else {
                                         referenced_variable.name =
                                             VariableName::Named(format!("*{}", name));
@@ -1753,10 +1753,10 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                         .clone(),
                 ),
                 other_attribute_value => {
-                    child_variable.debug_error = Some(format!(
+                    child_variable.variable_error = Some(VariableError::RemoveFromParent(format!(
                         "UNIMPLEMENTED: Attribute Value for DW_AT_abstract_origin {:?}",
                         other_attribute_value
-                    ));
+                    )));
                     None
                 }
             }
@@ -1848,10 +1848,11 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                 )?;
                             }
                             other_attribute_value => {
-                                child_variable.debug_error = Some(format!(
-                                    "UNIMPLEMENTED: Attribute Value for DW_AT_type {:?}",
-                                    other_attribute_value
-                                ));
+                                child_variable.variable_error =
+                                    Some(VariableError::RemoveFromParent(format!(
+                                        "UNIMPLEMENTED: Attribute Value for DW_AT_type {:?}",
+                                        other_attribute_value
+                                    )));
                             }
                         }
                     }
@@ -1860,17 +1861,19 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                             if is_enum_class {
                                 child_variable.set_value(child_variable.type_name.clone());
                             } else {
-                                child_variable.debug_error = Some(format!(
-                                    "UNIMPLEMENTED: Flag Value for DW_AT_enum_class {:?}",
-                                    is_enum_class
-                                ));
+                                child_variable.variable_error =
+                                    Some(VariableError::RemoveFromParent(format!(
+                                        "UNIMPLEMENTED: Flag Value for DW_AT_enum_class {:?}",
+                                        is_enum_class
+                                    )));
                             }
                         }
                         other_attribute_value => {
-                            child_variable.debug_error = Some(format!(
-                                "UNIMPLEMENTED: Attribute Value for DW_AT_enum_class: {:?}",
-                                other_attribute_value
-                            ));
+                            child_variable.variable_error =
+                                Some(VariableError::RemoveFromParent(format!(
+                                    "UNIMPLEMENTED: Attribute Value for DW_AT_enum_class: {:?}",
+                                    other_attribute_value
+                                )));
                         }
                     },
                     gimli::DW_AT_const_value => match attr.value() {
@@ -1878,10 +1881,11 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                             child_variable.set_value(const_value.to_string());
                         }
                         other_attribute_value => {
-                            child_variable.debug_error = Some(format!(
-                                "UNIMPLEMENTED: Attribute Value for DW_AT_const_value: {:?}",
-                                other_attribute_value
-                            ));
+                            child_variable.variable_error =
+                                Some(VariableError::RemoveFromParent(format!(
+                                    "UNIMPLEMENTED: Attribute Value for DW_AT_const_value: {:?}",
+                                    other_attribute_value
+                                )));
                         }
                     },
                     gimli::DW_AT_alignment => {
@@ -1924,20 +1928,22 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                             cache.remove_cache_entry(discriminant_variable.variable_key)?;
                         }
                         other_attribute_value => {
-                            child_variable.debug_error = Some(format!(
-                                "UNIMPLEMENTED: Attribute Value for DW_AT_discr {:?}",
-                                other_attribute_value
-                            ));
+                            child_variable.variable_error =
+                                Some(VariableError::RemoveFromParent(format!(
+                                    "UNIMPLEMENTED: Attribute Value for DW_AT_discr {:?}",
+                                    other_attribute_value
+                                )));
                         }
                     },
                     // Property of variables that are of DW_TAG_subrange_type.
                     gimli::DW_AT_lower_bound => match attr.value().udata_value() {
                         Some(lower_bound) => child_variable.range_lower_bound = lower_bound as i64,
                         None => {
-                            child_variable.debug_error = Some(format!(
-                                "UNIMPLEMENTED: Attribute Value for DW_AT_lower_bound: {:?}",
-                                attr.value()
-                            ));
+                            child_variable.variable_error =
+                                Some(VariableError::RemoveFromParent(format!(
+                                    "UNIMPLEMENTED: Attribute Value for DW_AT_lower_bound: {:?}",
+                                    attr.value()
+                                )));
                         }
                     },
                     // Property of variables that are of DW_TAG_subrange_type.
@@ -1947,10 +1953,11 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                 child_variable.range_upper_bound = upper_bound as i64
                             }
                             None => {
-                                child_variable.debug_error = Some(format!(
+                                child_variable.variable_error =
+                                    Some(VariableError::RemoveFromParent(format!(
                                     "UNIMPLEMENTED: Attribute Value for DW_AT_upper_bound: {:?}",
                                     attr.value()
-                                ));
+                                )));
                             }
                         }
                     }
@@ -1979,16 +1986,17 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                         // Processed by `extract_type()`
                     }
                     other_attribute => {
-                        child_variable.debug_error = Some(format!(
-                            "UNIMPLEMENTED: Variable Attribute {:?} : {:?}, with children = {}",
-                            other_attribute.static_string(),
-                            tree_node
-                                .entry()
-                                .attr_value(other_attribute)
-                                .unwrap()
-                                .unwrap(),
-                            tree_node.entry().has_children()
-                        ));
+                        child_variable.variable_error =
+                            Some(VariableError::RemoveFromParent(format!(
+                                "UNIMPLEMENTED: Variable Attribute {:?} : {:?}, with children = {}",
+                                other_attribute.static_string(),
+                                tree_node
+                                    .entry()
+                                    .attr_value(other_attribute)
+                                    .unwrap()
+                                    .unwrap(),
+                                tree_node.entry().has_children()
+                            )));
                     }
                 }
             }
@@ -2010,7 +2018,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
         stack_frame_registers: &Registers,
         cache: &mut VariableCache,
     ) -> Result<Variable, DebugError> {
-        if parent_variable.debug_error.is_none() {
+        if parent_variable.variable_error.is_none() {
             let program_counter =
                 if let Some(program_counter) = stack_frame_registers.get_program_counter() {
                     u64::from(program_counter)
@@ -2146,7 +2154,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                 child_variable.memory_location = parent_variable.memory_location;
                                 // Recursively process each relevant child node.
                                 child_variable = self.process_tree(child_node, child_variable, core, stack_frame_registers, cache)?;
-                                if child_variable.debug_error.is_none() {
+                                if child_variable.variable_error.is_none() {
                                     // Eliminate intermediate DWARF nodes, but keep their children
                                     cache.adopt_grand_children(&parent_variable, &child_variable)?;
                                 }
@@ -2198,7 +2206,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                         } else { 0_u64};
                         if low_pc == u64::MAX || high_pc == 0_u64 {
                             // These have not been specified correctly ... something went wrong.
-                            parent_variable.debug_error = Some("ERROR: Processing of variables failed because of invalid/unsupported scope information. Please log a bug at 'https://github.com/probe-rs/probe-rs/issues'".to_string());
+                            parent_variable.variable_error = Some(VariableError::RemoveFromParent("ERROR: Processing of variables failed because of invalid/unsupported scope information. Please log a bug at 'https://github.com/probe-rs/probe-rs/issues'".to_string()));
                         }
                         if low_pc <= program_counter && program_counter < high_pc {
                             // We have established positive scope, so no need to continue.
@@ -2228,7 +2236,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                             }
                                         }
                                     other_range_attribute => {
-                                        parent_variable.debug_error = Some(format!("Found unexpected scope attribute: {:?} for variable {:?}", other_range_attribute, parent_variable.name));
+                                        parent_variable.variable_error = Some(VariableError::RemoveFromParent(format!("Found unexpected scope attribute: {:?} for variable {:?}", other_range_attribute, parent_variable.name)));
                                     }
                                 }
                         }
@@ -2253,7 +2261,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                             // These will be processed elsewhere.
                         }
                         unimplemented => {
-                            parent_variable.debug_error = Some(format!("UNIMPLEMENTED: Encountered unimplemented DwTag {:?} for Variable {:?}", unimplemented.static_string(), parent_variable));
+                            parent_variable.variable_error = Some(VariableError::RemoveFromParent(format!("UNIMPLEMENTED: Encountered unimplemented DwTag {:?} for Variable {:?}", unimplemented.static_string(), parent_variable)));
                         }
                     }
                 }
@@ -2275,17 +2283,15 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
             variable.role = match node.entry().attr(gimli::DW_AT_discr_value) {
                 Ok(optional_discr_value_attr) => {
                     match optional_discr_value_attr {
-                        Some(discr_attr) => {
-                            match discr_attr.value() {
-                                gimli::AttributeValue::Data1(const_value) => {
-                                    VariantRole::Variant(const_value as u64)
-                                }
-                                other_attribute_value => {
-                                    variable.debug_error = Some(format!("UNIMPLEMENTED: Attribute Value for DW_AT_discr_value: {:?}", other_attribute_value));
-                                    VariantRole::Variant(u64::MAX)
-                                }
+                        Some(discr_attr) => match discr_attr.value() {
+                            gimli::AttributeValue::Data1(const_value) => {
+                                VariantRole::Variant(const_value as u64)
                             }
-                        }
+                            other_attribute_value => {
+                                variable.variable_error = Some(VariableError::RemoveFromParent(format!("UNIMPLEMENTED: Attribute Value for DW_AT_discr_value: {:?}", other_attribute_value)));
+                                VariantRole::Variant(u64::MAX)
+                            }
+                        },
                         None => {
                             // In the case where the variable is a DW_TAG_variant, but has NO DW_AT_discr_value, then this is the "default" to be used.
                             VariantRole::Variant(u64::MAX)
@@ -2293,10 +2299,10 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                     }
                 }
                 Err(_error) => {
-                    variable.debug_error = Some(format!(
+                    variable.variable_error = Some(VariableError::RemoveFromParent(format!(
                         "ERROR: Retrieving DW_AT_discr_value for variable {:?}",
                         variable
-                    ));
+                    )));
                     VariantRole::NonVariant
                 }
             };
@@ -2383,25 +2389,26 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                         }
                                     }
                                     other_attribute_value => {
-                                        child_variable.debug_error = Some(format!(
+                                        child_variable.variable_error =
+                                            Some(VariableError::RemoveFromParent(format!(
                                             "UNIMPLEMENTED: Attribute Value for DW_AT_type {:?}",
                                             other_attribute_value
-                                        ));
+                                        )));
                                     }
                                 }
                             }
                             None => {
-                                child_variable.debug_error = Some(format!(
+                                child_variable.variable_error =
+                                    Some(VariableError::RemoveFromParent(format!(
                                     "ERROR: No Attribute Value for DW_AT_type for variable {:?}",
                                     child_variable.name
-                                ));
+                                )));
                             }
                         }
                     }
                     Err(error) => {
-                        child_variable.debug_error = Some(format!(
-                            "ERROR: Failed to decode pointer reference: {:?}",
-                            error
+                        child_variable.variable_error = Some(VariableError::RemoveFromParent(
+                            format!("ERROR: Failed to decode pointer reference: {:?}", error),
                         ));
                     }
                 }
@@ -2431,40 +2438,30 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                 // Recursively process a child types.
                 child_variable =
                     self.process_tree(node, child_variable, core, stack_frame_registers, cache)?;
-                if parent_variable.debug_error.is_none() && child_variable.debug_error.is_none() {
+                if parent_variable.variable_error.is_none()
+                    && child_variable.variable_error.is_none()
+                {
                     let enumerator_values =
                         cache.get_children(Some(child_variable.variable_key))?;
                     // NOTE: hard-coding value of variable.byte_size to 1 ... replace with code if necessary.
                     let mut buff = [0u8; 1];
-                    match core.read(child_variable.memory_location as u32, &mut buff) {
-                        Ok(_) => {
-                            let this_enum_const_value = u8::from_le_bytes(buff).to_string();
-                            let enumumerator_value =
-                                match enumerator_values.into_iter().find(|enumerator_variable| {
-                                    enumerator_variable.get_value(cache) == this_enum_const_value
-                                }) {
-                                    Some(this_enum) => this_enum.name,
-                                    None => VariableName::Named(
-                                        "<ERROR: Unresolved enum value>".to_string(),
-                                    ),
-                                };
-                            child_variable.set_value(format!(
-                                "{}::{}",
-                                child_variable.type_name, enumumerator_value
-                            ));
-                            // We don't need to keep these children.
-                            cache.remove_cache_entry_children(child_variable.variable_key)?;
-                        }
-                        Err(error) => {
-                            println!("Error reading memory for enumeration value: {:?}", error);
-                            println!("\tParent: {:?}", parent_variable);
-                            println!("\tParent: {:?}", child_variable);
-                        }
-                    }
-                } else {
-                    println!("Failed to resolve enumeration value ...");
-                    println!("\tParent: {:?}", parent_variable);
-                    println!("\tParent: {:?}", child_variable);
+                    core.read(child_variable.memory_location as u32, &mut buff)?;
+                    let this_enum_const_value = u8::from_le_bytes(buff).to_string();
+                    let enumumerator_value =
+                        match enumerator_values.into_iter().find(|enumerator_variable| {
+                            enumerator_variable.get_value(cache) == this_enum_const_value
+                        }) {
+                            Some(this_enum) => this_enum.name,
+                            None => {
+                                VariableName::Named("<ERROR: Unresolved enum value>".to_string())
+                            }
+                        };
+                    child_variable.set_value(format!(
+                        "{}::{}",
+                        child_variable.type_name, enumumerator_value
+                    ));
+                    // We don't need to keep these children.
+                    cache.remove_cache_entry_children(child_variable.variable_key)?;
                 }
             }
             gimli::DW_TAG_array_type => {
@@ -2491,7 +2488,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                             stack_frame_registers,
                                             cache,
                                         )?;
-                                        if child_variable.debug_error.is_none() {
+                                        if child_variable.variable_error.is_none() {
                                             child_variable.range_lower_bound =
                                                 subrange_variable.range_lower_bound;
                                             child_variable.range_upper_bound =
@@ -2499,10 +2496,10 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                             if child_variable.range_lower_bound < 0
                                                 || child_variable.range_upper_bound < 0
                                             {
-                                                child_variable.debug_error = Some(format!(
+                                                child_variable.variable_error = Some(VariableError::RemoveFromParent(format!(
                                                     "UNIMPLEMENTED: Array has a sub-range of {}..{} for ",
                                                     child_variable.range_lower_bound, child_variable.range_upper_bound)
-                                                );
+                                                ));
                                             }
                                             cache.remove_cache_entry(
                                                 subrange_variable.variable_key,
@@ -2569,25 +2566,26 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                         }
                                     }
                                     other_attribute_value => {
-                                        child_variable.debug_error = Some(format!(
+                                        child_variable.variable_error =
+                                            Some(VariableError::RemoveFromParent(format!(
                                             "UNIMPLEMENTED: Attribute Value for DW_AT_type {:?}",
                                             other_attribute_value
-                                        ));
+                                        )));
                                     }
                                 }
                             }
                             None => {
-                                child_variable.debug_error = Some(format!(
+                                child_variable.variable_error =
+                                    Some(VariableError::RemoveFromParent(format!(
                                     "ERROR: No Attribute Value for DW_AT_type for variable {:?}",
                                     child_variable.name
-                                ));
+                                )));
                             }
                         }
                     }
                     Err(error) => {
-                        child_variable.debug_error = Some(format!(
-                            "ERROR: Failed to decode pointer reference: {:?}",
-                            error
+                        child_variable.variable_error = Some(VariableError::RemoveFromParent(
+                            format!("ERROR: Failed to decode pointer reference: {:?}", error),
                         ));
                     }
                 }
@@ -2597,7 +2595,8 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                 // TODO: The DWARF does not currently hold information that allows decoding of which UNION arm is instantiated, so we have to display all available.
                 child_variable =
                     self.process_tree(node, child_variable, core, stack_frame_registers, cache)?;
-                if !cache.has_children(&child_variable)? && child_variable.debug_error.is_none() {
+                if !cache.has_children(&child_variable)? && child_variable.variable_error.is_none()
+                {
                     // Empty structs don't have values.
                     child_variable.set_value(child_variable.type_name.clone());
                 }
@@ -2627,10 +2626,11 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                     };
                             }
                             other_attribute_value => {
-                                child_variable.debug_error = Some(format!(
-                                    "UNIMPLEMENTED: Attribute Value for DW_AT_type {:?}",
-                                    other_attribute_value
-                                ));
+                                child_variable.variable_error =
+                                    Some(VariableError::RemoveFromParent(format!(
+                                        "UNIMPLEMENTED: Attribute Value for DW_AT_type {:?}",
+                                        other_attribute_value
+                                    )));
                             }
                         },
                         None => {
@@ -2639,10 +2639,11 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                         }
                     },
                     Err(error) => {
-                        child_variable.debug_error = Some(format!(
-                            "ERROR: Failed to decode subroutine type reference: {:?}",
-                            error
-                        ));
+                        child_variable.variable_error =
+                            Some(VariableError::RemoveFromParent(format!(
+                                "ERROR: Failed to decode subroutine type reference: {:?}",
+                                error
+                            )));
                     }
                 }
             }
@@ -2653,10 +2654,10 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
             }
             // Do not expand this type.
             other => {
-                child_variable.debug_error = Some(format!(
+                child_variable.variable_error = Some(VariableError::RemoveFromParent(format!(
                     "<UNIMPLEMENTED: type : {:?}>",
                     other.static_string()
-                ));
+                )));
                 child_variable.type_name = "".to_string();
                 cache.remove_cache_entry_children(child_variable.variable_key)?;
             }
@@ -2693,10 +2694,11 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                             expression,
                             stack_frame_registers,
                         ) {
-                            child_variable.debug_error = Some(format!(
-                                "ERROR: Determining memory location for this variable: {:?}",
-                                &error
-                            ));
+                            child_variable.variable_error =
+                                Some(VariableError::RemoveFromParent(format!(
+                                    "ERROR: Determining memory location for this variable: {:?}",
+                                    &error
+                                )));
                         }
                     }
                     gimli::AttributeValue::Udata(offset_from_parent) => {
@@ -2722,7 +2724,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                 while let Some(location) = match locations.next() {
                                     Ok(location_lists_entry) => location_lists_entry,
                                     Err(error) => {
-                                        child_variable.debug_error = Some(format!("ERROR: Iterating LocationLists for this variable: {:?}", &error));
+                                        child_variable.variable_error = Some(VariableError::RemoveFromParent(format!("ERROR: Iterating LocationLists for this variable: {:?}", &error)));
                                         None
                                     }
                                 } {
@@ -2741,30 +2743,29 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                         valid_expression,
                                         stack_frame_registers,
                                     ) {
-                                        child_variable.debug_error = Some(format!("ERROR: Determining memory location for this variable: {:?}", &error));
+                                        child_variable.variable_error = Some(VariableError::RemoveFromParent(format!("ERROR: Determining memory location for this variable: {:?}", &error)));
                                     }
                                 } else {
-                                    child_variable.set_value(
-                                        "<value out of scope - moved or dropped>".to_string(),
-                                    );
-                                    child_variable.memory_location = u64::MAX;
-                                    child_variable.variable_node_type =
-                                        VariableNodeType::DoNotRecurse;
+                                    child_variable.variable_error =
+                                        Some(VariableError::IncludeAsChild(
+                                            "<value out of scope - moved or dropped>".to_string(),
+                                        ));
                                 }
                             }
                             Err(error) => {
-                                child_variable.debug_error = Some(format!(
-                                    "ERROR: Resolving variable Location: {:?}",
-                                    &error
-                                ));
+                                child_variable.variable_error =
+                                    Some(VariableError::RemoveFromParent(format!(
+                                        "ERROR: Resolving variable Location: {:?}",
+                                        &error
+                                    )));
                             }
                         };
                     }
                     other_attribute_value => {
-                        child_variable.debug_error = Some(format!(
+                        child_variable.variable_error = Some(VariableError::RemoveFromParent(format!(
                                 "UNIMPLEMENTED: extract_location() Could not extract location from: {:?}",
                                 other_attribute_value
-                            ));
+                            )));
                     }
                 },
                 gimli::DW_AT_address_class => {
@@ -2772,17 +2773,17 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                         gimli::AttributeValue::AddressClass(address_class) => {
                             // Nothing to do in this case where it is zero
                             if address_class != gimli::DwAddr(0) {
-                                child_variable.debug_error = Some(format!(
+                                child_variable.variable_error = Some(VariableError::RemoveFromParent(format!(
                                     "UNIMPLEMENTED: extract_location() found unsupported DW_AT_address_class(gimli::DwAddr({:?}))",
                                     address_class
-                                ));
+                                )));
                             }
                         }
                         other_attribute_value => {
-                            child_variable.debug_error = Some(format!(
+                            child_variable.variable_error = Some(VariableError::RemoveFromParent(format!(
                                 "UNIMPLEMENTED: extract_location() found invalid DW_AT_address_class: {:?}",
                                 other_attribute_value
-                            ));
+                            )));
                         }
                     }
                 }
@@ -2793,8 +2794,8 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
         }
         // If the `memory_location` is still 0 at this time, then we inherit from the parent.
         if child_variable.memory_location.is_zero()
-            && !(child_variable.debug_error.is_some()
-                || parent_variable.debug_error.is_some()
+            && !(child_variable.variable_error.is_some()
+                || parent_variable.variable_error.is_some()
                 || parent_variable.memory_location.is_zero()
                 || parent_variable.memory_location == u64::MAX)
         {
