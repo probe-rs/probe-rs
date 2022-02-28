@@ -2431,28 +2431,40 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                 // Recursively process a child types.
                 child_variable =
                     self.process_tree(node, child_variable, core, stack_frame_registers, cache)?;
-                if child_variable.debug_error.is_none() {
+                if parent_variable.debug_error.is_none() && child_variable.debug_error.is_none() {
                     let enumerator_values =
                         cache.get_children(Some(child_variable.variable_key))?;
                     // NOTE: hard-coding value of variable.byte_size to 1 ... replace with code if necessary.
                     let mut buff = [0u8; 1];
-                    core.read(child_variable.memory_location as u32, &mut buff)?;
-                    let this_enum_const_value = u8::from_le_bytes(buff).to_string();
-                    let enumumerator_value =
-                        match enumerator_values.into_iter().find(|enumerator_variable| {
-                            enumerator_variable.get_value(cache) == this_enum_const_value
-                        }) {
-                            Some(this_enum) => this_enum.name,
-                            None => {
-                                VariableName::Named("<ERROR: Unresolved enum value>".to_string())
-                            }
-                        };
-                    child_variable.set_value(format!(
-                        "{}::{}",
-                        child_variable.type_name, enumumerator_value
-                    ));
-                    // We don't need to keep these children.
-                    cache.remove_cache_entry_children(child_variable.variable_key)?;
+                    match core.read(child_variable.memory_location as u32, &mut buff) {
+                        Ok(_) => {
+                            let this_enum_const_value = u8::from_le_bytes(buff).to_string();
+                            let enumumerator_value =
+                                match enumerator_values.into_iter().find(|enumerator_variable| {
+                                    enumerator_variable.get_value(cache) == this_enum_const_value
+                                }) {
+                                    Some(this_enum) => this_enum.name,
+                                    None => VariableName::Named(
+                                        "<ERROR: Unresolved enum value>".to_string(),
+                                    ),
+                                };
+                            child_variable.set_value(format!(
+                                "{}::{}",
+                                child_variable.type_name, enumumerator_value
+                            ));
+                            // We don't need to keep these children.
+                            cache.remove_cache_entry_children(child_variable.variable_key)?;
+                        }
+                        Err(error) => {
+                            println!("Error reading memory for enumeration value: {:?}", error);
+                            println!("\tParent: {:?}", parent_variable);
+                            println!("\tParent: {:?}", child_variable);
+                        }
+                    }
+                } else {
+                    println!("Failed to resolve enumeration value ...");
+                    println!("\tParent: {:?}", parent_variable);
+                    println!("\tParent: {:?}", child_variable);
                 }
             }
             gimli::DW_TAG_array_type => {
