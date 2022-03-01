@@ -437,7 +437,7 @@ impl Variable {
     /// Implementing get_value(), because Variable.value has to be private (a requirement of updating the value without overriding earlier values ... see set_value()).
     pub fn get_value(&self, variable_cache: &VariableCache) -> String {
         #[allow(clippy::if_same_then_else)]
-        // because of limitations with ||'ing `if let` statements
+        // Due to limitations with ||'ing `if let` statements
         if let Some(VariableError::IncludeAsChild(debug_error)) = self.variable_error.clone() {
             // We encountered an error somewhere, so report it to the user
             debug_error
@@ -449,10 +449,10 @@ impl Variable {
         } else if let Some(existing_value) = self.value.clone() {
             // The `value` for this `Variable` is non empty because it is base data type for which a value was determined based on the core runtime
             existing_value
-        } else if let VariableName::AnonymousNamespace = self.name.clone() {
+        } else if let VariableName::AnonymousNamespace = self.name {
             // Namespaces do not have values
             String::new()
-        } else if let VariableName::Namespace(_) = self.name.clone() {
+        } else if let VariableName::Namespace(_) = self.name {
             // Namespaces do not have values
             String::new()
         } else {
@@ -460,7 +460,7 @@ impl Variable {
             match variable_cache.has_children(self) {
                 Ok(has_children) => {
                     if has_children {
-                        self.formatted_variable_value(variable_cache)
+                        self.formatted_variable_value(variable_cache, 0_usize)
                     } else if self.type_name.is_empty() || self.memory_location.is_zero() {
                         if self.variable_node_type.is_deferred() {
                             // When we will do a lazy-load of variable children, and they have not yet been requested by the user, just display the type_name as the value
@@ -627,30 +627,42 @@ impl Variable {
         }
     }
 
-    fn formatted_variable_value(&self, variable_cache: &VariableCache) -> String {
+    fn formatted_variable_value(
+        &self,
+        variable_cache: &VariableCache,
+        indentation: usize,
+    ) -> String {
+        let line_feed = if indentation.is_zero() { "" } else { "\n" }.to_string();
         #[allow(clippy::if_same_then_else)]
-        // because of limitations with ||'ing `if let` statements
+        // Due to limitations with ||'ing `if let` statements
         if let Some(existing_value) = &self.value {
             // Use the supplied value.
-            existing_value.clone()
-        } else if let VariableName::AnonymousNamespace = self.name.clone() {
+            format!(
+                "{}{:\t<indentation$}{}: {}",
+                line_feed,
+                "",
+                self.type_name,
+                existing_value.clone()
+            )
+        } else if let VariableName::AnonymousNamespace = self.name {
             // Namespaces do not have values
             String::new()
-        } else if let VariableName::Namespace(_) = self.name.clone() {
+        } else if let VariableName::Namespace(_) = self.name {
             // Namespaces do not have values
             String::new()
         } else {
             let mut compound_value = "".to_string();
-            // Only do this if we do not already have a value assigned.
             if let Ok(children) = variable_cache.get_children(Some(self.variable_key)) {
                 // Make sure we can safely unwrap() children.
                 if self.type_name.starts_with('&') {
                     // Pointers
                     compound_value = format!(
-                        "{}{}",
+                        "{}{}{:\t<indentation$}{}",
                         compound_value,
+                        line_feed,
+                        "",
                         if let Some(first_child) = children.first() {
-                            first_child.formatted_variable_value(variable_cache)
+                            first_child.formatted_variable_value(variable_cache, indentation + 1)
                         } else {
                             "Unable to resolve referenced variable value".to_string()
                         }
@@ -658,7 +670,8 @@ impl Variable {
                     compound_value
                 } else if self.type_name.starts_with('[') {
                     // Arrays
-                    compound_value = format!("{}[", compound_value);
+                    compound_value =
+                        format!("{}{}{:\t<indentation$}[", compound_value, line_feed, "");
                     let mut child_count: usize = 0;
                     for child in children.iter() {
                         child_count += 1;
@@ -667,17 +680,17 @@ impl Variable {
                             compound_value = format!(
                                 "{}{}",
                                 compound_value,
-                                child.formatted_variable_value(variable_cache)
+                                child.formatted_variable_value(variable_cache, indentation + 1)
                             );
                         } else {
                             compound_value = format!(
                                 "{}{}, ",
                                 compound_value,
-                                child.formatted_variable_value(variable_cache)
+                                child.formatted_variable_value(variable_cache, indentation + 1)
                             );
                         }
                     }
-                    format!("{}]", compound_value)
+                    format!("{}{}{:\t<indentation$}]", compound_value, line_feed, "")
                 } else if self.type_name.starts_with("Option")
                     || self.type_name.starts_with("Result")
                 {
@@ -686,7 +699,7 @@ impl Variable {
                         compound_value = format!(
                             "{}{}",
                             compound_value,
-                            child.formatted_variable_value(variable_cache)
+                            child.formatted_variable_value(variable_cache, indentation)
                         );
                     }
                     compound_value
@@ -695,15 +708,18 @@ impl Variable {
                     || self.type_name.as_str() == "Err"
                 {
                     // Handle special structure types like the variant values of `Option<>` and `Result<>`
-                    compound_value = format!("{} {}(", self.type_name, compound_value);
+                    compound_value = format!(
+                        "{}{:\t<indentation$}{} {}(",
+                        line_feed, "", self.type_name, compound_value
+                    );
                     for child in children {
                         compound_value = format!(
                             "{}{}",
                             compound_value,
-                            child.formatted_variable_value(variable_cache)
+                            child.formatted_variable_value(variable_cache, indentation + 1)
                         );
                     }
-                    format!("{})", compound_value)
+                    format!("{}{}{:\t<indentation$})", compound_value, line_feed, "")
                 } else {
                     // Generic handling of other structured types.
                     // The pre- and post- fix is determined by the type of children.
@@ -717,12 +733,17 @@ impl Variable {
                             if let VariableName::Named(child_name) = child.name.clone() {
                                 if child_name.starts_with("__0") {
                                     // Treat this structure as a tuple
-                                    pre_fix = Some("(".to_string());
-                                    post_fix = Some(")".to_string());
+                                    pre_fix = Some(format!("{}{:\t<indentation$}(", line_feed, ""));
+                                    post_fix =
+                                        Some(format!("{}{:\t<indentation$})", line_feed, ""));
                                 } else {
                                     // Treat this structure as a `struct`
-                                    pre_fix = Some("{".to_string());
-                                    post_fix = Some("}".to_string());
+                                    pre_fix = Some(format!(
+                                        "{}{:\t<indentation$}{} {{",
+                                        line_feed, "", self.type_name,
+                                    ));
+                                    post_fix =
+                                        Some(format!("{}{:\t<indentation$}}}", line_feed, ""));
                                 }
                             };
                             if let Some(pre_fix) = &pre_fix {
@@ -734,13 +755,13 @@ impl Variable {
                             compound_value = format!(
                                 "{}{}",
                                 compound_value,
-                                child.formatted_variable_value(variable_cache)
+                                child.formatted_variable_value(variable_cache, indentation + 1)
                             );
                         } else {
                             compound_value = format!(
                                 "{}{}, ",
                                 compound_value,
-                                child.formatted_variable_value(variable_cache)
+                                child.formatted_variable_value(variable_cache, indentation + 1)
                             );
                         }
                     }
@@ -751,7 +772,7 @@ impl Variable {
                 }
             } else {
                 // We don't have a value, and we can't generate one from children values, so use the type_name
-                self.type_name.to_string()
+                format!("{:\t<indentation$}{}", "", self.type_name.to_string())
             }
         }
     }
