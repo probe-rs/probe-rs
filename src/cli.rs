@@ -78,6 +78,10 @@ pub(crate) struct Opts {
     #[structopt(long)]
     pub(crate) json: bool,
 
+    /// Disable use of double buffering while downloading flash
+    #[structopt(long = "disable-double-buffering")]
+    pub(crate) disable_double_buffering: bool,
+
     /// Arguments passed after the ELF file path are discarded
     #[structopt(name = "REST")]
     _rest: Vec<String>,
