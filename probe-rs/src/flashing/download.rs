@@ -113,6 +113,8 @@ pub struct DownloadOptions<'progress> {
     pub skip_erase: bool,
     /// After flashing, read back all the flashed data to verify it has been written correctly.
     pub verify: bool,
+    /// Disable double buffering when loading flash.
+    pub disable_double_buffering: bool,
 }
 
 impl<'progress> DownloadOptions<'progress> {

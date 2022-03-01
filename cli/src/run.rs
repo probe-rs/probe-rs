@@ -7,7 +7,12 @@ use std::fs::File;
 use std::io::Write;
 use std::path::Path;
 
-pub fn run(common: ProbeOptions, path: &str, chip_erase: bool) -> Result<()> {
+pub fn run(
+    common: ProbeOptions,
+    path: &str,
+    chip_erase: bool,
+    disable_double_buffering: bool,
+) -> Result<()> {
     let mut session = common.simple_attach()?;
 
     let mut file = match File::open(path) {
@@ -26,6 +31,7 @@ pub fn run(common: ProbeOptions, path: &str, chip_erase: bool) -> Result<()> {
             list_chips: false,
             list_probes: false,
             disable_progressbars: false,
+            disable_double_buffering,
             reset_halt: false,
             log: None,
             restore_unwritten: false,

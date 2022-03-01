@@ -28,6 +28,7 @@ pub fn run_flash_download(
     download_option.keep_unwritten_bytes = opt.restore_unwritten;
     download_option.dry_run = opt.probe_options.dry_run;
     download_option.do_chip_erase = do_chip_erase;
+    download_option.disable_double_buffering = opt.disable_double_buffering;
 
     if !opt.disable_progressbars {
         // Create progress bars.

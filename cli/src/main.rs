@@ -123,6 +123,10 @@ enum Cli {
         /// Whether to disable fancy progress reporting
         #[structopt(long)]
         disable_progressbars: bool,
+
+        /// Disable double-buffering when downloading flash.  If downloading times out, try this option.
+        #[structopt(long = "disable-double-buffering")]
+        disable_double_buffering: bool,
     },
     /// Erase all nonvolatile memory of attached target
     Erase {
@@ -141,6 +145,10 @@ enum Cli {
         /// Whether to erase the entire chip before downloading
         #[structopt(long)]
         chip_erase: bool,
+
+        /// Disable double-buffering when downloading flash.  If downloading times out, try this option.
+        #[structopt(long = "disable-double-buffering")]
+        disable_double_buffering: bool,
     },
     /// Trace a memory location on the target
     #[structopt(name = "trace")]
@@ -218,18 +226,21 @@ fn main() -> Result<()> {
             path,
             chip_erase,
             disable_progressbars,
+            disable_double_buffering,
         } => download_program_fast(
             common,
             format.into(base_address, skip_bytes),
             &path,
             chip_erase,
             disable_progressbars,
+            disable_double_buffering,
         ),
         Cli::Run {
             common,
             path,
             chip_erase,
-        } => run::run(common, &path, chip_erase),
+            disable_double_buffering,
+        } => run::run(common, &path, chip_erase, disable_double_buffering),
         Cli::Erase { common } => erase(&common),
         Cli::Trace {
             shared,
@@ -298,6 +309,7 @@ fn download_program_fast(
     path: &str,
     do_chip_erase: bool,
     disable_progressbars: bool,
+    disable_double_buffering: bool,
 ) -> Result<()> {
     let mut session = common.simple_attach()?;
 
@@ -322,6 +334,7 @@ fn download_program_fast(
             list_chips: false,
             list_probes: false,
             disable_progressbars,
+            disable_double_buffering,
             reset_halt: false,
             log: None,
             restore_unwritten: false,
