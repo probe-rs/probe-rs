@@ -322,6 +322,12 @@ impl FlashLoader {
                 }
             }
 
+            let mut do_use_double_buffering = flasher.double_buffering_supported();
+            if do_use_double_buffering && options.disable_double_buffering {
+                log::info!("Disabled double-buffering support for loader via passed option, though target supports it.");
+                do_use_double_buffering = false;
+            }
+
             for region in regions {
                 log::debug!(
                     "    programming region: {:08x}-{:08x} ({} bytes)",
@@ -335,7 +341,7 @@ impl FlashLoader {
                     &region,
                     &self.builder,
                     options.keep_unwritten_bytes,
-                    true,
+                    do_use_double_buffering,
                     options.skip_erase || do_chip_erase,
                     options.progress.unwrap_or(&FlashProgress::new(|_| {})),
                 )?;

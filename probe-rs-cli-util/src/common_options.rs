@@ -61,6 +61,12 @@ pub struct FlashOptions {
     #[structopt(name = "disable-progressbars", long = "disable-progressbars")]
     pub disable_progressbars: bool,
     #[structopt(
+        long = "disable-double-buffering",
+        help = "Use this flag to disable double-buffering when downloading flash data.  If download fails during\
+        programming with timeout errors, try this option."
+    )]
+    pub disable_double_buffering: bool,
+    #[structopt(
         name = "reset-halt",
         long = "reset-halt",
         help = "Use this flag to reset and halt (instead of just a reset) the attached core after flashing the target."
