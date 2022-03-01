@@ -613,7 +613,14 @@ impl Variable {
         if let Some(error_condition) = &self.variable_error {
             match error_condition {
                 VariableError::IncludeAsChild(_) => false,
-                VariableError::RemoveFromParent(_) => true,
+                VariableError::RemoveFromParent(variable_error) => {
+                    log::warn!(
+                        "Cannot fully resolve variable: {}, because of an error: {}",
+                        self.name.clone(),
+                        variable_error
+                    );
+                    true
+                }
             }
         } else {
             false
