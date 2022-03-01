@@ -397,7 +397,7 @@ fn read_c_string(
 
 /// Specifies what to do when a channel doesn't have enough buffer space for a complete write on the
 /// target side.
-#[derive(Eq, PartialEq, Debug)]
+#[derive(Clone, Copy, Eq, PartialEq, Debug, serde::Serialize, serde::Deserialize)]
 #[repr(u32)]
 pub enum ChannelMode {
     /// Skip writing the data completely if it doesn't fit in its entirety.
