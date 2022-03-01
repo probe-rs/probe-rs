@@ -436,6 +436,8 @@ impl Variable {
 
     /// Implementing get_value(), because Variable.value has to be private (a requirement of updating the value without overriding earlier values ... see set_value()).
     pub fn get_value(&self, variable_cache: &VariableCache) -> String {
+        #[allow(clippy::if_same_then_else)]
+        // because of limitations with ||'ing `if let` statements
         if let Some(VariableError::IncludeAsChild(debug_error)) = self.variable_error.clone() {
             // We encountered an error somewhere, so report it to the user
             debug_error
@@ -619,6 +621,8 @@ impl Variable {
     }
 
     fn formatted_variable_value(&self, variable_cache: &VariableCache) -> String {
+        #[allow(clippy::if_same_then_else)]
+        // because of limitations with ||'ing `if let` statements
         if let Some(existing_value) = &self.value {
             // Use the supplied value.
             existing_value.clone()

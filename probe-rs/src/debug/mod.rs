@@ -2157,22 +2157,20 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                         child_variable = self.process_tree_node_attributes(&mut child_node, &mut parent_variable, child_variable, core, stack_frame_registers, cache)?;
                         if child_variable.discard() {
                             cache.remove_cache_entry(child_variable.variable_key)?;
-                        } else {
-                            if let VariantRole::Variant(discriminant) = child_variable.role {
-                                // Only process the discriminant variants or when we eventually   encounter the default 
-                                if parent_variable.role == VariantRole::VariantPart(discriminant) || discriminant == u64::MAX
-                                {
-                                    // Pass some key values through intermediate nodes to valid desccendants.
-                                    child_variable.memory_location = parent_variable.memory_location;
-                                    // Recursively process each relevant child node.
-                                    child_variable = self.process_tree(child_node, child_variable, core, stack_frame_registers, cache)?;
-                                    if child_variable.variable_error.is_none() {
-                                        // Eliminate intermediate DWARF nodes, but keep their children
-                                        cache.adopt_grand_children(&parent_variable, &child_variable)?;
-                                    }
-                                } else {
-                                    cache.remove_cache_entry(child_variable.variable_key)?;
+                        } else if let VariantRole::Variant(discriminant) = child_variable.role {
+                            // Only process the discriminant variants or when we eventually   encounter the default 
+                            if parent_variable.role == VariantRole::VariantPart(discriminant) || discriminant == u64::MAX
+                            {
+                                // Pass some key values through intermediate nodes to valid desccendants.
+                                child_variable.memory_location = parent_variable.memory_location;
+                                // Recursively process each relevant child node.
+                                child_variable = self.process_tree(child_node, child_variable, core, stack_frame_registers, cache)?;
+                                if child_variable.variable_error.is_none() {
+                                    // Eliminate intermediate DWARF nodes, but keep their children
+                                    cache.adopt_grand_children(&parent_variable, &child_variable)?;
                                 }
+                            } else {
+                                cache.remove_cache_entry(child_variable.variable_key)?;
                             }
                         }
                     }
