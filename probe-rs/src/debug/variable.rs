@@ -292,6 +292,8 @@ pub enum VariableName {
     Artifical,
     /// Anonymous namespace
     AnonymousNamespace,
+    /// A Namespace with a specific name
+    Namespace(String),
     /// Variable with a specific name
     Named(String),
     /// Variable with an unknown name
@@ -312,6 +314,7 @@ impl std::fmt::Display for VariableName {
             VariableName::LocalScope => write!(f, "<local_scope>"),
             VariableName::Artifical => write!(f, "<artifical>"),
             VariableName::AnonymousNamespace => write!(f, "<anonymous_namespace>"),
+            VariableName::Namespace(name) => name.fmt(f),
             VariableName::Named(name) => name.fmt(f),
             VariableName::Unknown => write!(f, "<unknown>"),
         }
@@ -444,6 +447,12 @@ impl Variable {
         } else if let Some(existing_value) = self.value.clone() {
             // The `value` for this `Variable` is non empty because it is base data type for which a value was determined based on the core runtime
             existing_value
+        } else if let VariableName::AnonymousNamespace = self.name.clone() {
+            // Namespaces do not have values
+            String::new()
+        } else if let VariableName::Namespace(_) = self.name.clone() {
+            // Namespaces do not have values
+            String::new()
         } else {
             // We need to construct a 'human readable' value using `fmt::Display` to represent the values of complex types and pointers.
             match variable_cache.has_children(self) {
@@ -597,10 +606,28 @@ impl Variable {
         }
     }
 
+    /// Decipher the self.variable_error to determine if we need to remove this variable from the variable cache
+    pub fn discard(&self) -> bool {
+        if let Some(error_condition) = &self.variable_error {
+            match error_condition {
+                VariableError::IncludeAsChild(_) => false,
+                VariableError::RemoveFromParent(_) => true,
+            }
+        } else {
+            false
+        }
+    }
+
     fn formatted_variable_value(&self, variable_cache: &VariableCache) -> String {
         if let Some(existing_value) = &self.value {
             // Use the supplied value.
             existing_value.clone()
+        } else if let VariableName::AnonymousNamespace = self.name.clone() {
+            // Namespaces do not have values
+            String::new()
+        } else if let VariableName::Namespace(_) = self.name.clone() {
+            // Namespaces do not have values
+            String::new()
         } else {
             let mut compound_value = "".to_string();
             // Only do this if we do not already have a value assigned.
