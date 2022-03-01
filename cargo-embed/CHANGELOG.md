@@ -21,6 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- RTT channels can be configured to use one of three blocking modes
 - RTT and GDB server can now run concurrently (#159).
 
 ### Changed

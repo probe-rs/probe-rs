@@ -792,7 +792,7 @@ dependencies = [
 [[package]]
 name = "gdb-server"
 version = "0.12.0"
-source = "git+https://github.com/probe-rs/probe-rs#781f160bfea2354dc5a9fb61ae17c1ecae8d8567"
+source = "git+https://github.com/probe-rs/probe-rs#9530ab0ee204a2d80685fd215162653eae1aa160"
 dependencies = [
  "anyhow",
  "async-std",
@@ -1526,7 +1526,7 @@ checksum = "eb9f9e6e233e5c4a35559a617bf40a4ec447db2e84c20b55a6f83167b7e57872"
 [[package]]
 name = "probe-rs"
 version = "0.12.0"
-source = "git+https://github.com/probe-rs/probe-rs#781f160bfea2354dc5a9fb61ae17c1ecae8d8567"
+source = "git+https://github.com/probe-rs/probe-rs#9530ab0ee204a2d80685fd215162653eae1aa160"
 dependencies = [
  "anyhow",
  "base64",
@@ -1558,7 +1558,7 @@ dependencies = [
 [[package]]
 name = "probe-rs-cli-util"
 version = "0.12.0"
-source = "git+https://github.com/probe-rs/probe-rs#781f160bfea2354dc5a9fb61ae17c1ecae8d8567"
+source = "git+https://github.com/probe-rs/probe-rs#9530ab0ee204a2d80685fd215162653eae1aa160"
 dependencies = [
  "anyhow",
  "byte-unit",
@@ -1587,18 +1587,19 @@ dependencies = [
 [[package]]
 name = "probe-rs-rtt"
 version = "0.12.0"
-source = "git+https://github.com/probe-rs/probe-rs#781f160bfea2354dc5a9fb61ae17c1ecae8d8567"
+source = "git+https://github.com/probe-rs/probe-rs#9530ab0ee204a2d80685fd215162653eae1aa160"
 dependencies = [
  "log",
  "probe-rs",
  "scroll 0.10.2",
+ "serde",
  "thiserror",
 ]
 
 [[package]]
 name = "probe-rs-target"
 version = "0.12.0"
-source = "git+https://github.com/probe-rs/probe-rs#781f160bfea2354dc5a9fb61ae17c1ecae8d8567"
+source = "git+https://github.com/probe-rs/probe-rs#9530ab0ee204a2d80685fd215162653eae1aa160"
 dependencies = [
  "base64",
  "jep106",
