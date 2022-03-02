@@ -871,20 +871,20 @@ impl Debugger {
                             // Unimplemented command.
                             if debug_adapter.adapter_type() == DebugAdapterType::DapClient {
                                 debug_adapter.log_to_console(format!(
-                                    "ERROR: Received unsupported request '{}'\n",
+                                    "Error: Received unsupported request '{}'\n",
                                     command
                                 ));
                                 debug_adapter
                                     .send_response::<()>(
                                         request,
                                         Err(DebuggerError::Other(anyhow!(
-                                        "ERROR: Received request '{}', which is not supported or not implemented yet",
+                                        "Error: Received request '{}', which is not supported or not implemented yet",
                                         command
                                     )
                                         )),
                                     )?;
                                 Err(DebuggerError::Other(anyhow!(
-                                        "ERROR: Received request '{}', which is not supported or not implemented yet",
+                                        "Error: Received request '{}', which is not supported or not implemented yet",
                                         command
 
                                 )))
@@ -1516,6 +1516,13 @@ impl Debugger {
                 }
                 Err(e) => {
                     if debug_adapter.adapter_type() == DebugAdapterType::DapClient {
+                        debug_adapter.show_message(
+                            MessageSeverity::Error,
+                            format!(
+                                "Debug Adapter terminated unexpectedly with an error: {:?}",
+                                e
+                            ),
+                        );
                         debug_adapter.send_event(
                             "terminated",
                             Some(TerminatedEventBody { restart: None }),

@@ -1220,6 +1220,9 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         parent_variable: &probe_rs::debug::Variable,
         cache: &mut VariableCache,
     ) -> (i64, i64, i64) {
+        if !parent_variable.is_valid() {
+            return (0, 0, 0);
+        }
         let mut named_child_variables_cnt = 0;
         let mut indexed_child_variables_cnt = 0;
         if let Ok(children) = cache.get_children(Some(parent_variable.variable_key)) {
