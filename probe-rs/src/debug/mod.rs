@@ -481,7 +481,7 @@ impl DebugInfo {
                 Some(unit_node.entry().offset()),
             );
             static_root_variable.variable_node_type = VariableNodeType::DirectLookup;
-            static_root_variable.name = VariableName::StaticScope;
+            static_root_variable.name = VariableName::StaticScopeRoot;
             static_variable_cache.cache_variable(None, static_root_variable, core)?;
         }
         Ok(static_variable_cache)
@@ -508,7 +508,7 @@ impl DebugInfo {
             Some(function_node.entry().offset()),
         );
         function_root_variable.variable_node_type = VariableNodeType::DirectLookup;
-        function_root_variable.name = VariableName::LocalScope;
+        function_root_variable.name = VariableName::LocalScopeRoot;
         function_variable_cache.cache_variable(None, function_root_variable, core)?;
         Ok(function_variable_cache)
     }

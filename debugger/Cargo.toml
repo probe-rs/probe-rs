@@ -41,6 +41,7 @@ serde = { version = "^1.0", features = ["derive"] }
 schemafy = "^0.6"
 chrono = { version = "0.4", features = ["serde"] }
 goblin = "0.5.1"
+base64 = "0.13"
 
 [dev-dependencies]
 insta = "1.8.0"
