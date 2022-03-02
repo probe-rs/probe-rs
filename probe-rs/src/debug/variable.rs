@@ -220,32 +220,6 @@ impl VariableCache {
     }
 }
 
-// TODO: For the CLI, implement new commands to view the values of variables. Including it in the std::fmt::Display for VariableCache is too noisy.
-fn _fmt_recurse_variables(
-    variable_cache: &VariableCache,
-    parent_variable: &Variable,
-    level: u32,
-    f: &mut std::fmt::Formatter,
-) -> std::fmt::Result {
-    for _depth in 0..level {
-        write!(f, "   ")?;
-    }
-    let new_level = level + 1;
-    let ret = writeln!(
-        f,
-        "|-> {} \t= {} \t({})",
-        parent_variable.name,
-        parent_variable.value.as_ref().unwrap_or(&"".to_string()),
-        parent_variable.type_name
-    );
-    if let Ok(children) = variable_cache.get_children(Some(parent_variable.variable_key)) {
-        for variable in &children {
-            _fmt_recurse_variables(variable_cache, variable, new_level, f)?;
-        }
-    }
-    ret
-}
-
 /// Define the role that a variable plays in a Variant relationship. See section '5.7.10 Variant Entries' of the DWARF 5 specification
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum VariantRole {
@@ -263,20 +237,51 @@ impl Default for VariantRole {
     }
 }
 
-#[derive(Debug, PartialEq, Clone)]
-pub enum VariableError {
-    /// We encountered an error while resolving the variable definition or value, AND WILL include it as a valid child of its parent.
-    IncludeAsChild(String),
-    /// We encountered an error while resolving the variable definition or value, AND DO NOT wish to include it as a valid child of its parent.
-    RemoveFromParent(String),
+/// A [Variable] will have either a valid value, or some reason why a value could not be constructed.
+/// - If we encounter expected errors, they will be displayed to the user as defined below.
+/// - If we encounter unexpected errors, they will be treated as proper errors and will propogated to the calling process as an `Err()`
+#[derive(Clone, Debug, PartialEq)]
+pub enum VariableValue {
+    /// A valid value of this variable
+    Valid(String),
+    /// Notify the user that we encountered a problem correctly resolving the variable.
+    /// - The variable will be visible to the user, as will the other field of the variable.
+    /// - The contained warning message will be displayed to the user.
+    /// - The debugger will not attempt to resolve additional fields or children of this variable.
+    Error(String),
+    /// The value has not been set. This could be because ...
+    /// - It is too early in the process to have discovered its value, or ...
+    /// - The variable cannot have a stored value, e.g. a `struct`. In this case, please use `Variable::get_value` to infer a human readable value from the value of the struct's fields.
+    Empty,
 }
 
-impl std::fmt::Display for VariableError {
+impl Default for VariableValue {
+    fn default() -> Self {
+        VariableValue::Empty
+    }
+}
+
+impl std::fmt::Display for VariableValue {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            VariableError::IncludeAsChild(error) => error.fmt(f),
-            VariableError::RemoveFromParent(error) => error.fmt(f),
+            VariableValue::Valid(value) => value.fmt(f),
+            VariableValue::Error(error) => write!(f, "< {} >", error,),
+            VariableValue::Empty => write!(
+                f,
+                "Value not set. Please use Variable::get_value() to infer a human readable variable value"
+            ),
         }
+    }
+}
+
+impl VariableValue {
+    /// A VariableValue is valid if it doesn't contain an Info or a Warning.
+    pub fn is_valid(&self) -> bool {
+        !matches!(self, VariableValue::Error(_))
+    }
+    /// No value or error is present
+    pub fn is_empty(&self) -> bool {
+        matches!(self, VariableValue::Empty)
     }
 }
 
@@ -379,8 +384,8 @@ pub struct Variable {
     pub parent_key: Option<i64>,
     /// The variable name refers to the name of any of the types of values described in the [VariableCache]
     pub name: VariableName,
-    /// The value will always be `None` unless the variable is a base type or there was an error during the unwind operation for the variable value. For all Variables that are complex types or references, the value will be a "fmt::Display" representation that attempts to assemble the base types into human readable form. Use `Variable::set_value()` and `Variable::get_value()` to correctly process this `value`
-    value: Option<String>,
+    /// Use `Variable::set_value()` and `Variable::get_value()` to correctly process this `value`
+    value: VariableValue,
     /// The source location of the declaration of this variable, if available.
     pub source_location: Option<SourceLocation>,
     pub type_name: String,
@@ -402,10 +407,6 @@ pub struct Variable {
     /// If this is a subrange (array, vector, etc.), we need to temporarily store the the upper bound of the range.
     pub range_upper_bound: i64,
     pub role: VariantRole,
-    /// If anything goes wrong during processing the debug info of this variable, then we store the error here.
-    /// The idea is to catch errors on a per- [Variable] basis, and then continue processing the rest of debug information.
-    /// By doing this, we ensure the user can get partial success on stack traces, even when some individual variables are not able to resolve successfully.
-    pub variable_error: Option<VariableError>,
 }
 
 impl Variable {
@@ -423,32 +424,30 @@ impl Variable {
 
     /// Implementing set_value(), because the library passes errors into the value of the variable.
     /// This ensures debug front ends can see the errors, but doesn't fail because of a single variable not being able to decode correctly.
-    pub(crate) fn set_value(&mut self, new_value: String) {
-        if let Some(existing_value) = self.value.clone() {
-            if new_value != existing_value {
-                // We append the new value to the old value, so that we don't loose any prior errors or warnings originating from the process of decoding the actual value.
-                self.value = Some(format!("{} : {}", existing_value, new_value));
-            }
+    pub(crate) fn set_value(&mut self, new_value: VariableValue) {
+        // Allow some block when logic requires it.
+        #[allow(clippy::if_same_then_else)]
+        if new_value.is_valid() {
+            // Simply overwrite existing value with a new valid one.
+            self.value = new_value;
+        } else if self.value.is_valid() {
+            // Overwrite a valid value with an error.
+            self.value = new_value;
         } else {
-            self.value = Some(new_value);
+            // Concatenate the error messages ...
+            self.value = VariableValue::Error(format!("{} : {}", self.value, new_value));
         }
     }
 
     /// Implementing get_value(), because Variable.value has to be private (a requirement of updating the value without overriding earlier values ... see set_value()).
     pub fn get_value(&self, variable_cache: &VariableCache) -> String {
+        // Allow for chained `if let` without complaining
         #[allow(clippy::if_same_then_else)]
-        // Due to limitations with ||'ing `if let` statements
-        if let Some(VariableError::IncludeAsChild(debug_error)) = self.variable_error.clone() {
-            // We encountered an error somewhere, so report it to the user
-            debug_error
-        } else if let Some(VariableError::RemoveFromParent(debug_error)) =
-            self.variable_error.clone()
-        {
-            // We encountered an error somewhere, so report it to the user
-            debug_error
-        } else if let Some(existing_value) = self.value.clone() {
-            // The `value` for this `Variable` is non empty because it is base data type for which a value was determined based on the core runtime
-            existing_value
+        if !self.value.is_empty() {
+            // The `value` for this `Variable` is non empty because ...
+            // - It is base data type for which a value was determined based on the core runtime, or ...
+            // - We encountered an error somewhere, so report it to the user
+            format!("{}", self.value)
         } else if let VariableName::AnonymousNamespace = self.name {
             // Namespaces do not have values
             String::new()
@@ -468,11 +467,11 @@ impl Variable {
                         } else {
                             // This condition should only be true for intermediate nodes from DWARF. These should not show up in the final `VariableCache`
                             // If a user sees this error, then there is a logic problem in the stack unwind
-                            "ERROR: This is a bug! Attempted to evaluate a Variable with no type or no memory location".to_string()
+                            "Error: This is a bug! Attempted to evaluate a Variable with no type or no memory location".to_string()
                         }
                     } else {
                         format!(
-                            "UNIMPLEMENTED: Evaluate type {} of ({} bytes) at location 0x{:08x}",
+                            "Unimplemented: Evaluate type {} of ({} bytes) at location 0x{:08x}",
                             self.type_name, self.byte_size, self.memory_location
                         )
                     }
@@ -488,11 +487,9 @@ impl Variable {
     /// Evaluate the variable's result if possible and set self.value, or else set self.value as the error String.
     fn extract_value(&mut self, core: &mut Core<'_>, variable_cache: &VariableCache) {
         // Quick exit if we don't really need to do much more.
-        if self.variable_error.is_some()
-        // The value was set by get_location(), so just leave it as is.
+        if !self.value.is_empty()
+        // The value was set explicitly, so just leave it as is., or it was an error, so don't attempt anything else
         || self.memory_location == u64::MAX
-        // The value was set elsewhere in this library - probably because of an error - so just leave it as is.
-        || self.value.is_some()
         // Early on in the process of `Variable` evaluation
         || self.type_name.is_empty()
         // Templates, Phantoms, etc.
@@ -501,7 +498,7 @@ impl Variable {
             return;
         } else if self.variable_node_type.is_deferred() {
             // And we have not previously assigned the value, then assign the type and address as the value
-            self.value = Some(format!(
+            self.value = VariableValue::Valid(format!(
                 "{} @ {:#010X}",
                 self.type_name.clone(),
                 self.memory_location
@@ -517,78 +514,78 @@ impl Variable {
 
         // This is the primary logic for decoding a variable's value, once we know the type and memory_location.
         let known_value = match self.type_name.as_str() {
-            "!" => Some("<Never returns>".to_string()),
-            "()" => Some("()".to_string()),
-            "bool" => Some(
-                bool::get_value(self, core, variable_cache)
-                    .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.to_string()),
+            "!" => VariableValue::Valid("<Never returns>".to_string()),
+            "()" => VariableValue::Valid("()".to_string()),
+            "bool" => bool::get_value(self, core, variable_cache).map_or_else(
+                |err| VariableValue::Error(format!("{:?}", err)),
+                |value| VariableValue::Valid(value.to_string()),
             ),
-            "char" => Some(
-                char::get_value(self, core, variable_cache)
-                    .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.to_string()),
+            "char" => char::get_value(self, core, variable_cache).map_or_else(
+                |err| VariableValue::Error(format!("{:?}", err)),
+                |value| VariableValue::Valid(value.to_string()),
             ),
-            "&str" => Some(
-                String::get_value(self, core, variable_cache)
-                    .map_or_else(|err| format!("ERROR: {:?}", err), |value| value),
+            "&str" => String::get_value(self, core, variable_cache).map_or_else(
+                |err| VariableValue::Error(format!("{:?}", err)),
+                VariableValue::Valid,
             ),
-            "i8" => Some(
-                i8::get_value(self, core, variable_cache)
-                    .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.to_string()),
+            "i8" => i8::get_value(self, core, variable_cache).map_or_else(
+                |err| VariableValue::Error(format!("{:?}", err)),
+                |value| VariableValue::Valid(value.to_string()),
             ),
-            "i16" => Some(
-                i16::get_value(self, core, variable_cache)
-                    .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.to_string()),
+            "i16" => i16::get_value(self, core, variable_cache).map_or_else(
+                |err| VariableValue::Error(format!("{:?}", err)),
+                |value| VariableValue::Valid(value.to_string()),
             ),
-            "i32" => Some(
-                i32::get_value(self, core, variable_cache)
-                    .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.to_string()),
+            "i32" => i32::get_value(self, core, variable_cache).map_or_else(
+                |err| VariableValue::Error(format!("{:?}", err)),
+                |value| VariableValue::Valid(value.to_string()),
             ),
-            "i64" => Some(
-                i64::get_value(self, core, variable_cache)
-                    .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.to_string()),
+            "i64" => i64::get_value(self, core, variable_cache).map_or_else(
+                |err| VariableValue::Error(format!("{:?}", err)),
+                |value| VariableValue::Valid(value.to_string()),
             ),
-            "i128" => Some(
-                i128::get_value(self, core, variable_cache)
-                    .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.to_string()),
+            "i128" => i128::get_value(self, core, variable_cache).map_or_else(
+                |err| VariableValue::Error(format!("{:?}", err)),
+                |value| VariableValue::Valid(value.to_string()),
             ),
-            "isize" => Some(
-                isize::get_value(self, core, variable_cache)
-                    .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.to_string()),
+            "isize" => isize::get_value(self, core, variable_cache).map_or_else(
+                |err| VariableValue::Error(format!("{:?}", err)),
+                |value| VariableValue::Valid(value.to_string()),
             ),
-            "u8" => Some(
-                u8::get_value(self, core, variable_cache)
-                    .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.to_string()),
+            "u8" => u8::get_value(self, core, variable_cache).map_or_else(
+                |err| VariableValue::Error(format!("{:?}", err)),
+                |value| VariableValue::Valid(value.to_string()),
             ),
-            "u16" => Some(
-                u16::get_value(self, core, variable_cache)
-                    .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.to_string()),
+            "u16" => u16::get_value(self, core, variable_cache).map_or_else(
+                |err| VariableValue::Error(format!("{:?}", err)),
+                |value| VariableValue::Valid(value.to_string()),
             ),
-            "u32" => Some(
-                u32::get_value(self, core, variable_cache)
-                    .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.to_string()),
+            "u32" => u32::get_value(self, core, variable_cache).map_or_else(
+                |err| VariableValue::Error(format!("{:?}", err)),
+                |value| VariableValue::Valid(value.to_string()),
             ),
-            "u64" => Some(
-                u64::get_value(self, core, variable_cache)
-                    .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.to_string()),
+            "u64" => u64::get_value(self, core, variable_cache).map_or_else(
+                |err| VariableValue::Error(format!("{:?}", err)),
+                |value| VariableValue::Valid(value.to_string()),
             ),
-            "u128" => Some(
-                u128::get_value(self, core, variable_cache)
-                    .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.to_string()),
+            "u128" => u128::get_value(self, core, variable_cache).map_or_else(
+                |err| VariableValue::Error(format!("{:?}", err)),
+                |value| VariableValue::Valid(value.to_string()),
             ),
-            "usize" => Some(
-                usize::get_value(self, core, variable_cache)
-                    .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.to_string()),
+            "usize" => usize::get_value(self, core, variable_cache).map_or_else(
+                |err| VariableValue::Error(format!("{:?}", err)),
+                |value| VariableValue::Valid(value.to_string()),
             ),
-            "f32" => Some(
-                f32::get_value(self, core, variable_cache)
-                    .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.to_string()),
+            "f32" => f32::get_value(self, core, variable_cache).map_or_else(
+                |err| VariableValue::Error(format!("{:?}", err)),
+                |value| VariableValue::Valid(value.to_string()),
             ),
-            "f64" => Some(
-                f64::get_value(self, core, variable_cache)
-                    .map_or_else(|err| format!("ERROR: {:?}", err), |value| value.to_string()),
+            "f64" => f64::get_value(self, core, variable_cache).map_or_else(
+                |err| VariableValue::Error(format!("{:?}", err)),
+                |value| VariableValue::Valid(value.to_string()),
             ),
-            "None" => Some("None".to_string()),
-            _undetermined_value => None,
+            "None" => VariableValue::Valid("None".to_string()),
+            _undetermined_value => VariableValue::Empty,
         };
         self.value = known_value;
     }
@@ -608,23 +605,10 @@ impl Variable {
         }
     }
 
-    /// Decipher the self.variable_error to determine if we need to remove this variable from the variable cache
-    pub fn discard(&self) -> bool {
-        if let Some(error_condition) = &self.variable_error {
-            match error_condition {
-                VariableError::IncludeAsChild(_) => false,
-                VariableError::RemoveFromParent(variable_error) => {
-                    log::warn!(
-                        "Cannot fully resolve variable: {}, because of an error: {}",
-                        self.name.clone(),
-                        variable_error
-                    );
-                    true
-                }
-            }
-        } else {
-            false
-        }
+    /// `true` if the Variable has a valid value, or an empty value.
+    /// `false` if the Variable has a VariableValue::Error(_)value
+    pub fn is_valid(&self) -> bool {
+        self.value.is_valid()
     }
 
     fn formatted_variable_value(
@@ -633,16 +617,13 @@ impl Variable {
         indentation: usize,
     ) -> String {
         let line_feed = if indentation.is_zero() { "" } else { "\n" }.to_string();
+        // Allow for chained `if let` without complaining
         #[allow(clippy::if_same_then_else)]
-        // Due to limitations with ||'ing `if let` statements
-        if let Some(existing_value) = &self.value {
-            // Use the supplied value.
+        if !self.value.is_empty() {
+            // Use the supplied value or error message.
             format!(
                 "{}{:\t<indentation$}{}: {}",
-                line_feed,
-                "",
-                self.type_name,
-                existing_value.clone()
+                line_feed, "", self.type_name, self.value
             )
         } else if let VariableName::AnonymousNamespace = self.name {
             // Namespaces do not have values
@@ -651,6 +632,7 @@ impl Variable {
             // Namespaces do not have values
             String::new()
         } else {
+            // Infer a human readable value using the available children of this variable.
             let mut compound_value = "".to_string();
             if let Ok(children) = variable_cache.get_children(Some(self.variable_key)) {
                 // Make sure we can safely unwrap() children.
@@ -772,7 +754,7 @@ impl Variable {
                 }
             } else {
                 // We don't have a value, and we can't generate one from children values, so use the type_name
-                format!("{:\t<indentation$}{}", "", self.type_name.to_string())
+                format!("{:\t<indentation$}{}", "", self.type_name)
             }
         }
     }
@@ -828,11 +810,13 @@ impl Value for String {
                 let mut string_length = match children.iter().find(|child_variable| {
                     child_variable.name == VariableName::Named("length".to_string())
                 }) {
-                    Some(length_value) => length_value
-                        .value
-                        .as_ref()
-                        .map(|value| value.parse().unwrap_or(0))
-                        .unwrap_or(0) as usize,
+                    Some(string_length) => {
+                        if let VariableValue::Valid(length_value) = &string_length.value {
+                            length_value.parse().unwrap_or(0_usize)
+                        } else {
+                            0_usize
+                        }
+                    }
                     None => 0_usize,
                 };
                 let string_location = match children.iter().find(|child_variable| {
@@ -854,7 +838,7 @@ impl Value for String {
                     None => 0_u32,
                 };
                 if string_location.is_zero() {
-                    str_value = "ERROR: Failed to determine &str memory location".to_string();
+                    str_value = "Error: Failed to determine &str memory location".to_string();
                 } else {
                     // Limit string length to work around buggy information, otherwise the debugger
                     // can hang due to buggy debug information.
@@ -874,7 +858,7 @@ impl Value for String {
                     str_value = core::str::from_utf8(&buff)?.to_owned();
                 }
             } else {
-                str_value = "ERROR: Failed to evaluate &str value".to_string();
+                str_value = "Error: Failed to evaluate &str value".to_string();
             }
         };
         Ok(str_value)

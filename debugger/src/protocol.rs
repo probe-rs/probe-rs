@@ -578,7 +578,7 @@ impl ProtocolAdapter for CliAdapter {
                 println!("{}", body.as_str().unwrap());
             }
         } else {
-            println!("ERROR: {}", resp.message.unwrap());
+            println!("Error: {}", resp.message.unwrap());
         }
         Ok(())
     }
