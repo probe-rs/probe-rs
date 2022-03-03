@@ -198,7 +198,7 @@ impl RttActiveChannel {
         None
     }
 
-    /// Retrieves available data from the channel and if available, returns Some(channel_number:String, formatted_data:String)
+    /// Retrieves available data from the channel and if available, returns `Some(channel_number:String, formatted_data:String)`.
     pub fn get_rtt_data(
         &mut self,
         core: &mut Core,
