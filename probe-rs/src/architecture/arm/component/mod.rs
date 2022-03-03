@@ -1,3 +1,5 @@
+//! Types and functions for interacting with CoreSight Components
+
 mod dwt;
 mod itm;
 mod tpiu;
@@ -10,30 +12,39 @@ pub use dwt::Dwt;
 pub use itm::Itm;
 pub use tpiu::Tpiu;
 
+/// An error when operating a core ROM table component occurred.
 #[derive(thiserror::Error, Debug)]
 pub enum ComponentError {
+    /// Nordic chips do not support setting all TPIU clocks. Try choosing another clock speed.
     #[error("Nordic does not support TPIU CLK value of {0}")]
     NordicUnsupportedTPUICLKValue(u32),
 }
 
+/// A trait to be implemented on debug register types for debug component interfaces.
 pub trait DebugRegister: Clone + From<u32> + Into<u32> + Sized + std::fmt::Debug {
+    /// The address of the register.
     const ADDRESS: u32;
+    /// The name of the register.
     const NAME: &'static str;
 
+    /// Loads the register value from the given debug component via the given core.
     fn load(component: &Component, core: &mut Core) -> Result<Self, Error> {
         Ok(Self::from(component.read_reg(core, Self::ADDRESS)?))
     }
 
+    /// Loads the register value from the given component in given unit via the given core.
     fn load_unit(component: &Component, core: &mut Core, unit: usize) -> Result<Self, Error> {
         Ok(Self::from(
             component.read_reg(core, Self::ADDRESS + 16 * unit as u32)?,
         ))
     }
 
+    /// Stores the register value to the given debug component via the given core.
     fn store(&self, component: &Component, core: &mut Core) -> Result<(), Error> {
         component.write_reg(core, Self::ADDRESS, self.clone().into())
     }
 
+    /// Stores the register value to the given component in given unit via the given core.
     fn store_unit(&self, component: &Component, core: &mut Core, unit: usize) -> Result<(), Error> {
         component.write_reg(core, Self::ADDRESS + 16 * unit as u32, self.clone().into())
     }
@@ -52,7 +63,10 @@ fn find_component(
         })
 }
 
-pub fn setup_swv(
+/// Sets up all the SWV components.
+///
+/// Expects to be given a list of all ROM table `components` as the second argument.
+pub(crate) fn setup_swv(
     core: &mut Core,
     components: &[Component],
     config: &SwoConfig,
@@ -96,6 +110,9 @@ pub fn setup_swv(
     core.flush()
 }
 
+/// Sets up all vendor specific bit of all the SWV components.
+///
+/// Expects to be given a list of all ROM table `components` as the second argument.
 fn setup_swv_vendor(
     core: &mut Core,
     components: &[Component],
@@ -146,7 +163,10 @@ fn setup_swv_vendor(
 }
 
 /// Configures DWT trace unit `unit` to begin tracing `address`.
-pub fn add_swv_data_trace(
+///
+///
+/// Expects to be given a list of all ROM table `components` as the second argument.
+pub(crate) fn add_swv_data_trace(
     core: &mut Core,
     components: &[Component],
     unit: usize,
@@ -156,6 +176,10 @@ pub fn add_swv_data_trace(
     dwt.enable_data_trace(unit, address)
 }
 
+/// Configures DWT trace unit `unit` to stop tracing `address`.
+///
+///
+/// Expects to be given a list of all ROM table `components` as the second argument.
 pub fn remove_swv_data_trace(
     core: &mut Core,
     components: &[Component],

@@ -380,11 +380,20 @@ enum RawComponent {
 /// Described in table D1-2 in the ADIv5.2 spec.
 #[derive(Debug, PartialEq)]
 pub enum Component {
+    /// Generic verification component.
     GenericVerificationComponent(ComponentId),
+    /// ROM Table. See also _ROM Table Types on page D2-237_.
+    /// For detailed information about Class 0x1 ROM Tables, see _Chapter D3 Class 0x1 ROM Tables_.
     Class1RomTable(ComponentId, RomTable),
+    /// CoreSight component. For general information about CoreSight components, see the CoreSight Architecture Specification.
+
+    /// A CoreSight component can be a Class 0x9 ROM Table, which can be identified from the DEVARCH.ARCHID having the value 0x0AF7. See also _ROM Table Types on page D2-237_. For detailed information about Class 0x9 ROM Tables, see _Chapter D4 Class 0x9 ROM Tables_.
     Class9RomTable(ComponentId),
+    /// Peripheral Test Block.
     PeripheralTestBlock(ComponentId),
+    /// Generic IP component.
     GenericIPComponent(ComponentId),
+    /// CoreLink, PrimeCell, or system component with no standardized register layout, for backwards compatibility.
     CoreLinkOrPrimeCellOrSystemComponent(ComponentId),
 }
 
@@ -431,6 +440,7 @@ impl Component {
         Ok(class)
     }
 
+    /// Returns the component ID.
     pub fn id(&self) -> &ComponentId {
         match self {
             Component::GenericVerificationComponent(component_id) => component_id,
@@ -464,6 +474,7 @@ impl Component {
         None
     }
 
+    /// Turns this component into a component iterator which iterates all its children recursively.
     pub fn iter(&self) -> ComponentIter {
         ComponentIter::new(vec![self])
     }
@@ -695,17 +706,31 @@ impl std::fmt::Display for PartInfo {
 #[non_exhaustive]
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum PeripheralType {
+    /// Trace Port Interface Unit
+    ///
+    /// The TPIU is an optional component that acts as a bridge between the on-chip trace data from the Embedded Trace Macrocell (ETM) and the Instrumentation Trace Macrocell (ITM), with separate IDs, to a data stream. The TPIU encapsulates IDs where required, and the data stream is then captured by a Trace Port Analyzer (TPA).
     Tpiu,
+    /// Instrumentation Trace Macrocell
     Itm,
+    /// Data Watchpoint and Trace Unit
     Dwt,
+    /// System Control Space
     Scs,
+    /// Flash Patch and Breakpoint Unit
     Fbp,
+    /// breakpoint Unit
     Bpu,
+    /// Embedded Trace Macrocell
     Etm,
+    /// Embedded Trace Buffer
     Etb,
+    /// Romtable
     Rom,
+    /// Serial Wire Output
     Swo,
+    /// Unknown
     Stm,
+    /// Unknown
     Tsgen,
 }
 

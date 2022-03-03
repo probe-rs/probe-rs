@@ -18,23 +18,26 @@ pub struct Tpiu<'probe: 'core, 'core> {
 }
 
 impl<'probe: 'core, 'core> Tpiu<'probe, 'core> {
+    /// Create a new TPIU interface from a probe and a ROM table component.
     pub fn new(core: &'core mut Core<'probe>, component: &'core Component) -> Self {
         Tpiu { component, core }
     }
 
+    /// Set the port size of the TPIU.
     pub fn set_port_size(&mut self, value: u32) -> Result<(), Error> {
         self.component
             .write_reg(self.core, REGISTER_OFFSET_TPIU_CSPSR, value)?;
         Ok(())
     }
 
+    /// Set the prescaler of the TPIU.
     pub fn set_prescaler(&mut self, value: u32) -> Result<(), Error> {
         self.component
             .write_reg(self.core, REGISTER_OFFSET_TPIU_ACPR, value)?;
         Ok(())
     }
 
-    /// Set protocol.
+    /// Set the TPIU protocol.
     /// 0 = sync trace mode
     /// 1 = async SWO (manchester)
     /// 2 = async SWO (NRZ)
@@ -45,6 +48,7 @@ impl<'probe: 'core, 'core> Tpiu<'probe, 'core> {
         Ok(())
     }
 
+    /// Set the TPIU formatter.
     pub fn set_formatter(&mut self, value: u32) -> Result<(), Error> {
         self.component
             .write_reg(self.core, REGISTER_OFFSET_TPIU_FFCR, value)?;

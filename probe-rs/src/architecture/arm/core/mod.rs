@@ -9,14 +9,17 @@ pub mod armv6m;
 pub mod armv7m;
 pub mod armv8m;
 
+/// Core information data which is downloaded from the target, represents its state and can be used for debugging.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Dump {
+    /// The register values at the time of the dump.
     pub regs: [u32; 16],
     stack_addr: u32,
     stack: Vec<u8>,
 }
 
 impl Dump {
+    /// Create a new dump from a SP and a stack dump with zeroed out registers.
     pub fn new(stack_addr: u32, stack: Vec<u8>) -> Dump {
         Dump {
             regs: [0u32; 16],

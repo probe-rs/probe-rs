@@ -7,7 +7,7 @@ use crate::core::{Architecture, CoreState, SpecificCoreState};
 use crate::{
     architecture::{
         arm::{
-            ap::{AccessPortError, GenericAp, MemoryAp},
+            ap::{GenericAp, MemoryAp},
             communication_interface::{ArmProbeInterface, MemoryApInformation},
             memory::Component,
             ApInformation, SwoConfig, SwoReader,
@@ -85,11 +85,11 @@ impl ArchitectureInterface {
                     .get(core_state.id())
                     .ok_or_else(|| Error::CoreNotFound(core_state.id()))?;
                 let arm_core_access_options = match &config.core_access_options {
-                    probe_rs_target::CoreAccessOptions::Arm(opt) => Ok(opt),
+                    probe_rs_target::CoreAccessOptions::Arm(opt) => opt,
                     probe_rs_target::CoreAccessOptions::Riscv(_) => {
-                        Err(AccessPortError::InvalidCoreAccessOption(config.clone()))
+                        unreachable!("This should never happen. Please file a bug if it does.")
                     }
-                }?;
+                };
 
                 let dp = match arm_core_access_options.psel {
                     0 => DpAddress::Default,
@@ -135,11 +135,11 @@ impl Session {
             Architecture::Arm => {
                 let config = target.cores[0].clone();
                 let arm_core_access_options = match config.core_access_options {
-                    probe_rs_target::CoreAccessOptions::Arm(opt) => Ok(opt),
+                    probe_rs_target::CoreAccessOptions::Arm(opt) => opt,
                     probe_rs_target::CoreAccessOptions::Riscv(_) => {
-                        Err(AccessPortError::InvalidCoreAccessOption(config))
+                        unreachable!("This should never happen. Please file a bug if it does.")
                     }
-                }?;
+                };
 
                 let default_memory_ap = MemoryAp::new(ApAddress {
                     dp: match arm_core_access_options.psel {
@@ -549,8 +549,9 @@ fn get_target_from_selector(
                         // TODO:
                         let dp = DpAddress::Default;
 
-                        let found_arm_chip =
-                            interface.read_from_rom_table(dp).unwrap_or_else(|e| {
+                        let found_arm_chip = interface
+                            .read_chip_info_from_rom_table(dp)
+                            .unwrap_or_else(|e| {
                                 log::info!("Error during auto-detection of ARM chips: {}", e);
                                 None
                             });

@@ -1286,7 +1286,7 @@ impl<'probe> ArmProbeInterface for StlinkArmDebug {
         }
     }
 
-    fn read_from_rom_table(
+    fn read_chip_info_from_rom_table(
         &mut self,
         dp: DpAddress,
     ) -> Result<Option<crate::architecture::arm::ArmChipInfo>, ProbeRsError> {

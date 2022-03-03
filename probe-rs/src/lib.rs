@@ -62,9 +62,12 @@
 //! probe-rs is built around 5 main interfaces: the [Probe],
 //! [Target], [Session], [Memory] and [Core] strucs.
 
+#![recursion_limit = "256"]
+
 #[macro_use]
 extern crate serde;
 
+/// All the interface bits for the different architectures.
 pub mod architecture;
 pub mod config;
 mod core;

@@ -321,7 +321,7 @@ where
         remaining_data_len -= first_chunk_size_words;
         address = address
             .checked_add((4 * first_chunk_size_words) as u32)
-            .ok_or(AccessPortError::OutOfBoundsError)?;
+            .ok_or(AccessPortError::OutOfBounds)?;
         data_offset += first_chunk_size_words;
 
         while remaining_data_len > 0 {
@@ -801,12 +801,12 @@ fn aligned_range(address: u32, len: usize) -> Result<Range<u32>, AccessPortError
         .try_into()
         .ok()
         .and_then(|len: u32| len.checked_add(address))
-        .ok_or(AccessPortError::OutOfBoundsError)?;
+        .ok_or(AccessPortError::OutOfBounds)?;
 
     // Round end address up to the nearest multiple of 4
     let end = unaligned_end
         .checked_add((4 - (unaligned_end % 4)) % 4)
-        .ok_or(AccessPortError::OutOfBoundsError)?;
+        .ok_or(AccessPortError::OutOfBounds)?;
 
     Ok(Range { start, end })
 }

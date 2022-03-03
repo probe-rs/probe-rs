@@ -1,12 +1,18 @@
+//! SWO tracing related functions.
+
 use crate::architecture::arm::communication_interface::ArmProbeInterface;
 use crate::Error;
 
+/// The protocol the SWO pin should use for data transmission.
 #[derive(Debug, Copy, Clone)]
 pub enum SwoMode {
+    /// UART
     Uart,
+    /// Manchester
     Manchester,
 }
 
+/// The config for the SWO pin.
 #[derive(Debug, Copy, Clone)]
 pub struct SwoConfig {
     /// SWO mode: either UART or Manchester.
@@ -72,23 +78,33 @@ impl SwoConfig {
         self
     }
 
+    /// The SWO mode.
     pub fn mode(&self) -> SwoMode {
         self.mode
     }
 
+    /// Baud rate of SWO, in Hz.
+    ///
+    /// This value is used to configure what baud rate the target generates
+    /// and to configure what baud rate the probe receives,
+    /// so must be a baud rate supported by both target and probe.
     pub fn baud(&self) -> u32 {
         self.baud
     }
 
+    /// Clock input to TPIU in Hz. This is often the system clock (HCLK/SYSCLK etc).
     pub fn tpiu_clk(&self) -> u32 {
         self.tpiu_clk
     }
 
+    /// Whether to enable TPIU formatting. This is required to use ETM over
+    /// SWO, but otherwise adds overhead if only DWT/ITM data is used.
     pub fn tpiu_continuous_formatting(&self) -> bool {
         self.tpiu_continuous_formatting
     }
 }
 
+/// An interface to operate SWO to be implemented on drivers that support SWO.
 pub trait SwoAccess {
     /// Configure a SwoAccess interface for reading SWO data.
     fn enable_swo(&mut self, config: &SwoConfig) -> Result<(), Error>;
@@ -150,6 +166,7 @@ pub(crate) fn poll_interval_from_buf_size(
     Some(std::time::Duration::from_millis(time_to_full_ms as u64 / 4))
 }
 
+/// A reader interface to pull SWO data from the underlying driver.
 pub struct SwoReader<'a> {
     interface: &'a mut Box<dyn ArmProbeInterface>,
     buf: Vec<u8>,
