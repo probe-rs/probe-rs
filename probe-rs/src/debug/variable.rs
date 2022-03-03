@@ -894,7 +894,7 @@ trait Value {
     where
         Self: Sized;
 
-    /// This update_value will update the target memory with a new value for the [Variable], ...
+    /// This `update_value` will update the target memory with a new value for the [`Variable`], ...
     /// - Only `base` data type can have their value updated in target memory.
     /// - The input format of the [Variable.value] is a [String], and the impl of this trait must convert the memory value appropriately before storing.
     fn update_value(
