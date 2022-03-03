@@ -34,7 +34,7 @@ pub struct RttWindowOpened {
     pub arguments: Option<RttWindowOpenedArguments>,
     /// The command to execute.
     pub command: String,
-    /// Sequence number (also known as message ID). For protocol messages of type \'request\' this ID
+    /// Sequence number (also known as message ID). For protocol messages of type `request` this ID
     /// can be used to cancel the request.
     pub seq: i64,
     /// Message type.
