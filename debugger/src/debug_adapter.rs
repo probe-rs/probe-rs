@@ -342,7 +342,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                 core_data.stack_frames.first_mut()
             }
         } {
-            // Always search the registers first, because we don't have a [VariableCache] for them.
+            // Always search the registers first, because we don't have a VariableCache for them.
             if let Some((_register_number, register_value)) =
                 stack_frame.registers.registers().into_iter().find(
                     |(register_number, _register_value)| {
