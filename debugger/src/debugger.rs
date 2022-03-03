@@ -410,7 +410,7 @@ impl DebugSession {
 
 /// Manage the active RTT target for a specific DebugSession, as well as provide methods to reliably move RTT from target, through the debug_adapter, to the client.
 pub(crate) struct DebuggerRttTarget {
-    /// The  connection to RTT on the target
+    /// The connection to RTT on the target
     target_rtt: rtt::RttActiveTarget,
     /// Some status fields and methods to ensure conitnuity in flow of data from target to debugger to client.
     debugger_rtt_channels: Vec<DebuggerRttChannel>,
