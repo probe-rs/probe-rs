@@ -412,7 +412,7 @@ impl DebugSession {
 pub(crate) struct DebuggerRttTarget {
     /// The connection to RTT on the target
     target_rtt: rtt::RttActiveTarget,
-    /// Some status fields and methods to ensure conitnuity in flow of data from target to debugger to client.
+    /// Some status fields and methods to ensure continuity in flow of data from target to debugger to client.
     debugger_rtt_channels: Vec<DebuggerRttChannel>,
 }
 
