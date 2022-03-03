@@ -426,7 +426,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             variables_reference: None,
         };
 
-        // The arguments.variables_reference contains the reference of the variable container. This can be ...
+        // The arguments.variables_reference contains the reference of the variable container. This can be:
         // - The `StackFrame.id` for register variables - we will warn the user that updating these are not yet supported.
         // - The `Variable.parent_key` for a local or static variable - If these are base data types, we will attempt to update their value, otherwise we will warn the user that updating complex / structure variables are not yet supported.
         let parent_key = arguments.variables_reference;
