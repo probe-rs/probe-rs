@@ -25,7 +25,7 @@ pub struct QuitRequest {
     pub type_: String,
 }
 
-/// Custom 'RttWindowOpened' request, so that VSCode can confirm once a specific RTT channel's window has opened.
+/// Custom [`RttWindowOpened`] request, so that VSCode can confirm once a specific RTT channel's window has opened.
 /// `probe-rs-debugger` will delay polling RTT channels until the data window has opened. This ensure no RTT data is lost on the client.
 #[derive(Clone, PartialEq, Debug, Deserialize, Serialize)]
 pub struct RttWindowOpened {
