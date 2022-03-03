@@ -440,7 +440,7 @@ pub(crate) struct DebuggerRttChannel {
 }
 impl DebuggerRttChannel {
     /// Poll and retrieve data from the target, and send it to the client, depending on the state of `hasClientWindow`.
-    /// Doing this selectively ensures that we don't pull data from target buffers until we have a output window, and also helps us drain buffers after the target has entered a `is_halted` state.
+    /// Doing this selectively ensures that we don't pull data from target buffers until we have an output window, and also helps us drain buffers after the target has entered a `is_halted` state.
     /// Errors will be reported back to the `debug_adapter`, and the return `bool` value indicates whether there was available data that was processed.
     pub(crate) fn send_rtt_data<P: ProtocolAdapter>(
         &mut self,
