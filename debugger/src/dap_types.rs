@@ -41,7 +41,7 @@ pub struct RttWindowOpened {
     #[serde(rename = "type")]
     pub type_: String,
 }
-///  Arguments for RttWindowOpened request.
+///  Arguments for [`RttWindowOpened`] request.
 #[derive(Clone, PartialEq, Debug, Default, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RttWindowOpenedArguments {
