@@ -3113,7 +3113,7 @@ variants:
   - name: STM32H745BGTx
     part: ~
     cores:
-      - name: cm7
+      - name: main
         type: armv7em
         core_access_options:
           Arm:
@@ -3161,7 +3161,7 @@ variants:
   - name: STM32H745BITx
     part: ~
     cores:
-      - name: cm7
+      - name: main
         type: armv7em
         core_access_options:
           Arm:
@@ -3209,7 +3209,7 @@ variants:
   - name: STM32H745IGKx
     part: ~
     cores:
-      - name: cm7
+      - name: main
         type: armv7em
         core_access_options:
           Arm:
@@ -3257,7 +3257,7 @@ variants:
   - name: STM32H745IGTx
     part: ~
     cores:
-      - name: cm7
+      - name: main
         type: armv7em
         core_access_options:
           Arm:
@@ -3305,7 +3305,7 @@ variants:
   - name: STM32H745IIKx
     part: ~
     cores:
-      - name: cm7
+      - name: main
         type: armv7em
         core_access_options:
           Arm:
@@ -3353,7 +3353,7 @@ variants:
   - name: STM32H745IITx
     part: ~
     cores:
-      - name: cm7
+      - name: main
         type: armv7em
         core_access_options:
           Arm:
@@ -3401,7 +3401,7 @@ variants:
   - name: STM32H745XGHx
     part: ~
     cores:
-      - name: cm7
+      - name: main
         type: armv7em
         core_access_options:
           Arm:
@@ -3449,7 +3449,7 @@ variants:
   - name: STM32H745XIHx
     part: ~
     cores:
-      - name: cm7
+      - name: main
         type: armv7em
         core_access_options:
           Arm:
@@ -3497,7 +3497,7 @@ variants:
   - name: STM32H745ZGTx
     part: ~
     cores:
-      - name: cm7
+      - name: main
         type: armv7em
         core_access_options:
           Arm:
@@ -3545,7 +3545,7 @@ variants:
   - name: STM32H745ZITx
     part: ~
     cores:
-      - name: cm7
+      - name: main
         type: armv7em
         core_access_options:
           Arm:
@@ -3593,7 +3593,7 @@ variants:
   - name: STM32H747AGIx
     part: ~
     cores:
-      - name: cm7
+      - name: main
         type: armv7em
         core_access_options:
           Arm:
@@ -3641,7 +3641,7 @@ variants:
   - name: STM32H747AIIx
     part: ~
     cores:
-      - name: cm7
+      - name: main
         type: armv7em
         core_access_options:
           Arm:
@@ -3689,7 +3689,7 @@ variants:
   - name: STM32H747BGTx
     part: ~
     cores:
-      - name: cm7
+      - name: main
         type: armv7em
         core_access_options:
           Arm:
@@ -3737,7 +3737,7 @@ variants:
   - name: STM32H747BITx
     part: ~
     cores:
-      - name: cm7
+      - name: main
         type: armv7em
         core_access_options:
           Arm:
@@ -3785,7 +3785,7 @@ variants:
   - name: STM32H747IGTx
     part: ~
     cores:
-      - name: cm7
+      - name: main
         type: armv7em
         core_access_options:
           Arm:
@@ -3833,7 +3833,7 @@ variants:
   - name: STM32H747IITx
     part: ~
     cores:
-      - name: cm7
+      - name: main
         type: armv7em
         core_access_options:
           Arm:
@@ -3881,7 +3881,7 @@ variants:
   - name: STM32H747XGHx
     part: ~
     cores:
-      - name: cm7
+      - name: main
         type: armv7em
         core_access_options:
           Arm:
@@ -3929,7 +3929,7 @@ variants:
   - name: STM32H747XIHx
     part: ~
     cores:
-      - name: cm7
+      - name: main
         type: armv7em
         core_access_options:
           Arm:
@@ -3977,7 +3977,7 @@ variants:
   - name: STM32H747ZIYx
     part: ~
     cores:
-      - name: cm7
+      - name: main
         type: armv7em
         core_access_options:
           Arm:
@@ -4571,7 +4571,7 @@ variants:
   - name: STM32H755BITx
     part: ~
     cores:
-      - name: cm7
+      - name: main
         type: armv7em
         core_access_options:
           Arm:
@@ -4619,7 +4619,7 @@ variants:
   - name: STM32H755IIKx
     part: ~
     cores:
-      - name: cm7
+      - name: main
         type: armv7em
         core_access_options:
           Arm:
@@ -4667,7 +4667,7 @@ variants:
   - name: STM32H755IITx
     part: ~
     cores:
-      - name: cm7
+      - name: main
         type: armv7em
         core_access_options:
           Arm:
@@ -4715,7 +4715,7 @@ variants:
   - name: STM32H755XIHx
     part: ~
     cores:
-      - name: cm7
+      - name: main
         type: armv7em
         core_access_options:
           Arm:
@@ -4763,7 +4763,7 @@ variants:
   - name: STM32H755ZITx
     part: ~
     cores:
-      - name: cm7
+      - name: main
         type: armv7em
         core_access_options:
           Arm:
@@ -4811,7 +4811,7 @@ variants:
   - name: STM32H757AIIx
     part: ~
     cores:
-      - name: cm7
+      - name: main
         type: armv7em
         core_access_options:
           Arm:
@@ -4859,7 +4859,7 @@ variants:
   - name: STM32H757BITx
     part: ~
     cores:
-      - name: cm7
+      - name: main
         type: armv7em
         core_access_options:
           Arm:
@@ -4907,7 +4907,7 @@ variants:
   - name: STM32H757IITx
     part: ~
     cores:
-      - name: cm7
+      - name: main
         type: armv7em
         core_access_options:
           Arm:
@@ -4955,7 +4955,7 @@ variants:
   - name: STM32H757XIHx
     part: ~
     cores:
-      - name: cm7
+      - name: main
         type: armv7em
         core_access_options:
           Arm:
@@ -5003,7 +5003,7 @@ variants:
   - name: STM32H757ZIYx
     part: ~
     cores:
-      - name: cm7
+      - name: main
         type: armv7em
         core_access_options:
           Arm:
