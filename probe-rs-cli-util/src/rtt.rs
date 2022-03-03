@@ -385,7 +385,7 @@ impl RttActiveTarget {
         None
     }
 
-    /// Polls the RTT target for on all channels and returns available data.
+    /// Polls the RTT target on all channels and returns available data.
     pub fn poll_rtt(&mut self, core: &mut Core) -> HashMap<String, String> {
         let defmt_state = self.defmt_state.as_ref();
         self.active_channels
