@@ -740,7 +740,7 @@ impl Debugger {
                 match debug_adapter.last_known_status {
                     CoreStatus::Unknown => Ok(DebuggerStatus::ContinueSession), // Don't do anything until we know VSCode's startup sequence is complete, and changes this to either Halted or Running.
                     CoreStatus::Halted(_) => {
-                        // Make sure the RTT buffers are drained
+                        // Make sure the RTT buffers are drained.
                         match session_data.attach_core(self.debugger_options.core_index) {
                             Ok(mut core_data) => {
                                 if let Some(rtt_active_target) = &mut core_data.active_rtt_target {
