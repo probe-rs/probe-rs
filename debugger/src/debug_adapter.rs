@@ -20,12 +20,6 @@ use std::{
 
 use crate::protocol::ProtocolAdapter;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum DebugAdapterType {
-    CommandLine,
-    DapClient,
-}
-
 /// Progress ID used for progress reporting when the debug adapter protocol is used.
 type ProgressId = i64;
 pub struct DebugAdapter<P: ProtocolAdapter> {
@@ -58,10 +52,6 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             columns_start_at_1: true,
             adapter,
         }
-    }
-
-    pub(crate) fn adapter_type(&self) -> DebugAdapterType {
-        P::ADAPTER_TYPE
     }
 
     pub(crate) fn status(&mut self, core_data: &mut CoreData, request: Request) -> Result<()> {
@@ -160,15 +150,9 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
     }
 
     pub(crate) fn read_memory(&mut self, core_data: &mut CoreData, request: Request) -> Result<()> {
-        let arguments: ReadMemoryArguments = match self.adapter_type() {
-            DebugAdapterType::CommandLine => match request.arguments.as_ref().unwrap().try_into() {
-                Ok(arguments) => arguments,
-                Err(error) => return self.send_response::<()>(request, Err(error)),
-            },
-            DebugAdapterType::DapClient => match get_arguments(&request) {
-                Ok(arguments) => arguments,
-                Err(error) => return self.send_response::<()>(request, Err(error)),
-            },
+        let arguments: ReadMemoryArguments = match get_arguments(&request) {
+            Ok(arguments) => arguments,
+            Err(error) => return self.send_response::<()>(request, Err(error)),
         };
         let memory_offset = arguments.offset.unwrap_or(0);
         let mut address: u32 = if let Ok(address) =
@@ -230,15 +214,9 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         core_data: &mut CoreData,
         request: Request,
     ) -> Result<()> {
-        let arguments: WriteMemoryArguments = match self.adapter_type() {
-            DebugAdapterType::CommandLine => match request.arguments.as_ref().unwrap().try_into() {
-                Ok(arguments) => arguments,
-                Err(error) => return self.send_response::<()>(request, Err(error)),
-            },
-            DebugAdapterType::DapClient => match get_arguments(&request) {
-                Ok(arguments) => arguments,
-                Err(error) => return self.send_response::<()>(request, Err(error)),
-            },
+        let arguments: WriteMemoryArguments = match get_arguments(&request) {
+            Ok(arguments) => arguments,
+            Err(error) => return self.send_response::<()>(request, Err(error)),
         };
         let memory_offset = arguments.offset.unwrap_or(0);
         let address: u32 = if let Ok(address) = parse::<i64>(arguments.memory_reference.as_ref()) {
@@ -306,12 +284,9 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
     pub(crate) fn evaluate(&mut self, core_data: &mut CoreData, request: Request) -> Result<()> {
         // TODO: When variables appear in the `watch` context, they will not resolve correctly after a 'step' function. Consider doing the lazy load for 'either/or' of Variables vs. Evaluate
 
-        let arguments: EvaluateArguments = match self.adapter_type() {
-            DebugAdapterType::CommandLine => todo!(),
-            DebugAdapterType::DapClient => match get_arguments(&request) {
-                Ok(arguments) => arguments,
-                Err(error) => return self.send_response::<()>(request, Err(error)),
-            },
+        let arguments: EvaluateArguments = match get_arguments(&request) {
+            Ok(arguments) => arguments,
+            Err(error) => return self.send_response::<()>(request, Err(error)),
         };
 
         // Various fields in the response_body will be updated before we return.
@@ -402,16 +377,9 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         core_data: &mut CoreData,
         request: Request,
     ) -> Result<()> {
-        let arguments: SetVariableArguments = match self.adapter_type() {
-            DebugAdapterType::CommandLine => todo!(),
-            // match request.arguments.as_ref().unwrap().try_into() {
-            //     Ok(arguments) => arguments,
-            //     Err(error) => return self.send_response::<()>(request, Err(error)),
-            // },
-            DebugAdapterType::DapClient => match get_arguments(&request) {
-                Ok(arguments) => arguments,
-                Err(error) => return self.send_response::<()>(request, Err(error)),
-            },
+        let arguments: SetVariableArguments = match get_arguments(&request) {
+            Ok(arguments) => arguments,
+            Err(error) => return self.send_response::<()>(request, Err(error)),
         };
 
         // Various fields in the response_body will be updated before we return.
@@ -583,68 +551,6 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         }
     }
 
-    pub(crate) fn show_cpu_register_values(
-        &mut self,
-        _core_data: &mut CoreData,
-        _request: &Request,
-    ) -> Result<()> {
-        todo!();
-        // let register_file = core_data.target_core.registers();
-
-        // for register in register_file.registers() {
-        //     let value = match core_data.target_core.read_core_reg(register) {
-        //         Ok(value) => {
-        //             println!("{}: {:#010x}", register.name(), value);
-        //         }
-        //         Err(error) => return Err(DebuggerError::Other(anyhow!("{}", error))),
-        //     };
-        // }
-        // true
-    }
-    pub(crate) fn dump_cpu_state(
-        &mut self,
-        _core_data: &mut CoreData,
-        _requestt: &Request,
-    ) -> Result<()> {
-        todo!();
-        // dump all relevant data, stack and regs for now..
-        //
-        // stack beginning -> assume beginning to be hardcoded
-
-        // let stack_top: u32 = 0x2000_0000 + 0x4000;
-
-        // let regs = core_data.target_core.registers();
-
-        // let stack_bot: u32 = core_data.target_core.read_core_reg(regs.stack_pointer())?;
-        // let pc: u32 = core_data
-        //     .target_core
-        //     .read_core_reg(regs.program_counter())?;
-
-        // let mut stack = vec![0u8; (stack_top - stack_bot) as usize];
-
-        // core_data.target_core.read(stack_bot, &mut stack[..])?;
-
-        // let mut dump = Dump::new(stack_bot, stack);
-
-        // for i in 0..12 {
-        //     dump.regs[i as usize] = core_data
-        //         .target_core
-        //         .read_core_reg(Into::<CoreRegisterAddress>::into(i))?;
-        // }
-
-        // dump.regs[13] = stack_bot;
-        // dump.regs[14] = core_data.target_core.read_core_reg(regs.return_address())?;
-        // dump.regs[15] = pc;
-
-        // let serialized = ron::ser::to_string(&dump).expect("Failed to serialize dump");
-
-        // let mut dump_file = File::create("dump.txt").expect("Failed to create file");
-
-        // dump_file
-        //     .write_all(serialized.as_bytes())
-        //     .expect("Failed to write dump file");
-        // true
-    }
     pub(crate) fn restart(
         &mut self,
         core_data: &mut CoreData,
@@ -664,7 +570,8 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             }
         }
 
-        if request.is_some() || self.adapter_type() == DebugAdapterType::CommandLine {
+        // Different code paths if we invoke this from a request, versus an internal function.
+        if request.is_some() {
             match core_data.target_core.reset() {
                 Ok(_) => {
                     self.last_known_status = CoreStatus::Running;
@@ -682,7 +589,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                     );
                 }
             }
-        } else if self.halt_after_reset || self.adapter_type() == DebugAdapterType::DapClient
+        } else
         // The DAP Client will always do a `reset_and_halt`, and then will consider `halt_after_reset` value after the `configuration_done` request.
         // Otherwise the probe will run past the `main()` before the DAP Client has had a chance to set breakpoints in `main()`.
         {
@@ -691,13 +598,8 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                 .reset_and_halt(Duration::from_millis(500))
             {
                 Ok(_) => {
-                    match self.adapter_type() {
-                        DebugAdapterType::CommandLine => {}
-                        DebugAdapterType::DapClient => {
-                            if let Some(request) = request {
-                                return self.send_response::<()>(request, Ok(None));
-                            }
-                        }
+                    if let Some(request) = request {
+                        return self.send_response::<()>(request, Ok(None));
                     }
                     // Only notify the DAP client if we are NOT in initialization stage (`CoreStatus::Unknown`).
                     if self.last_known_status != CoreStatus::Unknown {
@@ -732,8 +634,6 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                     }
                 }
             }
-        } else {
-            Ok(())
         }
     }
 
@@ -969,25 +869,17 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             }
         };
 
-        let arguments: StackTraceArguments = match self.adapter_type() {
-            DebugAdapterType::CommandLine => StackTraceArguments {
-                format: None,
-                levels: None,
-                start_frame: None,
-                thread_id: core_data.target_core.id() as i64,
-            },
-            DebugAdapterType::DapClient => match get_arguments(&request) {
-                Ok(arguments) => arguments,
-                Err(error) => {
-                    return self.send_response::<()>(
-                        request,
-                        Err(DebuggerError::Other(anyhow!(
-                            "Could not read arguments : {}",
-                            error
-                        ))),
-                    )
-                }
-            },
+        let arguments: StackTraceArguments = match get_arguments(&request) {
+            Ok(arguments) => arguments,
+            Err(error) => {
+                return self.send_response::<()>(
+                    request,
+                    Err(DebuggerError::Other(anyhow!(
+                        "Could not read arguments : {}",
+                        error
+                    ))),
+                )
+            }
         };
 
         let regs = core_data.target_core.registers();
@@ -1004,174 +896,146 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             core_data.target_core.id()
         );
 
-        match self.adapter_type() {
-            DebugAdapterType::CommandLine => {
-                *core_data.stack_frames = core_data
-                    .debug_info
-                    .unwind(&mut core_data.target_core, u64::from(pc))?;
-                let mut body = "".to_string();
-                if core_data.stack_frames.is_empty() {
-                    body.push_str(
-                        format!(
-                            "No backtrace information available for program counter = {:#010x}!\n",
-                            pc
-                        )
-                        .as_str(),
-                    );
-                } else {
-                    for stack_frame in core_data.stack_frames.iter() {
-                        body.push_str(format!("{}\n", stack_frame).as_str());
-                    }
+        if let Some(levels) = arguments.levels {
+            if let Some(start_frame) = arguments.start_frame {
+                if levels == 20 && start_frame == 0 {
+                    // This is a invalid stack_trace from VSCode, so let's respond in kind.
+                    let body = StackTraceResponseBody {
+                        stack_frames: vec![],
+                        total_frames: Some(0i64),
+                    };
+                    return self.send_response(request, Ok(Some(body)));
+                } else if levels == 1 && start_frame == 0 {
+                    // This is a legit request for the first frame in a new stack_trace, so do a new unwind.
+                    *core_data.stack_frames = core_data
+                        .debug_info
+                        .unwind(&mut core_data.target_core, u64::from(pc))?;
                 }
-                self.send_response(request, Ok(Some(body)))
-            }
-            DebugAdapterType::DapClient => {
-                if let Some(levels) = arguments.levels {
-                    if let Some(start_frame) = arguments.start_frame {
-                        if levels == 20 && start_frame == 0 {
-                            // This is a invalid stack_trace from VSCode, so let's respond in kind.
-                            let body = StackTraceResponseBody {
-                                stack_frames: vec![],
-                                total_frames: Some(0i64),
-                            };
-                            return self.send_response(request, Ok(Some(body)));
-                        } else if levels == 1 && start_frame == 0 {
-                            // This is a legit request for the first frame in a new stack_trace, so do a new unwind.
-                            *core_data.stack_frames = core_data
-                                .debug_info
-                                .unwind(&mut core_data.target_core, u64::from(pc))?;
-                        }
-                        // Determine the correct 'slice' of available [StackFrame]s to serve up ...
-                        let total_frames = core_data.stack_frames.len() as i64;
-                        let frame_slice = if levels == 1 && start_frame == 0 {
-                            // Just the first frame - use the LHS of the split at `levels`
-                            core_data.stack_frames.split_at(levels as usize).0.iter()
-                        } else if total_frames <= 20
-                            && start_frame >= 0
-                            && start_frame <= total_frames
-                        {
-                            // When we have less than 20 frames - use the RHS of of the split at `start_frame`
-                            core_data
-                                .stack_frames
-                                .split_at(start_frame as usize)
-                                .1
-                                .iter()
-                        } else if total_frames > 20 && start_frame + levels <= total_frames {
-                            // When we have more than 20 frames - we can safely split twice
-                            core_data
-                                .stack_frames
-                                .split_at(start_frame as usize)
-                                .1
-                                .split_at(levels as usize)
-                                .0
-                                .iter()
-                        } else {
-                            return self.send_response::<()>(
-                                request,
-                                Err(DebuggerError::Other(anyhow!(
-                                    "Request for stack trace failed with invalid arguments: {:?}",
-                                    arguments
-                                ))),
-                            );
-                        };
-
-                        let frame_list: Vec<StackFrame> = frame_slice
-                            .map(|frame| {
-                                let column = frame
-                                    .source_location
-                                    .as_ref()
-                                    .and_then(|sl| sl.column)
-                                    .map(|col| match col {
-                                        ColumnType::LeftEdge => 0,
-                                        ColumnType::Column(c) => c,
-                                    })
-                                    .unwrap_or(0);
-
-                                let source = if let Some(source_location) = &frame.source_location {
-                                    let path: Option<PathBuf> =
-                                        source_location.directory.as_ref().map(|path| {
-                                            let mut path = if path.is_relative() {
-                                                std::env::current_dir().unwrap().join(path)
-                                            } else {
-                                                path.to_owned()
-                                            };
-
-                                            if let Some(file) = &source_location.file {
-                                                path.push(file);
-                                            }
-
-                                            path
-                                        });
-                                    Some(Source {
-                                        name: source_location.file.clone(),
-                                        path: path.map(|p| p.to_string_lossy().to_string()),
-                                        source_reference: None,
-                                        presentation_hint: None,
-                                        origin: None,
-                                        sources: None,
-                                        adapter_data: None,
-                                        checksums: None,
-                                    })
-                                } else {
-                                    log::debug!("No source location present for frame!");
-                                    None
-                                };
-
-                                let line = frame
-                                    .source_location
-                                    .as_ref()
-                                    .and_then(|sl| sl.line)
-                                    .unwrap_or(0) as i64;
-                                let function_display_name = if frame.is_inlined {
-                                    format!("{} #[inline]", frame.function_name)
-                                } else {
-                                    format!("{} @{:#010x}", frame.function_name, frame.pc)
-                                };
-                                // TODO: Can we add more meaningful info to `module_id`, etc.
-                                StackFrame {
-                                    id: frame.id as i64,
-                                    name: function_display_name,
-                                    source,
-                                    line,
-                                    column: column as i64,
-                                    end_column: None,
-                                    end_line: None,
-                                    module_id: None,
-                                    presentation_hint: Some("normal".to_owned()),
-                                    can_restart: Some(false),
-                                    instruction_pointer_reference: Some(format!(
-                                        "{:#010x}",
-                                        frame.pc
-                                    )),
-                                }
-                            })
-                            .collect();
-
-                        let body = StackTraceResponseBody {
-                            stack_frames: frame_list,
-                            total_frames: Some(total_frames),
-                        };
-                        self.send_response(request, Ok(Some(body)))
-                    } else {
-                        self.send_response::<()>(
-                            request,
-                            Err(DebuggerError::Other(anyhow!(
-                                "Request for stack trace failed with invalid start_frame argument: {:?}",
-                                arguments.start_frame
-                            ))))
-                    }
+                // Determine the correct 'slice' of available [StackFrame]s to serve up ...
+                let total_frames = core_data.stack_frames.len() as i64;
+                let frame_slice = if levels == 1 && start_frame == 0 {
+                    // Just the first frame - use the LHS of the split at `levels`
+                    core_data.stack_frames.split_at(levels as usize).0.iter()
+                } else if total_frames <= 20 && start_frame >= 0 && start_frame <= total_frames {
+                    // When we have less than 20 frames - use the RHS of of the split at `start_frame`
+                    core_data
+                        .stack_frames
+                        .split_at(start_frame as usize)
+                        .1
+                        .iter()
+                } else if total_frames > 20 && start_frame + levels <= total_frames {
+                    // When we have more than 20 frames - we can safely split twice
+                    core_data
+                        .stack_frames
+                        .split_at(start_frame as usize)
+                        .1
+                        .split_at(levels as usize)
+                        .0
+                        .iter()
                 } else {
-                    self.send_response::<()>(
+                    return self.send_response::<()>(
                         request,
                         Err(DebuggerError::Other(anyhow!(
-                            "Request for stack trace failed with invalid levels argument: {:?}",
-                            arguments.levels
+                            "Request for stack trace failed with invalid arguments: {:?}",
+                            arguments
                         ))),
-                    )
-                }
+                    );
+                };
+
+                let frame_list: Vec<StackFrame> = frame_slice
+                    .map(|frame| {
+                        let column = frame
+                            .source_location
+                            .as_ref()
+                            .and_then(|sl| sl.column)
+                            .map(|col| match col {
+                                ColumnType::LeftEdge => 0,
+                                ColumnType::Column(c) => c,
+                            })
+                            .unwrap_or(0);
+
+                        let source = if let Some(source_location) = &frame.source_location {
+                            let path: Option<PathBuf> =
+                                source_location.directory.as_ref().map(|path| {
+                                    let mut path = if path.is_relative() {
+                                        std::env::current_dir().unwrap().join(path)
+                                    } else {
+                                        path.to_owned()
+                                    };
+
+                                    if let Some(file) = &source_location.file {
+                                        path.push(file);
+                                    }
+
+                                    path
+                                });
+                            Some(Source {
+                                name: source_location.file.clone(),
+                                path: path.map(|p| p.to_string_lossy().to_string()),
+                                source_reference: None,
+                                presentation_hint: None,
+                                origin: None,
+                                sources: None,
+                                adapter_data: None,
+                                checksums: None,
+                            })
+                        } else {
+                            log::debug!("No source location present for frame!");
+                            None
+                        };
+
+                        let line = frame
+                            .source_location
+                            .as_ref()
+                            .and_then(|sl| sl.line)
+                            .unwrap_or(0) as i64;
+                        let function_display_name = if frame.is_inlined {
+                            format!("{} #[inline]", frame.function_name)
+                        } else {
+                            format!("{} @{:#010x}", frame.function_name, frame.pc)
+                        };
+                        // TODO: Can we add more meaningful info to `module_id`, etc.
+                        StackFrame {
+                            id: frame.id as i64,
+                            name: function_display_name,
+                            source,
+                            line,
+                            column: column as i64,
+                            end_column: None,
+                            end_line: None,
+                            module_id: None,
+                            presentation_hint: Some("normal".to_owned()),
+                            can_restart: Some(false),
+                            instruction_pointer_reference: Some(format!("{:#010x}", frame.pc)),
+                        }
+                    })
+                    .collect();
+
+                let body = StackTraceResponseBody {
+                    stack_frames: frame_list,
+                    total_frames: Some(total_frames),
+                };
+                self.send_response(request, Ok(Some(body)))
+            } else {
+                self.send_response::<()>(
+                    request,
+                    Err(DebuggerError::Other(anyhow!(
+                        "Request for stack trace failed with invalid start_frame argument: {:?}",
+                        arguments.start_frame
+                    ))),
+                )
             }
+        } else {
+            self.send_response::<()>(
+                request,
+                Err(DebuggerError::Other(anyhow!(
+                    "Request for stack trace failed with invalid levels argument: {:?}",
+                    arguments.levels
+                ))),
+            )
         }
     }
+
     /// Retrieve available scopes  
     /// - static scope  : Variables with `static` modifier
     /// - registers     : The [probe_rs::Core::registers] for the target [probe_rs::CoreType]
@@ -1450,50 +1314,40 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                     .target_core
                     .status()
                     .unwrap_or(CoreStatus::Unknown);
-                match self.adapter_type() {
-                    DebugAdapterType::CommandLine => self.send_response(
+                if request.command.as_str() == "continue" {
+                    // If this continue was initiated as part of some other request, then do not respond.
+                    self.send_response(
                         request,
-                        Ok(Some(self.last_known_status.short_long_status().1)),
-                    ),
-                    DebugAdapterType::DapClient => {
-                        if request.command.as_str() == "continue" {
-                            // If this continue was initiated as part of some other request, then do not respond.
-                            self.send_response(
-                                request,
-                                Ok(Some(ContinueResponseBody {
-                                    all_threads_continued: Some(false), // TODO: Implement multi-core logic here
-                                })),
-                            )?;
-                        }
-                        // We have to consider the fact that sometimes the `run()` is successfull,
-                        // but "immediately" after the MCU hits a breakpoint or exception.
-                        // So we have to check the status again to be sure.
-                        thread::sleep(Duration::from_millis(100)); // Small delay to make sure the MCU hits user breakpoints early in `main()`.
-                        let core_status = match core_data.target_core.status() {
-                            Ok(new_status) => match new_status {
-                                CoreStatus::Halted(_) => {
-                                    let event_body = Some(StoppedEventBody {
-                                        reason: new_status.short_long_status().0.to_owned(),
-                                        description: Some(
-                                            new_status.short_long_status().1.to_string(),
-                                        ),
-                                        thread_id: Some(core_data.target_core.id() as i64),
-                                        preserve_focus_hint: None,
-                                        text: None,
-                                        all_threads_stopped: Some(false), // TODO: Implement multi-core logic here
-                                        hit_breakpoint_ids: None,
-                                    });
-                                    self.send_event("stopped", event_body)?;
-                                    new_status
-                                }
-                                other => other,
-                            },
-                            Err(_) => CoreStatus::Unknown,
-                        };
-                        self.last_known_status = core_status;
-                        Ok(())
-                    }
+                        Ok(Some(ContinueResponseBody {
+                            all_threads_continued: Some(false), // TODO: Implement multi-core logic here
+                        })),
+                    )?;
                 }
+                // We have to consider the fact that sometimes the `run()` is successfull,
+                // but "immediately" afterwards, the MCU hits a breakpoint or exception.
+                // So we have to check the status again to be sure.
+                thread::sleep(Duration::from_millis(100)); // Small delay to make sure the MCU hits user breakpoints early in `main()`.
+                let core_status = match core_data.target_core.status() {
+                    Ok(new_status) => match new_status {
+                        CoreStatus::Halted(_) => {
+                            let event_body = Some(StoppedEventBody {
+                                reason: new_status.short_long_status().0.to_owned(),
+                                description: Some(new_status.short_long_status().1.to_string()),
+                                thread_id: Some(core_data.target_core.id() as i64),
+                                preserve_focus_hint: None,
+                                text: None,
+                                all_threads_stopped: Some(false), // TODO: Implement multi-core logic here
+                                hit_breakpoint_ids: None,
+                            });
+                            self.send_event("stopped", event_body)?;
+                            new_status
+                        }
+                        other => other,
+                    },
+                    Err(_) => CoreStatus::Unknown,
+                };
+                self.last_known_status = core_status;
+                Ok(())
             }
             Err(error) => {
                 self.last_known_status = CoreStatus::Halted(HaltReason::Unknown);
@@ -1636,42 +1490,33 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         channel_name: String,
         data_format: rtt::DataFormat,
     ) -> bool {
-        if self.adapter_type() == DebugAdapterType::DapClient {
-            let event_body = match serde_json::to_value(RttChannelEventBody {
-                channel_number,
-                channel_name,
-                data_format,
-            }) {
-                Ok(event_body) => event_body,
-                Err(_) => {
-                    return false;
-                }
-            };
-            self.send_event("probe-rs-rtt-channel-config", Some(event_body))
-                .is_ok()
-        } else {
-            true
-        }
+        let event_body = match serde_json::to_value(RttChannelEventBody {
+            channel_number,
+            channel_name,
+            data_format,
+        }) {
+            Ok(event_body) => event_body,
+            Err(_) => {
+                return false;
+            }
+        };
+        self.send_event("probe-rs-rtt-channel-config", Some(event_body))
+            .is_ok()
     }
 
     /// Send a custom `probe-rs-rtt-data` event to the MS DAP Client, to
     pub fn rtt_output(&mut self, channel_number: usize, rtt_data: String) -> bool {
-        if self.adapter_type() == DebugAdapterType::DapClient {
-            let event_body = match serde_json::to_value(RttDataEventBody {
-                channel_number,
-                data: rtt_data,
-            }) {
-                Ok(event_body) => event_body,
-                Err(_) => {
-                    return false;
-                }
-            };
-            self.send_event("probe-rs-rtt-data", Some(event_body))
-                .is_ok()
-        } else {
-            println!("RTT Channel {}: {}", channel_number, rtt_data);
-            true
-        }
+        let event_body = match serde_json::to_value(RttDataEventBody {
+            channel_number,
+            data: rtt_data,
+        }) {
+            Ok(event_body) => event_body,
+            Err(_) => {
+                return false;
+            }
+        };
+        self.send_event("probe-rs-rtt-data", Some(event_body))
+            .is_ok()
     }
 
     fn new_progress_id(&mut self) -> ProgressId {
