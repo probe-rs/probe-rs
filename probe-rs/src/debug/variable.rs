@@ -465,101 +465,76 @@ impl Variable {
     }
 
     /// Call the underlaying [Value::update_value] trait to convert the [String] value into the appropriate memory format and update the target memory with the new value.
+    /// Currently this only works for base data types. There is no provision in the MS DAP API to catch this client side, so we can only respond with a 'gentle' error message if the user attemtps unsupported data types.
     pub fn update_value(
         &self,
         core: &mut Core,
         variable_cache: &mut VariableCache,
         new_value: String,
     ) -> Result<String, DebugError> {
-        // For now, we will restrict this functionality to base data types only. There is no provision in the MS DAP API to catch this client side, so we can only respond with a 'gentle' error message if the user attemtps this.
-        let is_base_type = match variable_cache.has_children(self) {
-            Ok(has_children) => {
-                if has_children {
-                    false
-                } else {
-                    // Deferred variable types are also not base data types.
-                    !self.variable_node_type.is_deferred()
-                }
-            }
-            Err(error) => {
-                return Err(anyhow!(
-                    "Could not verify that this is a base data type `Variable`:{}. {:?}",
-                    self.name,
-                    error
-                )
-                .into());
-            }
+        let variable_name = if let VariableName::Named(variable_name) = &self.name {
+            variable_name.clone()
+        } else {
+            String::new()
         };
-
-        if is_base_type {
-            let variable_name = if let VariableName::Named(variable_name) = &self.name {
-                variable_name.clone()
-            } else {
-                String::new()
-            };
-            let updated_value = if self.is_valid()
+        let updated_value = if self.is_valid()
                 // Need a valid type
                 || self.type_name.is_empty()
                 // Need a valid memory location
                 || self.memory_location.is_zero()
-            {
-                // Insufficient data available.
-                return Err(anyhow!(
+        {
+            // Insufficient data available.
+            return Err(anyhow!(
                 "Cannot update variable: {:?}, with supplied information (value={:?}, type={}, memory location={:#010x}).",
                 self.name, self.value, self.type_name, self.memory_location).into());
-            } else if variable_name.starts_with('*') {
-                // Writing the values of pointers is a bit more complex, and not currently supported.
-                return  Err(anyhow!("Please only update variables with a base data type. Updating pointer variable types is not yet supported.").into());
-            } else {
-                // We have everything we need to update the variable value.
-                match match self.type_name.as_str() {
-                    "bool" => bool::update_value(self, core, new_value.as_str()),
-                    "char" => char::update_value(self, core, new_value.as_str()),
-                    "i8" => i8::update_value(self, core, new_value.as_str()),
-                    "i16" => i16::update_value(self, core, new_value.as_str()),
-                    "i32" => i32::update_value(self, core, new_value.as_str()),
-                    "i64" => i64::update_value(self, core, new_value.as_str()),
-                    "i128" => i128::update_value(self, core, new_value.as_str()),
-                    "isize" => isize::update_value(self, core, new_value.as_str()),
-                    "u8" => u8::update_value(self, core, new_value.as_str()),
-                    "u16" => u16::update_value(self, core, new_value.as_str()),
-                    "u32" => u32::update_value(self, core, new_value.as_str()),
-                    "u64" => u64::update_value(self, core, new_value.as_str()),
-                    "u128" => u128::update_value(self, core, new_value.as_str()),
-                    "usize" => usize::update_value(self, core, new_value.as_str()),
-                    "f32" => f32::update_value(self, core, new_value.as_str()),
-                    "f64" => f64::update_value(self, core, new_value.as_str()),
-                    other => Err(DebugError::Other(anyhow::anyhow!(
-                        "Unsupported datatype: {}",
-                        other.to_string()
-                    ))),
-                } {
-                    Ok(()) => {
-                        // Now update the cache with the new value for this variable.
-                        let mut cache_variable = self.clone();
-                        cache_variable.value = VariableValue::Valid(new_value.clone());
-                        variable_cache.cache_variable(
-                            cache_variable.parent_key,
-                            cache_variable,
-                            core,
-                        )?;
-                        new_value
-                    }
-                    Err(error) => {
-                        return Err(DebugError::Other(anyhow::anyhow!(
-                            "Invalid data value={:?}: {}",
-                            new_value,
-                            error
-                        )));
-                    }
-                }
-            };
-            Ok(updated_value)
+        } else if variable_name.starts_with('*') {
+            // Writing the values of pointers is a bit more complex, and not currently supported.
+            return  Err(anyhow!("Please only update variables with a base data type. Updating pointer variable types is not yet supported.").into());
         } else {
-            Err(
-                anyhow!("Please only update variables with a base data type. Updating complex/structured variable types is not yet supported.").into(),
-            )
-        }
+            // We have everything we need to update the variable value.
+            match match self.type_name.as_str() {
+                "bool" => bool::update_value(self, core, new_value.as_str()),
+                "char" => char::update_value(self, core, new_value.as_str()),
+                "i8" => i8::update_value(self, core, new_value.as_str()),
+                "i16" => i16::update_value(self, core, new_value.as_str()),
+                "i32" => i32::update_value(self, core, new_value.as_str()),
+                "i64" => i64::update_value(self, core, new_value.as_str()),
+                "i128" => i128::update_value(self, core, new_value.as_str()),
+                "isize" => isize::update_value(self, core, new_value.as_str()),
+                "u8" => u8::update_value(self, core, new_value.as_str()),
+                "u16" => u16::update_value(self, core, new_value.as_str()),
+                "u32" => u32::update_value(self, core, new_value.as_str()),
+                "u64" => u64::update_value(self, core, new_value.as_str()),
+                "u128" => u128::update_value(self, core, new_value.as_str()),
+                "usize" => usize::update_value(self, core, new_value.as_str()),
+                "f32" => f32::update_value(self, core, new_value.as_str()),
+                "f64" => f64::update_value(self, core, new_value.as_str()),
+                other => Err(DebugError::Other(anyhow::anyhow!(
+                    "Unsupported datatype: {}. Please only update variables with a base data type.",
+                    other.to_string()
+                ))),
+            } {
+                Ok(()) => {
+                    // Now update the cache with the new value for this variable.
+                    let mut cache_variable = self.clone();
+                    cache_variable.value = VariableValue::Valid(new_value.clone());
+                    variable_cache.cache_variable(
+                        cache_variable.parent_key,
+                        cache_variable,
+                        core,
+                    )?;
+                    new_value
+                }
+                Err(error) => {
+                    return Err(DebugError::Other(anyhow::anyhow!(
+                        "Invalid data value={:?}: {}",
+                        new_value,
+                        error
+                    )));
+                }
+            }
+        };
+        Ok(updated_value)
     }
 
     /// Implementing get_value(), because Variable.value has to be private (a requirement of updating the value without overriding earlier values ... see set_value()).
@@ -1036,7 +1011,9 @@ impl Value for String {
         _core: &mut Core<'_>,
         _new_value: &str,
     ) -> Result<(), DebugError> {
-        unimplemented!()
+        Err(DebugError::Other(anyhow::anyhow!(
+            "Unsupported datatype: \"String\". Please only update variables with a base data type.",
+        )))
     }
 }
 impl Value for i8 {

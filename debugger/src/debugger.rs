@@ -250,7 +250,7 @@ pub struct DebugSession {
     /// [DebugSession] will manage a `Vec<StackFrame>` per [Core]. Each core's collection of StackFrames will be recreated whenever a stacktrace is performed, using the results of [DebugInfo::unwind]
     pub(crate) stack_frames: Vec<Vec<probe_rs::debug::StackFrame>>,
     /// The control structures for handling RTT in this Core of the DebugSession.
-    pub(crate) active_rtt_target: Option<DebuggerRttTarget>,
+    pub(crate) rtt_connection: Option<RttConnection>,
 }
 
 impl DebugSession {
@@ -376,7 +376,7 @@ impl DebugSession {
             capstone,
             debug_infos,
             stack_frames,
-            active_rtt_target: None,
+            rtt_connection: None,
         })
     }
 
@@ -399,7 +399,7 @@ impl DebugSession {
                         core_index
                     ))
                 })?,
-                active_rtt_target: &mut self.active_rtt_target,
+                rtt_connection: &mut self.rtt_connection,
             }),
             Err(_) => Err(DebuggerError::UnableToOpenProbe(Some(
                 "No core at the specified index.",
@@ -409,14 +409,16 @@ impl DebugSession {
 }
 
 /// Manage the active RTT target for a specific DebugSession, as well as provide methods to reliably move RTT from target, through the debug_adapter, to the client.
-pub(crate) struct DebuggerRttTarget {
+pub(crate) struct RttConnection {
     /// The connection to RTT on the target
     target_rtt: rtt::RttActiveTarget,
     /// Some status fields and methods to ensure continuity in flow of data from target to debugger to client.
     debugger_rtt_channels: Vec<DebuggerRttChannel>,
 }
 
-impl DebuggerRttTarget {
+impl RttConnection {
+    /// Polls all the available channels for data and transmits data to the client.
+    /// If at least one channel had data, then return a `true` status.
     pub fn process_rtt_data<P: ProtocolAdapter>(
         &mut self,
         debug_adapter: &mut DebugAdapter<P>,
@@ -424,7 +426,7 @@ impl DebuggerRttTarget {
     ) -> bool {
         let mut at_least_one_channel_had_data = false;
         for debugger_rtt_channel in self.debugger_rtt_channels.iter_mut() {
-            if debugger_rtt_channel.send_rtt_data(target_core, debug_adapter, &mut self.target_rtt)
+            if debugger_rtt_channel.poll_rtt_data(target_core, debug_adapter, &mut self.target_rtt)
             {
                 at_least_one_channel_had_data = true;
             }
@@ -442,7 +444,7 @@ impl DebuggerRttChannel {
     /// Poll and retrieve data from the target, and send it to the client, depending on the state of `hasClientWindow`.
     /// Doing this selectively ensures that we don't pull data from target buffers until we have an output window, and also helps us drain buffers after the target has entered a `is_halted` state.
     /// Errors will be reported back to the `debug_adapter`, and the return `bool` value indicates whether there was available data that was processed.
-    pub(crate) fn send_rtt_data<P: ProtocolAdapter>(
+    pub(crate) fn poll_rtt_data<P: ProtocolAdapter>(
         &mut self,
         core: &mut Core,
         debug_adapter: &mut DebugAdapter<P>,
@@ -486,7 +488,7 @@ pub struct CoreData<'p> {
     pub(crate) target_name: String,
     pub(crate) debug_info: &'p DebugInfo,
     pub(crate) stack_frames: &'p mut Vec<probe_rs::debug::StackFrame>,
-    pub(crate) active_rtt_target: &'p mut Option<DebuggerRttTarget>,
+    pub(crate) rtt_connection: &'p mut Option<RttConnection>,
 }
 
 impl<'p> CoreData<'p> {
@@ -497,6 +499,7 @@ impl<'p> CoreData<'p> {
             .find(|stack_frame| stack_frame.id == id)
     }
 
+    /// Confirm RTT initialization on the target, and use the RTT channel configurations to initialize the output windows on the DAP Client.
     pub fn attach_to_rtt<P: ProtocolAdapter>(
         &mut self,
         debug_adapter: &mut DebugAdapter<P>,
@@ -527,7 +530,7 @@ impl<'p> CoreData<'p> {
                         );
                     }
                 }
-                *self.active_rtt_target = Some(DebuggerRttTarget {
+                *self.rtt_connection = Some(RttConnection {
                     target_rtt,
                     debugger_rtt_channels,
                 });
@@ -743,13 +746,12 @@ impl Debugger {
                         // Make sure the RTT buffers are drained.
                         match session_data.attach_core(self.debugger_options.core_index) {
                             Ok(mut core_data) => {
-                                if let Some(rtt_active_target) = &mut core_data.active_rtt_target {
+                                if let Some(rtt_active_target) = &mut core_data.rtt_connection {
                                     rtt_active_target.process_rtt_data(
                                         debug_adapter,
                                         &mut core_data.target_core,
                                     );
-                                }
-                                core_data
+                                };
                             }
                             Err(error) => {
                                 let _ = debug_adapter.send_error_response(&error)?;
@@ -763,24 +765,23 @@ impl Debugger {
                     }
                     _other => {
                         let mut received_rtt_data = false;
-                        let mut core_data = match session_data
-                            .attach_core(self.debugger_options.core_index)
-                        {
-                            Ok(mut core_data) => {
-                                // Use every opportunity to poll the RTT channels for data
-                                if let Some(rtt_active_target) = &mut core_data.active_rtt_target {
-                                    received_rtt_data = rtt_active_target.process_rtt_data(
-                                        debug_adapter,
-                                        &mut core_data.target_core,
-                                    );
+                        let mut core_data =
+                            match session_data.attach_core(self.debugger_options.core_index) {
+                                Ok(mut core_data) => {
+                                    // Use every opportunity to poll the RTT channels for data
+                                    if let Some(rtt_active_target) = &mut core_data.rtt_connection {
+                                        received_rtt_data = rtt_active_target.process_rtt_data(
+                                            debug_adapter,
+                                            &mut core_data.target_core,
+                                        );
+                                    }
+                                    core_data
                                 }
-                                core_data
-                            }
-                            Err(error) => {
-                                let _ = debug_adapter.send_error_response(&error)?;
-                                return Err(error);
-                            }
-                        };
+                                Err(error) => {
+                                    let _ = debug_adapter.send_error_response(&error)?;
+                                    return Err(error);
+                                }
+                            };
 
                         // Check and update the core status.
                         let new_status = match core_data.target_core.status() {
@@ -850,7 +851,7 @@ impl Debugger {
             }
             Some(request) => match request.command.as_ref() {
                 "rtt_window_opened" => {
-                    if let Some(debugger_rtt_target) = &mut session_data.active_rtt_target {
+                    if let Some(debugger_rtt_target) = &mut session_data.rtt_connection {
                         match get_arguments::<RttWindowOpenedArguments>(&request) {
                             Ok(arguments) => {
                                 debugger_rtt_target
@@ -1006,7 +1007,7 @@ impl Debugger {
                                 "threads" => debug_adapter.threads(&mut core_data, request),
                                 "restart" => {
                                     // Reset RTT so that the link can be re-established
-                                    *core_data.active_rtt_target = None;
+                                    *core_data.rtt_connection = None;
                                     debug_adapter.restart(&mut core_data, Some(request))
                                 }
                                 "set_breakpoints" => {
@@ -1690,7 +1691,7 @@ impl Debugger {
                     // Validate and if necessary, initialize the RTT structure.
                     if debug_adapter.adapter_type() == DebugAdapterType::DapClient
                         && self.debugger_options.rtt.enabled
-                        && session_data.active_rtt_target.is_none()
+                        && session_data.rtt_connection.is_none()
                         && !(debug_adapter.last_known_status == CoreStatus::Unknown
                             || debug_adapter.last_known_status.is_halted())
                     // Do not attempt this until we have processed the MSDAP request for "configuration_done" ...

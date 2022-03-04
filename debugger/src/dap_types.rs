@@ -95,6 +95,7 @@ impl TryFrom<&serde_json::Value> for ReadMemoryArguments {
 }
 
 impl TryFrom<&serde_json::Value> for WriteMemoryArguments {
+    type Error = DebuggerError;
     fn try_from(arguments: &serde_json::Value) -> Result<Self, Self::Error> {
         let memory_reference = get_string_argument(Some(arguments), "memory_reference", 0)?;
         let data = get_string_argument(Some(arguments), "data", 1)?;
@@ -105,8 +106,6 @@ impl TryFrom<&serde_json::Value> for WriteMemoryArguments {
             allow_partial: Some(false),
         })
     }
-
-    type Error = DebuggerError;
 }
 
 // SECTION: For various helper functions

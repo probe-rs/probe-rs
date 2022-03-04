@@ -211,7 +211,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                 Ok(Some(ReadMemoryResponseBody {
                     address: format!("{:#010x}", address),
                     data: Some(response),
-                    unreadable_bytes: None, //Some(num_bytes_unread as i64),
+                    unreadable_bytes: None,
                 })),
             )
         } else {
@@ -303,14 +303,11 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
 
     /// Evaluates the given expression in the context of the top most stack frame.
     /// The expression has access to any variables and arguments that are in scope.
-    /// TODO: When variables appear in the `watch` context, they will not resolve correctly after a 'step' function. Consider doing the lazy load for 'either/or' of Variables vs. Evaluate
     pub(crate) fn evaluate(&mut self, core_data: &mut CoreData, request: Request) -> Result<()> {
+        // TODO: When variables appear in the `watch` context, they will not resolve correctly after a 'step' function. Consider doing the lazy load for 'either/or' of Variables vs. Evaluate
+
         let arguments: EvaluateArguments = match self.adapter_type() {
             DebugAdapterType::CommandLine => todo!(),
-            // match request.arguments.as_ref().unwrap().try_into() {
-            //     Ok(arguments) => arguments,
-            //     Err(error) => return self.send_response::<()>(request, Err(error)),
-            // },
             DebugAdapterType::DapClient => match get_arguments(&request) {
                 Ok(arguments) => arguments,
                 Err(error) => return self.send_response::<()>(request, Err(error)),
