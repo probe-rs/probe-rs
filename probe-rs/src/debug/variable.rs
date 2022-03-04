@@ -477,7 +477,7 @@ impl Variable {
         } else {
             String::new()
         };
-        let updated_value = if self.is_valid()
+        let updated_value = if !self.is_valid()
                 // Need a valid type
                 || self.type_name.is_empty()
                 // Need a valid memory location
