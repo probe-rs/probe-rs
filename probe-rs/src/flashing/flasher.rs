@@ -79,7 +79,7 @@ impl<'session> Flasher<'session> {
                 ram.cores.contains(core_name)
             })
             .ok_or(FlashError::NoRamDefined {
-                chip: session.target().name.clone(),
+                name: session.target().name.clone(),
             })?;
 
         log::info!("chosen RAM to run the algo: {:x?}", ram);
