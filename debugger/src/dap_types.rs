@@ -25,6 +25,31 @@ pub struct QuitRequest {
     pub type_: String,
 }
 
+/// Custom [`RttWindowOpened`] request, so that VSCode can confirm once a specific RTT channel's window has opened.
+/// `probe-rs-debugger` will delay polling RTT channels until the data window has opened. This ensure no RTT data is lost on the client.
+#[derive(Clone, PartialEq, Debug, Deserialize, Serialize)]
+pub struct RttWindowOpened {
+    /// Object containing arguments for the command.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub arguments: Option<RttWindowOpenedArguments>,
+    /// The command to execute.
+    pub command: String,
+    /// Sequence number (also known as message ID). For protocol messages of type `request` this ID
+    /// can be used to cancel the request.
+    pub seq: i64,
+    /// Message type.
+    #[serde(rename = "type")]
+    pub type_: String,
+}
+///  Arguments for [`RttWindowOpened`] request.
+#[derive(Clone, PartialEq, Debug, Default, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RttWindowOpenedArguments {
+    /// The RTT channel number.
+    pub channel_number: usize,
+    pub window_is_open: bool,
+}
+
 #[derive(Clone, PartialEq, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RttChannelEventBody {
@@ -67,6 +92,20 @@ impl TryFrom<&serde_json::Value> for ReadMemoryArguments {
     }
 
     type Error = DebuggerError;
+}
+
+impl TryFrom<&serde_json::Value> for WriteMemoryArguments {
+    type Error = DebuggerError;
+    fn try_from(arguments: &serde_json::Value) -> Result<Self, Self::Error> {
+        let memory_reference = get_string_argument(Some(arguments), "memory_reference", 0)?;
+        let data = get_string_argument(Some(arguments), "data", 1)?;
+        Ok(WriteMemoryArguments {
+            data,
+            memory_reference,
+            offset: None,
+            allow_partial: Some(false),
+        })
+    }
 }
 
 // SECTION: For various helper functions

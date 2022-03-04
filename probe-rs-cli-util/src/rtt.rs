@@ -198,6 +198,78 @@ impl RttActiveChannel {
         None
     }
 
+    /// Retrieves available data from the channel and if available, returns `Some(channel_number:String, formatted_data:String)`.
+    pub fn get_rtt_data(
+        &mut self,
+        core: &mut Core,
+        defmt_state: Option<&(defmt_decoder::Table, Option<defmt_decoder::Locations>)>,
+    ) -> Option<(String, String)> {
+        self
+            .poll_rtt(core)
+            .map(|bytes_read| {
+                (
+                    self.number().unwrap_or(0).to_string(), // If the Channel doesn't have a number, then send the output to channel 0
+                    {
+                        let mut formatted_data = String::new();
+                        match self.data_format {
+                            DataFormat::String => {
+                                let incoming = String::from_utf8_lossy(&self.rtt_buffer.0[..bytes_read]).to_string();
+                                for (_i, line) in incoming.split_terminator('\n').enumerate() {
+                                    if self.show_timestamps {
+                                        write!(formatted_data, "{} :", Local::now())
+                                            .map_or_else(|err| log::error!("Failed to format RTT data - {:?}", err), |r|r);
+                                    }
+                                    writeln!(formatted_data, "{}", line).map_or_else(|err| log::error!("Failed to format RTT data - {:?}", err), |r|r);
+                                }
+                            }
+                            DataFormat::BinaryLE => {
+                                for element in &self.rtt_buffer.0[..bytes_read] {
+                                    // Width of 4 allows 0xFF to be printed.
+                                    write!(formatted_data, "{:#04x}", element).map_or_else(|err| log::error!("Failed to format RTT data - {:?}", err), |r|r);
+                                }
+                            }
+                            DataFormat::Defmt => {
+                                match defmt_state {
+                                    Some((table, locs)) => {
+
+                                        let mut stream_decoder = table.new_stream_decoder();
+                                        stream_decoder.received(&self.rtt_buffer.0[..bytes_read]);
+                                        while let Ok(frame) = stream_decoder.decode()
+                                        {
+                                            // NOTE(`[]` indexing) all indices in `table` have already been
+                                            // verified to exist in the `locs` map.
+                                            let loc = locs.as_ref().map(|locs| &locs[&frame.index()]);
+                                            writeln!(formatted_data, "{}", frame.display(false)).map_or_else(|err| log::error!("Failed to format RTT data - {:?}", err), |r|r);
+                                            if let Some(loc) = loc {
+                                                let relpath = if let Ok(relpath) =
+                                                    loc.file.strip_prefix(&std::env::current_dir().unwrap())
+                                                {
+                                                    relpath
+                                                } else {
+                                                    // not relative; use full path
+                                                    &loc.file
+                                                };
+                                                writeln!(formatted_data,
+                                                    "└─ {}:{}",
+                                                    relpath.display(),
+                                                    loc.line
+                                                ).map_or_else(|err| log::error!("Failed to format RTT data - {:?}", err), |r|r);
+                                            }
+                                        }
+                                    }
+                                    None => {
+                                        write!(formatted_data, "Running rtt in defmt mode but table or locations could not be loaded.")
+                                            .map_or_else(|err| log::error!("Failed to format RTT data - {:?}", err), |r|r);
+                                    }
+                                }
+                            }
+                        };
+                        formatted_data
+                    }
+                )
+            })
+    }
+
     pub fn _push_rtt(&mut self, core: &mut Core) {
         if let Some(down_channel) = self.down_channel.as_mut() {
             self._input_data += "\n";
@@ -213,7 +285,7 @@ impl RttActiveChannel {
 #[derive(Debug)]
 pub struct RttActiveTarget {
     pub active_channels: Vec<RttActiveChannel>,
-    defmt_state: Option<(defmt_decoder::Table, Option<defmt_decoder::Locations>)>,
+    pub defmt_state: Option<(defmt_decoder::Table, Option<defmt_decoder::Locations>)>,
 }
 
 impl RttActiveTarget {
@@ -313,77 +385,12 @@ impl RttActiveTarget {
         None
     }
 
-    /// Polls the RTT target for new data on all channels.
+    /// Polls the RTT target on all channels and returns available data.
     pub fn poll_rtt(&mut self, core: &mut Core) -> HashMap<String, String> {
         let defmt_state = self.defmt_state.as_ref();
         self.active_channels
             .iter_mut()
-            .filter_map(|active_channel| {
-                 active_channel
-                    .poll_rtt(core)
-                    .map(|bytes_read| {
-                        (
-                            active_channel.number().unwrap_or(0).to_string(), // If the Channel doesn't have a number, then send the output to channel 0
-                            {
-                                let mut formatted_data = String::new();
-                                match active_channel.data_format {
-                                    DataFormat::String => {
-                                        let incoming = String::from_utf8_lossy(&active_channel.rtt_buffer.0[..bytes_read]).to_string();
-                                        for (_i, line) in incoming.split_terminator('\n').enumerate() {
-                                            if active_channel.show_timestamps {
-                                                write!(formatted_data, "{} :", Local::now())
-                                                    .map_or_else(|err| log::error!("Failed to format RTT data - {:?}", err), |r|r);
-                                            }
-                                            writeln!(formatted_data, "{}", line).map_or_else(|err| log::error!("Failed to format RTT data - {:?}", err), |r|r);
-                                        }
-                                    }
-                                    DataFormat::BinaryLE => {
-                                        for element in &active_channel.rtt_buffer.0[..bytes_read] {
-                                            // Width of 4 allows 0xFF to be printed.
-                                            write!(formatted_data, "{:#04x}", element).map_or_else(|err| log::error!("Failed to format RTT data - {:?}", err), |r|r);
-                                        }
-                                    }
-                                    DataFormat::Defmt => {
-                                        match defmt_state {
-                                            Some((table, locs)) => {
-
-                                                let mut stream_decoder = table.new_stream_decoder();
-                                                stream_decoder.received(&active_channel.rtt_buffer.0[..bytes_read]);
-                                                while let Ok(frame) = stream_decoder.decode()
-                                                {
-                                                    // NOTE(`[]` indexing) all indices in `table` have already been
-                                                    // verified to exist in the `locs` map.
-                                                    let loc = locs.as_ref().map(|locs| &locs[&frame.index()]);
-                                                    writeln!(formatted_data, "{}", frame.display(false)).map_or_else(|err| log::error!("Failed to format RTT data - {:?}", err), |r|r);
-                                                    if let Some(loc) = loc {
-                                                        let relpath = if let Ok(relpath) =
-                                                            loc.file.strip_prefix(&std::env::current_dir().unwrap())
-                                                        {
-                                                            relpath
-                                                        } else {
-                                                            // not relative; use full path
-                                                            &loc.file
-                                                        };
-                                                        writeln!(formatted_data,
-                                                            "└─ {}:{}",
-                                                            relpath.display(),
-                                                            loc.line
-                                                        ).map_or_else(|err| log::error!("Failed to format RTT data - {:?}", err), |r|r);
-                                                    }
-                                                }
-                                            }
-                                            None => {
-                                                write!(formatted_data, "Running rtt in defmt mode but table or locations could not be loaded.")
-                                                    .map_or_else(|err| log::error!("Failed to format RTT data - {:?}", err), |r|r);
-                                            }
-                                        }
-                                    }
-                                };
-                                formatted_data
-                            }
-                        )
-                    })
-            })
+            .filter_map(|active_channel| active_channel.get_rtt_data(core, defmt_state))
             .collect::<HashMap<_, _>>()
     }
 

@@ -364,7 +364,7 @@ impl DebugCli {
                         };
 
                         if let Some(mut locals) = local_variable_cache
-                            .get_variable_by_name_and_parent(&VariableName::LocalScope, None)
+                            .get_variable_by_name_and_parent(&VariableName::LocalScopeRoot, None)
                         {
                             // By default, the first level children are always are lazy loaded, so we will force a load here.
                             if locals.variable_node_type.is_deferred()

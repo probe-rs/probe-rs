@@ -3573,6 +3573,10 @@
 					"description": "Visibility of variable. Before introducing additional values, try to use the listed values.",
 					"type": "string",
 					"_enum": [ "public", "private", "protected", "internal", "final" ]
+				},
+				"lazy": {
+					"description": "If true, clients can present the variable with a UI that supports a specific gesture to trigger its evaluation.\nThis mechanism can be used for properties that require executing code when retrieving their value and where the code execution can be expensive and/or produce side-effects. A typical example are properties based on a getter function.\nPlease note that in addition to the 'lazy' flag, the variable's 'variablesReference' must refer to a variable that will provide the value through another 'variable' request.",
+					"type": "boolean"
 				}
 			}
 		},

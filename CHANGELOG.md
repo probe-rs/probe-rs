@@ -24,6 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added get_target_voltage to the Probe struct to access the inner DebugProbe method. (#991)
 - Debugger: Added support for showing multiple inlined functions in backtrace. (#1002)
 - Debugger: Add support LocLists (attribute value of DW_AT_location) (#1025)
+- Debugger: Add support for DAP Requests (ReadMemory, WriteMemory, Evaluate & SetVariable) (#1035)
 
 ### Changed
 
@@ -54,6 +55,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Adapt to `defmt` 0.3 'Rzcobs' encoding to fix [VSCode #26](https://github.com/probe-rs/vscode/issues/26).
   - Support the new `defmt` 0.3 `DEFMT_LOG` environment variable.
   - Requires `probe-rs/vscode` [PR #27](https://github.com/probe-rs/vscode/pull/27) 
+  - Debugger: Improved RTT reliability between debug adapter and VSCode (#1035)
 
 ## [0.12.0]
 

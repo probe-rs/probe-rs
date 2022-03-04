@@ -170,22 +170,50 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                 Err(error) => return self.send_response::<()>(request, Err(error)),
             },
         };
-        let address: u32 = parse(arguments.memory_reference.as_ref()).unwrap();
-        let num_words = arguments.count as usize;
-        let mut buff = vec![0u32; num_words];
-        if num_words > 1 {
-            core_data.target_core.read_32(address, &mut buff).unwrap();
+        let memory_offset = arguments.offset.unwrap_or(0);
+        let mut address: u32 = if let Ok(address) =
+            parse::<i64>(arguments.memory_reference.as_ref())
+        {
+            match (address + memory_offset).try_into() {
+                    Ok(modified_address) => modified_address,
+                    Err(error) => return self.send_response::<()>(
+                    request,
+                    Err(DebuggerError::Other(anyhow!(
+                        "Could not convert memory_reference: {} and offset: {:?} into a 32-bit memory address: {:?}",
+                        arguments.memory_reference, arguments.offset, error
+                    ))),
+                ),
+                }
         } else {
-            buff[0] = core_data.target_core.read_word_32(address).unwrap();
-        }
-        if !buff.is_empty() {
-            let mut response = "".to_string();
-            for (offset, word) in buff.iter().enumerate() {
-                response.push_str(
-                    format!("{:#010x} = {:#010x}\n", address + (offset * 4) as u32, word).as_str(),
-                );
+            return self.send_response::<()>(
+                request,
+                Err(DebuggerError::Other(anyhow!(
+                    "Could not read any data at address {:?}",
+                    arguments.memory_reference
+                ))),
+            );
+        };
+        let mut num_bytes_unread = arguments.count as usize;
+        let mut buff = vec![];
+        while num_bytes_unread > 0 {
+            if let Ok(good_byte) = core_data.target_core.read_word_8(address) {
+                buff.push(good_byte);
+                address += 1;
+                num_bytes_unread -= 1;
+            } else {
+                break;
             }
-            self.send_response::<String>(request, Ok(Some(response)))
+        }
+        if !buff.is_empty() || num_bytes_unread == 0 {
+            let response = base64::encode(&buff);
+            self.send_response(
+                request,
+                Ok(Some(ReadMemoryResponseBody {
+                    address: format!("{:#010x}", address),
+                    data: Some(response),
+                    unreadable_bytes: None,
+                })),
+            )
         } else {
             self.send_response::<()>(
                 request,
@@ -196,25 +224,318 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             )
         }
     }
-    pub(crate) fn write(&mut self, core_data: &mut CoreData, request: Request) -> Result<()> {
-        let address = match get_int_argument(request.arguments.as_ref(), "address", 0) {
-            Ok(address) => address,
-            Err(error) => return self.send_response::<()>(request, Err(error)),
-        };
-        let data = match get_int_argument(request.arguments.as_ref(), "data", 1) {
-            Ok(data) => data,
-            Err(error) => return self.send_response::<()>(request, Err(error)),
-        };
 
+    pub(crate) fn write_memory(
+        &mut self,
+        core_data: &mut CoreData,
+        request: Request,
+    ) -> Result<()> {
+        let arguments: WriteMemoryArguments = match self.adapter_type() {
+            DebugAdapterType::CommandLine => match request.arguments.as_ref().unwrap().try_into() {
+                Ok(arguments) => arguments,
+                Err(error) => return self.send_response::<()>(request, Err(error)),
+            },
+            DebugAdapterType::DapClient => match get_arguments(&request) {
+                Ok(arguments) => arguments,
+                Err(error) => return self.send_response::<()>(request, Err(error)),
+            },
+        };
+        let memory_offset = arguments.offset.unwrap_or(0);
+        let address: u32 = if let Ok(address) = parse::<i64>(arguments.memory_reference.as_ref()) {
+            match (address + memory_offset).try_into() {
+                    Ok(modified_address) => modified_address,
+                    Err(error) => return self.send_response::<()>(
+                    request,
+                    Err(DebuggerError::Other(anyhow!(
+                        "Could not convert memory_reference: {} and offset: {:?} into a 32-bit memory address: {:?}",
+                        arguments.memory_reference, arguments.offset, error
+                    ))),
+                ),
+                }
+        } else {
+            return self.send_response::<()>(
+                request,
+                Err(DebuggerError::Other(anyhow!(
+                    "Could not read any data at address {:?}",
+                    arguments.memory_reference
+                ))),
+            );
+        };
+        let data_bytes = match base64::decode(&arguments.data) {
+            Ok(decoded_bytes) => decoded_bytes,
+            Err(error) => {
+                return self.send_response::<()>(
+                    request,
+                    Err(DebuggerError::Other(anyhow!(
+                        "Could not decode base64 data:{:?} :  {:?}",
+                        arguments.data,
+                        error
+                    ))),
+                );
+            }
+        };
         match core_data
             .target_core
-            .write_word_32(address, data)
+            .write_8(address, &data_bytes)
             .map_err(DebuggerError::ProbeRs)
         {
-            Ok(_) => Ok(()),
+            Ok(_) => {
+                self.send_response(
+                    request,
+                    Ok(Some(WriteMemoryResponseBody {
+                        bytes_written: Some(data_bytes.len() as i64),
+                        offset: None,
+                    })),
+                )?;
+                // TODO: This doesn't trigger the UI to reload the variables effected. Investigate if we can force it in some other way, or if it is a known issue.
+                self.send_event(
+                    "memory",
+                    Some(MemoryEventBody {
+                        count: data_bytes.len() as i64,
+                        memory_reference: format!("{:#010x}", address),
+                        offset: 0,
+                    }),
+                )
+            }
             Err(error) => self.send_response::<()>(request, Err(error)),
         }
     }
+
+    /// Evaluates the given expression in the context of the top most stack frame.
+    /// The expression has access to any variables and arguments that are in scope.
+    pub(crate) fn evaluate(&mut self, core_data: &mut CoreData, request: Request) -> Result<()> {
+        // TODO: When variables appear in the `watch` context, they will not resolve correctly after a 'step' function. Consider doing the lazy load for 'either/or' of Variables vs. Evaluate
+
+        let arguments: EvaluateArguments = match self.adapter_type() {
+            DebugAdapterType::CommandLine => todo!(),
+            DebugAdapterType::DapClient => match get_arguments(&request) {
+                Ok(arguments) => arguments,
+                Err(error) => return self.send_response::<()>(request, Err(error)),
+            },
+        };
+
+        // Various fields in the response_body will be updated before we return.
+        let mut response_body = EvaluateResponseBody {
+            indexed_variables: None,
+            memory_reference: None,
+            named_variables: None,
+            presentation_hint: None,
+            result: format!("<variable not found {:?}>", arguments.expression),
+            type_: None,
+            variables_reference: 0_i64,
+        };
+
+        // The Variables request always returns a 'evaluate_name' = 'name', this means that the expression will always be the variable name we are looking for.
+        let expression = arguments.expression.clone();
+
+        // Make sure we have a valid StackFrame
+        if let Some(stack_frame) = match arguments.frame_id {
+            Some(frame_id) => core_data
+                .stack_frames
+                .iter_mut()
+                .find(|stack_frame| stack_frame.id == frame_id),
+            None => {
+                // Use the current frame_id
+                core_data.stack_frames.first_mut()
+            }
+        } {
+            // Always search the registers first, because we don't have a VariableCache for them.
+            if let Some((_register_number, register_value)) =
+                stack_frame.registers.registers().into_iter().find(
+                    |(register_number, _register_value)| {
+                        let register_number = **register_number;
+                        let register_name = stack_frame
+                            .registers
+                            .get_name_by_dwarf_register_number(register_number)
+                            .unwrap_or_else(|| format!("r{:#}", register_number));
+                        register_name == expression
+                    },
+                )
+            {
+                response_body.type_ = Some(format!("{}", VariableName::RegistersRoot));
+                response_body.result = format!("{:#010x}", register_value);
+            } else {
+                // If the expression wasn't pointing to a register, then check if is a local or static variable in our stack_frame
+                let mut variable: Option<probe_rs::debug::Variable> = None;
+                let mut variable_cache: Option<&mut VariableCache> = None;
+                // Search through available caches and stop as soon as the variable is found
+                #[allow(clippy::manual_flatten)]
+                for stack_frame_variable_cache in [
+                    stack_frame.local_variables.as_mut(),
+                    stack_frame.static_variables.as_mut(),
+                ] {
+                    if let Some(search_cache) = stack_frame_variable_cache {
+                        variable = search_cache
+                            .get_variable_by_name(&VariableName::Named(expression.clone()));
+                        if variable.is_some() {
+                            variable_cache = Some(search_cache);
+                            break;
+                        }
+                    }
+                }
+                // Check if we found a variable.
+                if let (Some(variable), Some(variable_cache)) = (variable, variable_cache) {
+                    let (
+                        variables_reference,
+                        named_child_variables_cnt,
+                        indexed_child_variables_cnt,
+                    ) = self.get_variable_reference(&variable, variable_cache);
+                    response_body.indexed_variables = Some(indexed_child_variables_cnt);
+                    response_body.memory_reference =
+                        Some(format!("{:#010x}", variable.memory_location));
+                    response_body.named_variables = Some(named_child_variables_cnt);
+                    response_body.result = variable.get_value(variable_cache);
+                    response_body.type_ = Some(variable.type_name.clone());
+                    response_body.variables_reference = variables_reference;
+                } else {
+                    // If we made it to here, no register or variable matched the expression.
+                }
+            }
+        }
+
+        self.send_response(request, Ok(Some(response_body)))
+    }
+
+    /// Set the variable with the given name in the variable container to a new value.
+    pub(crate) fn set_variable(
+        &mut self,
+        core_data: &mut CoreData,
+        request: Request,
+    ) -> Result<()> {
+        let arguments: SetVariableArguments = match self.adapter_type() {
+            DebugAdapterType::CommandLine => todo!(),
+            // match request.arguments.as_ref().unwrap().try_into() {
+            //     Ok(arguments) => arguments,
+            //     Err(error) => return self.send_response::<()>(request, Err(error)),
+            // },
+            DebugAdapterType::DapClient => match get_arguments(&request) {
+                Ok(arguments) => arguments,
+                Err(error) => return self.send_response::<()>(request, Err(error)),
+            },
+        };
+
+        // Various fields in the response_body will be updated before we return.
+        let mut response_body = SetVariableResponseBody {
+            indexed_variables: None,
+            named_variables: None,
+            type_: None,
+            value: String::new(),
+            variables_reference: None,
+        };
+
+        // The arguments.variables_reference contains the reference of the variable container. This can be:
+        // - The `StackFrame.id` for register variables - we will warn the user that updating these are not yet supported.
+        // - The `Variable.parent_key` for a local or static variable - If these are base data types, we will attempt to update their value, otherwise we will warn the user that updating complex / structure variables are not yet supported.
+        let parent_key = arguments.variables_reference;
+        let new_value = arguments.value.clone();
+
+        match core_data
+            .stack_frames
+            .iter_mut()
+            .find(|stack_frame| stack_frame.id == parent_key)
+        {
+            Some(stack_frame) => {
+                // The variable is a register value in this StackFrame
+                if let Some((_register_number, _register_value)) =
+                    stack_frame.registers.registers().into_iter().find(
+                        |(register_number, _register_value)| {
+                            let register_number = **register_number;
+                            let register_name = stack_frame
+                                .registers
+                                .get_name_by_dwarf_register_number(register_number)
+                                .unwrap_or_else(|| format!("r{:#}", register_number));
+                            register_name == arguments.name
+                        },
+                    )
+                {
+                    // TODO: Does it make sense for us to consider implementing an update of platform registers?
+                    return self.send_response::<SetVariableResponseBody>(
+                        request,
+                        Err(DebuggerError::Other(anyhow!(
+                            "Set Register values is not yet supported."
+                        ))),
+                    );
+                }
+            }
+            None => {
+                let variable_name = VariableName::Named(arguments.name.clone());
+
+                // The parent_key refers to a local or static variable in one of the in-scope StackFrames.
+                let mut cache_variable: Option<probe_rs::debug::Variable> = None;
+                let mut variable_cache: Option<&mut VariableCache> = None;
+                for search_frame in core_data.stack_frames.iter_mut() {
+                    if let Some(search_cache) = &mut search_frame.local_variables {
+                        if let Some(search_variable) = search_cache
+                            .get_variable_by_name_and_parent(&variable_name, Some(parent_key))
+                        {
+                            cache_variable = Some(search_variable);
+                            variable_cache = Some(search_cache);
+                            break;
+                        }
+                    }
+                    if let Some(search_cache) = &mut search_frame.static_variables {
+                        if let Some(search_variable) = search_cache
+                            .get_variable_by_name_and_parent(&variable_name, Some(parent_key))
+                        {
+                            cache_variable = Some(search_variable);
+                            variable_cache = Some(search_cache);
+                            break;
+                        }
+                    }
+                }
+
+                if let (Some(cache_variable), Some(variable_cache)) =
+                    (cache_variable, variable_cache)
+                {
+                    // We have found the variable that needs to be updated.
+                    match cache_variable.update_value(
+                        &mut core_data.target_core,
+                        variable_cache,
+                        new_value.clone(),
+                    ) {
+                        Ok(updated_value) => {
+                            let (
+                                variables_reference,
+                                named_child_variables_cnt,
+                                indexed_child_variables_cnt,
+                            ) = self.get_variable_reference(&cache_variable, variable_cache);
+                            response_body.variables_reference = Some(variables_reference);
+                            response_body.named_variables = Some(named_child_variables_cnt);
+                            response_body.indexed_variables = Some(indexed_child_variables_cnt);
+                            response_body.type_ = Some(cache_variable.type_name);
+                            response_body.value = updated_value;
+                        }
+                        Err(error) => {
+                            return self.send_response::<SetVariableResponseBody>(
+                                request,
+                                Err(DebuggerError::Other(anyhow!(
+                                    "Failed to update variable: {}, with new value {:?} : {:?}",
+                                    cache_variable.name,
+                                    new_value,
+                                    error
+                                ))),
+                            );
+                        }
+                    }
+                }
+            }
+        }
+
+        if response_body.value.is_empty() {
+            // If we get here, it is a bug.
+            self.send_response::<SetVariableResponseBody>(
+                                request,
+                                Err(DebuggerError::Other(anyhow!(
+                                    "Failed to update variable: {}, with new value {:?} : Please report this as a bug.",
+                                    arguments.name,
+                                    arguments.value
+                                ))),
+                            )
+        } else {
+            self.send_response(request, Ok(Some(response_body)))
+        }
+    }
+
     pub(crate) fn set_breakpoint(
         &mut self,
         core_data: &mut CoreData,
@@ -872,7 +1193,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                     .as_ref()
                     .and_then(|stack_frame| {
                         stack_frame
-                            .get_variable_by_name_and_parent(&VariableName::StaticScope, None)
+                            .get_variable_by_name_and_parent(&VariableName::StaticScopeRoot, None)
                     })
             {
                 dap_scopes.push(Scope {
@@ -910,7 +1231,8 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                     .local_variables
                     .as_ref()
                     .and_then(|stack_frame| {
-                        stack_frame.get_variable_by_name_and_parent(&VariableName::LocalScope, None)
+                        stack_frame
+                            .get_variable_by_name_and_parent(&VariableName::LocalScopeRoot, None)
                     })
             {
                 dap_scopes.push(Scope {
@@ -1009,6 +1331,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                         break;
                     }
                 }
+
                 if stack_frame.id == arguments.variables_reference {
                     // This is a special case, where we just want to return the stack frame registers.
 
@@ -1025,13 +1348,18 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                             name: stack_frame
                                 .registers
                                 .get_name_by_dwarf_register_number(register_number)
-                                .unwrap_or_else(|| format!("r{}", register_number)),
-                            evaluate_name: None,
+                                .unwrap_or_else(|| format!("r{:#}", register_number)),
+                            evaluate_name: Some(
+                                stack_frame
+                                    .registers
+                                    .get_name_by_dwarf_register_number(register_number)
+                                    .unwrap_or_else(|| format!("r{:#}", register_number)),
+                            ),
                             memory_reference: None,
                             indexed_variables: None,
                             named_variables: None,
-                            presentation_hint: None,
-                            type_: Some("Platform Register".to_owned()),
+                            presentation_hint: None, // TODO: Implement hint as Hex for registers
+                            type_: Some(format!("{}", VariableName::RegistersRoot)),
                             value: format!("{:#010x}", register_value),
                             variables_reference: 0,
                         })
@@ -1090,7 +1418,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                         ) = self.get_variable_reference(variable, variable_cache);
                         Variable {
                             name: variable.name.to_string(),
-                            evaluate_name: None,
+                            evaluate_name: Some(variable.name.to_string()),
                             memory_reference: Some(format!("{:#010x}", variable.memory_location)),
                             indexed_variables: Some(indexed_child_variables_cnt),
                             named_variables: Some(named_child_variables_cnt),
