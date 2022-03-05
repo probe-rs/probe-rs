@@ -15,7 +15,7 @@ use anyhow::Result;
 use bitfield::bitfield;
 
 use super::cortex_m::Mvfr0;
-use super::{CortexMState, Dfsr, CORTEX_M_COMMON_REGS, CORTEX_M_WITH_FP_REGS};
+use super::{CortexMState, Dfsr, CORTEX_M_COMMON_REGS, CORTEX_M_WITH_FP_REGS, ArmError};
 use std::sync::Arc;
 use std::{
     mem::size_of,
@@ -230,13 +230,21 @@ impl<'probe> CoreInterface for Armv8m<'probe> {
     }
 
     fn read_core_reg(&mut self, address: RegisterId) -> Result<RegisterValue, Error> {
-        let value = super::cortex_m::read_core_reg(&mut self.memory, address)?;
-        Ok(value.into())
+        if self.state.current_state.is_halted() {
+            let value = super::cortex_m::read_core_reg(&mut self.memory, address)?;
+            Ok(value.into())
+        } else {
+            Err(Error::architecture_specific(ArmError::CoreNotHalted))
+        }
     }
 
-    fn write_core_reg(&mut self, address: RegisterId, value: RegisterValue) -> Result<()> {
-        super::cortex_m::write_core_reg(&mut self.memory, address, value.try_into()?)?;
-        Ok(())
+    fn write_core_reg(&mut self, address: RegisterId, value: RegisterValue) -> Result<(), Error> {
+        if self.state.current_state.is_halted() {
+            super::cortex_m::write_core_reg(&mut self.memory, address, value.try_into()?)?;
+            Ok(())
+        } else {
+            Err(Error::architecture_specific(ArmError::CoreNotHalted))
+        }
     }
 
     fn available_breakpoint_units(&mut self) -> Result<u32, Error> {

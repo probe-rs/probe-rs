@@ -304,7 +304,11 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
             .map_err(|e| e.into())
     }
 
-    fn write_core_reg(&mut self, address: crate::RegisterId, value: RegisterValue) -> Result<()> {
+    fn write_core_reg(
+        &mut self,
+        address: crate::RegisterId,
+        value: RegisterValue,
+    ) -> Result<(), crate::Error> {
         let value: u32 = value.try_into()?;
         self.write_csr(address.0, value).map_err(|e| e.into())
     }

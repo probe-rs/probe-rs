@@ -119,7 +119,7 @@ pub trait MemoryInterface {
 
     /// Write a 32bit word at `address`.
     ///
-    /// The address where the write should be performed at has to be word aligned.
+    /// The address where the write should be performed at has tgio be word aligned.
     /// Returns `AccessPortError::MemoryNotAligned` if this does not hold true.
     fn write_word_32(&mut self, address: u64, data: u32) -> Result<(), error::Error>;
 

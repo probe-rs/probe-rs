@@ -600,13 +600,13 @@ impl<'probe> CoreInterface for Armv7a<'probe> {
         }
     }
 
-    fn write_core_reg(&mut self, address: RegisterId, value: RegisterValue) -> Result<()> {
+    fn write_core_reg(&mut self, address: RegisterId, value: RegisterValue) -> Result<(), Error> {
         let reg_num = address.0;
 
         if (reg_num as usize) >= self.state.register_cache.len() {
-            return Err(
-                Error::architecture_specific(Armv7aError::InvalidRegisterNumber(reg_num)).into(),
-            );
+            return Err(Error::architecture_specific(
+                Armv7aError::InvalidRegisterNumber(reg_num),
+            ));
         }
         self.state.register_cache[reg_num as usize] = Some((value, true));
 

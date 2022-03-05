@@ -9,7 +9,7 @@ use crate::memory::{valid_32_address, Memory};
 use crate::{CoreType, DebugProbeError, InstructionSet};
 
 use super::cortex_m::Mvfr0;
-use super::{register, CortexMState, Dfsr, CORTEX_M_COMMON_REGS, CORTEX_M_WITH_FP_REGS};
+use super::{register, ArmError, CortexMState, Dfsr, CORTEX_M_COMMON_REGS, CORTEX_M_WITH_FP_REGS};
 use crate::{
     core::{Architecture, CoreStatus, HaltReason},
     MemoryInterface,
@@ -733,14 +733,21 @@ impl<'probe> CoreInterface for Armv7m<'probe> {
     }
 
     fn read_core_reg(&mut self, address: RegisterId) -> Result<RegisterValue, Error> {
-        let val = super::cortex_m::read_core_reg(&mut self.memory, address)?;
-        Ok(val.into())
+        if self.state.current_state.is_halted() {
+            let val = super::cortex_m::read_core_reg(&mut self.memory, address)?;
+            Ok(val.into())
+        } else {
+            Err(Error::architecture_specific(ArmError::CoreNotHalted))
+        }
     }
 
-    fn write_core_reg(&mut self, address: RegisterId, value: RegisterValue) -> Result<()> {
-        super::cortex_m::write_core_reg(&mut self.memory, address, value.try_into()?)?;
-
-        Ok(())
+    fn write_core_reg(&mut self, address: RegisterId, value: RegisterValue) -> Result<(), Error> {
+        if self.state.current_state.is_halted() {
+            super::cortex_m::write_core_reg(&mut self.memory, address, value.try_into()?)?;
+            Ok(())
+        } else {
+            Err(Error::architecture_specific(ArmError::CoreNotHalted))
+        }
     }
 
     fn halt(&mut self, timeout: Duration) -> Result<CoreInformation, Error> {
