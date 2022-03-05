@@ -1,3 +1,4 @@
+use chrono::Utc;
 use colored::*;
 use env_logger::{Builder, Logger};
 use indicatif::ProgressBar;
@@ -6,7 +7,7 @@ use once_cell::sync::Lazy;
 #[cfg(feature = "sentry")]
 use sentry::{
     integrations::panic::PanicIntegration,
-    types::{Dsn, Utc, Uuid},
+    types::{Dsn, Uuid},
     Breadcrumb,
 };
 use simplelog::{CombinedLogger, SharedLogger};
@@ -169,7 +170,6 @@ pub fn init(level: Option<Level>) {
                 },
                 category: Some(record.target().to_string()),
                 message: Some(format!("{}", record.args())),
-                timestamp: Utc::now(),
                 ..Default::default()
             });
 
