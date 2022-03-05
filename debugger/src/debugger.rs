@@ -1529,7 +1529,7 @@ pub fn debug(debugger_options: DebuggerOptions, vscode: bool) -> Result<()> {
             println!("{} CONSOLE: DAP Protocol server exiting", &program_name);
         }
         None => {
-            log::error!("Using the `--dap` option requires the use of the `--port` option. Please use the `--help` option for additional information");
+            log::error!("Using probe-rs-debugger as a debug server, requires the use of the `--port` option. Please use the `--help` option for additional information");
         }
     };
 

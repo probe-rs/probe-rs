@@ -571,7 +571,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         }
 
         // Different code paths if we invoke this from a request, versus an internal function.
-        if request.is_some() {
+        if let Some(request) = request {
             match core_data.target_core.reset() {
                 Ok(_) => {
                     self.last_known_status = CoreStatus::Running;
@@ -584,15 +584,14 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                 }
                 Err(error) => {
                     return self.send_response::<()>(
-                        request.unwrap(), // Checked above
+                        request,
                         Err(DebuggerError::Other(anyhow!("{}", error))),
                     );
                 }
             }
-        } else
-        // The DAP Client will always do a `reset_and_halt`, and then will consider `halt_after_reset` value after the `configuration_done` request.
-        // Otherwise the probe will run past the `main()` before the DAP Client has had a chance to set breakpoints in `main()`.
-        {
+        } else {
+            // The DAP Client will always do a `reset_and_halt`, and then will consider `halt_after_reset` value after the `configuration_done` request.
+            // Otherwise the probe will run past the `main()` before the DAP Client has had a chance to set breakpoints in `main()`.
             match core_data
                 .target_core
                 .reset_and_halt(Duration::from_millis(500))

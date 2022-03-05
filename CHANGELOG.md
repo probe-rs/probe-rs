@@ -39,6 +39,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Use the updated StackFrame, and new VariableNodeType to facilitate 'lazy' loading of variables during stack trace operations. VSCode and MS DAP will request one 'level' of variables at a time, and there is no need to resolve and cache variable data unless the user is going to view/use it.
   - Improved `Variable` value formatting for complex variable types.
 - Updated STM32H7 series yaml to support newly released chips. (#1011)
+- Debugger: Removed the CLI mode, in favour of `probe-rs-cli` which has richer functionality. (#)
 
 ### Fixed
 

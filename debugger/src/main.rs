@@ -55,7 +55,6 @@ pub enum DebuggerError {
 }
 
 /// CliCommands enum contains the list of supported commands that can be invoked from the command line.
-/// The `debug` command is also the entry point for the DAP server, when the --dap option is used.
 #[derive(clap::Parser)]
 #[clap(
     name = crate_name!(),
