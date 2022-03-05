@@ -1,11 +1,6 @@
-use crate::debug_adapter::{DapStatus, DebugAdapterType};
 use crate::debugger::ConsoleLog;
 use crate::DebuggerError;
-use probe_rs::CoreStatus;
-use rustyline::error::ReadlineError;
-use rustyline::Editor;
 use serde::Serialize;
-use serde_json::json;
 use std::collections::HashMap;
 use std::string::ToString;
 use std::{
@@ -15,7 +10,7 @@ use std::{
 
 use crate::dap_types::{
     Event, MessageSeverity, OutputEventBody, ProtocolMessage, Request, Response,
-    ShowMessageEventBody, StoppedEventBody,
+    ShowMessageEventBody,
 };
 
 use anyhow::anyhow;
@@ -40,8 +35,6 @@ pub trait ProtocolAdapter {
         request: Request,
         response: Result<Option<S>, DebuggerError>,
     ) -> anyhow::Result<()>;
-
-    const ADAPTER_TYPE: DebugAdapterType;
 }
 
 pub struct DapAdapter<R: Read, W: Write> {
@@ -377,213 +370,6 @@ impl<R: Read, W: Write> ProtocolAdapter for DapAdapter<R, W> {
 
         Ok(())
     }
-
-    const ADAPTER_TYPE: DebugAdapterType = DebugAdapterType::DapClient;
-
-    fn set_console_log_level(&mut self, log_level: ConsoleLog) {
-        self.console_log_level = log_level;
-    }
-}
-
-pub struct CliAdapter {
-    seq: i64,
-    rl: Editor<()>,
-    console_log_level: ConsoleLog,
-
-    // TODO: Remove this from here
-    pub(crate) last_known_status: CoreStatus,
-}
-
-impl CliAdapter {
-    pub fn new() -> Self {
-        Self {
-            seq: 1,
-            rl: Editor::new(),
-            console_log_level: ConsoleLog::Info,
-            last_known_status: CoreStatus::Unknown,
-        }
-    }
-
-    /// Call readline until a non-empty line is entered.
-    fn get_line(&mut self) -> Result<String, ReadlineError> {
-        loop {
-            match self.rl.readline(">> ") {
-                // Ignore empty lines
-                Ok(line) if line.trim().is_empty() => continue,
-
-                // Return non-empty lines
-                Ok(line) => return Ok(line),
-
-                // Handle errors
-                Err(error) => {
-                    match error {
-                        // For end of file and ctrl-c, we just quit
-                        ReadlineError::Eof | ReadlineError::Interrupted => {
-                            return Ok("quit".to_string())
-                        }
-                        // Propagate other errors
-                        actual_error => return Err(actual_error),
-                    }
-                }
-            }
-        }
-    }
-}
-
-impl ProtocolAdapter for CliAdapter {
-    fn listen_for_request(&mut self) -> anyhow::Result<Option<Request>> {
-        let line = match self.get_line() {
-            Ok(line) => line,
-            Err(error) => {
-                let request = Request {
-                    seq: self.seq,
-                    arguments: None,
-                    command: "error".to_owned(),
-                    type_: "request".to_owned(),
-                };
-
-                // Ignore errors here, we return an error anyway.
-                let _ = self.send_response::<Request>(
-                    request,
-                    Err(DebuggerError::Other(anyhow!(
-                        "Error handling input: {:?}",
-                        error
-                    ))),
-                );
-                return Err(anyhow!(error));
-            }
-        };
-
-        let history_entry: &str = line.as_ref();
-        self.rl.add_history_entry(history_entry);
-
-        let mut command_arguments: Vec<&str> = line.split_whitespace().collect();
-        let command_name = command_arguments.remove(0);
-        let arguments = if !command_arguments.is_empty() {
-            Some(json!(command_arguments))
-        } else {
-            None
-        };
-
-        Ok(Some(Request {
-            arguments,
-            command: command_name.to_string(),
-            seq: self.seq,
-            type_: "request".to_string(),
-        }))
-    }
-
-    fn send_event<S: Serialize>(
-        &mut self,
-        event_type: &str,
-        event_body: Option<S>,
-    ) -> anyhow::Result<()> {
-        // Only report on continued or stopped events, so the user knows when the core halts.
-        match event_type {
-            "stopped" => {
-                if let Some(event_body) = event_body {
-                    let event_body_struct: StoppedEventBody = serde_json::from_value(
-                        serde_json::to_value(event_body).unwrap_or_default(),
-                    )
-                    .unwrap();
-                    let description = event_body_struct.description.unwrap_or_else(|| {
-                        "Received and unknown event from the debugger".to_owned()
-                    });
-                    println!("{}", description);
-                }
-            }
-            "continued" => {
-                println!(
-                    "{}",
-                    self.last_known_status.short_long_status().1.to_owned()
-                );
-            }
-            other => match self.console_log_level {
-                ConsoleLog::Error => {}
-                ConsoleLog::Info | ConsoleLog::Warn => {
-                    self.log_to_console(format!("Triggered Event: {}", other));
-                }
-                ConsoleLog::Debug | ConsoleLog::Trace => {
-                    self.log_to_console(format!(
-                        "Triggered Event: {:#?}",
-                        serde_json::to_value(event_body).unwrap_or_default()
-                    ));
-                }
-            },
-        }
-        Ok(())
-    }
-
-    fn show_message(&mut self, severity: MessageSeverity, message: impl Into<String>) -> bool {
-        println!("{:?}: {}", severity, message.into());
-        true
-    }
-
-    fn log_to_console<S: Into<String>>(&mut self, message: S) -> bool {
-        println!("{}", message.into());
-        true
-    }
-
-    fn send_response<S: Serialize>(
-        &mut self,
-        request: Request,
-        response: Result<Option<S>, DebuggerError>,
-    ) -> anyhow::Result<()> {
-        let mut resp = Response {
-            command: request.command.clone(),
-            request_seq: request.seq,
-            seq: request.seq,
-            success: false,
-            body: None,
-            type_: "response".to_owned(),
-            message: None,
-        };
-
-        match response {
-            Ok(value) => {
-                let body_value = match value {
-                    Some(value) => Some(serde_json::to_value(value)?),
-                    None => None,
-                };
-                resp.success = true;
-                resp.body = body_value;
-            }
-            Err(debugger_error) => {
-                resp.success = false;
-                resp.message = {
-                    let mut response_message = debugger_error.to_string();
-                    let mut offset_iterations = 0;
-                    let mut child_error: Option<&dyn std::error::Error> =
-                        std::error::Error::source(&debugger_error);
-                    while let Some(source_error) = child_error {
-                        offset_iterations += 1;
-                        response_message = format!("{}\n", response_message,);
-                        for _offset_counter in 0..offset_iterations {
-                            response_message = format!("{}\t", response_message);
-                        }
-                        response_message = format!(
-                            "{}{:?}",
-                            response_message,
-                            <dyn std::error::Error>::to_string(source_error)
-                        );
-                        child_error = std::error::Error::source(source_error);
-                    }
-                    Some(response_message)
-                };
-            }
-        };
-
-        if resp.success {
-            if let Some(body) = resp.body {
-                println!("{}", body.as_str().unwrap());
-            }
-        } else {
-            println!("Error: {}", resp.message.unwrap());
-        }
-        Ok(())
-    }
-
-    const ADAPTER_TYPE: DebugAdapterType = DebugAdapterType::CommandLine;
 
     fn set_console_log_level(&mut self, log_level: ConsoleLog) {
         self.console_log_level = log_level;

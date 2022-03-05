@@ -36,9 +36,68 @@
             },
             "args": [
                 "debug",
-                "--dap",
                 "--port",
                 "50001"
+            ],
+            "cwd": "${workspaceFolder}/debugger"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "list supported chips",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=probe-rs-debugger",
+                    "--package=probe-rs-debugger"
+                ],
+                "filter": {
+                    "name": "probe-rs-debugger",
+                    "kind": "bin"
+                }
+            },
+            "args": [
+                "list-chips",
+            ],
+            "cwd": "${workspaceFolder}/debugger"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "list attached probes",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=probe-rs-debugger",
+                    "--package=probe-rs-debugger"
+                ],
+                "filter": {
+                    "name": "probe-rs-debugger",
+                    "kind": "bin"
+                }
+            },
+            "args": [
+                "list",
+            ],
+            "cwd": "${workspaceFolder}/debugger"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "display help text",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=probe-rs-debugger",
+                    "--package=probe-rs-debugger"
+                ],
+                "filter": {
+                    "name": "probe-rs-debugger",
+                    "kind": "bin"
+                }
+            },
+            "args": [
+                "help",
             ],
             "cwd": "${workspaceFolder}/debugger"
         }
