@@ -7,7 +7,7 @@ authors = [
     "Jack Noppe <noppej@hotmail.com>",
 ]
 edition = "2021"
-description = "An interface (CLI or DAP Server) on top of the debug probe capabilities provided by probe-rs."
+description = "An MS DAP Server built on top of the debug probe capabilities provided by probe-rs."
 documentation = "https://docs.rs/probe-rs/"
 homepage = "https://github.com/probe-rs/probe-rs"
 repository = "https://github.com/probe-rs/probe-rs"
