@@ -93,7 +93,7 @@ impl DebugProbe for FakeProbe {
         "Mock probe for testing"
     }
 
-    fn speed(&self) -> u32 {
+    fn speed_khz(&self) -> u32 {
         self.speed
     }
 

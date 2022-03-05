@@ -415,7 +415,7 @@ impl DebugProbe for JLink {
         "J-Link"
     }
 
-    fn speed(&self) -> u32 {
+    fn speed_khz(&self) -> u32 {
         self.speed_khz
     }
 

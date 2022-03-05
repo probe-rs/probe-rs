@@ -400,7 +400,7 @@ impl DebugProbe for CmsisDap {
     /// Get the currently set maximum speed.
     ///
     /// CMSIS-DAP offers no possibility to get the actual speed used.
-    fn speed(&self) -> u32 {
+    fn speed_khz(&self) -> u32 {
         self.speed_khz
     }
 

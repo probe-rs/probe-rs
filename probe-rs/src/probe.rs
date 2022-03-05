@@ -412,9 +412,13 @@ impl Probe {
         }
     }
 
-    /// Configured protocol speed in kHz
+    /// Get the currently used maximum speed for the debug protocol in kHz.
+    ///
+    /// Not all probes report which speed is used, meaning this value is not
+    /// always the actual speed used. However, the speed should not be any
+    /// higher than this value.
     pub fn speed_khz(&self) -> u32 {
-        self.inner.speed()
+        self.inner.speed_khz()
     }
 
     /// Check if the probe has an interface to
@@ -512,7 +516,7 @@ pub trait DebugProbe: Send + fmt::Debug {
     /// Not all probes report which speed is used, meaning this value is not
     /// always the actual speed used. However, the speed should not be any
     /// higher than this value.
-    fn speed(&self) -> u32;
+    fn speed_khz(&self) -> u32;
 
     /// Set the speed in kHz used for communication with the target device.
     ///
