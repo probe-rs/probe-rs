@@ -67,7 +67,7 @@ impl From<gimli::ColumnType> for ColumnType {
 }
 
 static CACHE_KEY: AtomicI64 = AtomicI64::new(1);
-fn get_sequential_key() -> i64 {
+pub fn get_sequential_key() -> i64 {
     CACHE_KEY.fetch_add(1, Ordering::SeqCst)
 }
 
@@ -77,6 +77,7 @@ pub struct StackFrame {
     pub function_name: String,
     pub source_location: Option<SourceLocation>,
     pub registers: Registers,
+    /// The program counter / address of the current instruction when this stack frame was created
     pub pc: u32,
     /// Indicate if this stack frame belongs to an inlined function.
     pub is_inlined: bool,
@@ -262,6 +263,10 @@ pub struct SourceLocation {
 
     pub file: Option<String>,
     pub directory: Option<PathBuf>,
+    /// The address of the first instruction associated with the source code
+    pub low_pc: Option<u32>,
+    /// The address of the first location past the last instruction associated with the source code
+    pub high_pc: Option<u32>,
 }
 
 type GimliReader = gimli::EndianReader<gimli::LittleEndian, std::rc::Rc<[u8]>>;
@@ -281,6 +286,7 @@ pub struct DebugInfo {
     frame_section: gimli::DebugFrame<DwarfReader>,
     locations_section: gimli::LocationLists<DwarfReader>,
     address_section: gimli::DebugAddr<DwarfReader>,
+    instruction_size: u8,
 }
 
 impl DebugInfo {
@@ -318,6 +324,7 @@ impl DebugInfo {
         let debug_loc = gimli::DebugLoc::load(load_section)?;
         let debug_loc_lists = gimli::DebugLocLists::load(load_section)?;
         let locations_section = gimli::LocationLists::new(debug_loc, debug_loc_lists);
+
         // To support DWARF v2, where the address size is not encoded in the .debug_frame section,
         // we have to set the address size here.
         // TODO: With current versions of RUST, do we still need to do this?
@@ -328,6 +335,8 @@ impl DebugInfo {
             frame_section,
             locations_section,
             address_section,
+            // The minimum instruction size in bytes.
+            instruction_size: 2,
         })
     }
 
@@ -420,6 +429,8 @@ impl DebugInfo {
                                 column: Some(row.column().into()),
                                 file,
                                 directory,
+                                low_pc: target_seq.as_ref().map(|seq| seq.start as u32),
+                                high_pc: target_seq.as_ref().map(|seq| seq.end as u32),
                             });
                         } else if (row.address() > address) && previous_row.is_some() {
                             let row = previous_row.unwrap();
@@ -435,6 +446,8 @@ impl DebugInfo {
                                 column: Some(row.column().into()),
                                 file,
                                 directory,
+                                low_pc: target_seq.as_ref().map(|seq| seq.start as u32),
+                                high_pc: target_seq.as_ref().map(|seq| seq.end as u32),
                             });
                         }
                         previous_row = Some(*row);
@@ -1419,6 +1432,10 @@ impl DebugInfo {
         Some(combined_path)
     }
 
+    pub fn get_instruction_size(&self) -> u8 {
+        self.instruction_size
+    }
+
     fn find_file_and_directory(
         &self,
         unit: &gimli::read::Unit<DwarfReader>,
@@ -1489,7 +1506,6 @@ impl<'debugunit, 'abbrev, 'unit: 'debugunit, 'unit_info, 'debug_info>
                     abstract_die: Some(abstract_die),
                     low_pc: 0,
                     high_pc: 0,
-
                 }
             }
             other_tag => panic!("FunctionDie has to has to have Tag DW_TAG_inlined_subroutine, but tag is {:?}. This is a bug, please report it.", other_tag.static_string())
@@ -1550,6 +1566,8 @@ impl<'debugunit, 'abbrev, 'unit: 'debugunit, 'unit_info, 'debug_info>
             column,
             file: Some(file),
             directory: Some(directory),
+            low_pc: Some(self.low_pc as u32),
+            high_pc: Some(self.high_pc as u32),
         })
     }
 
@@ -1788,6 +1806,8 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                         column: existing_source_location.column,
                                         file: Some(file_name),
                                         directory: Some(directory),
+                                        low_pc: None,
+                                        high_pc: None,
                                     });
                                 }
                                 None => {
@@ -1796,6 +1816,8 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                         column: None,
                                         file: Some(file_name),
                                         directory: Some(directory),
+                                        low_pc: None,
+                                        high_pc: None,
                                     });
                                 }
                             }
@@ -1810,6 +1832,8 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                         column: existing_source_location.column,
                                         file: existing_source_location.file,
                                         directory: existing_source_location.directory,
+                                        low_pc: None,
+                                        high_pc: None,
                                     });
                                 }
                                 None => {
@@ -1818,6 +1842,8 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                         column: None,
                                         file: None,
                                         directory: None,
+                                        low_pc: None,
+                                        high_pc: None,
                                     });
                                 }
                             }

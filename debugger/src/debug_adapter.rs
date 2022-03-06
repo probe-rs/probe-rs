@@ -1,4 +1,5 @@
 use crate::dap_types;
+use crate::debugger::BreakpointType;
 use crate::debugger::ConsoleLog;
 use crate::debugger::CoreData;
 use crate::DebuggerError;
@@ -6,22 +7,19 @@ use anyhow::{anyhow, Result};
 use dap_types::*;
 use parse_int::parse;
 use probe_rs::debug::Registers;
+use probe_rs::debug::SourceLocation;
 use probe_rs::debug::{VariableCache, VariableName};
 use probe_rs::{debug::ColumnType, CoreStatus, HaltReason, MemoryInterface};
 use probe_rs_cli_util::rtt;
 use serde::{de::DeserializeOwned, Serialize};
 use std::string::ToString;
-use std::{
-    convert::TryInto,
-    path::{Path, PathBuf},
-    str, thread,
-    time::Duration,
-};
+use std::{convert::TryInto, path::Path, str, thread, time::Duration};
 
 use crate::protocol::ProtocolAdapter;
 
 /// Progress ID used for progress reporting when the debug adapter protocol is used.
 type ProgressId = i64;
+
 pub struct DebugAdapter<P: ProtocolAdapter> {
     /// Track the last_known_status of the probe.
     /// The debug client needs to be notified when the probe changes state,
@@ -504,53 +502,6 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         }
     }
 
-    pub(crate) fn set_breakpoint(
-        &mut self,
-        core_data: &mut CoreData,
-        request: Request,
-    ) -> Result<()> {
-        let address = match get_int_argument(request.arguments.as_ref(), "address", 0) {
-            Ok(address) => address,
-            Err(error) => return self.send_response::<()>(request, Err(error)),
-        };
-
-        match core_data
-            .target_core
-            .set_hw_breakpoint(address)
-            .map_err(DebuggerError::ProbeRs)
-        {
-            Ok(_) => {
-                return self.send_response(
-                    request,
-                    Ok(Some(format!(
-                        "Set new breakpoint at address {:#08x}",
-                        address
-                    ))),
-                );
-            }
-            Err(error) => self.send_response::<()>(request, Err(error)),
-        }
-    }
-    pub(crate) fn clear_breakpoint(
-        &mut self,
-        core_data: &mut CoreData,
-        request: Request,
-    ) -> Result<()> {
-        let address = match get_int_argument(request.arguments.as_ref(), "address", 0) {
-            Ok(address) => address,
-            Err(error) => return self.send_response::<()>(request, Err(error)),
-        };
-
-        match core_data
-            .target_core
-            .clear_hw_breakpoint(address)
-            .map_err(DebuggerError::ProbeRs)
-        {
-            Ok(_) => Ok(()),
-            Err(error) => self.send_response::<()>(request, Err(error)),
-        }
-    }
-
     pub(crate) fn restart(
         &mut self,
         core_data: &mut CoreData,
@@ -749,7 +700,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         let source_path = args.source.path.as_ref().map(Path::new);
 
         // Always clear existing breakpoints before setting new ones. The DAP Specification doesn't make allowances for deleting and setting individual breakpoints.
-        match core_data.target_core.clear_all_hw_breakpoints() {
+        match core_data.clear_breakpoints(BreakpointType::SourceBreakpoint) {
             Ok(_) => {}
             Err(error) => {
                 return self.send_response::<()>(
@@ -793,24 +744,28 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                     .unwrap_or(None);
 
                 if let Some(location) = source_location {
-                    let (verified, reason_msg) =
-                        match core_data.target_core.set_hw_breakpoint(location as u32) {
-                            Ok(_) => (
-                                true,
-                                Some(format!("Breakpoint at memory address: {:#010x}", location)),
-                            ),
-                            Err(err) => {
-                                let message = format!(
-                                "WARNING: Could not set breakpoint at memory address: {:#010x}: {}",
+                    let (verified, reason_msg) = match core_data
+                        .set_breakpoint(location as u32, BreakpointType::SourceBreakpoint)
+                    {
+                        Ok(_) => (
+                            true,
+                            Some(format!(
+                                "Source breakpoint at memory address: {:#010x}",
+                                location
+                            )),
+                        ),
+                        Err(err) => {
+                            let message = format!(
+                                "Warning: Could not set breakpoint at memory address: {:#010x}: {}",
                                 location, err
                             )
-                                .to_string();
-                                // In addition to sending the error to the 'Hover' message, also write it to the Debug Console Log.
-                                self.log_to_console(format!("WARNING: {}", message));
-                                self.show_message(MessageSeverity::Warning, message.clone());
-                                (false, Some(message))
-                            }
-                        };
+                            .to_string();
+                            // In addition to sending the error to the 'Hover' message, also write it to the Debug Console Log.
+                            self.log_to_console(format!("Warning: {}", message));
+                            self.show_message(MessageSeverity::Warning, message.clone());
+                            (false, Some(message))
+                        }
+                    };
 
                     created_breakpoints.push(Breakpoint {
                         column: breakpoint_column.map(|c| c as i64),
@@ -849,6 +804,122 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             breakpoints: created_breakpoints,
         };
         self.send_response(request, Ok(Some(breakpoint_body)))
+    }
+
+    pub(crate) fn set_instruction_breakpoints(
+        &mut self,
+        core_data: &mut CoreData,
+        request: Request,
+    ) -> Result<()> {
+        let arguments: SetInstructionBreakpointsArguments = match get_arguments(&request) {
+            Ok(arguments) => arguments,
+            Err(error) => {
+                return self.send_response::<()>(
+                    request,
+                    Err(DebuggerError::Other(anyhow!(
+                        "Could not read arguments : {}",
+                        error
+                    ))),
+                )
+            }
+        };
+
+        let mut created_breakpoints: Vec<Breakpoint> = Vec::new(); // For returning in the Response
+
+        // Always clear existing breakpoints before setting new ones.
+        match core_data.clear_breakpoints(BreakpointType::InstructionBreakpoint) {
+                Ok(_) => {}
+                Err(error) => {
+                    return self.send_response::<()>(
+                        request,
+                        Err(DebuggerError::Other(anyhow!(
+                            "Failed to clear breakpoints. Please consider restarting this session and reseting the probe : {}",
+                            error
+                        ))),
+                    )
+                }
+            }
+
+        // Set the new (potentially an empty list) breakpoints.
+        for requested_breakpoint in arguments.breakpoints {
+            let mut breakpoint_response = Breakpoint {
+                column: None,
+                end_column: None,
+                end_line: None,
+                id: None,
+                instruction_reference: None,
+                line: None,
+                message: None,
+                offset: None,
+                source: None,
+                verified: false,
+            };
+
+            if let Ok(memory_reference) =
+                if requested_breakpoint.instruction_reference.starts_with("0x")
+                    || requested_breakpoint.instruction_reference.starts_with("0X")
+                {
+                    u32::from_str_radix(&requested_breakpoint.instruction_reference[2..], 16)
+                } else {
+                    requested_breakpoint.instruction_reference.parse()
+                }
+            {
+                match core_data
+                    .set_breakpoint(memory_reference, BreakpointType::InstructionBreakpoint)
+                {
+                    Ok(_) => {
+                        breakpoint_response.verified = true;
+                        breakpoint_response.instruction_reference =
+                            Some(format!("{:#010x}", memory_reference));
+                        // Try to resolve the source location for this breakpoint.
+                        match core_data
+                            .debug_info
+                            .get_source_location(memory_reference as u64)
+                        {
+                            Some(source_location) => {
+                                breakpoint_response.source = get_dap_source(&source_location);
+                                breakpoint_response.line =
+                                    source_location.line.map(|line| line as i64);
+                                breakpoint_response.column =
+                                    source_location.column.map(|col| match col {
+                                        ColumnType::LeftEdge => 0_i64,
+                                        ColumnType::Column(c) => c as i64,
+                                    });
+                            }
+                            None => {
+                                log::debug!("The request `SetInstructionBreakpoints` could not resolve a source location for memory reference: {:#010}", memory_reference);
+                            }
+                        }
+                    }
+                    Err(error) => {
+                        let message = format!(
+                            "Warning: Could not set breakpoint at memory address: {:#010x}: {}",
+                            memory_reference, error
+                        )
+                        .to_string();
+                        // In addition to sending the error to the 'Hover' message, also write it to the Debug Console Log.
+                        self.log_to_console(format!("Warning: {}", message));
+                        self.show_message(MessageSeverity::Warning, message.clone());
+                        breakpoint_response.message = Some(message);
+                        breakpoint_response.instruction_reference =
+                            Some(format!("{:#010x}", memory_reference));
+                    }
+                }
+            } else {
+                breakpoint_response.instruction_reference =
+                    Some(requested_breakpoint.instruction_reference.clone());
+                breakpoint_response.message = Some(format!(
+                    "Invalid memory reference specified: {:?}",
+                    requested_breakpoint.instruction_reference
+                ));
+            };
+            created_breakpoints.push(breakpoint_response);
+        }
+
+        let instruction_breakpoint_body = SetInstructionBreakpointsResponseBody {
+            breakpoints: created_breakpoints,
+        };
+        self.send_response(request, Ok(Some(instruction_breakpoint_body)))
     }
 
     pub(crate) fn stack_trace(&mut self, core_data: &mut CoreData, request: Request) -> Result<()> {
@@ -912,16 +983,22 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                 }
                 // Determine the correct 'slice' of available [StackFrame]s to serve up ...
                 let total_frames = core_data.stack_frames.len() as i64;
-                let frame_slice = if levels == 1 && start_frame == 0 {
+
+                // We need to copy some parts of StackFrame so that we can re-use it later without references to core_data.
+                struct PartialStackFrameData {
+                    id: i64,
+                    function_name: String,
+                    source_location: Option<SourceLocation>,
+                    pc: u32,
+                    is_inlined: bool,
+                }
+
+                let frame_set = if levels == 1 && start_frame == 0 {
                     // Just the first frame - use the LHS of the split at `levels`
-                    core_data.stack_frames.split_at(levels as usize).0.iter()
+                    core_data.stack_frames.split_at(levels as usize).0
                 } else if total_frames <= 20 && start_frame >= 0 && start_frame <= total_frames {
                     // When we have less than 20 frames - use the RHS of of the split at `start_frame`
-                    core_data
-                        .stack_frames
-                        .split_at(start_frame as usize)
-                        .1
-                        .iter()
+                    core_data.stack_frames.split_at(start_frame as usize).1
                 } else if total_frames > 20 && start_frame + levels <= total_frames {
                     // When we have more than 20 frames - we can safely split twice
                     core_data
@@ -930,7 +1007,6 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                         .1
                         .split_at(levels as usize)
                         .0
-                        .iter()
                 } else {
                     return self.send_response::<()>(
                         request,
@@ -939,9 +1015,19 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                             arguments
                         ))),
                     );
-                };
+                }
+                .iter()
+                .map(|stack_frame| PartialStackFrameData {
+                    id: stack_frame.id,
+                    function_name: stack_frame.function_name.clone(),
+                    source_location: stack_frame.source_location.clone(),
+                    pc: stack_frame.pc,
+                    is_inlined: stack_frame.is_inlined,
+                })
+                .collect::<Vec<PartialStackFrameData>>();
 
-                let frame_list: Vec<StackFrame> = frame_slice
+                let frame_list: Vec<StackFrame> = frame_set
+                    .iter()
                     .map(|frame| {
                         let column = frame
                             .source_location
@@ -953,46 +1039,26 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                             })
                             .unwrap_or(0);
 
-                        let source = if let Some(source_location) = &frame.source_location {
-                            let path: Option<PathBuf> =
-                                source_location.directory.as_ref().map(|path| {
-                                    let mut path = if path.is_relative() {
-                                        std::env::current_dir().unwrap().join(path)
-                                    } else {
-                                        path.to_owned()
-                                    };
-
-                                    if let Some(file) = &source_location.file {
-                                        path.push(file);
-                                    }
-
-                                    path
-                                });
-                            Some(Source {
-                                name: source_location.file.clone(),
-                                path: path.map(|p| p.to_string_lossy().to_string()),
-                                source_reference: None,
-                                presentation_hint: None,
-                                origin: None,
-                                sources: None,
-                                adapter_data: None,
-                                checksums: None,
-                            })
-                        } else {
-                            log::debug!("No source location present for frame!");
-                            None
-                        };
-
                         let line = frame
                             .source_location
                             .as_ref()
                             .and_then(|sl| sl.line)
                             .unwrap_or(0) as i64;
+
                         let function_display_name = if frame.is_inlined {
                             format!("{} #[inline]", frame.function_name)
                         } else {
                             format!("{} @{:#010x}", frame.function_name, frame.pc)
                         };
+
+                        // Create the appropriate [`dap_types::Source`] for the response
+                        let source = if let Some(source_location) = &frame.source_location {
+                            get_dap_source(source_location)
+                        } else {
+                            log::debug!("No source location present for frame!");
+                            None
+                        };
+
                         // TODO: Can we add more meaningful info to `module_id`, etc.
                         StackFrame {
                             id: frame.id as i64,
@@ -1032,6 +1098,73 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                     arguments.levels
                 ))),
             )
+        }
+    }
+
+    /// Attempt to extract disassembled source code.
+    pub(crate) fn get_disassembled_source(
+        &mut self,
+        core_data: &mut CoreData,
+        memory_reference: u32,
+        low_pc: u32,
+        high_pc: u32,
+    ) -> Option<Vec<dap_types::DisassembledInstruction>> {
+        // First we need to read the machine bytes that represents the code
+        // Note: For 'unknown functions', the scope may be limited to the `start` and `end` sequences associated with the [`gimli::read::IncompleteLineProgram`]
+        let mut code = vec![0_u8; (high_pc - low_pc) as usize];
+        match core_data.target_core.read_8(low_pc as u32, &mut code) {
+            Ok(_) => {}
+            Err(error) => {
+                log::warn!(
+                    "Unable to read {:#010x} machine instructions from memory at location: {:#010x}. {:?}",
+                    high_pc - low_pc,
+                    memory_reference,
+                    error
+                );
+                return None;
+            }
+        };
+
+        let mut instruction_at_pc = 0_u32;
+        let assembly_lines = if let Ok(instructions) = core_data
+            .capstone
+            .disasm_all(&code, memory_reference as u64)
+        {
+            instructions
+                .iter()
+                .enumerate()
+                .map(|(line_number, instruction)| {
+                    // Keep track of which instruction matches the pc
+                    if instruction.address() == memory_reference as u64 {
+                        instruction_at_pc = line_number as u32;
+                    }
+                    // Create the instruction data.
+                    dap_types::DisassembledInstruction {
+                        address: format!("{:#010x}", instruction.address()),
+                        column: None,
+                        end_column: None,
+                        end_line: None,
+                        instruction: instruction.to_string(),
+                        instruction_bytes: Some(
+                            instruction
+                                .bytes()
+                                .iter()
+                                .map(|instruction_byte| format!("\\{:03o}", instruction_byte))
+                                .collect(),
+                        ),
+                        line: None,
+                        location: None,
+                        symbol: None,
+                    }
+                })
+                .collect::<Vec<DisassembledInstruction>>()
+        } else {
+            vec![]
+        };
+        if assembly_lines.is_empty() {
+            None
+        } else {
+            Some(assembly_lines)
         }
     }
 
@@ -1125,41 +1258,79 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         self.send_response(request, Ok(Some(ScopesResponseBody { scopes: dap_scopes })))
     }
 
-    pub(crate) fn source(&mut self, _core_data: &mut CoreData, request: Request) -> Result<()> {
-        let arguments: SourceArguments = match get_arguments(&request) {
+    pub(crate) fn disassemble(&mut self, core_data: &mut CoreData, request: Request) -> Result<()> {
+        let arguments: DisassembleArguments = match get_arguments(&request) {
             Ok(arguments) => arguments,
             Err(error) => return self.send_response::<()>(request, Err(error)),
         };
 
-        let result = if let Some(path) = arguments.source.and_then(|s| s.path) {
-            let mut source_path = PathBuf::from(path);
-
-            if source_path.is_relative() {
-                source_path = std::env::current_dir().unwrap().join(source_path);
-            }
-            match std::fs::read_to_string(&source_path) {
-                Ok(source_code) => Ok(Some(SourceResponseBody {
-                    content: source_code,
-                    mime_type: None,
-                })),
-                Err(error) => {
-                    return self.send_response::<()>(
-                        request,
-                        Err(DebuggerError::ReadSourceError {
-                            source_file_name: (&source_path.to_string_lossy()).to_string(),
-                            original_error: error,
-                        }),
-                    )
-                }
+        if let Ok(memory_reference) = if arguments.memory_reference.starts_with("0x")
+            || arguments.memory_reference.starts_with("0X")
+        {
+            u32::from_str_radix(&arguments.memory_reference[2..], 16)
+        } else {
+            arguments.memory_reference.parse()
+        } {
+            let memory_offset_as_bytes = arguments.offset.unwrap_or(0_i64);
+            let instruction_offset_as_bytes = arguments.instruction_offset.unwrap_or(0_i64)
+                * core_data.debug_info.get_instruction_size() as i64;
+            let low_pc = (memory_reference as i64
+                + memory_offset_as_bytes
+                + instruction_offset_as_bytes) as u32;
+            let high_pc = (memory_reference as i64
+                + (arguments.instruction_count
+                    * core_data.debug_info.get_instruction_size() as i64))
+                as u32;
+            if let Some(disassembled_instructions) =
+                self.get_disassembled_source(core_data, memory_reference, low_pc, high_pc)
+            {
+                self.send_response(
+                    request,
+                    Ok(Some(DisassembleResponseBody {
+                        instructions: disassembled_instructions,
+                    })),
+                )
+            } else {
+                self.send_response(
+                    request,
+                    Ok(Some(DisassembleResponseBody {
+                        // The spec wants us to send the correct number of instructions, with "implementation defined 'invalid instruction' value"
+                        instructions: {
+                            (0..(((high_pc - low_pc)
+                                / core_data.debug_info.get_instruction_size() as u32)
+                                as usize))
+                                .into_iter()
+                                .map(|counter| DisassembledInstruction {
+                                    address: format!(
+                                        "{:#010x}",
+                                        low_pc
+                                            + (counter as u32
+                                                * core_data.debug_info.get_instruction_size()
+                                                    as u32)
+                                    ),
+                                    column: None,
+                                    end_column: None,
+                                    end_line: None,
+                                    instruction: "<instruction not available>".to_string(),
+                                    instruction_bytes: None,
+                                    line: None,
+                                    location: None,
+                                    symbol: None,
+                                })
+                                .collect::<Vec<DisassembledInstruction>>()
+                        },
+                    })),
+                )
             }
         } else {
-            return self.send_response::<()>(
+            self.send_response::<()>(
                 request,
-                Err(DebuggerError::Other(anyhow!("Unable to open resource"))),
-            );
-        };
-
-        self.send_response(request, result)
+                Err(DebuggerError::Other(anyhow!(
+                    "Invalid memory reference {:?}",
+                    arguments.memory_reference
+                ))),
+            )
+        }
     }
 
     pub(crate) fn variables(&mut self, core_data: &mut CoreData, request: Request) -> Result<()> {
@@ -1425,7 +1596,6 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         } else if parent_variable.variable_node_type.is_deferred()
             && parent_variable.get_value(cache) != "()"
         {
-            // TODO: We should implement changing unit types to VariableNodeType::DoNotRecurse
             // We have not yet cached the children for this reference.
             // Provide DAP Client with a reference so that it will explicitly ask for children when the user expands it.
             (parent_variable.variable_key, 0, 0)
@@ -1592,6 +1762,49 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
     pub(crate) fn set_console_log_level(&mut self, error: ConsoleLog) {
         self.adapter.set_console_log_level(error)
     }
+}
+
+/// A helper function to greate a [`dap_types::Source`] struct from a [`SourceLocation`]
+fn get_dap_source(source_location: &SourceLocation) -> Option<Source> {
+    // Attempt to construct the path for the source code
+    source_location.directory.as_ref().map(|path| {
+        let mut path = if path.is_relative() {
+            std::env::current_dir().unwrap().join(path)
+        } else {
+            path.to_owned()
+        };
+
+        if let Some(file) = &source_location.file {
+            path.push(file);
+        }
+
+        if path.exists() {
+            Source {
+                name: source_location.file.clone(),
+                path: Some(path.to_string_lossy().to_string()),
+                source_reference: None,
+                presentation_hint: None,
+                origin: None,
+                sources: None,
+                adapter_data: None,
+                checksums: None,
+            }
+        } else {
+            Source {
+                name: source_location
+                    .file
+                    .clone()
+                    .map(|file_name| format!("<unavailable>: {}", file_name)),
+                path: Some(path.to_string_lossy().to_string()),
+                source_reference: None,
+                presentation_hint: Some("deemphasize".to_string()),
+                origin: None,
+                sources: None,
+                adapter_data: None,
+                checksums: None,
+            }
+        }
+    })
 }
 
 /// Provides halt functionality that is re-used elsewhere, in context of multiple DAP Requests

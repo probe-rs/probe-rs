@@ -4,7 +4,10 @@ use crate::protocol::{DapAdapter, ProtocolAdapter};
 
 use crate::DebuggerError;
 use anyhow::{anyhow, Context, Result};
-use capstone::{arch::arm::ArchMode, prelude::*, Capstone, Endian};
+use capstone::{
+    arch::arm::ArchMode as armArchMode, arch::riscv::ArchMode as riscvArchMode, prelude::*,
+    Capstone, Endian,
+};
 use probe_rs::config::TargetSelector;
 use probe_rs::debug::DebugInfo;
 
@@ -225,17 +228,33 @@ impl DebuggerOptions {
     }
 }
 
+/// The supported breakpoint types
+#[derive(Debug, PartialEq)]
+pub enum BreakpointType {
+    InstructionBreakpoint,
+    SourceBreakpoint,
+}
+
+/// Provide the storage and methods to handle various [`BreakPointType`]
+#[derive(Debug)]
+pub struct ActiveBreakpoint {
+    breakpoint_type: BreakpointType,
+    breakpoint_address: u32,
+}
+
 /// DebugSession is designed to be similar to [probe_rs::Session], in as much that it provides handles to the [CoreData] instances for each of the available [probe_rs::Core] involved in the debug session.
 /// To get access to the [CoreData] for a specific [Core], the
 /// TODO: Adjust [DebuggerOptions] to allow multiple cores (and if appropriate, their binaries) to be specified.
 pub struct DebugSession {
     pub(crate) session: Session,
-    #[allow(dead_code)]
+    /// Provides ability to disassemble binary code.
     pub(crate) capstone: Capstone,
     /// [DebugSession] will manage one [DebugInfo] per [DebuggerOptions::program_binary]
     pub(crate) debug_infos: Vec<DebugInfo>,
     /// [DebugSession] will manage a `Vec<StackFrame>` per [Core]. Each core's collection of StackFrames will be recreated whenever a stacktrace is performed, using the results of [DebugInfo::unwind]
     pub(crate) stack_frames: Vec<Vec<probe_rs::debug::StackFrame>>,
+    /// [DebugSession] will manage a `Vec<ActiveBreakpoint>` per [Core]. Each core's collection of ActiveBreakpoint's will be managed on demand.
+    pub(crate) breakpoints: Vec<Vec<ActiveBreakpoint>>,
     /// The control structures for handling RTT in this Core of the DebugSession.
     pub(crate) rtt_connection: Option<RttConnection>,
 }
@@ -301,6 +320,30 @@ impl DebugSession {
             permissions = permissions.allow_erase_all();
         }
 
+        // Create an instance of the [`capstone::Capstone`] for disassembly capabilities.
+        let capstone = if target_probe.has_arm_interface() {
+            Capstone::new()
+                .arm()
+                .mode(armArchMode::Thumb)
+                .endian(Endian::Little)
+                .detail(true)
+                .build()
+                .map_err(|err| anyhow!("Error creating Capstone disassembler: {:?}", err))?
+        } else if target_probe.has_riscv_interface() {
+            Capstone::new()
+                .riscv()
+                .mode(riscvArchMode::RiscV32)
+                .endian(Endian::Little)
+                .detail(true)
+                .build()
+                .map_err(|err| anyhow!("Error creating Capstone disassembler: {:?}", err))?
+        } else {
+            return Err(DebuggerError::Other(anyhow!(
+                "Encountered an unsupported probe architecture on probe: {:?}",
+                target_probe.get_name()
+            )));
+        };
+
         // Attach to the probe.
         let target_session = if debugger_options.connect_under_reset {
             target_probe.attach_under_reset(target_selector, permissions)?
@@ -326,13 +369,6 @@ impl DebugSession {
             })?;
         };
 
-        let capstone = Capstone::new()
-            .arm()
-            .mode(ArchMode::Thumb)
-            .endian(Endian::Little)
-            .build()
-            .map_err(|err| anyhow!("Error creating Capstone disassembler: {:?}", err))?;
-
         // TODO: We currently only allow a single core & binary to be specified in [DebuggerOptions]. When this is extended to support multicore, the following should initialize [DebugInfo] and [VariableCache] for each available core.
         // Configure the [DebugInfo].
         let debug_infos = vec![
@@ -351,11 +387,22 @@ impl DebugSession {
         let mut stack_frames = vec![];
         for (core_id, core_type) in target_session.list_cores() {
             log::debug!(
-                "Preparing DebugSession and CoreData for core #{} of type: {:?}",
+                "Preparing stack frame variable cache for DebugSession and CoreData for core #{} of type: {:?}",
                 core_id,
                 core_type
             );
             stack_frames.push(Vec::<probe_rs::debug::StackFrame>::new());
+        }
+
+        // Prepare the breakpoint cache
+        let mut breakpoints = vec![];
+        for (core_id, core_type) in target_session.list_cores() {
+            log::debug!(
+                "Preparing breakpoint cache for DebugSession and CoreData for core #{} of type: {:?}",
+                core_id,
+                core_type
+            );
+            breakpoints.push(Vec::<ActiveBreakpoint>::new());
         }
 
         Ok(DebugSession {
@@ -363,6 +410,7 @@ impl DebugSession {
             capstone,
             debug_infos,
             stack_frames,
+            breakpoints,
             rtt_connection: None,
         })
     }
@@ -382,7 +430,14 @@ impl DebugSession {
                 })?,
                 stack_frames: self.stack_frames.get_mut(core_index).ok_or_else(|| {
                     DebuggerError::Other(anyhow!(
-                        "No available `StackFrame`s for core # {}",
+                        "StackFrame cache was not correctly configured for core # {}",
+                        core_index
+                    ))
+                })?,
+                capstone: &self.capstone,
+                breakpoints: self.breakpoints.get_mut(core_index).ok_or_else(|| {
+                    DebuggerError::Other(anyhow!(
+                        "ActiveBreakpoint cache was not correctly configured for core # {}",
                         core_index
                     ))
                 })?,
@@ -475,6 +530,8 @@ pub struct CoreData<'p> {
     pub(crate) target_name: String,
     pub(crate) debug_info: &'p DebugInfo,
     pub(crate) stack_frames: &'p mut Vec<probe_rs::debug::StackFrame>,
+    pub(crate) capstone: &'p Capstone,
+    pub(crate) breakpoints: &'p mut Vec<ActiveBreakpoint>,
     pub(crate) rtt_connection: &'p mut Option<RttConnection>,
 }
 
@@ -526,6 +583,54 @@ impl<'p> CoreData<'p> {
                 log::warn!("Failed to initalize RTT. Will try again on the next request... ");
             }
         };
+        Ok(())
+    }
+
+    /// Set a single breakpoint in target configuration as well as [`CoreData::breakpoints`]
+    pub(crate) fn set_breakpoint(
+        &mut self,
+        address: u32,
+        breakpoint_type: BreakpointType,
+    ) -> Result<(), DebuggerError> {
+        self.target_core
+            .set_hw_breakpoint(address)
+            .map_err(DebuggerError::ProbeRs)?;
+        self.breakpoints.push(ActiveBreakpoint {
+            breakpoint_type,
+            breakpoint_address: address,
+        });
+        Ok(())
+    }
+
+    /// Clear a single breakpoint from target configuration as well as [`CoreData::breakpoints`]
+    pub(crate) fn clear_breakpoint(&mut self, address: u32) -> Result<()> {
+        self.target_core
+            .clear_hw_breakpoint(address)
+            .map_err(DebuggerError::ProbeRs)?;
+        let mut breakpoint_position: i8 = -1;
+        for (position, active_breakpoint) in self.breakpoints.iter().enumerate() {
+            if active_breakpoint.breakpoint_address == address {
+                breakpoint_position = position as i8;
+                break;
+            }
+        }
+        if breakpoint_position >= 0 {
+            self.breakpoints.remove(breakpoint_position as usize);
+        }
+        Ok(())
+    }
+
+    /// Clear all breakpoints of a specified [`BreakpointType`]. Affects target configuration as well as [`CoreData::breakpoints`]
+    pub(crate) fn clear_breakpoints(&mut self, breakpoint_type: BreakpointType) -> Result<()> {
+        let target_breakpoints = self
+            .breakpoints
+            .iter()
+            .filter(|breakpoint| breakpoint.breakpoint_type == breakpoint_type)
+            .map(|breakpoint| breakpoint.breakpoint_address)
+            .collect::<Vec<u32>>();
+        for breakpoint in target_breakpoints {
+            self.clear_breakpoint(breakpoint)?;
+        }
         Ok(())
     }
 }
@@ -699,9 +804,18 @@ impl Debugger {
                 // NOTE: The target will exit sleep mode as a result of this command.
                 let mut unhalt_me = false;
                 match request.command.as_ref() {
-                    "configurationDone" | "setBreakpoint" | "setBreakpoints"
-                    | "clearBreakpoint" | "stackTrace" | "threads" | "scopes" | "variables"
-                    | "readMemory" | "writeMemory" | "source" => {
+                    "configurationDone"
+                    | "setBreakpoint"
+                    | "setBreakpoints"
+                    | "setInstructionBreakpoints"
+                    | "clearBreakpoint"
+                    | "stackTrace"
+                    | "threads"
+                    | "scopes"
+                    | "variables"
+                    | "readMemory"
+                    | "writeMemory"
+                    | "disassemble" => {
                         match core_data.target_core.status() {
                             Ok(current_status) => {
                                 if current_status == CoreStatus::Sleeping {
@@ -794,12 +908,6 @@ impl Debugger {
                     "setVariable" => debug_adapter
                         .set_variable(&mut core_data, request)
                         .and(Ok(DebuggerStatus::ContinueSession)),
-                    "setBreakpoint" => debug_adapter
-                        .set_breakpoint(&mut core_data, request)
-                        .and(Ok(DebuggerStatus::ContinueSession)),
-                    "clearBreakpoint" => debug_adapter
-                        .clear_breakpoint(&mut core_data, request)
-                        .and(Ok(DebuggerStatus::ContinueSession)),
                     "configurationDone" => debug_adapter
                         .configuration_done(&mut core_data, request)
                         .and(Ok(DebuggerStatus::ContinueSession)),
@@ -816,14 +924,17 @@ impl Debugger {
                     "setBreakpoints" => debug_adapter
                         .set_breakpoints(&mut core_data, request)
                         .and(Ok(DebuggerStatus::ContinueSession)),
+                    "setInstructionBreakpoints" => debug_adapter
+                        .set_instruction_breakpoints(&mut core_data, request)
+                        .and(Ok(DebuggerStatus::ContinueSession)),
                     "stackTrace" => debug_adapter
                         .stack_trace(&mut core_data, request)
                         .and(Ok(DebuggerStatus::ContinueSession)),
                     "scopes" => debug_adapter
                         .scopes(&mut core_data, request)
                         .and(Ok(DebuggerStatus::ContinueSession)),
-                    "source" => debug_adapter
-                        .source(&mut core_data, request)
+                    "disassemble" => debug_adapter
+                        .disassemble(&mut core_data, request)
                         .and(Ok(DebuggerStatus::ContinueSession)),
                     "variables" => debug_adapter
                         .variables(&mut core_data, request)
@@ -945,6 +1056,8 @@ impl Debugger {
             supports_write_memory_request: Some(true),
             supports_set_variable: Some(true),
             supports_clipboard_context: Some(true),
+            supports_disassemble_request: Some(true),
+            supports_instruction_breakpoints: Some(true),
             // supports_value_formatting_options: Some(true),
             // supports_function_breakpoints: Some(true),
             // TODO: Use DEMCR register to implement exception breakpoints
