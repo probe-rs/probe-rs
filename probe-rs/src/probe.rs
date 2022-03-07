@@ -1,5 +1,3 @@
-#![warn(missing_docs)]
-
 pub(crate) mod cmsisdap;
 pub(crate) mod espusbjtag;
 pub(crate) mod fake_probe;

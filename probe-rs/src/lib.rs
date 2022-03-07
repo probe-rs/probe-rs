@@ -73,9 +73,13 @@ pub mod config;
 mod core;
 pub mod debug;
 mod error;
+#[warn(missing_docs)]
 pub mod flashing;
+#[warn(missing_docs)]
 mod memory;
+#[warn(missing_docs)]
 mod probe;
+#[warn(missing_docs)]
 mod session;
 
 pub use crate::config::{CoreType, Target};
