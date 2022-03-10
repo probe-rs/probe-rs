@@ -527,14 +527,15 @@ dependencies = [
 
 [[package]]
 name = "defmt-decoder"
-version = "0.3.1"
+version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a7d5765366c461413e5b2966b89f14bbdb3f5d785fd03f1cfe8261fcfcac6844"
+checksum = "f619a4bf5d95e044c1746bafd0552cd1de7b041dc361d506cfa6d9831f47c8b6"
 dependencies = [
  "anyhow",
  "byteorder",
  "chrono",
  "colored",
+ "defmt-json-schema",
  "defmt-parser",
  "difference",
  "gimli",
@@ -546,10 +547,20 @@ dependencies = [
 ]
 
 [[package]]
-name = "defmt-parser"
-version = "0.3.0"
+name = "defmt-json-schema"
+version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8d1ce010e1a51aef925c98f12ed81a4e0e96ce0185a87c33f1b3b9c8f20749c7"
+checksum = "96b04d228e57a61cf385d86bc8980bb41b47c6fc0eace90592668df97b2dad6a"
+dependencies = [
+ "log",
+ "serde",
+]
+
+[[package]]
+name = "defmt-parser"
+version = "0.3.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0db23d29972d99baa3de2ee2ae3f104c10564a6d05a346eb3f4c4f2c0525a06e"
 
 [[package]]
 name = "difference"
