@@ -5,6 +5,7 @@ use crate::debugger::CoreData;
 use crate::DebuggerError;
 use anyhow::{anyhow, Result};
 use dap_types::*;
+use num_traits::Zero;
 use parse_int::parse;
 use probe_rs::debug::Registers;
 use probe_rs::debug::SourceLocation;
@@ -95,6 +96,14 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
 
         match core_data.target_core.halt(Duration::from_millis(500)) {
             Ok(cpu_info) => {
+                let new_status = match core_data.target_core.status() {
+                    Ok(new_status) => new_status,
+                    Err(error) => {
+                        self.send_response::<()>(request, Err(DebuggerError::ProbeRs(error)))?;
+                        return Err(anyhow!("Failed to retrieve core status"));
+                    }
+                };
+                self.last_known_status = new_status;
                 let event_body = Some(StoppedEventBody {
                     reason: "pause".to_owned(),
                     description: Some(self.last_known_status.short_long_status().1.to_owned()),
@@ -120,31 +129,6 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                 self.send_response::<()>(request, Err(DebuggerError::Other(anyhow!("{}", error))))
             }
         }
-
-        // TODO: This is from original probe_rs_cli 'halt' function ... disasm code at memory location
-        /*
-        let mut code = [0u8; 16 * 2];
-
-        core_data.target_core.read(cpu_info.pc, &mut code)?;
-
-        let instructions = core_data
-            .capstone
-            .disasm_all(&code, u64::from(cpu_info.pc))
-            .unwrap();
-
-        for i in instructions.iter() {
-            println!("{}", i);
-        }
-
-
-        for (offset, instruction) in code.iter().enumerate() {
-            println!(
-                "{:#010x}: {:010x}",
-                cpu_info.pc + offset as u32,
-                instruction
-            );
-        }
-            */
     }
 
     pub(crate) fn read_memory(&mut self, core_data: &mut CoreData, request: Request) -> Result<()> {
@@ -606,77 +590,6 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         self.send_response::<()>(request, Ok(None))
     }
 
-    pub(crate) fn threads(&mut self, core_data: &mut CoreData, request: Request) -> Result<()> {
-        // TODO: Implement actual thread resolution. For now, we just use the core id as the thread id.
-        let mut threads: Vec<Thread> = vec![];
-        match self.last_known_status {
-            CoreStatus::Unknown => {
-                // We are probably here because the `configuration_done` request just happened, so we can make sure the client and debugger are in synch.
-                match core_data.target_core.status() {
-                    Ok(core_status) => {
-                        self.last_known_status = core_status;
-                        // Make sure the DAP Client and the DAP Server are in sync with the status of the core.
-                        if core_status.is_halted() {
-                            if self.halt_after_reset
-                                || core_status == CoreStatus::Halted(HaltReason::Breakpoint)
-                            {
-                                let event_body = Some(StoppedEventBody {
-                                    reason: core_status.short_long_status().0.to_owned(),
-                                    description: Some(
-                                        core_status.short_long_status().1.to_string(),
-                                    ),
-                                    thread_id: Some(core_data.target_core.id() as i64),
-                                    preserve_focus_hint: None,
-                                    text: None,
-                                    all_threads_stopped: Some(false), // TODO: Implement multi-core logic here
-                                    hit_breakpoint_ids: None,
-                                });
-                                self.send_event("stopped", event_body)?;
-                            } else {
-                                let single_thread = Thread {
-                                    id: core_data.target_core.id() as i64,
-                                    name: core_data.target_name.clone(),
-                                };
-                                threads.push(single_thread);
-                                self.send_response(
-                                    request.clone(),
-                                    Ok(Some(ThreadsResponseBody { threads })),
-                                )?;
-                                return self.r#continue(core_data, request);
-                            }
-                        }
-                    }
-                    Err(error) => {
-                        return self.send_response::<()>(
-                            request,
-                            Err(DebuggerError::Other(anyhow!(
-                                "Could not read core status to synchronize the client and the probe. {:?}",
-                                error
-                            ))),
-                        );
-                    }
-                }
-            }
-            CoreStatus::Halted(_) => {
-                let single_thread = Thread {
-                    id: core_data.target_core.id() as i64,
-                    name: core_data.target_name.clone(),
-                };
-                threads.push(single_thread);
-            }
-            CoreStatus::Running | CoreStatus::LockedUp | CoreStatus::Sleeping => {
-                return self.send_response::<()>(
-                    request,
-                    Err(DebuggerError::Other(anyhow!(
-                        "Received request for `threads`, while last known core status was {:?}",
-                        self.last_known_status
-                    ))),
-                );
-            }
-        }
-        self.send_response(request, Ok(Some(ThreadsResponseBody { threads })))
-    }
-
     pub(crate) fn set_breakpoints(
         &mut self,
         core_data: &mut CoreData,
@@ -734,14 +647,14 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                 };
 
                 // Try to find source code location
-                let source_location: Option<u64> = core_data
-                    .debug_info
-                    .get_breakpoint_location(
-                        source_path.unwrap(),
-                        breakpoint_line,
-                        breakpoint_column,
-                    )
-                    .unwrap_or(None);
+                let source_location: Option<u64> = if let Some(source_path) = source_path {
+                    core_data
+                        .debug_info
+                        .get_breakpoint_location(source_path, breakpoint_line, breakpoint_column)
+                        .unwrap_or(None)
+                } else {
+                    None
+                };
 
                 if let Some(location) = source_location {
                     let (verified, reason_msg) = match core_data
@@ -828,17 +741,9 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
 
         // Always clear existing breakpoints before setting new ones.
         match core_data.clear_breakpoints(BreakpointType::InstructionBreakpoint) {
-                Ok(_) => {}
-                Err(error) => {
-                    return self.send_response::<()>(
-                        request,
-                        Err(DebuggerError::Other(anyhow!(
-                            "Failed to clear breakpoints. Please consider restarting this session and reseting the probe : {}",
-                            error
-                        ))),
-                    )
-                }
-            }
+            Ok(_) => {}
+            Err(error) => log::warn!("Failed to clear instruction breakpoints. {}", error),
+        }
 
         // Set the new (potentially an empty list) breakpoints.
         for requested_breakpoint in arguments.breakpoints {
@@ -922,6 +827,94 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         self.send_response(request, Ok(Some(instruction_breakpoint_body)))
     }
 
+    pub(crate) fn threads(&mut self, core_data: &mut CoreData, request: Request) -> Result<()> {
+        // TODO: Implement actual thread resolution. For now, we just use the core id as the thread id.
+        let mut threads: Vec<Thread> = vec![];
+        match self.last_known_status {
+            CoreStatus::Unknown => {
+                // We are probably here because the `configuration_done` request just happened, so we can make sure the client and debugger are in synch.
+                match core_data.target_core.status() {
+                    Ok(core_status) => {
+                        self.last_known_status = core_status;
+                        // Make sure the DAP Client and the DAP Server are in sync with the status of the core.
+                        if core_status.is_halted() {
+                            if self.halt_after_reset
+                                || core_status == CoreStatus::Halted(HaltReason::Breakpoint)
+                            {
+                                let event_body = Some(StoppedEventBody {
+                                    reason: core_status.short_long_status().0.to_owned(),
+                                    description: Some(
+                                        core_status.short_long_status().1.to_string(),
+                                    ),
+                                    thread_id: Some(core_data.target_core.id() as i64),
+                                    preserve_focus_hint: None,
+                                    text: None,
+                                    all_threads_stopped: Some(false), // TODO: Implement multi-core logic here
+                                    hit_breakpoint_ids: None,
+                                });
+                                self.send_event("stopped", event_body)?;
+                            } else {
+                                let single_thread = Thread {
+                                    id: core_data.target_core.id() as i64,
+                                    name: core_data.target_name.clone(),
+                                };
+                                threads.push(single_thread);
+                                self.send_response(
+                                    request.clone(),
+                                    Ok(Some(ThreadsResponseBody { threads })),
+                                )?;
+                                return self.r#continue(core_data, request);
+                            }
+                        }
+                    }
+                    Err(error) => {
+                        return self.send_response::<()>(
+                            request,
+                            Err(DebuggerError::Other(anyhow!(
+                                "Could not read core status to synchronize the client and the probe. {:?}",
+                                error
+                            ))),
+                        );
+                    }
+                }
+            }
+            CoreStatus::Halted(_) => {
+                let single_thread = Thread {
+                    id: core_data.target_core.id() as i64,
+                    name: core_data.target_name.clone(),
+                };
+                threads.push(single_thread);
+                // We do the actual stack trace here, because VSCode sometimes sends multiple StackTrace requests, which lead to unnecessary unwind processing.
+                // By doing it here, we do it once, and serve up the results when we get the StackTrace requests.
+                let regs = core_data.target_core.registers();
+                let pc = match core_data.target_core.read_core_reg(regs.program_counter()) {
+                    Ok(pc) => pc,
+                    Err(error) => {
+                        return self
+                            .send_response::<()>(request, Err(DebuggerError::ProbeRs(error)))
+                    }
+                };
+                log::debug!(
+                    "Updating the stack frame data for core #{}",
+                    core_data.target_core.id()
+                );
+                *core_data.stack_frames = core_data
+                    .debug_info
+                    .unwind(&mut core_data.target_core, u64::from(pc))?;
+            }
+            CoreStatus::Running | CoreStatus::LockedUp | CoreStatus::Sleeping => {
+                return self.send_response::<()>(
+                    request,
+                    Err(DebuggerError::Other(anyhow!(
+                        "Received request for `threads`, while last known core status was {:?}",
+                        self.last_known_status
+                    ))),
+                );
+            }
+        }
+        self.send_response(request, Ok(Some(ThreadsResponseBody { threads })))
+    }
+
     pub(crate) fn stack_trace(&mut self, core_data: &mut CoreData, request: Request) -> Result<()> {
         let _status = match core_data.target_core.status() {
             Ok(status) => {
@@ -952,35 +945,8 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             }
         };
 
-        let regs = core_data.target_core.registers();
-
-        let pc = match core_data.target_core.read_core_reg(regs.program_counter()) {
-            Ok(pc) => pc,
-            Err(error) => {
-                return self.send_response::<()>(request, Err(DebuggerError::ProbeRs(error)))
-            }
-        };
-
-        log::debug!(
-            "Updating the stack frame data for core #{}",
-            core_data.target_core.id()
-        );
-
         if let Some(levels) = arguments.levels {
             if let Some(start_frame) = arguments.start_frame {
-                if levels == 20 && start_frame == 0 {
-                    // This is a invalid stack_trace from VSCode, so let's respond in kind.
-                    let body = StackTraceResponseBody {
-                        stack_frames: vec![],
-                        total_frames: Some(0i64),
-                    };
-                    return self.send_response(request, Ok(Some(body)));
-                } else if levels == 1 && start_frame == 0 {
-                    // This is a legit request for the first frame in a new stack_trace, so do a new unwind.
-                    *core_data.stack_frames = core_data
-                        .debug_info
-                        .unwind(&mut core_data.target_core, u64::from(pc))?;
-                }
                 // Determine the correct 'slice' of available [StackFrame]s to serve up ...
                 let total_frames = core_data.stack_frames.len() as i64;
 
@@ -1101,73 +1067,6 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         }
     }
 
-    /// Attempt to extract disassembled source code.
-    pub(crate) fn get_disassembled_source(
-        &mut self,
-        core_data: &mut CoreData,
-        memory_reference: u32,
-        low_pc: u32,
-        high_pc: u32,
-    ) -> Option<Vec<dap_types::DisassembledInstruction>> {
-        // First we need to read the machine bytes that represents the code
-        // Note: For 'unknown functions', the scope may be limited to the `start` and `end` sequences associated with the [`gimli::read::IncompleteLineProgram`]
-        let mut code = vec![0_u8; (high_pc - low_pc) as usize];
-        match core_data.target_core.read_8(low_pc as u32, &mut code) {
-            Ok(_) => {}
-            Err(error) => {
-                log::warn!(
-                    "Unable to read {:#010x} machine instructions from memory at location: {:#010x}. {:?}",
-                    high_pc - low_pc,
-                    memory_reference,
-                    error
-                );
-                return None;
-            }
-        };
-
-        let mut instruction_at_pc = 0_u32;
-        let assembly_lines = if let Ok(instructions) = core_data
-            .capstone
-            .disasm_all(&code, memory_reference as u64)
-        {
-            instructions
-                .iter()
-                .enumerate()
-                .map(|(line_number, instruction)| {
-                    // Keep track of which instruction matches the pc
-                    if instruction.address() == memory_reference as u64 {
-                        instruction_at_pc = line_number as u32;
-                    }
-                    // Create the instruction data.
-                    dap_types::DisassembledInstruction {
-                        address: format!("{:#010x}", instruction.address()),
-                        column: None,
-                        end_column: None,
-                        end_line: None,
-                        instruction: instruction.to_string(),
-                        instruction_bytes: Some(
-                            instruction
-                                .bytes()
-                                .iter()
-                                .map(|instruction_byte| format!("\\{:03o}", instruction_byte))
-                                .collect(),
-                        ),
-                        line: None,
-                        location: None,
-                        symbol: None,
-                    }
-                })
-                .collect::<Vec<DisassembledInstruction>>()
-        } else {
-            vec![]
-        };
-        if assembly_lines.is_empty() {
-            None
-        } else {
-            Some(assembly_lines)
-        }
-    }
-
     /// Retrieve available scopes  
     /// - static scope  : Variables with `static` modifier
     /// - registers     : The [probe_rs::Core::registers] for the target [probe_rs::CoreType]
@@ -1258,12 +1157,186 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         self.send_response(request, Ok(Some(ScopesResponseBody { scopes: dap_scopes })))
     }
 
+    /// Attempt to extract disassembled source code to supply the instruction_count required.
+    pub(crate) fn get_disassembled_source(
+        &mut self,
+        core_data: &mut CoreData,
+        // The program_counter where our desired instruction range is based.
+        memory_reference: i64,
+        // The number of bytes offset from the memory reference. Can be zero.
+        byte_offset: i64,
+        // The number of instruction offset from the memory reference. Can be zero.
+        instruction_offset: i64,
+        // The EXACT number of instructions to return in the result.
+        instruction_count: i64,
+    ) -> Result<Vec<dap_types::DisassembledInstruction>, DebuggerError> {
+        let instruction_offset_as_bytes =
+            (instruction_offset * core_data.debug_info.get_instruction_size() as i64) / 4 * 5;
+
+        // The vector we will use to return results.
+        let mut assembly_lines: Vec<DisassembledInstruction> = vec![];
+
+        // The buffer to hold data we read from our target.
+        let mut code_buffer: Vec<u8> = vec![];
+
+        // Control whether we need to read target memory in order to disassemble the next instruction.
+        let mut read_more_bytes = true;
+
+        // The memory address for the next read from target memory. We have to manually adjust it to be word aligned.
+        let mut read_pointer =
+            (memory_reference + byte_offset + instruction_offset_as_bytes) as u32;
+        read_pointer = read_pointer - read_pointer % 4;
+
+        // The memory address for the next instruction to be disassembled
+        let mut instruction_pointer = read_pointer as u64;
+
+        // We will only include source location data in a resulting instruction, if it is different from the previous one.
+        let mut stored_source_location = None;
+
+        // The MS DAP spec requires that we always have to return a fixed number of instructions.
+        while assembly_lines.len() < instruction_count as usize {
+            if read_more_bytes {
+                match core_data.target_core.read_word_32(read_pointer) {
+                    Ok(new_word) => {
+                        // Advance the read pointer for next time we need it.
+                        read_pointer += 4;
+                        // Update the code buffer.
+                        for new_byte in new_word.to_le_bytes() {
+                            code_buffer.push(new_byte);
+                        }
+                    }
+                    Err(_) => {
+                        // If we can't read data at a given address, then create a "invalid instruction" record, and keep trying.
+                        read_pointer += 4;
+                        assembly_lines.push(dap_types::DisassembledInstruction {
+                            address: format!("{:#010X}", read_pointer),
+                            column: None,
+                            end_column: None,
+                            end_line: None,
+                            instruction: format!("<instruction address not readable>"),
+                            instruction_bytes: None,
+                            line: None,
+                            location: None,
+                            symbol: None,
+                        });
+                        continue;
+                    }
+                }
+            }
+
+            match core_data
+                .capstone
+                .disasm_count(&code_buffer, instruction_pointer as u64, 1)
+            {
+                Ok(instructions) => {
+                    if instructions.len().is_zero() {
+                        read_more_bytes = true;
+                        continue;
+                    }
+
+                    let mut result_instruction = instructions
+                        .iter()
+                        .map(|instruction| {
+                            // Before processing, update the code buffer appropriately
+                            code_buffer = code_buffer.split_at(instruction.bytes().len() as usize).1.to_vec();
+                            read_more_bytes = code_buffer.is_empty();
+
+                            // Move the instruction_pointer for the next read.
+                            instruction_pointer += instruction.bytes().len() as u64;
+
+                            // Try to resolve the source location for this instruction.
+                            // If we find one, we use it ONLY if it is different from the previous one (stored_source_location).
+                            // - This helps to reduce visual noise in the VSCode UX, by not displaying the same line of source code multiple times over.
+                            // If we do not find a source location, then just return the raw assembly without file/line/column information.
+                            let mut location = None;
+                            let mut line = None;
+                            let mut column = None;
+                            if let Some(current_source_location) = core_data
+                                .debug_info
+                                .get_source_location(instruction.address()) {
+                                if let Some(previous_source_location) = stored_source_location.clone() {
+                                    if current_source_location != previous_source_location {
+                                        location = get_dap_source(&current_source_location);
+                                        line = current_source_location.line.map(|line| line as i64);
+                                        column = current_source_location.column.map(|col| match col {
+                                            ColumnType::LeftEdge => 0_i64,
+                                            ColumnType::Column(c) => c as i64,
+                                        });
+                                        stored_source_location = Some(current_source_location);
+                                    }
+                                } else {
+                                        stored_source_location = Some(current_source_location);
+                                }
+                            } else {
+                                // It won't affect the outcome, but log it for completeness.
+                                log::debug!("The request `Disassemble` could not resolve a source location for memory reference: {:#010}", instruction.address());
+                            }
+
+                            // Create the instruction data.
+                            dap_types::DisassembledInstruction {
+                                address: format!("{:#010X}", instruction.address()),
+                                column,
+                                end_column: None,
+                                end_line: None,
+                                instruction: format!(
+                                    "{}  {}",
+                                    instruction.mnemonic().unwrap_or("<unknown>"),
+                                    instruction.op_str().unwrap_or("")
+                                ),
+                                instruction_bytes: None,
+                                // Use the code below to include machine code. My personal opinion is that it adds too much noise to an already noisy UX.
+                                // Some(
+                                //     instruction
+                                //         .bytes()
+                                //         .iter()
+                                //         .map(|instruction_byte| format!("{:#02X} ", instruction_byte))
+                                //         .collect(),
+                                // ),
+                                line,
+                                location,
+                                symbol: None,
+                            }
+                        })
+                        .collect::<Vec<DisassembledInstruction>>();
+                    assembly_lines.append(&mut result_instruction);
+                }
+                Err(error) => {
+                    println!("disasm returned error: {:?}", error);
+                    return Err(DebuggerError::Other(anyhow!(error)));
+                }
+            };
+        }
+
+        if assembly_lines.is_empty() {
+            Err(DebuggerError::Other(anyhow::anyhow!(
+                "No valid instructions found at memory reference {:#010x?}",
+                memory_reference
+            )))
+        } else {
+            Ok(assembly_lines)
+        }
+    }
+
+    /// Implementing the MS DAP for `request Disassemble` has a number of problems:
+    /// - The api requires that we return EXACTLY the instruction_count specified.
+    ///   - From testing, if we provide slightly fewer or more instructions, the current versions of VSCode will behave in unpredictable ways (frequently causes runaway renderer processes).
+    /// - They provide an instruction offset, which we have to convert into bytes. Some architectures use variable length instructions, so the conversion is inexact.
+    /// - They request a fix number of instructions, without regard for whether the memory range is valid.
+    ///
+    /// To overcome these challenges, we will do the following:
+    /// - Calculate the starting point of the memory range based on the architecture's minimum address size.
+    /// - Read 4 bytes into a buffer.
+    /// - Use [`capstone::Capstone`] to convert 1 instruction from these 4 bytes.
+    /// - Subtract the instruction's bytes from our own read buffer.
+    /// - Continue this process until we have:
+    ///   - Reached the required number of instructions.
+    ///   - We encounter 'unreadable' memory on the target.
+    ///     - In this case, pad the results with, as the api requires, "implementation defined invalid instructions"
     pub(crate) fn disassemble(&mut self, core_data: &mut CoreData, request: Request) -> Result<()> {
         let arguments: DisassembleArguments = match get_arguments(&request) {
             Ok(arguments) => arguments,
             Err(error) => return self.send_response::<()>(request, Err(error)),
         };
-
         if let Ok(memory_reference) = if arguments.memory_reference.starts_with("0x")
             || arguments.memory_reference.starts_with("0X")
         {
@@ -1271,56 +1344,22 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         } else {
             arguments.memory_reference.parse()
         } {
-            let memory_offset_as_bytes = arguments.offset.unwrap_or(0_i64);
-            let instruction_offset_as_bytes = arguments.instruction_offset.unwrap_or(0_i64)
-                * core_data.debug_info.get_instruction_size() as i64;
-            let low_pc = (memory_reference as i64
-                + memory_offset_as_bytes
-                + instruction_offset_as_bytes) as u32;
-            let high_pc = (memory_reference as i64
-                + (arguments.instruction_count
-                    * core_data.debug_info.get_instruction_size() as i64))
-                as u32;
-            if let Some(disassembled_instructions) =
-                self.get_disassembled_source(core_data, memory_reference, low_pc, high_pc)
-            {
-                self.send_response(
+            match self.get_disassembled_source(
+                core_data,
+                memory_reference as i64,
+                arguments.offset.unwrap_or(0_i64),
+                arguments.instruction_offset.unwrap_or(0_i64),
+                arguments.instruction_count,
+            ) {
+                Ok(disassembled_instructions) => self.send_response(
                     request,
                     Ok(Some(DisassembleResponseBody {
                         instructions: disassembled_instructions,
                     })),
-                )
-            } else {
-                self.send_response(
-                    request,
-                    Ok(Some(DisassembleResponseBody {
-                        // The spec wants us to send the correct number of instructions, with "implementation defined 'invalid instruction' value"
-                        instructions: {
-                            (0..(((high_pc - low_pc)
-                                / core_data.debug_info.get_instruction_size() as u32)
-                                as usize))
-                                .into_iter()
-                                .map(|counter| DisassembledInstruction {
-                                    address: format!(
-                                        "{:#010x}",
-                                        low_pc
-                                            + (counter as u32
-                                                * core_data.debug_info.get_instruction_size()
-                                                    as u32)
-                                    ),
-                                    column: None,
-                                    end_column: None,
-                                    end_line: None,
-                                    instruction: "<instruction not available>".to_string(),
-                                    instruction_bytes: None,
-                                    line: None,
-                                    location: None,
-                                    symbol: None,
-                                })
-                                .collect::<Vec<DisassembledInstruction>>()
-                        },
-                    })),
-                )
+                ),
+                Err(error) => {
+                    self.send_response::<()>(request, Err(DebuggerError::Other(anyhow!(error))))
+                }
             }
         } else {
             self.send_response::<()>(
@@ -1769,7 +1808,11 @@ fn get_dap_source(source_location: &SourceLocation) -> Option<Source> {
     // Attempt to construct the path for the source code
     source_location.directory.as_ref().map(|path| {
         let mut path = if path.is_relative() {
-            std::env::current_dir().unwrap().join(path)
+            if let Ok(current_path) = std::env::current_dir() {
+                current_path.join(path)
+            } else {
+                path.to_owned()
+            }
         } else {
             path.to_owned()
         };

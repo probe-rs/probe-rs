@@ -3,6 +3,10 @@
 //! The `debug` module contains various debug functionality, which can be
 //! used to implement a debugger based on `probe-rs`.
 
+// Bad things happen to the VSCode debug extenison and debug_adapter if we panic at the wrong time.
+#![deny(clippy::unwrap_used, clippy::panic, clippy::expect_used)]
+#![allow(clippy::or_fun_call)]
+
 mod variable;
 
 use crate::{
@@ -336,6 +340,7 @@ impl DebugInfo {
             locations_section,
             address_section,
             // The minimum instruction size in bytes.
+            // TODO: Do this programatically, based on architecture.
             instruction_size: 2,
         })
     }
@@ -386,72 +391,105 @@ impl DebugInfo {
                 Err(_) => continue,
             };
 
-            let mut ranges = self.dwarf.unit_ranges(&unit).unwrap();
+            match self.dwarf.unit_ranges(&unit) {
+                Ok(mut ranges) => {
+                    while let Ok(Some(range)) = ranges.next() {
+                        if (range.begin <= address) && (address < range.end) {
+                            // Get the function name.
 
-            while let Ok(Some(range)) = ranges.next() {
-                if (range.begin <= address) && (address < range.end) {
-                    // Get the function name.
+                            let ilnp = match unit.line_program.as_ref() {
+                                Some(ilnp) => ilnp,
+                                None => return None,
+                            };
 
-                    let ilnp = match unit.line_program.as_ref() {
-                        Some(ilnp) => ilnp,
-                        None => return None,
-                    };
+                            match ilnp.clone().sequences() {
+                                Ok((program, sequences)) => {
+                                    // Normalize the address.
+                                    let mut target_seq = None;
 
-                    let (program, sequences) = ilnp.clone().sequences().unwrap();
+                                    for seq in sequences {
+                                        if (seq.start <= address) && (address < seq.end) {
+                                            target_seq = Some(seq);
+                                            break;
+                                        }
+                                    }
 
-                    // Normalize the address.
-                    let mut target_seq = None;
+                                    if let Some(target_seq) = target_seq.as_ref() {
+                                        let mut previous_row: Option<gimli::LineRow> = None;
 
-                    for seq in sequences {
-                        if (seq.start <= address) && (address < seq.end) {
-                            target_seq = Some(seq);
-                            break;
+                                        let mut rows = program.resume_from(target_seq);
+
+                                        while let Ok(Some((header, row))) = rows.next_row() {
+                                            if row.address() == address {
+                                                if let Some(file_entry) = row.file(header) {
+                                                    if let Some((file, directory)) = self
+                                                        .find_file_and_directory(
+                                                            &unit, header, file_entry,
+                                                        )
+                                                    {
+                                                        log::debug!(
+                                                            "0x{:4x} - {:?}",
+                                                            address,
+                                                            row.isa()
+                                                        );
+
+                                                        return Some(SourceLocation {
+                                                            line: row.line().map(NonZeroU64::get),
+                                                            column: Some(row.column().into()),
+                                                            file,
+                                                            directory,
+                                                            low_pc: Some(target_seq.start as u32),
+                                                            high_pc: Some(target_seq.end as u32),
+                                                        });
+                                                    }
+                                                }
+                                            } else if (row.address() > address)
+                                                && previous_row.is_some()
+                                            {
+                                                if let Some(file_entry) = row.file(header) {
+                                                    if let Some((file, directory)) = self
+                                                        .find_file_and_directory(
+                                                            &unit, header, file_entry,
+                                                        )
+                                                    {
+                                                        log::debug!(
+                                                            "0x{:4x} - {:?}",
+                                                            address,
+                                                            row.isa()
+                                                        );
+
+                                                        return Some(SourceLocation {
+                                                            line: row.line().map(NonZeroU64::get),
+                                                            column: Some(row.column().into()),
+                                                            file,
+                                                            directory,
+                                                            low_pc: Some(target_seq.start as u32),
+                                                            high_pc: Some(target_seq.end as u32),
+                                                        });
+                                                    }
+                                                }
+                                            }
+                                            previous_row = Some(*row);
+                                        }
+                                    }
+                                }
+                                Err(error) => {
+                                    log::warn!(
+                                        "No valid source code ranges found for address {:#010x}: {:?}",
+                                        address,
+                                        error
+                                    );
+                                }
+                            }
                         }
                     }
-
-                    target_seq.as_ref()?;
-
-                    let mut previous_row: Option<gimli::LineRow> = None;
-
-                    let mut rows =
-                        program.resume_from(target_seq.as_ref().expect("Sequence not found"));
-
-                    while let Ok(Some((header, row))) = rows.next_row() {
-                        if row.address() == address {
-                            let (file, directory) = self
-                                .find_file_and_directory(&unit, header, row.file(header).unwrap())
-                                .unwrap();
-
-                            log::debug!("0x{:4x} - {:?}", address, row.isa());
-
-                            return Some(SourceLocation {
-                                line: row.line().map(NonZeroU64::get),
-                                column: Some(row.column().into()),
-                                file,
-                                directory,
-                                low_pc: target_seq.as_ref().map(|seq| seq.start as u32),
-                                high_pc: target_seq.as_ref().map(|seq| seq.end as u32),
-                            });
-                        } else if (row.address() > address) && previous_row.is_some() {
-                            let row = previous_row.unwrap();
-
-                            let (file, directory) = self
-                                .find_file_and_directory(&unit, header, row.file(header).unwrap())
-                                .unwrap();
-
-                            log::debug!("0x{:4x} - {:?}", address, row.isa());
-
-                            return Some(SourceLocation {
-                                line: row.line().map(NonZeroU64::get),
-                                column: Some(row.column().into()),
-                                file,
-                                directory,
-                                low_pc: target_seq.as_ref().map(|seq| seq.start as u32),
-                                high_pc: target_seq.as_ref().map(|seq| seq.end as u32),
-                            });
-                        }
-                        previous_row = Some(*row);
-                    }
+                }
+                Err(error) => {
+                    log::warn!(
+                        "No valid source code ranges found for address {:#010x}: {:?}",
+                        address,
+                        error
+                    );
                 }
             }
         }
@@ -751,53 +789,61 @@ impl DebugInfo {
                     inlined_caller_source_location = next_function.inline_call_location();
                 }
 
-                log::debug!("UNWIND: Call site: {:?}", inlined_caller_source_location);
+                if let Some(inlined_call_site) = inlined_call_site {
+                    log::debug!("UNWIND: Call site: {:?}", inlined_caller_source_location);
 
-                log::trace!("UNWIND: Function name: {}", function_name);
+                    log::trace!("UNWIND: Function name: {}", function_name);
 
-                // Now that we have the function_name and function_source_location, we can create the appropriate variable caches for this stack frame.
-                // Resolve the statics that belong to the compilation unit that this function is in.
-                let static_variables = self
-                    .create_static_scope_cache(core, &unit_info)
-                    .map_or_else(
-                        |error| {
-                            log::error!(
-                                "Could not resolve static variables. {}. Continuing...",
-                                error
-                            );
-                            None
-                        },
-                        Some,
+                    // Now that we have the function_name and function_source_location, we can create the appropriate variable caches for this stack frame.
+                    // Resolve the statics that belong to the compilation unit that this function is in.
+                    let static_variables = self
+                        .create_static_scope_cache(core, &unit_info)
+                        .map_or_else(
+                            |error| {
+                                log::error!(
+                                    "Could not resolve static variables. {}. Continuing...",
+                                    error
+                                );
+                                None
+                            },
+                            Some,
+                        );
+
+                    // Next, resolve and cache the function variables.
+                    let local_variables = self
+                        .create_function_scope_cache(core, function_die, &unit_info)
+                        .map_or_else(
+                            |error| {
+                                log::error!(
+                                    "Could not resolve function variables. {}. Continuing...",
+                                    error
+                                );
+                                None
+                            },
+                            Some,
+                        );
+
+                    frames.push(StackFrame {
+                        // MS DAP Specification requires the id to be unique accross all threads, so using  so using unique `Variable::variable_key` of the `stackframe_root_variable` as the id.
+                        id: get_sequential_key(),
+                        function_name,
+                        source_location: inlined_caller_source_location,
+                        registers: stack_frame_registers.clone(),
+                        pc: inlined_call_site,
+                        is_inlined: function_die.is_inline(),
+                        static_variables,
+                        local_variables,
+                    });
+                } else {
+                    log::warn!(
+                        "UNWIND: Unknown call site for inlined function {}.",
+                        function_name
                     );
-
-                // Next, resolve and cache the function variables.
-                let local_variables = self
-                    .create_function_scope_cache(core, function_die, &unit_info)
-                    .map_or_else(
-                        |error| {
-                            log::error!(
-                                "Could not resolve function variables. {}. Continuing...",
-                                error
-                            );
-                            None
-                        },
-                        Some,
-                    );
-
-                frames.push(StackFrame {
-                    // MS DAP Specification requires the id to be unique accross all threads, so using  so using unique `Variable::variable_key` of the `stackframe_root_variable` as the id.
-                    id: get_sequential_key(),
-                    function_name,
-                    source_location: inlined_caller_source_location,
-                    registers: stack_frame_registers.clone(),
-                    pc: inlined_call_site.unwrap(),
-                    is_inlined: function_die.is_inline(),
-                    static_variables,
-                    local_variables,
-                });
+                }
             }
 
             // Handle last function, which contains no further inlined functions
+            #[allow(clippy::unwrap_used)]
             let last_function = functions.last().unwrap(); //UNWRAP: Checked at beginning of loop, functions must contain at least one value
 
             let function_name = last_function
@@ -907,6 +953,7 @@ impl DebugInfo {
                 Ok(mut cached_stack_frames) => {
                     while cached_stack_frames.len() > 1 {
                         // If we encountered INLINED functions (all `StackFrames`s in this Vec, except for the last one, which is the containing NON-INLINED function), these are simply added to the list of stack_frames we return.
+                        #[allow(clippy::unwrap_used)]
                         let inlined_frame = cached_stack_frames.pop().unwrap(); // unwrap is safe while .len() > 1
                         log::trace!(
                             "UNWIND: Found inlined function - name={}, pc={:#010x}",
@@ -917,6 +964,7 @@ impl DebugInfo {
                     }
                     if cached_stack_frames.len() == 1 {
                         // If there is only one stack frame, then it is a NON-INLINED function, and we will attempt to unwind further.
+                        #[allow(clippy::unwrap_used)]
                         cached_stack_frames.pop().unwrap() // unwrap is safe for .len==1
                     } else {
                         // Obviously something has gone wrong and zero stackframes were returned in the vector.
@@ -1467,27 +1515,27 @@ struct FunctionDie<'abbrev, 'unit, 'unit_info, 'debug_info> {
     high_pc: u64,
 }
 
-// TODO: We should consider replacing the `panic`s with proper error handling, that allows a user to be 'partially' successful with a debug session. If we use `panic`, then the user will have to wait until the bug is fixed before they can continue trying to use probe-rs
 impl<'debugunit, 'abbrev, 'unit: 'debugunit, 'unit_info, 'debug_info>
     FunctionDie<'abbrev, 'unit, 'unit_info, 'debug_info>
 {
     fn new(
         die: FunctionDieType<'abbrev, 'unit>,
         unit_info: &'unit_info UnitInfo<'debug_info>,
-    ) -> Self {
+    ) -> Option<Self> {
         let tag = die.tag();
 
         match tag {
-            gimli::DW_TAG_subprogram => {
-                Self {
-                    unit_info,
-                    function_die: die,
-                    abstract_die: None,
-                    low_pc: 0,
-                    high_pc: 0,
-                }
+            gimli::DW_TAG_subprogram => Some(Self {
+                unit_info,
+                function_die: die,
+                abstract_die: None,
+                low_pc: 0,
+                high_pc: 0,
+            }),
+            other_tag => {
+                log::error!("FunctionDie has to has to have Tag DW_TAG_subprogram, but tag is {:?}. This is a bug, please report it.", other_tag.static_string());
+                None
             }
-            other_tag => panic!("FunctionDie has to has to have Tag DW_TAG_subprogram, but tag is {:?}. This is a bug, please report it.", other_tag.static_string())
         }
     }
 
@@ -1495,20 +1543,21 @@ impl<'debugunit, 'abbrev, 'unit: 'debugunit, 'unit_info, 'debug_info>
         concrete_die: FunctionDieType<'abbrev, 'unit>,
         abstract_die: FunctionDieType<'abbrev, 'unit>,
         unit_info: &'unit_info UnitInfo<'debug_info>,
-    ) -> Self {
+    ) -> Option<Self> {
         let tag = concrete_die.tag();
 
         match tag {
-            gimli::DW_TAG_inlined_subroutine => {
-                Self {
-                    unit_info,
-                    function_die: concrete_die,
-                    abstract_die: Some(abstract_die),
-                    low_pc: 0,
-                    high_pc: 0,
-                }
+            gimli::DW_TAG_inlined_subroutine => Some(Self {
+                unit_info,
+                function_die: concrete_die,
+                abstract_die: Some(abstract_die),
+                low_pc: 0,
+                high_pc: 0,
+            }),
+            other_tag => {
+                log::error!("FunctionDie has to has to have Tag DW_TAG_inlined_subroutine, but tag is {:?}. This is a bug, please report it.", other_tag.static_string());
+                None
             }
-            other_tag => panic!("FunctionDie has to has to have Tag DW_TAG_inlined_subroutine, but tag is {:?}. This is a bug, please report it.", other_tag.static_string())
         }
     }
 
@@ -1520,9 +1569,14 @@ impl<'debugunit, 'abbrev, 'unit: 'debugunit, 'unit_info, 'debug_info>
         if let Some(fn_name_attr) = self.get_attribute(gimli::DW_AT_name) {
             match fn_name_attr.value() {
                 gimli::AttributeValue::DebugStrRef(fn_name_ref) => {
-                    let fn_name_raw = self.unit_info.debug_info.dwarf.string(fn_name_ref).unwrap();
+                    match self.unit_info.debug_info.dwarf.string(fn_name_ref) {
+                        Ok(fn_name_raw) => Some(String::from_utf8_lossy(&fn_name_raw).to_string()),
+                        Err(error) => {
+                            log::debug!("No value for DW_AT_name: {:?}: error", error);
 
-                    Some(String::from_utf8_lossy(&fn_name_raw).to_string())
+                            None
+                        }
+                    }
                 }
                 value => {
                     log::debug!("Unexpected attribute value for DW_AT_name: {:?}", value);
@@ -1620,38 +1674,38 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                     if (ranges.begin <= address) && (address < ranges.end) {
                         // Check if we are actually in an inlined function
 
-                        let mut die = FunctionDie::new(current.clone(), self);
-                        die.low_pc = ranges.begin;
-                        die.high_pc = ranges.end;
+                        if let Some(mut die) = FunctionDie::new(current.clone(), self) {
+                            die.low_pc = ranges.begin;
+                            die.high_pc = ranges.end;
 
-                        let mut functions = vec![die];
+                            let mut functions = vec![die];
 
-                        if find_inlined {
-                            log::debug!(
-                                "Found DIE, now checking for inlined functions: name={:?}",
-                                functions[0].function_name()
-                            );
-
-                            let inlined_functions =
-                                self.find_inlined_functions(address, current.offset())?;
-
-                            if inlined_functions.is_empty() {
-                                log::debug!("No inlined function found!");
-                            } else {
+                            if find_inlined {
                                 log::debug!(
-                                    "{} inlined functions for address {:#010x}",
-                                    inlined_functions.len(),
-                                    address
+                                    "Found DIE, now checking for inlined functions: name={:?}",
+                                    functions[0].function_name()
                                 );
-                                functions.extend(inlined_functions.into_iter());
+
+                                let inlined_functions =
+                                    self.find_inlined_functions(address, current.offset())?;
+
+                                if inlined_functions.is_empty() {
+                                    log::debug!("No inlined function found!");
+                                } else {
+                                    log::debug!(
+                                        "{} inlined functions for address {:#010x}",
+                                        inlined_functions.len(),
+                                        address
+                                    );
+                                    functions.extend(inlined_functions.into_iter());
+                                }
+
+                                return Ok(functions);
+                            } else {
+                                log::debug!("Found DIE: name={:?}", functions[0].function_name());
                             }
-
                             return Ok(functions);
-                        } else {
-                            log::debug!("Found DIE: name={:?}", functions[0].function_name());
                         }
-
-                        return Ok(functions);
                     }
                 }
             }
@@ -1670,50 +1724,55 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
 
         let mut abort_depth = 0;
 
-        let mut cursor = self.unit.entries_at_offset(offset).unwrap();
-
         let mut functions = Vec::new();
 
-        while let Ok(Some((depth, current))) = cursor.next_dfs() {
-            current_depth += depth;
+        if let Ok(mut cursor) = self.unit.entries_at_offset(offset) {
+            while let Ok(Some((depth, current))) = cursor.next_dfs() {
+                current_depth += depth;
 
-            if current_depth < abort_depth {
-                break;
-            }
+                if current_depth < abort_depth {
+                    break;
+                }
 
-            if current.tag() == gimli::DW_TAG_inlined_subroutine {
-                let mut ranges = self.debug_info.dwarf.die_ranges(&self.unit, current)?;
+                if current.tag() == gimli::DW_TAG_inlined_subroutine {
+                    let mut ranges = self.debug_info.dwarf.die_ranges(&self.unit, current)?;
 
-                while let Ok(Some(ranges)) = ranges.next() {
-                    if (ranges.begin <= address) && (address < ranges.end) {
-                        // Check if we are actually in an inlined function
+                    while let Ok(Some(ranges)) = ranges.next() {
+                        if (ranges.begin <= address) && (address < ranges.end) {
+                            // Check if we are actually in an inlined function
 
-                        // We don't have to search further up in the tree, if there are multiple inlined functions,
-                        // they will be children of the current function.
-                        abort_depth = current_depth;
+                            // We don't have to search further up in the tree, if there are multiple inlined functions,
+                            // they will be children of the current function.
+                            abort_depth = current_depth;
 
-                        // Find the abstract definition
-                        if let Some(abstract_origin) =
-                            current.attr(gimli::DW_AT_abstract_origin).unwrap()
-                        {
-                            match abstract_origin.value() {
-                                gimli::AttributeValue::UnitRef(unit_ref) => {
-                                    let abstract_die = self.unit.entry(unit_ref).unwrap();
-                                    let mut die = FunctionDie::new_inlined(
-                                        current.clone(),
-                                        abstract_die.clone(),
-                                        self,
-                                    );
-                                    die.low_pc = ranges.begin;
-                                    die.high_pc = ranges.end;
+                            // Find the abstract definition
+                            if let Ok(Some(abstract_origin)) =
+                                current.attr(gimli::DW_AT_abstract_origin)
+                            {
+                                match abstract_origin.value() {
+                                    gimli::AttributeValue::UnitRef(unit_ref) => {
+                                        if let Ok(abstract_die) = self.unit.entry(unit_ref) {
+                                            if let Some(mut die) = FunctionDie::new_inlined(
+                                                current.clone(),
+                                                abstract_die.clone(),
+                                                self,
+                                            ) {
+                                                die.low_pc = ranges.begin;
+                                                die.high_pc = ranges.end;
 
-                                    functions.push(die);
+                                                functions.push(die);
+                                            }
+                                        }
+                                    }
+                                    other_value => log::warn!(
+                                        "Unsupported DW_AT_abstract_origin value: {:?}",
+                                        other_value
+                                    ),
                                 }
-                                other_value => panic!("Unsupported value: {:?}", other_value),
+                            } else {
+                                log::warn!("No abstract origin for inlined function, skipping.");
+                                return Ok(vec![]);
                             }
-                        } else {
-                            log::debug!("No abstract origin for inlined function, skipping.");
-                            return Ok(vec![]);
                         }
                     }
                 }
@@ -2015,11 +2074,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                         child_variable.set_value(VariableValue::Error(format!(
                             "Unimplemented: Variable Attribute {:?} : {:?}, with children = {}",
                             other_attribute.static_string(),
-                            tree_node
-                                .entry()
-                                .attr_value(other_attribute)
-                                .unwrap()
-                                .unwrap(),
+                            tree_node.entry().attr_value(other_attribute),
                             tree_node.entry().has_children()
                         )));
                     }
@@ -2557,55 +2612,65 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                                             &self.unit.abbreviations,
                                                             Some(unit_ref),
                                                         )?;
-                                                    let mut array_member_type_node =
-                                                        array_member_type_tree.root().unwrap();
-                                                    let mut array_member_variable = cache
-                                                        .cache_variable(
-                                                            Some(child_variable.variable_key),
-                                                            Variable::new(
-                                                                self.unit
-                                                                    .header
-                                                                    .offset()
-                                                                    .as_debug_info_offset(),
-                                                                Some(
-                                                                    array_member_type_node
-                                                                        .entry()
-                                                                        .offset(),
+                                                    if let Ok(mut array_member_type_node) =
+                                                        array_member_type_tree.root()
+                                                    {
+                                                        let mut array_member_variable = cache
+                                                            .cache_variable(
+                                                                Some(child_variable.variable_key),
+                                                                Variable::new(
+                                                                    self.unit
+                                                                        .header
+                                                                        .offset()
+                                                                        .as_debug_info_offset(),
+                                                                    Some(
+                                                                        array_member_type_node
+                                                                            .entry()
+                                                                            .offset(),
+                                                                    ),
                                                                 ),
-                                                            ),
-                                                            core,
-                                                        )?;
-                                                    array_member_variable = self
-                                                        .process_tree_node_attributes(
-                                                            &mut array_member_type_node,
-                                                            &mut child_variable,
+                                                                core,
+                                                            )?;
+                                                        array_member_variable = self
+                                                            .process_tree_node_attributes(
+                                                                &mut array_member_type_node,
+                                                                &mut child_variable,
+                                                                array_member_variable,
+                                                                core,
+                                                                stack_frame_registers,
+                                                                cache,
+                                                            )?;
+                                                        child_variable.type_name = format!(
+                                                            "[{};{}]",
+                                                            array_member_variable.name,
+                                                            subrange_variable.range_upper_bound
+                                                        );
+                                                        array_member_variable.member_index =
+                                                            Some(array_member_index);
+                                                        array_member_variable.name =
+                                                            VariableName::Named(format!(
+                                                                "__{}",
+                                                                array_member_index
+                                                            ));
+                                                        array_member_variable.source_location =
+                                                            child_variable.source_location.clone();
+                                                        self.extract_type(
+                                                            array_member_type_node,
+                                                            &child_variable,
                                                             array_member_variable,
                                                             core,
                                                             stack_frame_registers,
                                                             cache,
                                                         )?;
-                                                    child_variable.type_name = format!(
-                                                        "[{};{}]",
-                                                        array_member_variable.name,
-                                                        subrange_variable.range_upper_bound
-                                                    );
-                                                    array_member_variable.member_index =
-                                                        Some(array_member_index);
-                                                    array_member_variable.name =
-                                                        VariableName::Named(format!(
-                                                            "__{}",
-                                                            array_member_index
-                                                        ));
-                                                    array_member_variable.source_location =
-                                                        child_variable.source_location.clone();
-                                                    self.extract_type(
-                                                        array_member_type_node,
-                                                        &child_variable,
-                                                        array_member_variable,
-                                                        core,
-                                                        stack_frame_registers,
-                                                        cache,
-                                                    )?;
+                                                    } else {
+                                                        child_variable.set_value(
+                                                            VariableValue::Error(
+                                                                "<array member data not available>"
+                                                                    .to_string(),
+                                                            ),
+                                                        );
+                                                        break;
+                                                    }
                                                 }
                                             }
                                         }
@@ -2740,7 +2805,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
         cache: &mut VariableCache,
     ) -> Result<Variable, DebugError> {
         let mut attrs = node.entry().attrs();
-        while let Some(attr) = attrs.next().unwrap() {
+        while let Ok(Some(attr)) = attrs.next() {
             match attr.name() {
                 gimli::DW_AT_location
                 | gimli::DW_AT_data_member_location
@@ -3066,11 +3131,20 @@ fn extract_file(
         gimli::AttributeValue::FileIndex(index) => unit.line_program.as_ref().and_then(|ilnp| {
             let header = ilnp.header();
 
-            let file_entry = header.file(index);
-
-            debug_info
-                .find_file_and_directory(unit, header, file_entry.unwrap())
-                .map(|(file, path)| (path.unwrap(), file.unwrap()))
+            if let Some(file_entry) = header.file(index) {
+                if let Some((Some(path), Some(file))) = debug_info
+                    .find_file_and_directory(unit, header, file_entry)
+                    .map(|(file, path)| (path, file))
+                {
+                    Some((path, file))
+                } else {
+                    log::warn!("Unable to extract file or path from {:?}.", attribute_value);
+                    None
+                }
+            } else {
+                log::warn!("Unable to extract file entry for {:?}.", attribute_value);
+                None
+            }
         }),
         other => {
             log::warn!(
@@ -3122,14 +3196,18 @@ fn extract_name(
 ) -> String {
     match attribute_value {
         gimli::AttributeValue::DebugStrRef(name_ref) => {
-            let name_raw = debug_info.dwarf.string(name_ref).unwrap();
-            String::from_utf8_lossy(&name_raw).to_string()
+            if let Ok(name_raw) = debug_info.dwarf.string(name_ref) {
+                String::from_utf8_lossy(&name_raw).to_string()
+            } else {
+                "Invalid DW_AT_name value".to_string()
+            }
         }
         gimli::AttributeValue::String(name) => String::from_utf8_lossy(&name).to_string(),
         other => format!("Unimplemented: Evaluate name from {:?}", other),
     }
 }
 
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 pub(crate) fn _print_all_attributes(
     core: &mut Core<'_>,
     stackframe_cfa: Option<u64>,

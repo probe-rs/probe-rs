@@ -191,13 +191,21 @@ impl DebuggerOptions {
             Some(temp_path) => {
                 if temp_path.is_dir() {
                     Some(temp_path)
+                } else if let Ok(current_dir) = current_dir() {
+                    Some(current_dir)
                 } else {
-                    Some(current_dir().expect("Cannot use current working directory. Please check existence and permissions."))
+                    log::error!("Cannot use current working directory. Please check existence and permissions.");
+                    None
                 }
             }
-            None => Some(current_dir().expect(
-                "Cannot use current working directory. Please check existence and permissions.",
-            )),
+            None => {
+                if let Ok(current_dir) = current_dir() {
+                    Some(current_dir)
+                } else {
+                    log::error!("Cannot use current working directory. Please check existence and permissions.");
+                    None
+                }
+            }
         };
     }
 
@@ -555,7 +563,6 @@ impl<'p> CoreData<'p> {
         match rtt::attach_to_rtt(
             &mut self.target_core,
             target_memory_map,
-            // We can safely unwrap() program_binary here, because it is validated to exist at startup of the debugger
             program_binary,
             rtt_config,
         ) {
@@ -629,7 +636,7 @@ impl<'p> CoreData<'p> {
             .map(|breakpoint| breakpoint.breakpoint_address)
             .collect::<Vec<u32>>();
         for breakpoint in target_breakpoints {
-            self.clear_breakpoint(breakpoint)?;
+            self.clear_breakpoint(breakpoint).ok();
         }
         Ok(())
     }
@@ -1506,10 +1513,11 @@ impl Debugger {
                         // RTT can only be initialized if the target application has been allowed to run to the point where it does the RTT initialization.
                         // If the target halts before it processes this code, then this RTT intialization silently fails, and will try again later ...
                         // See `probe-rs-rtt::Rtt` for more information.
+                        // We can safely unwrap() program_binary here, because it is validated to exist at startup of the debugger
+                        #[allow(clippy::unwrap_used)]
                         core_data.attach_to_rtt(
                             &mut debug_adapter,
                             &target_memory_map,
-                            // We can safely unwrap() program_binary here, because it is validated to exist at startup of the debugger
                             self.debugger_options.program_binary.as_ref().unwrap(),
                             &self.debugger_options.rtt,
                         )?;

@@ -132,13 +132,19 @@ where
                     argument_name: argument_name.to_string(),
                 });
             }
-            parse::<T>(arguments[index].as_str().unwrap()).map_err(|e| {
-                DebuggerError::ArgumentParseError {
+            if let Some(index_str) = arguments[index].as_str() {
+                parse::<T>(index_str).map_err(|e| DebuggerError::ArgumentParseError {
                     argument_index: index,
                     argument: argument_name.to_string(),
                     source: e.into(),
-                }
-            })
+                })
+            } else {
+                Err(DebuggerError::ArgumentParseError {
+                    argument_index: index,
+                    argument: argument_name.to_string(),
+                    source: anyhow::anyhow!("Could not parse str at index: {}", index),
+                })
+            }
         }
         _ => Err(DebuggerError::MissingArgument {
             argument_name: argument_name.to_string(),
@@ -159,7 +165,15 @@ fn get_string_argument(
                 });
             }
             // Convert this to a Rust string.
-            Ok(arguments[index].as_str().unwrap().to_string())
+            if let Some(index_str) = arguments[index].as_str() {
+                Ok(index_str.to_string())
+            } else {
+                Err(DebuggerError::ArgumentParseError {
+                    argument_index: index,
+                    argument: argument_name.to_string(),
+                    source: anyhow::anyhow!("Could not parse str at index: {}", index),
+                })
+            }
         }
         _ => Err(DebuggerError::MissingArgument {
             argument_name: argument_name.to_string(),
