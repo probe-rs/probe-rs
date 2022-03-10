@@ -9,6 +9,7 @@ use num_traits::Zero;
 use parse_int::parse;
 use probe_rs::debug::Registers;
 use probe_rs::debug::SourceLocation;
+use probe_rs::debug::SteppingMode;
 use probe_rs::debug::{VariableCache, VariableName};
 use probe_rs::{debug::ColumnType, CoreStatus, HaltReason, MemoryInterface};
 use probe_rs_cli_util::rtt;
@@ -1566,20 +1567,22 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         }
     }
 
-    /// Steps at 'instruction' granularity ONLY.
+    /// Steps through the code at the requested granularity.
+    /// - Instruction: If MS DAP [SteppingGranularity::Instruction] (usually sent from the disassembly view)
+    /// - Statement: In all other cases.
     pub(crate) fn next(&mut self, core_data: &mut CoreData, request: Request) -> Result<()> {
-        // TODO: Implement 'statement' granularity, then update DAP `Capabilities` and read `NextArguments`.
-        // let args: NextArguments = get_arguments(&request)?;
+        let arguments: NextArguments = get_arguments(&request)?;
 
-        match core_data.target_core.step() {
-            Ok(cpu_info) => {
-                let new_status = match core_data.target_core.status() {
-                    Ok(new_status) => new_status,
-                    Err(error) => {
-                        self.send_response::<()>(request, Err(DebuggerError::ProbeRs(error)))?;
-                        return Err(anyhow!("Failed to retrieve core status"));
-                    }
-                };
+        let stepping_granularity = match arguments.granularity {
+            Some(stepping_granularity) => match stepping_granularity {
+                SteppingGranularity::Instruction => SteppingMode::StepInstruction,
+                _ => SteppingMode::OverStatement,
+            },
+            None => SteppingMode::OverStatement,
+        };
+
+        match stepping_granularity.step(&mut core_data.target_core) {
+            Ok((new_status, program_counter)) => {
                 self.last_known_status = new_status;
                 self.send_response::<()>(request, Ok(None))?;
                 let event_body = Some(StoppedEventBody {
@@ -1587,7 +1590,85 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                     description: Some(format!(
                         "{} at address {:#010x}",
                         new_status.short_long_status().1,
-                        cpu_info.pc
+                        program_counter
+                    )),
+                    thread_id: Some(core_data.target_core.id() as i64),
+                    preserve_focus_hint: None,
+                    text: None,
+                    all_threads_stopped: Some(false), // TODO: Implement multi-core logic here
+                    hit_breakpoint_ids: None,
+                });
+                self.send_event("stopped", event_body)
+            }
+            Err(error) => {
+                self.send_response::<()>(request, Err(DebuggerError::Other(anyhow!("{}", error))))
+            }
+        }
+    }
+
+    /// Steps through the code at the requested granularity.
+    /// - Instruction: If MS DAP [SteppingGranularity::Instruction] (usually sent from the disassembly view)
+    /// - Statement: In all other cases.
+    pub(crate) fn step_in(&mut self, core_data: &mut CoreData, request: Request) -> Result<()> {
+        let arguments: StepInArguments = get_arguments(&request)?;
+
+        let stepping_granularity = match arguments.granularity {
+            Some(stepping_granularity) => match stepping_granularity {
+                SteppingGranularity::Instruction => SteppingMode::StepInstruction,
+                _ => SteppingMode::OverStatement,
+            },
+            None => SteppingMode::OverStatement,
+        };
+
+        match stepping_granularity.step(&mut core_data.target_core) {
+            Ok((new_status, program_counter)) => {
+                self.last_known_status = new_status;
+                self.send_response::<()>(request, Ok(None))?;
+                let event_body = Some(StoppedEventBody {
+                    reason: "step".to_owned(),
+                    description: Some(format!(
+                        "{} at address {:#010x}",
+                        new_status.short_long_status().1,
+                        program_counter
+                    )),
+                    thread_id: Some(core_data.target_core.id() as i64),
+                    preserve_focus_hint: None,
+                    text: None,
+                    all_threads_stopped: Some(false), // TODO: Implement multi-core logic here
+                    hit_breakpoint_ids: None,
+                });
+                self.send_event("stopped", event_body)
+            }
+            Err(error) => {
+                self.send_response::<()>(request, Err(DebuggerError::Other(anyhow!("{}", error))))
+            }
+        }
+    }
+
+    /// Steps through the code at the requested granularity.
+    /// - Instruction: If MS DAP [SteppingGranularity::Instruction] (usually sent from the disassembly view)
+    /// - Statement: In all other cases.
+    pub(crate) fn step_out(&mut self, core_data: &mut CoreData, request: Request) -> Result<()> {
+        let arguments: StepOutArguments = get_arguments(&request)?;
+
+        let stepping_granularity = match arguments.granularity {
+            Some(stepping_granularity) => match stepping_granularity {
+                SteppingGranularity::Instruction => SteppingMode::StepInstruction,
+                _ => SteppingMode::OverStatement,
+            },
+            None => SteppingMode::OverStatement,
+        };
+
+        match stepping_granularity.step(&mut core_data.target_core) {
+            Ok((new_status, program_counter)) => {
+                self.last_known_status = new_status;
+                self.send_response::<()>(request, Ok(None))?;
+                let event_body = Some(StoppedEventBody {
+                    reason: "step".to_owned(),
+                    description: Some(format!(
+                        "{} at address {:#010x}",
+                        new_status.short_long_status().1,
+                        program_counter
                     )),
                     thread_id: Some(core_data.target_core.id() as i64),
                     preserve_focus_hint: None,

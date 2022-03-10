@@ -11,7 +11,7 @@ mod variable;
 
 use crate::{
     core::{Core, RegisterFile},
-    MemoryInterface,
+    CoreStatus, MemoryInterface,
 };
 use num_traits::Zero;
 use probe_rs_target::Architecture;
@@ -1499,6 +1499,46 @@ impl DebugInfo {
         let directory = combined_path.parent().map(|p| p.to_path_buf());
 
         Some((file_name, directory))
+    }
+}
+
+/// Stepping granularity for stepping through a program during debug.
+/// Implementation Notes for stepping at statement granularity:
+/// - If a hardware breakpoint is available, we will set it at the desired location, run to it, and release it.
+/// - If no hardware breakpoints are available, we will do repeated instruction steps until we reach the desired location.
+///
+/// Usage Note:
+/// - Currently, no special provision is made for the effect of interrupts.
+pub enum SteppingMode {
+    /// Advance one machine instruction at a time.
+    StepInstruction,
+    /// Step Over the current statement, and halt at the start of the next statement.
+    OverStatement,
+    /// Step to the beginning of the first available statement in the code called by this statement.
+    /// If this statement doesn't contain a call to other subprograms, then it behaves as if it was a `OverStatement.
+    IntoStatement,
+    /// Step to the calling statement, immediately after the current statement.
+    OutOfStatement,
+}
+
+impl SteppingMode {
+    /// Determine the program counter location where the SteppingMode is aimed, and step to it.
+    /// Return the new CoreStatus and program_counter value.
+    pub fn step(&self, core: &mut Core<'_>) -> Result<(CoreStatus, u32), DebugError> {
+        // match self {
+        //     SteppingMode::StepInstruction => {
+        let program_counter = core
+            .step()
+            .map_err(|error| DebugError::Other(anyhow::anyhow!(error)))?;
+        let core_status = core
+            .status()
+            .map_err(|error| DebugError::Other(anyhow::anyhow!(error)))?;
+        Ok((core_status, program_counter.pc))
+        //     }
+        //     SteppingMode::OverStatement => todo!(),
+        //     SteppingMode::IntoStatement => todo!(),
+        //     SteppingMode::OutOfStatement => todo!(),
+        // }
     }
 }
 
