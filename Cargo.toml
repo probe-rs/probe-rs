@@ -8,7 +8,7 @@ license = "MIT OR Apache-2.0"
 name = "probe-run"
 readme = "README.md"
 repository = "https://github.com/knurling-rs/probe-run"
-version = "0.3.1"
+version = "0.3.2"
 
 [dependencies]
 addr2line = { version = "0.17", default-features = false, features = [
@@ -19,8 +19,7 @@ addr2line = { version = "0.17", default-features = false, features = [
 ] }
 anyhow = "1"
 colored = "2"
-defmt-decoder = { version = "=0.3.1", git = "https://github.com/knurling-rs/defmt", branch = "main", features = ["unstable"] }
-#   remove git version before release ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+defmt-decoder = { version = "=0.3.2", branch = "main", features = ["unstable"] }
 gimli = { version = "0.26", default-features = false }
 git-version = "0.3"
 log = "0.4"
