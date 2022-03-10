@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/) and this p
 
 ## [Unreleased]
 
+## [v0.3.2] - 2022-03-10
+
 - [#303] Don't bail, but only warn if using `--no-flash` with `defmt`
 - [#302] Make stack painting fast again! 🇪🇺
 - [#301] Add way to pass chip description file
@@ -26,10 +28,10 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/) and this p
 
 # [v0.3.1] - 2021-11-26
 
-- [#287]: unwind: skip FDEs with initial address of 0 
+- [#287]: unwind: skip FDEs with initial address of 0
 - [#286]: Update dependencies
 - [#285]: Update `probe-rs` and `probe-rs-rtt` to `0.12`
-- [#282]: Include program counter value in backtrace when -v is passed 
+- [#282]: Include program counter value in backtrace when -v is passed
 - [#281]: Report flashing size using probe-rs's FlashProgress system
 - [#280]: Turn symbol demangling back on
 
@@ -369,7 +371,8 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/) and this p
 
 Initial release
 
-[Unreleased]: https://github.com/knurling-rs/probe-run/compare/v0.3.1...main
+[Unreleased]: https://github.com/knurling-rs/probe-run/compare/v0.3.2...main
+[v0.3.2]: https://github.com/knurling-rs/probe-run/compare/v0.3.1...v0.3.2
 [v0.3.1]: https://github.com/knurling-rs/probe-run/compare/v0.3.0...v0.3.1
 [v0.3.0]: https://github.com/knurling-rs/probe-run/compare/v0.2.5...v0.3.0
 [v0.2.4]: https://github.com/knurling-rs/probe-run/compare/v0.2.4...v0.2.5

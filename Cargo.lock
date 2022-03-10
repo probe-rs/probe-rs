@@ -200,8 +200,9 @@ dependencies = [
 
 [[package]]
 name = "defmt-decoder"
-version = "0.3.1"
-source = "git+https://github.com/knurling-rs/defmt?branch=main#b396257be01f477eda2ac16f7e62dece31749963"
+version = "0.3.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f619a4bf5d95e044c1746bafd0552cd1de7b041dc361d506cfa6d9831f47c8b6"
 dependencies = [
  "anyhow",
  "byteorder",
@@ -221,7 +222,8 @@ dependencies = [
 [[package]]
 name = "defmt-json-schema"
 version = "0.1.0"
-source = "git+https://github.com/knurling-rs/defmt?branch=main#b396257be01f477eda2ac16f7e62dece31749963"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "96b04d228e57a61cf385d86bc8980bb41b47c6fc0eace90592668df97b2dad6a"
 dependencies = [
  "log",
  "serde",
@@ -229,8 +231,9 @@ dependencies = [
 
 [[package]]
 name = "defmt-parser"
-version = "0.3.0"
-source = "git+https://github.com/knurling-rs/defmt?branch=main#b396257be01f477eda2ac16f7e62dece31749963"
+version = "0.3.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0db23d29972d99baa3de2ee2ae3f104c10564a6d05a346eb3f4c4f2c0525a06e"
 
 [[package]]
 name = "diff"
@@ -697,7 +700,7 @@ dependencies = [
 
 [[package]]
 name = "probe-run"
-version = "0.3.1"
+version = "0.3.2"
 dependencies = [
  "addr2line",
  "anyhow",
