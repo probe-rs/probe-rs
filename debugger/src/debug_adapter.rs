@@ -1213,7 +1213,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                             column: None,
                             end_column: None,
                             end_line: None,
-                            instruction: format!("<instruction address not readable>"),
+                            instruction: "<instruction address not readable>".to_string(),
                             instruction_bytes: None,
                             line: None,
                             location: None,
