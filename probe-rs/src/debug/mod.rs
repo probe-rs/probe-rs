@@ -1,3 +1,5 @@
+#![warn(missing_docs)]
+
 //! Debugging support for probe-rs
 //!
 //! The `debug` module contains various debug functionality, which can be
@@ -36,28 +38,41 @@ use object::read::{Object, ObjectSection};
 
 use self::variable::{VariableNodeType, VariableValue};
 
+/// An error occurred while debugging the target.
 #[derive(Debug, thiserror::Error)]
 pub enum DebugError {
+    /// An IO error occurred when accessing debug data.
     #[error("IO Error while accessing debug data")]
     Io(#[from] io::Error),
+    /// An error occurred while accessing debug data.
     #[error("Error accessing debug data")]
     DebugData(#[from] object::read::Error),
+    /// Something failed while parsing debug data.
     #[error("Error parsing debug data")]
     Parse(#[from] gimli::read::Error),
+    /// Non-UTF8 data was found in the debug data.
     #[error("Non-UTF8 data found in debug data")]
     NonUtf8(#[from] Utf8Error),
+    /// A probe-rs error occurred.
     #[error("Error using the probe")]
     Probe(#[from] crate::Error),
+    /// A char could not be created from the given string.
     #[error(transparent)]
     CharConversion(#[from] std::char::CharTryFromError),
+    /// An int could not be created from the given string.
     #[error(transparent)]
     IntConversion(#[from] std::num::TryFromIntError),
+    /// Some other error occurred.
     #[error(transparent)]
     Other(#[from] anyhow::Error),
 }
+
+/// A copy of [`gimli::ColumnType`] which uses [`u64`] instead of [`NonZeroU64`].
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum ColumnType {
+    /// The `LeftEdge` means that the statement begins at the start of the new line.
     LeftEdge,
+    /// A column number, whose range begins at 1.
     Column(u64),
 }
 
@@ -75,11 +90,16 @@ pub fn get_sequential_key() -> i64 {
     CACHE_KEY.fetch_add(1, Ordering::SeqCst)
 }
 
+/// A full stack frame with all its information contained.
 #[derive(Debug)]
 pub struct StackFrame {
+    /// The stackframe ID.
     pub id: i64,
+    /// The name of the function this stackframe belongs to.
     pub function_name: String,
+    /// The source location the function this stackframe belongs to originates.
     pub source_location: Option<SourceLocation>,
+    /// The current register state represented in this stackframe.
     pub registers: Registers,
     /// The program counter / address of the current instruction when this stack frame was created
     pub pc: u32,
@@ -119,6 +139,7 @@ impl std::fmt::Display for StackFrame {
     }
 }
 
+/// All the register information currently available.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Registers {
     register_description: &'static RegisterFile,
@@ -179,12 +200,15 @@ impl Registers {
     }
 
     // TODO: FIX Riscv .... PC is a separate register, and NOT r1 (which is the return address)
+    /// Get the program counter.
     pub fn get_program_counter(&self) -> Option<u32> {
         match self.architecture {
             Architecture::Arm => self.values.get(&15).copied(),
             Architecture::Riscv => self.values.get(&1).copied(),
         }
     }
+
+    /// Set the program counter.
     pub fn set_program_counter(&mut self, value: Option<u32>) {
         let register_address = match self.architecture {
             Architecture::Arm => 15,
@@ -198,12 +222,15 @@ impl Registers {
         }
     }
 
+    /// Get the stack pointer.
     pub fn get_stack_pointer(&self) -> Option<u32> {
         match self.architecture {
             Architecture::Arm => self.values.get(&13).copied(),
             Architecture::Riscv => self.values.get(&2).copied(),
         }
     }
+
+    /// Set the stack pointer.
     pub fn set_stack_pointer(&mut self, value: Option<u32>) {
         let register_address = match self.architecture {
             Architecture::Arm => 13,
@@ -217,12 +244,15 @@ impl Registers {
         }
     }
 
+    /// Get the return address.
     pub fn get_return_address(&self) -> Option<u32> {
         match self.architecture {
             Architecture::Arm => self.values.get(&14).copied(),
             Architecture::Riscv => self.values.get(&1).copied(),
         }
     }
+
+    /// Set the return address.
     pub fn set_return_address(&mut self, value: Option<u32>) {
         let register_address = match self.architecture {
             Architecture::Arm => 14,
@@ -236,6 +266,7 @@ impl Registers {
         }
     }
 
+    /// Get the value using the dwarf register number as an index.
     pub fn get_value_by_dwarf_register_number(&self, register_number: u32) -> Option<u32> {
         self.values.get(&register_number).copied()
     }
@@ -247,6 +278,7 @@ impl Registers {
             .map(|platform_register| platform_register.name().to_string())
     }
 
+    /// Set the value using the dwarf register number as an index.
     pub fn set_by_dwarf_register_number(&mut self, register_number: u32, value: Option<u32>) {
         if let Some(value) = value {
             self.values.insert(register_number, value);
@@ -255,17 +287,22 @@ impl Registers {
         }
     }
 
+    /// Returns an iterator over all register numbers and their values.
     pub fn registers(&self) -> impl Iterator<Item = (&u32, &u32)> {
         self.values.iter()
     }
 }
 
+/// A specific location in source code.
 #[derive(Clone, Debug, PartialEq)]
 pub struct SourceLocation {
+    /// The line number in the source file with zero based indexing.
     pub line: Option<u64>,
+    /// The column number in the source file with zero based indexing.
     pub column: Option<ColumnType>,
-
+    /// The file name of the source file.
     pub file: Option<String>,
+    /// The directory of the source file.
     pub directory: Option<PathBuf>,
     /// The address of the first instruction associated with the source code
     pub low_pc: Option<u32>,
@@ -343,11 +380,6 @@ impl DebugInfo {
             // TODO: Currently `instruction_size` (minimum instruction size in bytes) is hardcoded. Investigate if we can and/or should use code to set it based on architecture differences.
             instruction_size: 2,
         })
-    }
-
-    // Get a reference to the private member `dwarf`
-    pub fn get_dwarf(&self) -> &gimli::Dwarf<DwarfReader> {
-        &self.dwarf
     }
 
     /// Get the name of the function at the given address.

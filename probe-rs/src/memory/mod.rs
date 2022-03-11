@@ -14,6 +14,7 @@ use crate::{
 use anyhow::anyhow;
 use anyhow::Result;
 
+/// An interface to be implemented for drivers that allow target memory access.
 pub trait MemoryInterface {
     /// Read a 32bit word of at `address`.
     ///
@@ -118,20 +119,20 @@ where
         (*self).read_8(address, data)
     }
 
-    fn write_word_32(&mut self, addr: u32, data: u32) -> Result<(), error::Error> {
-        (*self).write_word_32(addr, data)
+    fn write_word_32(&mut self, address: u32, data: u32) -> Result<(), error::Error> {
+        (*self).write_word_32(address, data)
     }
 
-    fn write_word_8(&mut self, addr: u32, data: u8) -> Result<(), error::Error> {
-        (*self).write_word_8(addr, data)
+    fn write_word_8(&mut self, address: u32, data: u8) -> Result<(), error::Error> {
+        (*self).write_word_8(address, data)
     }
 
-    fn write_32(&mut self, addr: u32, data: &[u32]) -> Result<(), error::Error> {
-        (*self).write_32(addr, data)
+    fn write_32(&mut self, address: u32, data: &[u32]) -> Result<(), error::Error> {
+        (*self).write_32(address, data)
     }
 
-    fn write_8(&mut self, addr: u32, data: &[u8]) -> Result<(), error::Error> {
-        (*self).write_8(addr, data)
+    fn write_8(&mut self, address: u32, data: &[u8]) -> Result<(), error::Error> {
+        (*self).write_8(address, data)
     }
 
     fn flush(&mut self) -> Result<(), error::Error> {
@@ -139,12 +140,14 @@ where
     }
 }
 
+/// A struct to allow memory access via an ARM probe.
 pub struct Memory<'probe> {
     inner: Box<dyn ArmProbe + 'probe>,
     ap_sel: MemoryAp,
 }
 
 impl<'probe> Memory<'probe> {
+    /// Constructs a new [`Memory`] handle with a ARM probe and a memory AP.
     pub fn new(memory: impl ArmProbe + 'probe + Sized, ap_sel: MemoryAp) -> Memory<'probe> {
         Self {
             inner: Box::new(memory),
@@ -152,6 +155,7 @@ impl<'probe> Memory<'probe> {
         }
     }
 
+    /// Reads a 32 bit word from `address`.
     pub fn read_word_32(&mut self, address: u32) -> Result<u32, error::Error> {
         let mut buff = [0];
         self.inner.read_32(self.ap_sel, address, &mut buff)?;
@@ -159,6 +163,7 @@ impl<'probe> Memory<'probe> {
         Ok(buff[0])
     }
 
+    /// Reads an 8 bit word from `address`.
     pub fn read_word_8(&mut self, address: u32) -> Result<u8, error::Error> {
         let mut buff = [0];
         self.inner.read_8(self.ap_sel, address, &mut buff)?;
@@ -166,56 +171,70 @@ impl<'probe> Memory<'probe> {
         Ok(buff[0])
     }
 
+    /// Reads `data.len()` 32 bit words from `address` into `data`.
     pub fn read_32(&mut self, address: u32, data: &mut [u32]) -> Result<(), error::Error> {
         self.inner.read_32(self.ap_sel, address, data)
     }
 
+    /// Reads `data.len()` 8 bit words from `address` into `data`.
     pub fn read_8(&mut self, address: u32, data: &mut [u8]) -> Result<(), error::Error> {
         self.inner.read_8(self.ap_sel, address, data)
     }
 
-    pub fn write_word_32(&mut self, addr: u32, data: u32) -> Result<(), error::Error> {
-        self.inner.write_32(self.ap_sel, addr, &[data])
+    /// Writes a 32 bit word to `address`.
+    pub fn write_word_32(&mut self, address: u32, data: u32) -> Result<(), error::Error> {
+        self.inner.write_32(self.ap_sel, address, &[data])
     }
 
-    pub fn write_word_8(&mut self, addr: u32, data: u8) -> Result<(), error::Error> {
-        self.inner.write_8(self.ap_sel, addr, &[data])
+    /// Writes a 8 bit word to `address`.
+    pub fn write_word_8(&mut self, address: u32, data: u8) -> Result<(), error::Error> {
+        self.inner.write_8(self.ap_sel, address, &[data])
     }
 
-    pub fn write_32(&mut self, addr: u32, data: &[u32]) -> Result<(), error::Error> {
-        self.inner.write_32(self.ap_sel, addr, data)
+    /// Writes `data.len()` 32 bit words from `data` to `address`.
+    pub fn write_32(&mut self, address: u32, data: &[u32]) -> Result<(), error::Error> {
+        self.inner.write_32(self.ap_sel, address, data)
     }
 
-    pub fn write_8(&mut self, addr: u32, data: &[u8]) -> Result<(), error::Error> {
-        self.inner.write_8(self.ap_sel, addr, data)
+    /// Writes `data.len()` 8 bit words from `data` to `address`.
+    pub fn write_8(&mut self, address: u32, data: &[u8]) -> Result<(), error::Error> {
+        self.inner.write_8(self.ap_sel, address, data)
     }
 
+    /// Flushes all pending writes to the target.
+    ///
+    /// This method is necessary when the underlying probe driver implements batching.
     pub fn flush(&mut self) -> Result<(), error::Error> {
         self.inner.flush()
     }
 
-    pub fn read_core_reg(&mut self, addr: CoreRegisterAddress) -> Result<u32, error::Error> {
-        self.inner.read_core_reg(self.ap_sel, addr)
+    /// Reads the core register at `address`.
+    pub fn read_core_reg(&mut self, address: CoreRegisterAddress) -> Result<u32, error::Error> {
+        self.inner.read_core_reg(self.ap_sel, address)
     }
 
+    /// Writes `value` to the core register at `address`.
     pub fn write_core_reg(
         &mut self,
-        addr: CoreRegisterAddress,
+        address: CoreRegisterAddress,
         value: u32,
     ) -> Result<(), error::Error> {
-        self.inner.write_core_reg(self.ap_sel, addr, value)
+        self.inner.write_core_reg(self.ap_sel, address, value)
     }
 
+    /// Tries to borrow the underlying [`ArmCommunicationInterface`].
     pub fn get_arm_interface(
         &mut self,
     ) -> Result<&mut ArmCommunicationInterface<Initialized>, error::Error> {
         self.inner.get_arm_communication_interface()
     }
 
+    /// Borrows the underlying [`ArmProbe`] driver.
     pub fn get_arm_probe(&mut self) -> &mut dyn ArmProbe {
         self.inner.as_mut()
     }
 
+    /// Returns the underlying [`ApAddress`].
     pub fn get_ap(&mut self) -> ApAddress {
         self.ap_sel.ap_address()
     }
