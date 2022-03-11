@@ -15,7 +15,7 @@ use anyhow::Result;
 use bitfield::bitfield;
 
 use super::cortex_m::Mvfr0;
-use super::{CortexMState, Dfsr, CORTEX_M_COMMON_REGS, CORTEX_M_WITH_FP_REGS, ArmError};
+use super::{ArmError, CortexMState, Dfsr, CORTEX_M_COMMON_REGS, CORTEX_M_WITH_FP_REGS};
 use std::sync::Arc;
 use std::{
     mem::size_of,
