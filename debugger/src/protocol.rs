@@ -355,11 +355,13 @@ impl<R: Read, W: Write> ProtocolAdapter for DapAdapter<R, W> {
                 &resp
                     .clone()
                     .message
-                    .unwrap_or("<empty message>".to_string()),
+                    .unwrap_or_else(|| "<empty message>".to_string()),
             );
             self.show_message(
                 MessageSeverity::Error,
-                &resp.message.unwrap_or("<empty message>".to_string()),
+                &resp
+                    .message
+                    .unwrap_or_else(|| "<empty message>".to_string()),
             );
         } else {
             match self.console_log_level {
@@ -398,6 +400,7 @@ fn get_content_len(header: &str) -> Option<usize> {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used)]
 mod test {
     use std::io::{self, ErrorKind, Read};
 
@@ -422,7 +425,6 @@ mod test {
         }
     }
 
-    #[allow(clippy::unwrap_used)]
     #[test]
     fn receive_valid_request() {
         let content = "{ \"seq\": 3, \"type\": \"request\", \"command\": \"test\" }";
@@ -444,7 +446,6 @@ mod test {
     }
 
     #[test]
-    #[allow(clippy::unwrap_used)]
     fn receive_request_with_wrong_content_length() {
         let content = "{ \"seq\": 3, \"type\": \"request\", \"command\": \"test\" }";
 
@@ -462,7 +463,6 @@ mod test {
     }
 
     #[test]
-    #[allow(clippy::unwrap_used)]
     fn receive_request_with_invalid_json() {
         let content = "{ \"seq\": 3, \"type\": \"request\", \"command\": \"test }";
 
@@ -480,7 +480,6 @@ mod test {
     }
 
     #[test]
-    #[allow(clippy::unwrap_used)]
     fn receive_request_would_block() {
         let input = TestReader {
             response: Some(io::Result::Err(io::Error::new(
@@ -503,7 +502,6 @@ mod test {
     }
 
     #[test]
-    #[allow(clippy::unwrap_used)]
     fn parse_valid_header() {
         let header = "Content-Length: 234\r\n";
 

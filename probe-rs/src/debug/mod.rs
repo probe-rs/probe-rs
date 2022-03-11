@@ -4,7 +4,7 @@
 //! used to implement a debugger based on `probe-rs`.
 
 // Bad things happen to the VSCode debug extenison and debug_adapter if we panic at the wrong time.
-#![deny(clippy::unwrap_used, clippy::panic, clippy::expect_used)]
+#![warn(clippy::unwrap_used, clippy::panic, clippy::expect_used)]
 #![allow(clippy::or_fun_call)]
 
 mod variable;
@@ -290,6 +290,7 @@ pub struct DebugInfo {
     frame_section: gimli::DebugFrame<DwarfReader>,
     locations_section: gimli::LocationLists<DwarfReader>,
     address_section: gimli::DebugAddr<DwarfReader>,
+    /// The minimum instruction size in bytes.
     instruction_size: u8,
 }
 
@@ -339,8 +340,7 @@ impl DebugInfo {
             frame_section,
             locations_section,
             address_section,
-            // The minimum instruction size in bytes.
-            // TODO: Do this programatically, based on architecture.
+            // TODO: Currently `instruction_size` (minimum instruction size in bytes) is hardcoded. Investigate if we can and/or should use code to set it based on architecture differences.
             instruction_size: 2,
         })
     }
@@ -843,8 +843,9 @@ impl DebugInfo {
             }
 
             // Handle last function, which contains no further inlined functions
+            //UNWRAP: Checked at beginning of loop, functions must contain at least one value
             #[allow(clippy::unwrap_used)]
-            let last_function = functions.last().unwrap(); //UNWRAP: Checked at beginning of loop, functions must contain at least one value
+            let last_function = functions.last().unwrap();
 
             let function_name = last_function
                 .function_name()

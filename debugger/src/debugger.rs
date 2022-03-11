@@ -328,30 +328,6 @@ impl DebugSession {
             permissions = permissions.allow_erase_all();
         }
 
-        // Create an instance of the [`capstone::Capstone`] for disassembly capabilities.
-        let capstone = if target_probe.has_arm_interface() {
-            Capstone::new()
-                .arm()
-                .mode(armArchMode::Thumb)
-                .endian(Endian::Little)
-                .detail(true)
-                .build()
-                .map_err(|err| anyhow!("Error creating Capstone disassembler: {:?}", err))?
-        } else if target_probe.has_riscv_interface() {
-            Capstone::new()
-                .riscv()
-                .mode(riscvArchMode::RiscV32)
-                .endian(Endian::Little)
-                .detail(true)
-                .build()
-                .map_err(|err| anyhow!("Error creating Capstone disassembler: {:?}", err))?
-        } else {
-            return Err(DebuggerError::Other(anyhow!(
-                "Encountered an unsupported probe architecture on probe: {:?}",
-                target_probe.get_name()
-            )));
-        };
-
         // Attach to the probe.
         let target_session = if debugger_options.connect_under_reset {
             target_probe.attach_under_reset(target_selector, permissions)?
@@ -364,6 +340,22 @@ impl DebugSession {
                         err
                     )
                 })?
+        };
+
+        // Create an instance of the [`capstone::Capstone`] for disassembly capabilities.
+        let capstone = match target_session.architecture() {
+            probe_rs::Architecture::Arm =>  Capstone::new()
+                .arm()
+                .mode(armArchMode::Thumb)
+                .endian(Endian::Little)
+                .build()
+                .map_err(|err| anyhow!("Error creating Capstone disassembler: {:?}", err))?,
+            probe_rs::Architecture::Riscv => Capstone::new()
+                .riscv()
+                .mode(riscvArchMode::RiscV32)
+                .endian(Endian::Little)
+                .build()
+                .map_err(|err| anyhow!("Error creating Capstone disassembler: {:?}", err))?,
         };
 
         // Change the current working directory if `debugger_options.cwd` is `Some(T)`.
@@ -392,26 +384,28 @@ impl DebugSession {
         ];
 
         // Configure the [VariableCache].
-        let mut stack_frames = vec![];
-        for (core_id, core_type) in target_session.list_cores() {
-            log::debug!(
-                "Preparing stack frame variable cache for DebugSession and CoreData for core #{} of type: {:?}",
-                core_id,
-                core_type
-            );
-            stack_frames.push(Vec::<probe_rs::debug::StackFrame>::new());
-        }
+        let stack_frames = target_session.list_cores()
+            .iter()    
+            .map(|(core_id, core_type)| {
+                log::debug!(
+                    "Preparing stack frame variable cache for DebugSession and CoreData for core #{} of type: {:?}",
+                    core_id,
+                    core_type
+                );
+                Vec::<probe_rs::debug::StackFrame>::new()
+            }).collect();
 
         // Prepare the breakpoint cache
-        let mut breakpoints = vec![];
-        for (core_id, core_type) in target_session.list_cores() {
-            log::debug!(
-                "Preparing breakpoint cache for DebugSession and CoreData for core #{} of type: {:?}",
-                core_id,
-                core_type
-            );
-            breakpoints.push(Vec::<ActiveBreakpoint>::new());
-        }
+        let breakpoints = target_session.list_cores()
+            .iter()    
+            .map(|(core_id, core_type)| {
+                log::debug!(
+                    "Preparing breakpoint cache for DebugSession and CoreData for core #{} of type: {:?}",
+                    core_id,
+                    core_type
+                );
+                Vec::<ActiveBreakpoint>::new()
+            }).collect();
 
         Ok(DebugSession {
             session: target_session,
@@ -614,16 +608,16 @@ impl<'p> CoreData<'p> {
         self.target_core
             .clear_hw_breakpoint(address)
             .map_err(DebuggerError::ProbeRs)?;
-        let mut breakpoint_position: i8 = -1;
+        let mut breakpoint_position: Option<usize> = None;
         for (position, active_breakpoint) in self.breakpoints.iter().enumerate() {
             if active_breakpoint.breakpoint_address == address {
-                breakpoint_position = position as i8;
+                breakpoint_position = Some(position);
                 break;
             }
         }
-        if breakpoint_position >= 0 {
+        if let Some(breakpoint_position) = breakpoint_position {
             self.breakpoints.remove(breakpoint_position as usize);
-        }
+        } 
         Ok(())
     }
 
