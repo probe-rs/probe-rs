@@ -477,10 +477,11 @@ fn main_try() -> Result<()> {
         gdb_thread_handle = Some(std::thread::spawn(move || {
             let gdb_connection_string = gdb_connection_string.as_deref().or(Some("127.0.0.1:1337"));
             // This next unwrap will always resolve as the connection string is always Some(T).
-            log::info!(
-                "Firing up GDB stub at {}.",
+            logging::println(format!(
+                "    {} listening at {}",
+                "GDB stub".green().bold(),
                 gdb_connection_string.as_ref().unwrap(),
-            );
+            ));
             if let Err(e) = probe_rs_gdb_server::run(gdb_connection_string, &session) {
                 logging::eprintln("During the execution of GDB an error was encountered:");
                 logging::eprintln(format!("{:?}", e));
