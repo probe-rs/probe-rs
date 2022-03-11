@@ -7,7 +7,6 @@
 
 // Bad things happen to the VSCode debug extenison and debug_adapter if we panic at the wrong time.
 #![warn(clippy::unwrap_used, clippy::panic, clippy::expect_used)]
-#![allow(clippy::or_fun_call)]
 
 mod variable;
 
@@ -86,6 +85,7 @@ impl From<gimli::ColumnType> for ColumnType {
 }
 
 static CACHE_KEY: AtomicI64 = AtomicI64::new(1);
+/// Generate a unique key that can be used to assign id's to StackFrame and Variable structs.
 pub fn get_sequential_key() -> i64 {
     CACHE_KEY.fetch_add(1, Ordering::SeqCst)
 }
@@ -1513,6 +1513,7 @@ impl DebugInfo {
         Some(combined_path)
     }
 
+    /// The minimum instruction size in bytes.
     pub fn get_instruction_size(&self) -> u8 {
         self.instruction_size
     }
