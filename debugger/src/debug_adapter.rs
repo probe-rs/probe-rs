@@ -1568,8 +1568,8 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
     }
 
     /// Steps through the code at the requested granularity.
-    /// - Instruction: If MS DAP [SteppingGranularity::Instruction] (usually sent from the disassembly view)
-    /// - Statement: In all other cases.
+    /// - [SteppingMode::StepInstruction]: If MS DAP [SteppingGranularity::Instruction] (usually sent from the disassembly view)
+    /// - [SteppingMode::OverStatement]: In all other cases.
     pub(crate) fn next(&mut self, core_data: &mut CoreData, request: Request) -> Result<()> {
         let arguments: NextArguments = get_arguments(&request)?;
 
@@ -1581,85 +1581,50 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             None => SteppingMode::OverStatement,
         };
 
-        match stepping_granularity.step(&mut core_data.target_core) {
-            Ok((new_status, program_counter)) => {
-                self.last_known_status = new_status;
-                self.send_response::<()>(request, Ok(None))?;
-                let event_body = Some(StoppedEventBody {
-                    reason: "step".to_owned(),
-                    description: Some(format!(
-                        "{} at address {:#010x}",
-                        new_status.short_long_status().1,
-                        program_counter
-                    )),
-                    thread_id: Some(core_data.target_core.id() as i64),
-                    preserve_focus_hint: None,
-                    text: None,
-                    all_threads_stopped: Some(false), // TODO: Implement multi-core logic here
-                    hit_breakpoint_ids: None,
-                });
-                self.send_event("stopped", event_body)
-            }
-            Err(error) => {
-                self.send_response::<()>(request, Err(DebuggerError::Other(anyhow!("{}", error))))
-            }
-        }
+        self.debug_step(stepping_granularity, core_data, request)
     }
 
     /// Steps through the code at the requested granularity.
-    /// - Instruction: If MS DAP [SteppingGranularity::Instruction] (usually sent from the disassembly view)
-    /// - Statement: In all other cases.
+    /// - [SteppingMode::StepInstruction]: If MS DAP [SteppingGranularity::Instruction] (usually sent from the disassembly view)
+    /// - [SteppingMode::IntoStatement]: In all other cases.
     pub(crate) fn step_in(&mut self, core_data: &mut CoreData, request: Request) -> Result<()> {
         let arguments: StepInArguments = get_arguments(&request)?;
 
         let stepping_granularity = match arguments.granularity {
             Some(stepping_granularity) => match stepping_granularity {
                 SteppingGranularity::Instruction => SteppingMode::StepInstruction,
-                _ => SteppingMode::OverStatement,
+                _ => SteppingMode::IntoStatement,
             },
-            None => SteppingMode::OverStatement,
+            None => SteppingMode::IntoStatement,
         };
-
-        match stepping_granularity.step(&mut core_data.target_core) {
-            Ok((new_status, program_counter)) => {
-                self.last_known_status = new_status;
-                self.send_response::<()>(request, Ok(None))?;
-                let event_body = Some(StoppedEventBody {
-                    reason: "step".to_owned(),
-                    description: Some(format!(
-                        "{} at address {:#010x}",
-                        new_status.short_long_status().1,
-                        program_counter
-                    )),
-                    thread_id: Some(core_data.target_core.id() as i64),
-                    preserve_focus_hint: None,
-                    text: None,
-                    all_threads_stopped: Some(false), // TODO: Implement multi-core logic here
-                    hit_breakpoint_ids: None,
-                });
-                self.send_event("stopped", event_body)
-            }
-            Err(error) => {
-                self.send_response::<()>(request, Err(DebuggerError::Other(anyhow!("{}", error))))
-            }
-        }
+        self.debug_step(stepping_granularity, core_data, request)
     }
 
     /// Steps through the code at the requested granularity.
-    /// - Instruction: If MS DAP [SteppingGranularity::Instruction] (usually sent from the disassembly view)
-    /// - Statement: In all other cases.
+    /// - [SteppingMode::StepInstruction]: If MS DAP [SteppingGranularity::Instruction] (usually sent from the disassembly view)
+    /// - [SteppingMode::OutOfStatement]: In all other cases.
     pub(crate) fn step_out(&mut self, core_data: &mut CoreData, request: Request) -> Result<()> {
         let arguments: StepOutArguments = get_arguments(&request)?;
 
         let stepping_granularity = match arguments.granularity {
             Some(stepping_granularity) => match stepping_granularity {
                 SteppingGranularity::Instruction => SteppingMode::StepInstruction,
-                _ => SteppingMode::OverStatement,
+                _ => SteppingMode::OutOfStatement,
             },
-            None => SteppingMode::OverStatement,
+            None => SteppingMode::OutOfStatement,
         };
 
-        match stepping_granularity.step(&mut core_data.target_core) {
+        self.debug_step(stepping_granularity, core_data, request)
+    }
+
+    /// Common code for the `next`, `step_in`, and `step_out` methods.
+    fn debug_step(
+        &mut self,
+        stepping_granularity: SteppingMode,
+        core_data: &mut CoreData,
+        request: Request,
+    ) -> Result<(), anyhow::Error> {
+        match stepping_granularity.step(&mut core_data.target_core, &core_data.debug_info) {
             Ok((new_status, program_counter)) => {
                 self.last_known_status = new_status;
                 self.send_response::<()>(request, Ok(None))?;

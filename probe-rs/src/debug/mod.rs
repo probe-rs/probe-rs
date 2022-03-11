@@ -1503,12 +1503,6 @@ impl DebugInfo {
 }
 
 /// Stepping granularity for stepping through a program during debug.
-/// Implementation Notes for stepping at statement granularity:
-/// - If a hardware breakpoint is available, we will set it at the desired location, run to it, and release it.
-/// - If no hardware breakpoints are available, we will do repeated instruction steps until we reach the desired location.
-///
-/// Usage Note:
-/// - Currently, no special provision is made for the effect of interrupts.
 pub enum SteppingMode {
     /// Advance one machine instruction at a time.
     StepInstruction,
@@ -1524,22 +1518,156 @@ pub enum SteppingMode {
 impl SteppingMode {
     /// Determine the program counter location where the SteppingMode is aimed, and step to it.
     /// Return the new CoreStatus and program_counter value.
-    pub fn step(&self, core: &mut Core<'_>) -> Result<(CoreStatus, u32), DebugError> {
-        // match self {
-        //     SteppingMode::StepInstruction => {
-        let program_counter = core
-            .step()
-            .map_err(|error| DebugError::Other(anyhow::anyhow!(error)))?;
-        let core_status = core
+    ///
+    /// Implementation Notes for stepping at statement granularity:
+    /// - If a hardware breakpoint is available, we will set it at the desired location, run to it, and release it.
+    /// - If no hardware breakpoints are available, we will do repeated instruction steps until we reach the desired location.
+    ///
+    /// Usage Note:
+    /// - Currently, no special provision is made for the effect of user defined breakpoints in interrupts that get triggered before this function completes.
+    pub fn step(
+        &self,
+        core: &mut Core<'_>,
+        debug_info: &DebugInfo,
+    ) -> Result<(CoreStatus, u32), DebugError> {
+        let mut core_status = core
             .status()
+            .map_err(|error| DebugError::Other(anyhow::anyhow!(error)))
             .map_err(|error| DebugError::Other(anyhow::anyhow!(error)))?;
-        Ok((core_status, program_counter.pc))
-        //     }
-        //     SteppingMode::OverStatement => todo!(),
-        //     SteppingMode::IntoStatement => todo!(),
-        //     SteppingMode::OutOfStatement => todo!(),
-        // }
+        let mut program_counter = match core_status {
+            CoreStatus::Halted(_) => core.read_core_reg(core.registers().program_counter())?,
+            _ => {
+                return Err(DebugError::Other(anyhow::anyhow!(
+                    "Core must be halted before stepping."
+                )))
+            }
+        };
+
+        match self {
+            SteppingMode::StepInstruction => {
+                step_instruction(&mut program_counter, core, &mut core_status)?
+            }
+            SteppingMode::OverStatement => {
+                let target_address = 0_u32;
+
+                let mut code_blocks_opened: Vec<u32> = vec![];
+                let mut active_row = None;
+                let mut next_peer_statement = None;
+                let mut next_inner_statement = None;
+                let mut active_block_closed = false;
+                let mut next_outer_statement = None;
+
+                if let Some(mut rows) = get_program_rows(debug_info, program_counter) {
+                    while let Ok(Some((_line_program_header, line_row))) = rows.next_row() {
+                        // / Iterating over the rows, we can use the fields of gimli::LineRow to determin the following:
+                        // / line_row.address()          - program_counter.
+                        // / line_row.is_stmt()          - We only care about statements or non-statements which are end of seq.
+                        // / line_row.end_sequence()     - These non-statements indicate the end of a scope.
+                        // / line_row.prologue_end()     - These statements indicate the beginning of a scope.
+
+                        if active_row.is_none() {
+                            if line_row.address() == program_counter as u64 {
+                                active_row = Some(line_row.address() as u32);
+                            }
+                        } else if line_row.is_stmt() {
+                            if next_peer_statement.is_none() {
+                                next_peer_statement = Some(line_row.address() as u32);
+                            }
+                            if next_inner_statement.is_none() {
+                                next_inner_statement = Some(line_row.address() as u32);
+                            }
+                            if active_block_closed && next_outer_statement.is_none() {
+                                next_outer_statement = Some(line_row.address() as u32);
+                            }
+                        }
+
+                        if line_row.prologue_end() {
+                            code_blocks_opened.push(line_row.address() as u32);
+                            continue;
+                        } else if line_row.end_sequence() {
+                            if active_row.is_some() {
+                                active_block_closed = true;
+                            }
+                            code_blocks_opened.pop();
+                            continue;
+                        }
+                    }
+                } else {
+                    log::warn!(
+                        "Failed to deconstruct program rows at location {:#010x}. Stepping will only be to the next machine instruction.",
+                        program_counter
+                    );
+                    step_instruction(&mut program_counter, core, &mut core_status)?;
+                    return Ok((core_status, program_counter));
+                }
+
+                // if target_address != program_counter {
+                //     log::warn!("Debug stepping halted at {:#010x} when the intention was to halt at {:010x}.", program_counter, target_address);
+                // }
+            }
+            SteppingMode::IntoStatement => todo!(),
+            SteppingMode::OutOfStatement => todo!(),
+        }
+        Ok((core_status, program_counter))
     }
+}
+
+/// A helper function to get the gimli::LineRows iterator for the current program.
+fn get_program_rows(
+    debug_info: &DebugInfo,
+    program_counter: u32,
+) -> Option<
+    gimli::LineRows<
+        gimli::EndianReader<gimli::LittleEndian, Rc<[u8]>>,
+        gimli::IncompleteLineProgram<gimli::EndianReader<gimli::LittleEndian, Rc<[u8]>>, usize>,
+        usize,
+    >,
+> {
+    // First we have to find the compile unit at the current address.
+    let mut units = debug_info.dwarf.units();
+    let mut program_unit = None;
+    'unit: while let Ok(Some(header)) = units.next() {
+        match debug_info.dwarf.unit(header) {
+            Ok(unit) => match debug_info.dwarf.unit_ranges(&unit) {
+                Ok(mut ranges) => {
+                    while let Ok(Some(range)) = ranges.next() {
+                        if (range.begin <= program_counter.into())
+                            && (range.end > program_counter.into())
+                        {
+                            program_unit = Some(unit);
+                            break 'unit;
+                        }
+                    }
+                }
+                Err(_) => continue,
+            },
+            Err(_) => continue,
+        };
+    }
+    // If we have a valid program_unit, we can access the IncompleteLineProgram and it's rows.
+    if let Some(program_unit) = program_unit.as_ref() {
+        program_unit
+            .line_program
+            .as_ref()
+            .map(|line_program| line_program.clone().rows().clone())
+    } else {
+        None
+    }
+}
+
+fn step_instruction(
+    program_counter: &mut u32,
+    core: &mut Core,
+    core_status: &mut CoreStatus,
+) -> Result<(), DebugError> {
+    *program_counter = core
+        .step()
+        .map_err(|error| DebugError::Other(anyhow::anyhow!(error)))?
+        .pc;
+    *core_status = core
+        .status()
+        .map_err(|error| DebugError::Other(anyhow::anyhow!(error)))?;
+    Ok(())
 }
 
 /// Reference to a DIE for a function
