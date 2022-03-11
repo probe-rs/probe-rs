@@ -30,7 +30,8 @@ use std::{
 };
 
 use gimli::{
-    DebuggingInformationEntry, FileEntry, LineProgramHeader, Location, UnitOffset, UnwindContext,
+    DebuggingInformationEntry, FileEntry, IncompleteLineProgram, LineProgramHeader, Location,
+    UnitOffset, UnwindContext,
 };
 use object::read::{Object, ObjectSection};
 
@@ -290,6 +291,7 @@ pub struct DebugInfo {
     frame_section: gimli::DebugFrame<DwarfReader>,
     locations_section: gimli::LocationLists<DwarfReader>,
     address_section: gimli::DebugAddr<DwarfReader>,
+    debug_line_section: gimli::DebugLine<DwarfReader>,
     instruction_size: u8,
 }
 
@@ -328,6 +330,7 @@ impl DebugInfo {
         let debug_loc = gimli::DebugLoc::load(load_section)?;
         let debug_loc_lists = gimli::DebugLocLists::load(load_section)?;
         let locations_section = gimli::LocationLists::new(debug_loc, debug_loc_lists);
+        let debug_line_section = gimli::DebugLine::load(load_section)?;
 
         // To support DWARF v2, where the address size is not encoded in the .debug_frame section,
         // we have to set the address size here.
@@ -339,6 +342,7 @@ impl DebugInfo {
             frame_section,
             locations_section,
             address_section,
+            debug_line_section,
             // The minimum instruction size in bytes.
             // TODO: Do this programatically, based on architecture.
             instruction_size: 2,
@@ -1548,50 +1552,64 @@ impl SteppingMode {
                 step_instruction(&mut program_counter, core, &mut core_status)?
             }
             SteppingMode::OverStatement => {
-                let target_address = 0_u32;
+                // let target_address = 0_u32;
 
-                let mut code_blocks_opened: Vec<u32> = vec![];
-                let mut active_row = None;
-                let mut next_peer_statement = None;
-                let mut next_inner_statement = None;
-                let mut active_block_closed = false;
-                let mut next_outer_statement = None;
+                // // Every `line_row.prologue_end()` adds the `line_row.address()` to LIFO `code_blocks_opened`.
+                // // Every `line_row.end_sequence()` removes the last entry from `code_blocks_opened`.
+                // let mut code_blocks_opened: Vec<u32> = vec![];
+
+                // // Store the `line_row.address()` that matches the `program_counter`
+                // let mut active_row = None;
+
+                // // Store the `line_row.address()` of the next `line_row.is_stmt()` inside the same code block.
+                // let mut next_peer_statement = None;
+
+                // // Store the `line_row.address` of the next instruction, irrespective of the line_row flags.
+                // // In theory, there should be a `line_row.is_stmt()` with a `line_row.prologue_end()` flag, but that is not reliable with the current DWARF's being generated.
+                // let mut next_inner_statement = None;
+
+                // // Once we have found our `active_statement`, the next `line_row.end_sequence()` signals the end of block for the `active_statement`
+                // let mut active_block_closed = false;
+
+                // // The first statement after the `active_block_closed = true`
+                // let mut next_outer_statement = None;
 
                 if let Some(mut rows) = get_program_rows(debug_info, program_counter) {
-                    while let Ok(Some((_line_program_header, line_row))) = rows.next_row() {
-                        // / Iterating over the rows, we can use the fields of gimli::LineRow to determin the following:
-                        // / line_row.address()          - program_counter.
-                        // / line_row.is_stmt()          - We only care about statements or non-statements which are end of seq.
-                        // / line_row.end_sequence()     - These non-statements indicate the end of a scope.
-                        // / line_row.prologue_end()     - These statements indicate the beginning of a scope.
+                    println!("Row programs executed successfully");
+                    // while let Ok(Some((_line_program_header, line_row))) = rows.next_row() {
+                    //     // / Iterating over the rows, we can use the fields of gimli::LineRow to determine the following:
+                    //     // / line_row.address()          - program_counter.
+                    //     // / line_row.is_stmt()          - We only care about statements or non-statements which are end of seq.
+                    //     // / line_row.end_sequence()     - These non-statements indicate the end of a scope.
+                    //     // / line_row.prologue_end()     - These statements indicate the beginning of a scope.
 
-                        if active_row.is_none() {
-                            if line_row.address() == program_counter as u64 {
-                                active_row = Some(line_row.address() as u32);
-                            }
-                        } else if line_row.is_stmt() {
-                            if next_peer_statement.is_none() {
-                                next_peer_statement = Some(line_row.address() as u32);
-                            }
-                            if next_inner_statement.is_none() {
-                                next_inner_statement = Some(line_row.address() as u32);
-                            }
-                            if active_block_closed && next_outer_statement.is_none() {
-                                next_outer_statement = Some(line_row.address() as u32);
-                            }
-                        }
+                    //     if active_row.is_none() {
+                    //         if line_row.address() == program_counter as u64 {
+                    //             active_row = Some(line_row.address() as u32);
+                    //         }
+                    //     } else if line_row.is_stmt() {
+                    //         if next_peer_statement.is_none() {
+                    //             next_peer_statement = Some(line_row.address() as u32);
+                    //         }
+                    //         if next_inner_statement.is_none() {
+                    //             next_inner_statement = Some(line_row.address() as u32);
+                    //         }
+                    //         if active_block_closed && next_outer_statement.is_none() {
+                    //             next_outer_statement = Some(line_row.address() as u32);
+                    //         }
+                    //     }
 
-                        if line_row.prologue_end() {
-                            code_blocks_opened.push(line_row.address() as u32);
-                            continue;
-                        } else if line_row.end_sequence() {
-                            if active_row.is_some() {
-                                active_block_closed = true;
-                            }
-                            code_blocks_opened.pop();
-                            continue;
-                        }
-                    }
+                    //     if line_row.prologue_end() {
+                    //         code_blocks_opened.push(line_row.address() as u32);
+                    //         continue;
+                    //     } else if line_row.end_sequence() {
+                    //         if active_row.is_some() {
+                    //             active_block_closed = true;
+                    //         }
+                    //         code_blocks_opened.pop();
+                    //         continue;
+                    //     }
+                    // }
                 } else {
                     log::warn!(
                         "Failed to deconstruct program rows at location {:#010x}. Stepping will only be to the next machine instruction.",
@@ -1613,15 +1631,16 @@ impl SteppingMode {
 }
 
 /// A helper function to get the gimli::LineRows iterator for the current program.
-fn get_program_rows(
+fn get_program_rows<'program>(
     debug_info: &DebugInfo,
     program_counter: u32,
 ) -> Option<
-    gimli::LineRows<
-        gimli::EndianReader<gimli::LittleEndian, Rc<[u8]>>,
-        gimli::IncompleteLineProgram<gimli::EndianReader<gimli::LittleEndian, Rc<[u8]>>, usize>,
-        usize,
-    >,
+    bool,
+    // gimli::LineRows<
+    //     gimli::EndianReader<gimli::LittleEndian, Rc<[u8]>>,
+    //     &gimli::CompleteLineProgram<gimli::EndianReader<gimli::LittleEndian, Rc<[u8]>>, usize>,
+    //     usize,
+    // >
 > {
     // First we have to find the compile unit at the current address.
     let mut units = debug_info.dwarf.units();
@@ -1644,12 +1663,79 @@ fn get_program_rows(
             Err(_) => continue,
         };
     }
+
+    // This code provide row information by navigating the DWARF instructions.
     // If we have a valid program_unit, we can access the IncompleteLineProgram and it's rows.
+    // if let Some(program_unit) = program_unit.as_ref() {
+    //     program_unit
+    //         .line_program
+    //         .as_ref()
+    //         .map(|line_program| line_program.clone().rows().clone())
+    // } else {
+    //     None
+    // }
+
+    // Use the gimli::read::DebugLine::program() to return the rows from the LineProgram.
     if let Some(program_unit) = program_unit.as_ref() {
-        program_unit
-            .line_program
-            .as_ref()
-            .map(|line_program| line_program.clone().rows().clone())
+        if let Some(line_program) = program_unit.line_program.clone() {
+            let offset = line_program.header().offset();
+            let address_size = line_program.header().address_size();
+            match debug_info
+                .debug_line_section
+                .program(offset, address_size, None, None)
+            {
+                Ok(incomplete_line_program) => match incomplete_line_program.sequences() {
+                    Ok((complete_line_program, line_sequences)) => {
+                        for sequence in line_sequences {
+                            println!("Seq_Start : {:#010X}", sequence.start);
+                            let mut rows = complete_line_program.resume_from(&sequence);
+                            while let Ok(Some((program_header, row))) = rows.next_row() {
+                                println!("\t@{:#010X}  stmt={:5}  ep={:5}  es={:5}  line={:04}  col={:05}  f={:02}",
+                                    row.address(),
+                                    row.is_stmt(),
+                                    row.prologue_end(),
+                                    row.end_sequence(),
+                                    match row.line() {
+                                        Some(line) => line.get(),
+                                        None => 0,
+                                    },
+                                    match row.column() {
+                                        gimli::ColumnType::LeftEdge => 0,
+                                        gimli::ColumnType::Column(column) => column.get(),
+                                    },
+                                    row.file_index()
+                                );
+                            }
+                            println!("Seq_End   : {:#010X}", sequence.end);
+                        }
+                        Some(true)
+                        // if let Some(active_sequence) = line_sequences.iter().find(|line_sequence| {
+                        //     line_sequence.start as u32 <= program_counter
+                        //         && line_sequence.end as u32 > program_counter
+                        // }) {
+                        //     let j = complete_line_program.resume_from(active_sequence);
+                        //     Some(true)
+                        // } else {
+                        //     println!(
+                        //         "No matching sequence found for program counter {}",
+                        //         program_counter
+                        //     );
+                        //     None
+                        // }
+                    }
+                    Err(error) => {
+                        println!("{:?}", error);
+                        None
+                    }
+                },
+                Err(error) => {
+                    println!("{:?}", error);
+                    None
+                }
+            }
+        } else {
+            None
+        }
     } else {
         None
     }
