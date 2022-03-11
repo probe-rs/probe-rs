@@ -125,7 +125,7 @@ pub fn test_hw_breakpoints(
             probe_rs::config::MemoryRegion::Nvm(nvm) => {
                 let initial_breakpoint_addr = nvm.range.start;
 
-                let num_breakpoints = core.get_available_breakpoint_units()?;
+                let num_breakpoints = core.available_breakpoint_units()?;
 
                 println_test_status!(tracker, blue, "{} breakpoints supported", num_breakpoints);
 

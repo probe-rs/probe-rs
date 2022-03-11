@@ -299,7 +299,7 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
         self.write_csr(address.0, value).map_err(|e| e.into())
     }
 
-    fn get_available_breakpoint_units(&mut self) -> Result<u32, crate::Error> {
+    fn available_breakpoint_units(&mut self) -> Result<u32, crate::Error> {
         // TODO: This should probably only be done once, when initialising
 
         log::debug!("Determining number of HW breakpoints supported");
@@ -484,15 +484,15 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
         }
     }
 
-    /// See docs on the [`CoreInterface::get_hw_breakpoints`] trait
+    /// See docs on the [`CoreInterface::hw_breakpoints`] trait
     /// NOTE: For riscv, this assumes that only execution breakpoints are used.
-    fn get_hw_breakpoints(&mut self) -> Result<Vec<Option<u32>>, Error> {
+    fn hw_breakpoints(&mut self) -> Result<Vec<Option<u32>>, Error> {
         let tselect = 0x7a0;
         let tdata1 = 0x7a1;
         let tdata2 = 0x7a2;
 
         let mut breakpoints = vec![];
-        let num_hw_breakpoints = self.get_available_breakpoint_units()? as usize;
+        let num_hw_breakpoints = self.available_breakpoint_units()? as usize;
         for bp_unit_index in 0..num_hw_breakpoints {
             // Select the trigger.
             self.write_csr(tselect, bp_unit_index as u32)?;
