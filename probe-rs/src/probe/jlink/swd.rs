@@ -1345,7 +1345,7 @@ mod test {
             todo!()
         }
 
-        fn speed(&self) -> u32 {
+        fn speed_khz(&self) -> u32 {
             todo!()
         }
 

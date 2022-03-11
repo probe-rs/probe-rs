@@ -14,8 +14,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Support for core registers `msp`, `psp` and `extra`, extra containing:
   - Bits[31:24] CONTROL.
   - Bits[23:16] FAULTMASK.
-  - Bits[15:8]  BASEPRI.
-  - Bits[7:0]   PRIMASK.
+  - Bits[15:8] BASEPRI.
+  - Bits[7:0] PRIMASK.
 - Debug port start sequence for LPC55S16. (#944)
 - Added a command to print the list of all supported chips. (#946)
 - Added a command to print info about a chip, such as RAM and the number of cores. (#946)
@@ -40,6 +40,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Improved `Variable` value formatting for complex variable types.
 - Updated STM32H7 series yaml to support newly released chips. (#1011)
 - Debugger: Removed the CLI mode, in favour of `probe-rs-cli` which has richer functionality. (#1041)
+- Renamed `Probe::speed` to `Probe::speed_khz`.
 
 ### Fixed
 
@@ -55,7 +56,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Updated MS DAP Protocol to 1.51.1.
   - Adapt to `defmt` 0.3 'Rzcobs' encoding to fix [VSCode #26](https://github.com/probe-rs/vscode/issues/26).
   - Support the new `defmt` 0.3 `DEFMT_LOG` environment variable.
-  - Requires `probe-rs/vscode` [PR #27](https://github.com/probe-rs/vscode/pull/27) 
+  - Requires `probe-rs/vscode` [PR #27](https://github.com/probe-rs/vscode/pull/27)
   - Debugger: Improved RTT reliability between debug adapter and VSCode (#1035)
 
 ## [0.12.0]
@@ -88,6 +89,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - probe-rs-cli-util: unused module `argument_handling`. (#760)
 
 ### Changed
+
 - Enabled the generation of global timestamps and exception traces for ARM targets on `Session::setup_swv`.
 - Changed to `hidraw` for HID access on Linux. This should allow access to HID-based probes without udev rules (#737).
 - Support batching of FTDI commands and use it for RISCV (#717)
@@ -102,7 +104,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - An opaque object is returned to represent a compiled artifact. This allows extra information to be provided
   in future without a breaking change (#795).
 - Information on whether a rebuild was necessary is included in the artefact (nothing changed if
- `fresh == true`) (#795).
+  `fresh == true`) (#795).
 - `Debug` was reimplemented on `Session` (#795).
 - Target YAMLs: Changed `flash_algorithms` from a map to an array. (#813)
 - Reject ambiguous chip selection.
@@ -115,6 +117,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The trait surface for DAP/AP/DP access was cleaned up and more clarity around the access level of the API was added by properly putting `Raw` or not in the name.
 
 ### Fixed
+
 - Detect proper USB HID interface to use for CMSIS-DAP v1 probes. Without this, CMSIS-DAP probes with multiple HID interfaces, e.g. MCUlink, were not working properly on MacOS (#722).
 - When reading from a HID device, check number of bytes returned to detect USB HID timeouts.
 - Fix connecting to EDBG and similar probes on MacOS (#681, #721)
@@ -211,7 +214,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Use `erased_byte_value` from target description as default value in the flash loader (#475).
 - Added retry functionality for CMSIS-DAP probes (#462).
 - riscv: Use abstract commands for CSR access for improved speed (#487).
-- The `download_file` and `download_file_with_options` functions now  accept `AsRef<Path>` instead of `&Path`to be more convenient to use (#545, #579).
+- The `download_file` and `download_file_with_options` functions now accept `AsRef<Path>` instead of `&Path`to be more convenient to use (#545, #579).
 - Use `itm-decode` to decode ITM packets instead of built-in decoder (#564).
 - Flash API Improvements: Data is now owned by the `FlashLoader`and `FlashBuilder` structs to simply the API, and the `FlashLoader::commit()` accepts the `DownloadOptions` struct instead of bool flags (#605).
 - Improve internal tracking of core status (#629).
@@ -247,10 +250,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fix crash on unknown AP class. (#662).
 - Fix too many chip erases in chips with multiple NvmRegions. (#670).
 - Added missing `skip_erase` setter function introduced in #677 (#679).
-- Fixed incorrect array size calculation  (#683)
-- STLink: Removed unnecessary SELECT bank switching  (#692)
+- Fixed incorrect array size calculation (#683)
+- STLink: Removed unnecessary SELECT bank switching (#692)
 - STLink: chunk writes in `write_8` to avoid hitting limit (#697)
-- Partial fix for a bug where `probe-rs-debugger` does not set breakpoints when the target is in *sleep* mode (#703)
+- Partial fix for a bug where `probe-rs-debugger` does not set breakpoints when the target is in _sleep_ mode (#703)
 
 ## [0.10.1]
 
@@ -498,6 +501,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Code generation for built in targets was split off into a separate crate so probe-rs can be built without built in targets if one doesn't want them.
 
 ### Fixed
+
 - Fixed setting and clearing breakpoints on M4 cores.
 
 ## [0.3.0]
@@ -524,6 +528,7 @@ Improved flashing for `cargo-flash` considering speed and useability.
 ## [0.2.0]
 
 Initial release on crates.io
+
 - Added parsing of yaml (or anything else) config files for flash algorithm definitions, such that arbitrary chips can be added.
 - Modularized code to allow other cores than M0 and be able to dynamically load chip definitions.
 - Added target autodetection.
@@ -531,7 +536,7 @@ Initial release on crates.io
 - Working basic flash downloader with nRF51.
 - Introduce cargo-flash which can automatically build & flash the target elf file.
 
-[Unreleased]: https://github.com/probe-rs/probe-rs/compare/0.12.0...master
+[unreleased]: https://github.com/probe-rs/probe-rs/compare/0.12.0...master
 [0.12.0]: https://github.com/probe-rs/probe-rs/compare/0.11.0...0.12.0
 [0.11.0]: https://github.com/probe-rs/probe-rs/compare/v0.10.1...0.11.0
 [0.11.0-alpha.1]: https://github.com/probe-rs/probe-rs/compare/v0.10.1...0.11.0-alpha.1
