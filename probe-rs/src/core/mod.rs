@@ -307,7 +307,7 @@ impl<'probe> MemoryInterface for Core<'probe> {
     }
 }
 
-/// A generic core state with caches the generic parts of the core state.
+/// A generic core state which caches the generic parts of the core state.
 #[derive(Debug)]
 pub struct CoreState {
     id: usize,
