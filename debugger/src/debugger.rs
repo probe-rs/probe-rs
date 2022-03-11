@@ -344,7 +344,7 @@ impl DebugSession {
 
         // Create an instance of the [`capstone::Capstone`] for disassembly capabilities.
         let capstone = match target_session.architecture() {
-            probe_rs::Architecture::Arm =>  Capstone::new()
+            probe_rs::Architecture::Arm => Capstone::new()
                 .arm()
                 .mode(armArchMode::Thumb)
                 .endian(Endian::Little)
@@ -385,7 +385,7 @@ impl DebugSession {
 
         // Configure the [VariableCache].
         let stack_frames = target_session.list_cores()
-            .iter()    
+            .iter()
             .map(|(core_id, core_type)| {
                 log::debug!(
                     "Preparing stack frame variable cache for DebugSession and CoreData for core #{} of type: {:?}",
@@ -397,7 +397,7 @@ impl DebugSession {
 
         // Prepare the breakpoint cache
         let breakpoints = target_session.list_cores()
-            .iter()    
+            .iter()
             .map(|(core_id, core_type)| {
                 log::debug!(
                     "Preparing breakpoint cache for DebugSession and CoreData for core #{} of type: {:?}",
@@ -617,7 +617,7 @@ impl<'p> CoreData<'p> {
         }
         if let Some(breakpoint_position) = breakpoint_position {
             self.breakpoints.remove(breakpoint_position as usize);
-        } 
+        }
         Ok(())
     }
 
