@@ -8,11 +8,11 @@
 // Bad things happen to the VSCode debug extenison and debug_adapter if we panic at the wrong time.
 #![warn(clippy::unwrap_used, clippy::panic, clippy::expect_used)]
 
-mod variable;
+pub mod variable;
 
 use crate::{
     core::{Core, RegisterFile},
-    MemoryInterface,
+    MemoryInterface, debug::variable::VariableType,
 };
 use num_traits::Zero;
 use probe_rs_target::Architecture;
@@ -31,11 +31,11 @@ use std::{
 };
 
 use gimli::{
-    DebuggingInformationEntry, FileEntry, LineProgramHeader, Location, UnitOffset, UnwindContext,
+    DebuggingInformationEntry, FileEntry, LineProgramHeader, Location, UnitOffset, UnwindContext, Expression, AttributeValue,
 };
 use object::read::{Object, ObjectSection};
 
-use self::variable::{VariableNodeType, VariableValue};
+use self::variable::{VariableNodeType, VariableValue };
 
 /// An error occurred while debugging the target.
 #[derive(Debug, thiserror::Error)]
@@ -646,26 +646,43 @@ impl DebugInfo {
                                 }
                                 other => referenced_variable.name = VariableName::Named(format!("Error: Unable to generate name, parent variable does not have a name but is special variable {:?}", other)),
                             }
+                        
+                        match &parent_variable.memory_location {
+                            variable::VariableLocation::Address(address) => {
                         // Now, retrieve the location by reading the adddress pointed to by the parent variable.
                         referenced_variable.memory_location = match core
-                            .read_word_32(parent_variable.memory_location as u32)
+                            .read_word_32(*address)
                         {
-                            Ok(memory_location) => memory_location as u64,
+                            Ok(memory_location) => variable::VariableLocation::Address(memory_location),
                             Err(error) => {
-                                log::error!("Failed to read referenced variable address from memory location {:#010x} : {}.", parent_variable.memory_location as u32, error);
-                                0_u64
+                                log::error!("Failed to read referenced variable address from memory location {:#010x?} : {}.", parent_variable.memory_location , error);
+                                variable::VariableLocation::Error(format!("Failed to read referenced variable address from memory location {:#010x?} : {}.", parent_variable.memory_location, error))
                             }
                         };
+
+                            }
+                            other => {
+                                referenced_variable.memory_location = variable::VariableLocation::Unsupported(format!("Location {:?} not supported for referenced variables.", other));
+                            }
+                        }
+
                         referenced_variable = cache.cache_variable(
                             referenced_variable.parent_key,
                             referenced_variable,
                             core,
                         )?;
+
+                        /* 
+
                         if referenced_variable.memory_location == 0 {
                             // TODO: It is not clear why this happens ... needs more investigation. in the mean time ...
                             cache.remove_cache_entry(referenced_variable.variable_key)?;
                             parent_variable.variable_node_type = VariableNodeType::DoNotRecurse;
-                        } else if referenced_variable.type_name.contains("()") {
+                        } else 
+
+                        */
+                        
+                        if referenced_variable.type_name == VariableType::Base("()".to_owned()) {
                             // Only use this, if it is NOT a unit datatype.
                             cache.remove_cache_entry(referenced_variable.variable_key)?;
                         } else {
@@ -736,7 +753,6 @@ impl DebugInfo {
                             &unit_info.unit.abbreviations,
                             parent_variable.variable_unit_offset,
                         )?;
-                        let parent_node = type_tree.root()?;
 
                         // For process_tree we need to create a temporary parent that will later be eliminated with VariableCache::adopt_grand_children
                         // TODO: Investigate if UnitInfo::process_tree can be modified to use `&mut parent_variable`, then we would not need this temporary variable.
@@ -748,6 +764,29 @@ impl DebugInfo {
                             temporary_variable,
                             core,
                         )?;
+
+                        if parent_variable.name == VariableName::LocalScopeRoot {
+                            let locals = unit_info.process_tree_locals(
+                                type_tree.root()?,
+                                core,
+                                stack_frame_registers,
+                            )?;
+
+                            println!(
+                                "Locals DEBUG (die={:#x}):",
+                                parent_variable.variable_unit_offset.unwrap().0
+                            );
+
+                            if !locals.is_empty() {
+                                for local in locals {
+                                    println!("- {}: {} @ {:?}", local.name, local.var_type, local.location);
+                                }
+                            } else {
+                                println!("No locals found.")
+                            }
+                        }
+
+                        let parent_node = type_tree.root()?;
 
                         temporary_variable = unit_info.process_tree(
                             parent_node,
@@ -1833,21 +1872,12 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
 
         // It often happens that intermediate nodes exist for structure reasons,
         // so we need to pass values like 'member_index' from the parent down to the next level child nodes.
-        if parent_variable.member_index.is_some() {
-            child_variable.member_index = parent_variable.member_index;
-        }
 
-        // For variable attribute resolution, we need to resolve a few attributes in advance of looping through all the other ones.
+        // TODO: This does not work for arrays of structs. Figure where / if this is necessary.
 
-        // We need to process the location attribute to ensure that location is known before we calculate type.
-        child_variable = self.extract_location(
-            tree_node,
-            parent_variable,
-            child_variable,
-            core,
-            stack_frame_registers,
-            cache,
-        )?;
+        //if parent_variable.member_index.is_some() {
+        //    child_variable.member_index = parent_variable.member_index;
+        //}
 
         // We need to determine if we are working with a 'abstract` location, and use that node for the attributes we need
         // let mut origin_tree:Option<gimli::EntriesTree<GimliReader<>>> = None;
@@ -1874,6 +1904,26 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
         } else {
             Some(tree_node.entry().clone())
         };
+
+        // Try to exact the name first, for easier debugging
+
+        if let Some(name) = attributes_entry.as_ref().map(|ae| ae.attr_value(gimli::DW_AT_name)).transpose()?.flatten() {
+            child_variable.name =
+                VariableName::Named(extract_name(self.debug_info, name));
+        }
+
+        // For variable attribute resolution, we need to resolve a few attributes in advance of looping through all the other ones.
+
+        // We need to process the location attribute to ensure that location is known before we calculate type.
+        child_variable = self.extract_location(
+            tree_node,
+            parent_variable,
+            child_variable,
+            core,
+            stack_frame_registers,
+            cache,
+        )?;
+
 
         if let Some(attributes_entry) = attributes_entry {
             let mut variable_attributes = attributes_entry.attrs();
@@ -1978,7 +2028,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                         gimli::AttributeValue::Flag(is_enum_class) => {
                             if is_enum_class {
                                 child_variable.set_value(VariableValue::Valid(
-                                    child_variable.type_name.clone(),
+                                format!("{:?}",child_variable.type_name.clone()),
                                 ));
                             } else {
                                 child_variable.set_value(VariableValue::Error(format!(
@@ -2120,6 +2170,193 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
             .map_err(|error| error.into())
     }
 
+    /// Determine local variables available in a function
+    ///
+    /// parent_node should point to a DW_TAG_subprogram
+    fn process_tree_locals(
+        &self,
+        parent_node: gimli::EntriesTreeNode<GimliReader>,
+        core: &mut Core<'_>,
+        stack_frame_registers: &Registers,
+    ) -> Result<Vec<TempVar>, DebugError> {
+        let program_counter =
+            if let Some(program_counter) = stack_frame_registers.get_program_counter() {
+                u64::from(program_counter)
+            } else {
+                return Err(DebugError::Other(anyhow::anyhow!(
+                    "Cannot unwind `Variable` without a valid PC (program_counter)"
+                )));
+            };
+
+        log::debug!(
+            "Finding locals for function at pc={:#010x}",
+            program_counter
+        );
+
+        let mut child_vars = Vec::new();
+
+        let mut child_nodes = parent_node.children();
+        while let Some(child_node) = child_nodes.next()? {
+            match child_node.entry().tag() {
+                gimli::DW_TAG_variable     // Typical top-level variables.
+                => {
+
+                    if let Some(name_attr)  = child_node.entry().attr_value(gimli::DW_AT_name)? {
+                        let name = format!("{} (die={:#x})", extract_name(self.debug_info, name_attr), child_node.entry().offset().0);
+
+                        let (var_type, byte_size) = match child_node.entry().attr_value(gimli::DW_AT_type)? {
+                            Some(type_attr) => { 
+                                println!("type: {:?}", type_attr); 
+
+                                let type_unit = match type_attr {
+                                    gimli::AttributeValue::UnitRef(unit_ref) => Some(self.unit.entry(unit_ref)?),
+                                    _other => None,
+                                };
+
+                                let (type_name, byte_size) = if let Some(type_unit) = type_unit {
+                                    if let Some(name_attr) = type_unit.attr_value(gimli::DW_AT_name)? {
+                                        let name = extract_name(self.debug_info, name_attr);
+
+                                        let byte_size = extract_byte_size(self.debug_info, &type_unit);
+
+                                        (Some(format!("{} (die={:#x}, size={} bytes)", name,type_unit.offset().0, byte_size )), byte_size)
+
+                                    } else {
+                                        (None, 0)
+                                    }
+                                } else {
+                                    (None, 0)
+                                };
+
+
+                                //self.debug_info.dwarf.
+
+                                //let name = format!("{} (die={:#x})", extract_name(self.debug_info, name_attr))
+
+                                (type_name.unwrap_or_else(|| "<unknown>".to_string()), byte_size)
+                            },
+                            None => ("<unknown type>".to_string(), 0),
+
+                        };
+
+                        let mut location = VariableLocation::Unavailable;
+
+                        // Get location
+                        if let Some(name_attr)  = child_node.entry().attr_value(gimli::DW_AT_location)? {
+                            match name_attr {
+                                AttributeValue::LocationListsRef(location_list_offset) => {
+
+                                    match self.debug_info.locations_section.locations(
+                            location_list_offset,
+                            self.unit.header.encoding(),
+                            self.unit.low_pc,
+                            &self.debug_info.address_section,
+                            self.unit.addr_base,
+                        ) {
+                            Ok(mut location_iter) => { 
+                                let pc = stack_frame_registers.get_program_counter().unwrap() as u64;
+
+                                while let Some(location_entry) = location_iter.next()? {
+                                    if location_entry.range.begin <= pc && pc < location_entry.range.end {
+                                        let expression = location_entry.data;
+
+                                        let pieces = self.expression_to_piece(core, expression, stack_frame_registers)?;
+
+                                        println!("Pieces for {}:", name);
+
+                                        let mut piece_size = 0;
+
+                                        for piece in pieces {
+                                            println!("  Piece: {:?}", piece);
+
+                                            if let Some(size) = piece.size_in_bits {
+                                                piece_size += size;
+                                            }
+                                        }
+
+                                        println!(" Variable size: {} -> piece size = {}", byte_size, piece_size / 8);
+
+                                        break;
+                                    }
+                                }
+                            }
+                            Err(_e) => {
+                                location = VariableLocation::Unavailable;
+                            }
+                        }
+                                },
+                                AttributeValue::Exprloc(expression) => { 
+
+                                    let pieces = self.expression_to_piece(core, expression, stack_frame_registers)?;
+
+                                    println!("Pieces for {}:", name);
+
+                                        let mut piece_size = 0;
+
+                                        for piece in pieces {
+                                            println!("  Piece: {:x?}", piece);
+
+                                            if let Some(size) = piece.size_in_bits {
+                                                piece_size += size;
+                                            }
+                                        }
+
+                                        println!(" Variable size: {} -> piece size = {}", byte_size, piece_size / 8);
+
+
+                                    location = VariableLocation::Unsupported("Expressions are unsupported.".to_string()) },
+                                other => {
+                                    location = VariableLocation::Unsupported(format!("Attribute value kind {:?} is not supported.", other))
+                                }
+                            }
+                        }
+
+
+
+
+                        child_vars.push(TempVar { name, var_type, var_size: byte_size as usize, location });
+
+                    } else {
+                        log::debug!("Failed to extract name for variable with DIE={:#x}", child_node.entry().offset().0);
+                    }
+                }
+                gimli::DW_TAG_inlined_subroutine => {
+                    log::debug!("- Ignoring subroutine...");
+                    // Recurse the variables of inlined subroutines as normal, but beware that their name, type, etc. has to be resolved from DW_AT_abstract_origin nodes, and their location has to be passed from here (concrete location) to there (abstract location). 
+                    //parent_variable = self.process_tree(child_node, parent_variable, core, stack_frame_registers,cache)?;
+                }
+                gimli::DW_TAG_lexical_block => {
+                    // Determine the low and high ranges for which this DIE and children are in scope. These can be specified discreetly, or in ranges. 
+                    let mut in_scope =  false;
+
+                    let mut range_iter = self.debug_info.dwarf.die_ranges(&self.unit, child_node.entry())?;
+
+                    while let Some(range) = range_iter.next()? {
+
+                        if range.begin <= program_counter && program_counter < range.end {
+                            in_scope = true;
+                            break;
+                        }
+
+                    }
+
+                    if in_scope {
+                        // This is IN scope.
+                        // Recursively process each child, but pass the parent_variable, so that we don't create intermediate nodes for scope identifiers.
+                        let scope_vars = self.process_tree_locals(child_node,  core, stack_frame_registers)?;
+
+                        child_vars.extend(scope_vars);
+                    }
+                }
+                other => {
+                    log::debug!("Not handling tag {:?} for subprogram processing", other);
+                }
+            }
+        }
+
+        Ok(child_vars)
+    }
+
     /// Recurse the ELF structure below the `parent_node`, and ...
     /// - Consumes the `parent_variable`.
     /// - Updates the `DebugInfo::VariableCache` with all descendant `Variable`s.
@@ -2157,8 +2394,8 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                         namespace_variable.name = if let Ok(Some(attr)) = child_node.entry().attr(gimli::DW_AT_name) {
                             VariableName::Namespace(extract_name(self.debug_info, attr.value()))
                         } else { VariableName::AnonymousNamespace };
-                        namespace_variable.type_name = "<namespace>".to_string();
-                        namespace_variable.memory_location = 0;
+                        namespace_variable.type_name = VariableType::Namespace;
+                        namespace_variable.memory_location = variable::VariableLocation::Unavailable;
                         namespace_variable = cache.cache_variable(Some(parent_variable.variable_key), namespace_variable, core)?;
 
                         let mut namespace_children_nodes = child_node.children();
@@ -2186,8 +2423,8 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                         }
 
                                     } else { VariableName::AnonymousNamespace};
-                                    namespace_child_variable.type_name = "<namespace>".to_string();
-                                    namespace_child_variable.memory_location = 0;
+                                    namespace_child_variable.type_name = VariableType::Namespace;
+                                    namespace_child_variable.memory_location = variable::VariableLocation::Unavailable;
                                     namespace_child_variable = cache.cache_variable(Some(namespace_variable.variable_key), namespace_child_variable, core)?;
                                     namespace_child_variable = self.process_tree(namespace_child_node, namespace_child_variable, core, stack_frame_registers, cache, )?;
                                     if !cache.has_children(&namespace_child_variable)? {
@@ -2212,8 +2449,9 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                         Some(child_node.entry().offset()),
                     ), core)?;
                         child_variable = self.process_tree_node_attributes(&mut child_node, &mut parent_variable, child_variable, core, stack_frame_registers, cache,)?;
+
                         // Do not keep or process PhantomData nodes, or variant parts that we have already used.
-                        if child_variable.type_name.starts_with("PhantomData") 
+                        if child_variable.type_name.is_phantom_data() 
                             ||  child_variable.name == VariableName::Artifical
                         {
                             cache.remove_cache_entry(child_variable.variable_key)?;
@@ -2263,7 +2501,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                     // Only process the discriminant variants or when we eventually   encounter the default 
                                     if parent_variable.role == VariantRole::VariantPart(discriminant) || discriminant == u64::MAX {
                                         // Pass some key values through intermediate nodes to valid desccendants.
-                                        child_variable.memory_location = parent_variable.memory_location;
+                                        child_variable.memory_location = parent_variable.memory_location.clone();
                                         // Recursively process each relevant child node.
                                         child_variable = self.process_tree(child_node, child_variable, core, stack_frame_registers, cache)?;
                                         if child_variable.is_valid() {
@@ -2444,10 +2682,12 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
         stack_frame_registers: &Registers,
         cache: &mut VariableCache,
     ) -> Result<Variable, DebugError> {
-        child_variable.type_name = match node.entry().attr(gimli::DW_AT_name) {
+
+        let type_name = match node.entry().attr(gimli::DW_AT_name) {
             Ok(optional_name_attr) => match optional_name_attr {
+                // TODO: Proper type detection (struct, etc.)
                 Some(name_attr) => extract_name(self.debug_info, name_attr.value()),
-                None => "<unnamed type>".to_owned(),
+                None => "<unnamed>".to_string(),
             },
             Err(error) => {
                 let message = format!("Error: evaluating type name: {:?} ", error);
@@ -2455,7 +2695,9 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                 message
             }
         };
+
         if child_variable.is_valid() {
+            /* 
             if child_variable.type_name.starts_with("&str")
                 || child_variable.type_name.starts_with("Option")
                 || child_variable.type_name.starts_with("Some")
@@ -2468,25 +2710,41 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                 // In some cases, it really simplifies the UX if we can auto resolve the children and derive a value that is visible at first glance to the user.
                 child_variable.variable_node_type = VariableNodeType::RecurseToBaseType;
             }
+
+            */
+
             child_variable.byte_size = extract_byte_size(self.debug_info, node.entry());
+
             match node.entry().tag() {
                 gimli::DW_TAG_base_type => {
                     if let Some(child_member_index) = child_variable.member_index {
-                        // This is a member of an array type, and needs special handling.
-                        let (location, has_overflowed) = parent_variable
-                            .memory_location
-                            .overflowing_add(child_member_index as u64 * child_variable.byte_size);
 
-                        if has_overflowed {
-                            return Err(DebugError::Other(anyhow::anyhow!(
-                                "Overflow calculating variable address"
-                            )));
-                        } else {
-                            child_variable.memory_location = location;
+                        match &parent_variable.memory_location {
+                            variable::VariableLocation::Address(address) => {
+                                // This is a member of an array type, and needs special handling.
+                                let (location, has_overflowed) =   address.overflowing_add(child_member_index as u32 * child_variable.byte_size as u32);
+
+                                if has_overflowed {
+                                    return Err(DebugError::Other(anyhow::anyhow!(
+                                        "Overflow calculating variable address"
+                                    )));
+                                } else {
+                                    child_variable.memory_location = variable::VariableLocation::Address(location);
+                                }
+
+                            }
+                            _other => {
+                                child_variable.memory_location = variable::VariableLocation::Unavailable;
+                            }
                         }
+
                     }
+
+                    child_variable.type_name = VariableType::Base(type_name);
                 }
+
                 gimli::DW_TAG_pointer_type => {
+                    child_variable.type_name = VariableType::Pointer(type_name);
                     // This needs to resolve the pointer before the regular recursion can continue.
                     match node.entry().attr(gimli::DW_AT_type) {
                         Ok(optional_data_type_attribute) => {
@@ -2538,7 +2796,35 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                     }
                 }
                 gimli::DW_TAG_structure_type => {
-                    if child_variable.memory_location != u64::MAX {
+
+                    if let Some(child_member_index) = child_variable.member_index {
+
+                        match &parent_variable.memory_location {
+                            variable::VariableLocation::Address(address) => {
+                                // This is a member of an array type, and needs special handling.
+                                let (location, has_overflowed) =   address.overflowing_add(child_member_index as u32 * child_variable.byte_size as u32);
+
+                                // TODO: 
+
+                                if has_overflowed {
+                                    return Err(DebugError::Other(anyhow::anyhow!(
+                                        "Overflow calculating variable address"
+                                    )));
+                                } else {
+                                    child_variable.memory_location = variable::VariableLocation::Address(location);
+                                }
+
+                            }
+                            _other => {
+                                child_variable.memory_location = variable::VariableLocation::Unavailable;
+                            }
+                        }
+
+                    }
+
+                    
+                    child_variable.type_name = VariableType::Struct(type_name);
+                    if child_variable.memory_location != variable::VariableLocation::Unavailable {
                         if child_variable.variable_node_type == VariableNodeType::RecurseToBaseType
                         {
                             // In some cases, it really simplifies the UX if we can auto resolve the children and dreive a value that is visible at first glance to the user.
@@ -2560,6 +2846,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                     }
                 }
                 gimli::DW_TAG_enumeration_type => {
+                    child_variable.type_name = VariableType::Enum(type_name);
                     // Recursively process a child types.
                     child_variable = self.process_tree(
                         node,
@@ -2571,25 +2858,37 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                     if parent_variable.is_valid() && child_variable.is_valid() {
                         let enumerator_values =
                             cache.get_children(Some(child_variable.variable_key))?;
-                        // NOTE: hard-coding value of variable.byte_size to 1 ... replace with code if necessary.
-                        let mut buff = [0u8; 1];
-                        core.read(child_variable.memory_location as u32, &mut buff)?;
-                        let this_enum_const_value = u8::from_le_bytes(buff).to_string();
-                        let enumumerator_value =
-                            match enumerator_values.into_iter().find(|enumerator_variable| {
-                                enumerator_variable.get_value(cache) == this_enum_const_value
-                            }) {
-                                Some(this_enum) => this_enum.name,
-                                None => VariableName::Named(
-                                    "<Error: Unresolved enum value>".to_string(),
-                                ),
-                            };
-                        child_variable.set_value(VariableValue::Valid(format!(
-                            "{}::{}",
-                            child_variable.type_name, enumumerator_value
-                        )));
-                        // We don't need to keep these children.
-                        cache.remove_cache_entry_children(child_variable.variable_key)?;
+
+
+                        if let variable::VariableLocation::Address(address) = child_variable.memory_location {
+                            // NOTE: hard-coding value of variable.byte_size to 1 ... replace with code if necessary.
+                            let mut buff = [0u8; 1];
+                            core.read(address, &mut buff)?;
+                            let this_enum_const_value = u8::from_le_bytes(buff).to_string();
+                            let enumumerator_value =
+                                match enumerator_values.into_iter().find(|enumerator_variable| {
+                                    enumerator_variable.get_value(cache) == this_enum_const_value
+                                }) {
+                                    Some(this_enum) => this_enum.name,
+                                    None => VariableName::Named(
+                                        "<Error: Unresolved enum value>".to_string(),
+                                    ),
+                                };
+                            child_variable.set_value(VariableValue::Valid(format!(
+                                "{:?}::{}",
+                                child_variable.type_name, enumumerator_value
+                            )));
+                            // We don't need to keep these children.
+                            cache.remove_cache_entry_children(child_variable.variable_key)?;
+
+                        } else {
+                            child_variable.set_value(VariableValue::Error(format!("Unsupported variable location {:?}", child_variable.memory_location)) ) ;
+
+                            // We don't need to keep these children.
+                            cache.remove_cache_entry_children(child_variable.variable_key)?;
+
+                        }
+
                     }
                 }
                 gimli::DW_TAG_array_type => {
@@ -2674,11 +2973,10 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                                                 stack_frame_registers,
                                                                 cache,
                                                             )?;
-                                                        child_variable.type_name = format!(
-                                                            "[{};{}]",
-                                                            array_member_variable.name,
-                                                            subrange_variable.range_upper_bound
-                                                        );
+                                                        child_variable.type_name = VariableType::Array {
+                                                            count: subrange_variable.range_upper_bound as usize,
+                                                            entry_type: array_member_variable.name,
+                                                        };
                                                         array_member_variable.member_index =
                                                             Some(array_member_index);
                                                         array_member_variable.name =
@@ -2747,7 +3045,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                     if child_variable.is_valid() && !cache.has_children(&child_variable)? {
                         // Empty structs don't have values.
                         child_variable
-                            .set_value(VariableValue::Valid(child_variable.type_name.clone()));
+                            .set_value(VariableValue::Valid(format!("{:?}", child_variable.type_name.clone())));
                     }
                 }
                 gimli::DW_TAG_subroutine_type => {
@@ -2764,15 +3062,15 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                         match subroutine_type_node.attr(gimli::DW_AT_name) {
                                             Ok(optional_name_attr) => match optional_name_attr {
                                                 Some(name_attr) => {
-                                                    extract_name(self.debug_info, name_attr.value())
+                                                    VariableType::Other(extract_name(self.debug_info, name_attr.value()))
                                                 }
-                                                None => "".to_owned(),
+                                                None => VariableType::Unknown,
                                             },
                                             Err(error) => {
-                                                format!(
+                                                VariableType::Other(format!(
                                                     "Error: evaluating subroutine type name: {:?} ",
                                                     error
-                                                )
+                                                ))
                                             }
                                         };
                                 }
@@ -2784,10 +3082,11 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                 }
                             },
                             None => {
+                                // TODO: Better indication for no return value
                                 child_variable.set_value(VariableValue::Valid(
                                     "<No Return Value>".to_string(),
                                 ));
-                                child_variable.type_name = "".to_string();
+                                child_variable.type_name = VariableType::Unknown;
                             }
                         },
                         Err(error) => {
@@ -2814,7 +3113,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                         "<unimplemented: type : {:?}>",
                         other.static_string()
                     )));
-                    child_variable.type_name = "".to_string();
+                    child_variable.type_name = VariableType::Other("unimplemented".to_string());
                     cache.remove_cache_entry_children(child_variable.variable_key)?;
                 }
             }
@@ -2858,12 +3157,14 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                         }
                     }
                     gimli::AttributeValue::Udata(offset_from_parent) => {
-                        if parent_variable.memory_location != u64::MAX {
-                            child_variable.memory_location =
-                                parent_variable.memory_location + offset_from_parent as u64;
-                        } else {
-                            child_variable.memory_location = offset_from_parent as u64;
+
+                        match &parent_variable.memory_location {
+                            variable::VariableLocation::Address(address) => {
+                                child_variable.memory_location = variable::VariableLocation::Address(address + offset_from_parent as u32)
+                            },
+                            _other => { child_variable.memory_location = variable::VariableLocation::Unavailable; }
                         }
+
                     }
                     gimli::AttributeValue::LocationListsRef(location_list_offset) => {
                         match self.debug_info.locations_section.locations(
@@ -2946,15 +3247,15 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                 }
             }
         }
+
+        /* 
         // If the `memory_location` is still 0 at this time, then we inherit from the parent.
-        if child_variable.memory_location.is_zero()
-            && child_variable.is_valid()
+        if  child_variable.is_valid()
             && parent_variable.is_valid()
-            && !(parent_variable.memory_location.is_zero()
-                || parent_variable.memory_location == u64::MAX)
         {
-            child_variable.memory_location = parent_variable.memory_location;
+            child_variable.memory_location = parent_variable.memory_location.clone();
         }
+        */
         cache
             .cache_variable(child_variable.parent_key, child_variable, core)
             .map_err(|error| error.into())
@@ -2978,7 +3279,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
             child_variable.set_value(VariableValue::Error(
                 "<unsupported memory implementation>".to_string(),
             ));
-            child_variable.memory_location = 0_u64;
+            child_variable.memory_location = variable::VariableLocation::Unsupported("<unsupported memory implementation>".to_string());
         } else {
             match &pieces[0].location {
                 Location::Empty => {
@@ -2986,16 +3287,16 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                     child_variable.set_value(VariableValue::Error(
                         "<value optimized away by compiler>".to_string(),
                     ));
-                    child_variable.memory_location = 0_u64;
+                    child_variable.memory_location = variable::VariableLocation::Unavailable;
                 }
                 Location::Address { address } => {
                     if *address == u32::MAX as u64 {
                         return Err(DebugError::Other(anyhow::anyhow!("BUG: Cannot resolve due to rust-lang issue https://github.com/rust-lang/rust/issues/32574".to_string())));
                     } else {
-                        child_variable.memory_location = *address;
+                        child_variable.memory_location = variable::VariableLocation::Address(*address as u32);
                     }
                 }
-                Location::Value { value } => match value {
+                Location::Value { value } => {match value {
                     gimli::Value::Generic(value) => {
                         child_variable.set_value(VariableValue::Valid(value.to_string()));
                     }
@@ -3029,15 +3330,9 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                     gimli::Value::F64(value) => {
                         child_variable.set_value(VariableValue::Valid(value.to_string()));
                     }
-                },
+                }; child_variable.memory_location = variable::VariableLocation::Value; },
                 Location::Register { register } => {
-                    if let Some(memory_location) =
-                        stack_frame_registers.get_value_by_dwarf_register_number(register.0 as u32)
-                    {
-                        child_variable.memory_location = memory_location as u64;
-                    } else {
-                        return Err(DebugError::Other(anyhow::anyhow!("Error: Cannot determine memory location because we could not read register from `StackFrame::registers`".to_string())));
-                    }
+                        child_variable.memory_location = variable::VariableLocation::Register(register.0 as usize);
                 }
                 l => {
                     return Err(DebugError::Other(anyhow::anyhow!(
@@ -3239,6 +3534,26 @@ fn extract_name(
         gimli::AttributeValue::String(name) => String::from_utf8_lossy(&name).to_string(),
         other => format!("Unimplemented: Evaluate name from {:?}", other),
     }
+}
+
+#[derive(Debug, Clone)]
+pub enum VariableLocation {
+    Address(u32),
+    Register(usize),
+    Unavailable,
+    Unsupported(String),
+    Error(String),
+}
+
+
+pub struct TempVar {
+    pub name: String,
+
+    pub var_type: String,
+
+    pub var_size: usize,
+
+    pub location: VariableLocation,
 }
 
 #[allow(clippy::unwrap_used, clippy::expect_used)]
