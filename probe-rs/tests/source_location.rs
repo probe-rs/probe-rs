@@ -82,6 +82,8 @@ fn source_location() {
                 column: Some(*col),
                 directory: Some(PathBuf::from("/home/dominik/Coding/microbit/examples")),
                 file: Some(file.to_owned()),
+                low_pc: Some(0x920),
+                high_pc: Some(0x980),
             }),
             di.get_source_location(*addr)
         );

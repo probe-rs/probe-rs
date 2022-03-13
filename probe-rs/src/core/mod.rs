@@ -598,7 +598,7 @@ impl<'probe> Core<'probe> {
                 Ok(())
             }
             None => Err(error::Error::Other(anyhow!(
-                "No breakpoint found at address {}",
+                "No breakpoint found at address {:#010x}",
                 address
             ))),
         }

@@ -343,7 +343,7 @@ impl<R: Read, W: Write> ProtocolAdapter for DapAdapter<R, W> {
         if let Some(request_command) = self.pending_requests.remove(&resp.request_seq) {
             assert_eq!(request_command, resp.command);
         } else {
-            panic!("Trying to send a response to non-existing request! Response {:?} has no pending request", resp);
+            log::error!("Trying to send a response to non-existing request! Response {:?} has no pending request", resp);
         }
 
         let encoded_resp = serde_json::to_vec(&resp)?;
@@ -351,8 +351,18 @@ impl<R: Read, W: Write> ProtocolAdapter for DapAdapter<R, W> {
         self.send_data(&encoded_resp)?;
 
         if !resp.success {
-            self.log_to_console(&resp.clone().message.unwrap());
-            self.show_message(MessageSeverity::Error, &resp.message.unwrap());
+            self.log_to_console(
+                &resp
+                    .clone()
+                    .message
+                    .unwrap_or_else(|| "<empty message>".to_string()),
+            );
+            self.show_message(
+                MessageSeverity::Error,
+                &resp
+                    .message
+                    .unwrap_or_else(|| "<empty message>".to_string()),
+            );
         } else {
             match self.console_log_level {
                 ConsoleLog::Error => {}
@@ -390,6 +400,7 @@ fn get_content_len(header: &str) -> Option<usize> {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used)]
 mod test {
     use std::io::{self, ErrorKind, Read};
 
