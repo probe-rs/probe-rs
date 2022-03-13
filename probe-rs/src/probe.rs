@@ -6,8 +6,9 @@ pub(crate) mod ftdi;
 pub(crate) mod jlink;
 pub(crate) mod stlink;
 
+use crate::architecture::arm::DpAddress;
 use crate::error::Error;
-use crate::Session;
+use crate::{architecture, Session, Target};
 use crate::{
     architecture::arm::communication_interface::UninitializedArmProbe,
     config::{RegistryError, TargetSelector},
@@ -356,6 +357,54 @@ impl Probe {
 
         // The session will de-assert reset after connecting to the debug interface.
         Session::new(self, target.into(), AttachMethod::UnderReset, permissions)
+    }
+
+    /// Attach to unspecified and detect chip model
+    ///
+    /// This function assumes default values to detect and communicate with the chip. It is expected to fail if the attached target requires special handling that differs from the default.
+    pub fn attach_and_detect(mut self) -> Result<Target, Error> {
+        self.inner_attach()?;
+        self.attached = true;
+
+        // Try to get arm interface of probe, if present
+        if let Ok(arm_probe) = self.inner.try_get_arm_interface() {
+            match Self::detect_target_arm(arm_probe) {
+                Ok(target) => return Ok(target),
+                Err(err) => log::info!("Failed to detect ARM target: {}", err),
+            }
+        }
+
+        //Try to get riscv interface of probe, if present
+        /*if let Ok(riscv_probe) = self.inner.try_get_riscv_interface() {
+            //return; //if successfully detected target
+        }*/
+
+        Err(Error::ChipNotFound(RegistryError::ChipAutodetectFailed))
+    }
+
+    fn detect_target_arm(probe: Box<dyn UninitializedArmProbe>) -> Result<Target, Error> {
+        let mut probe_interface = probe.initialize_unspecified()?;
+        let chip_info = probe_interface.read_chip_info_from_rom_table(DpAddress::Default)?;
+
+        let info = chip_info.ok_or_else(|| {
+            Error::Other(anyhow::anyhow!("Failed to read chip info from rom table"))
+        })?;
+
+        match info.manufacturer.get() {
+            Some("STMicroelectronics") => {
+                architecture::arm::sequences::st::detect_target(&mut probe_interface)
+            }
+            Some("Nordic VLSI ASA") => {
+                architecture::arm::sequences::nordic::detect_target(&mut probe_interface)
+            }
+            Some("Atmel") => {
+                architecture::arm::sequences::atmel::detect_target(&mut probe_interface)
+            }
+            _ => Err(Error::Other(anyhow::anyhow!(
+                "Target detect for manufacturer '{:?}' is not implemented yet",
+                info.manufacturer.get()
+            ))),
+        }
     }
 
     pub(crate) fn inner_attach(&mut self) -> Result<(), DebugProbeError> {

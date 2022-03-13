@@ -1,7 +1,10 @@
 //! Debug sequences to operate special requirements ARM targets.
 
+pub mod atmel;
+pub mod nordic;
 pub mod nrf53;
 pub mod nxp;
+pub mod st;
 
 use std::{
     sync::Arc,
