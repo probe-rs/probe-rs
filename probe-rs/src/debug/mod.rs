@@ -30,8 +30,7 @@ use std::{
 };
 
 use gimli::{
-    DebuggingInformationEntry, FileEntry, IncompleteLineProgram, LineProgramHeader, Location,
-    UnitOffset, UnwindContext,
+    DebuggingInformationEntry, FileEntry, LineProgramHeader, Location, UnitOffset, UnwindContext,
 };
 use object::read::{Object, ObjectSection};
 
@@ -285,6 +284,26 @@ type FunctionDieType<'abbrev, 'unit> =
 type UnitIter =
     gimli::DebugInfoUnitHeadersIter<gimli::EndianReader<gimli::LittleEndian, std::rc::Rc<[u8]>>>;
 
+/// Program row data that the debugger can use for breakpoints and stepping.
+/// All data is calculated using the `gimli::read::CompletedLineProgram` as well as, function call data from the debug info frame section.
+/// All addresses in this struct will have the following in common:
+/// - They point to program row statements where `gimli::read::LineRow::is_stmt()==true`.
+/// - They point to program row statements that are neither inside either the prologue nor epilogue of a function.
+#[derive(Debug)]
+struct ProgramRowData {
+    /// The address of the first statement after the prologue.
+    ///  - If the prologue and sequence end is on the same statement, then use that statement.
+    ///  - If the current address is a call to an inlined function, then the next statement will be the first statement in that function.
+    first_breakpoint_address: Option<u64>,
+    /// The address of the next statement.
+    ///  - If the current address is the last statement in a function, then the next statement will be the first statement after the return.
+    next_statement_address: Option<u64>,
+    /// The first statement after the current function returns.
+    /// For regular functions, this will be the `return address`.
+    /// For inline functions, this will be the statement from which the function was "called", because inline statements are executed before the statements that "call" them.  
+    step_out_address: Option<u64>,
+}
+
 /// Debug information which is parsed from DWARF debugging information.
 pub struct DebugInfo {
     dwarf: gimli::Dwarf<DwarfReader>,
@@ -498,6 +517,149 @@ impl DebugInfo {
             }
         }
         None
+    }
+
+    /// Populate a [`ProgramRowData`] struct for a given program_counter.
+    fn get_program_row_data(
+        &self,
+        program_counter: u32,
+        return_address: u32,
+    ) -> Result<ProgramRowData, DebugError> {
+        let mut program_row_data = ProgramRowData {
+            first_breakpoint_address: None,
+            next_statement_address: None,
+            step_out_address: None,
+        };
+        // First we have to find the compile unit at the current address.
+        let mut units = self.get_units();
+        let mut program_unit = None;
+        'headers: while let Some(header) = self.get_next_unit_info(&mut units) {
+            match self.dwarf.unit_ranges(&header.unit) {
+                Ok(mut ranges) => {
+                    while let Ok(Some(range)) = ranges.next() {
+                        if (range.begin <= program_counter.into())
+                            && (range.end > program_counter.into())
+                        {
+                            program_unit = Some(header);
+                            break 'headers;
+                        }
+                    }
+                }
+                Err(_) => continue 'headers,
+            };
+        }
+
+        // Use the gimli::read::DebugLine::program() to return the rows from the LineProgram.
+        if let Some(program_unit) = program_unit.as_ref() {
+            if let Some(line_program) = program_unit.unit.line_program.clone() {
+                let offset = line_program.header().offset();
+                let address_size = line_program.header().address_size();
+
+                let incomplete_line_program =
+                    self.debug_line_section
+                        .program(offset, address_size, None, None)?;
+                let (complete_line_program, line_sequences) =
+                    incomplete_line_program.sequences()?;
+                if let Some(active_sequence) = line_sequences.iter().find(|line_sequence| {
+                    line_sequence.start as u32 <= program_counter
+                        && line_sequence.end as u32 > program_counter
+                }) {
+                    let mut rows = complete_line_program.resume_from(&active_sequence);
+
+                    // Recursive calls will sometimes need to use a return_address as a program_counter, in which case we skip this part.
+                    if program_counter != return_address {
+                        if let Ok(function_dies) =
+                            program_unit.get_function_dies(program_counter as u64, true)
+                        {
+                            for function in function_dies {
+                                if function.low_pc <= program_counter as u64
+                                    && function.high_pc > program_counter as u64
+                                {
+                                    if function.is_inline() {
+                                        // Step_out_address for inlined functions, is the first available breakpoint address after the last statement in this function.
+                                        program_row_data.step_out_address = self
+                                            .get_program_row_data(
+                                                function.high_pc as u32,
+                                                return_address,
+                                            )?
+                                            .first_breakpoint_address;
+                                    } else {
+                                        if function.get_attribute(gimli::DW_AT_noreturn).is_some() {
+                                            program_row_data.step_out_address = Some(0);
+                                        } else {
+                                            // Step_out_address for non-inlined functions is the first available breakpoint address after the return address.
+                                            if program_row_data.step_out_address.is_none() {
+                                                program_row_data.step_out_address = self
+                                                    .get_program_row_data(
+                                                        return_address,
+                                                        return_address,
+                                                    )?
+                                                    .first_breakpoint_address;
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        };
+                    }
+
+                    // By definition, ONLY the addresses inside a sequence will increase monotonically, so we have to be careful when using addresses as comparators.
+                    let mut prologue_end = u64::MAX;
+                    while let Ok(Some((_program_header, row))) = rows.next_row() {
+                        log::trace!("Evaluating program row data @{:#010X}  stmt={:5}  ep={:5}  es={:5}  line={:04}  col={:05}  f={:02}",
+                                        row.address(),
+                                        row.is_stmt(),
+                                        row.prologue_end(),
+                                        row.end_sequence(),
+                                        match row.line() {
+                                            Some(line) => line.get(),
+                                            None => 0,
+                                        },
+                                        match row.column() {
+                                            gimli::ColumnType::LeftEdge => 0,
+                                            gimli::ColumnType::Column(column) => column.get(),
+                                        },
+                                        row.file_index());
+
+                        // Don't do anything until we are past the prologue of a function.
+                        if row.prologue_end() {
+                            prologue_end = row.address();
+                        }
+
+                        // Set the first_breakpoint_address
+                        if program_row_data.first_breakpoint_address.is_none()
+                            && row.is_stmt()
+                            && row.address() >= prologue_end
+                            && row.address() >= program_counter as u64
+                        {
+                            program_row_data.first_breakpoint_address = Some(row.address());
+                            if row.end_sequence() {
+                                // There is no way to know what the next_statement_address will be, so leave it as `None` and get out of here.
+                                break;
+                            }
+                            continue;
+                        }
+
+                        // Set the next_statement_address
+                        if program_row_data.first_breakpoint_address.is_some()
+                            && row.is_stmt()
+                            && program_row_data.next_statement_address.is_none()
+                            && row.address() != program_counter as u64
+                        {
+                            // Use the next available statement that is not inside a prologue.
+                            program_row_data.next_statement_address = Some(row.address());
+                            break;
+                        }
+                    }
+                } else {
+                    log::warn!(
+                        "No matching sequence found for program counter {}",
+                        program_counter
+                    );
+                }
+            }
+        }
+        Ok(program_row_data)
     }
 
     fn get_units(&self) -> UnitIter {
@@ -1507,13 +1669,15 @@ impl DebugInfo {
 }
 
 /// Stepping granularity for stepping through a program during debug.
+#[derive(Debug)]
 pub enum SteppingMode {
     /// Advance one machine instruction at a time.
     StepInstruction,
     /// Step Over the current statement, and halt at the start of the next statement.
     OverStatement,
-    /// Step to the beginning of the first available statement in the code called by this statement.
-    /// If this statement doesn't contain a call to other subprograms, then it behaves as if it was a `OverStatement.
+    /// DWARF doesn't encode when a statement contains a call to a non-inlined function.
+    /// - The best-effort approach is to step a single instruction, and then find the first valid breakpoint address.
+    /// - The worst case is that the user might have to perform the step into action more than once before the debugger properly steps into a function at the specified address.
     IntoStatement,
     /// Step to the calling statement, immediately after the current statement.
     OutOfStatement,
@@ -1538,8 +1702,11 @@ impl SteppingMode {
             .status()
             .map_err(|error| DebugError::Other(anyhow::anyhow!(error)))
             .map_err(|error| DebugError::Other(anyhow::anyhow!(error)))?;
-        let mut program_counter = match core_status {
-            CoreStatus::Halted(_) => core.read_core_reg(core.registers().program_counter())?,
+        let (mut program_counter, return_address) = match core_status {
+            CoreStatus::Halted(_) => (
+                core.read_core_reg(core.registers().program_counter())?,
+                core.read_core_reg(core.registers().return_address())?,
+            ),
             _ => {
                 return Err(DebugError::Other(anyhow::anyhow!(
                     "Core must be halted before stepping."
@@ -1547,213 +1714,81 @@ impl SteppingMode {
             }
         };
 
+        // First deal with the two special cases.
         match self {
             SteppingMode::StepInstruction => {
-                step_instruction(&mut program_counter, core, &mut core_status)?
+                program_counter = core.step()?.pc;
+                core_status = core.status()?;
+                return Ok((core_status, program_counter));
             }
-            SteppingMode::OverStatement => {
-                // let target_address = 0_u32;
-
-                // // Every `line_row.prologue_end()` adds the `line_row.address()` to LIFO `code_blocks_opened`.
-                // // Every `line_row.end_sequence()` removes the last entry from `code_blocks_opened`.
-                // let mut code_blocks_opened: Vec<u32> = vec![];
-
-                // // Store the `line_row.address()` that matches the `program_counter`
-                // let mut active_row = None;
-
-                // // Store the `line_row.address()` of the next `line_row.is_stmt()` inside the same code block.
-                // let mut next_peer_statement = None;
-
-                // // Store the `line_row.address` of the next instruction, irrespective of the line_row flags.
-                // // In theory, there should be a `line_row.is_stmt()` with a `line_row.prologue_end()` flag, but that is not reliable with the current DWARF's being generated.
-                // let mut next_inner_statement = None;
-
-                // // Once we have found our `active_statement`, the next `line_row.end_sequence()` signals the end of block for the `active_statement`
-                // let mut active_block_closed = false;
-
-                // // The first statement after the `active_block_closed = true`
-                // let mut next_outer_statement = None;
-
-                if let Some(mut rows) = get_program_rows(debug_info, program_counter) {
-                    println!("Row programs executed successfully");
-                    // while let Ok(Some((_line_program_header, line_row))) = rows.next_row() {
-                    //     // / Iterating over the rows, we can use the fields of gimli::LineRow to determine the following:
-                    //     // / line_row.address()          - program_counter.
-                    //     // / line_row.is_stmt()          - We only care about statements or non-statements which are end of seq.
-                    //     // / line_row.end_sequence()     - These non-statements indicate the end of a scope.
-                    //     // / line_row.prologue_end()     - These statements indicate the beginning of a scope.
-
-                    //     if active_row.is_none() {
-                    //         if line_row.address() == program_counter as u64 {
-                    //             active_row = Some(line_row.address() as u32);
-                    //         }
-                    //     } else if line_row.is_stmt() {
-                    //         if next_peer_statement.is_none() {
-                    //             next_peer_statement = Some(line_row.address() as u32);
-                    //         }
-                    //         if next_inner_statement.is_none() {
-                    //             next_inner_statement = Some(line_row.address() as u32);
-                    //         }
-                    //         if active_block_closed && next_outer_statement.is_none() {
-                    //             next_outer_statement = Some(line_row.address() as u32);
-                    //         }
-                    //     }
-
-                    //     if line_row.prologue_end() {
-                    //         code_blocks_opened.push(line_row.address() as u32);
-                    //         continue;
-                    //     } else if line_row.end_sequence() {
-                    //         if active_row.is_some() {
-                    //             active_block_closed = true;
-                    //         }
-                    //         code_blocks_opened.pop();
-                    //         continue;
-                    //     }
-                    // }
-                } else {
-                    log::warn!(
-                        "Failed to deconstruct program rows at location {:#010x}. Stepping will only be to the next machine instruction.",
-                        program_counter
-                    );
-                    step_instruction(&mut program_counter, core, &mut core_status)?;
-                    return Ok((core_status, program_counter));
+            SteppingMode::IntoStatement => {
+                // Step a single instruction, then proceed to the next step.
+                program_counter = core.step()?.pc;
+            }
+            _ => {
+                // We will deal with the rest in the next step.
+            }
+        }
+        let target_address = match debug_info.get_program_row_data(program_counter, return_address)
+        {
+            Ok(program_row_data) => {
+                match self {
+                    SteppingMode::OverStatement => program_row_data.next_statement_address,
+                    SteppingMode::OutOfStatement => {
+                        if program_row_data.step_out_address.unwrap_or(0).is_zero() {
+                            return Err(DebugError::Other(anyhow::anyhow!(
+                                "Cannot step out of a non-returning function"
+                            )));
+                        } else {
+                            program_row_data.step_out_address
+                        }
+                    }
+                    SteppingMode::IntoStatement => {
+                        // We have already stepped a single instruction, now use the next available breakpoint.
+                        program_row_data.first_breakpoint_address
+                    }
+                    _ => {
+                        // We've already covered SteppingMode::StepInstruction
+                        None
+                    }
                 }
-
-                // if target_address != program_counter {
-                //     log::warn!("Debug stepping halted at {:#010x} when the intention was to halt at {:010x}.", program_counter, target_address);
-                // }
             }
-            SteppingMode::IntoStatement => todo!(),
-            SteppingMode::OutOfStatement => todo!(),
+            Err(error) => {
+                return Err(DebugError::Other(anyhow::anyhow!(
+                    "Cannot step: {:?}",
+                    error
+                )))
+            }
+        };
+        match target_address {
+            Some(target_address) => {
+                log::debug!(
+                    "Preparing to step ({:20?}) from: {:#010X} to: {:#010X}",
+                    self,
+                    program_counter,
+                    target_address
+                );
+
+                program_counter = if core.set_hw_breakpoint(target_address as u32).is_ok() {
+                    core.run()?;
+                    core.clear_hw_breakpoint(target_address as u32)?;
+                    core.read_core_reg(core.registers().program_counter())?
+                } else {
+                    while target_address != core.step()?.pc as u64 {
+                        // Single step the core until we get to the target_address;
+                    }
+                    target_address as u32
+                };
+                core_status = core.status()?;
+            }
+            None => {
+                log::warn!("Failed to determine stepping location from program rows at location {:#010x}. Stepping will only be to the next machine instruction.", program_counter);
+                program_counter = core.step()?.pc;
+                core_status = core.status()?;
+            }
         }
         Ok((core_status, program_counter))
     }
-}
-
-/// A helper function to get the gimli::LineRows iterator for the current program.
-fn get_program_rows<'program>(
-    debug_info: &DebugInfo,
-    program_counter: u32,
-) -> Option<
-    bool,
-    // gimli::LineRows<
-    //     gimli::EndianReader<gimli::LittleEndian, Rc<[u8]>>,
-    //     &gimli::CompleteLineProgram<gimli::EndianReader<gimli::LittleEndian, Rc<[u8]>>, usize>,
-    //     usize,
-    // >
-> {
-    // First we have to find the compile unit at the current address.
-    let mut units = debug_info.dwarf.units();
-    let mut program_unit = None;
-    'unit: while let Ok(Some(header)) = units.next() {
-        match debug_info.dwarf.unit(header) {
-            Ok(unit) => match debug_info.dwarf.unit_ranges(&unit) {
-                Ok(mut ranges) => {
-                    while let Ok(Some(range)) = ranges.next() {
-                        if (range.begin <= program_counter.into())
-                            && (range.end > program_counter.into())
-                        {
-                            program_unit = Some(unit);
-                            break 'unit;
-                        }
-                    }
-                }
-                Err(_) => continue,
-            },
-            Err(_) => continue,
-        };
-    }
-
-    // This code provide row information by navigating the DWARF instructions.
-    // If we have a valid program_unit, we can access the IncompleteLineProgram and it's rows.
-    // if let Some(program_unit) = program_unit.as_ref() {
-    //     program_unit
-    //         .line_program
-    //         .as_ref()
-    //         .map(|line_program| line_program.clone().rows().clone())
-    // } else {
-    //     None
-    // }
-
-    // Use the gimli::read::DebugLine::program() to return the rows from the LineProgram.
-    if let Some(program_unit) = program_unit.as_ref() {
-        if let Some(line_program) = program_unit.line_program.clone() {
-            let offset = line_program.header().offset();
-            let address_size = line_program.header().address_size();
-            match debug_info
-                .debug_line_section
-                .program(offset, address_size, None, None)
-            {
-                Ok(incomplete_line_program) => match incomplete_line_program.sequences() {
-                    Ok((complete_line_program, line_sequences)) => {
-                        for sequence in line_sequences {
-                            println!("Seq_Start : {:#010X}", sequence.start);
-                            let mut rows = complete_line_program.resume_from(&sequence);
-                            while let Ok(Some((program_header, row))) = rows.next_row() {
-                                println!("\t@{:#010X}  stmt={:5}  ep={:5}  es={:5}  line={:04}  col={:05}  f={:02}",
-                                    row.address(),
-                                    row.is_stmt(),
-                                    row.prologue_end(),
-                                    row.end_sequence(),
-                                    match row.line() {
-                                        Some(line) => line.get(),
-                                        None => 0,
-                                    },
-                                    match row.column() {
-                                        gimli::ColumnType::LeftEdge => 0,
-                                        gimli::ColumnType::Column(column) => column.get(),
-                                    },
-                                    row.file_index()
-                                );
-                            }
-                            println!("Seq_End   : {:#010X}", sequence.end);
-                        }
-                        Some(true)
-                        // if let Some(active_sequence) = line_sequences.iter().find(|line_sequence| {
-                        //     line_sequence.start as u32 <= program_counter
-                        //         && line_sequence.end as u32 > program_counter
-                        // }) {
-                        //     let j = complete_line_program.resume_from(active_sequence);
-                        //     Some(true)
-                        // } else {
-                        //     println!(
-                        //         "No matching sequence found for program counter {}",
-                        //         program_counter
-                        //     );
-                        //     None
-                        // }
-                    }
-                    Err(error) => {
-                        println!("{:?}", error);
-                        None
-                    }
-                },
-                Err(error) => {
-                    println!("{:?}", error);
-                    None
-                }
-            }
-        } else {
-            None
-        }
-    } else {
-        None
-    }
-}
-
-fn step_instruction(
-    program_counter: &mut u32,
-    core: &mut Core,
-    core_status: &mut CoreStatus,
-) -> Result<(), DebugError> {
-    *program_counter = core
-        .step()
-        .map_err(|error| DebugError::Other(anyhow::anyhow!(error)))?
-        .pc;
-    *core_status = core
-        .status()
-        .map_err(|error| DebugError::Other(anyhow::anyhow!(error)))?;
-    Ok(())
 }
 
 /// Reference to a DIE for a function
@@ -1765,7 +1800,9 @@ struct FunctionDie<'abbrev, 'unit, 'unit_info, 'debug_info> {
     /// Only present for inlined functions, where this is a reference
     /// to the declaration of the function.
     abstract_die: Option<FunctionDieType<'abbrev, 'unit>>,
+    /// The address of the first instruction in this function.
     low_pc: u64,
+    /// The address of the first instruction after this funciton.
     high_pc: u64,
 }
 
