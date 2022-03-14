@@ -193,6 +193,7 @@ variants:
       - stm32f3xx_256
       - stm32f3xx_opt
   - name: STM32F301R8Tx
+    part: 0x439
     cores:
       - name: main
         type: armv7em
