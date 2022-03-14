@@ -6,7 +6,13 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/) and this p
 
 ## [Unreleased]
 
-## [v0.3.2] - 2022-03-10
+## [v0.3.3] - 2022-03-14
+
+### Fixed
+
+- [#311] fixed "probe-run does not work with some programs that have less than 10 KiB of stack space _unless_ `--measure-stack` is available"
+
+## [v0.3.2] - 2022-03-10 - YANKED
 
 - [#303] Don't bail, but only warn if using `--no-flash` with `defmt`
 - [#302] Make stack painting fast again! 🇪🇺
@@ -371,7 +377,8 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/) and this p
 
 Initial release
 
-[Unreleased]: https://github.com/knurling-rs/probe-run/compare/v0.3.2...main
+[Unreleased]: https://github.com/knurling-rs/probe-run/compare/v0.3.3...main
+[v0.3.3]: https://github.com/knurling-rs/probe-run/compare/v0.3.2...v0.3.3
 [v0.3.2]: https://github.com/knurling-rs/probe-run/compare/v0.3.1...v0.3.2
 [v0.3.1]: https://github.com/knurling-rs/probe-run/compare/v0.3.0...v0.3.1
 [v0.3.0]: https://github.com/knurling-rs/probe-run/compare/v0.2.5...v0.3.0
