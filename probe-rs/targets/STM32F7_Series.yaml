@@ -1,6 +1,10 @@
 name: STM32F7 Series
+manufacturer:
+  id: 0x20
+  cc: 0x0
 variants:
   - name: STM32F722ICKx
+    part: 0x452
     cores:
       - name: main
         type: armv7em
@@ -35,6 +39,7 @@ variants:
       - stm32f769i_qspi_macronix
       - stm32f723e_qspi_macronix
   - name: STM32F722ICTx
+    part: 0x452
     cores:
       - name: main
         type: armv7em
@@ -69,6 +74,7 @@ variants:
       - stm32f769i_qspi_macronix
       - stm32f723e_qspi_macronix
   - name: STM32F722IEKx
+    part: 0x452
     cores:
       - name: main
         type: armv7em
@@ -103,6 +109,7 @@ variants:
       - stm32f769i_qspi_macronix
       - stm32f723e_qspi_macronix
   - name: STM32F722IETx
+    part: 0x452
     cores:
       - name: main
         type: armv7em
@@ -137,6 +144,7 @@ variants:
       - stm32f769i_qspi_macronix
       - stm32f723e_qspi_macronix
   - name: STM32F722RCTx
+    part: 0x452
     cores:
       - name: main
         type: armv7em
@@ -171,6 +179,7 @@ variants:
       - stm32f769i_qspi_macronix
       - stm32f723e_qspi_macronix
   - name: STM32F722RETx
+    part: 0x452
     cores:
       - name: main
         type: armv7em
@@ -205,6 +214,7 @@ variants:
       - stm32f769i_qspi_macronix
       - stm32f723e_qspi_macronix
   - name: STM32F722VCTx
+    part: 0x452
     cores:
       - name: main
         type: armv7em
@@ -239,6 +249,7 @@ variants:
       - stm32f769i_qspi_macronix
       - stm32f723e_qspi_macronix
   - name: STM32F722VETx
+    part: 0x452
     cores:
       - name: main
         type: armv7em
@@ -273,6 +284,7 @@ variants:
       - stm32f769i_qspi_macronix
       - stm32f723e_qspi_macronix
   - name: STM32F722ZCTx
+    part: 0x452
     cores:
       - name: main
         type: armv7em
@@ -307,6 +319,7 @@ variants:
       - stm32f769i_qspi_macronix
       - stm32f723e_qspi_macronix
   - name: STM32F722ZETx
+    part: 0x452
     cores:
       - name: main
         type: armv7em
@@ -341,6 +354,7 @@ variants:
       - stm32f769i_qspi_macronix
       - stm32f723e_qspi_macronix
   - name: STM32F723ICKx
+    part: 0x452
     cores:
       - name: main
         type: armv7em
@@ -375,6 +389,7 @@ variants:
       - stm32f769i_qspi_macronix
       - stm32f723e_qspi_macronix
   - name: STM32F723ICTx
+    part: 0x452
     cores:
       - name: main
         type: armv7em
@@ -409,6 +424,7 @@ variants:
       - stm32f769i_qspi_macronix
       - stm32f723e_qspi_macronix
   - name: STM32F723IEKx
+    part: 0x452
     cores:
       - name: main
         type: armv7em
@@ -443,6 +459,7 @@ variants:
       - stm32f769i_qspi_macronix
       - stm32f723e_qspi_macronix
   - name: STM32F723IETx
+    part: 0x452
     cores:
       - name: main
         type: armv7em
@@ -477,6 +494,7 @@ variants:
       - stm32f769i_qspi_macronix
       - stm32f723e_qspi_macronix
   - name: STM32F723VEYx
+    part: 0x452
     cores:
       - name: main
         type: armv7em
@@ -511,6 +529,7 @@ variants:
       - stm32f769i_qspi_macronix
       - stm32f723e_qspi_macronix
   - name: STM32F723ZCIx
+    part: 0x452
     cores:
       - name: main
         type: armv7em
@@ -545,6 +564,7 @@ variants:
       - stm32f769i_qspi_macronix
       - stm32f723e_qspi_macronix
   - name: STM32F723ZCTx
+    part: 0x452
     cores:
       - name: main
         type: armv7em
@@ -579,6 +599,7 @@ variants:
       - stm32f769i_qspi_macronix
       - stm32f723e_qspi_macronix
   - name: STM32F723ZEIx
+    part: 0x452
     cores:
       - name: main
         type: armv7em
@@ -613,6 +634,7 @@ variants:
       - stm32f769i_qspi_macronix
       - stm32f723e_qspi_macronix
   - name: STM32F723ZETx
+    part: 0x452
     cores:
       - name: main
         type: armv7em
@@ -647,6 +669,7 @@ variants:
       - stm32f769i_qspi_macronix
       - stm32f723e_qspi_macronix
   - name: STM32F730I8Kx
+    part: 0x452
     cores:
       - name: main
         type: armv7em
@@ -681,6 +704,7 @@ variants:
       - stm32f769i_qspi_macronix
       - stm32f723e_qspi_macronix
   - name: STM32F730R8Tx
+    part: 0x452
     cores:
       - name: main
         type: armv7em
@@ -715,6 +739,7 @@ variants:
       - stm32f769i_qspi_macronix
       - stm32f723e_qspi_macronix
   - name: STM32F730V8Tx
+    part: 0x452
     cores:
       - name: main
         type: armv7em
@@ -749,6 +774,7 @@ variants:
       - stm32f769i_qspi_macronix
       - stm32f723e_qspi_macronix
   - name: STM32F730Z8Tx
+    part: 0x452
     cores:
       - name: main
         type: armv7em
@@ -783,6 +809,7 @@ variants:
       - stm32f769i_qspi_macronix
       - stm32f723e_qspi_macronix
   - name: STM32F732IEKx
+    part: 0x452
     cores:
       - name: main
         type: armv7em
@@ -817,6 +844,7 @@ variants:
       - stm32f769i_qspi_macronix
       - stm32f723e_qspi_macronix
   - name: STM32F732IETx
+    part: 0x452
     cores:
       - name: main
         type: armv7em
@@ -851,6 +879,7 @@ variants:
       - stm32f769i_qspi_macronix
       - stm32f723e_qspi_macronix
   - name: STM32F732RETx
+    part: 0x452
     cores:
       - name: main
         type: armv7em
@@ -885,6 +914,7 @@ variants:
       - stm32f769i_qspi_macronix
       - stm32f723e_qspi_macronix
   - name: STM32F732VETx
+    part: 0x452
     cores:
       - name: main
         type: armv7em
@@ -919,6 +949,7 @@ variants:
       - stm32f769i_qspi_macronix
       - stm32f723e_qspi_macronix
   - name: STM32F732ZETx
+    part: 0x452
     cores:
       - name: main
         type: armv7em
@@ -953,6 +984,7 @@ variants:
       - stm32f769i_qspi_macronix
       - stm32f723e_qspi_macronix
   - name: STM32F733IEKx
+    part: 0x452
     cores:
       - name: main
         type: armv7em
@@ -987,6 +1019,7 @@ variants:
       - stm32f769i_qspi_macronix
       - stm32f723e_qspi_macronix
   - name: STM32F733IETx
+    part: 0x452
     cores:
       - name: main
         type: armv7em
@@ -1021,6 +1054,7 @@ variants:
       - stm32f769i_qspi_macronix
       - stm32f723e_qspi_macronix
   - name: STM32F733VETx
+    part: 0x452
     cores:
       - name: main
         type: armv7em
@@ -1055,6 +1089,7 @@ variants:
       - stm32f769i_qspi_macronix
       - stm32f723e_qspi_macronix
   - name: STM32F733VEYx
+    part: 0x452
     cores:
       - name: main
         type: armv7em
@@ -1089,6 +1124,7 @@ variants:
       - stm32f769i_qspi_macronix
       - stm32f723e_qspi_macronix
   - name: STM32F733ZEKx
+    part: 0x452
     cores:
       - name: main
         type: armv7em
@@ -1123,6 +1159,7 @@ variants:
       - stm32f769i_qspi_macronix
       - stm32f723e_qspi_macronix
   - name: STM32F733ZETx
+    part: 0x452
     cores:
       - name: main
         type: armv7em
@@ -1157,6 +1194,7 @@ variants:
       - stm32f769i_qspi_macronix
       - stm32f723e_qspi_macronix
   - name: STM32F745IEKx
+    part: 0x449
     cores:
       - name: main
         type: armv7em
@@ -1191,6 +1229,7 @@ variants:
       - stm32f769i_qspi_macronix
       - stm32f723e_qspi_macronix
   - name: STM32F745IETx
+    part: 0x449
     cores:
       - name: main
         type: armv7em
@@ -1225,6 +1264,7 @@ variants:
       - stm32f769i_qspi_macronix
       - stm32f723e_qspi_macronix
   - name: STM32F745IGKx
+    part: 0x449
     cores:
       - name: main
         type: armv7em
@@ -1259,6 +1299,7 @@ variants:
       - stm32f769i_qspi_macronix
       - stm32f723e_qspi_macronix
   - name: STM32F745IGTx
+    part: 0x449
     cores:
       - name: main
         type: armv7em
@@ -1293,6 +1334,7 @@ variants:
       - stm32f769i_qspi_macronix
       - stm32f723e_qspi_macronix
   - name: STM32F745VEHx
+    part: 0x449
     cores:
       - name: main
         type: armv7em
@@ -1327,6 +1369,7 @@ variants:
       - stm32f769i_qspi_macronix
       - stm32f723e_qspi_macronix
   - name: STM32F745VETx
+    part: 0x449
     cores:
       - name: main
         type: armv7em
@@ -1361,6 +1404,7 @@ variants:
       - stm32f769i_qspi_macronix
       - stm32f723e_qspi_macronix
   - name: STM32F745VGHx
+    part: 0x449
     cores:
       - name: main
         type: armv7em
@@ -1395,6 +1439,7 @@ variants:
       - stm32f769i_qspi_macronix
       - stm32f723e_qspi_macronix
   - name: STM32F745VGTx
+    part: 0x449
     cores:
       - name: main
         type: armv7em
@@ -1429,6 +1474,7 @@ variants:
       - stm32f769i_qspi_macronix
       - stm32f723e_qspi_macronix
   - name: STM32F745ZETx
+    part: 0x449
     cores:
       - name: main
         type: armv7em
@@ -1463,6 +1509,7 @@ variants:
       - stm32f769i_qspi_macronix
       - stm32f723e_qspi_macronix
   - name: STM32F745ZGTx
+    part: 0x449
     cores:
       - name: main
         type: armv7em
@@ -1497,6 +1544,7 @@ variants:
       - stm32f769i_qspi_macronix
       - stm32f723e_qspi_macronix
   - name: STM32F746BETx
+    part: 0x449
     cores:
       - name: main
         type: armv7em
@@ -1531,6 +1579,7 @@ variants:
       - stm32f769i_qspi_macronix
       - stm32f723e_qspi_macronix
   - name: STM32F746BGTx
+    part: 0x449
     cores:
       - name: main
         type: armv7em
@@ -1565,6 +1614,7 @@ variants:
       - stm32f769i_qspi_macronix
       - stm32f723e_qspi_macronix
   - name: STM32F746IEKx
+    part: 0x449
     cores:
       - name: main
         type: armv7em
@@ -1599,6 +1649,7 @@ variants:
       - stm32f769i_qspi_macronix
       - stm32f723e_qspi_macronix
   - name: STM32F746IETx
+    part: 0x449
     cores:
       - name: main
         type: armv7em
@@ -1633,6 +1684,7 @@ variants:
       - stm32f769i_qspi_macronix
       - stm32f723e_qspi_macronix
   - name: STM32F746IGKx
+    part: 0x449
     cores:
       - name: main
         type: armv7em
@@ -1667,6 +1719,7 @@ variants:
       - stm32f769i_qspi_macronix
       - stm32f723e_qspi_macronix
   - name: STM32F746IGTx
+    part: 0x449
     cores:
       - name: main
         type: armv7em
@@ -1701,6 +1754,7 @@ variants:
       - stm32f769i_qspi_macronix
       - stm32f723e_qspi_macronix
   - name: STM32F746NEHx
+    part: 0x449
     cores:
       - name: main
         type: armv7em
@@ -1735,6 +1789,7 @@ variants:
       - stm32f769i_qspi_macronix
       - stm32f723e_qspi_macronix
   - name: STM32F746NGHx
+    part: 0x449
     cores:
       - name: main
         type: armv7em
@@ -1769,6 +1824,7 @@ variants:
       - stm32f769i_qspi_macronix
       - stm32f723e_qspi_macronix
   - name: STM32F746VEHx
+    part: 0x449
     cores:
       - name: main
         type: armv7em
@@ -1803,6 +1859,7 @@ variants:
       - stm32f769i_qspi_macronix
       - stm32f723e_qspi_macronix
   - name: STM32F746VETx
+    part: 0x449
     cores:
       - name: main
         type: armv7em
@@ -1837,6 +1894,7 @@ variants:
       - stm32f769i_qspi_macronix
       - stm32f723e_qspi_macronix
   - name: STM32F746VGHx
+    part: 0x449
     cores:
       - name: main
         type: armv7em
@@ -1871,6 +1929,7 @@ variants:
       - stm32f769i_qspi_macronix
       - stm32f723e_qspi_macronix
   - name: STM32F746VGTx
+    part: 0x449
     cores:
       - name: main
         type: armv7em
@@ -1905,6 +1964,7 @@ variants:
       - stm32f769i_qspi_macronix
       - stm32f723e_qspi_macronix
   - name: STM32F746ZETx
+    part: 0x449
     cores:
       - name: main
         type: armv7em
@@ -1939,6 +1999,7 @@ variants:
       - stm32f769i_qspi_macronix
       - stm32f723e_qspi_macronix
   - name: STM32F746ZEYx
+    part: 0x449
     cores:
       - name: main
         type: armv7em
@@ -1973,6 +2034,7 @@ variants:
       - stm32f769i_qspi_macronix
       - stm32f723e_qspi_macronix
   - name: STM32F746ZGTx
+    part: 0x449
     cores:
       - name: main
         type: armv7em
@@ -2007,6 +2069,7 @@ variants:
       - stm32f769i_qspi_macronix
       - stm32f723e_qspi_macronix
   - name: STM32F746ZGYx
+    part: 0x449
     cores:
       - name: main
         type: armv7em
@@ -2041,6 +2104,7 @@ variants:
       - stm32f769i_qspi_macronix
       - stm32f723e_qspi_macronix
   - name: STM32F750N8Hx
+    part: 0x449
     cores:
       - name: main
         type: armv7em
@@ -2075,6 +2139,7 @@ variants:
       - stm32f769i_qspi_macronix
       - stm32f723e_qspi_macronix
   - name: STM32F750V8Tx
+    part: 0x449
     cores:
       - name: main
         type: armv7em
@@ -2109,6 +2174,7 @@ variants:
       - stm32f769i_qspi_macronix
       - stm32f723e_qspi_macronix
   - name: STM32F750Z8Tx
+    part: 0x449
     cores:
       - name: main
         type: armv7em
@@ -2143,6 +2209,7 @@ variants:
       - stm32f769i_qspi_macronix
       - stm32f723e_qspi_macronix
   - name: STM32F756BGTx
+    part: 0x449
     cores:
       - name: main
         type: armv7em
@@ -2177,6 +2244,7 @@ variants:
       - stm32f769i_qspi_macronix
       - stm32f723e_qspi_macronix
   - name: STM32F756IGKx
+    part: 0x449
     cores:
       - name: main
         type: armv7em
@@ -2211,6 +2279,7 @@ variants:
       - stm32f769i_qspi_macronix
       - stm32f723e_qspi_macronix
   - name: STM32F756IGTx
+    part: 0x449
     cores:
       - name: main
         type: armv7em
@@ -2245,6 +2314,7 @@ variants:
       - stm32f769i_qspi_macronix
       - stm32f723e_qspi_macronix
   - name: STM32F756NGHx
+    part: 0x449
     cores:
       - name: main
         type: armv7em
@@ -2279,6 +2349,7 @@ variants:
       - stm32f769i_qspi_macronix
       - stm32f723e_qspi_macronix
   - name: STM32F756VGHx
+    part: 0x449
     cores:
       - name: main
         type: armv7em
@@ -2313,6 +2384,7 @@ variants:
       - stm32f769i_qspi_macronix
       - stm32f723e_qspi_macronix
   - name: STM32F756VGTx
+    part: 0x449
     cores:
       - name: main
         type: armv7em
@@ -2347,6 +2419,7 @@ variants:
       - stm32f769i_qspi_macronix
       - stm32f723e_qspi_macronix
   - name: STM32F756ZGTx
+    part: 0x449
     cores:
       - name: main
         type: armv7em
@@ -2381,6 +2454,7 @@ variants:
       - stm32f769i_qspi_macronix
       - stm32f723e_qspi_macronix
   - name: STM32F756ZGYx
+    part: 0x449
     cores:
       - name: main
         type: armv7em
@@ -2415,6 +2489,7 @@ variants:
       - stm32f769i_qspi_macronix
       - stm32f723e_qspi_macronix
   - name: STM32F765BGTx
+    part: 0x451
     cores:
       - name: main
         type: armv7em
@@ -2451,6 +2526,7 @@ variants:
       - stm32f769i_qspi_macronix
       - stm32f723e_qspi_macronix
   - name: STM32F765BITx
+    part: 0x451
     cores:
       - name: main
         type: armv7em
@@ -2487,6 +2563,7 @@ variants:
       - stm32f769i_qspi_macronix
       - stm32f723e_qspi_macronix
   - name: STM32F765IGKx
+    part: 0x451
     cores:
       - name: main
         type: armv7em
@@ -2523,6 +2600,7 @@ variants:
       - stm32f769i_qspi_macronix
       - stm32f723e_qspi_macronix
   - name: STM32F765IGTx
+    part: 0x451
     cores:
       - name: main
         type: armv7em
@@ -2559,6 +2637,7 @@ variants:
       - stm32f769i_qspi_macronix
       - stm32f723e_qspi_macronix
   - name: STM32F765IIKx
+    part: 0x451
     cores:
       - name: main
         type: armv7em
@@ -2595,6 +2674,7 @@ variants:
       - stm32f769i_qspi_macronix
       - stm32f723e_qspi_macronix
   - name: STM32F765IITx
+    part: 0x451
     cores:
       - name: main
         type: armv7em
@@ -2631,6 +2711,7 @@ variants:
       - stm32f769i_qspi_macronix
       - stm32f723e_qspi_macronix
   - name: STM32F765NGHx
+    part: 0x451
     cores:
       - name: main
         type: armv7em
@@ -2667,6 +2748,7 @@ variants:
       - stm32f769i_qspi_macronix
       - stm32f723e_qspi_macronix
   - name: STM32F765NIHx
+    part: 0x451
     cores:
       - name: main
         type: armv7em
@@ -2703,6 +2785,7 @@ variants:
       - stm32f769i_qspi_macronix
       - stm32f723e_qspi_macronix
   - name: STM32F765VGTx
+    part: 0x451
     cores:
       - name: main
         type: armv7em
@@ -2739,6 +2822,7 @@ variants:
       - stm32f769i_qspi_macronix
       - stm32f723e_qspi_macronix
   - name: STM32F765VITx
+    part: 0x451
     cores:
       - name: main
         type: armv7em
@@ -2775,6 +2859,7 @@ variants:
       - stm32f769i_qspi_macronix
       - stm32f723e_qspi_macronix
   - name: STM32F765ZGTx
+    part: 0x451
     cores:
       - name: main
         type: armv7em
@@ -2811,6 +2896,7 @@ variants:
       - stm32f769i_qspi_macronix
       - stm32f723e_qspi_macronix
   - name: STM32F765ZITx
+    part: 0x451
     cores:
       - name: main
         type: armv7em
@@ -2847,6 +2933,7 @@ variants:
       - stm32f769i_qspi_macronix
       - stm32f723e_qspi_macronix
   - name: STM32F767BGTx
+    part: 0x451
     cores:
       - name: main
         type: armv7em
@@ -2883,6 +2970,7 @@ variants:
       - stm32f769i_qspi_macronix
       - stm32f723e_qspi_macronix
   - name: STM32F767BITx
+    part: 0x451
     cores:
       - name: main
         type: armv7em
@@ -2919,6 +3007,7 @@ variants:
       - stm32f769i_qspi_macronix
       - stm32f723e_qspi_macronix
   - name: STM32F767IGKx
+    part: 0x451
     cores:
       - name: main
         type: armv7em
@@ -2955,6 +3044,7 @@ variants:
       - stm32f769i_qspi_macronix
       - stm32f723e_qspi_macronix
   - name: STM32F767IGTx
+    part: 0x451
     cores:
       - name: main
         type: armv7em
@@ -2991,6 +3081,7 @@ variants:
       - stm32f769i_qspi_macronix
       - stm32f723e_qspi_macronix
   - name: STM32F767IIKx
+    part: 0x451
     cores:
       - name: main
         type: armv7em
@@ -3027,6 +3118,7 @@ variants:
       - stm32f769i_qspi_macronix
       - stm32f723e_qspi_macronix
   - name: STM32F767IITx
+    part: 0x451
     cores:
       - name: main
         type: armv7em
@@ -3063,6 +3155,7 @@ variants:
       - stm32f769i_qspi_macronix
       - stm32f723e_qspi_macronix
   - name: STM32F767NGHx
+    part: 0x451
     cores:
       - name: main
         type: armv7em
@@ -3099,6 +3192,7 @@ variants:
       - stm32f769i_qspi_macronix
       - stm32f723e_qspi_macronix
   - name: STM32F767NIHx
+    part: 0x451
     cores:
       - name: main
         type: armv7em
@@ -3135,6 +3229,7 @@ variants:
       - stm32f769i_qspi_macronix
       - stm32f723e_qspi_macronix
   - name: STM32F767VGTx
+    part: 0x451
     cores:
       - name: main
         type: armv7em
@@ -3171,6 +3266,7 @@ variants:
       - stm32f769i_qspi_macronix
       - stm32f723e_qspi_macronix
   - name: STM32F767VITx
+    part: 0x451
     cores:
       - name: main
         type: armv7em
@@ -3207,6 +3303,7 @@ variants:
       - stm32f769i_qspi_macronix
       - stm32f723e_qspi_macronix
   - name: STM32F767ZGTx
+    part: 0x451
     cores:
       - name: main
         type: armv7em
@@ -3243,6 +3340,7 @@ variants:
       - stm32f769i_qspi_macronix
       - stm32f723e_qspi_macronix
   - name: STM32F767ZITx
+    part: 0x451
     cores:
       - name: main
         type: armv7em
@@ -3279,6 +3377,7 @@ variants:
       - stm32f769i_qspi_macronix
       - stm32f723e_qspi_macronix
   - name: STM32F768AIYx
+    part: 0x451
     cores:
       - name: main
         type: armv7em
@@ -3315,6 +3414,7 @@ variants:
       - stm32f769i_qspi_macronix
       - stm32f723e_qspi_macronix
   - name: STM32F769AGYx
+    part: 0x451
     cores:
       - name: main
         type: armv7em
@@ -3351,6 +3451,7 @@ variants:
       - stm32f769i_qspi_macronix
       - stm32f723e_qspi_macronix
   - name: STM32F769AIYx
+    part: 0x451
     cores:
       - name: main
         type: armv7em
@@ -3387,6 +3488,7 @@ variants:
       - stm32f769i_qspi_macronix
       - stm32f723e_qspi_macronix
   - name: STM32F769BGTx
+    part: 0x451
     cores:
       - name: main
         type: armv7em
@@ -3423,6 +3525,7 @@ variants:
       - stm32f769i_qspi_macronix
       - stm32f723e_qspi_macronix
   - name: STM32F769BITx
+    part: 0x451
     cores:
       - name: main
         type: armv7em
@@ -3459,6 +3562,7 @@ variants:
       - stm32f769i_qspi_macronix
       - stm32f723e_qspi_macronix
   - name: STM32F769IGTx
+    part: 0x451
     cores:
       - name: main
         type: armv7em
@@ -3495,6 +3599,7 @@ variants:
       - stm32f769i_qspi_macronix
       - stm32f723e_qspi_macronix
   - name: STM32F769IITx
+    part: 0x451
     cores:
       - name: main
         type: armv7em
@@ -3531,6 +3636,7 @@ variants:
       - stm32f769i_qspi_macronix
       - stm32f723e_qspi_macronix
   - name: STM32F769NGHx
+    part: 0x451
     cores:
       - name: main
         type: armv7em
@@ -3567,6 +3673,7 @@ variants:
       - stm32f769i_qspi_macronix
       - stm32f723e_qspi_macronix
   - name: STM32F769NIHx
+    part: 0x451
     cores:
       - name: main
         type: armv7em
@@ -3603,6 +3710,7 @@ variants:
       - stm32f769i_qspi_macronix
       - stm32f723e_qspi_macronix
   - name: STM32F777BITx
+    part: 0x451
     cores:
       - name: main
         type: armv7em
@@ -3639,6 +3747,7 @@ variants:
       - stm32f769i_qspi_macronix
       - stm32f723e_qspi_macronix
   - name: STM32F777IIKx
+    part: 0x451
     cores:
       - name: main
         type: armv7em
@@ -3675,6 +3784,7 @@ variants:
       - stm32f769i_qspi_macronix
       - stm32f723e_qspi_macronix
   - name: STM32F777IITx
+    part: 0x451
     cores:
       - name: main
         type: armv7em
@@ -3711,6 +3821,7 @@ variants:
       - stm32f769i_qspi_macronix
       - stm32f723e_qspi_macronix
   - name: STM32F777NIHx
+    part: 0x451
     cores:
       - name: main
         type: armv7em
@@ -3747,6 +3858,7 @@ variants:
       - stm32f769i_qspi_macronix
       - stm32f723e_qspi_macronix
   - name: STM32F777VITx
+    part: 0x451
     cores:
       - name: main
         type: armv7em
@@ -3783,6 +3895,7 @@ variants:
       - stm32f769i_qspi_macronix
       - stm32f723e_qspi_macronix
   - name: STM32F777ZITx
+    part: 0x451
     cores:
       - name: main
         type: armv7em
@@ -3819,6 +3932,7 @@ variants:
       - stm32f769i_qspi_macronix
       - stm32f723e_qspi_macronix
   - name: STM32F778AIYx
+    part: 0x451
     cores:
       - name: main
         type: armv7em
@@ -3855,6 +3969,7 @@ variants:
       - stm32f769i_qspi_macronix
       - stm32f723e_qspi_macronix
   - name: STM32F779AIYx
+    part: 0x451
     cores:
       - name: main
         type: armv7em
@@ -3891,6 +4006,7 @@ variants:
       - stm32f769i_qspi_macronix
       - stm32f723e_qspi_macronix
   - name: STM32F779BITx
+    part: 0x451
     cores:
       - name: main
         type: armv7em
@@ -3927,6 +4043,7 @@ variants:
       - stm32f769i_qspi_macronix
       - stm32f723e_qspi_macronix
   - name: STM32F779IITx
+    part: 0x451
     cores:
       - name: main
         type: armv7em
@@ -3963,6 +4080,7 @@ variants:
       - stm32f769i_qspi_macronix
       - stm32f723e_qspi_macronix
   - name: STM32F779NIHx
+    part: 0x451
     cores:
       - name: main
         type: armv7em

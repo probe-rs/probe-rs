@@ -1,6 +1,8 @@
 ---
 name: STM32H7 Series
-manufacturer: ~
+manufacturer:
+  id: 0x20
+  cc: 0x0
 variants:
   - name: STM32H723VEHx
     part: ~

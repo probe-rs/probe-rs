@@ -1,6 +1,10 @@
 name: STM32F4 Series
+manufacturer:
+  id: 0x20
+  cc: 0x0
 variants:
   - name: STM32F401CBUx
+    part: 0x423
     cores:
       - name: main
         type: armv7em
@@ -28,6 +32,7 @@ variants:
       - stm32f401xx_opt
       - stm32f4xx_otp
   - name: STM32F401CBYx
+    part: 0x423
     cores:
       - name: main
         type: armv7em
@@ -55,6 +60,7 @@ variants:
       - stm32f401xx_opt
       - stm32f4xx_otp
   - name: STM32F401CCUx
+    part: 0x423
     cores:
       - name: main
         type: armv7em
@@ -82,6 +88,7 @@ variants:
       - stm32f401xx_opt
       - stm32f4xx_otp
   - name: STM32F401CCYx
+    part: 0x423
     cores:
       - name: main
         type: armv7em
@@ -109,6 +116,7 @@ variants:
       - stm32f401xx_opt
       - stm32f4xx_otp
   - name: STM32F401CDUx
+    part: 0x433
     cores:
       - name: main
         type: armv7em
@@ -136,6 +144,7 @@ variants:
       - stm32f401xx_opt
       - stm32f4xx_otp
   - name: STM32F401CDYx
+    part: 0x433
     cores:
       - name: main
         type: armv7em
@@ -163,6 +172,7 @@ variants:
       - stm32f401xx_opt
       - stm32f4xx_otp
   - name: STM32F401CEUx
+    part: 0x433
     cores:
       - name: main
         type: armv7em
@@ -190,6 +200,7 @@ variants:
       - stm32f401xx_opt
       - stm32f4xx_otp
   - name: STM32F401CEYx
+    part: 0x433
     cores:
       - name: main
         type: armv7em
@@ -217,6 +228,7 @@ variants:
       - stm32f401xx_opt
       - stm32f4xx_otp
   - name: STM32F401RBTx
+    part: 0x423
     cores:
       - name: main
         type: armv7em
@@ -244,6 +256,7 @@ variants:
       - stm32f401xx_opt
       - stm32f4xx_otp
   - name: STM32F401RCTx
+    part: 0x423
     cores:
       - name: main
         type: armv7em
@@ -271,6 +284,7 @@ variants:
       - stm32f401xx_opt
       - stm32f4xx_otp
   - name: STM32F401RDTx
+    part: 0x433
     cores:
       - name: main
         type: armv7em
@@ -298,6 +312,7 @@ variants:
       - stm32f401xx_opt
       - stm32f4xx_otp
   - name: STM32F401RETx
+    part: 0x433
     cores:
       - name: main
         type: armv7em
@@ -325,6 +340,7 @@ variants:
       - stm32f401xx_opt
       - stm32f4xx_otp
   - name: STM32F401VBHx
+    part: 0x423
     cores:
       - name: main
         type: armv7em
@@ -352,6 +368,7 @@ variants:
       - stm32f401xx_opt
       - stm32f4xx_otp
   - name: STM32F401VBTx
+    part: 0x423
     cores:
       - name: main
         type: armv7em
@@ -379,6 +396,7 @@ variants:
       - stm32f401xx_opt
       - stm32f4xx_otp
   - name: STM32F401VCHx
+    part: 0x423
     cores:
       - name: main
         type: armv7em
@@ -406,6 +424,7 @@ variants:
       - stm32f401xx_opt
       - stm32f4xx_otp
   - name: STM32F401VCTx
+    part: 0x423
     cores:
       - name: main
         type: armv7em
@@ -433,6 +452,7 @@ variants:
       - stm32f401xx_opt
       - stm32f4xx_otp
   - name: STM32F401VDHx
+    part: 0x433
     cores:
       - name: main
         type: armv7em
@@ -460,6 +480,7 @@ variants:
       - stm32f401xx_opt
       - stm32f4xx_otp
   - name: STM32F401VDTx
+    part: 0x433
     cores:
       - name: main
         type: armv7em
@@ -487,6 +508,7 @@ variants:
       - stm32f401xx_opt
       - stm32f4xx_otp
   - name: STM32F401VEHx
+    part: 0x433
     cores:
       - name: main
         type: armv7em
@@ -514,6 +536,7 @@ variants:
       - stm32f401xx_opt
       - stm32f4xx_otp
   - name: STM32F401VETx
+    part: 0x433
     cores:
       - name: main
         type: armv7em
@@ -541,6 +564,7 @@ variants:
       - stm32f401xx_opt
       - stm32f4xx_otp
   - name: STM32F405OEYx
+    part: 0x413
     cores:
       - name: main
         type: armv7em
@@ -568,6 +592,7 @@ variants:
       - stm32f40xxx_41xxx_opt
       - stm32f4xx_otp
   - name: STM32F405OGYx
+    part: 0x413
     cores:
       - name: main
         type: armv7em
@@ -595,6 +620,7 @@ variants:
       - stm32f40xxx_41xxx_opt
       - stm32f4xx_otp
   - name: STM32F405RGTx
+    part: 0x413
     cores:
       - name: main
         type: armv7em
@@ -622,6 +648,7 @@ variants:
       - stm32f40xxx_41xxx_opt
       - stm32f4xx_otp
   - name: STM32F405VGTx
+    part: 0x413
     cores:
       - name: main
         type: armv7em
@@ -649,6 +676,7 @@ variants:
       - stm32f40xxx_41xxx_opt
       - stm32f4xx_otp
   - name: STM32F405ZGTx
+    part: 0x413
     cores:
       - name: main
         type: armv7em
@@ -676,6 +704,7 @@ variants:
       - stm32f40xxx_41xxx_opt
       - stm32f4xx_otp
   - name: STM32F407IEHx
+    part: 0x413
     cores:
       - name: main
         type: armv7em
@@ -703,6 +732,7 @@ variants:
       - stm32f40xxx_41xxx_opt
       - stm32f4xx_otp
   - name: STM32F407IETx
+    part: 0x413
     cores:
       - name: main
         type: armv7em
@@ -730,6 +760,7 @@ variants:
       - stm32f40xxx_41xxx_opt
       - stm32f4xx_otp
   - name: STM32F407IGHx
+    part: 0x413
     cores:
       - name: main
         type: armv7em
@@ -757,6 +788,7 @@ variants:
       - stm32f40xxx_41xxx_opt
       - stm32f4xx_otp
   - name: STM32F407IGTx
+    part: 0x413
     cores:
       - name: main
         type: armv7em
@@ -784,6 +816,7 @@ variants:
       - stm32f40xxx_41xxx_opt
       - stm32f4xx_otp
   - name: STM32F407VETx
+    part: 0x413
     cores:
       - name: main
         type: armv7em
@@ -811,6 +844,7 @@ variants:
       - stm32f40xxx_41xxx_opt
       - stm32f4xx_otp
   - name: STM32F407VGTx
+    part: 0x413
     cores:
       - name: main
         type: armv7em
@@ -838,6 +872,7 @@ variants:
       - stm32f40xxx_41xxx_opt
       - stm32f4xx_otp
   - name: STM32F407ZETx
+    part: 0x413
     cores:
       - name: main
         type: armv7em
@@ -865,6 +900,7 @@ variants:
       - stm32f40xxx_41xxx_opt
       - stm32f4xx_otp
   - name: STM32F407ZGTx
+    part: 0x413
     cores:
       - name: main
         type: armv7em
@@ -892,6 +928,7 @@ variants:
       - stm32f40xxx_41xxx_opt
       - stm32f4xx_otp
   - name: STM32F410C8Tx
+    part: 0x458
     cores:
       - name: main
         type: armv7em
@@ -918,6 +955,7 @@ variants:
       - stm32f4xx_128
       - stm32f410xx_412xx_opt
   - name: STM32F410C8Ux
+    part: 0x458
     cores:
       - name: main
         type: armv7em
@@ -944,6 +982,7 @@ variants:
       - stm32f4xx_128
       - stm32f410xx_412xx_opt
   - name: STM32F410CBTx
+    part: 0x458
     cores:
       - name: main
         type: armv7em
@@ -970,6 +1009,7 @@ variants:
       - stm32f4xx_128
       - stm32f410xx_412xx_opt
   - name: STM32F410CBUx
+    part: 0x458
     cores:
       - name: main
         type: armv7em
@@ -996,6 +1036,7 @@ variants:
       - stm32f4xx_128
       - stm32f410xx_412xx_opt
   - name: STM32F410R8Ix
+    part: 0x458
     cores:
       - name: main
         type: armv7em
@@ -1022,6 +1063,7 @@ variants:
       - stm32f4xx_128
       - stm32f410xx_412xx_opt
   - name: STM32F410R8Tx
+    part: 0x458
     cores:
       - name: main
         type: armv7em
@@ -1048,6 +1090,7 @@ variants:
       - stm32f4xx_128
       - stm32f410xx_412xx_opt
   - name: STM32F410RBIx
+    part: 0x458
     cores:
       - name: main
         type: armv7em
@@ -1074,6 +1117,7 @@ variants:
       - stm32f4xx_128
       - stm32f410xx_412xx_opt
   - name: STM32F410RBTx
+    part: 0x458
     cores:
       - name: main
         type: armv7em
@@ -1100,6 +1144,7 @@ variants:
       - stm32f4xx_128
       - stm32f410xx_412xx_opt
   - name: STM32F410T8Yx
+    part: 0x458
     cores:
       - name: main
         type: armv7em
@@ -1126,6 +1171,7 @@ variants:
       - stm32f4xx_128
       - stm32f410xx_412xx_opt
   - name: STM32F410TBYx
+    part: 0x458
     cores:
       - name: main
         type: armv7em
@@ -1152,6 +1198,7 @@ variants:
       - stm32f4xx_128
       - stm32f410xx_412xx_opt
   - name: STM32F411CCUx
+    part: 0x431
     cores:
       - name: main
         type: armv7em
@@ -1179,6 +1226,7 @@ variants:
       - stm32f411xx_opt
       - stm32f4xx_otp
   - name: STM32F411CCYx
+    part: 0x431
     cores:
       - name: main
         type: armv7em
@@ -1206,6 +1254,7 @@ variants:
       - stm32f411xx_opt
       - stm32f4xx_otp
   - name: STM32F411CEUx
+    part: 0x431
     cores:
       - name: main
         type: armv7em
@@ -1233,6 +1282,7 @@ variants:
       - stm32f411xx_opt
       - stm32f4xx_otp
   - name: STM32F411CEYx
+    part: 0x431
     cores:
       - name: main
         type: armv7em
@@ -1260,6 +1310,7 @@ variants:
       - stm32f411xx_opt
       - stm32f4xx_otp
   - name: STM32F411RCTx
+    part: 0x431
     cores:
       - name: main
         type: armv7em
@@ -1287,6 +1338,7 @@ variants:
       - stm32f411xx_opt
       - stm32f4xx_otp
   - name: STM32F411RETx
+    part: 0x431
     cores:
       - name: main
         type: armv7em
@@ -1314,6 +1366,7 @@ variants:
       - stm32f411xx_opt
       - stm32f4xx_otp
   - name: STM32F411VCHx
+    part: 0x431
     cores:
       - name: main
         type: armv7em
@@ -1341,6 +1394,7 @@ variants:
       - stm32f411xx_opt
       - stm32f4xx_otp
   - name: STM32F411VCTx
+    part: 0x431
     cores:
       - name: main
         type: armv7em
@@ -1368,6 +1422,7 @@ variants:
       - stm32f411xx_opt
       - stm32f4xx_otp
   - name: STM32F411VEHx
+    part: 0x431
     cores:
       - name: main
         type: armv7em
@@ -1395,6 +1450,7 @@ variants:
       - stm32f411xx_opt
       - stm32f4xx_otp
   - name: STM32F411VETx
+    part: 0x431
     cores:
       - name: main
         type: armv7em
@@ -1422,6 +1478,7 @@ variants:
       - stm32f411xx_opt
       - stm32f4xx_otp
   - name: STM32F412CEUx
+    part: 0x441
     cores:
       - name: main
         type: armv7em
@@ -1449,6 +1506,7 @@ variants:
       - stm32f410xx_412xx_opt
       - stm32f4xx_otp
   - name: STM32F412CGUx
+    part: 0x441
     cores:
       - name: main
         type: armv7em
@@ -1476,6 +1534,7 @@ variants:
       - stm32f410xx_412xx_opt
       - stm32f4xx_otp
   - name: STM32F412RETx
+    part: 0x441
     cores:
       - name: main
         type: armv7em
@@ -1503,6 +1562,7 @@ variants:
       - stm32f410xx_412xx_opt
       - stm32f4xx_otp
   - name: STM32F412REYx
+    part: 0x441
     cores:
       - name: main
         type: armv7em
@@ -1530,6 +1590,7 @@ variants:
       - stm32f410xx_412xx_opt
       - stm32f4xx_otp
   - name: STM32F412RGTx
+    part: 0x441
     cores:
       - name: main
         type: armv7em
@@ -1557,6 +1618,7 @@ variants:
       - stm32f410xx_412xx_opt
       - stm32f4xx_otp
   - name: STM32F412RGYx
+    part: 0x441
     cores:
       - name: main
         type: armv7em
@@ -1584,6 +1646,7 @@ variants:
       - stm32f410xx_412xx_opt
       - stm32f4xx_otp
   - name: STM32F412VEHx
+    part: 0x441
     cores:
       - name: main
         type: armv7em
@@ -1611,6 +1674,7 @@ variants:
       - stm32f410xx_412xx_opt
       - stm32f4xx_otp
   - name: STM32F412VETx
+    part: 0x441
     cores:
       - name: main
         type: armv7em
@@ -1638,6 +1702,7 @@ variants:
       - stm32f410xx_412xx_opt
       - stm32f4xx_otp
   - name: STM32F412VGHx
+    part: 0x441
     cores:
       - name: main
         type: armv7em
@@ -1665,6 +1730,7 @@ variants:
       - stm32f410xx_412xx_opt
       - stm32f4xx_otp
   - name: STM32F412VGTx
+    part: 0x441
     cores:
       - name: main
         type: armv7em
@@ -1692,6 +1758,7 @@ variants:
       - stm32f410xx_412xx_opt
       - stm32f4xx_otp
   - name: STM32F412ZEJx
+    part: 0x441
     cores:
       - name: main
         type: armv7em
@@ -1719,6 +1786,7 @@ variants:
       - stm32f410xx_412xx_opt
       - stm32f4xx_otp
   - name: STM32F412ZETx
+    part: 0x441
     cores:
       - name: main
         type: armv7em
@@ -1746,6 +1814,7 @@ variants:
       - stm32f410xx_412xx_opt
       - stm32f4xx_otp
   - name: STM32F412ZGJx
+    part: 0x441
     cores:
       - name: main
         type: armv7em
@@ -1773,6 +1842,7 @@ variants:
       - stm32f410xx_412xx_opt
       - stm32f4xx_otp
   - name: STM32F412ZGTx
+    part: 0x441
     cores:
       - name: main
         type: armv7em
@@ -1800,6 +1870,7 @@ variants:
       - stm32f410xx_412xx_opt
       - stm32f4xx_otp
   - name: STM32F413CGUx
+    part: 0x463
     cores:
       - name: main
         type: armv7em
@@ -1826,6 +1897,7 @@ variants:
       - stm32f4xx_1024
       - stm32f413xx_423xx_opt
   - name: STM32F413CHUx
+    part: 0x463
     cores:
       - name: main
         type: armv7em
@@ -1852,6 +1924,7 @@ variants:
       - stm32f4xx_1536
       - stm32f413xx_423xx_opt
   - name: STM32F413MGYx
+    part: 0x463
     cores:
       - name: main
         type: armv7em
@@ -1878,6 +1951,7 @@ variants:
       - stm32f4xx_1024
       - stm32f413xx_423xx_opt
   - name: STM32F413MHYx
+    part: 0x463
     cores:
       - name: main
         type: armv7em
@@ -1904,6 +1978,7 @@ variants:
       - stm32f4xx_1536
       - stm32f413xx_423xx_opt
   - name: STM32F413RGTx
+    part: 0x463
     cores:
       - name: main
         type: armv7em
@@ -1930,6 +2005,7 @@ variants:
       - stm32f4xx_1024
       - stm32f413xx_423xx_opt
   - name: STM32F413RHTx
+    part: 0x463
     cores:
       - name: main
         type: armv7em
@@ -1956,6 +2032,7 @@ variants:
       - stm32f4xx_1536
       - stm32f413xx_423xx_opt
   - name: STM32F413VGHx
+    part: 0x463
     cores:
       - name: main
         type: armv7em
@@ -1982,6 +2059,7 @@ variants:
       - stm32f4xx_1024
       - stm32f413xx_423xx_opt
   - name: STM32F413VGTx
+    part: 0x463
     cores:
       - name: main
         type: armv7em
@@ -2008,6 +2086,7 @@ variants:
       - stm32f4xx_1024
       - stm32f413xx_423xx_opt
   - name: STM32F413VHHx
+    part: 0x463
     cores:
       - name: main
         type: armv7em
@@ -2034,6 +2113,7 @@ variants:
       - stm32f4xx_1536
       - stm32f413xx_423xx_opt
   - name: STM32F413VHTx
+    part: 0x463
     cores:
       - name: main
         type: armv7em
@@ -2060,6 +2140,7 @@ variants:
       - stm32f4xx_1536
       - stm32f413xx_423xx_opt
   - name: STM32F413ZGJx
+    part: 0x463
     cores:
       - name: main
         type: armv7em
@@ -2086,6 +2167,7 @@ variants:
       - stm32f4xx_1024
       - stm32f413xx_423xx_opt
   - name: STM32F413ZGTx
+    part: 0x463
     cores:
       - name: main
         type: armv7em
@@ -2112,6 +2194,7 @@ variants:
       - stm32f4xx_1024
       - stm32f413xx_423xx_opt
   - name: STM32F413ZHJx
+    part: 0x463
     cores:
       - name: main
         type: armv7em
@@ -2138,6 +2221,7 @@ variants:
       - stm32f4xx_1536
       - stm32f413xx_423xx_opt
   - name: STM32F413ZHTx
+    part: 0x463
     cores:
       - name: main
         type: armv7em
@@ -2164,6 +2248,7 @@ variants:
       - stm32f4xx_1536
       - stm32f413xx_423xx_opt
   - name: STM32F415OGYx
+    part: 0x413
     cores:
       - name: main
         type: armv7em
@@ -2191,6 +2276,7 @@ variants:
       - stm32f40xxx_41xxx_opt
       - stm32f4xx_otp
   - name: STM32F415RGTx
+    part: 0x413
     cores:
       - name: main
         type: armv7em
@@ -2218,6 +2304,7 @@ variants:
       - stm32f40xxx_41xxx_opt
       - stm32f4xx_otp
   - name: STM32F415VGTx
+    part: 0x413
     cores:
       - name: main
         type: armv7em
@@ -2245,6 +2332,7 @@ variants:
       - stm32f40xxx_41xxx_opt
       - stm32f4xx_otp
   - name: STM32F415ZGTx
+    part: 0x413
     cores:
       - name: main
         type: armv7em
@@ -2272,6 +2360,7 @@ variants:
       - stm32f40xxx_41xxx_opt
       - stm32f4xx_otp
   - name: STM32F417IEHx
+    part: 0x413
     cores:
       - name: main
         type: armv7em
@@ -2299,6 +2388,7 @@ variants:
       - stm32f40xxx_41xxx_opt
       - stm32f4xx_otp
   - name: STM32F417IETx
+    part: 0x413
     cores:
       - name: main
         type: armv7em
@@ -2326,6 +2416,7 @@ variants:
       - stm32f40xxx_41xxx_opt
       - stm32f4xx_otp
   - name: STM32F417IGHx
+    part: 0x413
     cores:
       - name: main
         type: armv7em
@@ -2353,6 +2444,7 @@ variants:
       - stm32f40xxx_41xxx_opt
       - stm32f4xx_otp
   - name: STM32F417IGTx
+    part: 0x413
     cores:
       - name: main
         type: armv7em
@@ -2380,6 +2472,7 @@ variants:
       - stm32f40xxx_41xxx_opt
       - stm32f4xx_otp
   - name: STM32F417VETx
+    part: 0x413
     cores:
       - name: main
         type: armv7em
@@ -2407,6 +2500,7 @@ variants:
       - stm32f40xxx_41xxx_opt
       - stm32f4xx_otp
   - name: STM32F417VGTx
+    part: 0x413
     cores:
       - name: main
         type: armv7em
@@ -2434,6 +2528,7 @@ variants:
       - stm32f40xxx_41xxx_opt
       - stm32f4xx_otp
   - name: STM32F417ZETx
+    part: 0x413
     cores:
       - name: main
         type: armv7em
@@ -2461,6 +2556,7 @@ variants:
       - stm32f40xxx_41xxx_opt
       - stm32f4xx_otp
   - name: STM32F417ZGTx
+    part: 0x413
     cores:
       - name: main
         type: armv7em
@@ -2488,6 +2584,7 @@ variants:
       - stm32f40xxx_41xxx_opt
       - stm32f4xx_otp
   - name: STM32F423CHUx
+    part: 0x463
     cores:
       - name: main
         type: armv7em
@@ -2514,6 +2611,7 @@ variants:
       - stm32f4xx_1536
       - stm32f413xx_423xx_opt
   - name: STM32F423MHYx
+    part: 0x463
     cores:
       - name: main
         type: armv7em
@@ -2540,6 +2638,7 @@ variants:
       - stm32f4xx_1536
       - stm32f413xx_423xx_opt
   - name: STM32F423RHTx
+    part: 0x463
     cores:
       - name: main
         type: armv7em
@@ -2566,6 +2665,7 @@ variants:
       - stm32f4xx_1536
       - stm32f413xx_423xx_opt
   - name: STM32F423VHHx
+    part: 0x463
     cores:
       - name: main
         type: armv7em
@@ -2592,6 +2692,7 @@ variants:
       - stm32f4xx_1536
       - stm32f413xx_423xx_opt
   - name: STM32F423VHTx
+    part: 0x463
     cores:
       - name: main
         type: armv7em
@@ -2618,6 +2719,7 @@ variants:
       - stm32f4xx_1536
       - stm32f413xx_423xx_opt
   - name: STM32F423ZHJx
+    part: 0x463
     cores:
       - name: main
         type: armv7em
@@ -2644,6 +2746,7 @@ variants:
       - stm32f4xx_1536
       - stm32f413xx_423xx_opt
   - name: STM32F423ZHTx
+    part: 0x463
     cores:
       - name: main
         type: armv7em
@@ -2670,6 +2773,7 @@ variants:
       - stm32f4xx_1536
       - stm32f413xx_423xx_opt
   - name: STM32F427AGHx
+    part: 0x419
     cores:
       - name: main
         type: armv7em
@@ -2698,6 +2802,7 @@ variants:
       - stm32f42xxx_43xxx_opt
       - stm32f4xx_otp
   - name: STM32F427AIHx
+    part: 0x419
     cores:
       - name: main
         type: armv7em
@@ -2725,6 +2830,7 @@ variants:
       - stm32f42xxx_43xxx_opt
       - stm32f4xx_otp
   - name: STM32F427IGHx
+    part: 0x419
     cores:
       - name: main
         type: armv7em
@@ -2753,6 +2859,7 @@ variants:
       - stm32f42xxx_43xxx_opt
       - stm32f4xx_otp
   - name: STM32F427IGTx
+    part: 0x419
     cores:
       - name: main
         type: armv7em
@@ -2781,6 +2888,7 @@ variants:
       - stm32f42xxx_43xxx_opt
       - stm32f4xx_otp
   - name: STM32F427IIHx
+    part: 0x419
     cores:
       - name: main
         type: armv7em
@@ -2808,6 +2916,7 @@ variants:
       - stm32f42xxx_43xxx_opt
       - stm32f4xx_otp
   - name: STM32F427IITx
+    part: 0x419
     cores:
       - name: main
         type: armv7em
@@ -2835,6 +2944,7 @@ variants:
       - stm32f42xxx_43xxx_opt
       - stm32f4xx_otp
   - name: STM32F427VGTx
+    part: 0x419
     cores:
       - name: main
         type: armv7em
@@ -2863,6 +2973,7 @@ variants:
       - stm32f42xxx_43xxx_opt
       - stm32f4xx_otp
   - name: STM32F427VITx
+    part: 0x419
     cores:
       - name: main
         type: armv7em
@@ -2890,6 +3001,7 @@ variants:
       - stm32f42xxx_43xxx_opt
       - stm32f4xx_otp
   - name: STM32F427ZGTx
+    part: 0x419
     cores:
       - name: main
         type: armv7em
@@ -2918,6 +3030,7 @@ variants:
       - stm32f42xxx_43xxx_opt
       - stm32f4xx_otp
   - name: STM32F427ZITx
+    part: 0x419
     cores:
       - name: main
         type: armv7em
@@ -2945,6 +3058,7 @@ variants:
       - stm32f42xxx_43xxx_opt
       - stm32f4xx_otp
   - name: STM32F429AGHx
+    part: 0x419
     cores:
       - name: main
         type: armv7em
@@ -2973,6 +3087,7 @@ variants:
       - stm32f42xxx_43xxx_opt
       - stm32f4xx_otp
   - name: STM32F429AIHx
+    part: 0x419
     cores:
       - name: main
         type: armv7em
@@ -3000,6 +3115,7 @@ variants:
       - stm32f42xxx_43xxx_opt
       - stm32f4xx_otp
   - name: STM32F429BETx
+    part: 0x419
     cores:
       - name: main
         type: armv7em
@@ -3027,6 +3143,7 @@ variants:
       - stm32f42xxx_43xxx_opt
       - stm32f4xx_otp
   - name: STM32F429BGTx
+    part: 0x419
     cores:
       - name: main
         type: armv7em
@@ -3055,6 +3172,7 @@ variants:
       - stm32f42xxx_43xxx_opt
       - stm32f4xx_otp
   - name: STM32F429BITx
+    part: 0x419
     cores:
       - name: main
         type: armv7em
@@ -3082,6 +3200,7 @@ variants:
       - stm32f42xxx_43xxx_opt
       - stm32f4xx_otp
   - name: STM32F429IEHx
+    part: 0x419
     cores:
       - name: main
         type: armv7em
@@ -3109,6 +3228,7 @@ variants:
       - stm32f42xxx_43xxx_opt
       - stm32f4xx_otp
   - name: STM32F429IETx
+    part: 0x419
     cores:
       - name: main
         type: armv7em
@@ -3136,6 +3256,7 @@ variants:
       - stm32f42xxx_43xxx_opt
       - stm32f4xx_otp
   - name: STM32F429IGHx
+    part: 0x419
     cores:
       - name: main
         type: armv7em
@@ -3164,6 +3285,7 @@ variants:
       - stm32f42xxx_43xxx_opt
       - stm32f4xx_otp
   - name: STM32F429IGTx
+    part: 0x419
     cores:
       - name: main
         type: armv7em
@@ -3192,6 +3314,7 @@ variants:
       - stm32f42xxx_43xxx_opt
       - stm32f4xx_otp
   - name: STM32F429IIHx
+    part: 0x419
     cores:
       - name: main
         type: armv7em
@@ -3219,6 +3342,7 @@ variants:
       - stm32f42xxx_43xxx_opt
       - stm32f4xx_otp
   - name: STM32F429IITx
+    part: 0x419
     cores:
       - name: main
         type: armv7em
@@ -3246,6 +3370,7 @@ variants:
       - stm32f42xxx_43xxx_opt
       - stm32f4xx_otp
   - name: STM32F429NEHx
+    part: 0x419
     cores:
       - name: main
         type: armv7em
@@ -3273,6 +3398,7 @@ variants:
       - stm32f42xxx_43xxx_opt
       - stm32f4xx_otp
   - name: STM32F429NGHx
+    part: 0x419
     cores:
       - name: main
         type: armv7em
@@ -3301,6 +3427,7 @@ variants:
       - stm32f42xxx_43xxx_opt
       - stm32f4xx_otp
   - name: STM32F429NIHx
+    part: 0x419
     cores:
       - name: main
         type: armv7em
@@ -3328,6 +3455,7 @@ variants:
       - stm32f42xxx_43xxx_opt
       - stm32f4xx_otp
   - name: STM32F429VETx
+    part: 0x419
     cores:
       - name: main
         type: armv7em
@@ -3355,6 +3483,7 @@ variants:
       - stm32f42xxx_43xxx_opt
       - stm32f4xx_otp
   - name: STM32F429VGTx
+    part: 0x419
     cores:
       - name: main
         type: armv7em
@@ -3383,6 +3512,7 @@ variants:
       - stm32f42xxx_43xxx_opt
       - stm32f4xx_otp
   - name: STM32F429VITx
+    part: 0x419
     cores:
       - name: main
         type: armv7em
@@ -3410,6 +3540,7 @@ variants:
       - stm32f42xxx_43xxx_opt
       - stm32f4xx_otp
   - name: STM32F429ZETx
+    part: 0x419
     cores:
       - name: main
         type: armv7em
@@ -3437,6 +3568,7 @@ variants:
       - stm32f42xxx_43xxx_opt
       - stm32f4xx_otp
   - name: STM32F429ZGTx
+    part: 0x419
     cores:
       - name: main
         type: armv7em
@@ -3465,6 +3597,7 @@ variants:
       - stm32f42xxx_43xxx_opt
       - stm32f4xx_otp
   - name: STM32F429ZITx
+    part: 0x419
     cores:
       - name: main
         type: armv7em
@@ -3492,6 +3625,7 @@ variants:
       - stm32f42xxx_43xxx_opt
       - stm32f4xx_otp
   - name: STM32F429ZIYx
+    part: 0x419
     cores:
       - name: main
         type: armv7em
@@ -3519,6 +3653,7 @@ variants:
       - stm32f42xxx_43xxx_opt
       - stm32f4xx_otp
   - name: STM32F437AIHx
+    part: 0x419
     cores:
       - name: main
         type: armv7em
@@ -3546,6 +3681,7 @@ variants:
       - stm32f42xxx_43xxx_opt
       - stm32f4xx_otp
   - name: STM32F437IGHx
+    part: 0x419
     cores:
       - name: main
         type: armv7em
@@ -3574,6 +3710,7 @@ variants:
       - stm32f42xxx_43xxx_opt
       - stm32f4xx_otp
   - name: STM32F437IGTx
+    part: 0x419
     cores:
       - name: main
         type: armv7em
@@ -3602,6 +3739,7 @@ variants:
       - stm32f42xxx_43xxx_opt
       - stm32f4xx_otp
   - name: STM32F437IIHx
+    part: 0x419
     cores:
       - name: main
         type: armv7em
@@ -3629,6 +3767,7 @@ variants:
       - stm32f42xxx_43xxx_opt
       - stm32f4xx_otp
   - name: STM32F437IITx
+    part: 0x419
     cores:
       - name: main
         type: armv7em
@@ -3656,6 +3795,7 @@ variants:
       - stm32f42xxx_43xxx_opt
       - stm32f4xx_otp
   - name: STM32F437VGTx
+    part: 0x419
     cores:
       - name: main
         type: armv7em
@@ -3684,6 +3824,7 @@ variants:
       - stm32f42xxx_43xxx_opt
       - stm32f4xx_otp
   - name: STM32F437VITx
+    part: 0x419
     cores:
       - name: main
         type: armv7em
@@ -3711,6 +3852,7 @@ variants:
       - stm32f42xxx_43xxx_opt
       - stm32f4xx_otp
   - name: STM32F437ZGTx
+    part: 0x419
     cores:
       - name: main
         type: armv7em
@@ -3739,6 +3881,7 @@ variants:
       - stm32f42xxx_43xxx_opt
       - stm32f4xx_otp
   - name: STM32F437ZITx
+    part: 0x419
     cores:
       - name: main
         type: armv7em
@@ -3766,6 +3909,7 @@ variants:
       - stm32f42xxx_43xxx_opt
       - stm32f4xx_otp
   - name: STM32F439AIHx
+    part: 0x419
     cores:
       - name: main
         type: armv7em
@@ -3793,6 +3937,7 @@ variants:
       - stm32f42xxx_43xxx_opt
       - stm32f4xx_otp
   - name: STM32F439BGTx
+    part: 0x419
     cores:
       - name: main
         type: armv7em
@@ -3821,6 +3966,7 @@ variants:
       - stm32f42xxx_43xxx_opt
       - stm32f4xx_otp
   - name: STM32F439BITx
+    part: 0x419
     cores:
       - name: main
         type: armv7em
@@ -3848,6 +3994,7 @@ variants:
       - stm32f42xxx_43xxx_opt
       - stm32f4xx_otp
   - name: STM32F439IGHx
+    part: 0x419
     cores:
       - name: main
         type: armv7em
@@ -3876,6 +4023,7 @@ variants:
       - stm32f42xxx_43xxx_opt
       - stm32f4xx_otp
   - name: STM32F439IGTx
+    part: 0x419
     cores:
       - name: main
         type: armv7em
@@ -3904,6 +4052,7 @@ variants:
       - stm32f42xxx_43xxx_opt
       - stm32f4xx_otp
   - name: STM32F439IIHx
+    part: 0x419
     cores:
       - name: main
         type: armv7em
@@ -3931,6 +4080,7 @@ variants:
       - stm32f42xxx_43xxx_opt
       - stm32f4xx_otp
   - name: STM32F439IITx
+    part: 0x419
     cores:
       - name: main
         type: armv7em
@@ -3958,6 +4108,7 @@ variants:
       - stm32f42xxx_43xxx_opt
       - stm32f4xx_otp
   - name: STM32F439NGHx
+    part: 0x419
     cores:
       - name: main
         type: armv7em
@@ -3986,6 +4137,7 @@ variants:
       - stm32f42xxx_43xxx_opt
       - stm32f4xx_otp
   - name: STM32F439NIHx
+    part: 0x419
     cores:
       - name: main
         type: armv7em
@@ -4013,6 +4165,7 @@ variants:
       - stm32f42xxx_43xxx_opt
       - stm32f4xx_otp
   - name: STM32F439VGTx
+    part: 0x419
     cores:
       - name: main
         type: armv7em
@@ -4041,6 +4194,7 @@ variants:
       - stm32f42xxx_43xxx_opt
       - stm32f4xx_otp
   - name: STM32F439VITx
+    part: 0x419
     cores:
       - name: main
         type: armv7em
@@ -4068,6 +4222,7 @@ variants:
       - stm32f42xxx_43xxx_opt
       - stm32f4xx_otp
   - name: STM32F439ZGTx
+    part: 0x419
     cores:
       - name: main
         type: armv7em
@@ -4096,6 +4251,7 @@ variants:
       - stm32f42xxx_43xxx_opt
       - stm32f4xx_otp
   - name: STM32F439ZITx
+    part: 0x419
     cores:
       - name: main
         type: armv7em
@@ -4123,6 +4279,7 @@ variants:
       - stm32f42xxx_43xxx_opt
       - stm32f4xx_otp
   - name: STM32F439ZIYx
+    part: 0x419
     cores:
       - name: main
         type: armv7em
@@ -4150,6 +4307,7 @@ variants:
       - stm32f42xxx_43xxx_opt
       - stm32f4xx_otp
   - name: STM32F446MCYx
+    part: 0x421
     cores:
       - name: main
         type: armv7em
@@ -4177,6 +4335,7 @@ variants:
       - stm32f446xx_opt
       - stm32f4xx_otp
   - name: STM32F446MEYx
+    part: 0x421
     cores:
       - name: main
         type: armv7em
@@ -4204,6 +4363,7 @@ variants:
       - stm32f446xx_opt
       - stm32f4xx_otp
   - name: STM32F446RCTx
+    part: 0x421
     cores:
       - name: main
         type: armv7em
@@ -4231,6 +4391,7 @@ variants:
       - stm32f446xx_opt
       - stm32f4xx_otp
   - name: STM32F446RETx
+    part: 0x421
     cores:
       - name: main
         type: armv7em
@@ -4258,6 +4419,7 @@ variants:
       - stm32f446xx_opt
       - stm32f4xx_otp
   - name: STM32F446VCTx
+    part: 0x421
     cores:
       - name: main
         type: armv7em
@@ -4285,6 +4447,7 @@ variants:
       - stm32f446xx_opt
       - stm32f4xx_otp
   - name: STM32F446VETx
+    part: 0x421
     cores:
       - name: main
         type: armv7em
@@ -4312,6 +4475,7 @@ variants:
       - stm32f446xx_opt
       - stm32f4xx_otp
   - name: STM32F446ZCHx
+    part: 0x421
     cores:
       - name: main
         type: armv7em
@@ -4339,6 +4503,7 @@ variants:
       - stm32f446xx_opt
       - stm32f4xx_otp
   - name: STM32F446ZCTx
+    part: 0x421
     cores:
       - name: main
         type: armv7em
@@ -4366,6 +4531,7 @@ variants:
       - stm32f446xx_opt
       - stm32f4xx_otp
   - name: STM32F446ZEHx
+    part: 0x421
     cores:
       - name: main
         type: armv7em
@@ -4393,6 +4559,7 @@ variants:
       - stm32f446xx_opt
       - stm32f4xx_otp
   - name: STM32F446ZEJx
+    part: 0x421
     cores:
       - name: main
         type: armv7em
@@ -4420,6 +4587,7 @@ variants:
       - stm32f446xx_opt
       - stm32f4xx_otp
   - name: STM32F446ZETx
+    part: 0x421
     cores:
       - name: main
         type: armv7em
@@ -4447,6 +4615,7 @@ variants:
       - stm32f446xx_opt
       - stm32f4xx_otp
   - name: STM32F469AEHx
+    part: 0x434
     cores:
       - name: main
         type: armv7em
@@ -4474,6 +4643,7 @@ variants:
       - stm32f469xx_479xx_opt
       - stm32f469_quad_spi
   - name: STM32F469AEYx
+    part: 0x434
     cores:
       - name: main
         type: armv7em
@@ -4501,6 +4671,7 @@ variants:
       - stm32f469xx_479xx_opt
       - stm32f469_quad_spi
   - name: STM32F469AGHx
+    part: 0x434
     cores:
       - name: main
         type: armv7em
@@ -4529,6 +4700,7 @@ variants:
       - stm32f469xx_479xx_opt
       - stm32f469_quad_spi
   - name: STM32F469AGYx
+    part: 0x434
     cores:
       - name: main
         type: armv7em
@@ -4557,6 +4729,7 @@ variants:
       - stm32f469xx_479xx_opt
       - stm32f469_quad_spi
   - name: STM32F469AIHx
+    part: 0x434
     cores:
       - name: main
         type: armv7em
@@ -4584,6 +4757,7 @@ variants:
       - stm32f469xx_479xx_opt
       - stm32f469_quad_spi
   - name: STM32F469AIYx
+    part: 0x434
     cores:
       - name: main
         type: armv7em
@@ -4611,6 +4785,7 @@ variants:
       - stm32f469xx_479xx_opt
       - stm32f469_quad_spi
   - name: STM32F469BETx
+    part: 0x434
     cores:
       - name: main
         type: armv7em
@@ -4638,6 +4813,7 @@ variants:
       - stm32f469xx_479xx_opt
       - stm32f469_quad_spi
   - name: STM32F469BGTx
+    part: 0x434
     cores:
       - name: main
         type: armv7em
@@ -4666,6 +4842,7 @@ variants:
       - stm32f469xx_479xx_opt
       - stm32f469_quad_spi
   - name: STM32F469BITx
+    part: 0x434
     cores:
       - name: main
         type: armv7em
@@ -4693,6 +4870,7 @@ variants:
       - stm32f469xx_479xx_opt
       - stm32f469_quad_spi
   - name: STM32F469IEHx
+    part: 0x434
     cores:
       - name: main
         type: armv7em
@@ -4720,6 +4898,7 @@ variants:
       - stm32f469xx_479xx_opt
       - stm32f469_quad_spi
   - name: STM32F469IETx
+    part: 0x434
     cores:
       - name: main
         type: armv7em
@@ -4747,6 +4926,7 @@ variants:
       - stm32f469xx_479xx_opt
       - stm32f469_quad_spi
   - name: STM32F469IGHx
+    part: 0x434
     cores:
       - name: main
         type: armv7em
@@ -4775,6 +4955,7 @@ variants:
       - stm32f469xx_479xx_opt
       - stm32f469_quad_spi
   - name: STM32F469IGTx
+    part: 0x434
     cores:
       - name: main
         type: armv7em
@@ -4803,6 +4984,7 @@ variants:
       - stm32f469xx_479xx_opt
       - stm32f469_quad_spi
   - name: STM32F469IIHx
+    part: 0x434
     cores:
       - name: main
         type: armv7em
@@ -4830,6 +5012,7 @@ variants:
       - stm32f469xx_479xx_opt
       - stm32f469_quad_spi
   - name: STM32F469IITx
+    part: 0x434
     cores:
       - name: main
         type: armv7em
@@ -4857,6 +5040,7 @@ variants:
       - stm32f469xx_479xx_opt
       - stm32f469_quad_spi
   - name: STM32F469NEHx
+    part: 0x434
     cores:
       - name: main
         type: armv7em
@@ -4884,6 +5068,7 @@ variants:
       - stm32f469xx_479xx_opt
       - stm32f469_quad_spi
   - name: STM32F469NGHx
+    part: 0x434
     cores:
       - name: main
         type: armv7em
@@ -4912,6 +5097,7 @@ variants:
       - stm32f469xx_479xx_opt
       - stm32f469_quad_spi
   - name: STM32F469NIHx
+    part: 0x434
     cores:
       - name: main
         type: armv7em
@@ -4939,6 +5125,7 @@ variants:
       - stm32f469xx_479xx_opt
       - stm32f469_quad_spi
   - name: STM32F469VETx
+    part: 0x434
     cores:
       - name: main
         type: armv7em
@@ -4966,6 +5153,7 @@ variants:
       - stm32f469xx_479xx_opt
       - stm32f469_quad_spi
   - name: STM32F469VGTx
+    part: 0x434
     cores:
       - name: main
         type: armv7em
@@ -4994,6 +5182,7 @@ variants:
       - stm32f469xx_479xx_opt
       - stm32f469_quad_spi
   - name: STM32F469VITx
+    part: 0x434
     cores:
       - name: main
         type: armv7em
@@ -5021,6 +5210,7 @@ variants:
       - stm32f469xx_479xx_opt
       - stm32f469_quad_spi
   - name: STM32F469ZETx
+    part: 0x434
     cores:
       - name: main
         type: armv7em
@@ -5048,6 +5238,7 @@ variants:
       - stm32f469xx_479xx_opt
       - stm32f469_quad_spi
   - name: STM32F469ZGTx
+    part: 0x434
     cores:
       - name: main
         type: armv7em
@@ -5076,6 +5267,7 @@ variants:
       - stm32f469xx_479xx_opt
       - stm32f469_quad_spi
   - name: STM32F469ZITx
+    part: 0x434
     cores:
       - name: main
         type: armv7em
@@ -5103,6 +5295,7 @@ variants:
       - stm32f469xx_479xx_opt
       - stm32f469_quad_spi
   - name: STM32F479AGHx
+    part: 0x434
     cores:
       - name: main
         type: armv7em
@@ -5131,6 +5324,7 @@ variants:
       - stm32f469xx_479xx_opt
       - stm32f469_quad_spi
   - name: STM32F479AGYx
+    part: 0x434
     cores:
       - name: main
         type: armv7em
@@ -5159,6 +5353,7 @@ variants:
       - stm32f469xx_479xx_opt
       - stm32f469_quad_spi
   - name: STM32F479AIHx
+    part: 0x434
     cores:
       - name: main
         type: armv7em
@@ -5186,6 +5381,7 @@ variants:
       - stm32f469xx_479xx_opt
       - stm32f469_quad_spi
   - name: STM32F479AIYx
+    part: 0x434
     cores:
       - name: main
         type: armv7em
@@ -5213,6 +5409,7 @@ variants:
       - stm32f469xx_479xx_opt
       - stm32f469_quad_spi
   - name: STM32F479BGTx
+    part: 0x434
     cores:
       - name: main
         type: armv7em
@@ -5241,6 +5438,7 @@ variants:
       - stm32f469xx_479xx_opt
       - stm32f469_quad_spi
   - name: STM32F479BITx
+    part: 0x434
     cores:
       - name: main
         type: armv7em
@@ -5268,6 +5466,7 @@ variants:
       - stm32f469xx_479xx_opt
       - stm32f469_quad_spi
   - name: STM32F479IGHx
+    part: 0x434
     cores:
       - name: main
         type: armv7em
@@ -5296,6 +5495,7 @@ variants:
       - stm32f469xx_479xx_opt
       - stm32f469_quad_spi
   - name: STM32F479IGTx
+    part: 0x434
     cores:
       - name: main
         type: armv7em
@@ -5324,6 +5524,7 @@ variants:
       - stm32f469xx_479xx_opt
       - stm32f469_quad_spi
   - name: STM32F479IIHx
+    part: 0x434
     cores:
       - name: main
         type: armv7em
@@ -5351,6 +5552,7 @@ variants:
       - stm32f469xx_479xx_opt
       - stm32f469_quad_spi
   - name: STM32F479IITx
+    part: 0x434
     cores:
       - name: main
         type: armv7em
@@ -5378,6 +5580,7 @@ variants:
       - stm32f469xx_479xx_opt
       - stm32f469_quad_spi
   - name: STM32F479NGHx
+    part: 0x434
     cores:
       - name: main
         type: armv7em
@@ -5406,6 +5609,7 @@ variants:
       - stm32f469xx_479xx_opt
       - stm32f469_quad_spi
   - name: STM32F479NIHx
+    part: 0x434
     cores:
       - name: main
         type: armv7em
@@ -5433,6 +5637,7 @@ variants:
       - stm32f469xx_479xx_opt
       - stm32f469_quad_spi
   - name: STM32F479VGTx
+    part: 0x434
     cores:
       - name: main
         type: armv7em
@@ -5461,6 +5666,7 @@ variants:
       - stm32f469xx_479xx_opt
       - stm32f469_quad_spi
   - name: STM32F479VITx
+    part: 0x434
     cores:
       - name: main
         type: armv7em
@@ -5488,6 +5694,7 @@ variants:
       - stm32f469xx_479xx_opt
       - stm32f469_quad_spi
   - name: STM32F479ZGTx
+    part: 0x434
     cores:
       - name: main
         type: armv7em
@@ -5516,6 +5723,7 @@ variants:
       - stm32f469xx_479xx_opt
       - stm32f469_quad_spi
   - name: STM32F479ZITx
+    part: 0x434
     cores:
       - name: main
         type: armv7em
