@@ -17,6 +17,7 @@ impl Default for VariableCache {
 }
 
 impl VariableCache {
+    /// Creates a new [`VariableCache`].
     pub fn new() -> Self {
         VariableCache {
             variable_hash_map: HashMap::new(),
@@ -185,7 +186,7 @@ impl VariableCache {
         Ok(children)
     }
 
-    // Check if a `Variable` has any children. This also validates that the parent exists in the cache, before attempting to check for children.
+    /// Check if a `Variable` has any children. This also validates that the parent exists in the cache, before attempting to check for children.
     pub fn has_children(&self, parent_variable: &Variable) -> Result<bool, Error> {
         self.get_children(Some(parent_variable.variable_key))
             .map(|children| !children.is_empty())
@@ -248,7 +249,7 @@ impl VariableCache {
 /// Define the role that a variable plays in a Variant relationship. See section '5.7.10 Variant Entries' of the DWARF 5 specification
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum VariantRole {
-    /// A (parent) Variable that can have any number of Variant's as it's value
+    /// A (parent) Variable that can have any number of Variant's as its value
     VariantPart(u64),
     /// A (child) Variable that defines one of many possible types to hold the current value of a VariantPart.
     Variant(u64),
@@ -310,6 +311,7 @@ impl VariableValue {
     }
 }
 
+/// The type of variable we have at hand.
 #[derive(Debug, PartialEq, Clone)]
 pub enum VariableName {
     /// Top-level variable for static variables, child of a stack frame variable, and holds all the static scoped variables which are directly visible to the compile unit of the frame.
@@ -413,17 +415,20 @@ pub struct Variable {
     value: VariableValue,
     /// The source location of the declaration of this variable, if available.
     pub source_location: Option<SourceLocation>,
+    /// The name of the type of this variable.
     pub type_name: String,
     /// The unit_header_offset and variable_unit_offset are cached to allow on-demand access to the variable's gimli::Unit, through functions like:
     ///   `gimli::Read::DebugInfo.header_from_offset()`, and   
     ///   `gimli::Read::UnitHeader.entries_tree()`
     pub unit_header_offset: Option<DebugInfoOffset>,
+    /// The offset of this variable into the compilation unit debug information.
     pub variable_unit_offset: Option<UnitOffset>,
     /// For 'lazy loading' of certain variable types we have to determine if the variable recursion should be deferred, and if so, how to resolve it when the request for further recursion happens.
     /// See [VariableNodeType] for more information.
     pub variable_node_type: VariableNodeType,
     /// The starting location/address in memory where this Variable's value is stored.
     pub memory_location: u64,
+    /// The size of this variable in bytes.
     pub byte_size: u64,
     /// If  this is a subrange (array, vector, etc.), is the ordinal position of this variable in that range
     pub member_index: Option<i64>,
@@ -431,6 +436,7 @@ pub struct Variable {
     pub range_lower_bound: i64,
     /// If this is a subrange (array, vector, etc.), we need to temporarily store the the upper bound of the range.
     pub range_upper_bound: i64,
+    /// The role of this variable.
     pub role: VariantRole,
 }
 

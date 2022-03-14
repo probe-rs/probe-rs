@@ -1,5 +1,3 @@
-#![warn(missing_docs)]
-
 use crate::architecture::arm::sequences::DefaultArmSequence;
 use crate::architecture::arm::{ApAddress, DpAddress};
 use crate::config::{ChipInfo, MemoryRegion, RegistryError, Target, TargetSelector};

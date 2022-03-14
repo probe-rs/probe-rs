@@ -79,7 +79,7 @@ impl DebugProbe for StLink<StLinkUsbDevice> {
         &self.name
     }
 
-    fn speed(&self) -> u32 {
+    fn speed_khz(&self) -> u32 {
         match self.protocol {
             WireProtocol::Swd => self.swd_speed_khz,
             WireProtocol::Jtag => self.jtag_speed_khz,

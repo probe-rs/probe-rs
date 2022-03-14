@@ -738,7 +738,8 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             }
         };
 
-        let mut created_breakpoints: Vec<Breakpoint> = Vec::new(); // For returning in the Response
+        // For returning in the Response
+        let mut created_breakpoints: Vec<Breakpoint> = Vec::new();
 
         // Always clear existing breakpoints before setting new ones.
         match core_data.clear_breakpoints(BreakpointType::InstructionBreakpoint) {
@@ -1285,14 +1286,6 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                                     instruction.op_str().unwrap_or("")
                                 ),
                                 instruction_bytes: None,
-                                // Use the code below to include machine code. My personal opinion is that it adds too much noise to an already noisy UX.
-                                // Some(
-                                //     instruction
-                                //         .bytes()
-                                //         .iter()
-                                //         .map(|instruction_byte| format!("{:#02X} ", instruction_byte))
-                                //         .collect(),
-                                // ),
                                 line,
                                 location,
                                 symbol: None,

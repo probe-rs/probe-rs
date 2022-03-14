@@ -1,4 +1,3 @@
-use chrono::Utc;
 use colored::*;
 use env_logger::{Builder, Logger};
 use indicatif::ProgressBar;
