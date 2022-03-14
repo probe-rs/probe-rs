@@ -187,7 +187,19 @@ variants:
             start: 0x8000000
             end: 0x8008000
           is_boot_memory: true
-          cores::
+          cores:
+            - main
+    flash_algorithms:
+      - stm32f3xx_256
+      - stm32f3xx_opt
+  - name: STM32F301R8Tx
+    cores:
+      - name: main
+        type: armv7em
+        core_access_options:
+          Arm:
+            ap: 0x0
+            psel: 0x0
     memory_map:
       - Ram:
           range:
@@ -535,7 +547,11 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options::
+        core_access_options:
+          Arm:
+            ap: 0x0
+            psel: 0x0
+    memory_map:
       - Ram:
           range:
             start: 0x20000000
@@ -824,7 +840,7 @@ variants:
       - stm32f3xx_256
       - stm32f3xx_opt
   - name: STM32F303C8Tx
-    part: 0x438:
+    part: 0x438
     cores:
       - name: main
         type: armv7em
