@@ -78,7 +78,7 @@ impl Canary {
             // We consider >90% stack usage a potential stack overflow, but don't go beyond 1 kb
             // since filling a lot of RAM is slow (and 1 kb should be "good enough" for what we're
             // doing).
-            1024.min(stack_available / 10) as usize
+            round_up(1024.min(stack_available / 10), 4) as usize
         };
 
         log::debug!(
@@ -182,6 +182,15 @@ impl Canary {
                 }
             }
         }
+    }
+}
+
+fn round_up(n: u32, k: u32) -> u32 {
+    let rem = n % k;
+    if rem == 0 {
+        n
+    } else {
+        n + 4 - rem
     }
 }
 
