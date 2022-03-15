@@ -1567,11 +1567,8 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         let arguments: NextArguments = get_arguments(&request)?;
 
         let stepping_granularity = match arguments.granularity {
-            Some(stepping_granularity) => match stepping_granularity {
-                SteppingGranularity::Instruction => SteppingMode::StepInstruction,
-                _ => SteppingMode::OverStatement,
-            },
-            None => SteppingMode::OverStatement,
+            Some(SteppingGranularity::Instruction) => SteppingMode::StepInstruction,
+            _ => SteppingMode::OverStatement,
         };
 
         self.debug_step(stepping_granularity, core_data, request)
@@ -1584,11 +1581,8 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         let arguments: StepInArguments = get_arguments(&request)?;
 
         let stepping_granularity = match arguments.granularity {
-            Some(stepping_granularity) => match stepping_granularity {
-                SteppingGranularity::Instruction => SteppingMode::StepInstruction,
-                _ => SteppingMode::IntoStatement,
-            },
-            None => SteppingMode::IntoStatement,
+            Some(SteppingGranularity::Instruction) => SteppingMode::StepInstruction,
+            _ => SteppingMode::IntoStatement,
         };
         self.debug_step(stepping_granularity, core_data, request)
     }
@@ -1600,11 +1594,8 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         let arguments: StepOutArguments = get_arguments(&request)?;
 
         let stepping_granularity = match arguments.granularity {
-            Some(stepping_granularity) => match stepping_granularity {
-                SteppingGranularity::Instruction => SteppingMode::StepInstruction,
-                _ => SteppingMode::OutOfStatement,
-            },
-            None => SteppingMode::OutOfStatement,
+            Some(SteppingGranularity::Instruction) => SteppingMode::StepInstruction,
+            _ => SteppingMode::OutOfStatement,
         };
 
         self.debug_step(stepping_granularity, core_data, request)
@@ -1617,27 +1608,32 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         core_data: &mut CoreData,
         request: Request,
     ) -> Result<(), anyhow::Error> {
-        match stepping_granularity.step(&mut core_data.target_core, &core_data.debug_info) {
+        match stepping_granularity.step(&mut core_data.target_core, core_data.debug_info) {
             Ok((new_status, program_counter)) => {
                 self.last_known_status = new_status;
                 self.send_response::<()>(request, Ok(None))?;
-                let event_body = Some(StoppedEventBody {
-                    reason: "step".to_owned(),
-                    description: Some(format!(
-                        "{} at address {:#010x}",
-                        new_status.short_long_status().1,
-                        program_counter
-                    )),
-                    thread_id: Some(core_data.target_core.id() as i64),
-                    preserve_focus_hint: None,
-                    text: None,
-                    all_threads_stopped: Some(false), // TODO: Implement multi-core logic here
-                    hit_breakpoint_ids: None,
-                });
-                self.send_event("stopped", event_body)
+                if matches!(self.last_known_status, CoreStatus::Halted(_)) {
+                    let event_body = Some(StoppedEventBody {
+                        reason: "step".to_owned(),
+                        description: Some(format!(
+                            "{} at address {:#010x}",
+                            new_status.short_long_status().1,
+                            program_counter
+                        )),
+                        thread_id: Some(core_data.target_core.id() as i64),
+                        preserve_focus_hint: None,
+                        text: None,
+                        all_threads_stopped: Some(false), // TODO: Implement multi-core logic here
+                        hit_breakpoint_ids: None,
+                    });
+                    self.send_event("stopped", event_body)
+                } else {
+                    Ok(())
+                }
             }
             Err(error) => {
-                self.send_response::<()>(request, Err(DebuggerError::Other(anyhow!("{}", error))))
+                core_data.target_core.halt(Duration::from_millis(100)).ok();
+                return Err(anyhow!("Unexpected error during stepping :{}", error));
             }
         }
     }

@@ -35,8 +35,6 @@ pub enum DebuggerError {
     MissingSession,
     #[error(transparent)]
     Other(#[from] anyhow::Error),
-    // #[error("Error in interaction with probe")]
-    // ProbeError(#[from] probe_rs::Error),
     #[error(transparent)]
     ProbeRs(#[from] Error),
     #[error("Serialiazation error")]
