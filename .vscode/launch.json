@@ -100,28 +100,6 @@
                 "help",
             ],
             "cwd": "${workspaceFolder}/debugger"
-        },
-        {
-            "type": "lldb",
-            "request": "launch",
-            "name": "Debug stm32wb55",
-            "cargo": {
-                "args": [
-                    "build",
-                    "--bin=probe-rs-cli",
-                    "--package=probe-rs-cli"
-                ],
-                "filter": {
-                    "name": "probe-rs-cli",
-                    "kind": "bin"
-                }
-            },
-            "args": [
-                "debug",
-                "--exe=../../stm32wb55-homekit/target/thumbv7em-none-eabihf/release/stm32wb55-homekit",
-                "--chip=stm32wb55ccux",
-            ],
-            "cwd": "${workspaceFolder}"
         }
     ]
 }
