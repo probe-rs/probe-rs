@@ -458,18 +458,27 @@ impl VariableType {
     }
 }
 
+/// Location of a variable
 #[derive(Debug, Clone, PartialEq)]
 pub enum VariableLocation {
+    /// Location of the variable is not known. This means that it has not been evaluated yet.
     Unknown,
+    /// The variable does not have a location currently, probably due to optimisations.
     Unavailable,
+    /// The variable can be found in memory, at this address.
     Address(u32),
+    /// The value of the variable can be found in this register.
     Register(usize),
+    /// The value of the variable is directly available.
     Value,
+    /// There was an error evaluating the variable location.
     Error(String),
+    /// Support for handling the location of this variable is not (yet) implemented.
     Unsupported(String),
 }
 
 impl VariableLocation {
+    /// Return the memory address, if available. Otherwise an error is returned.
     pub fn memory_address(&self) -> Result<u32, DebugError> {
         match self {
             VariableLocation::Address(address) => Ok(*address),
@@ -480,6 +489,7 @@ impl VariableLocation {
         }
     }
 
+    /// Check if the location is valid, ie. not an error, unsupported, or unavailable.
     pub fn valid(&self) -> bool {
         match self {
             VariableLocation::Address(_)

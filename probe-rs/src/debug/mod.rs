@@ -8,7 +8,7 @@
 // Bad things happen to the VSCode debug extenison and debug_adapter if we panic at the wrong time.
 #![warn(clippy::unwrap_used, clippy::panic, clippy::expect_used)]
 
-pub mod variable;
+mod variable;
 
 use crate::{
     core::{Core, RegisterFile},
@@ -17,7 +17,7 @@ use crate::{
 };
 use num_traits::Zero;
 use probe_rs_target::Architecture;
-pub use variable::{Variable, VariableCache, VariableName, VariantRole};
+pub use variable::{Variable, VariableCache, VariableLocation, VariableName, VariantRole};
 
 use std::{
     borrow,
@@ -3350,25 +3350,6 @@ fn extract_name(
         gimli::AttributeValue::String(name) => String::from_utf8_lossy(&name).to_string(),
         other => format!("Unimplemented: Evaluate name from {:?}", other),
     }
-}
-
-#[derive(Debug, Clone)]
-pub enum VariableLocation {
-    Address(u32),
-    Register(usize),
-    Unavailable,
-    Unsupported(String),
-    Error(String),
-}
-
-pub struct TempVar {
-    pub name: String,
-
-    pub var_type: String,
-
-    pub var_size: usize,
-
-    pub location: VariableLocation,
 }
 
 #[allow(clippy::unwrap_used, clippy::expect_used)]
