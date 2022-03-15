@@ -14,6 +14,7 @@ use crate::{
     core::{Core, RegisterFile},
     CoreStatus, MemoryInterface,
 };
+use log::kv::Source;
 use num_traits::Zero;
 use probe_rs_target::Architecture;
 pub use variable::{Variable, VariableCache, VariableName, VariantRole};
@@ -335,6 +336,8 @@ struct ValidHaltLocations {
     /// The address of the first statement after the prologue.
     ///  - If the current address is a call to an inlined function, then the next statement will be the first statement in that function.
     first_halt_address: Option<u64>,
+    /// The source location associated with the first_halt_address.
+    first_halt_source_location: Option<SourceLocation>,
     /// The address of the next valid statement where we can halt.
     next_statement_address: Option<u64>,
     /// The first statement after the current function returns.
@@ -554,14 +557,21 @@ impl DebugInfo {
         None
     }
 
-    /// Populate a [`ValidHaltLocations`] struct for a given program_counter.
+    /// This function uses [`gimli::read::CompleteLineProgram`] functionality to calculate valid addresses where we can request a halt.
+    /// Validity of halt locations are defined as target instructions that live between the end of the prologue, and the start of the end sequence of a [`gimli::read::LineRow`].
+    ///
+    /// To populate a [`ValidHaltLocations`] struct for a given location.
+    /// - If `source_location` is supplied in the arguments, it will use path/file/line/row as the location selector.
+    /// - Otherwise, `program_counter` must be supplied as the location selector.
     fn get_valid_halt_locations(
         &self,
-        program_counter: u32,
-        return_address: u32,
+        program_counter: Option<u64>,
+        source_location: Option<SourceLocation>,
+        return_address: Option<u64>,
     ) -> Result<ValidHaltLocations, DebugError> {
         let mut program_row_data = ValidHaltLocations {
             first_halt_address: None,
+            first_halt_source_location: None,
             next_statement_address: None,
             step_out_address: None,
         };
@@ -598,14 +608,13 @@ impl DebugInfo {
                     incomplete_line_program.sequences()?;
 
                 if let Some(active_sequence) = line_sequences.iter().find(|line_sequence| {
-                    line_sequence.start as u32 <= program_counter
-                        && line_sequence.end as u32 > program_counter
+                    line_sequence.start <= program_counter && line_sequence.end > program_counter
                 }) {
                     let mut rows = complete_line_program.resume_from(active_sequence);
 
                     // By definition, ONLY the addresses inside a sequence will increase monotonically, so we have to be careful when using addresses as comparators.
                     let mut prologue_end = u64::MAX;
-                    while let Ok(Some((_program_header, row))) = rows.next_row() {
+                    while let Ok(Some((program_header, row))) = rows.next_row() {
                         log::trace!("Evaluating program row data @{:#010X}  stmt={:5}  ep={:5}  es={:5}  line={:04}  col={:05}  f={:02}",
                                         row.address(),
                                         row.is_stmt(),
@@ -642,9 +651,26 @@ impl DebugInfo {
                                 ));
                             } else if row.is_stmt() {
                                 program_row_data.first_halt_address = Some(row.address());
+                                if let Some(file_entry) = row.file(program_header) {
+                                    if let Some((file, directory)) = self.find_file_and_directory(
+                                        &program_unit.unit,
+                                        program_header,
+                                        file_entry,
+                                    ) {
+                                        program_row_data.first_halt_source_location =
+                                            Some(SourceLocation {
+                                                line: row.line().map(NonZeroU64::get),
+                                                column: Some(row.column().into()),
+                                                file,
+                                                directory,
+                                                low_pc: Some(active_sequence.start as u32),
+                                                high_pc: Some(active_sequence.end as u32),
+                                            });
+                                    }
+                                }
                                 // This is a safe time to determine the step_out_statement.
                                 // Recursive calls will sometimes need to use a return_address as a program_counter, in which case we skip this part.
-                                if return_address != u32::MAX {
+                                if return_address.is_some() {
                                     if let Ok(function_dies) =
                                         program_unit.get_function_dies(program_counter as u64, true)
                                     {
@@ -656,7 +682,8 @@ impl DebugInfo {
                                                     // Step_out_address for inlined functions, is the first available breakpoint address after the last statement in this function.
                                                     program_row_data.step_out_address = self
                                                         .get_valid_halt_locations(
-                                                            function.high_pc as u32,
+                                                            function.high_pc,
+                                                            None,
                                                             return_address,
                                                         )?
                                                         .first_halt_address;
@@ -673,7 +700,8 @@ impl DebugInfo {
                                                     program_row_data.step_out_address = self
                                                         .get_valid_halt_locations(
                                                             return_address,
-                                                            u32::MAX,
+                                                            None,
+                                                            None,
                                                         )?
                                                         .first_halt_address;
                                                 }
@@ -1790,7 +1818,11 @@ impl SteppingMode {
         // Sometimes the target program_counter is at a location where the debug_info program row data does not contain valid statements for halt points.
         // When DebugError::NoValidHaltLocation happens, we will step to the next instruction and try again(until we can reasonably expect to have passed out of an epilogue), before giving up.
         for _ in 0..10 {
-            match debug_info.get_valid_halt_locations(program_counter, return_address) {
+            match debug_info.get_valid_halt_locations(
+                Some(program_counter as u64),
+                None,
+                Some(return_address as u64),
+            ) {
                 Ok(program_row_data) => {
                     match self {
                         SteppingMode::OverStatement => {
