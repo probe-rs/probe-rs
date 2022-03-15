@@ -405,7 +405,7 @@ pub enum VariableType {
     Struct(String),
     Enum(String),
     Namespace,
-    Pointer(String),
+    Pointer(Option<String>),
     Array {
         // TODO: Use a proper type here, not variable name
         entry_type: VariableName,
@@ -432,15 +432,28 @@ impl VariableType {
 
     pub fn is_reference(&self) -> bool {
         match self {
-            VariableType::Pointer(name) => name.starts_with('&'),
+            VariableType::Pointer(Some(name)) => name.starts_with('&'),
             _ => false,
         }
     }
 
     pub fn is_array(&self) -> bool {
+        matches!(self, VariableType::Array { .. })
+    }
+
+    pub fn display(&self) -> String {
         match self {
-            VariableType::Array { .. } => true,
-            _ => false,
+            VariableType::Base(base) => base.clone(),
+            VariableType::Struct(struct_name) => struct_name.clone(),
+            VariableType::Enum(enum_name) => enum_name.clone(),
+            VariableType::Namespace => "<namespace>".to_string(),
+            VariableType::Pointer(pointer_name) => pointer_name
+                .clone()
+                .unwrap_or_else(|| "<unnamed>".to_string()),
+            VariableType::Array { entry_type, count } => format!("[{}; {}]", entry_type, count),
+            VariableType::Unnamed => "<unnamed>".to_string(),
+            VariableType::Unknown => "<unknown>".to_string(),
+            VariableType::Other(other) => other.clone(),
         }
     }
 }
@@ -607,7 +620,10 @@ impl Variable {
                     other.to_string()
                 ))),
                 },
-                other => todo!(),
+                other => Err(DebugError::Other(anyhow::anyhow!(
+                    "Unsupported variable type {:?}. Only base variables can be updated.",
+                    other
+                ))),
             };
 
             match update_result {
@@ -654,7 +670,7 @@ impl Variable {
             match variable_cache.has_children(self) {
                 Ok(has_children) => {
                     if has_children {
-                        self.formatted_variable_value(variable_cache, 0_usize)
+                        self.formatted_variable_value(variable_cache, 0_usize, false)
                     } else if self.type_name == VariableType::Unknown
                         || !self.memory_location.valid()
                     {
@@ -686,7 +702,7 @@ impl Variable {
         // Quick exit if we don't really need to do much more.
         if !self.value.is_empty()
         // The value was set explicitly, so just leave it as is., or it was an error, so don't attempt anything else
-        || self.memory_location == variable::VariableLocation::Value 
+        || self.memory_location == variable::VariableLocation::Value
         || !self.memory_location.valid()
         // Early on in the process of `Variable` evaluation
         || self.type_name == VariableType::Unknown
@@ -695,8 +711,9 @@ impl Variable {
         } else if self.variable_node_type.is_deferred() {
             // And we have not previously assigned the value, then assign the type and address as the value
             self.value = VariableValue::Valid(format!(
-                "{:?} @ {:#010X?}",
-                self.type_name, self.memory_location
+                "{} @ {:010X?}",
+                self.type_name.display(),
+                self.memory_location
             ));
             return;
         }
@@ -707,91 +724,91 @@ impl Variable {
             self.type_name
         );
 
-
         // This is the primary logic for decoding a variable's value, once we know the type and memory_location.
         let known_value = match &self.type_name {
             VariableType::Base(name) => {
-
                 if self.memory_location == VariableLocation::Unknown {
-
                     self.value = VariableValue::Empty;
                     return;
                 }
 
                 match name.as_str() {
-                "!" => VariableValue::Valid("<Never returns>".to_string()),
-                "()" => VariableValue::Valid("()".to_string()),
-                "bool" => bool::get_value(self, core, variable_cache).map_or_else(
-                    |err| VariableValue::Error(format!("{:?}", err)),
-                    |value| VariableValue::Valid(value.to_string()),
-                ),
-                "char" => char::get_value(self, core, variable_cache).map_or_else(
-                    |err| VariableValue::Error(format!("{:?}", err)),
-                    |value| VariableValue::Valid(value.to_string()),
-                ),
-                "&str" => String::get_value(self, core, variable_cache).map_or_else(
+                    "!" => VariableValue::Valid("<Never returns>".to_string()),
+                    "()" => VariableValue::Valid("()".to_string()),
+                    "bool" => bool::get_value(self, core, variable_cache).map_or_else(
+                        |err| VariableValue::Error(format!("{:?}", err)),
+                        |value| VariableValue::Valid(value.to_string()),
+                    ),
+                    "char" => char::get_value(self, core, variable_cache).map_or_else(
+                        |err| VariableValue::Error(format!("{:?}", err)),
+                        |value| VariableValue::Valid(value.to_string()),
+                    ),
+                    "i8" => i8::get_value(self, core, variable_cache).map_or_else(
+                        |err| VariableValue::Error(format!("{:?}", err)),
+                        |value| VariableValue::Valid(value.to_string()),
+                    ),
+                    "i16" => i16::get_value(self, core, variable_cache).map_or_else(
+                        |err| VariableValue::Error(format!("{:?}", err)),
+                        |value| VariableValue::Valid(value.to_string()),
+                    ),
+                    "i32" => i32::get_value(self, core, variable_cache).map_or_else(
+                        |err| VariableValue::Error(format!("{:?}", err)),
+                        |value| VariableValue::Valid(value.to_string()),
+                    ),
+                    "i64" => i64::get_value(self, core, variable_cache).map_or_else(
+                        |err| VariableValue::Error(format!("{:?}", err)),
+                        |value| VariableValue::Valid(value.to_string()),
+                    ),
+                    "i128" => i128::get_value(self, core, variable_cache).map_or_else(
+                        |err| VariableValue::Error(format!("{:?}", err)),
+                        |value| VariableValue::Valid(value.to_string()),
+                    ),
+                    "isize" => isize::get_value(self, core, variable_cache).map_or_else(
+                        |err| VariableValue::Error(format!("{:?}", err)),
+                        |value| VariableValue::Valid(value.to_string()),
+                    ),
+                    "u8" => u8::get_value(self, core, variable_cache).map_or_else(
+                        |err| VariableValue::Error(format!("{:?}", err)),
+                        |value| VariableValue::Valid(value.to_string()),
+                    ),
+                    "u16" => u16::get_value(self, core, variable_cache).map_or_else(
+                        |err| VariableValue::Error(format!("{:?}", err)),
+                        |value| VariableValue::Valid(value.to_string()),
+                    ),
+                    "u32" => u32::get_value(self, core, variable_cache).map_or_else(
+                        |err| VariableValue::Error(format!("{:?}", err)),
+                        |value| VariableValue::Valid(value.to_string()),
+                    ),
+                    "u64" => u64::get_value(self, core, variable_cache).map_or_else(
+                        |err| VariableValue::Error(format!("{:?}", err)),
+                        |value| VariableValue::Valid(value.to_string()),
+                    ),
+                    "u128" => u128::get_value(self, core, variable_cache).map_or_else(
+                        |err| VariableValue::Error(format!("{:?}", err)),
+                        |value| VariableValue::Valid(value.to_string()),
+                    ),
+                    "usize" => usize::get_value(self, core, variable_cache).map_or_else(
+                        |err| VariableValue::Error(format!("{:?}", err)),
+                        |value| VariableValue::Valid(value.to_string()),
+                    ),
+                    "f32" => f32::get_value(self, core, variable_cache).map_or_else(
+                        |err| VariableValue::Error(format!("{:?}", err)),
+                        |value| VariableValue::Valid(value.to_string()),
+                    ),
+                    "f64" => f64::get_value(self, core, variable_cache).map_or_else(
+                        |err| VariableValue::Error(format!("{:?}", err)),
+                        |value| VariableValue::Valid(value.to_string()),
+                    ),
+                    "None" => VariableValue::Valid("None".to_string()),
+                    _undetermined_value => VariableValue::Empty,
+                }
+            }
+            VariableType::Struct(name) if name == "&str" => {
+                String::get_value(self, core, variable_cache).map_or_else(
                     |err| VariableValue::Error(format!("{:?}", err)),
                     VariableValue::Valid,
-                ),
-                "i8" => i8::get_value(self, core, variable_cache).map_or_else(
-                    |err| VariableValue::Error(format!("{:?}", err)),
-                    |value| VariableValue::Valid(value.to_string()),
-                ),
-                "i16" => i16::get_value(self, core, variable_cache).map_or_else(
-                    |err| VariableValue::Error(format!("{:?}", err)),
-                    |value| VariableValue::Valid(value.to_string()),
-                ),
-                "i32" => i32::get_value(self, core, variable_cache).map_or_else(
-                    |err| VariableValue::Error(format!("{:?}", err)),
-                    |value| VariableValue::Valid(value.to_string()),
-                ),
-                "i64" => i64::get_value(self, core, variable_cache).map_or_else(
-                    |err| VariableValue::Error(format!("{:?}", err)),
-                    |value| VariableValue::Valid(value.to_string()),
-                ),
-                "i128" => i128::get_value(self, core, variable_cache).map_or_else(
-                    |err| VariableValue::Error(format!("{:?}", err)),
-                    |value| VariableValue::Valid(value.to_string()),
-                ),
-                "isize" => isize::get_value(self, core, variable_cache).map_or_else(
-                    |err| VariableValue::Error(format!("{:?}", err)),
-                    |value| VariableValue::Valid(value.to_string()),
-                ),
-                "u8" => u8::get_value(self, core, variable_cache).map_or_else(
-                    |err| VariableValue::Error(format!("{:?}", err)),
-                    |value| VariableValue::Valid(value.to_string()),
-                ),
-                "u16" => u16::get_value(self, core, variable_cache).map_or_else(
-                    |err| VariableValue::Error(format!("{:?}", err)),
-                    |value| VariableValue::Valid(value.to_string()),
-                ),
-                "u32" => u32::get_value(self, core, variable_cache).map_or_else(
-                    |err| VariableValue::Error(format!("{:?}", err)),
-                    |value| VariableValue::Valid(value.to_string()),
-                ),
-                "u64" => u64::get_value(self, core, variable_cache).map_or_else(
-                    |err| VariableValue::Error(format!("{:?}", err)),
-                    |value| VariableValue::Valid(value.to_string()),
-                ),
-                "u128" => u128::get_value(self, core, variable_cache).map_or_else(
-                    |err| VariableValue::Error(format!("{:?}", err)),
-                    |value| VariableValue::Valid(value.to_string()),
-                ),
-                "usize" => usize::get_value(self, core, variable_cache).map_or_else(
-                    |err| VariableValue::Error(format!("{:?}", err)),
-                    |value| VariableValue::Valid(value.to_string()),
-                ),
-                "f32" => f32::get_value(self, core, variable_cache).map_or_else(
-                    |err| VariableValue::Error(format!("{:?}", err)),
-                    |value| VariableValue::Valid(value.to_string()),
-                ),
-                "f64" => f64::get_value(self, core, variable_cache).map_or_else(
-                    |err| VariableValue::Error(format!("{:?}", err)),
-                    |value| VariableValue::Valid(value.to_string()),
-                ),
-                "None" => VariableValue::Valid("None".to_string()),
-                _undetermined_value => VariableValue::Empty,
-            }},
+                )
+            }
             _other => VariableValue::Empty,
         };
         self.value = known_value;
@@ -822,16 +839,26 @@ impl Variable {
         &self,
         variable_cache: &VariableCache,
         indentation: usize,
+        show_name: bool,
     ) -> String {
         let line_feed = if indentation.is_zero() { "" } else { "\n" }.to_string();
         // Allow for chained `if let` without complaining
         #[allow(clippy::if_same_then_else)]
         if !self.value.is_empty() {
-            // Use the supplied value or error message.
-            format!(
-                "{}{:\t<indentation$}{}: {:?} = {}",
-                line_feed, "", self.name, self.type_name, self.value
-            )
+            if show_name {
+                // Use the supplied value or error message.
+                format!(
+                    "{}{:\t<indentation$}{}: {} = {}",
+                    line_feed,
+                    "",
+                    self.name,
+                    self.type_name.display(),
+                    self.value
+                )
+            } else {
+                // Use the supplied value or error message.
+                format!("{}{:\t<indentation$}{}", line_feed, "", self.value)
+            }
         } else if let VariableName::AnonymousNamespace = self.name {
             // Namespaces do not have values
             String::new()
@@ -840,138 +867,202 @@ impl Variable {
             String::new()
         } else {
             // Infer a human readable value using the available children of this variable.
-            let mut compound_value = "".to_string();
+            let mut compound_value = String::new();
             if let Ok(children) = variable_cache.get_children(Some(self.variable_key)) {
                 // Make sure we can safely unwrap() children.
-                if self.type_name.is_reference() {
-                    // Pointers
-                    compound_value = format!(
-                        "{}{}{:\t<indentation$}{}",
-                        compound_value,
-                        line_feed,
-                        "",
-                        if let Some(first_child) = children.first() {
-                            first_child.formatted_variable_value(variable_cache, indentation + 1)
-                        } else {
-                            "Unable to resolve referenced variable value".to_string()
-                        }
-                    );
-                    compound_value
-                } else if self.type_name.is_array() {
-                    // Arrays
-                    compound_value = format!(
-                        "{}{}{:\t<indentation$}{}: {:?} = [",
-                        compound_value, line_feed, "", self.name, self.type_name,
-                    );
-                    let mut child_count: usize = 0;
-                    for child in children.iter() {
-                        child_count += 1;
-                        if child_count == children.len() {
-                            // Do not add a separator at the end of the list
-                            compound_value = format!(
-                                "{}{}",
-                                compound_value,
-                                child.formatted_variable_value(variable_cache, indentation + 1)
-                            );
-                        } else {
-                            compound_value = format!(
-                                "{}{}, ",
-                                compound_value,
-                                child.formatted_variable_value(variable_cache, indentation + 1)
-                            );
-                        }
+                match &self.type_name {
+                    VariableType::Pointer(_) => {
+                        // Pointers
+                        compound_value = format!(
+                            "{}{}{:\t<indentation$}{}",
+                            compound_value,
+                            line_feed,
+                            "",
+                            if let Some(first_child) = children.first() {
+                                first_child.formatted_variable_value(
+                                    variable_cache,
+                                    indentation + 1,
+                                    true,
+                                )
+                            } else {
+                                "Unable to resolve referenced variable value".to_string()
+                            }
+                        );
+                        compound_value
                     }
-                    format!("{}{}{:\t<indentation$}]", compound_value, line_feed, "")
-                    /*
-                    } else if self.type_name.starts_with("Option")
-                        || self.type_name.starts_with("Result")
+                    VariableType::Array { .. } => {
+                        // Arrays
+                        compound_value = format!(
+                            "{}{}{:\t<indentation$}{}: {} = [",
+                            compound_value,
+                            line_feed,
+                            "",
+                            self.name,
+                            self.type_name.display(),
+                        );
+                        let mut child_count: usize = 0;
+                        for child in children.iter() {
+                            child_count += 1;
+                            if child_count == children.len() {
+                                // Do not add a separator at the end of the list
+                                compound_value = format!(
+                                    "{}{}",
+                                    compound_value,
+                                    child.formatted_variable_value(
+                                        variable_cache,
+                                        indentation + 1,
+                                        false
+                                    )
+                                );
+                            } else {
+                                compound_value = format!(
+                                    "{}{}, ",
+                                    compound_value,
+                                    child.formatted_variable_value(
+                                        variable_cache,
+                                        indentation + 1,
+                                        false
+                                    )
+                                );
+                            }
+                        }
+                        format!("{}{}{:\t<indentation$}]", compound_value, line_feed, "")
+                    }
+                    /* 
+                    VariableType::Struct(name)
+                        if name.starts_with("Option") || name.starts_with("Result") =>
                     {
                         // For special structure types `Option<>` and `Result<>`, we only format their children
                         for child in children {
                             compound_value = format!(
                                 "{}{}",
                                 compound_value,
-                                child.formatted_variable_value(variable_cache, indentation)
+                                child.formatted_variable_value(variable_cache, indentation, true)
                             );
                         }
                         compound_value
-                        /*
-                        } else if self.type_name.as_str() == "Some"
-                            || self.type_name.as_str() == "Ok"
-                            || self.type_name.as_str() == "Err"
-                        {
-                            // Handle special structure types like the variant values of `Option<>` and `Result<>`
-                            compound_value = format!(
-                                "{}{:\t<indentation$}{} {}(",
-                                line_feed, "", self.type_name, compound_value
-                            );
-                            for child in children {
-                                compound_value = format!(
-                                    "{}{}",
-                                    compound_value,
-                                    child.formatted_variable_value(variable_cache, indentation + 1)
-                                );
-                            }
-                            format!("{}{}{:\t<indentation$})", compound_value, line_feed, "")
-                            */
-
-                            */
-                } else {
-                    // Generic handling of other structured types.
-                    // The pre- and post- fix is determined by the type of children.
-                    // compound_value = format!("{} {}", compound_value, self.type_name);
-                    let (mut pre_fix, mut post_fix): (Option<String>, Option<String>) =
-                        (None, None);
-                    let mut child_count: usize = 0;
-                    for child in children.iter() {
-                        child_count += 1;
-                        if pre_fix.is_none() && post_fix.is_none() {
-                            if let VariableName::Named(child_name) = child.name.clone() {
-                                if child_name.starts_with("__0") {
-                                    // Treat this structure as a tuple
-                                    pre_fix = Some(format!(
-                                        "{}{:\t<indentation$}{}: {:?} = (",
-                                        line_feed, "", self.name, self.type_name,
-                                    ));
-                                    post_fix =
-                                        Some(format!("{}{:\t<indentation$})", line_feed, ""));
-                                } else {
-                                    // Treat this structure as a `struct`
-                                    pre_fix = Some(format!(
-                                        "{}{:\t<indentation$}{}: {:?} = {:?} {{",
-                                        line_feed, "", self.name, self.type_name, self.type_name,
-                                    ));
-                                    post_fix =
-                                        Some(format!("{}{:\t<indentation$}}}", line_feed, ""));
-                                }
-                            };
-                            if let Some(pre_fix) = &pre_fix {
-                                compound_value = format!("{}{}", compound_value, pre_fix);
-                            };
-                        }
-                        if child_count == children.len() {
-                            // Do not add a separator at the end of the list
+                    }
+                    */
+                    VariableType::Struct(name)
+                        if  /* name.starts_with("Some") 
+                            || */ name.starts_with("Ok")
+                            || name.starts_with("Err") =>
+                    {
+                        // Handle special structure types like the variant values of `Option<>` and `Result<>`
+                        compound_value = format!(
+                            "{}{:\t<indentation$}{}: {} = {}(",
+                            line_feed,
+                            "",
+                            self.name,
+                            self.type_name.display(),
+                            compound_value
+                        );
+                        for child in children {
                             compound_value = format!(
                                 "{}{}",
                                 compound_value,
-                                child.formatted_variable_value(variable_cache, indentation + 1)
-                            );
-                        } else {
-                            compound_value = format!(
-                                "{}{}, ",
-                                compound_value,
-                                child.formatted_variable_value(variable_cache, indentation + 1)
+                                child.formatted_variable_value(
+                                    variable_cache,
+                                    indentation + 1,
+                                    false
+                                )
                             );
                         }
+                        format!("{}{}{:\t<indentation$})", compound_value, line_feed, "")
                     }
-                    if let Some(post_fix) = &post_fix {
-                        compound_value = format!("{}{}", compound_value, post_fix);
-                    };
-                    compound_value
+                    _ => {
+                        // Generic handling of other structured types.
+                        // The pre- and post- fix is determined by the type of children.
+                        // compound_value = format!("{} {}", compound_value, self.type_name);
+                        let (mut pre_fix, mut post_fix): (Option<String>, Option<String>) =
+                            (None, None);
+                        let mut child_count: usize = 0;
+
+                        let mut is_tuple = false;
+
+                        for child in children.iter() {
+                            child_count += 1;
+                            if pre_fix.is_none() && post_fix.is_none() {
+                                if let VariableName::Named(child_name) = &child.name {
+                                    if child_name.starts_with("__0") {
+
+                                        is_tuple = true;
+                                        // Treat this structure as a tuple
+                                        pre_fix = Some(format!(
+                                            "{}{:\t<indentation$}{}: {}({}) = {}(",
+                                            line_feed,
+                                            "",
+                                            self.name,
+                                            self.type_name.display(),
+                                            child.type_name.display(),
+                                            self.type_name.display(),
+                                        ));
+                                        post_fix =
+                                            Some(format!("{}{:\t<indentation$})", line_feed, ""));
+                                    } else {
+                                        // Treat this structure as a `struct`
+
+                                        if show_name {
+                                            pre_fix = Some(format!(
+                                                "{}{:\t<indentation$}{}: {} = {} {{",
+                                                line_feed,
+                                                "",
+                                                self.name,
+                                                self.type_name.display(),
+                                                self.type_name.display(),
+                                            ));
+                                        } else {
+                                            pre_fix = Some(format!(
+                                                "{}{:\t<indentation$}{} {{",
+                                                line_feed,
+                                                "",
+                                                self.type_name.display(),
+                                            ));
+
+                                        }
+                                        post_fix =
+                                            Some(format!("{}{:\t<indentation$}}}", line_feed, ""));
+                                    }
+                                };
+                                if let Some(pre_fix) = &pre_fix {
+                                    compound_value = format!("{}{}", compound_value, pre_fix);
+                                };
+                            }
+
+                            let print_name = !is_tuple;
+
+                            if child_count == children.len() {
+                                // Do not add a separator at the end of the list
+                                compound_value = format!(
+                                    "{}{}",
+                                    compound_value,
+                                    child.formatted_variable_value(
+                                        variable_cache,
+                                        indentation + 1,
+                                        print_name
+                                    )
+                                );
+                            } else {
+                                compound_value = format!(
+                                    "{}{}, ",
+                                    compound_value,
+                                    child.formatted_variable_value(
+                                        variable_cache,
+                                        indentation + 1,
+                                        print_name
+                                    )
+                                );
+                            }
+                        }
+                        if let Some(post_fix) = &post_fix {
+                            compound_value = format!("{}{}", compound_value, post_fix);
+                        };
+                        compound_value
+                    }
                 }
             } else {
                 // We don't have a value, and we can't generate one from children values, so use the type_name
-                format!("{:\t<indentation$}{:?}", "", self.type_name)
+                format!("{:\t<indentation$}{}", "", self.type_name.display())
             }
         }
     }
@@ -1015,7 +1106,7 @@ impl Value for bool {
         new_value: &str,
     ) -> Result<(), DebugError> {
         core.write_word_8(
-            variable.memory_location.memory_address()? ,
+            variable.memory_location.memory_address()?,
             <bool as FromStr>::from_str(new_value).map_err(|error| {
                 DebugError::Other(anyhow::anyhow!(
                     "Invalid data conversion from value: {:?}. {:?}",
@@ -1033,7 +1124,7 @@ impl Value for char {
         core: &mut Core<'_>,
         _variable_cache: &VariableCache,
     ) -> Result<Self, DebugError> {
-        let mem_data = core.read_word_32(variable.memory_location.memory_address()? )?;
+        let mem_data = core.read_word_32(variable.memory_location.memory_address()?)?;
         if let Some(return_value) = char::from_u32(mem_data) {
             Ok(return_value)
         } else {

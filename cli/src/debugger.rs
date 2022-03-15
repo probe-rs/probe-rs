@@ -390,10 +390,10 @@ impl DebugCli {
 
                             for child in children {
                                 println!(
-                                    "{}: {:?} = {}",
+                                    "{}: {} = {}",
                                     child.name,
-                                    child.type_name,
-                                    child.get_value(&local_variable_cache)
+                                    child.type_name.display(),
+                                    child.get_value(local_variable_cache)
                                 );
                             }
                         } else {
