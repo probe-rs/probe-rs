@@ -664,7 +664,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                                     Ok(_) => (
                                         Some(valid_breakpoint_location),
                                         format!(
-                                            "Source breakpoint at memory address: {:#010x}",
+                                            "Source breakpoint at memory address: {:#010X}",
                                             breakpoint_address
                                         ),
                                     ),
@@ -673,10 +673,10 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                                     }
                                 }
                             } else {
-                                (None, "No source location for breakpoint. Try reducing `opt-level` in `Cargo.toml` ".to_string())
+                                (None, "Cannot set breakpoint here. Try reducing `opt-level` in `Cargo.toml`, or choose a different source location".to_string())
                             }
                         }
-                        Err(error) => (None, format!("No source location for breakpoint. Try reducing `opt-level` in `Cargo.toml`: {:?}", error)),
+                        Err(error) => (None, format!("Cannot set breakpoint here. Try reducing `opt-level` in `Cargo.toml`, or choose a different source location: {:?}", error)),
                     }
                 } else {
                     (None, "No source path provided for set_breakpoints(). Please report this as a bug.".to_string())
@@ -687,20 +687,18 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                         column: verified_breakpoint
                             .first_halt_source_location
                             .as_ref()
-                            .map(|sl| {
+                            .and_then(|sl| {
                                 sl.column.map(|col| match col {
                                     ColumnType::LeftEdge => 0_i64,
                                     ColumnType::Column(c) => c as i64,
                                 })
-                            })
-                            .flatten(),
+                            }),
                         end_column: None,
                         end_line: None,
                         id: None,
                         line: verified_breakpoint
                             .first_halt_source_location
-                            .map(|sl| sl.line.map(|line| line as i64))
-                            .flatten(),
+                            .and_then(|sl| sl.line.map(|line| line as i64)),
                         message: Some(reason_msg),
                         source: None,
                         instruction_reference: verified_breakpoint
@@ -1623,33 +1621,46 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         core_data: &mut CoreData,
         request: Request,
     ) -> Result<(), anyhow::Error> {
-        match stepping_granularity.step(&mut core_data.target_core, core_data.debug_info) {
-            Ok((new_status, program_counter)) => {
-                self.last_known_status = new_status;
-                self.send_response::<()>(request, Ok(None))?;
-                if matches!(self.last_known_status, CoreStatus::Halted(_)) {
-                    let event_body = Some(StoppedEventBody {
-                        reason: "step".to_owned(),
-                        description: Some(format!(
-                            "{} at address {:#010x}",
-                            new_status.short_long_status().1,
-                            program_counter
-                        )),
-                        thread_id: Some(core_data.target_core.id() as i64),
-                        preserve_focus_hint: None,
-                        text: None,
-                        all_threads_stopped: Some(false), // TODO: Implement multi-core logic here
-                        hit_breakpoint_ids: None,
-                    });
-                    self.send_event("stopped", event_body)
-                } else {
-                    Ok(())
-                }
-            }
-            Err(error) => {
-                core_data.target_core.halt(Duration::from_millis(100)).ok();
-                return Err(anyhow!("Unexpected error during stepping :{}", error));
-            }
+        let (new_status, program_counter) =
+            match stepping_granularity.step(&mut core_data.target_core, core_data.debug_info) {
+                Ok((new_status, program_counter)) => (new_status, program_counter),
+                Err(error) => match &error {
+                    probe_rs::debug::DebugError::NoValidHaltLocation {
+                        message,
+                        pc_at_error,
+                    } => {
+                        self.show_message(
+                            MessageSeverity::Information,
+                            format!("Step error @{:#010X}: {}", pc_at_error, message),
+                        );
+                        (core_data.target_core.status()?, *pc_at_error as u32)
+                    }
+                    other_error => {
+                        core_data.target_core.halt(Duration::from_millis(100)).ok();
+                        return Err(anyhow!("Unexpected error during stepping :{}", other_error));
+                    }
+                },
+            };
+
+        self.last_known_status = new_status;
+        self.send_response::<()>(request, Ok(None))?;
+        if matches!(self.last_known_status, CoreStatus::Halted(_)) {
+            let event_body = Some(StoppedEventBody {
+                reason: "step".to_owned(),
+                description: Some(format!(
+                    "{} at address {:#010x}",
+                    new_status.short_long_status().1,
+                    program_counter
+                )),
+                thread_id: Some(core_data.target_core.id() as i64),
+                preserve_focus_hint: None,
+                text: None,
+                all_threads_stopped: Some(false), // TODO: Implement multi-core logic here
+                hit_breakpoint_ids: None,
+            });
+            self.send_event("stopped", event_body)
+        } else {
+            Ok(())
         }
     }
 

@@ -62,9 +62,14 @@ pub enum DebugError {
     #[error(transparent)]
     IntConversion(#[from] std::num::TryFromIntError),
     /// Errors encountered while determining valid halt locations for breakpoints and stepping.
-    /// - It might be necessary to step the core by a single instruction and try again.
-    #[error("No valid halt locations available at program counter: {:#010X}", .0)]
-    NoValidHaltLocation(u64),
+    /// These are distinct from other errors because they terminate the current step, and result in a user message, but they do not interrupt the rest of the debug session.
+    #[error("{message}  @program_counter={:#010X}.", pc_at_error)]
+    NoValidHaltLocation {
+        /// A message that can be displayed to the user to help them make an informed recovery choice.
+        message: String,
+        /// The value of the program counter for which a halt was requested.
+        pc_at_error: u64,
+    },
     /// Some other error occurred.
     #[error(transparent)]
     Other(#[from] anyhow::Error),
@@ -636,13 +641,14 @@ impl DebugInfo {
                         // Set the first_breakpoint_address
                         if program_row_data.first_halt_address.is_none()
                             && row.address() >= prologue_end
-                            && row.address() >= program_counter as u64
+                            && row.address() >= program_counter
                         {
                             if row.end_sequence() {
                                 // If the first non-prologue row is a end of sequence, then we cannot determine valid halt addresses at this program counter.
-                                return Err(DebugError::NoValidHaltLocation(
-                                    program_counter as u64,
-                                ));
+                                return Err(DebugError::NoValidHaltLocation{
+                                    message: "This function does not have any valid halt locations. Please consider using instruction level stepping.".to_string(),
+                                    pc_at_error: program_counter,
+                                });
                             } else if row.is_stmt() {
                                 program_row_data.first_halt_address = Some(row.address());
                                 if let Some(file_entry) = row.file(program_header) {
@@ -716,13 +722,14 @@ impl DebugInfo {
                         // Set the next_statement_address
                         if program_row_data.first_halt_address.is_some()
                             && program_row_data.next_statement_address.is_none()
-                            && row.address() > program_counter as u64
+                            && row.address() > program_counter
                         {
                             if row.end_sequence() {
                                 // If the next row is a end of sequence, then we cannot determine valid halt addresses at this program counter.
-                                return Err(DebugError::NoValidHaltLocation(
-                                    program_counter as u64,
-                                ));
+                                return Err(DebugError::NoValidHaltLocation{
+                                    message: "This function does not have any additional halt locations. Please consider using instruction level stepping.".to_string(),
+                                    pc_at_error: program_counter,
+                                });
                             } else if row.is_stmt() {
                                 // Use the next available statement.
                                 program_row_data.next_statement_address = Some(row.address());
@@ -734,7 +741,10 @@ impl DebugInfo {
                         }
                     }
                 } else {
-                    return Err(DebugError::NoValidHaltLocation(program_counter as u64));
+                    return Err(DebugError::NoValidHaltLocation{
+                        message: "The specified source location does not have any line information available. Please consider using instruction level stepping.".to_string(),
+                        pc_at_error: program_counter,
+                    });
                 }
             }
         }
@@ -1784,9 +1794,11 @@ impl SteppingMode {
                         }
                         SteppingMode::OutOfStatement => {
                             if program_row_data.step_out_address.is_none() {
-                                return Err(DebugError::Other(anyhow::anyhow!(
-                                    "Cannot step out of a non-returning function"
-                                )));
+                                return Err(DebugError::NoValidHaltLocation {
+                                    message: "Cannot step out of a non-returning function"
+                                        .to_string(),
+                                    pc_at_error: program_counter as u64,
+                                });
                             } else {
                                 target_address = program_row_data.step_out_address
                             }
@@ -1803,8 +1815,16 @@ impl SteppingMode {
                     break;
                 }
                 Err(error) => match error {
-                    DebugError::NoValidHaltLocation(_) => {
+                    DebugError::NoValidHaltLocation {
+                        message,
+                        pc_at_error,
+                    } => {
                         // Step on target instruction, and then try again.
+                        log::debug!(
+                            "Incomplete stepping information @{:#010X}: {}",
+                            pc_at_error,
+                            message
+                        );
                         program_counter = core.step()?.pc;
                         return_address = core.read_core_reg(core.registers().return_address())?;
                         continue;
@@ -1857,7 +1877,11 @@ impl SteppingMode {
                 }
             }
             None => {
-                return Err(DebugError::NoValidHaltLocation(program_counter as u64));
+                return Err(DebugError::NoValidHaltLocation {
+                    message: "Unable to determine target address for this step request."
+                        .to_string(),
+                    pc_at_error: program_counter as u64,
+                });
             }
         }
         Ok((core_status, program_counter))
