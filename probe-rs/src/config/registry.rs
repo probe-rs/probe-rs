@@ -89,6 +89,7 @@ fn add_generic_targets(vec: &mut Vec<ChipFamily>) {
             variants: vec![Chip {
                 name: "riscv".to_owned(),
                 part: None,
+                id: None,
                 cores: vec![Core {
                     name: "core".to_owned(),
                     core_type: CoreType::Riscv,
@@ -261,6 +262,53 @@ impl Registry {
         self.get_target(family, chip)
     }
 
+    fn get_target_by_chip_info_and_id(
+        &self,
+        chip_info: ChipInfo,
+        id: u32,
+    ) -> Result<Target, RegistryError> {
+        let (family, chip) = {
+            match chip_info {
+                ChipInfo::Arm(chip_info) => {
+                    // Try get the corresponding chip.
+
+                    let families = self.families.iter().filter(|f| {
+                        f.manufacturer
+                            .map(|m| m == chip_info.manufacturer)
+                            .unwrap_or(false)
+                    });
+
+                    let mut identified_chips = Vec::new();
+
+                    for family in families {
+                        log::debug!("Checking family {}", family.name);
+
+                        let chips = family
+                            .variants()
+                            .iter()
+                            .filter(|v| v.part.map(|p| p == chip_info.part).unwrap_or(false))
+                            .filter(|v| v.id.map(|i| i == id).unwrap_or(false))
+                            .map(|c| (family, c));
+
+                        identified_chips.extend(chips)
+                    }
+
+                    if identified_chips.len() == 1 {
+                        identified_chips.pop().unwrap()
+                    } else {
+                        log::debug!(
+                        "Found {} matching chips for information {:?}, unable to determine chip",
+                        identified_chips.len(),
+                        chip_info
+                    );
+                        return Err(RegistryError::ChipAutodetectFailed);
+                    }
+                }
+            }
+        };
+        self.get_target(family, chip)
+    }
+
     fn get_target(&self, family: &ChipFamily, chip: &Chip) -> Result<Target, RegistryError> {
         // The validity of the given `ChipFamily` is checked in the constructor.
         Target::new(family, &chip.name)
@@ -300,6 +348,17 @@ pub fn search_chips(name: impl AsRef<str>) -> Result<Vec<String>, RegistryError>
 /// Try to retrieve a target based on [ChipInfo] read from a target.
 pub(crate) fn get_target_by_chip_info(chip_info: ChipInfo) -> Result<Target, RegistryError> {
     REGISTRY.lock().unwrap().get_target_by_chip_info(chip_info)
+}
+
+/// Try to retrieve a target based on [ChipInfo] and `id` read from a target.
+pub(crate) fn get_target_by_chip_info_and_id(
+    chip_info: ChipInfo,
+    id: u32,
+) -> Result<Target, RegistryError> {
+    REGISTRY
+        .lock()
+        .unwrap()
+        .get_target_by_chip_info_and_id(chip_info, id)
 }
 
 /// Parse a target description file and add the contained targets

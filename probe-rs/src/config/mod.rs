@@ -39,3 +39,4 @@ pub use target::{DebugSequence, Target, TargetParseError, TargetSelector};
 // Crate-internal API
 pub(crate) use chip_info::ChipInfo;
 pub(crate) use registry::get_target_by_chip_info;
+pub(crate) use registry::get_target_by_chip_info_and_id;

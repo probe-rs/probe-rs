@@ -364,7 +364,7 @@ impl Probe {
     /// This function assumes default values to detect and communicate with the chip. It is expected to fail if the attached target requires special handling that differs from the default.
     pub fn attach_and_detect(mut self) -> Result<Target, Error> {
         self.inner_attach()?;
-        self.attached = true;
+        //self.attach_to_unspecified_under_reset()?;
 
         // Try to get arm interface of probe, if present
         if let Ok(arm_probe) = self.inner.try_get_arm_interface() {
@@ -392,13 +392,13 @@ impl Probe {
 
         match info.manufacturer.get() {
             Some("STMicroelectronics") => {
-                architecture::arm::sequences::st::detect_target(&mut probe_interface)
+                architecture::arm::sequences::st::detect_target_arm(&mut probe_interface)
             }
             Some("Nordic VLSI ASA") => {
                 architecture::arm::sequences::nordic::detect_target(&mut probe_interface)
             }
             Some("Atmel") => {
-                architecture::arm::sequences::atmel::detect_target(&mut probe_interface)
+                architecture::arm::sequences::atmel::detect_target_arm(&mut probe_interface, info)
             }
             _ => Err(Error::Other(anyhow::anyhow!(
                 "Target detect for manufacturer '{:?}' is not implemented yet",

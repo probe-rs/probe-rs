@@ -1,6 +1,11 @@
 name: SAMD21
+manufacturer:
+  id: 0x1F
+  cc: 0x0
 variants:
   - name: ATSAMD21E15A
+    part: 0xcd0
+    id: 0x1001000D
     cores:
       - name: main
         type: armv6m
@@ -26,6 +31,8 @@ variants:
     flash_algorithms:
       - atsamd21_32
   - name: ATSAMD21E15B
+    part: 0xcd0
+    id: 0x10011027
     cores:
       - name: main
         type: armv6m
@@ -51,6 +58,8 @@ variants:
     flash_algorithms:
       - atsamd21_32
   - name: ATSAMD21E15BU
+    part: 0xcd0
+    id: 0x10011056
     cores:
       - name: main
         type: armv6m
@@ -77,6 +86,8 @@ variants:
       - atsamd21_32
       - atsamd21_32_eeprom
   - name: ATSAMD21E15CU
+    part: 0xcd0
+    id: 0x10011063
     cores:
       - name: main
         type: armv6m
@@ -103,6 +114,8 @@ variants:
       - atsamd21_32
       - atsamd21_32_eeprom
   - name: ATSAMD21E15L
+    part: 0xcd0
+    id: 0x1001103F
     cores:
       - name: main
         type: armv6m
@@ -129,6 +142,8 @@ variants:
       - atsamd21_32
       - atsamd21_32_eeprom
   - name: ATSAMD21E16A
+    part: 0xcd0
+    id: 0x1001000C
     cores:
       - name: main
         type: armv6m
@@ -155,6 +170,8 @@ variants:
       - atsamd21_64
       - atsamd21_64_eeprom
   - name: ATSAMD21E16B
+    part: 0xcd0
+    id: 0x10011026
     cores:
       - name: main
         type: armv6m
@@ -181,6 +198,8 @@ variants:
       - atsamd21_64
       - atsamd21_64_eeprom
   - name: ATSAMD21E16BU
+    part: 0xcd0
+    id: 0x10011055
     cores:
       - name: main
         type: armv6m
@@ -207,6 +226,8 @@ variants:
       - atsamd21_64
       - atsamd21_64_eeprom
   - name: ATSAMD21E16CU
+    part: 0xcd0
+    id: 0x10011062
     cores:
       - name: main
         type: armv6m
@@ -233,6 +254,8 @@ variants:
       - atsamd21_64
       - atsamd21_64_eeprom
   - name: ATSAMD21E16L
+    part: 0xcd0
+    id: 0x1001103E
     cores:
       - name: main
         type: armv6m
@@ -259,6 +282,8 @@ variants:
       - atsamd21_64
       - atsamd21_64_eeprom
   - name: ATSAMD21E17A
+    part: 0xcd0
+    id: 0x1001000B
     cores:
       - name: main
         type: armv6m
@@ -284,6 +309,8 @@ variants:
     flash_algorithms:
       - atsamd21_128
   - name: ATSAMD21E17D
+    part: 0xcd0
+    id: 0x10012094
     cores:
       - name: main
         type: armv6m
@@ -310,6 +337,8 @@ variants:
       - atsamd21_128
       - atsamd21_128_eeprom
   - name: ATSAMD21E17DU
+    part: 0xcd0
+    id: 0x10012095
     cores:
       - name: main
         type: armv6m
@@ -336,6 +365,8 @@ variants:
       - atsamd21_128
       - atsamd21_128_eeprom
   - name: ATSAMD21E17L
+    part: 0xcd0
+    id: 0x10012097
     cores:
       - name: main
         type: armv6m
@@ -362,6 +393,8 @@ variants:
       - atsamd21_128
       - atsamd21_128_eeprom
   - name: ATSAMD21E18A
+    part: 0xcd0
+    id: 0x1001000A
     cores:
       - name: main
         type: armv6m
@@ -387,6 +420,8 @@ variants:
     flash_algorithms:
       - atsamd21_256
   - name: ATSAMD21G15A
+    part: 0xcd0
+    id: 0x10010008
     cores:
       - name: main
         type: armv6m
@@ -412,6 +447,8 @@ variants:
     flash_algorithms:
       - atsamd21_32
   - name: ATSAMD21G15B
+    part: 0xcd0
+    id: 0x10011024
     cores:
       - name: main
         type: armv6m
@@ -464,6 +501,8 @@ variants:
       - atsamd21_32
       - atsamd21_32_eeprom
   - name: ATSAMD21G16A
+    part: 0xcd0
+    id: 0x10010007
     cores:
       - name: main
         type: armv6m
@@ -489,6 +528,8 @@ variants:
     flash_algorithms:
       - atsamd21_64
   - name: ATSAMD21G16B
+    part: 0xcd0
+    id: 0x10011023
     cores:
       - name: main
         type: armv6m
@@ -515,6 +556,8 @@ variants:
       - atsamd21_64
       - atsamd21_64_eeprom
   - name: ATSAMD21G16L
+    part: 0xcd0
+    id: 0x10011057
     cores:
       - name: main
         type: armv6m
@@ -541,6 +584,8 @@ variants:
       - atsamd21_64
       - atsamd21_64_eeprom
   - name: ATSAMD21G17A
+    part: 0xcd0
+    id: 0x10010006
     cores:
       - name: main
         type: armv6m
@@ -566,6 +611,8 @@ variants:
     flash_algorithms:
       - atsamd21_128
   - name: ATSAMD21G17AU
+    part: 0xcd0
+    id: 0x10010010
     cores:
       - name: main
         type: armv6m
@@ -591,6 +638,8 @@ variants:
     flash_algorithms:
       - atsamd21_128
   - name: ATSAMD21G17D
+    part: 0xcd0
+    id: 0x10012093
     cores:
       - name: main
         type: armv6m
@@ -617,6 +666,8 @@ variants:
       - atsamd21_128
       - atsamd21_128_eeprom
   - name: ATSAMD21G17L
+    part: 0xcd0
+    id: 0x10012096
     cores:
       - name: main
         type: armv6m
@@ -643,6 +694,8 @@ variants:
       - atsamd21_128
       - atsamd21_128_eeprom
   - name: ATSAMD21G18A
+    part: 0xcd0
+    id: 0x10010005
     cores:
       - name: main
         type: armv6m
@@ -668,6 +721,8 @@ variants:
     flash_algorithms:
       - atsamd21_256
   - name: ATSAMD21G18AU
+    part: 0xcd0
+    id: 0x1001000F
     cores:
       - name: main
         type: armv6m
@@ -693,6 +748,8 @@ variants:
     flash_algorithms:
       - atsamd21_256
   - name: ATSAMD21J15A
+    part: 0xcd0
+    id: 0x10010003
     cores:
       - name: main
         type: armv6m
@@ -718,6 +775,8 @@ variants:
     flash_algorithms:
       - atsamd21_32
   - name: ATSAMD21J15B
+    part: 0xcd0
+    id: 0x10011021
     cores:
       - name: main
         type: armv6m
@@ -744,6 +803,8 @@ variants:
       - atsamd21_32
       - atsamd21_32_eeprom
   - name: ATSAMD21J16A
+    part: 0xcd0
+    id: 0x10010002
     cores:
       - name: main
         type: armv6m
@@ -769,6 +830,8 @@ variants:
     flash_algorithms:
       - atsamd21_64
   - name: ATSAMD21J16B
+    part: 0xcd0
+    id: 0x10011020
     cores:
       - name: main
         type: armv6m
@@ -795,6 +858,8 @@ variants:
       - atsamd21_64
       - atsamd21_64_eeprom
   - name: ATSAMD21J17A
+    part: 0xcd0
+    id: 0x10010001
     cores:
       - name: main
         type: armv6m
@@ -820,6 +885,8 @@ variants:
     flash_algorithms:
       - atsamd21_128
   - name: ATSAMD21J17D
+    part: 0xcd0
+    id: 0x10012092
     cores:
       - name: main
         type: armv6m
@@ -846,6 +913,8 @@ variants:
       - atsamd21_128
       - atsamd21_128_eeprom
   - name: ATSAMD21J18A
+    part: 0xcd0
+    id: 0x10010000
     cores:
       - name: main
         type: armv6m

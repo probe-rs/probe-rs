@@ -19,6 +19,15 @@ pub struct Chip {
         serde(skip_serializing_if = "Option::is_none")
     )]
     pub part: Option<u16>,
+    /// The chip variant id.
+    /// This id is used to detect the exact chip model in case the `PART` register entry is not unique.
+    /// The origin of this value can differ between chip families and manufacturers due to different
+    /// device identification approaches.
+    #[cfg_attr(
+        not(feature = "bincode"),
+        serde(skip_serializing_if = "Option::is_none")
+    )]
+    pub id: Option<u32>,
     /// The cores available on the chip.
     pub cores: Vec<Core>,
     /// The memory regions available on the chip.
@@ -40,6 +49,7 @@ impl Chip {
         Chip {
             name: name.to_string(),
             part: None,
+            id: None,
             cores: vec![Core {
                 name: "main".to_string(),
                 core_type,
