@@ -1,6 +1,11 @@
 name: SAME51
+manufacturer:
+  id: 0x1F
+  cc: 0x0
 variants:
   - name: ATSAME51G18A
+    part: 0xcd0
+    id: 0x61810306
     cores:
       - name: main
         type: armv7em
@@ -25,6 +30,8 @@ variants:
             - main
     flash_algorithms: []
   - name: ATSAME51G19A
+    part: 0xcd0
+    id: 0x61810305
     cores:
       - name: main
         type: armv7em
@@ -49,6 +56,8 @@ variants:
             - main
     flash_algorithms: []
   - name: ATSAME51J18A
+    part: 0xcd0
+    id: 0x61810003
     cores:
       - name: main
         type: armv7em
@@ -74,6 +83,8 @@ variants:
     flash_algorithms:
       - atsame51_256
   - name: ATSAME51J19A
+    part: 0xcd0
+    id: 0x61810002
     cores:
       - name: main
         type: armv7em
@@ -99,6 +110,8 @@ variants:
     flash_algorithms:
       - atsame51_512
   - name: ATSAME51J20A
+    part: 0xcd0
+    id: 0x61810004
     cores:
       - name: main
         type: armv7em
@@ -124,6 +137,8 @@ variants:
     flash_algorithms:
       - atsame51_1024
   - name: ATSAME51N19A
+    part: 0xcd0
+    id: 0x61810001
     cores:
       - name: main
         type: armv7em
@@ -149,6 +164,8 @@ variants:
     flash_algorithms:
       - atsame51_512
   - name: ATSAME51N20A
+    part: 0xcd0
+    id: 0x61810000
     cores:
       - name: main
         type: armv7em

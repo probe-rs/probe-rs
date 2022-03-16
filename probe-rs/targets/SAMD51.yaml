@@ -1,7 +1,11 @@
 name: SAMD51
-manufacturer: null
+manufacturer:
+  id: 0x1F
+  cc: 0x0
 variants:
   - name: ATSAMD51G18A
+    part: 0xcd0
+    id: 0x60060008
     cores:
       - name: main
         type: armv7em
@@ -27,6 +31,8 @@ variants:
     flash_algorithms:
       - atsamd51_256
   - name: ATSAMD51G19A
+    part: 0xcd0
+    id: 0x60060007
     cores:
       - name: main
         type: armv7em
@@ -52,6 +58,8 @@ variants:
     flash_algorithms:
       - atsamd51_512
   - name: ATSAMD51J18A
+    part: 0xcd0
+    id: 0x60060006
     cores:
       - name: main
         type: armv7em
@@ -77,6 +85,8 @@ variants:
     flash_algorithms:
       - atsamd51_256
   - name: ATSAMD51J19A
+    part: 0xcd0
+    id: 0x60060005
     cores:
       - name: main
         type: armv7em
@@ -102,6 +112,8 @@ variants:
     flash_algorithms:
       - atsamd51_512
   - name: ATSAMD51J20A
+    part: 0xcd0
+    id: 0x60060004
     cores:
       - name: main
         type: armv7em
@@ -127,6 +139,8 @@ variants:
     flash_algorithms:
       - atsamd51_1024
   - name: ATSAMD51N19A
+    part: 0xcd0
+    id: 0x60060003
     cores:
       - name: main
         type: armv7em
@@ -152,6 +166,8 @@ variants:
     flash_algorithms:
       - atsamd51_512
   - name: ATSAMD51N20A
+    part: 0xcd0
+    id: 0x60060002
     cores:
       - name: main
         type: armv7em
@@ -177,6 +193,8 @@ variants:
     flash_algorithms:
       - atsamd51_1024
   - name: ATSAMD51P19A
+    part: 0xcd0
+    id: 0x60060001
     cores:
       - name: main
         type: armv7em
@@ -202,6 +220,8 @@ variants:
     flash_algorithms:
       - atsamd51_512
   - name: ATSAMD51P20A
+    part: 0xcd0
+    id: 0x60060000
     cores:
       - name: main
         type: armv7em
