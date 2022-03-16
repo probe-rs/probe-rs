@@ -14,7 +14,6 @@ use crate::{
     core::{Core, RegisterFile},
     CoreStatus, MemoryInterface,
 };
-use log::kv::Source;
 use num_traits::Zero;
 use probe_rs_target::Architecture;
 pub use variable::{Variable, VariableCache, VariableName, VariantRole};
@@ -565,8 +564,7 @@ impl DebugInfo {
     /// - Otherwise, `program_counter` must be supplied as the location selector.
     fn get_valid_halt_locations(
         &self,
-        program_counter: Option<u64>,
-        source_location: Option<SourceLocation>,
+        program_counter: u64,
         return_address: Option<u64>,
     ) -> Result<ValidHaltLocations, DebugError> {
         let mut program_row_data = ValidHaltLocations {
@@ -582,9 +580,7 @@ impl DebugInfo {
             match self.dwarf.unit_ranges(&header.unit) {
                 Ok(mut ranges) => {
                     while let Ok(Some(range)) = ranges.next() {
-                        if (range.begin <= program_counter.into())
-                            && (range.end > program_counter.into())
-                        {
+                        if (range.begin <= program_counter) && (range.end > program_counter) {
                             program_unit = Some(header);
                             break 'headers;
                         }
@@ -683,7 +679,6 @@ impl DebugInfo {
                                                     program_row_data.step_out_address = self
                                                         .get_valid_halt_locations(
                                                             function.high_pc,
-                                                            None,
                                                             return_address,
                                                         )?
                                                         .first_halt_address;
@@ -697,13 +692,17 @@ impl DebugInfo {
                                                     .is_none()
                                                 {
                                                     // Step_out_address for non-inlined functions is the first available breakpoint address after the return address.
-                                                    program_row_data.step_out_address = self
-                                                        .get_valid_halt_locations(
-                                                            return_address,
-                                                            None,
-                                                            None,
-                                                        )?
-                                                        .first_halt_address;
+                                                    program_row_data.step_out_address =
+                                                        return_address.and_then(|return_address| {
+                                                            self.get_valid_halt_locations(
+                                                                return_address,
+                                                                None,
+                                                            )
+                                                            .map_or(None, |valid_halt_locations| {
+                                                                valid_halt_locations
+                                                                    .first_halt_address
+                                                            })
+                                                        });
                                                 }
                                             }
                                         }
@@ -1818,11 +1817,9 @@ impl SteppingMode {
         // Sometimes the target program_counter is at a location where the debug_info program row data does not contain valid statements for halt points.
         // When DebugError::NoValidHaltLocation happens, we will step to the next instruction and try again(until we can reasonably expect to have passed out of an epilogue), before giving up.
         for _ in 0..10 {
-            match debug_info.get_valid_halt_locations(
-                Some(program_counter as u64),
-                None,
-                Some(return_address as u64),
-            ) {
+            match debug_info
+                .get_valid_halt_locations(program_counter as u64, Some(return_address as u64))
+            {
                 Ok(program_row_data) => {
                     match self {
                         SteppingMode::OverStatement => {
