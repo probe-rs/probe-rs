@@ -331,18 +331,18 @@ type UnitIter =
 /// - They point to program row statements where `gimli::read::LineRow::is_stmt()==true`.
 /// - They point to program row statements that are neither inside either the prologue nor inside the epilogue of a function.
 #[derive(Debug)]
-struct ValidHaltLocations {
+pub struct ValidHaltLocations {
     /// The address of the first statement after the prologue.
     ///  - If the current address is a call to an inlined function, then the next statement will be the first statement in that function.
-    first_halt_address: Option<u64>,
+    pub first_halt_address: Option<u64>,
     /// The source location associated with the first_halt_address.
-    first_halt_source_location: Option<SourceLocation>,
+    pub first_halt_source_location: Option<SourceLocation>,
     /// The address of the next valid statement where we can halt.
-    next_statement_address: Option<u64>,
+    pub next_statement_address: Option<u64>,
     /// The first statement after the current function returns.
     /// For regular functions, this will be the `return address`.
     /// For inline functions, this will be the statement from which the function was "called", because inline statements are executed before the statements that "call" them.  
-    step_out_address: Option<u64>,
+    pub step_out_address: Option<u64>,
 }
 
 /// Debug information which is parsed from DWARF debugging information.
@@ -1593,7 +1593,7 @@ impl DebugInfo {
         path: &Path,
         line: u64,
         column: Option<u64>,
-    ) -> Result<Option<u64>, DebugError> {
+    ) -> Result<ValidHaltLocations, DebugError> {
         log::debug!(
             "Looking for breakpoint location for {}:{}:{}",
             path.display(),
@@ -1604,8 +1604,6 @@ impl DebugInfo {
         );
 
         let mut unit_iter = self.dwarf.units();
-
-        let mut locations = Vec::new();
 
         while let Some(unit_header) = unit_iter.next()? {
             let unit = self.dwarf.unit(unit_header)?;
@@ -1630,7 +1628,9 @@ impl DebugInfo {
 
                             if let Some(cur_line) = row.line() {
                                 if cur_line.get() == line {
-                                    locations.push((row.address(), row.column()));
+                                    // The first match of the file and row will be used a the locator address to select valid breakpoint location.
+                                    // - The result will include a new source location, so that the debugger knows where the actual breakpoint was placed.
+                                    return self.get_valid_halt_locations(row.address(), None);
                                 }
                             }
                         }
@@ -1638,53 +1638,12 @@ impl DebugInfo {
                 }
             }
         }
-
-        // Look for the break point location for the best match based on the column specified.
-        match locations.len() {
-            0 => Ok(None),
-            1 => Ok(Some(locations[0].0)),
-            n => {
-                log::debug!("Found {} possible breakpoint locations", n);
-
-                locations.sort_by({
-                    |a, b| {
-                        if a.1 != b.1 {
-                            a.1.cmp(&b.1)
-                        } else {
-                            a.0.cmp(&b.0)
-                        }
-                    }
-                });
-
-                for loc in &locations {
-                    log::debug!("col={:?}, addr={:#010x}", loc.1, loc.0);
-                }
-
-                match column {
-                    Some(search_col) => {
-                        let mut best_location = &locations[0];
-
-                        let search_col = match NonZeroU64::new(search_col) {
-                            None => gimli::read::ColumnType::LeftEdge,
-                            Some(c) => gimli::read::ColumnType::Column(c),
-                        };
-
-                        for loc in &locations[1..] {
-                            if loc.1 > search_col {
-                                break;
-                            }
-
-                            if best_location.1 < loc.1 {
-                                best_location = loc;
-                            }
-                        }
-
-                        Ok(Some(best_location.0))
-                    }
-                    None => Ok(Some(locations[0].0)),
-                }
-            }
-        }
+        Err(DebugError::Other(anyhow::anyhow!(
+            "No valid breakpoint information found for file: {:?}, line: {:?}, column: {:?}",
+            path,
+            line,
+            column
+        )))
     }
 
     /// Get the absolute path for an entry in a line program header

@@ -630,14 +630,14 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         if let Some(requested_breakpoints) = args.breakpoints.as_ref() {
             for bp in requested_breakpoints {
                 // Some overrides to improve breakpoint accuracy when `DebugInfo::get_breakpoint_location()` has to select the best from multiple options
-                let breakpoint_line = if self.lines_start_at_1 {
+                let requested_breakpoint_line = if self.lines_start_at_1 {
                     // If the debug client uses 1 based numbering, then we can use it as is.
                     bp.line as u64
                 } else {
                     // If the debug client uses 0 based numbering, then we bump the number by 1
                     bp.line as u64 + 1
                 };
-                let breakpoint_column = if self.columns_start_at_1
+                let requested_breakpoint_column = if self.columns_start_at_1
                     && (bp.column.is_none() || bp.column.unwrap_or(0) == 0)
                 {
                     // If the debug client uses 1 based numbering, then we can use it as is.
@@ -647,64 +647,79 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                     Some(bp.column.unwrap_or(0) as u64 + 1)
                 };
 
-                // Try to find source code location
-                let source_location: Option<u64> = if let Some(source_path) = source_path {
-                    core_data
-                        .debug_info
-                        .get_breakpoint_location(source_path, breakpoint_line, breakpoint_column)
-                        .unwrap_or(None)
+                let (verified_breakpoint, reason_msg) = if let Some(source_path) = source_path {
+                    match core_data.debug_info.get_breakpoint_location(
+                        source_path,
+                        requested_breakpoint_line,
+                        requested_breakpoint_column,
+                    ) {
+                        Ok(valid_breakpoint_location) => {
+                            if let Some(breakpoint_address) =
+                                valid_breakpoint_location.first_halt_address
+                            {
+                                match core_data.set_breakpoint(
+                                    breakpoint_address as u32,
+                                    BreakpointType::SourceBreakpoint,
+                                ) {
+                                    Ok(_) => (
+                                        Some(valid_breakpoint_location),
+                                        format!(
+                                            "Source breakpoint at memory address: {:#010x}",
+                                            breakpoint_address
+                                        ),
+                                    ),
+                                    Err(err) => {
+                                        (None, format!("Warning: Could not set breakpoint at memory address: {:#010x}: {}", breakpoint_address, err))
+                                    }
+                                }
+                            } else {
+                                (None, "No source location for breakpoint. Try reducing `opt-level` in `Cargo.toml` ".to_string())
+                            }
+                        }
+                        Err(error) => (None, format!("No source location for breakpoint. Try reducing `opt-level` in `Cargo.toml`: {:?}", error)),
+                    }
                 } else {
-                    None
+                    (None, "No source path provided for set_breakpoints(). Please report this as a bug.".to_string())
                 };
 
-                if let Some(location) = source_location {
-                    let (verified, reason_msg) = match core_data
-                        .set_breakpoint(location as u32, BreakpointType::SourceBreakpoint)
-                    {
-                        Ok(_) => (
-                            true,
-                            Some(format!(
-                                "Source breakpoint at memory address: {:#010x}",
-                                location
-                            )),
-                        ),
-                        Err(err) => {
-                            let message = format!(
-                                "Warning: Could not set breakpoint at memory address: {:#010x}: {}",
-                                location, err
-                            )
-                            .to_string();
-                            // In addition to sending the error to the 'Hover' message, also write it to the Debug Console Log.
-                            self.log_to_console(format!("Warning: {}", message));
-                            self.show_message(MessageSeverity::Warning, message.clone());
-                            (false, Some(message))
-                        }
-                    };
-
+                if let Some(verified_breakpoint) = verified_breakpoint {
                     created_breakpoints.push(Breakpoint {
-                        column: breakpoint_column.map(|c| c as i64),
+                        column: verified_breakpoint
+                            .first_halt_source_location
+                            .as_ref()
+                            .map(|sl| {
+                                sl.column.map(|col| match col {
+                                    ColumnType::LeftEdge => 0_i64,
+                                    ColumnType::Column(c) => c as i64,
+                                })
+                            })
+                            .flatten(),
                         end_column: None,
                         end_line: None,
                         id: None,
-                        line: Some(breakpoint_line as i64),
-                        message: reason_msg,
+                        line: verified_breakpoint
+                            .first_halt_source_location
+                            .map(|sl| sl.line.map(|line| line as i64))
+                            .flatten(),
+                        message: Some(reason_msg),
                         source: None,
-                        instruction_reference: Some(location.to_string()),
+                        instruction_reference: verified_breakpoint
+                            .first_halt_address
+                            .map(|address| format!("{:#010X}", address)),
                         offset: None,
-                        verified,
+                        verified: true,
                     });
                 } else {
-                    let message = "No source location for breakpoint. Try reducing `opt-level` in `Cargo.toml` ".to_string();
                     // In addition to sending the error to the 'Hover' message, also write it to the Debug Console Log.
-                    self.log_to_console(format!("WARNING: {}", message));
-                    self.show_message(MessageSeverity::Warning, message.clone());
+                    self.log_to_console(format!("WARNING: {}", reason_msg));
+                    self.show_message(MessageSeverity::Warning, reason_msg.clone());
                     created_breakpoints.push(Breakpoint {
                         column: bp.column,
                         end_column: None,
                         end_line: None,
                         id: None,
                         line: Some(bp.line),
-                        message: Some(message),
+                        message: Some(reason_msg),
                         source: None,
                         instruction_reference: None,
                         offset: None,
