@@ -559,9 +559,7 @@ impl DebugInfo {
     /// This function uses [`gimli::read::CompleteLineProgram`] functionality to calculate valid addresses where we can request a halt.
     /// Validity of halt locations are defined as target instructions that live between the end of the prologue, and the start of the end sequence of a [`gimli::read::LineRow`].
     ///
-    /// To populate a [`ValidHaltLocations`] struct for a given location.
-    /// - If `source_location` is supplied in the arguments, it will use path/file/line/row as the location selector.
-    /// - Otherwise, `program_counter` must be supplied as the location selector.
+    /// To populate a [`ValidHaltLocations`] struct for a given program_counter.
     fn get_valid_halt_locations(
         &self,
         program_counter: u64,
