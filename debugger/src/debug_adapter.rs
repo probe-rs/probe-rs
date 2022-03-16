@@ -981,13 +981,16 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                     // When we have less than 20 frames - use the RHS of of the split at `start_frame`
                     core_data.stack_frames.split_at(start_frame as usize).1
                 } else if total_frames > 20 && start_frame + levels <= total_frames {
-                    // When we have more than 20 frames - we can safely split twice
+                    // When we have more than 20 frames - we can safely split twice.
                     core_data
                         .stack_frames
                         .split_at(start_frame as usize)
                         .1
                         .split_at(levels as usize)
                         .0
+                } else if total_frames > 20 && start_frame + levels > total_frames {
+                    // The MS DAP spec may also ask for more frames than what we reported.
+                    core_data.stack_frames.split_at(start_frame as usize).1
                 } else {
                     return self.send_response::<()>(
                         request,
