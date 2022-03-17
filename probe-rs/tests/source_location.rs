@@ -31,7 +31,8 @@ fn breakpoint_location_absolute() {
         assert_eq!(
             Some(*addr),
             di.get_breakpoint_location(path, *line, col)
-                .expect("Failed to find breakpoint location."),
+                .expect("Failed to find breakpoint location.")
+                .first_halt_address,
             "Addresses do not match for data path={:?}, line={:?}, col={:?}",
             &path,
             line,
@@ -60,7 +61,8 @@ fn breakpoint_location_inexact() {
         assert_eq!(
             Some(*addr),
             di.get_breakpoint_location(path, *line, col)
-                .expect("Failed to find breakpoint location."),
+                .expect("Failed to find valid breakpoint locations.")
+                .first_halt_address,
             "Addresses do not match for data path={:?}, line={:?}, col={:?}",
             &path,
             line,
@@ -99,5 +101,6 @@ fn find_non_existing_unit_by_path() {
     assert!(debug_info
         .get_breakpoint_location(unit_path, 14, None)
         .unwrap()
+        .first_halt_address
         .is_none());
 }
