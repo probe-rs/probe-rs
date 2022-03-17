@@ -27,7 +27,7 @@ futures = "0.3.1"
 log = "0.4.0"
 memchr = "2.3.4"
 hex = "0.4.2"
-nom = "=7.1.0"
+nom = "=7.1.1"
 anyhow = "1.0.31"
 
 [dev-dependencies]
