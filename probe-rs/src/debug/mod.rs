@@ -678,16 +678,6 @@ impl DebugInfo {
                             core,
                         )?;
 
-                        /*
-
-                        if referenced_variable.memory_location == 0 {
-                            // TODO: It is not clear why this happens ... needs more investigation. in the mean time ...
-                            cache.remove_cache_entry(referenced_variable.variable_key)?;
-                            parent_variable.variable_node_type = VariableNodeType::DoNotRecurse;
-                        } else
-
-                        */
-
                         if referenced_variable.type_name == VariableType::Base("()".to_owned()) {
                             // Only use this, if it is NOT a unit datatype.
                             cache.remove_cache_entry(referenced_variable.variable_key)?;
@@ -2496,21 +2486,26 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
         };
 
         if child_variable.is_valid() {
-            /*
-            if child_variable.type_name.starts_with("&str")
-                || child_variable.type_name.starts_with("Option")
-                || child_variable.type_name.starts_with("Some")
-                || child_variable.type_name.starts_with("Result")
-                || child_variable.type_name.starts_with("Ok")
-                || child_variable.type_name.starts_with("Err")
-                || child_variable.type_name.starts_with("*const")
-                || child_variable.type_name.starts_with("*mut")
-            {
-                // In some cases, it really simplifies the UX if we can auto resolve the children and derive a value that is visible at first glance to the user.
-                child_variable.variable_node_type = VariableNodeType::RecurseToBaseType;
+            match &child_variable.type_name {
+                VariableType::Struct(type_name)
+                    if type_name.starts_with("&str")
+                        || type_name.starts_with("Option")
+                        || type_name.starts_with("Some")
+                        || type_name.starts_with("Result")
+                        || type_name.starts_with("Ok")
+                        || type_name.starts_with("Err") =>
+                {
+                    // In some cases, it really simplifies the UX if we can auto resolve the children and derive a value that is visible at first glance to the user.
+                    child_variable.variable_node_type = VariableNodeType::RecurseToBaseType;
+                }
+                VariableType::Pointer(Some(name))
+                    if name.starts_with("*const") || name.starts_with("*mut") =>
+                {
+                    // In some cases, it really simplifies the UX if we can auto resolve the children and derive a value that is visible at first glance to the user.
+                    child_variable.variable_node_type = VariableNodeType::RecurseToBaseType;
+                }
+                _ => (),
             }
-
-            */
 
             child_variable.byte_size = extract_byte_size(self.debug_info, node.entry());
 
@@ -3057,14 +3052,6 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
             }
         }
 
-        /*
-        // If the `memory_location` is still 0 at this time, then we inherit from the parent.
-        if  child_variable.is_valid()
-            && parent_variable.is_valid()
-        {
-            child_variable.memory_location = parent_variable.memory_location.clone();
-        }
-        */
         cache
             .cache_variable(child_variable.parent_key, child_variable, core)
             .map_err(|error| error.into())

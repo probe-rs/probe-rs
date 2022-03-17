@@ -720,11 +720,13 @@ impl Variable {
             return;
         } else if self.variable_node_type.is_deferred() {
             // And we have not previously assigned the value, then assign the type and address as the value
-            self.value = VariableValue::Valid(format!(
-                "{} @ {:010X?}",
-                self.type_name.display(),
-                self.memory_location
-            ));
+            let location = match &self.memory_location {
+                VariableLocation::Address(address) => format!("{:#010X}", address),
+                other => format!("{:?}", other),
+            };
+
+            self.value =
+                VariableValue::Valid(format!("{} @ {}", self.type_name.display(), location));
             return;
         }
 
@@ -938,24 +940,9 @@ impl Variable {
                         }
                         format!("{}{}{:\t<indentation$}]", compound_value, line_feed, "")
                     }
-                    /* 
                     VariableType::Struct(name)
-                        if name.starts_with("Option") || name.starts_with("Result") =>
-                    {
-                        // For special structure types `Option<>` and `Result<>`, we only format their children
-                        for child in children {
-                            compound_value = format!(
-                                "{}{}",
-                                compound_value,
-                                child.formatted_variable_value(variable_cache, indentation, true)
-                            );
-                        }
-                        compound_value
-                    }
-                    */
-                    VariableType::Struct(name)
-                        if  /* name.starts_with("Some") 
-                            || */ name.starts_with("Ok")
+                        if name.starts_with("Some")
+                            || name.starts_with("Ok")
                             || name.starts_with("Err") =>
                     {
                         // Handle special structure types like the variant values of `Option<>` and `Result<>`
@@ -995,7 +982,6 @@ impl Variable {
                             if pre_fix.is_none() && post_fix.is_none() {
                                 if let VariableName::Named(child_name) = &child.name {
                                     if child_name.starts_with("__0") {
-
                                         is_tuple = true;
                                         // Treat this structure as a tuple
                                         pre_fix = Some(format!(
@@ -1028,7 +1014,6 @@ impl Variable {
                                                 "",
                                                 self.type_name.display(),
                                             ));
-
                                         }
                                         post_fix =
                                             Some(format!("{}{:\t<indentation$}}}", line_feed, ""));
