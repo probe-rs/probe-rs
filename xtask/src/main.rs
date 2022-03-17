@@ -1,5 +1,5 @@
 use std::env;
-use xshell::cmd;
+use xshell::{cmd, Shell};
 
 type DynError = Box<dyn std::error::Error>;
 
@@ -42,27 +42,39 @@ release <next_release>
 }
 
 fn fetch_prs() -> Result<(), DynError> {
+    let sh = Shell::new()?;
+
     // Make sure we are on the master branch and we have the latest state pulled from our source of truth, GH.
-    cmd!("gh pr list --label 'needs-changelog' --state 'closed' --web --limit 300").run()?;
+    cmd!(
+        sh,
+        "gh pr list --label 'needs-changelog' --state 'closed' --web --limit 300"
+    )
+    .run()?;
 
     Ok(())
 }
 
 fn release(version: &str) -> Result<(), DynError> {
+    let sh = Shell::new()?;
+
     // Make sure we are on the master branch and we have the latest state pulled from our source of truth, GH.
-    cmd!("git checkout master").run()?;
-    cmd!("git pull").run()?;
+    cmd!(sh, "git checkout master").run()?;
+    cmd!(sh, "git pull").run()?;
 
     // Bump the crate versions.
-    cmd!("cargo workspaces version -y --no-git-commit custom {version}").run()?;
+    cmd!(
+        sh,
+        "cargo workspaces version -y --no-git-commit custom {version}"
+    )
+    .run()?;
 
     // Checkout a release branch
-    cmd!("git checkout -b v{version}").run()?;
+    cmd!(sh, "git checkout -b v{version}").run()?;
 
     // Create the release commit.
     let message = format!("Prepare for the v{} release.", version);
-    cmd!("git commit -a -m {message}").run()?;
-    cmd!("git push -u origin v{version}").run()?;
+    cmd!(sh, "git commit -a -m {message}").run()?;
+    cmd!(sh, "git push -u origin v{version}").run()?;
 
     // Create the PR with a proper label, which then gets picked up by the CI.
     let message = format!(
@@ -70,7 +82,7 @@ fn release(version: &str) -> Result<(), DynError> {
         version
     );
     let title = format!("Release v{}", version);
-    cmd!("gh pr create --label 'release' --title {title} --repo 'probe-rs/probe-rs' --body {message} --draft").run()?;
+    cmd!(sh, "gh pr create --label 'release' --title {title} --repo 'probe-rs/probe-rs' --body {message} --draft").run()?;
 
     Ok(())
 }
