@@ -107,6 +107,10 @@ pub struct DebuggerOptions {
     #[clap(long, parse(from_os_str))]
     pub(crate) program_binary: Option<PathBuf>,
 
+    /// CMSIS-SVD file for the target. Relative to `cwd`, or fully qualified.
+    #[clap(long, parse(from_os_str))]
+    pub(crate) svd_file: Option<PathBuf>,
+
     /// The number associated with the debug probe to use. Use 'list' command to see available probes
     #[clap(
         long = "probe",
@@ -209,12 +213,12 @@ impl DebuggerOptions {
         };
     }
 
-    /// If the path to the programm to be debugged is relative, we join if with the cwd.
-    pub(crate) fn qualify_and_update_program_binary(
+    /// If the path to the program to be debugged is relative, we join if with the cwd.
+    pub(crate) fn qualify_and_update_os_file_path(
         &mut self,
-        new_program_binary: Option<PathBuf>,
-    ) -> Result<(), DebuggerError> {
-        self.program_binary = match new_program_binary {
+        os_file_to_validate: Option<PathBuf>,
+    ) -> Result<PathBuf, DebuggerError> {
+        match os_file_to_validate {
             Some(temp_path) => {
                 let mut new_path = PathBuf::new();
                 if temp_path.is_relative() {
@@ -228,11 +232,10 @@ impl DebuggerOptions {
                     }
                 }
                 new_path.push(temp_path);
-                Some(new_path)
+                Ok(new_path)
             }
-            None => None,
-        };
-        Ok(())
+            None => Err(DebuggerError::Other(anyhow!("Missing value for file."))),
+        }
     }
 }
 
@@ -1077,7 +1080,7 @@ impl Debugger {
 
         // Process either the Launch or Attach request.
         let requested_target_session_type: Option<TargetSessionType>;
-        let la_request = loop {
+        let launch_attach_request = loop {
             let current_request = if let Some(request) = debug_adapter.listen_for_request()? {
                 request
             } else {
@@ -1108,7 +1111,7 @@ impl Debugger {
             };
         };
 
-        match get_arguments(&la_request) {
+        match get_arguments(&launch_attach_request) {
             Ok(arguments) => {
                 if requested_target_session_type.is_some() {
                     self.debugger_options = DebuggerOptions { ..arguments };
@@ -1124,7 +1127,7 @@ impl Debugger {
                             || self.debugger_options.restore_unwritten_bytes
                         {
                             debug_adapter.send_response::<()>(
-                                        la_request,
+                                        launch_attach_request,
                                         Err(DebuggerError::Other(anyhow!(
                                             "Please do not use any of the `flashing_enabled`, `reset_after_flashing`, halt_after_reset`, `full_chip_erase`, or `restore_unwritten_bytes` options when using `attach` request type."))),
                                     )?;
@@ -1142,28 +1145,17 @@ impl Debugger {
                 // Update the `cwd` and `program_binary`.
                 self.debugger_options
                     .validate_and_update_cwd(self.debugger_options.cwd.clone());
-                match self
+                // Update the `program_binary` and validate that the file exists.
+                self.debugger_options.program_binary = match self
                     .debugger_options
-                    .qualify_and_update_program_binary(self.debugger_options.program_binary.clone())
+                    .qualify_and_update_os_file_path(self.debugger_options.program_binary.clone())
                 {
-                    Ok(_) => {}
-                    Err(error) => {
-                        let err = DebuggerError::Other(anyhow!(
-                            "Unable to validate the program_binary path '{:?}'",
-                            error
-                        ));
-
-                        debug_adapter.send_error_response(&err)?;
-                        return Err(err);
-                    }
-                }
-                match self.debugger_options.program_binary.clone() {
-                    Some(program_binary) => {
+                    Ok(program_binary) => {
                         if !program_binary.is_file() {
                             debug_adapter.send_response::<()>(
-                                la_request,
+                                launch_attach_request,
                                 Err(DebuggerError::Other(anyhow!(
-                                    "Invalid program binary file specified '{:?}'",
+                                    "program_binary file {:?} not found.",
                                     program_binary
                                 ))),
                             )?;
@@ -1172,37 +1164,53 @@ impl Debugger {
                                 program_binary
                             )));
                         }
+                        Some(program_binary)
                     }
-                    None => {
+                    Err(error) => {
                         debug_adapter.send_response::<()>(
-                            la_request,
+                            launch_attach_request,
                             Err(DebuggerError::Other(anyhow!(
-                                "Please use the --program-binary option to specify an executable"
+                                "Please use the --program-binary option to specify an executable: {:?}", error
                             ))),
                         )?;
-
                         return Err(DebuggerError::Other(anyhow!(
                             "Please use the --program-binary option to specify an executable"
                         )));
                     }
-                }
-                debug_adapter.send_response::<()>(la_request, Ok(None))?;
+                };
+                // Update the `svd_file` and validate that the file exists.
+                // If there is a problem with this file, warn the user and continue with the session.
+                self.debugger_options.svd_file = match self
+                    .debugger_options
+                    .qualify_and_update_os_file_path(self.debugger_options.svd_file.clone())
+                {
+                    Ok(svd_file) => {
+                        if !svd_file.is_file() {
+                            debug_adapter.show_message(
+                                MessageSeverity::Warning,
+                                format!("SVD file {:?} not found.", svd_file),
+                            );
+                            None
+                        } else {
+                            Some(svd_file)
+                        }
+                    }
+                    Err(error) => {
+                        // SVD file is not mandatory.
+                        log::debug!("SVD file not specified: {:?}", &error);
+                        None
+                    }
+                };
+                debug_adapter.send_response::<()>(launch_attach_request, Ok(None))?;
             }
             Err(error) => {
-                let err_1 = anyhow!(
+                let error_message = format!("Could not derive DebuggerOptions from request '{}', with arguments {:?}\n{:?} ", launch_attach_request.command, launch_attach_request.arguments, error);
+                debug_adapter.send_response::<()>(
+                    launch_attach_request,
+                    Err(DebuggerError::Other(anyhow!(error_message.clone()))),
+                )?;
 
-                        "Could not derive DebuggerOptions from request '{}', with arguments {:?}\n{:?} ", la_request.command, la_request.arguments, error
-
-                        );
-                let err_2 =anyhow!(
-
-                        "Could not derive DebuggerOptions from request '{}', with arguments {:?}\n{:?} ", la_request.command, la_request.arguments, error
-
-                        );
-
-                debug_adapter.send_response::<()>(la_request, Err(DebuggerError::Other(err_1)))?;
-
-                return Err(DebuggerError::Other(err_2));
+                return Err(DebuggerError::Other(anyhow!(error_message)));
             }
         };
 
