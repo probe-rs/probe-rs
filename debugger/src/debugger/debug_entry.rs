@@ -526,11 +526,11 @@ impl Debugger {
                         Some(TargetSessionType::AttachRequest)
                     ) {
                         // Since VSCode doesn't do field validation checks for relationships in launch.json request types, check it here.
-                        if self.config.flashing_enabled
-                            || self.config.reset_after_flashing
-                            || self.config.halt_after_reset
-                            || self.config.full_chip_erase
-                            || self.config.restore_unwritten_bytes
+                        if self.config.flashing_config.flashing_enabled
+                            || self.config.flashing_config.reset_after_flashing
+                            || self.config.flashing_config.halt_after_reset
+                            || self.config.flashing_config.full_chip_erase
+                            || self.config.flashing_config.restore_unwritten_bytes
                         {
                             debug_adapter.send_response::<()>(
                                         launch_attach_request,
@@ -627,11 +627,11 @@ impl Debugger {
                 return Err(error);
             }
         };
-        debug_adapter.halt_after_reset = self.config.halt_after_reset;
+        debug_adapter.halt_after_reset = self.config.flashing_config.halt_after_reset;
 
         // Do the flashing.
         {
-            if self.config.flashing_enabled {
+            if self.config.flashing_config.flashing_enabled {
                 let path_to_elf = match self.config.program_binary.clone() {
                     Some(program_binary) => program_binary,
                     None => {
@@ -650,8 +650,9 @@ impl Debugger {
                 let progress_id = debug_adapter.start_progress("Flashing device", None).ok();
 
                 let mut download_options = DownloadOptions::default();
-                download_options.keep_unwritten_bytes = self.config.restore_unwritten_bytes;
-                download_options.do_chip_erase = self.config.full_chip_erase;
+                download_options.keep_unwritten_bytes =
+                    self.config.flashing_config.restore_unwritten_bytes;
+                download_options.do_chip_erase = self.config.flashing_config.full_chip_erase;
                 let flash_result = {
                     let rc_debug_adapter = Rc::new(RefCell::new(debug_adapter));
                     let rc_debug_adapter_clone = rc_debug_adapter.clone();
@@ -881,7 +882,9 @@ impl Debugger {
                 }
             };
 
-            if self.config.flashing_enabled && self.config.reset_after_flashing {
+            if self.config.flashing_config.flashing_enabled
+                && self.config.flashing_config.reset_after_flashing
+            {
                 debug_adapter
                     .restart(&mut core_data, None)
                     .context("Failed to restart core")?;

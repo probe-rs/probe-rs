@@ -3,76 +3,49 @@ use anyhow::{anyhow, Result};
 use probe_rs::{DebugProbeSelector, WireProtocol};
 use probe_rs_cli_util::rtt;
 use serde::Deserialize;
-use std::{env::current_dir, path::PathBuf, str::FromStr};
+use std::{env::current_dir, path::PathBuf};
 
 /// Shared options for all session level configuration.
 #[derive(Clone, Deserialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct SessionConfig {
-    /// Path to the requested working directory for the debugger
-    pub(crate) cwd: Option<PathBuf>,
-
-    /// Binary to debug as a path. Relative to `cwd`, or fully qualified.
-    pub(crate) program_binary: Option<PathBuf>,
-
-    /// CMSIS-SVD file for the target. Relative to `cwd`, or fully qualified.
-    pub(crate) svd_file: Option<PathBuf>,
-
-    /// The number associated with the debug probe to use. Use 'list' command to see available probes
-    #[serde(alias = "probe")]
-    pub(crate) probe_selector: Option<DebugProbeSelector>,
-
-    /// The MCU Core to debug. Default is 0
-    #[serde(default)]
-    pub(crate) core_index: usize,
-
-    /// The target to be selected.
-    pub(crate) chip: Option<String>,
-
-    /// Protocol to use for target connection
-    #[serde(rename = "wire_protocol")]
-    pub(crate) protocol: Option<WireProtocol>,
-
-    /// Protocol speed in kHz
-    pub(crate) speed: Option<u32>,
-
-    /// Assert target's reset during connect
-    #[serde(default)]
-    pub(crate) connect_under_reset: bool,
-
-    /// Allow the chip to be fully erased
-    #[serde(default)]
-    pub(crate) allow_erase_all: bool,
-
     /// IP port number to listen for incoming DAP connections, e.g. "50000"
     pub(crate) port: Option<u16>,
-
-    /// Flash the target before debugging
-    #[serde(default)]
-    pub(crate) flashing_enabled: bool,
-
-    /// Reset the target after flashing
-    #[serde(default)]
-    pub(crate) reset_after_flashing: bool,
-
-    /// Halt the target after reset
-    #[serde(default)]
-    pub(crate) halt_after_reset: bool,
-
-    /// Do a full chip erase, versus page-by-page erase
-    #[serde(default)]
-    pub(crate) full_chip_erase: bool,
-
-    /// Restore erased bytes that will not be rewritten from ELF
-    #[serde(default)]
-    pub(crate) restore_unwritten_bytes: bool,
 
     /// Level of information to be logged to the debugger console (Error, Info or Debug )
     #[serde(default = "default_console_log")]
     pub(crate) console_log_level: Option<ConsoleLog>,
 
+    /// Path to the requested working directory for the debugger
+    pub(crate) cwd: Option<PathBuf>,
+
+    /// The number associated with the debug probe to use. Use 'list' command to see available probes
+    #[serde(alias = "probe")]
+    pub(crate) probe_selector: Option<DebugProbeSelector>,
+
+    /// Assert target's reset during connect
+    #[serde(default)]
+    pub(crate) connect_under_reset: bool,
+
+    /// Protocol speed in kHz
+    pub(crate) speed: Option<u32>,
+
+    /// Protocol to use for target connection
+    #[serde(rename = "wire_protocol")]
+    pub(crate) protocol: Option<WireProtocol>,
+
+    ///Allow the session to erase all memory of the chip or reset it to factory default.
+    pub(crate) allow_erase_all: bool,
+
+    /// Flashing configuration
     #[serde(flatten)]
-    pub(crate) rtt: rtt::RttConfig,
+    pub(crate) flashing_config: FlashingConfig,
+
+    /// Every core on the target has certain configuration.
+    ///
+    /// NOTE: Although we allow specifying multiple core configurations, this is a work in progress, and probe-rs-debugger currently only supports debugging a single core.
+    #[serde(flatten)]
+    pub(crate) core_configs: Vec<CoreConfig>,
 }
 
 impl SessionConfig {
@@ -124,6 +97,52 @@ impl SessionConfig {
             None => Err(DebuggerError::Other(anyhow!("Missing value for file."))),
         }
     }
+}
+
+/// Configuration options to control flashing.
+#[derive(Clone, Deserialize, Debug, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct FlashingConfig {
+    /// Flash the target before debugging
+    #[serde(default)]
+    pub(crate) flashing_enabled: bool,
+
+    /// Reset the target after flashing
+    #[serde(default)]
+    pub(crate) reset_after_flashing: bool,
+
+    /// Halt the target after reset
+    #[serde(default)]
+    pub(crate) halt_after_reset: bool,
+
+    /// Do a full chip erase, versus page-by-page erase
+    #[serde(default)]
+    pub(crate) full_chip_erase: bool,
+
+    /// Restore erased bytes that will not be rewritten from ELF
+    #[serde(default)]
+    pub(crate) restore_unwritten_bytes: bool,
+}
+
+/// Configuration options for all core level configuration.
+#[derive(Clone, Deserialize, Debug, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct CoreConfig {
+    /// The MCU Core to debug. Default is 0
+    #[serde(default)]
+    pub(crate) core_index: usize,
+
+    /// The target to be selected.
+    pub(crate) chip: Option<String>,
+
+    /// Binary to debug as a path. Relative to `cwd`, or fully qualified.
+    pub(crate) program_binary: Option<PathBuf>,
+
+    /// CMSIS-SVD file for the target. Relative to `cwd`, or fully qualified.
+    pub(crate) svd_file: Option<PathBuf>,
+
+    #[serde(flatten)]
+    pub(crate) rtt_config: rtt::RttConfig,
 }
 
 fn default_console_log() -> Option<ConsoleLog> {

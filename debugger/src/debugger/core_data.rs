@@ -16,6 +16,7 @@ pub struct CoreData<'p> {
     pub(crate) target_core: Core<'p>,
     pub(crate) target_name: String,
     pub(crate) debug_info: &'p DebugInfo,
+    pub(crate) peripherals: &'p DebugInfo,
     pub(crate) stack_frames: &'p mut Vec<probe_rs::debug::StackFrame>,
     pub(crate) capstone: &'p Capstone,
     pub(crate) breakpoints: &'p mut Vec<session_data::ActiveBreakpoint>,

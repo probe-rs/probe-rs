@@ -38,18 +38,21 @@ pub struct SessionData {
     pub(crate) session: Session,
     /// Provides ability to disassemble binary code.
     pub(crate) capstone: Capstone,
-    /// [SessionData] will manage one [DebugInfo] per [SessionConfig::program_binary]
+    /// [SessionData] will manage one [DebugInfo] per [CoreConfig::program_binary]
     pub(crate) debug_infos: Vec<DebugInfo>,
+    /// [SessionData] will manage one [PeripheralSpec] per [CoreConfig::svd_file]
+    pub(crate) peripherals: Vec<DebugInfo>,
     /// [SessionData] will manage a `Vec<StackFrame>` per [Core]. Each core's collection of StackFrames will be recreated whenever a stacktrace is performed, using the results of [DebugInfo::unwind]
     pub(crate) stack_frames: Vec<Vec<probe_rs::debug::StackFrame>>,
     /// [SessionData] will manage a `Vec<ActiveBreakpoint>` per [Core]. Each core's collection of ActiveBreakpoint's will be managed on demand.
     pub(crate) breakpoints: Vec<Vec<ActiveBreakpoint>>,
-    /// The control structures for handling RTT in this Core of the SessionData.
+    /// The control structures for handling RTT. One per [CoreConfig::rtt_config].
     pub(crate) rtt_connection: Option<debug_rtt::RttConnection>,
 }
 
 impl SessionData {
     pub(crate) fn new(config: &configuration::SessionConfig) -> Result<Self, DebuggerError> {
+        // `SessionConfig` Probe/Session level configurations initialization.
         let mut target_probe = match config.probe_selector.clone() {
             Some(selector) => Probe::open(selector.clone()).map_err(|e| match e {
                 DebugProbeError::ProbeCouldNotBeCreated(ProbeCreationError::NotFound) => {
@@ -150,16 +153,32 @@ impl SessionData {
             })?;
         };
 
-        // TODO: We currently only allow a single core & binary to be specified in [SessionConfig]. When this is extended to support multicore, the following should initialize [DebugInfo] and [VariableCache] for each available core.
-        // Configure the [DebugInfo].
-        let debug_infos = vec![if let Some(binary_path) = &config.program_binary {
-            DebugInfo::from_file(binary_path)
-                .map_err(|error| DebuggerError::Other(anyhow!(error)))?
-        } else {
-            return Err(
-                anyhow!("Please provide a valid `program_binary` for this debug session").into(),
-            );
-        }];
+        // `FlashingConfig` probe level initialization.
+
+        // `CoreConfig` probe level initialization.
+        if config.core_configs.len() != 1 {
+            // TODO: For multi-core, allow > 1.
+            return Err(DebuggerError::Other(anyhow!("probe-rs-debugger requires that one, and only one, core  be configured for debugging.")));
+        }
+        let mut debug_infos = vec![];
+        let mut peripherals = vec![];
+        for core_configuration in &config.core_configs {
+            // Configure the [DebugInfo].
+            let mut debug_infos = vec![
+                if let Some(binary_path) = &core_configuration.program_binary {
+                    debug_infos.push(
+                        DebugInfo::from_file(binary_path)
+                            .map_err(|error| DebuggerError::Other(anyhow!(error)))?,
+                    );
+                } else {
+                    return Err(anyhow!(
+                        "Please provide a valid `program_binary` for debug core: {:?}",
+                        core_configuration.core_index
+                    )
+                    .into());
+                },
+            ];
+        }
 
         // Configure the [VariableCache].
         let stack_frames = target_session.list_cores()
@@ -189,6 +208,7 @@ impl SessionData {
             session: target_session,
             capstone,
             debug_infos,
+            peripherals,
             stack_frames,
             breakpoints,
             rtt_connection: None,
