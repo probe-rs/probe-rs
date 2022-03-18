@@ -1,19 +1,19 @@
-use crate::debugger::ConsoleLog;
-use crate::DebuggerError;
+use crate::{
+    debug_adapter::dap_types::{
+        Event, MessageSeverity, OutputEventBody, ProtocolMessage, Request, Response,
+        ShowMessageEventBody,
+    },
+    debugger::configuration::ConsoleLog,
+    DebuggerError,
+};
+use anyhow::anyhow;
 use serde::Serialize;
-use std::collections::HashMap;
-use std::string::ToString;
 use std::{
+    collections::HashMap,
     io::{BufRead, BufReader, Read, Write},
     str,
+    string::ToString,
 };
-
-use crate::dap_types::{
-    Event, MessageSeverity, OutputEventBody, ProtocolMessage, Request, Response,
-    ShowMessageEventBody,
-};
-
-use anyhow::anyhow;
 
 pub trait ProtocolAdapter {
     /// Listen for a request. This call should be non-blocking, and if not request is available, it should
@@ -404,7 +404,7 @@ fn get_content_len(header: &str) -> Option<usize> {
 mod test {
     use std::io::{self, ErrorKind, Read};
 
-    use crate::protocol::{get_content_len, ProtocolAdapter};
+    use crate::debug_adapter::protocol::{get_content_len, ProtocolAdapter};
 
     use super::DapAdapter;
 

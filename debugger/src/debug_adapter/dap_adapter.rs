@@ -1,24 +1,19 @@
-use crate::dap_types;
-use crate::debugger::BreakpointType;
-use crate::debugger::ConsoleLog;
-use crate::debugger::CoreData;
-use crate::DebuggerError;
+use crate::{
+    debug_adapter::{dap_types, protocol::ProtocolAdapter},
+    debugger::{configuration::ConsoleLog, core_data::CoreData, session_data::BreakpointType},
+    DebuggerError,
+};
 use anyhow::{anyhow, Result};
 use dap_types::*;
 use num_traits::Zero;
 use parse_int::parse;
-use probe_rs::debug::Registers;
-use probe_rs::debug::SourceLocation;
-use probe_rs::debug::SteppingMode;
-use probe_rs::debug::VariableLocation;
-use probe_rs::debug::{VariableCache, VariableName};
-use probe_rs::{debug::ColumnType, CoreStatus, HaltReason, MemoryInterface};
+use probe_rs::{
+    debug::{ColumnType, Registers, SourceLocation, VariableCache, VariableName},
+    CoreStatus, HaltReason, MemoryInterface,
+};
 use probe_rs_cli_util::rtt;
 use serde::{de::DeserializeOwned, Serialize};
-use std::string::ToString;
-use std::{convert::TryInto, path::Path, str, thread, time::Duration};
-
-use crate::protocol::ProtocolAdapter;
+use std::{convert::TryInto, path::Path, str, string::ToString, thread, time::Duration};
 
 /// Progress ID used for progress reporting when the debug adapter protocol is used.
 type ProgressId = i64;
