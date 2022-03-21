@@ -254,7 +254,7 @@ First, check your hardware:
 
 - make sure that your development board has an on-board *hardware* debugger.
 If it doesn't, you'll need a separate hardware debugger that works with the JTAG or SWD interface.
-Some boards have no on-board hardware debugger nor expose a JTAG or SWD port and instead only come with *bootloader* firmware that lets you load new program;
+Some boards have a USB micro-B or Type-C connector but only come with *bootloader* firmware that lets you load new program over USB Mass Storage, instead of having a dedicated on-board JTAG or SWD to USB chip;
 `probe-run` cannot be used with these boards.
 - make sure that it is connected to the right port on your development board
 - make sure that you are using a **data** cable– some cables are built for charging only! When in doubt, try using a different cable.
