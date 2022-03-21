@@ -3,6 +3,7 @@
 // Uses Schemafy to generate DAP types from Json
 mod debug_adapter;
 mod debugger;
+mod peripherals;
 
 use anyhow::Result;
 use clap::{crate_authors, crate_description, crate_name, crate_version, Parser};

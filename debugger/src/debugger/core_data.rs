@@ -2,6 +2,7 @@ use super::session_data;
 use crate::{
     debug_adapter::{dap_adapter::DebugAdapter, protocol::ProtocolAdapter},
     debugger::debug_rtt,
+    peripherals::svd_variables::SvdCache,
     DebuggerError,
 };
 use anyhow::Result;
@@ -14,7 +15,7 @@ pub struct CoreData {
     pub(crate) core_index: usize,
     pub(crate) target_name: String,
     pub(crate) debug_info: DebugInfo,
-    pub(crate) core_peripherals: Option<DebugInfo>,
+    pub(crate) core_peripherals: Option<SvdCache>,
     pub(crate) stack_frames: Vec<probe_rs::debug::StackFrame>,
     pub(crate) breakpoints: Vec<session_data::ActiveBreakpoint>,
     pub(crate) rtt_connection: Option<debug_rtt::RttConnection>,

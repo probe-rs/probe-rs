@@ -1191,6 +1191,22 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                     variables_reference: locals_root_variable.variable_key,
                 });
             };
+
+            if let Some(core_peripherals) = &target_core.core_data.core_peripherals {
+                dap_scopes.push(Scope {
+                    line: None,
+                    column: None,
+                    end_column: None,
+                    end_line: None,
+                    expensive: true, // VSCode won't open this tree by default.
+                    indexed_variables: None,
+                    name: "Peripherals".to_string(),
+                    presentation_hint: Some("registers".to_string()),
+                    named_variables: None,
+                    source: None,
+                    variables_reference: core_peripherals.id,
+                });
+            };
         }
 
         self.send_response(request, Ok(Some(ScopesResponseBody { scopes: dap_scopes })))

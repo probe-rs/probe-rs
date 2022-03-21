@@ -2,7 +2,7 @@ use super::configuration::{self, CoreConfig, SessionConfig};
 use super::core_data::{CoreData, CoreHandle};
 use crate::debug_adapter::dap_adapter::DebugAdapter;
 use crate::debug_adapter::protocol::ProtocolAdapter;
-use crate::DebuggerError;
+use crate::{debug_adapter, DebuggerError};
 use anyhow::{anyhow, Result};
 use capstone::Endian;
 use capstone::{
@@ -16,7 +16,8 @@ use probe_rs::Probe;
 use probe_rs::ProbeCreationError;
 use probe_rs::Session;
 use probe_rs::{CoreStatus, DebugProbeError};
-use std::env::set_current_dir;
+use std::{env::set_current_dir, fs::File, io::Read};
+use svd_parser as svd;
 
 /// The supported breakpoint types
 #[derive(Debug, PartialEq)]
@@ -190,16 +191,36 @@ impl SessionData {
 
             // Configure the [CorePeripherals].
             let core_peripherals = if let Some(svd_file) = &core_configuration.svd_file {
-                // TODO: To be implemented.
-                None
+                let mut svd_xml = &mut String::new();
+                match File::open(svd_file.as_path()) {
+                    Ok(mut svd_opened_file) => {
+                        svd_opened_file.read_to_string(svd_xml);
+                        match svd::parse(&svd_xml) {
+                            Ok(peripheral_device) => {
+                                Some(crate::peripherals::svd_variables::SvdCache {
+                                    id: probe_rs::debug::get_sequential_key(),
+                                    svd_device: peripheral_device,
+                                    svd_registers: probe_rs::debug::VariableCache::new(),
+                                })
+                            }
+                            Err(error) => {
+                                log::error!(
+                                    "Unable to parse CMSIS-SVD file: {:?}. {:?}",
+                                    svd_file,
+                                    error
+                                );
+                                None
+                            }
+                        }
+                    }
+                    Err(error) => {
+                        log::error!("{}", error);
+                        None
+                    }
+                }
             } else {
                 // Loading core_peripherals from a CMSIS-SVD file is optional.
                 None
-                // return Err(anyhow!(
-                //     "Please provide a valid `program_binary` for debug core: {:?}",
-                //     core_configuration.core_index
-                // )
-                // .into());
             };
 
             core_data_vec.push(CoreData {
