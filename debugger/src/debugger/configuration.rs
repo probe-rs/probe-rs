@@ -23,6 +23,9 @@ pub struct SessionConfig {
     #[serde(alias = "probe")]
     pub(crate) probe_selector: Option<DebugProbeSelector>,
 
+    /// The target to be selected.
+    pub(crate) chip: Option<String>,
+
     /// Assert target's reset during connect
     #[serde(default)]
     pub(crate) connect_under_reset: bool,
@@ -35,26 +38,76 @@ pub struct SessionConfig {
     pub(crate) protocol: Option<WireProtocol>,
 
     ///Allow the session to erase all memory of the chip or reset it to factory default.
+    #[serde(default)]
     pub(crate) allow_erase_all: bool,
 
     /// Flashing configuration
-    #[serde(flatten)]
     pub(crate) flashing_config: FlashingConfig,
 
     /// Every core on the target has certain configuration.
     ///
     /// NOTE: Although we allow specifying multiple core configurations, this is a work in progress, and probe-rs-debugger currently only supports debugging a single core.
-    #[serde(flatten)]
     pub(crate) core_configs: Vec<CoreConfig>,
 }
 
 impl SessionConfig {
+    /// Ensure all file names are correctly specified and that the files they point to are accessible.
+    pub(crate) fn validate_config_files(&mut self) -> Result<(), DebuggerError> {
+        // Update the `cwd`.
+        self.cwd = self.validate_and_update_cwd()?;
+
+        for target_core_config in &mut self.core_configs {
+            // Update the `program_binary` and validate that the file exists.
+            target_core_config.program_binary = match qualify_and_update_os_file_path(
+                self.cwd.clone(),
+                target_core_config.program_binary.as_ref(),
+            ) {
+                Ok(program_binary) => {
+                    if !program_binary.is_file() {
+                        return Err(DebuggerError::Other(anyhow!(
+                            "Invalid program binary file specified '{:?}'",
+                            program_binary
+                        )));
+                    }
+                    Some(program_binary)
+                }
+                Err(error) => {
+                    return Err(DebuggerError::Other(anyhow!(
+                            "Please use the `program-binary` option to specify an executable for this target core. {:?}", error
+                        )));
+                }
+            };
+            // Update the `svd_file` and validate that the file exists.
+            // If there is a problem with this file, warn the user and continue with the session.
+            target_core_config.svd_file = match qualify_and_update_os_file_path(
+                self.cwd.clone(),
+                target_core_config.svd_file.as_ref(),
+            ) {
+                Ok(svd_file) => {
+                    if !svd_file.is_file() {
+                        log::error!("SVD file {:?} not found.", svd_file);
+                        None
+                    } else {
+                        Some(svd_file)
+                    }
+                }
+                Err(error) => {
+                    // SVD file is not mandatory.
+                    log::debug!("SVD file not specified: {:?}", &error);
+                    None
+                }
+            };
+        }
+
+        Ok(())
+    }
+
     /// Validate the new cwd, or else set it from the environment.
-    pub(crate) fn validate_and_update_cwd(&mut self, new_cwd: Option<PathBuf>) {
-        self.cwd = match new_cwd {
+    pub(crate) fn validate_and_update_cwd(&self) -> Result<Option<PathBuf>, DebuggerError> {
+        Ok(match &self.cwd {
             Some(temp_path) => {
                 if temp_path.is_dir() {
-                    Some(temp_path)
+                    Some(temp_path.to_path_buf())
                 } else if let Ok(current_dir) = current_dir() {
                     Some(current_dir)
                 } else {
@@ -70,32 +123,32 @@ impl SessionConfig {
                     None
                 }
             }
-        };
+        })
     }
+}
 
-    /// If the path to the program to be debugged is relative, we join if with the cwd.
-    pub(crate) fn qualify_and_update_os_file_path(
-        &mut self,
-        os_file_to_validate: Option<PathBuf>,
-    ) -> Result<PathBuf, DebuggerError> {
-        match os_file_to_validate {
-            Some(temp_path) => {
-                let mut new_path = PathBuf::new();
-                if temp_path.is_relative() {
-                    if let Some(cwd_path) = self.cwd.clone() {
-                        new_path.push(cwd_path);
-                    } else {
-                        return Err(DebuggerError::Other(anyhow!(
-                            "Invalid value {:?} for `cwd`",
-                            self.cwd
-                        )));
-                    }
+/// If the path to the program to be debugged is relative, we join if with the cwd.
+fn qualify_and_update_os_file_path(
+    configured_cwd: Option<PathBuf>,
+    os_file_to_validate: Option<&PathBuf>,
+) -> Result<PathBuf, DebuggerError> {
+    match os_file_to_validate {
+        Some(temp_path) => {
+            let mut new_path = PathBuf::new();
+            if temp_path.is_relative() {
+                if let Some(cwd_path) = configured_cwd.clone() {
+                    new_path.push(cwd_path);
+                } else {
+                    return Err(DebuggerError::Other(anyhow!(
+                        "Invalid value {:?} for `cwd`",
+                        configured_cwd
+                    )));
                 }
-                new_path.push(temp_path);
-                Ok(new_path)
             }
-            None => Err(DebuggerError::Other(anyhow!("Missing value for file."))),
+            new_path.push(temp_path);
+            Ok(new_path)
         }
+        None => Err(DebuggerError::Other(anyhow!("Missing value for file."))),
     }
 }
 
@@ -131,9 +184,6 @@ pub struct CoreConfig {
     /// The MCU Core to debug. Default is 0
     #[serde(default)]
     pub(crate) core_index: usize,
-
-    /// The target to be selected.
-    pub(crate) chip: Option<String>,
 
     /// Binary to debug as a path. Relative to `cwd`, or fully qualified.
     pub(crate) program_binary: Option<PathBuf>,

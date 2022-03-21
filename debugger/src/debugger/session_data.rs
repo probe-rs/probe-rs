@@ -1,6 +1,7 @@
-use super::configuration;
-use super::core_data::CoreData;
-use crate::debugger::debug_rtt;
+use super::configuration::{self, CoreConfig, SessionConfig};
+use super::core_data::{CoreData, CoreHandle};
+use crate::debug_adapter::dap_adapter::DebugAdapter;
+use crate::debug_adapter::protocol::ProtocolAdapter;
 use crate::DebuggerError;
 use anyhow::{anyhow, Result};
 use capstone::Endian;
@@ -10,11 +11,11 @@ use capstone::{
 };
 use probe_rs::config::TargetSelector;
 use probe_rs::debug::DebugInfo;
-use probe_rs::DebugProbeError;
 use probe_rs::Permissions;
 use probe_rs::Probe;
 use probe_rs::ProbeCreationError;
 use probe_rs::Session;
+use probe_rs::{CoreStatus, DebugProbeError};
 use std::env::set_current_dir;
 
 /// The supported breakpoint types
@@ -31,23 +32,15 @@ pub struct ActiveBreakpoint {
     pub(crate) breakpoint_address: u32,
 }
 
-/// SessionData is designed to be similar to [probe_rs::Session], in as much that it provides handles to the [CoreData] instances for each of the available [probe_rs::Core] involved in the debug session.
-/// To get access to the [CoreData] for a specific [Core], the
+/// SessionData is designed to be similar to [probe_rs::Session], in as much that it provides handles to the [CoreHandle] instances for each of the available [probe_rs::Core] involved in the debug session.
+/// To get access to the [CoreHandle] for a specific [Core], the
 /// TODO: Adjust [SessionConfig] to allow multiple cores (and if appropriate, their binaries) to be specified.
 pub struct SessionData {
     pub(crate) session: Session,
     /// Provides ability to disassemble binary code.
     pub(crate) capstone: Capstone,
-    /// [SessionData] will manage one [DebugInfo] per [CoreConfig::program_binary]
-    pub(crate) debug_infos: Vec<DebugInfo>,
-    /// [SessionData] will manage one [PeripheralSpec] per [CoreConfig::svd_file]
-    pub(crate) peripherals: Vec<DebugInfo>,
-    /// [SessionData] will manage a `Vec<StackFrame>` per [Core]. Each core's collection of StackFrames will be recreated whenever a stacktrace is performed, using the results of [DebugInfo::unwind]
-    pub(crate) stack_frames: Vec<Vec<probe_rs::debug::StackFrame>>,
-    /// [SessionData] will manage a `Vec<ActiveBreakpoint>` per [Core]. Each core's collection of ActiveBreakpoint's will be managed on demand.
-    pub(crate) breakpoints: Vec<Vec<ActiveBreakpoint>>,
-    /// The control structures for handling RTT. One per [CoreConfig::rtt_config].
-    pub(crate) rtt_connection: Option<debug_rtt::RttConnection>,
+    /// [SessionData] will manage one [CoreData] per target core, that is also present in [SessionConfig::core_configs]
+    pub(crate) core_data: Vec<CoreData>,
 }
 
 impl SessionData {
@@ -127,6 +120,7 @@ impl SessionData {
         };
 
         // Create an instance of the [`capstone::Capstone`] for disassembly capabilities.
+        // TODO: I believe it is safe to share this between multiple cores, but needs to be tested.
         let capstone = match target_session.architecture() {
             probe_rs::Architecture::Arm => Capstone::new()
                 .arm()
@@ -160,92 +154,145 @@ impl SessionData {
             // TODO: For multi-core, allow > 1.
             return Err(DebuggerError::Other(anyhow!("probe-rs-debugger requires that one, and only one, core  be configured for debugging.")));
         }
-        let mut debug_infos = vec![];
-        let mut peripherals = vec![];
-        for core_configuration in &config.core_configs {
-            // Configure the [DebugInfo].
-            let mut debug_infos = vec![
-                if let Some(binary_path) = &core_configuration.program_binary {
-                    debug_infos.push(
-                        DebugInfo::from_file(binary_path)
-                            .map_err(|error| DebuggerError::Other(anyhow!(error)))?,
-                    );
+
+        // Filter `CoreConfig` entries based on those that match an actual core on the target probe.
+        let valid_core_configs = config
+            .core_configs
+            .iter()
+            .filter(|&core_config| {
+                if let Some(_) = target_session
+                    .list_cores()
+                    .iter()
+                    .find(|(target_core_index, _)| *target_core_index == core_config.core_index)
+                {
+                    true
                 } else {
-                    return Err(anyhow!(
-                        "Please provide a valid `program_binary` for debug core: {:?}",
-                        core_configuration.core_index
-                    )
-                    .into());
-                },
-            ];
+                    false
+                }
+            })
+            .cloned()
+            .collect::<Vec<CoreConfig>>();
+
+        let mut core_data_vec = vec![];
+
+        for core_configuration in &valid_core_configs {
+            // Configure the [DebugInfo].
+            let debug_info = if let Some(binary_path) = &core_configuration.program_binary {
+                DebugInfo::from_file(binary_path)
+                    .map_err(|error| DebuggerError::Other(anyhow!(error)))?
+            } else {
+                return Err(anyhow!(
+                    "Please provide a valid `program_binary` for debug core: {:?}",
+                    core_configuration.core_index
+                )
+                .into());
+            };
+
+            // Configure the [CorePeripherals].
+            let core_peripherals = if let Some(svd_file) = &core_configuration.svd_file {
+                // TODO: To be implemented.
+                None
+            } else {
+                // Loading core_peripherals from a CMSIS-SVD file is optional.
+                None
+                // return Err(anyhow!(
+                //     "Please provide a valid `program_binary` for debug core: {:?}",
+                //     core_configuration.core_index
+                // )
+                // .into());
+            };
+
+            core_data_vec.push(CoreData {
+                core_index: core_configuration.core_index,
+                target_name: format!(
+                    "{}-{}",
+                    core_configuration.core_index,
+                    target_session.target().name
+                ),
+                debug_info,
+                core_peripherals,
+                stack_frames: Vec::<probe_rs::debug::StackFrame>::new(),
+                breakpoints: Vec::<ActiveBreakpoint>::new(),
+                rtt_connection: None,
+            })
         }
-
-        // Configure the [VariableCache].
-        let stack_frames = target_session.list_cores()
-            .iter()
-            .map(|(core_id, core_type)| {
-                log::debug!(
-                    "Preparing stack frame variable cache for SessionData and CoreData for core #{} of type: {:?}",
-                    core_id,
-                    core_type
-                );
-                Vec::<probe_rs::debug::StackFrame>::new()
-            }).collect();
-
-        // Prepare the breakpoint cache
-        let breakpoints = target_session.list_cores()
-            .iter()
-            .map(|(core_id, core_type)| {
-                log::debug!(
-                    "Preparing breakpoint cache for SessionData and CoreData for core #{} of type: {:?}",
-                    core_id,
-                    core_type
-                );
-                Vec::<ActiveBreakpoint>::new()
-            }).collect();
 
         Ok(SessionData {
             session: target_session,
             capstone,
-            debug_infos,
-            peripherals,
-            stack_frames,
-            breakpoints,
-            rtt_connection: None,
+            core_data: core_data_vec,
         })
     }
 
-    pub fn attach_core(&mut self, core_index: usize) -> Result<CoreData, DebuggerError> {
-        let target_name = self.session.target().name.clone();
-        // Do a 'light weight'(just get references to existing data structures) attach to the core and return relevant debug data.
-        match self.session.core(core_index) {
-            Ok(target_core) => Ok(CoreData {
-                target_core,
-                target_name: format!("{}-{}", core_index, target_name),
-                debug_info: self.debug_infos.get(core_index).ok_or_else(|| {
-                    DebuggerError::Other(anyhow!(
-                        "No available `DebugInfo` for core # {}",
-                        core_index
-                    ))
-                })?,
-                stack_frames: self.stack_frames.get_mut(core_index).ok_or_else(|| {
-                    DebuggerError::Other(anyhow!(
-                        "StackFrame cache was not correctly configured for core # {}",
-                        core_index
-                    ))
-                })?,
+    /// Do a 'light weight'(just get references to existing data structures) attach to the core and return relevant debug data.
+    pub(crate) fn attach_core(&mut self, core_index: usize) -> Result<CoreHandle, DebuggerError> {
+        if let (Ok(target_core), Some(core_data)) = (
+            self.session.core(core_index),
+            self.core_data
+                .iter_mut()
+                .find(|core_data| core_data.core_index == core_index),
+        ) {
+            Ok(CoreHandle {
+                core: target_core,
                 capstone: &self.capstone,
-                breakpoints: self.breakpoints.get_mut(core_index).ok_or_else(|| {
-                    DebuggerError::Other(anyhow!(
-                        "ActiveBreakpoint cache was not correctly configured for core # {}",
-                        core_index
-                    ))
-                })?,
-                rtt_connection: &mut self.rtt_connection,
-            }),
-            Err(_) => Err(DebuggerError::UnableToOpenProbe(Some(
+                core_data,
+            })
+        } else {
+            Err(DebuggerError::UnableToOpenProbe(Some(
                 "No core at the specified index.",
-            ))),
+            )))
         }
+    }
+
+    /// Check all target cores to ensure they have a configured and initialized RTT connections and if they do, process the RTT data.
+    /// Return true if at least one channel on one core had data in the buffer.
+    pub(crate) fn poll_rtt<P: ProtocolAdapter>(
+        &mut self,
+        session_config: &SessionConfig,
+        debug_adapter: &mut DebugAdapter<P>,
+    ) -> bool {
+        let mut at_least_one_channel_had_data = false;
+        for core_config in session_config.core_configs.iter() {
+            if core_config.rtt_config.enabled {
+                let target_memory_map = self.session.target().memory_map.clone();
+                if let Ok(mut target_core) = self.attach_core(core_config.core_index) {
+                    if let Some(core_rtt) = &mut target_core.core_data.rtt_connection {
+                        // We should poll the target for rtt data.
+                        at_least_one_channel_had_data = at_least_one_channel_had_data
+                            | core_rtt.process_rtt_data(debug_adapter, &mut target_core.core);
+                    } else {
+                        // We have not yet reached the point in the target application where the RTT buffers are initialized, so let's check again.
+                        if debug_adapter.last_known_status != CoreStatus::Unknown
+                        // Do not attempt this until we have processed the MSDAP request for "configurationDone" ...
+                        {
+                            #[allow(clippy::unwrap_used)]
+                            match target_core.attach_to_rtt(
+                                debug_adapter,
+                                &target_memory_map,
+                                core_config.program_binary.as_ref().unwrap(),
+                                &core_config.rtt_config,
+                            ) {
+                                Ok(_) => {
+                                    // Nothing else to do.
+                                }
+                                Err(error) => {
+                                    debug_adapter
+                                        .send_error_response(&DebuggerError::Other(error))
+                                        .ok();
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    log::debug!(
+                        "Failed to attach to target core #{}. Cannot poll for RTT data.",
+                        core_config.core_index
+                    );
+                }
+            } else {
+                // No RTT configured.
+            }
+        }
+        at_least_one_channel_had_data
     }
 }

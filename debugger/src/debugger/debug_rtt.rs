@@ -20,10 +20,12 @@ impl RttConnection {
     ) -> bool {
         let mut at_least_one_channel_had_data = false;
         for debugger_rtt_channel in self.debugger_rtt_channels.iter_mut() {
-            if debugger_rtt_channel.poll_rtt_data(target_core, debug_adapter, &mut self.target_rtt)
-            {
-                at_least_one_channel_had_data = true;
-            }
+            at_least_one_channel_had_data = at_least_one_channel_had_data
+                | debugger_rtt_channel.poll_rtt_data(
+                    target_core,
+                    debug_adapter,
+                    &mut self.target_rtt,
+                )
         }
         at_least_one_channel_had_data
     }

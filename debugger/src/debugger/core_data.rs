@@ -9,24 +9,31 @@ use capstone::Capstone;
 use probe_rs::{debug::DebugInfo, Core};
 use probe_rs_cli_util::rtt;
 
-/// [CoreData] provides handles to various data structures required to debug a single instance of a core. The actual state is stored in [SessionData].
-///
-/// Usage: To get access to this structure please use the [SessionData::attach_core] method. Please keep access/locks to this to a minumum duration.
-pub struct CoreData<'p> {
-    pub(crate) target_core: Core<'p>,
+/// [CoreData] is used to cache data needed by the debugger, on a per-core basis.
+pub struct CoreData {
+    pub(crate) core_index: usize,
     pub(crate) target_name: String,
-    pub(crate) debug_info: &'p DebugInfo,
-    pub(crate) peripherals: &'p DebugInfo,
-    pub(crate) stack_frames: &'p mut Vec<probe_rs::debug::StackFrame>,
-    pub(crate) capstone: &'p Capstone,
-    pub(crate) breakpoints: &'p mut Vec<session_data::ActiveBreakpoint>,
-    pub(crate) rtt_connection: &'p mut Option<debug_rtt::RttConnection>,
+    pub(crate) debug_info: DebugInfo,
+    pub(crate) core_peripherals: Option<DebugInfo>,
+    pub(crate) stack_frames: Vec<probe_rs::debug::StackFrame>,
+    pub(crate) breakpoints: Vec<session_data::ActiveBreakpoint>,
+    pub(crate) rtt_connection: Option<debug_rtt::RttConnection>,
 }
 
-impl<'p> CoreData<'p> {
+/// [CoreHandle] provides handles to various data structures required to debug a single instance of a core. The actual state is stored in [SessionData].
+///
+/// Usage: To get access to this structure please use the [SessionData::attach_core] method. Please keep access/locks to this to a minumum duration.
+pub struct CoreHandle<'p> {
+    pub(crate) core: Core<'p>,
+    pub(crate) capstone: &'p Capstone,
+    pub(crate) core_data: &'p mut CoreData,
+}
+
+impl<'p> CoreHandle<'p> {
     /// Search available [StackFrame]'s for the given `id`
     pub(crate) fn get_stackframe(&'p self, id: i64) -> Option<&'p probe_rs::debug::StackFrame> {
-        self.stack_frames
+        self.core_data
+            .stack_frames
             .iter()
             .find(|stack_frame| stack_frame.id == id)
     }
@@ -41,7 +48,7 @@ impl<'p> CoreData<'p> {
     ) -> Result<()> {
         let mut debugger_rtt_channels: Vec<debug_rtt::DebuggerRttChannel> = vec![];
         match rtt::attach_to_rtt(
-            &mut self.target_core,
+            &mut self.core,
             target_memory_map,
             program_binary,
             rtt_config,
@@ -61,7 +68,7 @@ impl<'p> CoreData<'p> {
                         );
                     }
                 }
-                *self.rtt_connection = Some(debug_rtt::RttConnection {
+                self.core_data.rtt_connection = Some(debug_rtt::RttConnection {
                     target_rtt,
                     debugger_rtt_channels,
                 });
@@ -73,46 +80,51 @@ impl<'p> CoreData<'p> {
         Ok(())
     }
 
-    /// Set a single breakpoint in target configuration as well as [`CoreData::breakpoints`]
+    /// Set a single breakpoint in target configuration as well as [`CoreHandle::breakpoints`]
     pub(crate) fn set_breakpoint(
         &mut self,
         address: u32,
         breakpoint_type: session_data::BreakpointType,
     ) -> Result<(), DebuggerError> {
-        self.target_core
+        self.core
             .set_hw_breakpoint(address)
             .map_err(DebuggerError::ProbeRs)?;
-        self.breakpoints.push(session_data::ActiveBreakpoint {
-            breakpoint_type,
-            breakpoint_address: address,
-        });
+        self.core_data
+            .breakpoints
+            .push(session_data::ActiveBreakpoint {
+                breakpoint_type,
+                breakpoint_address: address,
+            });
         Ok(())
     }
 
-    /// Clear a single breakpoint from target configuration as well as [`CoreData::breakpoints`]
+    /// Clear a single breakpoint from target configuration as well as [`CoreHandle::breakpoints`]
     pub(crate) fn clear_breakpoint(&mut self, address: u32) -> Result<()> {
-        self.target_core
+        self.core
             .clear_hw_breakpoint(address)
             .map_err(DebuggerError::ProbeRs)?;
         let mut breakpoint_position: Option<usize> = None;
-        for (position, active_breakpoint) in self.breakpoints.iter().enumerate() {
+        for (position, active_breakpoint) in self.core_data.breakpoints.iter().enumerate() {
             if active_breakpoint.breakpoint_address == address {
                 breakpoint_position = Some(position);
                 break;
             }
         }
         if let Some(breakpoint_position) = breakpoint_position {
-            self.breakpoints.remove(breakpoint_position as usize);
+            self.core_data
+                .breakpoints
+                .remove(breakpoint_position as usize);
         }
         Ok(())
     }
 
-    /// Clear all breakpoints of a specified [`BreakpointType`]. Affects target configuration as well as [`CoreData::breakpoints`]
+    /// Clear all breakpoints of a specified [`BreakpointType`]. Affects target configuration as well as [`CoreHandle::breakpoints`]
     pub(crate) fn clear_breakpoints(
         &mut self,
         breakpoint_type: session_data::BreakpointType,
     ) -> Result<()> {
         let target_breakpoints = self
+            .core_data
             .breakpoints
             .iter()
             .filter(|breakpoint| breakpoint.breakpoint_type == breakpoint_type)

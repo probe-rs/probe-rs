@@ -1,6 +1,6 @@
 use crate::{
     debug_adapter::{dap_types, protocol::ProtocolAdapter},
-    debugger::{configuration::ConsoleLog, core_data::CoreData, session_data::BreakpointType},
+    debugger::{configuration::ConsoleLog, core_data::CoreHandle, session_data::BreakpointType},
     DebuggerError,
 };
 use anyhow::{anyhow, Result};
@@ -50,8 +50,8 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         }
     }
 
-    pub(crate) fn status(&mut self, core_data: &mut CoreData, request: Request) -> Result<()> {
-        let status = match core_data.target_core.status() {
+    pub(crate) fn status(&mut self, target_core: &mut CoreHandle, request: Request) -> Result<()> {
+        let status = match target_core.core.status() {
             Ok(status) => {
                 self.last_known_status = status;
                 status
@@ -67,9 +67,9 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             }
         };
         if status.is_halted() {
-            let pc = core_data
-                .target_core
-                .read_core_reg(core_data.target_core.registers().program_counter());
+            let pc = target_core
+                .core
+                .read_core_reg(target_core.core.registers().program_counter());
             match pc {
                 Ok(pc) => self.send_response(
                     request,
@@ -88,12 +88,12 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         }
     }
 
-    pub(crate) fn pause(&mut self, core_data: &mut CoreData, request: Request) -> Result<()> {
+    pub(crate) fn pause(&mut self, target_core: &mut CoreHandle, request: Request) -> Result<()> {
         // let args: PauseArguments = get_arguments(&request)?;
 
-        match core_data.target_core.halt(Duration::from_millis(500)) {
+        match target_core.core.halt(Duration::from_millis(500)) {
             Ok(cpu_info) => {
-                let new_status = match core_data.target_core.status() {
+                let new_status = match target_core.core.status() {
                     Ok(new_status) => new_status,
                     Err(error) => {
                         self.send_response::<()>(request, Err(DebuggerError::ProbeRs(error)))?;
@@ -104,7 +104,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                 let event_body = Some(StoppedEventBody {
                     reason: "pause".to_owned(),
                     description: Some(self.last_known_status.short_long_status().1.to_owned()),
-                    thread_id: Some(core_data.target_core.id() as i64),
+                    thread_id: Some(target_core.core.id() as i64),
                     preserve_focus_hint: Some(false),
                     text: None,
                     all_threads_stopped: Some(false), // TODO: Implement multi-core logic here
@@ -128,7 +128,11 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         }
     }
 
-    pub(crate) fn read_memory(&mut self, core_data: &mut CoreData, request: Request) -> Result<()> {
+    pub(crate) fn read_memory(
+        &mut self,
+        target_core: &mut CoreHandle,
+        request: Request,
+    ) -> Result<()> {
         let arguments: ReadMemoryArguments = match get_arguments(&request) {
             Ok(arguments) => arguments,
             Err(error) => return self.send_response::<()>(request, Err(error)),
@@ -159,7 +163,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         let mut num_bytes_unread = arguments.count as usize;
         let mut buff = vec![];
         while num_bytes_unread > 0 {
-            if let Ok(good_byte) = core_data.target_core.read_word_8(address) {
+            if let Ok(good_byte) = target_core.core.read_word_8(address) {
                 buff.push(good_byte);
                 address += 1;
                 num_bytes_unread -= 1;
@@ -190,7 +194,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
 
     pub(crate) fn write_memory(
         &mut self,
-        core_data: &mut CoreData,
+        target_core: &mut CoreHandle,
         request: Request,
     ) -> Result<()> {
         let arguments: WriteMemoryArguments = match get_arguments(&request) {
@@ -231,8 +235,8 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                 );
             }
         };
-        match core_data
-            .target_core
+        match target_core
+            .core
             .write_8(address, &data_bytes)
             .map_err(DebuggerError::ProbeRs)
         {
@@ -260,7 +264,11 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
 
     /// Evaluates the given expression in the context of the top most stack frame.
     /// The expression has access to any variables and arguments that are in scope.
-    pub(crate) fn evaluate(&mut self, core_data: &mut CoreData, request: Request) -> Result<()> {
+    pub(crate) fn evaluate(
+        &mut self,
+        target_core: &mut CoreHandle,
+        request: Request,
+    ) -> Result<()> {
         // TODO: When variables appear in the `watch` context, they will not resolve correctly after a 'step' function. Consider doing the lazy load for 'either/or' of Variables vs. Evaluate
 
         let arguments: EvaluateArguments = match get_arguments(&request) {
@@ -284,13 +292,14 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
 
         // Make sure we have a valid StackFrame
         if let Some(stack_frame) = match arguments.frame_id {
-            Some(frame_id) => core_data
+            Some(frame_id) => target_core
+                .core_data
                 .stack_frames
                 .iter_mut()
                 .find(|stack_frame| stack_frame.id == frame_id),
             None => {
                 // Use the current frame_id
-                core_data.stack_frames.first_mut()
+                target_core.core_data.stack_frames.first_mut()
             }
         } {
             // Always search the registers first, because we don't have a VariableCache for them.
@@ -355,7 +364,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
     /// Set the variable with the given name in the variable container to a new value.
     pub(crate) fn set_variable(
         &mut self,
-        core_data: &mut CoreData,
+        target_core: &mut CoreHandle,
         request: Request,
     ) -> Result<()> {
         let arguments: SetVariableArguments = match get_arguments(&request) {
@@ -378,7 +387,8 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         let parent_key = arguments.variables_reference;
         let new_value = arguments.value.clone();
 
-        match core_data
+        match target_core
+            .core_data
             .stack_frames
             .iter_mut()
             .find(|stack_frame| stack_frame.id == parent_key)
@@ -412,7 +422,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                 // The parent_key refers to a local or static variable in one of the in-scope StackFrames.
                 let mut cache_variable: Option<probe_rs::debug::Variable> = None;
                 let mut variable_cache: Option<&mut VariableCache> = None;
-                for search_frame in core_data.stack_frames.iter_mut() {
+                for search_frame in target_core.core_data.stack_frames.iter_mut() {
                     if let Some(search_cache) = &mut search_frame.local_variables {
                         if let Some(search_variable) = search_cache
                             .get_variable_by_name_and_parent(&variable_name, Some(parent_key))
@@ -438,7 +448,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                 {
                     // We have found the variable that needs to be updated.
                     match cache_variable.update_value(
-                        &mut core_data.target_core,
+                        &mut target_core.core,
                         variable_cache,
                         new_value.clone(),
                     ) {
@@ -487,10 +497,10 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
 
     pub(crate) fn restart(
         &mut self,
-        core_data: &mut CoreData,
+        target_core: &mut CoreHandle,
         request: Option<Request>,
     ) -> Result<()> {
-        match core_data.target_core.halt(Duration::from_millis(500)) {
+        match target_core.core.halt(Duration::from_millis(500)) {
             Ok(_) => {}
             Err(error) => {
                 if let Some(request) = request {
@@ -506,12 +516,12 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
 
         // Different code paths if we invoke this from a request, versus an internal function.
         if let Some(request) = request {
-            match core_data.target_core.reset() {
+            match target_core.core.reset() {
                 Ok(_) => {
                     self.last_known_status = CoreStatus::Running;
                     let event_body = Some(ContinuedEventBody {
                         all_threads_continued: Some(false), // TODO: Implement multi-core logic here
-                        thread_id: core_data.target_core.id() as i64,
+                        thread_id: target_core.core.id() as i64,
                     });
 
                     self.send_event("continued", event_body)
@@ -526,10 +536,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         } else {
             // The DAP Client will always do a `reset_and_halt`, and then will consider `halt_after_reset` value after the `configuration_done` request.
             // Otherwise the probe will run past the `main()` before the DAP Client has had a chance to set breakpoints in `main()`.
-            match core_data
-                .target_core
-                .reset_and_halt(Duration::from_millis(500))
-            {
+            match target_core.core.reset_and_halt(Duration::from_millis(500)) {
                 Ok(_) => {
                     if let Some(request) = request {
                         return self.send_response::<()>(request, Ok(None));
@@ -544,7 +551,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                                     .1
                                     .to_string(),
                             ),
-                            thread_id: Some(core_data.target_core.id() as i64),
+                            thread_id: Some(target_core.core.id() as i64),
                             preserve_focus_hint: None,
                             text: None,
                             all_threads_stopped: Some(false), // TODO: Implement multi-core logic here
@@ -583,7 +590,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
     ///   - Any other status will send and error.
     pub(crate) fn configuration_done(
         &mut self,
-        _core_data: &mut CoreData,
+        _core_data: &mut CoreHandle,
         request: Request,
     ) -> Result<()> {
         self.send_response::<()>(request, Ok(None))
@@ -591,7 +598,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
 
     pub(crate) fn set_breakpoints(
         &mut self,
-        core_data: &mut CoreData,
+        target_core: &mut CoreHandle,
         request: Request,
     ) -> Result<()> {
         let args: SetBreakpointsArguments = match get_arguments(&request) {
@@ -612,7 +619,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         let source_path = args.source.path.as_ref().map(Path::new);
 
         // Always clear existing breakpoints before setting new ones. The DAP Specification doesn't make allowances for deleting and setting individual breakpoints.
-        match core_data.clear_breakpoints(BreakpointType::SourceBreakpoint) {
+        match target_core.clear_breakpoints(BreakpointType::SourceBreakpoint) {
             Ok(_) => {}
             Err(error) => {
                 return self.send_response::<()>(
@@ -733,7 +740,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
 
     pub(crate) fn set_instruction_breakpoints(
         &mut self,
-        core_data: &mut CoreData,
+        target_core: &mut CoreHandle,
         request: Request,
     ) -> Result<()> {
         let arguments: SetInstructionBreakpointsArguments = match get_arguments(&request) {
@@ -753,7 +760,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         let mut created_breakpoints: Vec<Breakpoint> = Vec::new();
 
         // Always clear existing breakpoints before setting new ones.
-        match core_data.clear_breakpoints(BreakpointType::InstructionBreakpoint) {
+        match target_core.clear_breakpoints(BreakpointType::InstructionBreakpoint) {
             Ok(_) => {}
             Err(error) => log::warn!("Failed to clear instruction breakpoints. {}", error),
         }
@@ -782,7 +789,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                     requested_breakpoint.instruction_reference.parse()
                 }
             {
-                match core_data
+                match target_core
                     .set_breakpoint(memory_reference, BreakpointType::InstructionBreakpoint)
                 {
                     Ok(_) => {
@@ -790,7 +797,8 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                         breakpoint_response.instruction_reference =
                             Some(format!("{:#010x}", memory_reference));
                         // Try to resolve the source location for this breakpoint.
-                        match core_data
+                        match target_core
+                            .core_data
                             .debug_info
                             .get_source_location(memory_reference as u64)
                         {
@@ -840,13 +848,13 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         self.send_response(request, Ok(Some(instruction_breakpoint_body)))
     }
 
-    pub(crate) fn threads(&mut self, core_data: &mut CoreData, request: Request) -> Result<()> {
+    pub(crate) fn threads(&mut self, target_core: &mut CoreHandle, request: Request) -> Result<()> {
         // TODO: Implement actual thread resolution. For now, we just use the core id as the thread id.
         let mut threads: Vec<Thread> = vec![];
         match self.last_known_status {
             CoreStatus::Unknown => {
                 // We are probably here because the `configuration_done` request just happened, so we can make sure the client and debugger are in synch.
-                match core_data.target_core.status() {
+                match target_core.core.status() {
                     Ok(core_status) => {
                         self.last_known_status = core_status;
                         // Make sure the DAP Client and the DAP Server are in sync with the status of the core.
@@ -859,7 +867,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                                     description: Some(
                                         core_status.short_long_status().1.to_string(),
                                     ),
-                                    thread_id: Some(core_data.target_core.id() as i64),
+                                    thread_id: Some(target_core.core.id() as i64),
                                     preserve_focus_hint: None,
                                     text: None,
                                     all_threads_stopped: Some(false), // TODO: Implement multi-core logic here
@@ -868,15 +876,15 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                                 self.send_event("stopped", event_body)?;
                             } else {
                                 let single_thread = Thread {
-                                    id: core_data.target_core.id() as i64,
-                                    name: core_data.target_name.clone(),
+                                    id: target_core.core.id() as i64,
+                                    name: target_core.core_data.target_name.clone(),
                                 };
                                 threads.push(single_thread);
                                 self.send_response(
                                     request.clone(),
                                     Ok(Some(ThreadsResponseBody { threads })),
                                 )?;
-                                return self.r#continue(core_data, request);
+                                return self.r#continue(target_core, request);
                             }
                         }
                     }
@@ -893,14 +901,14 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             }
             CoreStatus::Halted(_) => {
                 let single_thread = Thread {
-                    id: core_data.target_core.id() as i64,
-                    name: core_data.target_name.clone(),
+                    id: target_core.core.id() as i64,
+                    name: target_core.core_data.target_name.clone(),
                 };
                 threads.push(single_thread);
                 // We do the actual stack trace here, because VSCode sometimes sends multiple StackTrace requests, which lead to unnecessary unwind processing.
                 // By doing it here, we do it once, and serve up the results when we get the StackTrace requests.
-                let regs = core_data.target_core.registers();
-                let pc = match core_data.target_core.read_core_reg(regs.program_counter()) {
+                let regs = target_core.core.registers();
+                let pc = match target_core.core.read_core_reg(regs.program_counter()) {
                     Ok(pc) => pc,
                     Err(error) => {
                         return self
@@ -909,11 +917,13 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                 };
                 log::debug!(
                     "Updating the stack frame data for core #{}",
-                    core_data.target_core.id()
+                    target_core.core.id()
                 );
-                *core_data.stack_frames = core_data
+
+                target_core.core_data.stack_frames = target_core
+                    .core_data
                     .debug_info
-                    .unwind(&mut core_data.target_core, u64::from(pc))?;
+                    .unwind(&mut target_core.core, u64::from(pc))?;
             }
             CoreStatus::Running | CoreStatus::LockedUp | CoreStatus::Sleeping => {
                 return self.send_response::<()>(
@@ -928,8 +938,12 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         self.send_response(request, Ok(Some(ThreadsResponseBody { threads })))
     }
 
-    pub(crate) fn stack_trace(&mut self, core_data: &mut CoreData, request: Request) -> Result<()> {
-        let _status = match core_data.target_core.status() {
+    pub(crate) fn stack_trace(
+        &mut self,
+        target_core: &mut CoreHandle,
+        request: Request,
+    ) -> Result<()> {
+        let _status = match target_core.core.status() {
             Ok(status) => {
                 if !status.is_halted() {
                     return self.send_response::<()>(
@@ -961,9 +975,9 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         if let Some(levels) = arguments.levels {
             if let Some(start_frame) = arguments.start_frame {
                 // Determine the correct 'slice' of available [StackFrame]s to serve up ...
-                let total_frames = core_data.stack_frames.len() as i64;
+                let total_frames = target_core.core_data.stack_frames.len() as i64;
 
-                // We need to copy some parts of StackFrame so that we can re-use it later without references to core_data.
+                // We need to copy some parts of StackFrame so that we can re-use it later without references to target_core.
                 struct PartialStackFrameData {
                     id: i64,
                     function_name: String,
@@ -974,13 +988,22 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
 
                 let frame_set = if levels == 1 && start_frame == 0 {
                     // Just the first frame - use the LHS of the split at `levels`
-                    core_data.stack_frames.split_at(levels as usize).0
+                    target_core
+                        .core_data
+                        .stack_frames
+                        .split_at(levels as usize)
+                        .0
                 } else if total_frames <= 20 && start_frame >= 0 && start_frame <= total_frames {
                     // When we have less than 20 frames - use the RHS of of the split at `start_frame`
-                    core_data.stack_frames.split_at(start_frame as usize).1
+                    target_core
+                        .core_data
+                        .stack_frames
+                        .split_at(start_frame as usize)
+                        .1
                 } else if total_frames > 20 && start_frame + levels <= total_frames {
-                    // When we have more than 20 frames - we can safely split twice.
-                    core_data
+                    // When we have more than 20 frames - we can safely split twice
+                    target_core
+                        .core_data
                         .stack_frames
                         .split_at(start_frame as usize)
                         .1
@@ -1087,7 +1110,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
     /// - static scope  : Variables with `static` modifier
     /// - registers     : The [probe_rs::Core::registers] for the target [probe_rs::CoreType]
     /// - local scope   : Variables defined between start of current frame, and the current pc (program counter)
-    pub(crate) fn scopes(&mut self, core_data: &mut CoreData, request: Request) -> Result<()> {
+    pub(crate) fn scopes(&mut self, target_core: &mut CoreHandle, request: Request) -> Result<()> {
         let arguments: ScopesArguments = match get_arguments(&request) {
             Ok(arguments) => arguments,
             Err(error) => return self.send_response::<()>(request, Err(error)),
@@ -1097,7 +1120,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
 
         log::trace!("Getting scopes for frame {}", arguments.frame_id,);
 
-        if let Some(stack_frame) = core_data.get_stackframe(arguments.frame_id) {
+        if let Some(stack_frame) = target_core.get_stackframe(arguments.frame_id) {
             if let Some(static_root_variable) =
                 stack_frame
                     .static_variables
@@ -1176,7 +1199,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
     /// Attempt to extract disassembled source code to supply the instruction_count required.
     pub(crate) fn get_disassembled_source(
         &mut self,
-        core_data: &mut CoreData,
+        target_core: &mut CoreHandle,
         // The program_counter where our desired instruction range is based.
         memory_reference: i64,
         // The number of bytes offset from the memory reference. Can be zero.
@@ -1186,8 +1209,10 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         // The EXACT number of instructions to return in the result.
         instruction_count: i64,
     ) -> Result<Vec<dap_types::DisassembledInstruction>, DebuggerError> {
-        let instruction_offset_as_bytes =
-            (instruction_offset * core_data.debug_info.get_instruction_size() as i64) / 4 * 5;
+        let instruction_offset_as_bytes = (instruction_offset
+            * target_core.core_data.debug_info.get_instruction_size() as i64)
+            / 4
+            * 5;
 
         // The vector we will use to return results.
         let mut assembly_lines: Vec<DisassembledInstruction> = vec![];
@@ -1212,7 +1237,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         // The MS DAP spec requires that we always have to return a fixed number of instructions.
         while assembly_lines.len() < instruction_count as usize {
             if read_more_bytes {
-                match core_data.target_core.read_word_32(read_pointer) {
+                match target_core.core.read_word_32(read_pointer) {
                     Ok(new_word) => {
                         // Advance the read pointer for next time we need it.
                         read_pointer += 4;
@@ -1240,7 +1265,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                 }
             }
 
-            match core_data
+            match target_core
                 .capstone
                 .disasm_count(&code_buffer, instruction_pointer as u64, 1)
             {
@@ -1267,7 +1292,8 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                             let mut location = None;
                             let mut line = None;
                             let mut column = None;
-                            if let Some(current_source_location) = core_data
+                            if let Some(current_source_location) = target_core
+                                .core_data
                                 .debug_info
                                 .get_source_location(instruction.address()) {
                                 if let Some(previous_source_location) = stored_source_location.clone() {
@@ -1340,7 +1366,11 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
     ///   - Reached the required number of instructions.
     ///   - We encounter 'unreadable' memory on the target.
     ///     - In this case, pad the results with, as the api requires, "implementation defined invalid instructions"
-    pub(crate) fn disassemble(&mut self, core_data: &mut CoreData, request: Request) -> Result<()> {
+    pub(crate) fn disassemble(
+        &mut self,
+        target_core: &mut CoreHandle,
+        request: Request,
+    ) -> Result<()> {
         let arguments: DisassembleArguments = match get_arguments(&request) {
             Ok(arguments) => arguments,
             Err(error) => return self.send_response::<()>(request, Err(error)),
@@ -1353,7 +1383,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             arguments.memory_reference.parse()
         } {
             match self.get_disassembled_source(
-                core_data,
+                target_core,
                 memory_reference as i64,
                 arguments.offset.unwrap_or(0_i64),
                 arguments.instruction_offset.unwrap_or(0_i64),
@@ -1380,7 +1410,11 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         }
     }
 
-    pub(crate) fn variables(&mut self, core_data: &mut CoreData, request: Request) -> Result<()> {
+    pub(crate) fn variables(
+        &mut self,
+        target_core: &mut CoreHandle,
+        request: Request,
+    ) -> Result<()> {
         let arguments: VariablesArguments = match get_arguments(&request) {
             Ok(arguments) => arguments,
             Err(error) => return self.send_response::<()>(request, Err(error)),
@@ -1391,7 +1425,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             let mut parent_variable: Option<probe_rs::debug::Variable> = None;
             let mut variable_cache: Option<&mut VariableCache> = None;
             let mut stack_frame_registers: Option<&Registers> = None;
-            for stack_frame in core_data.stack_frames.iter_mut() {
+            for stack_frame in target_core.core_data.stack_frames.iter_mut() {
                 if let Some(search_cache) = &mut stack_frame.local_variables {
                     if let Some(search_variable) =
                         search_cache.get_variable_by_key(arguments.variables_reference)
@@ -1462,9 +1496,9 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                         && !variable_cache.has_children(parent_variable)?
                     {
                         if let Some(stack_frame_registers) = stack_frame_registers {
-                            core_data.debug_info.cache_deferred_variables(
+                            target_core.core_data.debug_info.cache_deferred_variables(
                                 variable_cache,
-                                &mut core_data.target_core,
+                                &mut target_core.core,
                                 parent_variable,
                                 stack_frame_registers,
                             )?;
@@ -1532,13 +1566,14 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         self.send_response(request, response)
     }
 
-    pub(crate) fn r#continue(&mut self, core_data: &mut CoreData, request: Request) -> Result<()> {
-        match core_data.target_core.run() {
+    pub(crate) fn r#continue(
+        &mut self,
+        target_core: &mut CoreHandle,
+        request: Request,
+    ) -> Result<()> {
+        match target_core.core.run() {
             Ok(_) => {
-                self.last_known_status = core_data
-                    .target_core
-                    .status()
-                    .unwrap_or(CoreStatus::Unknown);
+                self.last_known_status = target_core.core.status().unwrap_or(CoreStatus::Unknown);
                 if request.command.as_str() == "continue" {
                     // If this continue was initiated as part of some other request, then do not respond.
                     self.send_response(
@@ -1552,13 +1587,13 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                 // but "immediately" afterwards, the MCU hits a breakpoint or exception.
                 // So we have to check the status again to be sure.
                 thread::sleep(Duration::from_millis(100)); // Small delay to make sure the MCU hits user breakpoints early in `main()`.
-                let core_status = match core_data.target_core.status() {
+                let core_status = match target_core.core.status() {
                     Ok(new_status) => match new_status {
                         CoreStatus::Halted(_) => {
                             let event_body = Some(StoppedEventBody {
                                 reason: new_status.short_long_status().0.to_owned(),
                                 description: Some(new_status.short_long_status().1.to_string()),
-                                thread_id: Some(core_data.target_core.id() as i64),
+                                thread_id: Some(target_core.core.id() as i64),
                                 preserve_focus_hint: None,
                                 text: None,
                                 all_threads_stopped: Some(false), // TODO: Implement multi-core logic here

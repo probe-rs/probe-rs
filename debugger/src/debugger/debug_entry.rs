@@ -70,6 +70,13 @@ impl Debugger {
         }
     }
 
+    /// The logic of this function is as follows:
+    /// - While we are waiting for DAP-Client (TCP or STDIO), we have to continuously check in on the status of the probe.
+    /// - Initally, while `LAST_KNOWN_STATUS` probe-rs::CoreStatus::Unknown, we do nothing. Wait until latter part of `debug_session` sets it to something known.
+    /// - If the `LAST_KNOWN_STATUS` is `Halted`, then we stop polling the Probe until the next DAP-Client request attempts an action
+    /// - If the `new_status` is an Err, then the probe is no longer available, and we  end the debugging session
+    /// - If the `new_status` is different from the `LAST_KNOWN_STATUS`, then we have to tell the DAP-Client by way of an `Event`
+    /// - If the `new_status` is `Running`, then we have to poll on a regular basis, until the Probe stops for good reasons like breakpoints, or bad reasons like panics. Then tell the DAP-Client.
     pub(crate) fn process_next_request<P: ProtocolAdapter>(
         &mut self,
         session_data: &mut session_data::SessionData,
@@ -78,59 +85,42 @@ impl Debugger {
         let request = debug_adapter.listen_for_request()?;
         match request {
             None => {
-                /*
-                The logic of this command is as follows:
-                - While we are waiting for DAP-Client (TCP or STDIO), we have to continuously check in on the status of the probe.
-                - Initally, while `LAST_KNOWN_STATUS` probe-rs::CoreStatus::Unknown, we do nothing. Wait until latter part of `debug_session` sets it to something known.
-                - If the `LAST_KNOWN_STATUS` is `Halted`, then we stop polling the Probe until the next DAP-Client request attempts an action
-                - If the `new_status` is an Err, then the probe is no longer available, and we  end the debugging session
-                - If the `new_status` is different from the `LAST_KNOWN_STATUS`, then we have to tell the DAP-Client by way of an `Event`
-                - If the `new_status` is `Running`, then we have to poll on a regular basis, until the Probe stops for good reasons like breakpoints, or bad reasons like panics. Then tell the DAP-Client.
-                */
+                // If there are no requests, we poll target cores for status, which includes handling RTT data.
                 match debug_adapter.last_known_status {
-                    CoreStatus::Unknown => Ok(DebuggerStatus::ContinueSession), // Don't do anything until we know VSCode's startup sequence is complete, and changes this to either Halted or Running.
+                    CoreStatus::Unknown => {
+                        // Don't do anything until we know VSCode's startup sequence is complete, and changes this to either Halted or Running.
+                        Ok(DebuggerStatus::ContinueSession)
+                    }
                     CoreStatus::Halted(_) => {
-                        // Make sure the RTT buffers are drained.
-                        match session_data.attach_core(self.config.core_index) {
-                            Ok(mut core_data) => {
-                                if let Some(rtt_active_target) = &mut core_data.rtt_connection {
-                                    rtt_active_target.process_rtt_data(
-                                        debug_adapter,
-                                        &mut core_data.target_core,
-                                    );
-                                };
-                            }
-                            Err(error) => {
-                                let _ = debug_adapter.send_error_response(&error)?;
-                                return Err(error);
-                            }
-                        };
-
+                        session_data.poll_rtt(&self.config, debug_adapter);
                         // No need to poll the target status if we know it is halted and waiting for us to do something.
                         thread::sleep(Duration::from_millis(50)); // Small delay to reduce fast looping costs on the client
                         Ok(DebuggerStatus::ContinueSession)
                     }
                     _other => {
-                        let mut received_rtt_data = false;
-                        let mut core_data = match session_data.attach_core(self.config.core_index) {
-                            Ok(mut core_data) => {
-                                // Use every opportunity to poll the RTT channels for data
-                                if let Some(rtt_active_target) = &mut core_data.rtt_connection {
-                                    received_rtt_data = rtt_active_target.process_rtt_data(
-                                        debug_adapter,
-                                        &mut core_data.target_core,
-                                    );
-                                }
-                                core_data
-                            }
-                            Err(error) => {
-                                let _ = debug_adapter.send_error_response(&error)?;
-                                return Err(error);
-                            }
-                        };
+                        let received_rtt_data = session_data.poll_rtt(&self.config, debug_adapter);
 
                         // Check and update the core status.
-                        let new_status = match core_data.target_core.status() {
+                        // TODO: This only works for a single core, so until it can be redesigned, will use the first one configured.
+                        let mut target_core = if let Some(target_core_config) =
+                            self.config.core_configs.first_mut()
+                        {
+                            if let Ok(core_handle) =
+                                session_data.attach_core(target_core_config.core_index)
+                            {
+                                core_handle
+                            } else {
+                                return Err(DebuggerError::Other(anyhow!(
+                                    "Unable to connect to target core"
+                                )));
+                            }
+                        } else {
+                            return Err(DebuggerError::Other(anyhow!(
+                                "Cannot continue unless one target core configuration is defined."
+                            )));
+                        };
+
+                        let new_status = match target_core.core.status() {
                             Ok(new_status) => new_status,
                             Err(error) => {
                                 let error = DebuggerError::ProbeRs(error);
@@ -155,7 +145,7 @@ impl Debugger {
                             CoreStatus::Running | CoreStatus::Sleeping => {
                                 let event_body = Some(ContinuedEventBody {
                                     all_threads_continued: Some(true),
-                                    thread_id: core_data.target_core.id() as i64,
+                                    thread_id: target_core.core.id() as i64,
                                 });
                                 debug_adapter.send_event("continued", event_body)?;
                             }
@@ -163,7 +153,7 @@ impl Debugger {
                                 let event_body = Some(StoppedEventBody {
                                     reason: new_status.short_long_status().0.to_owned(),
                                     description: Some(new_status.short_long_status().1.to_owned()),
-                                    thread_id: Some(core_data.target_core.id() as i64),
+                                    thread_id: Some(target_core.core.id() as i64),
                                     preserve_focus_hint: Some(false),
                                     text: None,
                                     all_threads_stopped: Some(true),
@@ -197,16 +187,22 @@ impl Debugger {
             }
             Some(request) => {
                 // First, attach to the core.
-                let mut core_data = match session_data.attach_core(self.config.core_index) {
-                    Ok(core_data) => core_data,
-                    Err(error) => {
-                        let failed_command = request.command.clone();
-                        debug_adapter.send_response::<()>(request, Err(error))?;
+                // TODO: This only works for a single core, so until it can be redesigned, will use the first one configured.
+                let mut target_core = if let Some(target_core_config) =
+                    self.config.core_configs.first_mut()
+                {
+                    if let Ok(core_handle) = session_data.attach_core(target_core_config.core_index)
+                    {
+                        core_handle
+                    } else {
                         return Err(DebuggerError::Other(anyhow!(
-                            "Error while attaching to core. Could not complete command {}",
-                            failed_command
+                            "Unable to connect to target core"
                         )));
                     }
+                } else {
+                    return Err(DebuggerError::Other(anyhow!(
+                        "Cannot continue unless one target core configuration is defined."
+                    )));
                 };
 
                 // For some operations, we need to make sure the core isn't sleeping, by calling `Core::halt()`.
@@ -226,10 +222,10 @@ impl Debugger {
                     | "readMemory"
                     | "writeMemory"
                     | "disassemble" => {
-                        match core_data.target_core.status() {
+                        match target_core.core.status() {
                             Ok(current_status) => {
                                 if current_status == CoreStatus::Sleeping {
-                                    match core_data.target_core.halt(Duration::from_millis(100)) {
+                                    match target_core.core.halt(Duration::from_millis(100)) {
                                         Ok(_) => {
                                             debug_adapter.last_known_status =
                                                 CoreStatus::Halted(probe_rs::HaltReason::Request);
@@ -264,7 +260,9 @@ impl Debugger {
                 // Now we are ready to execute supported commands, or return an error if it isn't supported.
                 match match request.command.clone().as_ref() {
                     "rttWindowOpened" => {
-                        if let Some(debugger_rtt_target) = core_data.rtt_connection {
+                        if let Some(debugger_rtt_target) =
+                            target_core.core_data.rtt_connection.as_mut()
+                        {
                             match get_arguments::<RttWindowOpenedArguments>(&request) {
                                 Ok(arguments) => {
                                     debugger_rtt_target
@@ -298,13 +296,13 @@ impl Debugger {
                         .send_response::<()>(request, Ok(None))
                         .and(Ok(DebuggerStatus::TerminateSession)),
                     "terminate" => debug_adapter
-                        .pause(&mut core_data, request)
+                        .pause(&mut target_core, request)
                         .and(Ok(DebuggerStatus::TerminateSession)),
                     "status" => debug_adapter
-                        .status(&mut core_data, request)
+                        .status(&mut target_core, request)
                         .and(Ok(DebuggerStatus::ContinueSession)),
                     "next" => debug_adapter
-                        .next(&mut core_data, request)
+                        .next(&mut target_core, request)
                         .and(Ok(DebuggerStatus::ContinueSession)),
                     "stepIn" => debug_adapter
                         .step_in(&mut core_data, request)
@@ -313,53 +311,53 @@ impl Debugger {
                         .step_out(&mut core_data, request)
                         .and(Ok(DebuggerStatus::ContinueSession)),
                     "pause" => debug_adapter
-                        .pause(&mut core_data, request)
+                        .pause(&mut target_core, request)
                         .and(Ok(DebuggerStatus::ContinueSession)),
                     "readMemory" => debug_adapter
-                        .read_memory(&mut core_data, request)
+                        .read_memory(&mut target_core, request)
                         .and(Ok(DebuggerStatus::ContinueSession)),
                     "writeMemory" => debug_adapter
-                        .write_memory(&mut core_data, request)
+                        .write_memory(&mut target_core, request)
                         .and(Ok(DebuggerStatus::ContinueSession)),
                     "setVariable" => debug_adapter
-                        .set_variable(&mut core_data, request)
+                        .set_variable(&mut target_core, request)
                         .and(Ok(DebuggerStatus::ContinueSession)),
                     "configurationDone" => debug_adapter
-                        .configuration_done(&mut core_data, request)
+                        .configuration_done(&mut target_core, request)
                         .and(Ok(DebuggerStatus::ContinueSession)),
                     "threads" => debug_adapter
-                        .threads(&mut core_data, request)
+                        .threads(&mut target_core, request)
                         .and(Ok(DebuggerStatus::ContinueSession)),
                     "restart" => {
                         // Reset RTT so that the link can be re-established
-                        *core_data.rtt_connection = None;
+                        target_core.core_data.rtt_connection = None;
                         debug_adapter
-                            .restart(&mut core_data, Some(request))
+                            .restart(&mut target_core, Some(request))
                             .and(Ok(DebuggerStatus::ContinueSession))
                     }
                     "setBreakpoints" => debug_adapter
-                        .set_breakpoints(&mut core_data, request)
+                        .set_breakpoints(&mut target_core, request)
                         .and(Ok(DebuggerStatus::ContinueSession)),
                     "setInstructionBreakpoints" => debug_adapter
-                        .set_instruction_breakpoints(&mut core_data, request)
+                        .set_instruction_breakpoints(&mut target_core, request)
                         .and(Ok(DebuggerStatus::ContinueSession)),
                     "stackTrace" => debug_adapter
-                        .stack_trace(&mut core_data, request)
+                        .stack_trace(&mut target_core, request)
                         .and(Ok(DebuggerStatus::ContinueSession)),
                     "scopes" => debug_adapter
-                        .scopes(&mut core_data, request)
+                        .scopes(&mut target_core, request)
                         .and(Ok(DebuggerStatus::ContinueSession)),
                     "disassemble" => debug_adapter
-                        .disassemble(&mut core_data, request)
+                        .disassemble(&mut target_core, request)
                         .and(Ok(DebuggerStatus::ContinueSession)),
                     "variables" => debug_adapter
-                        .variables(&mut core_data, request)
+                        .variables(&mut target_core, request)
                         .and(Ok(DebuggerStatus::ContinueSession)),
                     "continue" => debug_adapter
-                        .r#continue(&mut core_data, request)
+                        .r#continue(&mut target_core, request)
                         .and(Ok(DebuggerStatus::ContinueSession)),
                     "evaluate" => debug_adapter
-                        .evaluate(&mut core_data, request)
+                        .evaluate(&mut target_core, request)
                         .and(Ok(DebuggerStatus::ContinueSession)),
                     other_command => {
                         // Unimplemented command.
@@ -371,7 +369,7 @@ impl Debugger {
                 } {
                     Ok(debugger_status) => {
                         if unhalt_me {
-                            match core_data.target_core.run() {
+                            match target_core.core.run() {
                                 Ok(_) => debug_adapter.last_known_status = CoreStatus::Running,
                                 Err(error) => {
                                     debug_adapter.send_error_response(&DebuggerError::Other(
@@ -517,6 +515,7 @@ impl Debugger {
             };
         };
 
+        // TODO: Multi-core: This currently only supports the first `SessionConfig::core_configs`
         match get_arguments(&launch_attach_request) {
             Ok(arguments) => {
                 if requested_target_session_type.is_some() {
@@ -546,64 +545,7 @@ impl Debugger {
                 debug_adapter.set_console_log_level(
                     self.config.console_log_level.unwrap_or(ConsoleLog::Error),
                 );
-                // Update the `cwd` and `program_binary`.
-                self.config.validate_and_update_cwd(self.config.cwd.clone());
-                // Update the `program_binary` and validate that the file exists.
-                self.config.program_binary = match self
-                    .config
-                    .qualify_and_update_os_file_path(self.config.program_binary.clone())
-                {
-                    Ok(program_binary) => {
-                        if !program_binary.is_file() {
-                            debug_adapter.send_response::<()>(
-                                launch_attach_request,
-                                Err(DebuggerError::Other(anyhow!(
-                                    "program_binary file {:?} not found.",
-                                    program_binary
-                                ))),
-                            )?;
-                            return Err(DebuggerError::Other(anyhow!(
-                                "Invalid program binary file specified '{:?}'",
-                                program_binary
-                            )));
-                        }
-                        Some(program_binary)
-                    }
-                    Err(error) => {
-                        debug_adapter.send_response::<()>(
-                            launch_attach_request,
-                            Err(DebuggerError::Other(anyhow!(
-                                "Please use the --program-binary option to specify an executable: {:?}", error
-                            ))),
-                        )?;
-                        return Err(DebuggerError::Other(anyhow!(
-                            "Please use the --program-binary option to specify an executable"
-                        )));
-                    }
-                };
-                // Update the `svd_file` and validate that the file exists.
-                // If there is a problem with this file, warn the user and continue with the session.
-                self.config.svd_file = match self
-                    .config
-                    .qualify_and_update_os_file_path(self.config.svd_file.clone())
-                {
-                    Ok(svd_file) => {
-                        if !svd_file.is_file() {
-                            debug_adapter.show_message(
-                                MessageSeverity::Warning,
-                                format!("SVD file {:?} not found.", svd_file),
-                            );
-                            None
-                        } else {
-                            Some(svd_file)
-                        }
-                    }
-                    Err(error) => {
-                        // SVD file is not mandatory.
-                        log::debug!("SVD file not specified: {:?}", &error);
-                        None
-                    }
-                };
+
                 debug_adapter.send_response::<()>(launch_attach_request, Ok(None))?;
             }
             Err(error) => {
@@ -627,12 +569,32 @@ impl Debugger {
                 return Err(error);
             }
         };
-        debug_adapter.halt_after_reset = self.config.flashing_config.halt_after_reset;
 
+        // Validate file specifications in the config.
+        match self.config.validate_config_files() {
+            Ok(_) => {}
+            Err(error) => {
+                return Err(error);
+            }
+        };
+
+        // TODO: Currently the logic of processing MS DAP requests and executing them, is based on having a single core. It needs to be re-thought for multiple cores. Not all DAP requests require access to the core. One possible is to do the core attach inside each of the request implementations for those that need it, because the applicable core_index can be read from the request arguments.
+        // TODO: Until we refactor this, we only support a single core (always the first one specified in `SessionConfig::core_configs`)
+        let target_core_config =
+            if let Some(target_core_config) = self.config.core_configs.first_mut() {
+                target_core_config
+            } else {
+                return Err(DebuggerError::Other(anyhow!(
+                    "Cannot continue unless one target core configuration is defined."
+                )));
+            };
+
+        debug_adapter.halt_after_reset = self.config.flashing_config.halt_after_reset;
         // Do the flashing.
+        // TODO: Multi-core ... needs to flash multiple binaries
         {
             if self.config.flashing_config.flashing_enabled {
-                let path_to_elf = match self.config.program_binary.clone() {
+                let path_to_elf = match &target_core_config.program_binary {
                     Some(program_binary) => program_binary,
                     None => {
                         let err = DebuggerError::Other(anyhow!(
@@ -863,18 +825,18 @@ impl Debugger {
         // This is the first attach to the requested core. If this one works, all subsequent ones will be no-op requests for a Core reference. Do NOT hold onto this reference for the duration of the session ... that is why this code is in a block of its own.
         {
             // First, attach to the core
-            let mut core_data = match session_data.attach_core(self.config.core_index) {
-                Ok(mut core_data) => {
+            let mut target_core = match session_data.attach_core(target_core_config.core_index) {
+                Ok(mut target_core) => {
                     // Immediately after attaching, halt the core, so that we can finish initalization without bumping into user code.
                     // Depending on supplied `config`, the core will be restarted at the end of initialization in the `configuration_done` request.
-                    match halt_core(&mut core_data.target_core) {
+                    match halt_core(&mut target_core.core) {
                         Ok(_) => {}
                         Err(error) => {
                             debug_adapter.send_error_response(&error)?;
                             return Err(error);
                         }
                     }
-                    core_data
+                    target_core
                 }
                 Err(error) => {
                     debug_adapter.send_error_response(&error)?;
@@ -886,7 +848,7 @@ impl Debugger {
                 && self.config.flashing_config.reset_after_flashing
             {
                 debug_adapter
-                    .restart(&mut core_data, None)
+                    .restart(&mut target_core, None)
                     .context("Failed to restart core")?;
             }
         }
@@ -909,34 +871,7 @@ impl Debugger {
         loop {
             match self.process_next_request(&mut session_data, &mut debug_adapter) {
                 Ok(DebuggerStatus::ContinueSession) => {
-                    // Validate and if necessary, initialize the RTT structure.
-                    if self.config.rtt.enabled
-                        && session_data.rtt_connection.is_none()
-                        && !(debug_adapter.last_known_status == CoreStatus::Unknown
-                            || debug_adapter.last_known_status.is_halted())
-                    // Do not attempt this until we have processed the MSDAP request for "configurationDone" ...
-                    {
-                        let target_memory_map = session_data.session.target().memory_map.clone();
-                        let mut core_data = match session_data.attach_core(self.config.core_index) {
-                            Ok(core_data) => core_data,
-                            Err(error) => {
-                                debug_adapter.send_error_response(&error)?;
-                                return Err(error);
-                            }
-                        };
-                        log::info!("Attempting to initialize the RTT.");
-                        // RTT can only be initialized if the target application has been allowed to run to the point where it does the RTT initialization.
-                        // If the target halts before it processes this code, then this RTT intialization silently fails, and will try again later ...
-                        // See `probe-rs-rtt::Rtt` for more information.
-                        // We can safely unwrap() program_binary here, because it is validated to exist at startup of the debugger
-                        #[allow(clippy::unwrap_used)]
-                        core_data.attach_to_rtt(
-                            &mut debug_adapter,
-                            &target_memory_map,
-                            self.config.program_binary.as_ref().unwrap(),
-                            &self.config.rtt,
-                        )?;
-                    }
+                    // All is good. We can process the next request.
                 }
                 Ok(DebuggerStatus::TerminateSession) => {
                     return Ok(DebuggerStatus::TerminateSession);
