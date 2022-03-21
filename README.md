@@ -48,10 +48,11 @@ $ git clone --depth 1 --branch v0.3.3 https://github.com/knurling-rs/probe-run
 $ cd probe-run
 
 $ # modify Cargo.toml to use the git version of probe-rs
-$ append these lines to Cargo.toml
-$ tail -n2 Cargo.toml
+$ # append these lines to Cargo.toml; command below is UNIX-y
+$ cat >> Cargo.toml << STOP
 [patch.crates-io]
 probe-rs = { git = "https://github.com/probe-rs/probe-rs" }
+STOP
 
 $ # install this patched version
 $ cargo install --path .
