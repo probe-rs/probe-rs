@@ -239,7 +239,24 @@ impl ArmDebugSequence for LPC55Sxx {
         tracing::info!("Waiting after reset");
         thread::sleep(Duration::from_millis(10));
 
-        wait_for_stop_after_reset(interface)
+        let start = Instant::now();
+
+        let mut timeout = true;
+
+        while start.elapsed() < Duration::from_micros(50_0000) {
+            let dhcsr = Dhcsr(interface.read_word_32(Dhcsr::get_mmio_address())?);
+
+            if !dhcsr.s_reset_st() {
+                timeout = false;
+                break;
+            }
+        }
+
+        if timeout {
+            wait_for_stop_after_reset(interface)
+        } else {
+            Ok(())
+        }
     }
 }
 
@@ -298,7 +315,7 @@ fn enable_debug_mailbox(
     interface: &mut ArmCommunicationInterface<Initialized>,
     dp: DpAddress,
 ) -> Result<(), ArmError> {
-    tracing::info!("LPC55xx connect srcipt start");
+    tracing::info!("LPC55xx connect script start");
 
     let ap = ApAddress { dp, ap: 2 };
 
