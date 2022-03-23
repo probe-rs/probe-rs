@@ -1,23 +1,22 @@
-use super::configuration::{self, CoreConfig, SessionConfig};
-use super::core_data::{CoreData, CoreHandle};
-use crate::debug_adapter::dap_adapter::DebugAdapter;
-use crate::debug_adapter::protocol::ProtocolAdapter;
-use crate::{debug_adapter, DebuggerError};
+use super::{
+    configuration::{self, CoreConfig, SessionConfig},
+    core_data::{CoreData, CoreHandle},
+};
+use crate::{
+    debug_adapter::{dap_adapter::DebugAdapter, protocol::ProtocolAdapter},
+    peripherals::svd_variables::SvdCache,
+    DebuggerError,
+};
 use anyhow::{anyhow, Result};
-use capstone::Endian;
 use capstone::{
     arch::arm::ArchMode as armArchMode, arch::riscv::ArchMode as riscvArchMode, prelude::*,
-    Capstone,
+    Capstone, Endian,
 };
-use probe_rs::config::TargetSelector;
-use probe_rs::debug::DebugInfo;
-use probe_rs::Permissions;
-use probe_rs::Probe;
-use probe_rs::ProbeCreationError;
-use probe_rs::Session;
-use probe_rs::{CoreStatus, DebugProbeError};
-use std::{env::set_current_dir, fs::File, io::Read};
-use svd_parser as svd;
+use probe_rs::{
+    config::TargetSelector, debug::DebugInfo, CoreStatus, DebugProbeError, Permissions, Probe,
+    ProbeCreationError, Session,
+};
+use std::env::set_current_dir;
 
 /// The supported breakpoint types
 #[derive(Debug, PartialEq)]
@@ -190,31 +189,12 @@ impl SessionData {
             };
 
             // Configure the [CorePeripherals].
+            // TODO: Implement progress reporting for this operation.
             let core_peripherals = if let Some(svd_file) = &core_configuration.svd_file {
-                let mut svd_xml = &mut String::new();
-                match File::open(svd_file.as_path()) {
-                    Ok(mut svd_opened_file) => {
-                        svd_opened_file.read_to_string(svd_xml);
-                        match svd::parse(&svd_xml) {
-                            Ok(peripheral_device) => {
-                                Some(crate::peripherals::svd_variables::SvdCache {
-                                    id: probe_rs::debug::get_sequential_key(),
-                                    svd_device: peripheral_device,
-                                    svd_registers: probe_rs::debug::VariableCache::new(),
-                                })
-                            }
-                            Err(error) => {
-                                log::error!(
-                                    "Unable to parse CMSIS-SVD file: {:?}. {:?}",
-                                    svd_file,
-                                    error
-                                );
-                                None
-                            }
-                        }
-                    }
+                match SvdCache::new(svd_file) {
+                    Ok(core_peripherals) => Some(core_peripherals),
                     Err(error) => {
-                        log::error!("{}", error);
+                        log::error!("{:?}", error);
                         None
                     }
                 }

@@ -1192,7 +1192,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                 });
             };
 
-            if let Some(core_peripherals) = &target_core.core_data.core_peripherals {
+            if let Some(core_peripherals) = &mut target_core.core_data.core_peripherals {
                 dap_scopes.push(Scope {
                     line: None,
                     column: None,
