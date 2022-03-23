@@ -4531,6 +4531,35 @@ variants:
       - stm32l4r9i_disco_ospi1
       - stm32l4r9i_disco_ospi2
       - mx25lm51245g_stm32l4p5-disco
+  - name: STM32L4P5CETx
+    cores:
+      - name: main
+        type: armv7em
+        core_access_options:
+          Arm:
+            ap: 0x0
+            psel: 0x0
+    memory_map:
+      - Ram:
+          range:
+            start: 0x20000000
+            end: 0x20050000
+          is_boot_memory: false
+          cores:
+            - main
+      - Nvm:
+          range:
+            start: 0x8000000
+            end: 0x8070000
+          is_boot_memory: true
+          cores:
+            - main
+    flash_algorithms:
+      - stm32l4p5xx_1m
+      - stm32l4r9i_eval
+      - stm32l4r9i_disco_ospi1
+      - stm32l4r9i_disco_ospi2
+      - mx25lm51245g_stm32l4p5-disco
   - name: STM32L4P5CGTx
     cores:
       - name: main
@@ -4543,7 +4572,7 @@ variants:
       - Ram:
           range:
             start: 0x20000000
-            end: 0x20020000
+            end: 0x20050000
           is_boot_memory: false
           cores:
             - main

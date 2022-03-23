@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Added support for STM32L4P5CETx (#1061)
 - Added an option to disable use of double-buffering when downloading flash (#1030, #883)
 - rtt::ChannelMode implements additional traits: Clone, Copy, serde's Serialize and Deserialize
 - Added a permissions system that allows the user to specify if a full chip erase is allowed (#918)
