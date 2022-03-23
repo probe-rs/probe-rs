@@ -188,21 +188,6 @@ impl SessionData {
                 .into());
             };
 
-            // Configure the [CorePeripherals].
-            // TODO: Implement progress reporting for this operation.
-            let core_peripherals = if let Some(svd_file) = &core_configuration.svd_file {
-                match SvdCache::new(svd_file) {
-                    Ok(core_peripherals) => Some(core_peripherals),
-                    Err(error) => {
-                        log::error!("{:?}", error);
-                        None
-                    }
-                }
-            } else {
-                // Loading core_peripherals from a CMSIS-SVD file is optional.
-                None
-            };
-
             core_data_vec.push(CoreData {
                 core_index: core_configuration.core_index,
                 target_name: format!(
@@ -211,7 +196,7 @@ impl SessionData {
                     target_session.target().name
                 ),
                 debug_info,
-                core_peripherals,
+                core_peripherals: None,
                 stack_frames: Vec::<probe_rs::debug::StackFrame>::new(),
                 breakpoints: Vec::<ActiveBreakpoint>::new(),
                 rtt_connection: None,

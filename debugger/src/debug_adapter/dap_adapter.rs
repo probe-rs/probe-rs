@@ -1118,9 +1118,45 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
 
         let mut dap_scopes: Vec<Scope> = vec![];
 
+        if let Some(core_peripherals) = &mut target_core.core_data.core_peripherals {
+            if let Some(peripherals_root_variable) = core_peripherals
+                .svd_variable_cache
+                .get_variable_by_name_and_parent(&VariableName::PeripheralScopeRoot, None)
+            {
+                dap_scopes.push(Scope {
+                    line: None,
+                    column: None,
+                    end_column: None,
+                    end_line: None,
+                    expensive: true, // VSCode won't open this tree by default.
+                    indexed_variables: None,
+                    name: "Peripherals".to_string(),
+                    presentation_hint: Some("registers".to_string()),
+                    named_variables: None,
+                    source: None,
+                    variables_reference: peripherals_root_variable.variable_key,
+                });
+            }
+        };
+
         log::trace!("Getting scopes for frame {}", arguments.frame_id,);
 
         if let Some(stack_frame) = target_core.get_stackframe(arguments.frame_id) {
+            dap_scopes.push(Scope {
+                line: None,
+                column: None,
+                end_column: None,
+                end_line: None,
+                expensive: true, // VSCode won't open this tree by default.
+                indexed_variables: None,
+                name: "Registers".to_string(),
+                presentation_hint: Some("registers".to_string()),
+                named_variables: None,
+                source: None,
+                // We use the stack_frame.id for registers, so that we don't need to cache copies of the registers.
+                variables_reference: stack_frame.id,
+            });
+
             if let Some(static_root_variable) =
                 stack_frame
                     .static_variables
@@ -1144,21 +1180,6 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                     variables_reference: static_root_variable.variable_key,
                 });
             };
-
-            dap_scopes.push(Scope {
-                line: None,
-                column: None,
-                end_column: None,
-                end_line: None,
-                expensive: true, // VSCode won't open this tree by default.
-                indexed_variables: None,
-                name: "Registers".to_string(),
-                presentation_hint: Some("registers".to_string()),
-                named_variables: None,
-                source: None,
-                // We use the stack_frame.id for registers, so that we don't need to cache copies of the registers.
-                variables_reference: stack_frame.id,
-            });
 
             if let Some(locals_root_variable) =
                 stack_frame
@@ -1191,24 +1212,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                     variables_reference: locals_root_variable.variable_key,
                 });
             };
-
-            if let Some(core_peripherals) = &mut target_core.core_data.core_peripherals {
-                dap_scopes.push(Scope {
-                    line: None,
-                    column: None,
-                    end_column: None,
-                    end_line: None,
-                    expensive: true, // VSCode won't open this tree by default.
-                    indexed_variables: None,
-                    name: "Peripherals".to_string(),
-                    presentation_hint: Some("registers".to_string()),
-                    named_variables: None,
-                    source: None,
-                    variables_reference: core_peripherals.id,
-                });
-            };
         }
-
         self.send_response(request, Ok(Some(ScopesResponseBody { scopes: dap_scopes })))
     }
 
@@ -1426,6 +1430,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         }
     }
 
+    /// The MS DAP Specification only gives us the unique reference of the variable, and does not tell us which StackFrame it belongs to, nor does it specify if this variable is in the local, register or static scope. Unfortunately this means we have to search through all the available [VariableCache]'s until we find it. To minimize the impact of this, we will search in the most 'likely' places first (first stack frame's locals, then statics, then registers, then move to next stack frame, and so on ...)
     pub(crate) fn variables(
         &mut self,
         target_core: &mut CoreHandle,
@@ -1436,8 +1441,49 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             Err(error) => return self.send_response::<()>(request, Err(error)),
         };
 
+        if let Some(core_peripherals) = &mut target_core.core_data.core_peripherals {
+            // First we check the SVD VariableCache, we do this first because it is the lowest computational overhead.
+            if let Some(search_variable) = core_peripherals
+                .svd_variable_cache
+                .get_variable_by_key(arguments.variables_reference)
+            {
+                let dap_variables: Vec<Variable> = core_peripherals
+                    .svd_variable_cache
+                    .get_children(Some(arguments.variables_reference))?
+                    .iter()
+                    // Convert the `probe_rs::debug::Variable` to `probe_rs_debugger::dap_types::Variable`
+                    .map(|variable| {
+                        let (
+                            variables_reference,
+                            named_child_variables_cnt,
+                            indexed_child_variables_cnt,
+                        ) = self.get_variable_reference(
+                            variable,
+                            &mut core_peripherals.svd_variable_cache,
+                        );
+                        Variable {
+                            name: variable.name.to_string(),
+                            evaluate_name: Some(variable.name.to_string()),
+                            memory_reference: Some(format!("{:#010x}", variable.memory_location)),
+                            indexed_variables: Some(indexed_child_variables_cnt),
+                            named_variables: Some(named_child_variables_cnt),
+                            presentation_hint: None,
+                            type_: Some(variable.type_name.clone()),
+                            value: variable.get_value(&core_peripherals.svd_variable_cache),
+                            variables_reference,
+                        }
+                    })
+                    .collect();
+                return self.send_response(
+                    request,
+                    Ok(Some(VariablesResponseBody {
+                        variables: dap_variables,
+                    })),
+                );
+            }
+        }
+
         let response = {
-            // The MS DAP Specification only gives us the unique reference of the variable, and does not tell us which StackFrame it belongs to, nor does it specify if this variable is in the local, register or static scope. Unfortunately this means we have to search through all the available [VariableCache]'s until we find it. To minimize the impact of this, we will search in the most 'likely' places first (first stack frame's locals, then statics, then registers, then move to next stack frame, and so on ...)
             let mut parent_variable: Option<probe_rs::debug::Variable> = None;
             let mut variable_cache: Option<&mut VariableCache> = None;
             let mut stack_frame_registers: Option<&Registers> = None;

@@ -6,6 +6,7 @@ use crate::{
         protocol::{DapAdapter, ProtocolAdapter},
     },
     debugger::configuration::{self, ConsoleLog},
+    peripherals::svd_variables::SvdCache,
     DebuggerError,
 };
 use anyhow::{anyhow, Context, Result};
@@ -835,6 +836,19 @@ impl Debugger {
                             debug_adapter.send_error_response(&error)?;
                             return Err(error);
                         }
+                    }
+                    // Before we complete, load the (optional) CMSIS-SVD file and its variable cache.
+                    // Configure the [CorePeripherals].
+                    // TODO: Implement progress reporting for this operation.
+                    if let Some(svd_file) = &target_core_config.svd_file {
+                        target_core.core_data.core_peripherals =
+                            match SvdCache::new(svd_file, &mut target_core.core) {
+                                Ok(core_peripherals) => Some(core_peripherals),
+                                Err(error) => {
+                                    log::error!("{:?}", error);
+                                    None
+                                }
+                            };
                     }
                     target_core
                 }

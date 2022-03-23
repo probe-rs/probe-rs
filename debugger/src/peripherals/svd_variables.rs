@@ -1,31 +1,31 @@
 use crate::DebuggerError;
-use probe_rs::debug::VariableCache;
+use probe_rs::{
+    debug::{DebugError, Variable, VariableCache, VariableName},
+    Core,
+};
 use std::{any, fmt::Debug, fs::File, io::Read, path::PathBuf};
 use svd_parser::{self as svd, ValidateLevel};
-use svd_rs::{Device, EnumeratedValues, FieldInfo, PeripheralInfo, RegisterInfo};
+use svd_rs::{peripheral, Device, EnumeratedValues, FieldInfo, PeripheralInfo, RegisterInfo};
 
 /// The SVD file contents and related data
 #[derive(Debug)]
 pub(crate) struct SvdCache {
-    /// A unique identifier
-    pub(crate) id: i64,
-    /// The SVD contents and structure will be stored as variables, down to the Register level.
+    /// The SVD contents and structure will be stored as variables, down to the Field level.
     /// Unlike other VariableCache instances, it will only be built once per DebugSession.
-    /// After that, only the SVD fields change values, and the data for these will be re-read everytime they are queried by the debugger.
-    pub(crate) svd_registers: VariableCache,
+    /// After that, only the SVD fields values change values, and the data for these will be re-read everytime they are queried by the debugger.
+    pub(crate) svd_variable_cache: VariableCache,
 }
 
 impl SvdCache {
     /// Create the SVD cache for a specific core. This function loads the file, parses it, and then builds the VariableCache.
-    pub(crate) fn new(svd_file: &PathBuf) -> Result<Self, DebuggerError> {
+    pub(crate) fn new(svd_file: &PathBuf, core: &mut Core) -> Result<Self, DebuggerError> {
         let svd_xml = &mut String::new();
         match File::open(svd_file.as_path()) {
             Ok(mut svd_opened_file) => {
                 svd_opened_file.read_to_string(svd_xml);
                 match svd::parse(&svd_xml) {
                     Ok(peripheral_device) => Ok(SvdCache {
-                        id: probe_rs::debug::get_sequential_key(),
-                        svd_registers: variable_cache_from_svd(peripheral_device),
+                        svd_variable_cache: variable_cache_from_svd(peripheral_device, core)?,
                     }),
                     Err(error) => Err(DebuggerError::Other(anyhow::anyhow!(
                         "Unable to parse CMSIS-SVD file: {:?}. {:?}",
@@ -40,8 +40,58 @@ impl SvdCache {
 }
 
 /// Create a [`probe_rs::debug::VariableCache`] from a Device that was parsed from a CMSIS-SVD file.
-pub(crate) fn variable_cache_from_svd(peripheral_device: Device) -> probe_rs::debug::VariableCache {
-    probe_rs::debug::VariableCache::new()
+pub(crate) fn variable_cache_from_svd(
+    peripheral_device: Device,
+    core: &mut Core,
+) -> Result<probe_rs::debug::VariableCache, DebuggerError> {
+    let mut svd_cache = probe_rs::debug::VariableCache::new();
+    let mut device_root_variable = Variable::new(None, None);
+    device_root_variable.variable_node_type = probe_rs::debug::VariableNodeType::DoNotRecurse;
+    device_root_variable.name = VariableName::PeripheralScopeRoot;
+    device_root_variable = svd_cache.cache_variable(None, device_root_variable, core)?;
+    for peripheral in &resolve_peripherals(&peripheral_device)? {
+        // TODO: Create a parent structure for peripheral groups with more than one member.
+        let mut peripheral_variable = Variable::new(None, None);
+        peripheral_variable.name = VariableName::Named(peripheral.name.clone());
+        peripheral_variable.type_name = "SvdPeripheral".to_string();
+        peripheral_variable.variable_node_type = probe_rs::debug::VariableNodeType::DirectLookup;
+        peripheral_variable.memory_location = peripheral.base_address;
+        peripheral_variable = svd_cache.cache_variable(
+            Some(device_root_variable.variable_key),
+            peripheral_variable,
+            core,
+        )?;
+        for register in &resolve_registers(peripheral)? {
+            let mut register_variable = Variable::new(None, None);
+            register_variable.name = VariableName::Named(register.name.clone());
+            register_variable.type_name = "SvdRegister".to_string();
+            register_variable.variable_node_type = probe_rs::debug::VariableNodeType::DirectLookup;
+            register_variable.memory_location =
+                peripheral.base_address + register.address_offset as u64;
+            register_variable = svd_cache.cache_variable(
+                Some(peripheral_variable.variable_key),
+                register_variable,
+                core,
+            )?;
+            for field in &resolve_fields(register)? {
+                let mut field_variable = Variable::new(None, None);
+                field_variable.name = VariableName::Named(field.name.clone());
+                field_variable.type_name = "SvdField".to_string();
+                field_variable.variable_node_type = probe_rs::debug::VariableNodeType::DirectLookup;
+                field_variable.memory_location = register_variable.memory_location;
+                // For SVD fields, we overload the range_lower_bound and range_upper_bound as the bit range LSB and MSB.
+                field_variable.range_lower_bound = field.bit_offset() as i64;
+                field_variable.range_upper_bound = (field.bit_offset() + field.bit_width()) as i64;
+                field_variable = svd_cache.cache_variable(
+                    Some(register_variable.variable_key),
+                    field_variable,
+                    core,
+                )?;
+            }
+        }
+    }
+
+    Ok(svd_cache)
 }
 
 /// Resolve all the peripherals through their (optional) `derived_from` peripheral.
@@ -57,6 +107,14 @@ pub(crate) fn resolve_peripherals(
                 if template_peripheral.group_name.is_some() {
                     peripheral_builder =
                         peripheral_builder.group_name(template_peripheral.group_name.clone());
+                }
+                if template_peripheral.display_name.is_some() {
+                    peripheral_builder =
+                        peripheral_builder.display_name(template_peripheral.display_name.clone());
+                }
+                if template_peripheral.description.is_some() {
+                    peripheral_builder =
+                        peripheral_builder.description(template_peripheral.description.clone());
                 }
                 if template_peripheral.prepend_to_name.is_some() {
                     peripheral_builder = peripheral_builder
@@ -90,6 +148,14 @@ pub(crate) fn resolve_peripherals(
         // Irrespective of derived_from values, set the values we need.
         peripheral_builder = peripheral_builder.name(device_peripheral.name.clone());
         peripheral_builder = peripheral_builder.description(device_peripheral.description.clone());
+        if device_peripheral.description.is_some() {
+            peripheral_builder =
+                peripheral_builder.description(device_peripheral.description.clone());
+        }
+        if device_peripheral.display_name.is_some() {
+            peripheral_builder =
+                peripheral_builder.display_name(device_peripheral.display_name.clone());
+        }
         if device_peripheral.group_name.is_some() {
             peripheral_builder =
                 peripheral_builder.group_name(device_peripheral.group_name.clone());
@@ -124,7 +190,7 @@ pub(crate) fn resolve_peripherals(
 
 /// Resolve all the registers of a peripheral through their (optional) `derived_from` register.
 pub(crate) fn resolve_registers(
-    peripheral: PeripheralInfo,
+    peripheral: &PeripheralInfo,
 ) -> Result<Vec<RegisterInfo>, DebuggerError> {
     // TODO: Need to code for the impact of register clusters.
     let mut resolved_registers = vec![];
@@ -200,7 +266,7 @@ pub(crate) fn resolve_registers(
 }
 
 /// Resolve all the fields of a register through their (optional) `derived_from` field.
-pub(crate) fn resolve_fields(register: RegisterInfo) -> Result<Vec<FieldInfo>, DebuggerError> {
+pub(crate) fn resolve_fields(register: &RegisterInfo) -> Result<Vec<FieldInfo>, DebuggerError> {
     // TODO: Need to code for the impact of field clusters.
     let mut resolved_fields = vec![];
     for register_field in register.fields() {

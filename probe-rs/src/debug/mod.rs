@@ -17,7 +17,7 @@ use crate::{
 };
 use num_traits::Zero;
 use probe_rs_target::Architecture;
-pub use variable::{Variable, VariableCache, VariableLocation, VariableName, VariantRole};
+pub use variable::{Variable, VariableCache, VariableName, VariableNodeType, VariantRole};
 
 use std::{
     borrow,
@@ -36,7 +36,7 @@ use gimli::{
 };
 use object::read::{Object, ObjectSection};
 
-use self::variable::{VariableNodeType, VariableValue};
+use self::variable::VariableValue;
 
 /// An error occurred while debugging the target.
 #[derive(Debug, thiserror::Error)]
