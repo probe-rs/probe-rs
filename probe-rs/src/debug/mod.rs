@@ -2832,6 +2832,32 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                     }
                 }
                 gimli::DW_TAG_union_type => {
+                    if let Some(child_member_index) = child_variable.member_index {
+                        match &parent_variable.memory_location {
+                            variable::VariableLocation::Address(address) => {
+                                // This is a member of an array type, and needs special handling.
+                                let (location, has_overflowed) = address.overflowing_add(
+                                    child_member_index as u32 * child_variable.byte_size as u32,
+                                );
+
+                                // TODO:
+
+                                if has_overflowed {
+                                    return Err(DebugError::Other(anyhow::anyhow!(
+                                        "Overflow calculating variable address"
+                                    )));
+                                } else {
+                                    child_variable.memory_location =
+                                        variable::VariableLocation::Address(location);
+                                }
+                            }
+                            _other => {
+                                child_variable.memory_location =
+                                    variable::VariableLocation::Unavailable;
+                            }
+                        }
+                    }
+
                     // Recursively process a child types.
                     // TODO: The DWARF does not currently hold information that allows decoding of which UNION arm is instantiated, so we have to display all available.
                     child_variable = self.process_tree(
