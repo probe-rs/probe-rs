@@ -692,6 +692,8 @@ impl Variable {
                             // If a user sees this error, then there is a logic problem in the stack unwind
                             "Error: This is a bug! Attempted to evaluate a Variable with no type or no memory location".to_string()
                         }
+                    } else if &self.type_name == &VariableType::Struct("None".to_string()) {
+                        "None".to_string()
                     } else {
                         format!(
                             "Unimplemented: Evaluate type {:?} of ({} bytes) at location 0x{:08x?}",
@@ -941,8 +943,8 @@ impl Variable {
                         format!("{}{}{:\t<indentation$}]", compound_value, line_feed, "")
                     }
                     VariableType::Struct(name)
-                        if name.starts_with("Some")
-                            || name.starts_with("Ok")
+                        if /* name.starts_with("Some")
+                            || */ name.starts_with("Ok") 
                             || name.starts_with("Err") =>
                     {
                         // Handle special structure types like the variant values of `Option<>` and `Result<>`
@@ -971,8 +973,17 @@ impl Variable {
                         // Generic handling of other structured types.
                         // The pre- and post- fix is determined by the type of children.
                         // compound_value = format!("{} {}", compound_value, self.type_name);
+
+                        if children.is_empty() {
+                                // Struct with no children -> just print type name
+                                // This is for example the None value of an Option.
+
+                                format!("{}{:\t<indentation$}{}", line_feed, "", self.name.to_string())
+                        } else {
+
                         let (mut pre_fix, mut post_fix): (Option<String>, Option<String>) =
                             (None, None);
+
                         let mut child_count: usize = 0;
 
                         let mut is_tuple = false;
@@ -1053,6 +1064,7 @@ impl Variable {
                             compound_value = format!("{}{}", compound_value, post_fix);
                         };
                         compound_value
+                        }
                     }
                 }
             } else {
