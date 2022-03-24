@@ -326,6 +326,11 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                 for stack_frame_variable_cache in [
                     stack_frame.local_variables.as_mut(),
                     stack_frame.static_variables.as_mut(),
+                    target_core
+                        .core_data
+                        .core_peripherals
+                        .as_mut()
+                        .map(|core_peripherals| &mut core_peripherals.svd_variable_cache),
                 ] {
                     if let Some(search_cache) = stack_frame_variable_cache {
                         variable = search_cache
