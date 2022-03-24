@@ -1450,7 +1450,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                 let dap_variables: Vec<Variable> = core_peripherals
                     .svd_variable_cache
                     .get_children(Some(arguments.variables_reference))?
-                    .iter()
+                    .iter_mut()
                     // Convert the `probe_rs::debug::Variable` to `probe_rs_debugger::dap_types::Variable`
                     .map(|variable| {
                         let (
@@ -1469,7 +1469,14 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                             named_variables: Some(named_child_variables_cnt),
                             presentation_hint: None,
                             type_: Some(variable.type_name.clone()),
-                            value: variable.get_value(&core_peripherals.svd_variable_cache),
+                            value: {
+                                // The SVD cache is not automatically refreshed on every stack trace, and we only need to refresh the field values.
+                                variable.extract_value(
+                                    &mut target_core.core,
+                                    &core_peripherals.svd_variable_cache,
+                                );
+                                variable.get_value(&core_peripherals.svd_variable_cache)
+                            },
                             variables_reference,
                         }
                     })

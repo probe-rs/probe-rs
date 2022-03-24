@@ -15,10 +15,12 @@ use crate::{
     debug::variable::VariableType,
     CoreStatus, MemoryInterface,
 };
+use gimli::{
+    DebuggingInformationEntry, FileEntry, LineProgramHeader, Location, UnitOffset, UnwindContext,
+};
 use num_traits::Zero;
+use object::read::{Object, ObjectSection};
 use probe_rs_target::Architecture;
-pub use variable::{Variable, VariableCache, VariableName, VariableNodeType, VariantRole};
-
 use std::{
     borrow,
     collections::HashMap,
@@ -30,13 +32,9 @@ use std::{
     sync::atomic::{AtomicI64, Ordering},
     vec,
 };
-
-use gimli::{
-    DebuggingInformationEntry, FileEntry, LineProgramHeader, Location, UnitOffset, UnwindContext,
+pub use variable::{
+    Variable, VariableCache, VariableName, VariableNodeType, VariableValue, VariantRole,
 };
-use object::read::{Object, ObjectSection};
-
-use self::variable::VariableValue;
 
 /// An error occurred while debugging the target.
 #[derive(Debug, thiserror::Error)]
@@ -1013,7 +1011,7 @@ impl DebugInfo {
                     }
                 }
             }
-            VariableNodeType::DoNotRecurse | VariableNodeType::RecurseToBaseType => {
+            _ => {
                 // Do nothing. These have already been recursed to their maximum.
             }
         }

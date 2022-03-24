@@ -383,6 +383,12 @@ pub enum VariableNodeType {
     /// - Rule: For now, Array types WILL ALWAYS BE recursed. TODO: Evaluate if it is beneficial to defer these.
     /// - Rule: For now, Union types WILL ALWAYS BE recursed. TODO: Evaluate if it is beneficial to defer these.
     RecurseToBaseType,
+    /// SVD Device Peripherals
+    SvdPeripheral,
+    /// SVD Peripheral Registers
+    SvdRegister,
+    /// SVD Register Fields
+    SvdField,
 }
 
 impl VariableNodeType {
@@ -567,7 +573,7 @@ impl Variable {
 
     /// Implementing set_value(), because the library passes errors into the value of the variable.
     /// This ensures debug front ends can see the errors, but doesn't fail because of a single variable not being able to decode correctly.
-    pub(crate) fn set_value(&mut self, new_value: VariableValue) {
+    pub fn set_value(&mut self, new_value: VariableValue) {
         // Allow some block when logic requires it.
         #[allow(clippy::if_same_then_else)]
         if new_value.is_valid() {
@@ -667,7 +673,42 @@ impl Variable {
     pub fn get_value(&self, variable_cache: &VariableCache) -> String {
         // Allow for chained `if let` without complaining
         #[allow(clippy::if_same_then_else)]
-        if !self.value.is_empty() {
+        if VariableNodeType::SvdRegister == self.variable_node_type {
+            if let VariableValue::Valid(register_value) = &self.value {
+                if let Ok(register_u32_value) = register_value.parse::<u32>() {
+                    format!(
+                        "{:#032b} @ {:#010X}",
+                        register_u32_value, self.memory_location
+                    )
+                } else {
+                    format!("Invalid register value {}", register_value)
+                }
+            } else {
+                format!("{}", self.value)
+            }
+        } else if VariableNodeType::SvdField == self.variable_node_type {
+            // In this special case, we extract just the bits we need from the stored value of the register.
+            if let VariableValue::Valid(register_value) = &self.value {
+                if let Ok(register_u32_value) = register_value.parse::<u32>() {
+                    let mut bit_value: u32 = register_u32_value << self.range_lower_bound;
+                    bit_value >>= 32 - (self.range_upper_bound - self.range_lower_bound);
+                    format!(
+                        "{:#b} @ {:#010X}:{}..{}",
+                        bit_value,
+                        self.memory_location,
+                        self.range_lower_bound,
+                        self.range_upper_bound
+                    )
+                } else {
+                    format!(
+                        "Invalid bit range {}..{} from value {}",
+                        self.range_lower_bound, self.range_upper_bound, register_value
+                    )
+                }
+            } else {
+                format!("{}", self.value)
+            }
+        } else if !self.value.is_empty() {
             // The `value` for this `Variable` is non empty because ...
             // - It is base data type for which a value was determined based on the core runtime, or ...
             // - We encountered an error somewhere, so report it to the user
@@ -713,15 +754,37 @@ impl Variable {
     }
 
     /// Evaluate the variable's result if possible and set self.value, or else set self.value as the error String.
-    fn extract_value(&mut self, core: &mut Core<'_>, variable_cache: &VariableCache) {
-        // Quick exit if we don't really need to do much more.
-        if !self.value.is_empty()
-        // The value was set explicitly, so just leave it as is., or it was an error, so don't attempt anything else
-        || self.memory_location == variable::VariableLocation::Value
-        || !self.memory_location.valid()
+    pub fn extract_value(&mut self, core: &mut Core<'_>, variable_cache: &VariableCache) {
+        // Special handling for SVD registers
+        if self.variable_node_type == VariableNodeType::SvdRegister {
+            match core.read_word_32(self.memory_location as u32) {
+                Ok(u32_value) => self.value = VariableValue::Valid(u32_value.to_string()),
+                Err(error) => {
+                    self.value = VariableValue::Error(format!(
+                        "Unable to read peripheral register value @ {:#010X} : {:?}",
+                        self.memory_location, error
+                    ))
+                }
+            }
+            return;
+        } else if self.variable_node_type == VariableNodeType::SvdField {
+            if let Some(parent_variable) =
+                variable_cache.get_variable_by_key(self.parent_key.unwrap_or(0))
+            {
+                self.value = parent_variable.value;
+            } else {
+                self.value = VariableValue::Error(
+                    "Unable to retrieve the register value for this field".to_string(),
+                );
+            }
+            return;
+        } else if !self.value.is_empty()
+        // The value was set explicitly, so just leave it as is, or it was an error, so don't attempt anything else
+        || self.memory_location == u64::MAX
         // Early on in the process of `Variable` evaluation
         || self.type_name == VariableType::Unknown
         {
+            // Quick exit if we don't really need to do much more.
             return;
         } else if self.variable_node_type.is_deferred() {
             // And we have not previously assigned the value, then assign the type and address as the value

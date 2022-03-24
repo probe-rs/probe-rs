@@ -53,19 +53,32 @@ pub(crate) fn variable_cache_from_svd(
         // TODO: Create a parent structure for peripheral groups with more than one member.
         let mut peripheral_variable = Variable::new(None, None);
         peripheral_variable.name = VariableName::Named(peripheral.name.clone());
-        peripheral_variable.type_name = "SvdPeripheral".to_string();
-        peripheral_variable.variable_node_type = probe_rs::debug::VariableNodeType::DirectLookup;
+        peripheral_variable.type_name = peripheral
+            .description
+            .clone()
+            .unwrap_or_else(|| "Device Peripheral".to_string());
+        peripheral_variable.variable_node_type = probe_rs::debug::VariableNodeType::SvdPeripheral;
         peripheral_variable.memory_location = peripheral.base_address;
+        peripheral_variable.set_value(probe_rs::debug::VariableValue::Valid(
+            peripheral
+                .description
+                .clone()
+                .unwrap_or_else(|| format!("{}", peripheral_variable.name)),
+        ));
         peripheral_variable = svd_cache.cache_variable(
             Some(device_root_variable.variable_key),
             peripheral_variable,
             core,
         )?;
         for register in &resolve_registers(peripheral)? {
+            // TODO: Implement warnings for users if they are going to read registers that have a side effect on reading.
             let mut register_variable = Variable::new(None, None);
             register_variable.name = VariableName::Named(register.name.clone());
-            register_variable.type_name = "SvdRegister".to_string();
-            register_variable.variable_node_type = probe_rs::debug::VariableNodeType::DirectLookup;
+            register_variable.type_name = register
+                .description
+                .clone()
+                .unwrap_or_else(|| "Peripheral Register".to_string());
+            register_variable.variable_node_type = probe_rs::debug::VariableNodeType::SvdRegister;
             register_variable.memory_location =
                 peripheral.base_address + register.address_offset as u64;
             register_variable = svd_cache.cache_variable(
@@ -76,12 +89,16 @@ pub(crate) fn variable_cache_from_svd(
             for field in &resolve_fields(register)? {
                 let mut field_variable = Variable::new(None, None);
                 field_variable.name = VariableName::Named(field.name.clone());
-                field_variable.type_name = "SvdField".to_string();
-                field_variable.variable_node_type = probe_rs::debug::VariableNodeType::DirectLookup;
+                field_variable.type_name = field
+                    .description
+                    .clone()
+                    .unwrap_or_else(|| "Register Field".to_string());
+                field_variable.variable_node_type = probe_rs::debug::VariableNodeType::SvdField;
                 field_variable.memory_location = register_variable.memory_location;
                 // For SVD fields, we overload the range_lower_bound and range_upper_bound as the bit range LSB and MSB.
                 field_variable.range_lower_bound = field.bit_offset() as i64;
                 field_variable.range_upper_bound = (field.bit_offset() + field.bit_width()) as i64;
+                // TODO: Extend the Variable definition, so that we can resolve the EnumeratedValues for fields.
                 field_variable = svd_cache.cache_variable(
                     Some(register_variable.variable_key),
                     field_variable,
