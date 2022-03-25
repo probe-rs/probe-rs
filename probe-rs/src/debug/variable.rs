@@ -203,7 +203,7 @@ impl VariableCache {
         parent_variable: &Variable,
         obsolete_child_variable: &Variable,
     ) -> Result<(), Error> {
-        if obsolete_child_variable.type_name.is_empty()
+        if obsolete_child_variable.type_name == VariableType::Unknown
             || obsolete_child_variable.variable_node_type != VariableNodeType::DoNotRecurse
         {
             // Make sure we pass children up, past any intermediate nodes.
@@ -399,6 +399,114 @@ impl Default for VariableNodeType {
     }
 }
 
+#[derive(Debug, Clone, PartialEq)]
+pub enum VariableType {
+    Base(String),
+    Struct(String),
+    Enum(String),
+    Namespace,
+    Pointer(Option<String>),
+    Array {
+        // TODO: Use a proper type here, not variable name
+        entry_type: VariableName,
+        count: usize,
+    },
+    Unnamed,
+    Unknown,
+    Other(String),
+}
+
+impl Default for VariableType {
+    fn default() -> Self {
+        VariableType::Unknown
+    }
+}
+
+impl VariableType {
+    pub fn is_phantom_data(&self) -> bool {
+        match self {
+            VariableType::Struct(name) => name.starts_with("PhantomData"),
+            _ => false,
+        }
+    }
+
+    pub fn is_reference(&self) -> bool {
+        match self {
+            VariableType::Pointer(Some(name)) => name.starts_with('&'),
+            _ => false,
+        }
+    }
+
+    pub fn is_array(&self) -> bool {
+        matches!(self, VariableType::Array { .. })
+    }
+
+    pub fn display(&self) -> String {
+        match self {
+            VariableType::Base(base) => base.clone(),
+            VariableType::Struct(struct_name) => struct_name.clone(),
+            VariableType::Enum(enum_name) => enum_name.clone(),
+            VariableType::Namespace => "<namespace>".to_string(),
+            VariableType::Pointer(pointer_name) => pointer_name
+                .clone()
+                .unwrap_or_else(|| "<unnamed>".to_string()),
+            VariableType::Array { entry_type, count } => format!("[{}; {}]", entry_type, count),
+            VariableType::Unnamed => "<unnamed>".to_string(),
+            VariableType::Unknown => "<unknown>".to_string(),
+            VariableType::Other(other) => other.clone(),
+        }
+    }
+}
+
+/// Location of a variable
+#[derive(Debug, Clone, PartialEq)]
+pub enum VariableLocation {
+    /// Location of the variable is not known. This means that it has not been evaluated yet.
+    Unknown,
+    /// The variable does not have a location currently, probably due to optimisations.
+    Unavailable,
+    /// The variable can be found in memory, at this address.
+    Address(u32),
+    /// The value of the variable can be found in this register.
+    Register(usize),
+    /// The value of the variable is directly available.
+    Value,
+    /// There was an error evaluating the variable location.
+    Error(String),
+    /// Support for handling the location of this variable is not (yet) implemented.
+    Unsupported(String),
+}
+
+impl VariableLocation {
+    /// Return the memory address, if available. Otherwise an error is returned.
+    pub fn memory_address(&self) -> Result<u32, DebugError> {
+        match self {
+            VariableLocation::Address(address) => Ok(*address),
+            other => Err(DebugError::Other(anyhow!(
+                "Variable does not have a memory location: location={:?}",
+                other
+            ))),
+        }
+    }
+
+    /// Check if the location is valid, ie. not an error, unsupported, or unavailable.
+    pub fn valid(&self) -> bool {
+        match self {
+            VariableLocation::Address(_)
+            | VariableLocation::Register(_)
+            | VariableLocation::Value
+            | VariableLocation::Unknown => true,
+            _other => false,
+        }
+    }
+}
+
+impl Default for VariableLocation {
+    fn default() -> Self {
+        VariableLocation::Unknown
+    }
+}
+
 /// The `Variable` struct is used in conjunction with `VariableCache` to cache data about variables.
 ///
 /// Any modifications to the `Variable` value will be transient (lost when it goes out of scope),
@@ -415,8 +523,9 @@ pub struct Variable {
     value: VariableValue,
     /// The source location of the declaration of this variable, if available.
     pub source_location: Option<SourceLocation>,
+
     /// The name of the type of this variable.
-    pub type_name: String,
+    pub type_name: VariableType,
     /// The unit_header_offset and variable_unit_offset are cached to allow on-demand access to the variable's gimli::Unit, through functions like:
     ///   `gimli::Read::DebugInfo.header_from_offset()`, and   
     ///   `gimli::Read::UnitHeader.entries_tree()`
@@ -427,7 +536,7 @@ pub struct Variable {
     /// See [VariableNodeType] for more information.
     pub variable_node_type: VariableNodeType,
     /// The starting location/address in memory where this Variable's value is stored.
-    pub memory_location: u64,
+    pub memory_location: VariableLocation,
     /// The size of this variable in bytes.
     pub byte_size: u64,
     /// If  this is a subrange (array, vector, etc.), is the ordinal position of this variable in that range
@@ -485,41 +594,49 @@ impl Variable {
         };
         let updated_value = if !self.is_valid()
                 // Need a valid type
-                || self.type_name.is_empty()
+                || self.type_name == VariableType::Unknown
                 // Need a valid memory location
-                || self.memory_location.is_zero()
+                || !self.memory_location.valid()
         {
             // Insufficient data available.
             return Err(anyhow!(
-                "Cannot update variable: {:?}, with supplied information (value={:?}, type={}, memory location={:#010x}).",
+                "Cannot update variable: {:?}, with supplied information (value={:?}, type={:?}, memory location={:#010x?}).",
                 self.name, self.value, self.type_name, self.memory_location).into());
         } else if variable_name.starts_with('*') {
             // Writing the values of pointers is a bit more complex, and not currently supported.
             return  Err(anyhow!("Please only update variables with a base data type. Updating pointer variable types is not yet supported.").into());
         } else {
             // We have everything we need to update the variable value.
-            match match self.type_name.as_str() {
-                "bool" => bool::update_value(self, core, new_value.as_str()),
-                "char" => char::update_value(self, core, new_value.as_str()),
-                "i8" => i8::update_value(self, core, new_value.as_str()),
-                "i16" => i16::update_value(self, core, new_value.as_str()),
-                "i32" => i32::update_value(self, core, new_value.as_str()),
-                "i64" => i64::update_value(self, core, new_value.as_str()),
-                "i128" => i128::update_value(self, core, new_value.as_str()),
-                "isize" => isize::update_value(self, core, new_value.as_str()),
-                "u8" => u8::update_value(self, core, new_value.as_str()),
-                "u16" => u16::update_value(self, core, new_value.as_str()),
-                "u32" => u32::update_value(self, core, new_value.as_str()),
-                "u64" => u64::update_value(self, core, new_value.as_str()),
-                "u128" => u128::update_value(self, core, new_value.as_str()),
-                "usize" => usize::update_value(self, core, new_value.as_str()),
-                "f32" => f32::update_value(self, core, new_value.as_str()),
-                "f64" => f64::update_value(self, core, new_value.as_str()),
-                other => Err(DebugError::Other(anyhow::anyhow!(
+            let update_result = match &self.type_name {
+                VariableType::Base(name) => match name.as_str() {
+                    "bool" => bool::update_value(self, core, new_value.as_str()),
+                    "char" => char::update_value(self, core, new_value.as_str()),
+                    "i8" => i8::update_value(self, core, new_value.as_str()),
+                    "i16" => i16::update_value(self, core, new_value.as_str()),
+                    "i32" => i32::update_value(self, core, new_value.as_str()),
+                    "i64" => i64::update_value(self, core, new_value.as_str()),
+                    "i128" => i128::update_value(self, core, new_value.as_str()),
+                    "isize" => isize::update_value(self, core, new_value.as_str()),
+                    "u8" => u8::update_value(self, core, new_value.as_str()),
+                    "u16" => u16::update_value(self, core, new_value.as_str()),
+                    "u32" => u32::update_value(self, core, new_value.as_str()),
+                    "u64" => u64::update_value(self, core, new_value.as_str()),
+                    "u128" => u128::update_value(self, core, new_value.as_str()),
+                    "usize" => usize::update_value(self, core, new_value.as_str()),
+                    "f32" => f32::update_value(self, core, new_value.as_str()),
+                    "f64" => f64::update_value(self, core, new_value.as_str()),
+                    other => Err(DebugError::Other(anyhow::anyhow!(
                     "Unsupported datatype: {}. Please only update variables with a base data type.",
                     other.to_string()
                 ))),
-            } {
+                },
+                other => Err(DebugError::Other(anyhow::anyhow!(
+                    "Unsupported variable type {:?}. Only base variables can be updated.",
+                    other
+                ))),
+            };
+
+            match update_result {
                 Ok(()) => {
                     // Now update the cache with the new value for this variable.
                     let mut cache_variable = self.clone();
@@ -563,19 +680,23 @@ impl Variable {
             match variable_cache.has_children(self) {
                 Ok(has_children) => {
                     if has_children {
-                        self.formatted_variable_value(variable_cache, 0_usize)
-                    } else if self.type_name.is_empty() || self.memory_location.is_zero() {
+                        self.formatted_variable_value(variable_cache, 0_usize, false)
+                    } else if self.type_name == VariableType::Unknown
+                        || !self.memory_location.valid()
+                    {
                         if self.variable_node_type.is_deferred() {
                             // When we will do a lazy-load of variable children, and they have not yet been requested by the user, just display the type_name as the value
-                            self.type_name.clone()
+                            format!("{:?}", self.type_name.clone())
                         } else {
                             // This condition should only be true for intermediate nodes from DWARF. These should not show up in the final `VariableCache`
                             // If a user sees this error, then there is a logic problem in the stack unwind
                             "Error: This is a bug! Attempted to evaluate a Variable with no type or no memory location".to_string()
                         }
+                    } else if self.type_name == VariableType::Struct("None".to_string()) {
+                        "None".to_string()
                     } else {
                         format!(
-                            "Unimplemented: Evaluate type {} of ({} bytes) at location 0x{:08x}",
+                            "Unimplemented: Evaluate type {:?} of ({} bytes) at location 0x{:08x?}",
                             self.type_name, self.byte_size, self.memory_location
                         )
                     }
@@ -593,103 +714,116 @@ impl Variable {
         // Quick exit if we don't really need to do much more.
         if !self.value.is_empty()
         // The value was set explicitly, so just leave it as is., or it was an error, so don't attempt anything else
-        || self.memory_location == u64::MAX
+        || self.memory_location == variable::VariableLocation::Value
+        || !self.memory_location.valid()
         // Early on in the process of `Variable` evaluation
-        || self.type_name.is_empty()
-        // Templates, Phantoms, etc.
-        || self.memory_location.is_zero()
+        || self.type_name == VariableType::Unknown
         {
             return;
         } else if self.variable_node_type.is_deferred() {
             // And we have not previously assigned the value, then assign the type and address as the value
-            self.value = VariableValue::Valid(format!(
-                "{} @ {:#010X}",
-                self.type_name.clone(),
-                self.memory_location
-            ));
+            let location = match &self.memory_location {
+                VariableLocation::Address(address) => format!("{:#010X}", address),
+                other => format!("{:?}", other),
+            };
+
+            self.value =
+                VariableValue::Valid(format!("{} @ {}", self.type_name.display(), location));
             return;
         }
 
         log::trace!(
-            "Extracting value for {:?}, type={}",
+            "Extracting value for {:?}, type={:?}",
             self.name,
             self.type_name
         );
 
         // This is the primary logic for decoding a variable's value, once we know the type and memory_location.
-        let known_value = match self.type_name.as_str() {
-            "!" => VariableValue::Valid("<Never returns>".to_string()),
-            "()" => VariableValue::Valid("()".to_string()),
-            "bool" => bool::get_value(self, core, variable_cache).map_or_else(
-                |err| VariableValue::Error(format!("{:?}", err)),
-                |value| VariableValue::Valid(value.to_string()),
-            ),
-            "char" => char::get_value(self, core, variable_cache).map_or_else(
-                |err| VariableValue::Error(format!("{:?}", err)),
-                |value| VariableValue::Valid(value.to_string()),
-            ),
-            "&str" => String::get_value(self, core, variable_cache).map_or_else(
-                |err| VariableValue::Error(format!("{:?}", err)),
-                VariableValue::Valid,
-            ),
-            "i8" => i8::get_value(self, core, variable_cache).map_or_else(
-                |err| VariableValue::Error(format!("{:?}", err)),
-                |value| VariableValue::Valid(value.to_string()),
-            ),
-            "i16" => i16::get_value(self, core, variable_cache).map_or_else(
-                |err| VariableValue::Error(format!("{:?}", err)),
-                |value| VariableValue::Valid(value.to_string()),
-            ),
-            "i32" => i32::get_value(self, core, variable_cache).map_or_else(
-                |err| VariableValue::Error(format!("{:?}", err)),
-                |value| VariableValue::Valid(value.to_string()),
-            ),
-            "i64" => i64::get_value(self, core, variable_cache).map_or_else(
-                |err| VariableValue::Error(format!("{:?}", err)),
-                |value| VariableValue::Valid(value.to_string()),
-            ),
-            "i128" => i128::get_value(self, core, variable_cache).map_or_else(
-                |err| VariableValue::Error(format!("{:?}", err)),
-                |value| VariableValue::Valid(value.to_string()),
-            ),
-            "isize" => isize::get_value(self, core, variable_cache).map_or_else(
-                |err| VariableValue::Error(format!("{:?}", err)),
-                |value| VariableValue::Valid(value.to_string()),
-            ),
-            "u8" => u8::get_value(self, core, variable_cache).map_or_else(
-                |err| VariableValue::Error(format!("{:?}", err)),
-                |value| VariableValue::Valid(value.to_string()),
-            ),
-            "u16" => u16::get_value(self, core, variable_cache).map_or_else(
-                |err| VariableValue::Error(format!("{:?}", err)),
-                |value| VariableValue::Valid(value.to_string()),
-            ),
-            "u32" => u32::get_value(self, core, variable_cache).map_or_else(
-                |err| VariableValue::Error(format!("{:?}", err)),
-                |value| VariableValue::Valid(value.to_string()),
-            ),
-            "u64" => u64::get_value(self, core, variable_cache).map_or_else(
-                |err| VariableValue::Error(format!("{:?}", err)),
-                |value| VariableValue::Valid(value.to_string()),
-            ),
-            "u128" => u128::get_value(self, core, variable_cache).map_or_else(
-                |err| VariableValue::Error(format!("{:?}", err)),
-                |value| VariableValue::Valid(value.to_string()),
-            ),
-            "usize" => usize::get_value(self, core, variable_cache).map_or_else(
-                |err| VariableValue::Error(format!("{:?}", err)),
-                |value| VariableValue::Valid(value.to_string()),
-            ),
-            "f32" => f32::get_value(self, core, variable_cache).map_or_else(
-                |err| VariableValue::Error(format!("{:?}", err)),
-                |value| VariableValue::Valid(value.to_string()),
-            ),
-            "f64" => f64::get_value(self, core, variable_cache).map_or_else(
-                |err| VariableValue::Error(format!("{:?}", err)),
-                |value| VariableValue::Valid(value.to_string()),
-            ),
-            "None" => VariableValue::Valid("None".to_string()),
-            _undetermined_value => VariableValue::Empty,
+        let known_value = match &self.type_name {
+            VariableType::Base(name) => {
+                if self.memory_location == VariableLocation::Unknown {
+                    self.value = VariableValue::Empty;
+                    return;
+                }
+
+                match name.as_str() {
+                    "!" => VariableValue::Valid("<Never returns>".to_string()),
+                    "()" => VariableValue::Valid("()".to_string()),
+                    "bool" => bool::get_value(self, core, variable_cache).map_or_else(
+                        |err| VariableValue::Error(format!("{:?}", err)),
+                        |value| VariableValue::Valid(value.to_string()),
+                    ),
+                    "char" => char::get_value(self, core, variable_cache).map_or_else(
+                        |err| VariableValue::Error(format!("{:?}", err)),
+                        |value| VariableValue::Valid(value.to_string()),
+                    ),
+                    "i8" => i8::get_value(self, core, variable_cache).map_or_else(
+                        |err| VariableValue::Error(format!("{:?}", err)),
+                        |value| VariableValue::Valid(value.to_string()),
+                    ),
+                    "i16" => i16::get_value(self, core, variable_cache).map_or_else(
+                        |err| VariableValue::Error(format!("{:?}", err)),
+                        |value| VariableValue::Valid(value.to_string()),
+                    ),
+                    "i32" => i32::get_value(self, core, variable_cache).map_or_else(
+                        |err| VariableValue::Error(format!("{:?}", err)),
+                        |value| VariableValue::Valid(value.to_string()),
+                    ),
+                    "i64" => i64::get_value(self, core, variable_cache).map_or_else(
+                        |err| VariableValue::Error(format!("{:?}", err)),
+                        |value| VariableValue::Valid(value.to_string()),
+                    ),
+                    "i128" => i128::get_value(self, core, variable_cache).map_or_else(
+                        |err| VariableValue::Error(format!("{:?}", err)),
+                        |value| VariableValue::Valid(value.to_string()),
+                    ),
+                    "isize" => isize::get_value(self, core, variable_cache).map_or_else(
+                        |err| VariableValue::Error(format!("{:?}", err)),
+                        |value| VariableValue::Valid(value.to_string()),
+                    ),
+                    "u8" => u8::get_value(self, core, variable_cache).map_or_else(
+                        |err| VariableValue::Error(format!("{:?}", err)),
+                        |value| VariableValue::Valid(value.to_string()),
+                    ),
+                    "u16" => u16::get_value(self, core, variable_cache).map_or_else(
+                        |err| VariableValue::Error(format!("{:?}", err)),
+                        |value| VariableValue::Valid(value.to_string()),
+                    ),
+                    "u32" => u32::get_value(self, core, variable_cache).map_or_else(
+                        |err| VariableValue::Error(format!("{:?}", err)),
+                        |value| VariableValue::Valid(value.to_string()),
+                    ),
+                    "u64" => u64::get_value(self, core, variable_cache).map_or_else(
+                        |err| VariableValue::Error(format!("{:?}", err)),
+                        |value| VariableValue::Valid(value.to_string()),
+                    ),
+                    "u128" => u128::get_value(self, core, variable_cache).map_or_else(
+                        |err| VariableValue::Error(format!("{:?}", err)),
+                        |value| VariableValue::Valid(value.to_string()),
+                    ),
+                    "usize" => usize::get_value(self, core, variable_cache).map_or_else(
+                        |err| VariableValue::Error(format!("{:?}", err)),
+                        |value| VariableValue::Valid(value.to_string()),
+                    ),
+                    "f32" => f32::get_value(self, core, variable_cache).map_or_else(
+                        |err| VariableValue::Error(format!("{:?}", err)),
+                        |value| VariableValue::Valid(value.to_string()),
+                    ),
+                    "f64" => f64::get_value(self, core, variable_cache).map_or_else(
+                        |err| VariableValue::Error(format!("{:?}", err)),
+                        |value| VariableValue::Valid(value.to_string()),
+                    ),
+                    "None" => VariableValue::Valid("None".to_string()),
+                    _undetermined_value => VariableValue::Empty,
+                }
+            }
+            VariableType::Struct(name) if name == "&str" => {
+                String::get_value(self, core, variable_cache).map_or_else(
+                    |err| VariableValue::Error(format!("{:?}", err)),
+                    VariableValue::Valid,
+                )
+            }
+            _other => VariableValue::Empty,
         };
         self.value = known_value;
     }
@@ -719,16 +853,26 @@ impl Variable {
         &self,
         variable_cache: &VariableCache,
         indentation: usize,
+        show_name: bool,
     ) -> String {
         let line_feed = if indentation.is_zero() { "" } else { "\n" }.to_string();
         // Allow for chained `if let` without complaining
         #[allow(clippy::if_same_then_else)]
         if !self.value.is_empty() {
-            // Use the supplied value or error message.
-            format!(
-                "{}{:\t<indentation$}{}: {}",
-                line_feed, "", self.type_name, self.value
-            )
+            if show_name {
+                // Use the supplied value or error message.
+                format!(
+                    "{}{:\t<indentation$}{}: {} = {}",
+                    line_feed,
+                    "",
+                    self.name,
+                    self.type_name.display(),
+                    self.value
+                )
+            } else {
+                // Use the supplied value or error message.
+                format!("{}{:\t<indentation$}{}", line_feed, "", self.value)
+            }
         } else if let VariableName::AnonymousNamespace = self.name {
             // Namespaces do not have values
             String::new()
@@ -737,128 +881,195 @@ impl Variable {
             String::new()
         } else {
             // Infer a human readable value using the available children of this variable.
-            let mut compound_value = "".to_string();
+            let mut compound_value = String::new();
             if let Ok(children) = variable_cache.get_children(Some(self.variable_key)) {
                 // Make sure we can safely unwrap() children.
-                if self.type_name.starts_with('&') {
-                    // Pointers
-                    compound_value = format!(
-                        "{}{}{:\t<indentation$}{}",
-                        compound_value,
-                        line_feed,
-                        "",
-                        if let Some(first_child) = children.first() {
-                            first_child.formatted_variable_value(variable_cache, indentation + 1)
-                        } else {
-                            "Unable to resolve referenced variable value".to_string()
+                match &self.type_name {
+                    VariableType::Pointer(_) => {
+                        // Pointers
+                        compound_value = format!(
+                            "{}{}{:\t<indentation$}{}",
+                            compound_value,
+                            line_feed,
+                            "",
+                            if let Some(first_child) = children.first() {
+                                first_child.formatted_variable_value(
+                                    variable_cache,
+                                    indentation + 1,
+                                    true,
+                                )
+                            } else {
+                                "Unable to resolve referenced variable value".to_string()
+                            }
+                        );
+                        compound_value
+                    }
+                    VariableType::Array { .. } => {
+                        // Arrays
+                        compound_value = format!(
+                            "{}{}{:\t<indentation$}{}: {} = [",
+                            compound_value,
+                            line_feed,
+                            "",
+                            self.name,
+                            self.type_name.display(),
+                        );
+                        let mut child_count: usize = 0;
+                        for child in children.iter() {
+                            child_count += 1;
+                            if child_count == children.len() {
+                                // Do not add a separator at the end of the list
+                                compound_value = format!(
+                                    "{}{}",
+                                    compound_value,
+                                    child.formatted_variable_value(
+                                        variable_cache,
+                                        indentation + 1,
+                                        false
+                                    )
+                                );
+                            } else {
+                                compound_value = format!(
+                                    "{}{}, ",
+                                    compound_value,
+                                    child.formatted_variable_value(
+                                        variable_cache,
+                                        indentation + 1,
+                                        false
+                                    )
+                                );
+                            }
                         }
-                    );
-                    compound_value
-                } else if self.type_name.starts_with('[') {
-                    // Arrays
-                    compound_value =
-                        format!("{}{}{:\t<indentation$}[", compound_value, line_feed, "");
-                    let mut child_count: usize = 0;
-                    for child in children.iter() {
-                        child_count += 1;
-                        if child_count == children.len() {
-                            // Do not add a separator at the end of the list
+                        format!("{}{}{:\t<indentation$}]", compound_value, line_feed, "")
+                    }
+                    VariableType::Struct(name)
+                        if /* name.starts_with("Some")
+                            || */ name.starts_with("Ok") 
+                            || name.starts_with("Err") =>
+                    {
+                        // Handle special structure types like the variant values of `Option<>` and `Result<>`
+                        compound_value = format!(
+                            "{}{:\t<indentation$}{}: {} = {}(",
+                            line_feed,
+                            "",
+                            self.name,
+                            self.type_name.display(),
+                            compound_value
+                        );
+                        for child in children {
                             compound_value = format!(
                                 "{}{}",
                                 compound_value,
-                                child.formatted_variable_value(variable_cache, indentation + 1)
+                                child.formatted_variable_value(
+                                    variable_cache,
+                                    indentation + 1,
+                                    false
+                                )
                             );
+                        }
+                        format!("{}{}{:\t<indentation$})", compound_value, line_feed, "")
+                    }
+                    _ => {
+                        // Generic handling of other structured types.
+                        // The pre- and post- fix is determined by the type of children.
+                        // compound_value = format!("{} {}", compound_value, self.type_name);
+
+                        if children.is_empty() {
+                                // Struct with no children -> just print type name
+                                // This is for example the None value of an Option.
+
+                                format!("{}{:\t<indentation$}{}", line_feed, "", self.name)
                         } else {
-                            compound_value = format!(
-                                "{}{}, ",
-                                compound_value,
-                                child.formatted_variable_value(variable_cache, indentation + 1)
-                            );
+
+                        let (mut pre_fix, mut post_fix): (Option<String>, Option<String>) =
+                            (None, None);
+
+                        let mut child_count: usize = 0;
+
+                        let mut is_tuple = false;
+
+                        for child in children.iter() {
+                            child_count += 1;
+                            if pre_fix.is_none() && post_fix.is_none() {
+                                if let VariableName::Named(child_name) = &child.name {
+                                    if child_name.starts_with("__0") {
+                                        is_tuple = true;
+                                        // Treat this structure as a tuple
+                                        pre_fix = Some(format!(
+                                            "{}{:\t<indentation$}{}: {}({}) = {}(",
+                                            line_feed,
+                                            "",
+                                            self.name,
+                                            self.type_name.display(),
+                                            child.type_name.display(),
+                                            self.type_name.display(),
+                                        ));
+                                        post_fix =
+                                            Some(format!("{}{:\t<indentation$})", line_feed, ""));
+                                    } else {
+                                        // Treat this structure as a `struct`
+
+                                        if show_name {
+                                            pre_fix = Some(format!(
+                                                "{}{:\t<indentation$}{}: {} = {} {{",
+                                                line_feed,
+                                                "",
+                                                self.name,
+                                                self.type_name.display(),
+                                                self.type_name.display(),
+                                            ));
+                                        } else {
+                                            pre_fix = Some(format!(
+                                                "{}{:\t<indentation$}{} {{",
+                                                line_feed,
+                                                "",
+                                                self.type_name.display(),
+                                            ));
+                                        }
+                                        post_fix =
+                                            Some(format!("{}{:\t<indentation$}}}", line_feed, ""));
+                                    }
+                                };
+                                if let Some(pre_fix) = &pre_fix {
+                                    compound_value = format!("{}{}", compound_value, pre_fix);
+                                };
+                            }
+
+                            let print_name = !is_tuple;
+
+                            if child_count == children.len() {
+                                // Do not add a separator at the end of the list
+                                compound_value = format!(
+                                    "{}{}",
+                                    compound_value,
+                                    child.formatted_variable_value(
+                                        variable_cache,
+                                        indentation + 1,
+                                        print_name
+                                    )
+                                );
+                            } else {
+                                compound_value = format!(
+                                    "{}{}, ",
+                                    compound_value,
+                                    child.formatted_variable_value(
+                                        variable_cache,
+                                        indentation + 1,
+                                        print_name
+                                    )
+                                );
+                            }
+                        }
+                        if let Some(post_fix) = &post_fix {
+                            compound_value = format!("{}{}", compound_value, post_fix);
+                        };
+                        compound_value
                         }
                     }
-                    format!("{}{}{:\t<indentation$}]", compound_value, line_feed, "")
-                } else if self.type_name.starts_with("Option")
-                    || self.type_name.starts_with("Result")
-                {
-                    // For special structure types `Option<>` and `Result<>`, we only format their children
-                    for child in children {
-                        compound_value = format!(
-                            "{}{}",
-                            compound_value,
-                            child.formatted_variable_value(variable_cache, indentation)
-                        );
-                    }
-                    compound_value
-                } else if self.type_name.as_str() == "Some"
-                    || self.type_name.as_str() == "Ok"
-                    || self.type_name.as_str() == "Err"
-                {
-                    // Handle special structure types like the variant values of `Option<>` and `Result<>`
-                    compound_value = format!(
-                        "{}{:\t<indentation$}{} {}(",
-                        line_feed, "", self.type_name, compound_value
-                    );
-                    for child in children {
-                        compound_value = format!(
-                            "{}{}",
-                            compound_value,
-                            child.formatted_variable_value(variable_cache, indentation + 1)
-                        );
-                    }
-                    format!("{}{}{:\t<indentation$})", compound_value, line_feed, "")
-                } else {
-                    // Generic handling of other structured types.
-                    // The pre- and post- fix is determined by the type of children.
-                    // compound_value = format!("{} {}", compound_value, self.type_name);
-                    let (mut pre_fix, mut post_fix): (Option<String>, Option<String>) =
-                        (None, None);
-                    let mut child_count: usize = 0;
-                    for child in children.iter() {
-                        child_count += 1;
-                        if pre_fix.is_none() && post_fix.is_none() {
-                            if let VariableName::Named(child_name) = child.name.clone() {
-                                if child_name.starts_with("__0") {
-                                    // Treat this structure as a tuple
-                                    pre_fix = Some(format!("{}{:\t<indentation$}(", line_feed, ""));
-                                    post_fix =
-                                        Some(format!("{}{:\t<indentation$})", line_feed, ""));
-                                } else {
-                                    // Treat this structure as a `struct`
-                                    pre_fix = Some(format!(
-                                        "{}{:\t<indentation$}{} {{",
-                                        line_feed, "", self.type_name,
-                                    ));
-                                    post_fix =
-                                        Some(format!("{}{:\t<indentation$}}}", line_feed, ""));
-                                }
-                            };
-                            if let Some(pre_fix) = &pre_fix {
-                                compound_value = format!("{}{}", compound_value, pre_fix);
-                            };
-                        }
-                        if child_count == children.len() {
-                            // Do not add a separator at the end of the list
-                            compound_value = format!(
-                                "{}{}",
-                                compound_value,
-                                child.formatted_variable_value(variable_cache, indentation + 1)
-                            );
-                        } else {
-                            compound_value = format!(
-                                "{}{}, ",
-                                compound_value,
-                                child.formatted_variable_value(variable_cache, indentation + 1)
-                            );
-                        }
-                    }
-                    if let Some(post_fix) = &post_fix {
-                        compound_value = format!("{}{}", compound_value, post_fix);
-                    };
-                    compound_value
                 }
             } else {
                 // We don't have a value, and we can't generate one from children values, so use the type_name
-                format!("{:\t<indentation$}{}", "", self.type_name)
+                format!("{:\t<indentation$}{}", "", self.type_name.display())
             }
         }
     }
@@ -891,7 +1102,7 @@ impl Value for bool {
         core: &mut Core<'_>,
         _variable_cache: &VariableCache,
     ) -> Result<Self, DebugError> {
-        let mem_data = core.read_word_8(variable.memory_location as u32)?;
+        let mem_data = core.read_word_8(variable.memory_location.memory_address()?)?;
         let ret_value: bool = mem_data != 0;
         Ok(ret_value)
     }
@@ -902,7 +1113,7 @@ impl Value for bool {
         new_value: &str,
     ) -> Result<(), DebugError> {
         core.write_word_8(
-            variable.memory_location as u32,
+            variable.memory_location.memory_address()?,
             <bool as FromStr>::from_str(new_value).map_err(|error| {
                 DebugError::Other(anyhow::anyhow!(
                     "Invalid data conversion from value: {:?}. {:?}",
@@ -920,7 +1131,7 @@ impl Value for char {
         core: &mut Core<'_>,
         _variable_cache: &VariableCache,
     ) -> Result<Self, DebugError> {
-        let mem_data = core.read_word_32(variable.memory_location as u32)?;
+        let mem_data = core.read_word_32(variable.memory_location.memory_address()?)?;
         if let Some(return_value) = char::from_u32(mem_data) {
             Ok(return_value)
         } else {
@@ -934,7 +1145,7 @@ impl Value for char {
         new_value: &str,
     ) -> Result<(), DebugError> {
         core.write_word_32(
-            variable.memory_location as u32,
+            variable.memory_location.memory_address()?,
             <char as FromStr>::from_str(new_value).map_err(|error| {
                 DebugError::Other(anyhow::anyhow!(
                     "Invalid data conversion from value: {:?}. {:?}",
@@ -975,7 +1186,7 @@ impl Value for String {
                             variable_cache.get_children(Some(location_value.variable_key))
                         {
                             if let Some(first_child) = child_variables.first() {
-                                first_child.memory_location as u32
+                                first_child.memory_location.memory_address()? as u32
                             } else {
                                 0_u32
                             }
@@ -1029,7 +1240,7 @@ impl Value for i8 {
         _variable_cache: &VariableCache,
     ) -> Result<Self, DebugError> {
         let mut buff = [0u8; 1];
-        core.read(variable.memory_location as u32, &mut buff)?;
+        core.read(variable.memory_location.memory_address()? as u32, &mut buff)?;
         let ret_value = i8::from_le_bytes(buff);
         Ok(ret_value)
     }
@@ -1040,7 +1251,7 @@ impl Value for i8 {
         new_value: &str,
     ) -> Result<(), DebugError> {
         core.write_word_8(
-            variable.memory_location as u32,
+            variable.memory_location.memory_address()? as u32,
             <i8 as FromStr>::from_str(new_value).map_err(|error| {
                 DebugError::Other(anyhow::anyhow!(
                     "Invalid data conversion from value: {:?}. {:?}",
@@ -1059,7 +1270,7 @@ impl Value for i16 {
         _variable_cache: &VariableCache,
     ) -> Result<Self, DebugError> {
         let mut buff = [0u8; 2];
-        core.read(variable.memory_location as u32, &mut buff)?;
+        core.read(variable.memory_location.memory_address()? as u32, &mut buff)?;
         let ret_value = i16::from_le_bytes(buff);
         Ok(ret_value)
     }
@@ -1076,7 +1287,7 @@ impl Value for i16 {
                 error
             ))
         })?);
-        core.write_8(variable.memory_location as u32, &buff)
+        core.write_8(variable.memory_location.memory_address()? as u32, &buff)
             .map_err(|error| DebugError::Other(anyhow::anyhow!("{:?}", error)))
     }
 }
@@ -1087,7 +1298,7 @@ impl Value for i32 {
         _variable_cache: &VariableCache,
     ) -> Result<Self, DebugError> {
         let mut buff = [0u8; 4];
-        core.read(variable.memory_location as u32, &mut buff)?;
+        core.read(variable.memory_location.memory_address()? as u32, &mut buff)?;
         let ret_value = i32::from_le_bytes(buff);
         Ok(ret_value)
     }
@@ -1104,7 +1315,7 @@ impl Value for i32 {
                 error
             ))
         })?);
-        core.write_8(variable.memory_location as u32, &buff)
+        core.write_8(variable.memory_location.memory_address()? as u32, &buff)
             .map_err(|error| DebugError::Other(anyhow::anyhow!("{:?}", error)))
     }
 }
@@ -1115,7 +1326,7 @@ impl Value for i64 {
         _variable_cache: &VariableCache,
     ) -> Result<Self, DebugError> {
         let mut buff = [0u8; 8];
-        core.read(variable.memory_location as u32, &mut buff)?;
+        core.read(variable.memory_location.memory_address()? as u32, &mut buff)?;
         let ret_value = i64::from_le_bytes(buff);
         Ok(ret_value)
     }
@@ -1132,7 +1343,7 @@ impl Value for i64 {
                 error
             ))
         })?);
-        core.write_8(variable.memory_location as u32, &buff)
+        core.write_8(variable.memory_location.memory_address()? as u32, &buff)
             .map_err(|error| DebugError::Other(anyhow::anyhow!("{:?}", error)))
     }
 }
@@ -1143,7 +1354,7 @@ impl Value for i128 {
         _variable_cache: &VariableCache,
     ) -> Result<Self, DebugError> {
         let mut buff = [0u8; 16];
-        core.read(variable.memory_location as u32, &mut buff)?;
+        core.read(variable.memory_location.memory_address()? as u32, &mut buff)?;
         let ret_value = i128::from_le_bytes(buff);
         Ok(ret_value)
     }
@@ -1160,7 +1371,7 @@ impl Value for i128 {
                 error
             ))
         })?);
-        core.write_8(variable.memory_location as u32, &buff)
+        core.write_8(variable.memory_location.memory_address()? as u32, &buff)
             .map_err(|error| DebugError::Other(anyhow::anyhow!("{:?}", error)))
     }
 }
@@ -1171,7 +1382,7 @@ impl Value for isize {
         _variable_cache: &VariableCache,
     ) -> Result<Self, DebugError> {
         let mut buff = [0u8; 4];
-        core.read(variable.memory_location as u32, &mut buff)?;
+        core.read(variable.memory_location.memory_address()? as u32, &mut buff)?;
         // TODO: We can get the actual WORD length from [DWARF] instead of assuming `u32`
         let ret_value = i32::from_le_bytes(buff);
         Ok(ret_value as isize)
@@ -1190,7 +1401,7 @@ impl Value for isize {
                     error
                 ))
             })?);
-        core.write_8(variable.memory_location as u32, &buff)
+        core.write_8(variable.memory_location.memory_address()? as u32, &buff)
             .map_err(|error| DebugError::Other(anyhow::anyhow!("{:?}", error)))
     }
 }
@@ -1201,7 +1412,7 @@ impl Value for u8 {
         _variable_cache: &VariableCache,
     ) -> Result<Self, DebugError> {
         let mut buff = [0u8; 1];
-        core.read(variable.memory_location as u32, &mut buff)?;
+        core.read(variable.memory_location.memory_address()? as u32, &mut buff)?;
         let ret_value = u8::from_le_bytes(buff);
         Ok(ret_value)
     }
@@ -1212,7 +1423,7 @@ impl Value for u8 {
         new_value: &str,
     ) -> Result<(), DebugError> {
         core.write_word_8(
-            variable.memory_location as u32,
+            variable.memory_location.memory_address()? as u32,
             <u8 as FromStr>::from_str(new_value).map_err(|error| {
                 DebugError::Other(anyhow::anyhow!(
                     "Invalid data conversion from value: {:?}. {:?}",
@@ -1231,7 +1442,7 @@ impl Value for u16 {
         _variable_cache: &VariableCache,
     ) -> Result<Self, DebugError> {
         let mut buff = [0u8; 2];
-        core.read(variable.memory_location as u32, &mut buff)?;
+        core.read(variable.memory_location.memory_address()? as u32, &mut buff)?;
         let ret_value = u16::from_le_bytes(buff);
         Ok(ret_value)
     }
@@ -1248,7 +1459,7 @@ impl Value for u16 {
                 error
             ))
         })?);
-        core.write_8(variable.memory_location as u32, &buff)
+        core.write_8(variable.memory_location.memory_address()? as u32, &buff)
             .map_err(|error| DebugError::Other(anyhow::anyhow!("{:?}", error)))
     }
 }
@@ -1259,7 +1470,7 @@ impl Value for u32 {
         _variable_cache: &VariableCache,
     ) -> Result<Self, DebugError> {
         let mut buff = [0u8; 4];
-        core.read(variable.memory_location as u32, &mut buff)?;
+        core.read(variable.memory_location.memory_address()? as u32, &mut buff)?;
         let ret_value = u32::from_le_bytes(buff);
         Ok(ret_value)
     }
@@ -1276,7 +1487,7 @@ impl Value for u32 {
                 error
             ))
         })?);
-        core.write_8(variable.memory_location as u32, &buff)
+        core.write_8(variable.memory_location.memory_address()? as u32, &buff)
             .map_err(|error| DebugError::Other(anyhow::anyhow!("{:?}", error)))
     }
 }
@@ -1287,7 +1498,7 @@ impl Value for u64 {
         _variable_cache: &VariableCache,
     ) -> Result<Self, DebugError> {
         let mut buff = [0u8; 8];
-        core.read(variable.memory_location as u32, &mut buff)?;
+        core.read(variable.memory_location.memory_address()? as u32, &mut buff)?;
         let ret_value = u64::from_le_bytes(buff);
         Ok(ret_value)
     }
@@ -1304,7 +1515,7 @@ impl Value for u64 {
                 error
             ))
         })?);
-        core.write_8(variable.memory_location as u32, &buff)
+        core.write_8(variable.memory_location.memory_address()? as u32, &buff)
             .map_err(|error| DebugError::Other(anyhow::anyhow!("{:?}", error)))
     }
 }
@@ -1315,7 +1526,7 @@ impl Value for u128 {
         _variable_cache: &VariableCache,
     ) -> Result<Self, DebugError> {
         let mut buff = [0u8; 16];
-        core.read(variable.memory_location as u32, &mut buff)?;
+        core.read(variable.memory_location.memory_address()? as u32, &mut buff)?;
         let ret_value = u128::from_le_bytes(buff);
         Ok(ret_value)
     }
@@ -1332,7 +1543,7 @@ impl Value for u128 {
                 error
             ))
         })?);
-        core.write_8(variable.memory_location as u32, &buff)
+        core.write_8(variable.memory_location.memory_address()? as u32, &buff)
             .map_err(|error| DebugError::Other(anyhow::anyhow!("{:?}", error)))
     }
 }
@@ -1343,7 +1554,7 @@ impl Value for usize {
         _variable_cache: &VariableCache,
     ) -> Result<Self, DebugError> {
         let mut buff = [0u8; 4];
-        core.read(variable.memory_location as u32, &mut buff)?;
+        core.read(variable.memory_location.memory_address()? as u32, &mut buff)?;
         // TODO: We can get the actual WORD length from [DWARF] instead of assuming `u32`
         let ret_value = u32::from_le_bytes(buff);
         Ok(ret_value as usize)
@@ -1362,7 +1573,7 @@ impl Value for usize {
                     error
                 ))
             })?);
-        core.write_8(variable.memory_location as u32, &buff)
+        core.write_8(variable.memory_location.memory_address()? as u32, &buff)
             .map_err(|error| DebugError::Other(anyhow::anyhow!("{:?}", error)))
     }
 }
@@ -1373,7 +1584,7 @@ impl Value for f32 {
         _variable_cache: &VariableCache,
     ) -> Result<Self, DebugError> {
         let mut buff = [0u8; 4];
-        core.read(variable.memory_location as u32, &mut buff)?;
+        core.read(variable.memory_location.memory_address()? as u32, &mut buff)?;
         let ret_value = f32::from_le_bytes(buff);
         Ok(ret_value)
     }
@@ -1390,7 +1601,7 @@ impl Value for f32 {
                 error
             ))
         })?);
-        core.write_8(variable.memory_location as u32, &buff)
+        core.write_8(variable.memory_location.memory_address()? as u32, &buff)
             .map_err(|error| DebugError::Other(anyhow::anyhow!("{:?}", error)))
     }
 }
@@ -1401,7 +1612,7 @@ impl Value for f64 {
         _variable_cache: &VariableCache,
     ) -> Result<Self, DebugError> {
         let mut buff = [0u8; 8];
-        core.read(variable.memory_location as u32, &mut buff)?;
+        core.read(variable.memory_location.memory_address()? as u32, &mut buff)?;
         let ret_value = f64::from_le_bytes(buff);
         Ok(ret_value)
     }
@@ -1418,7 +1629,7 @@ impl Value for f64 {
                 error
             ))
         })?);
-        core.write_8(variable.memory_location as u32, &buff)
+        core.write_8(variable.memory_location.memory_address()? as u32, &buff)
             .map_err(|error| DebugError::Other(anyhow::anyhow!("{:?}", error)))
     }
 }

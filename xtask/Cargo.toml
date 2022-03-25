@@ -6,4 +6,4 @@ edition = "2021"
 publish = false
 
 [dependencies]
-xshell = "0.1.13"
+xshell = "0.2.1"

@@ -347,7 +347,7 @@ impl DebugCli {
                 match cli_data.state {
                     DebugState::Halted(ref mut halted_state) => {
                         let current_frame =
-                            if let Some(current_frame) = halted_state.get_current_frame() {
+                            if let Some(current_frame) = halted_state.get_current_frame_mut() {
                                 current_frame
                             } else {
                                 println!("StackFrame not found.");
@@ -355,7 +355,7 @@ impl DebugCli {
                             };
 
                         let local_variable_cache = if let Some(local_variable_cache) =
-                            current_frame.local_variables.as_mut()
+                            &mut current_frame.local_variables
                         {
                             local_variable_cache
                         } else {
@@ -390,8 +390,9 @@ impl DebugCli {
 
                             for child in children {
                                 println!(
-                                    "{}: {}",
+                                    "{}: {} = {}",
                                     child.name,
+                                    child.type_name.display(),
                                     child.get_value(local_variable_cache)
                                 );
                             }
@@ -613,8 +614,8 @@ impl<'p> CliData<'p> {
                 let pc = halted_state.program_counter;
                 if let Some(current_stack_frame) = halted_state.get_current_frame() {
                     println!(
-                        "Frame {}: {} @ {:#010x}",
-                        current_stack_frame, current_stack_frame.function_name, pc,
+                        "Frame {}: {} () @ {:#010x}",
+                        halted_state.current_frame, current_stack_frame.function_name, pc,
                     );
                 }
             }
@@ -637,7 +638,11 @@ struct HaltedState {
 }
 
 impl HaltedState {
-    fn get_current_frame(&mut self) -> Option<&mut probe_rs::debug::StackFrame> {
+    fn get_current_frame(&self) -> Option<&probe_rs::debug::StackFrame> {
+        self.stack_frames.get(self.current_frame)
+    }
+
+    fn get_current_frame_mut(&mut self) -> Option<&mut probe_rs::debug::StackFrame> {
         self.stack_frames.get_mut(self.current_frame)
     }
 }
