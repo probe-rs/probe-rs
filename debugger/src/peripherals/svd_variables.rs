@@ -1,11 +1,11 @@
 use crate::DebuggerError;
 use probe_rs::{
-    debug::{DebugError, Variable, VariableCache, VariableName},
+    debug::{Variable, VariableCache, VariableName},
     Core,
 };
-use std::{any, fmt::Debug, fs::File, io::Read, path::PathBuf};
+use std::{fmt::Debug, fs::File, io::Read, path::Path};
 use svd_parser::{self as svd, ValidateLevel};
-use svd_rs::{peripheral, Device, EnumeratedValues, FieldInfo, PeripheralInfo, RegisterInfo};
+use svd_rs::{Access, Device, EnumeratedValues, FieldInfo, PeripheralInfo, RegisterInfo};
 
 /// The SVD file contents and related data
 #[derive(Debug)]
@@ -18,12 +18,12 @@ pub(crate) struct SvdCache {
 
 impl SvdCache {
     /// Create the SVD cache for a specific core. This function loads the file, parses it, and then builds the VariableCache.
-    pub(crate) fn new(svd_file: &PathBuf, core: &mut Core) -> Result<Self, DebuggerError> {
+    pub(crate) fn new(svd_file: &Path, core: &mut Core) -> Result<Self, DebuggerError> {
         let svd_xml = &mut String::new();
-        match File::open(svd_file.as_path()) {
+        match File::open(svd_file) {
             Ok(mut svd_opened_file) => {
-                svd_opened_file.read_to_string(svd_xml);
-                match svd::parse(&svd_xml) {
+                let _ = svd_opened_file.read_to_string(svd_xml);
+                match svd::parse(svd_xml) {
                     Ok(peripheral_device) => Ok(SvdCache {
                         svd_variable_cache: variable_cache_from_svd(peripheral_device, core)?,
                     }),
@@ -71,7 +71,6 @@ pub(crate) fn variable_cache_from_svd(
             core,
         )?;
         for register in &resolve_registers(peripheral)? {
-            // TODO: Implement warnings for users if they are going to read registers that have a side effect on reading.
             let mut register_variable = Variable::new(None, None);
             register_variable.name = VariableName::Named(register.name.clone());
             register_variable.type_name = register
@@ -81,6 +80,19 @@ pub(crate) fn variable_cache_from_svd(
             register_variable.variable_node_type = probe_rs::debug::VariableNodeType::SvdRegister;
             register_variable.memory_location =
                 peripheral.base_address + register.address_offset as u64;
+            let mut register_has_restricted_read = false;
+            if register.read_action.is_some()
+                || (if let Some(register_access) = register.properties.access {
+                    register_access == Access::ReadWriteOnce || register_access == Access::WriteOnly
+                } else {
+                    false
+                })
+            {
+                register_variable.set_value(probe_rs::debug::VariableValue::Error(
+                    "Register access doesn't allow reading, or will have side effects.".to_string(),
+                ));
+                register_has_restricted_read = true;
+            }
             register_variable = svd_cache.cache_variable(
                 Some(peripheral_variable.variable_key),
                 register_variable,
@@ -98,8 +110,36 @@ pub(crate) fn variable_cache_from_svd(
                 // For SVD fields, we overload the range_lower_bound and range_upper_bound as the bit range LSB and MSB.
                 field_variable.range_lower_bound = field.bit_offset() as i64;
                 field_variable.range_upper_bound = (field.bit_offset() + field.bit_width()) as i64;
+                if register_has_restricted_read
+                    || field.read_action.is_some()
+                    || (if let Some(field_access) = field.access {
+                        field_access == Access::ReadWriteOnce || field_access == Access::WriteOnly
+                    } else {
+                        false
+                    })
+                {
+                    register_variable.set_value(probe_rs::debug::VariableValue::Error(
+                        "Field or Register access doesn't allow reading, or will have side effects."
+                            .to_string(),
+                    ));
+                    register_has_restricted_read = true;
+                    if !register_has_restricted_read {
+                        // If we can't read any of the bits, then don't read the register either.
+                        register_variable.set_value(probe_rs::debug::VariableValue::Error(
+                            "Register access doesn't allow reading, or will have side effects."
+                                .to_string(),
+                        ));
+                        register_has_restricted_read = true;
+                        register_variable = svd_cache.cache_variable(
+                            Some(peripheral_variable.variable_key),
+                            register_variable,
+                            core,
+                        )?;
+                    }
+                }
+
                 // TODO: Extend the Variable definition, so that we can resolve the EnumeratedValues for fields.
-                field_variable = svd_cache.cache_variable(
+                svd_cache.cache_variable(
                     Some(register_variable.variable_key),
                     field_variable,
                     core,
@@ -214,6 +254,8 @@ pub(crate) fn resolve_registers(
     for peripheral_register in peripheral.registers() {
         // TODO: Need to code for the impact of MaybeArray results.
         let mut register_builder = RegisterInfo::builder();
+        // Deriving the properties starts from the peripheral level defaults.
+        let mut register_properties = peripheral.default_register_properties;
         if let Some(derived_from) = &peripheral_register.derived_from {
             if let Some(template_register) = peripheral.get_register(derived_from) {
                 if template_register.display_name.is_some() {
@@ -226,18 +268,38 @@ pub(crate) fn resolve_registers(
                 }
                 if template_register.modified_write_values.is_some() {
                     register_builder = register_builder
-                        .modified_write_values(template_register.modified_write_values.clone());
+                        .modified_write_values(template_register.modified_write_values);
                 }
                 if template_register.write_constraint.is_some() {
-                    register_builder = register_builder
-                        .write_constraint(template_register.write_constraint.clone());
+                    register_builder =
+                        register_builder.write_constraint(template_register.write_constraint);
                 }
                 if template_register.read_action.is_some() {
-                    register_builder =
-                        register_builder.read_action(template_register.read_action.clone());
+                    register_builder = register_builder.read_action(template_register.read_action);
                 }
                 if template_register.fields.is_some() {
                     register_builder = register_builder.fields(template_register.fields.clone());
+                }
+                // We don't update the register_builder properties directly until the next step.
+                if template_register.properties.size.is_some() {
+                    register_properties =
+                        register_properties.size(template_register.properties.size);
+                }
+                if template_register.properties.access.is_some() {
+                    register_properties =
+                        register_properties.access(template_register.properties.access);
+                }
+                if template_register.properties.protection.is_some() {
+                    register_properties =
+                        register_properties.protection(template_register.properties.protection);
+                }
+                if template_register.properties.reset_value.is_some() {
+                    register_properties =
+                        register_properties.reset_value(template_register.properties.reset_value);
+                }
+                if template_register.properties.reset_mask.is_some() {
+                    register_properties =
+                        register_properties.reset_mask(template_register.properties.reset_mask);
                 }
             } else {
                 return Err(DebuggerError::Other(anyhow::anyhow!(
@@ -247,7 +309,14 @@ pub(crate) fn resolve_registers(
             };
         }
         // Irrespective of derived_from values, set the values we need.
-        register_builder = register_builder.name(peripheral_register.name.clone());
+        let mut register_name = peripheral_register.name.clone();
+        if let Some(prefix) = &peripheral.prepend_to_name {
+            register_name = format!("{}{}", prefix, register_name);
+        }
+        if let Some(suffix) = &peripheral.append_to_name {
+            register_name = format!("{}{}", register_name, suffix);
+        }
+        register_builder = register_builder.name(register_name);
         if peripheral_register.display_name.is_some() {
             register_builder =
                 register_builder.display_name(peripheral_register.display_name.clone());
@@ -256,24 +325,43 @@ pub(crate) fn resolve_registers(
             register_builder =
                 register_builder.description(peripheral_register.description.clone());
         }
-        register_builder =
-            register_builder.address_offset(peripheral_register.address_offset.clone());
-        register_builder = register_builder.properties(peripheral_register.properties.clone());
+        register_builder = register_builder.address_offset(peripheral_register.address_offset);
+        register_builder = register_builder.properties(peripheral_register.properties);
         if peripheral_register.modified_write_values.is_some() {
-            register_builder = register_builder
-                .modified_write_values(peripheral_register.modified_write_values.clone());
+            register_builder =
+                register_builder.modified_write_values(peripheral_register.modified_write_values);
         }
         if peripheral_register.write_constraint.is_some() {
             register_builder =
-                register_builder.write_constraint(peripheral_register.write_constraint.clone());
+                register_builder.write_constraint(peripheral_register.write_constraint);
         }
         if peripheral_register.read_action.is_some() {
-            register_builder =
-                register_builder.read_action(peripheral_register.read_action.clone());
+            register_builder = register_builder.read_action(peripheral_register.read_action);
         }
         if peripheral_register.fields.is_some() {
             register_builder = register_builder.fields(peripheral_register.fields.clone());
         }
+        // Complete the derive of the register properties.
+        if peripheral_register.properties.size.is_some() {
+            register_properties = register_properties.size(peripheral_register.properties.size);
+        }
+        if peripheral_register.properties.access.is_some() {
+            register_properties = register_properties.access(peripheral_register.properties.access);
+        }
+        if peripheral_register.properties.protection.is_some() {
+            register_properties =
+                register_properties.protection(peripheral_register.properties.protection);
+        }
+        if peripheral_register.properties.reset_value.is_some() {
+            register_properties =
+                register_properties.reset_value(peripheral_register.properties.reset_value);
+        }
+        if peripheral_register.properties.reset_mask.is_some() {
+            register_properties =
+                register_properties.reset_mask(peripheral_register.properties.reset_mask);
+        }
+        register_builder = register_builder.properties(register_properties);
+        // Not that the register_builder has been updated, we can build it.
         let resolved_register = register_builder
             .build(ValidateLevel::Weak)
             .map_err(|error| DebuggerError::Other(anyhow::anyhow!("{:?}", error)))?;
@@ -295,18 +383,17 @@ pub(crate) fn resolve_fields(register: &RegisterInfo) -> Result<Vec<FieldInfo>, 
                     field_builder = field_builder.description(template_field.description.clone());
                 }
                 if template_field.access.is_some() {
-                    field_builder = field_builder.access(template_field.access.clone());
+                    field_builder = field_builder.access(template_field.access);
                 }
                 if template_field.modified_write_values.is_some() {
-                    field_builder = field_builder
-                        .modified_write_values(template_field.modified_write_values.clone());
+                    field_builder =
+                        field_builder.modified_write_values(template_field.modified_write_values);
                 }
                 if template_field.write_constraint.is_some() {
-                    field_builder =
-                        field_builder.write_constraint(template_field.write_constraint.clone());
+                    field_builder = field_builder.write_constraint(template_field.write_constraint);
                 }
                 if template_field.read_action.is_some() {
-                    field_builder = field_builder.read_action(template_field.read_action.clone());
+                    field_builder = field_builder.read_action(template_field.read_action);
                 }
             } else {
                 return Err(DebuggerError::Other(anyhow::anyhow!(
@@ -320,17 +407,17 @@ pub(crate) fn resolve_fields(register: &RegisterInfo) -> Result<Vec<FieldInfo>, 
         if register_field.description.is_some() {
             field_builder = field_builder.description(register_field.description.clone());
         }
-        field_builder = field_builder.bit_range(register_field.bit_range.clone());
-        field_builder = field_builder.access(register_field.access.clone());
+        field_builder = field_builder.bit_range(register_field.bit_range);
+        field_builder = field_builder.access(register_field.access);
         if register_field.modified_write_values.is_some() {
             field_builder =
-                field_builder.modified_write_values(register_field.modified_write_values.clone());
+                field_builder.modified_write_values(register_field.modified_write_values);
         }
         if register_field.write_constraint.is_some() {
-            field_builder = field_builder.write_constraint(register_field.write_constraint.clone());
+            field_builder = field_builder.write_constraint(register_field.write_constraint);
         }
         if register_field.read_action.is_some() {
-            field_builder = field_builder.read_action(register_field.read_action.clone());
+            field_builder = field_builder.read_action(register_field.read_action);
         }
         field_builder = field_builder.enumerated_values(register_field.enumerated_values.clone());
         let resolved_field = field_builder
@@ -341,6 +428,8 @@ pub(crate) fn resolve_fields(register: &RegisterInfo) -> Result<Vec<FieldInfo>, 
     Ok(resolved_fields)
 }
 
+// TODO: Implement using these enumerated values for SVD fields.
+#[allow(dead_code)]
 /// Resolve all the enumerated values of a field through their (optional) `derived_from` values.
 pub(crate) fn enumerated_values(field: FieldInfo) -> Result<Vec<EnumeratedValues>, DebuggerError> {
     // TODO: Need to code for the impact of enumerated value clusters.
@@ -359,8 +448,7 @@ pub(crate) fn enumerated_values(field: FieldInfo) -> Result<Vec<EnumeratedValues
                         enum_values_builder.name(template_enum_values.name.clone());
                 }
                 if template_enum_values.usage.is_some() {
-                    enum_values_builder =
-                        enum_values_builder.usage(template_enum_values.usage.clone());
+                    enum_values_builder = enum_values_builder.usage(template_enum_values.usage);
                 }
             } else {
                 return Err(DebuggerError::Other(anyhow::anyhow!(
@@ -374,7 +462,7 @@ pub(crate) fn enumerated_values(field: FieldInfo) -> Result<Vec<EnumeratedValues
             enum_values_builder = enum_values_builder.name(field_enum_values.name.clone());
         }
         if field_enum_values.usage.is_some() {
-            enum_values_builder = enum_values_builder.usage(field_enum_values.usage.clone());
+            enum_values_builder = enum_values_builder.usage(field_enum_values.usage);
         }
         enum_values_builder = enum_values_builder.values(field_enum_values.values.clone());
         let resolved_enum_values = enum_values_builder

@@ -1458,7 +1458,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             {
                 let dap_variables: Vec<Variable> = core_peripherals
                     .svd_variable_cache
-                    .get_children(Some(arguments.variables_reference))?
+                    .get_children(Some(search_variable.variable_key))?
                     .iter_mut()
                     // Convert the `probe_rs::debug::Variable` to `probe_rs_debugger::dap_types::Variable`
                     .map(|variable| {

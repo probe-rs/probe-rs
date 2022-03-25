@@ -392,6 +392,7 @@ pub enum VariableNodeType {
 }
 
 impl VariableNodeType {
+    /// Will return true if any of the `variable_node_type` value implies that the variable will be 'lazy' resolved.
     pub fn is_deferred(&self) -> bool {
         match self {
             VariableNodeType::ReferenceOffset(_)
@@ -756,11 +757,14 @@ impl Variable {
 
     /// Evaluate the variable's result if possible and set self.value, or else set self.value as the error String.
     pub fn extract_value(&mut self, core: &mut Core<'_>, variable_cache: &VariableCache) {
-        // Special handling for SVD registers.
-        // Because we cache the SVD structure once per sesion, we have to re-read the actual register values whenever queried.
-        if self.variable_node_type == VariableNodeType::SvdRegister
+        if let VariableValue::Error(_) = self.value {
+            // Nothing more to do ...
+            return;
+        } else if self.variable_node_type == VariableNodeType::SvdRegister
             || self.variable_node_type == VariableNodeType::SvdField
         {
+            // Special handling for SVD registers.
+            // Because we cache the SVD structure once per sesion, we have to re-read the actual register values whenever queried.
             match core.read_word_32(self.memory_location as u32) {
                 Ok(u32_value) => self.value = VariableValue::Valid(u32_value.to_string()),
                 Err(error) => {

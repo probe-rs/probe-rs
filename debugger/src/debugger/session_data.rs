@@ -4,7 +4,6 @@ use super::{
 };
 use crate::{
     debug_adapter::{dap_adapter::DebugAdapter, protocol::ProtocolAdapter},
-    peripherals::svd_variables::SvdCache,
     DebuggerError,
 };
 use anyhow::{anyhow, Result};
@@ -160,15 +159,14 @@ impl SessionData {
             .core_configs
             .iter()
             .filter(|&core_config| {
-                if let Some(_) = target_session
-                    .list_cores()
-                    .iter()
-                    .find(|(target_core_index, _)| *target_core_index == core_config.core_index)
-                {
-                    true
-                } else {
-                    false
-                }
+                matches!(
+                        target_session
+                            .list_cores()
+                            .iter()
+                            .find(|(target_core_index, _)| *target_core_index
+                                == core_config.core_index),
+                        Some(_)
+                    )
             })
             .cloned()
             .collect::<Vec<CoreConfig>>();
@@ -244,8 +242,8 @@ impl SessionData {
                 if let Ok(mut target_core) = self.attach_core(core_config.core_index) {
                     if let Some(core_rtt) = &mut target_core.core_data.rtt_connection {
                         // We should poll the target for rtt data.
-                        at_least_one_channel_had_data = at_least_one_channel_had_data
-                            | core_rtt.process_rtt_data(debug_adapter, &mut target_core.core);
+                        at_least_one_channel_had_data |=
+                            core_rtt.process_rtt_data(debug_adapter, &mut target_core.core);
                     } else {
                         // We have not yet reached the point in the target application where the RTT buffers are initialized, so let's check again.
                         if debug_adapter.last_known_status != CoreStatus::Unknown
