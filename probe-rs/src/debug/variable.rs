@@ -678,7 +678,7 @@ impl Variable {
             if let VariableValue::Valid(register_value) = &self.value {
                 if let Ok(register_u32_value) = register_value.parse::<u32>() {
                     format!(
-                        "{:#032b} @ {:#010X}",
+                        "{:#034b} @ {:#010X}",
                         register_u32_value, self.memory_location
                     )
                 } else {
@@ -691,7 +691,8 @@ impl Variable {
             // In this special case, we extract just the bits we need from the stored value of the register.
             if let VariableValue::Valid(register_value) = &self.value {
                 if let Ok(register_u32_value) = register_value.parse::<u32>() {
-                    let mut bit_value: u32 = register_u32_value << self.range_lower_bound;
+                    let mut bit_value: u32 = register_u32_value.reverse_bits();
+                    bit_value <<= self.range_lower_bound;
                     bit_value >>= 32 - (self.range_upper_bound - self.range_lower_bound);
                     format!(
                         "{:#0width$b} @ {:#010X}:{}..{}",
@@ -766,7 +767,7 @@ impl Variable {
             // Special handling for SVD registers.
             // Because we cache the SVD structure once per sesion, we have to re-read the actual register values whenever queried.
             match core.read_word_32(self.memory_location as u32) {
-                Ok(u32_value) => self.value = VariableValue::Valid(u32_value.to_string()),
+                Ok(u32_value) => self.value = VariableValue::Valid(u32_value.to_le().to_string()),
                 Err(error) => {
                     self.value = VariableValue::Error(format!(
                         "Unable to read peripheral register value @ {:#010X} : {:?}",

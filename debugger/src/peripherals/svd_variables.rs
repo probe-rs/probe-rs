@@ -204,7 +204,6 @@ pub(crate) fn resolve_peripherals(
         }
         // Irrespective of derived_from values, set the values we need.
         peripheral_builder = peripheral_builder.name(device_peripheral.name.clone());
-        peripheral_builder = peripheral_builder.description(device_peripheral.description.clone());
         if device_peripheral.description.is_some() {
             peripheral_builder =
                 peripheral_builder.description(device_peripheral.description.clone());
