@@ -693,11 +693,12 @@ impl Variable {
                     let mut bit_value: u32 = register_u32_value << self.range_lower_bound;
                     bit_value >>= 32 - (self.range_upper_bound - self.range_lower_bound);
                     format!(
-                        "{:#b} @ {:#010X}:{}..{}",
+                        "{:#0width$b} @ {:#010X}:{}..{}",
                         bit_value,
                         self.memory_location,
                         self.range_lower_bound,
-                        self.range_upper_bound
+                        self.range_upper_bound,
+                        width = (self.range_upper_bound - self.range_lower_bound + 2) as usize
                     )
                 } else {
                     format!(
@@ -755,8 +756,11 @@ impl Variable {
 
     /// Evaluate the variable's result if possible and set self.value, or else set self.value as the error String.
     pub fn extract_value(&mut self, core: &mut Core<'_>, variable_cache: &VariableCache) {
-        // Special handling for SVD registers
-        if self.variable_node_type == VariableNodeType::SvdRegister {
+        // Special handling for SVD registers.
+        // Because we cache the SVD structure once per sesion, we have to re-read the actual register values whenever queried.
+        if self.variable_node_type == VariableNodeType::SvdRegister
+            || self.variable_node_type == VariableNodeType::SvdField
+        {
             match core.read_word_32(self.memory_location as u32) {
                 Ok(u32_value) => self.value = VariableValue::Valid(u32_value.to_string()),
                 Err(error) => {
@@ -765,17 +769,6 @@ impl Variable {
                         self.memory_location, error
                     ))
                 }
-            }
-            return;
-        } else if self.variable_node_type == VariableNodeType::SvdField {
-            if let Some(parent_variable) =
-                variable_cache.get_variable_by_key(self.parent_key.unwrap_or(0))
-            {
-                self.value = parent_variable.value;
-            } else {
-                self.value = VariableValue::Error(
-                    "Unable to retrieve the register value for this field".to_string(),
-                );
             }
             return;
         } else if !self.value.is_empty()

@@ -287,7 +287,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             variables_reference: 0_i64,
         };
 
-        // The Variables request always returns a 'evaluate_name' = 'name', this means that the expression will always be the variable name we are looking for.
+        // The Variables request sometimes returns the variable name, and other times the variable id, so this expression will be tested to determine if it is an id or not.
         let expression = arguments.expression.clone();
 
         // Make sure we have a valid StackFrame
@@ -333,8 +333,12 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                         .map(|core_peripherals| &mut core_peripherals.svd_variable_cache),
                 ] {
                     if let Some(search_cache) = stack_frame_variable_cache {
-                        variable = search_cache
-                            .get_variable_by_name(&VariableName::Named(expression.clone()));
+                        if let Ok(expression_as_key) = expression.parse::<i64>() {
+                            variable = search_cache.get_variable_by_key(expression_as_key);
+                        } else {
+                            variable = search_cache
+                                .get_variable_by_name(&VariableName::Named(expression.clone()));
+                        }
                         if variable.is_some() {
                             variable_cache = Some(search_cache);
                             break;
@@ -1468,7 +1472,10 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                         );
                         Variable {
                             name: variable.name.to_string(),
-                            evaluate_name: Some(variable.name.to_string()),
+                            // evaluate_name: Some(variable.name.to_string()),
+                            // Do NOT use evaluate_name. It is impossible to distinguish between duplicate variable
+                            // TODO: Implement qualified names.
+                            evaluate_name: None,
                             memory_reference: Some(format!("{:#010x}", variable.memory_location)),
                             indexed_variables: Some(indexed_child_variables_cnt),
                             named_variables: Some(named_child_variables_cnt),
@@ -1615,8 +1622,11 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
 
                         Variable {
                             name: variable.name.to_string(),
-                            evaluate_name: Some(variable.name.to_string()),
-                            memory_reference,
+                            // evaluate_name: Some(variable.name.to_string()),
+                            // Do NOT use evaluate_name. It is impossible to distinguish between duplicate variable
+                            // TODO: Implement qualified names.
+                            evaluate_name: None,
+                            memory_reference: Some(format!("{:#010x}", variable.memory_location)),
                             indexed_variables: Some(indexed_child_variables_cnt),
                             named_variables: Some(named_child_variables_cnt),
                             presentation_hint: None,
