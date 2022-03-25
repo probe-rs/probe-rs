@@ -9,6 +9,7 @@ use num_traits::Zero;
 use parse_int::parse;
 use probe_rs::debug::Registers;
 use probe_rs::debug::SourceLocation;
+use probe_rs::debug::VariableLocation;
 use probe_rs::debug::{VariableCache, VariableName};
 use probe_rs::{debug::ColumnType, CoreStatus, HaltReason, MemoryInterface};
 use probe_rs_cli_util::rtt;
@@ -338,11 +339,13 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                         indexed_child_variables_cnt,
                     ) = self.get_variable_reference(&variable, variable_cache);
                     response_body.indexed_variables = Some(indexed_child_variables_cnt);
-                    response_body.memory_reference =
-                        Some(format!("{:#010x}", variable.memory_location));
+
+                    if let VariableLocation::Address(address) = variable.memory_location {
+                        response_body.memory_reference = Some(format!("{:#010x}", address));
+                    }
                     response_body.named_variables = Some(named_child_variables_cnt);
                     response_body.result = variable.get_value(variable_cache);
-                    response_body.type_ = Some(variable.type_name.clone());
+                    response_body.type_ = Some(format!("{:?}", variable.type_name));
                     response_body.variables_reference = variables_reference;
                 } else {
                     // If we made it to here, no register or variable matched the expression.
@@ -452,7 +455,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                             response_body.variables_reference = Some(variables_reference);
                             response_body.named_variables = Some(named_child_variables_cnt);
                             response_body.indexed_variables = Some(indexed_child_variables_cnt);
-                            response_body.type_ = Some(cache_variable.type_name);
+                            response_body.type_ = Some(format!("{:?}", cache_variable.type_name));
                             response_body.value = updated_value;
                         }
                         Err(error) => {
@@ -1482,14 +1485,22 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                             named_child_variables_cnt,
                             indexed_child_variables_cnt,
                         ) = self.get_variable_reference(variable, variable_cache);
+
+                        let memory_reference =
+                            if let VariableLocation::Address(address) = &variable.memory_location {
+                                Some(format!("{:#x}", address))
+                            } else {
+                                None
+                            };
+
                         Variable {
                             name: variable.name.to_string(),
                             evaluate_name: Some(variable.name.to_string()),
-                            memory_reference: Some(format!("{:#010x}", variable.memory_location)),
+                            memory_reference,
                             indexed_variables: Some(indexed_child_variables_cnt),
                             named_variables: Some(named_child_variables_cnt),
                             presentation_hint: None,
-                            type_: Some(variable.type_name.clone()),
+                            type_: Some(format!("{:?}", variable.type_name)),
                             value: variable.get_value(variable_cache),
                             variables_reference,
                         }
