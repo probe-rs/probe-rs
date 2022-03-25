@@ -692,7 +692,7 @@ impl Variable {
                             // If a user sees this error, then there is a logic problem in the stack unwind
                             "Error: This is a bug! Attempted to evaluate a Variable with no type or no memory location".to_string()
                         }
-                    } else if &self.type_name == &VariableType::Struct("None".to_string()) {
+                    } else if self.type_name == VariableType::Struct("None".to_string()) {
                         "None".to_string()
                     } else {
                         format!(
@@ -978,7 +978,7 @@ impl Variable {
                                 // Struct with no children -> just print type name
                                 // This is for example the None value of an Option.
 
-                                format!("{}{:\t<indentation$}{}", line_feed, "", self.name.to_string())
+                                format!("{}{:\t<indentation$}{}", line_feed, "", self.name)
                         } else {
 
                         let (mut pre_fix, mut post_fix): (Option<String>, Option<String>) =
