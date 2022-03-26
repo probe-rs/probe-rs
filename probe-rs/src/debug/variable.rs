@@ -99,7 +99,13 @@ impl VariableCache {
         // As the final act, we need to update the variable with an appropriate value.
         // This requires distinct steps to ensure we don't get `borrow` conflicts on the variable cache.
         if let Some(mut stored_variable) = self.get_variable_by_key(stored_key) {
-            stored_variable.extract_value(core, self);
+            if !(stored_variable.variable_node_type == VariableNodeType::SvdPeripheral
+                || stored_variable.variable_node_type == VariableNodeType::SvdRegister
+                || stored_variable.variable_node_type == VariableNodeType::SvdField)
+            {
+                // Only do this for non-SVD variables. Those will extract their value everytime they are read from the client.
+                stored_variable.extract_value(core, self);
+            }
             if self
                 .variable_hash_map
                 .insert(stored_variable.variable_key, stored_variable.clone())
@@ -678,7 +684,7 @@ impl Variable {
             if let VariableValue::Valid(register_value) = &self.value {
                 if let Ok(register_u32_value) = register_value.parse::<u32>() {
                     format!(
-                        "{:#034b} @ {:#010X}",
+                        "{:032b} @ {:#010X}",
                         register_u32_value, self.memory_location
                     )
                 } else {
@@ -691,16 +697,16 @@ impl Variable {
             // In this special case, we extract just the bits we need from the stored value of the register.
             if let VariableValue::Valid(register_value) = &self.value {
                 if let Ok(register_u32_value) = register_value.parse::<u32>() {
-                    let mut bit_value: u32 = register_u32_value.reverse_bits();
-                    bit_value <<= self.range_lower_bound;
+                    let mut bit_value: u32 = register_u32_value;
+                    bit_value <<= 32 - self.range_upper_bound;
                     bit_value >>= 32 - (self.range_upper_bound - self.range_lower_bound);
                     format!(
-                        "{:#0width$b} @ {:#010X}:{}..{}",
+                        "{:0width$b} @ {:#010X}:{}..{}",
                         bit_value,
                         self.memory_location,
                         self.range_lower_bound,
                         self.range_upper_bound,
-                        width = (self.range_upper_bound - self.range_lower_bound + 2) as usize
+                        width = (self.range_upper_bound - self.range_lower_bound) as usize
                     )
                 } else {
                     format!(

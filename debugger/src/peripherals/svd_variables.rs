@@ -72,7 +72,11 @@ pub(crate) fn variable_cache_from_svd(
         )?;
         for register in &resolve_registers(peripheral)? {
             let mut register_variable = Variable::new(None, None);
-            register_variable.name = VariableName::Named(register.name.clone());
+            register_variable.name = VariableName::Named(format!(
+                "{}.{}",
+                &peripheral_variable.name,
+                register.name.clone()
+            ));
             register_variable.type_name = register
                 .description
                 .clone()
@@ -100,7 +104,11 @@ pub(crate) fn variable_cache_from_svd(
             )?;
             for field in &resolve_fields(register)? {
                 let mut field_variable = Variable::new(None, None);
-                field_variable.name = VariableName::Named(field.name.clone());
+                field_variable.name = VariableName::Named(format!(
+                    "{}.{}",
+                    &register_variable.name,
+                    field.name.clone()
+                ));
                 field_variable.type_name = field
                     .description
                     .clone()
@@ -110,34 +118,34 @@ pub(crate) fn variable_cache_from_svd(
                 // For SVD fields, we overload the range_lower_bound and range_upper_bound as the bit range LSB and MSB.
                 field_variable.range_lower_bound = field.bit_offset() as i64;
                 field_variable.range_upper_bound = (field.bit_offset() + field.bit_width()) as i64;
-                if register_has_restricted_read
-                    || field.read_action.is_some()
+                if register_has_restricted_read {
+                    register_variable.set_value(probe_rs::debug::VariableValue::Error(
+                        "Register access doesn't allow reading, or will have side effects."
+                            .to_string(),
+                    ));
+                } else if field.read_action.is_some()
                     || (if let Some(field_access) = field.access {
                         field_access == Access::ReadWriteOnce || field_access == Access::WriteOnly
                     } else {
                         false
                     })
                 {
+                    field_variable.set_value(probe_rs::debug::VariableValue::Error(
+                        "Field access doesn't allow reading, or will have side effects."
+                            .to_string(),
+                    ));
+                    // If we can't read any of the bits, then don't read the register either.
                     register_variable.set_value(probe_rs::debug::VariableValue::Error(
-                        "Field or Register access doesn't allow reading, or will have side effects."
+                        "Some fields' access doesn't allow reading, or will have side effects."
                             .to_string(),
                     ));
                     register_has_restricted_read = true;
-                    if !register_has_restricted_read {
-                        // If we can't read any of the bits, then don't read the register either.
-                        register_variable.set_value(probe_rs::debug::VariableValue::Error(
-                            "Register access doesn't allow reading, or will have side effects."
-                                .to_string(),
-                        ));
-                        register_has_restricted_read = true;
-                        register_variable = svd_cache.cache_variable(
-                            Some(peripheral_variable.variable_key),
-                            register_variable,
-                            core,
-                        )?;
-                    }
+                    register_variable = svd_cache.cache_variable(
+                        Some(peripheral_variable.variable_key),
+                        register_variable,
+                        core,
+                    )?;
                 }
-
                 // TODO: Extend the Variable definition, so that we can resolve the EnumeratedValues for fields.
                 svd_cache.cache_variable(
                     Some(register_variable.variable_key),

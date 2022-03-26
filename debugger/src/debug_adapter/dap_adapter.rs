@@ -8,7 +8,7 @@ use dap_types::*;
 use num_traits::Zero;
 use parse_int::parse;
 use probe_rs::{
-    debug::{ColumnType, Registers, SourceLocation, VariableCache, VariableName},
+    debug::{ColumnType, Registers, SourceLocation, VariableCache, VariableName, VariableNodeType},
     CoreStatus, HaltReason, MemoryInterface,
 };
 use probe_rs_cli_util::rtt;
@@ -323,7 +323,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                 let mut variable_cache: Option<&mut VariableCache> = None;
                 // Search through available caches and stop as soon as the variable is found
                 #[allow(clippy::manual_flatten)]
-                for stack_frame_variable_cache in [
+                for variable_cache_entry in [
                     stack_frame.local_variables.as_mut(),
                     stack_frame.static_variables.as_mut(),
                     target_core
@@ -332,14 +332,19 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                         .as_mut()
                         .map(|core_peripherals| &mut core_peripherals.svd_variable_cache),
                 ] {
-                    if let Some(search_cache) = stack_frame_variable_cache {
+                    if let Some(search_cache) = variable_cache_entry {
                         if let Ok(expression_as_key) = expression.parse::<i64>() {
                             variable = search_cache.get_variable_by_key(expression_as_key);
                         } else {
                             variable = search_cache
                                 .get_variable_by_name(&VariableName::Named(expression.clone()));
                         }
-                        if variable.is_some() {
+                        if let Some(variable) = &mut variable {
+                            if variable.variable_node_type == VariableNodeType::SvdRegister
+                                || variable.variable_node_type == VariableNodeType::SvdField
+                            {
+                                variable.extract_value(&mut target_core.core, search_cache)
+                            }
                             variable_cache = Some(search_cache);
                             break;
                         }
@@ -1471,11 +1476,18 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                             &mut core_peripherals.svd_variable_cache,
                         );
                         Variable {
-                            name: variable.name.to_string(),
-                            // evaluate_name: Some(variable.name.to_string()),
-                            // Do NOT use evaluate_name. It is impossible to distinguish between duplicate variable
-                            // TODO: Implement qualified names.
-                            evaluate_name: None,
+                            name: if let VariableName::Named(variable_name) = &variable.name {
+                                if let Some(last_part) = variable_name.split_terminator('.').last()
+                                {
+                                    last_part.to_string()
+                                } else {
+                                    variable_name.to_string()
+                                }
+                            } else {
+                                variable.name.to_string()
+                            },
+                            // We use fully qualified Peripheral.Register.Field form to ensure the `evaluate` request can find the right registers and fields by name.
+                            evaluate_name: Some(variable.name.to_string()),
                             memory_reference: Some(format!("{:#010x}", variable.memory_location)),
                             indexed_variables: Some(indexed_child_variables_cnt),
                             named_variables: Some(named_child_variables_cnt),
