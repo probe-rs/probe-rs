@@ -546,8 +546,6 @@ impl Debugger {
                 debug_adapter.set_console_log_level(
                     self.config.console_log_level.unwrap_or(ConsoleLog::Error),
                 );
-
-                debug_adapter.send_response::<()>(launch_attach_request, Ok(None))?;
             }
             Err(error) => {
                 let error_message = format!(
@@ -610,7 +608,9 @@ impl Debugger {
                     &path_to_elf
                 ));
 
-                let progress_id = debug_adapter.start_progress("Flashing device", None).ok();
+                let progress_id = debug_adapter
+                    .start_progress("Flashing device", Some(launch_attach_request.seq))
+                    .ok();
 
                 let mut download_options = DownloadOptions::default();
                 download_options.keep_unwritten_bytes =
@@ -666,7 +666,11 @@ impl Debugger {
                                     }
                                     probe_rs::flashing::ProgressEvent::StartedFilling => {
                                         debug_adapter
-                                            .update_progress(0.0, Some("Reading Old Pages ..."), id)
+                                            .update_progress(
+                                                Some(0.0),
+                                                Some("Reading Old Pages ..."),
+                                                id,
+                                            )
                                             .ok();
                                     }
                                     probe_rs::flashing::ProgressEvent::PageFilled {
@@ -677,7 +681,7 @@ impl Debugger {
                                             / flash_progress.total_fill_size as f64;
                                         debug_adapter
                                             .update_progress(
-                                                progress,
+                                                Some(progress),
                                                 Some(format!("Reading Old Pages ({})", progress)),
                                                 id,
                                             )
@@ -686,7 +690,7 @@ impl Debugger {
                                     probe_rs::flashing::ProgressEvent::FailedFilling => {
                                         debug_adapter
                                             .update_progress(
-                                                1.0,
+                                                Some(1.0),
                                                 Some("Reading Old Pages Failed!"),
                                                 id,
                                             )
@@ -695,7 +699,7 @@ impl Debugger {
                                     probe_rs::flashing::ProgressEvent::FinishedFilling => {
                                         debug_adapter
                                             .update_progress(
-                                                1.0,
+                                                Some(1.0),
                                                 Some("Reading Old Pages Complete!"),
                                                 id,
                                             )
@@ -703,7 +707,11 @@ impl Debugger {
                                     }
                                     probe_rs::flashing::ProgressEvent::StartedErasing => {
                                         debug_adapter
-                                            .update_progress(0.0, Some("Erasing Sectors ..."), id)
+                                            .update_progress(
+                                                Some(0.0),
+                                                Some("Erasing Sectors ..."),
+                                                id,
+                                            )
                                             .ok();
                                     }
                                     probe_rs::flashing::ProgressEvent::SectorErased {
@@ -715,7 +723,7 @@ impl Debugger {
                                             / flash_progress.total_sector_size as f64;
                                         debug_adapter
                                             .update_progress(
-                                                progress,
+                                                Some(progress),
                                                 Some(format!("Erasing Sectors ({})", progress)),
                                                 id,
                                             )
@@ -724,7 +732,7 @@ impl Debugger {
                                     probe_rs::flashing::ProgressEvent::FailedErasing => {
                                         debug_adapter
                                             .update_progress(
-                                                1.0,
+                                                Some(1.0),
                                                 Some("Erasing Sectors Failed!"),
                                                 id,
                                             )
@@ -733,7 +741,7 @@ impl Debugger {
                                     probe_rs::flashing::ProgressEvent::FinishedErasing => {
                                         debug_adapter
                                             .update_progress(
-                                                1.0,
+                                                Some(1.0),
                                                 Some("Erasing Sectors Complete!"),
                                                 id,
                                             )
@@ -741,7 +749,11 @@ impl Debugger {
                                     }
                                     probe_rs::flashing::ProgressEvent::StartedProgramming => {
                                         debug_adapter
-                                            .update_progress(0.0, Some("Programming Pages ..."), id)
+                                            .update_progress(
+                                                Some(0.0),
+                                                Some("Programming Pages ..."),
+                                                id,
+                                            )
                                             .ok();
                                     }
                                     probe_rs::flashing::ProgressEvent::PageProgrammed {
@@ -753,7 +765,7 @@ impl Debugger {
                                             / flash_progress.total_page_size as f64;
                                         debug_adapter
                                             .update_progress(
-                                                progress,
+                                                Some(progress),
                                                 Some(format!(
                                                     "Programming Pages ({:02.0}%)",
                                                     progress.mul(100_f64)
@@ -765,7 +777,7 @@ impl Debugger {
                                     probe_rs::flashing::ProgressEvent::FailedProgramming => {
                                         debug_adapter
                                             .update_progress(
-                                                1.0,
+                                                Some(1.0),
                                                 Some("Flashing Pages Failed!"),
                                                 id,
                                             )
@@ -774,7 +786,7 @@ impl Debugger {
                                     probe_rs::flashing::ProgressEvent::FinishedProgramming => {
                                         debug_adapter
                                             .update_progress(
-                                                1.0,
+                                                Some(1.0),
                                                 Some("Flashing Pages Complete!"),
                                                 id,
                                             )
@@ -839,16 +851,19 @@ impl Debugger {
                     }
                     // Before we complete, load the (optional) CMSIS-SVD file and its variable cache.
                     // Configure the [CorePeripherals].
-                    // TODO: Implement progress reporting for this operation.
                     if let Some(svd_file) = &target_core_config.svd_file {
-                        target_core.core_data.core_peripherals =
-                            match SvdCache::new(svd_file, &mut target_core.core) {
-                                Ok(core_peripherals) => Some(core_peripherals),
-                                Err(error) => {
-                                    log::error!("{:?}", error);
-                                    None
-                                }
-                            };
+                        target_core.core_data.core_peripherals = match SvdCache::new(
+                            svd_file,
+                            &mut target_core.core,
+                            &mut debug_adapter,
+                            launch_attach_request.seq,
+                        ) {
+                            Ok(core_peripherals) => Some(core_peripherals),
+                            Err(error) => {
+                                log::error!("{:?}", error);
+                                None
+                            }
+                        };
                     }
                     target_core
                 }
@@ -869,6 +884,7 @@ impl Debugger {
 
         // After flashing and forced setup, we can signal the client that are ready to receive incoming requests.
         // Send the `initalized` event to client.
+        debug_adapter.send_response::<()>(launch_attach_request, Ok(None))?;
         if debug_adapter
             .send_event::<Event>("initialized", None)
             .is_err()

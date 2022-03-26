@@ -401,6 +401,8 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         let parent_key = arguments.variables_reference;
         let new_value = arguments.value.clone();
 
+        //TODO: Check for, and prevent SVD Peripheral/Register/Field values from being updated, until such time as we can do it safely.
+
         match target_core
             .core_data
             .stack_frames
@@ -1978,7 +1980,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
     /// The progress has the range [0..1].
     pub fn update_progress(
         &mut self,
-        progress: f64,
+        progress: Option<f64>,
         message: Option<impl Into<String>>,
         progress_id: i64,
     ) -> Result<ProgressId> {
@@ -1991,7 +1993,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             "progressUpdate",
             Some(ProgressUpdateEventBody {
                 message: message.map(|v| v.into()),
-                percentage: Some(progress * 100.0),
+                percentage: progress.map(|progress| progress * 100.0),
                 progress_id: progress_id.to_string(),
             }),
         )?;

@@ -1,4 +1,7 @@
-use crate::DebuggerError;
+use crate::{
+    debug_adapter::{dap_adapter::DebugAdapter, protocol::ProtocolAdapter},
+    DebuggerError,
+};
 use probe_rs::{
     debug::{Variable, VariableCache, VariableName, VariableNodeType},
     Core,
@@ -18,21 +21,47 @@ pub(crate) struct SvdCache {
 
 impl SvdCache {
     /// Create the SVD cache for a specific core. This function loads the file, parses it, and then builds the VariableCache.
-    pub(crate) fn new(svd_file: &Path, core: &mut Core) -> Result<Self, DebuggerError> {
+    pub(crate) fn new<P: ProtocolAdapter>(
+        svd_file: &Path,
+        core: &mut Core,
+        debug_adapter: &mut DebugAdapter<P>,
+        dap_request_id: i64,
+    ) -> Result<Self, DebuggerError> {
         let svd_xml = &mut String::new();
         match File::open(svd_file) {
             Ok(mut svd_opened_file) => {
+                let progress_id = debug_adapter.start_progress(
+                    format!("Loading SVD file : {:?}", &svd_file).as_str(),
+                    Some(dap_request_id),
+                )?;
                 let _ = svd_opened_file.read_to_string(svd_xml);
-                match svd::parse(svd_xml) {
-                    Ok(peripheral_device) => Ok(SvdCache {
-                        svd_variable_cache: variable_cache_from_svd(peripheral_device, core)?,
-                    }),
+                let svd_cache = match svd::parse(svd_xml) {
+                    Ok(peripheral_device) => {
+                        debug_adapter
+                            .update_progress(
+                                None,
+                                Some(format!("Done loading SVD file :{:?}", &svd_file)),
+                                progress_id,
+                            )
+                            .ok();
+
+                        Ok(SvdCache {
+                            svd_variable_cache: variable_cache_from_svd(
+                                peripheral_device,
+                                core,
+                                debug_adapter,
+                                progress_id,
+                            )?,
+                        })
+                    }
                     Err(error) => Err(DebuggerError::Other(anyhow::anyhow!(
                         "Unable to parse CMSIS-SVD file: {:?}. {:?}",
                         svd_file,
                         error,
                     ))),
-                }
+                };
+                let _ = debug_adapter.end_progress(progress_id)?;
+                svd_cache
             }
             Err(error) => Err(DebuggerError::Other(anyhow::anyhow!("{}", error))),
         }
@@ -40,9 +69,11 @@ impl SvdCache {
 }
 
 /// Create a [`probe_rs::debug::VariableCache`] from a Device that was parsed from a CMSIS-SVD file.
-pub(crate) fn variable_cache_from_svd(
+pub(crate) fn variable_cache_from_svd<P: ProtocolAdapter>(
     peripheral_device: Device,
     core: &mut Core,
+    debug_adapter: &mut DebugAdapter<P>,
+    progress_id: i64,
 ) -> Result<probe_rs::debug::VariableCache, DebuggerError> {
     let mut svd_cache = probe_rs::debug::VariableCache::new();
     let mut device_root_variable = Variable::new(None, None);
@@ -74,6 +105,16 @@ pub(crate) fn variable_cache_from_svd(
                     core,
                 )?;
                 peripheral_parent_key = peripheral_group_variable.variable_key;
+                debug_adapter
+                    .update_progress(
+                        None,
+                        Some(format!(
+                            "SVD loading peripheral group:{}",
+                            &peripheral_group_name
+                        )),
+                        progress_id,
+                    )
+                    .ok();
             }
         }
 
