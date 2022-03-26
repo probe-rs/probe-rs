@@ -1,6 +1,6 @@
 use crate::DebuggerError;
 use probe_rs::{
-    debug::{Variable, VariableCache, VariableName},
+    debug::{Variable, VariableCache, VariableName, VariableNodeType},
     Core,
 };
 use std::{fmt::Debug, fs::File, io::Read, path::Path};
@@ -49,14 +49,41 @@ pub(crate) fn variable_cache_from_svd(
     device_root_variable.variable_node_type = probe_rs::debug::VariableNodeType::DoNotRecurse;
     device_root_variable.name = VariableName::PeripheralScopeRoot;
     device_root_variable = svd_cache.cache_variable(None, device_root_variable, core)?;
+    // Adding the Peripheral Group Name as an additional level in the structure helps to keep the 'variable tree' more compact, but more importantly, it helps to avoid having duplicate variable names that conflict with hal crates.
+    let mut peripheral_group_variable = Variable::new(None, None);
+    peripheral_group_variable.name = VariableName::Named(peripheral_device.name.clone());
+    let mut peripheral_parent_key = device_root_variable.variable_key;
     for peripheral in &resolve_peripherals(&peripheral_device)? {
-        // TODO: Create a parent structure for peripheral groups with more than one member.
+        if let (Some(peripheral_group_name), VariableName::Named(variable_group_name)) =
+            (&peripheral.group_name, &peripheral_group_variable.name)
+        {
+            if variable_group_name != peripheral_group_name {
+                peripheral_group_variable = Variable::new(None, None);
+                peripheral_group_variable.name = VariableName::Named(peripheral_group_name.clone());
+                peripheral_group_variable.type_name = "Peripheral Group".to_string();
+                peripheral_group_variable.variable_node_type = VariableNodeType::SvdPeripheral;
+                peripheral_group_variable.set_value(probe_rs::debug::VariableValue::Valid(
+                    peripheral
+                        .description
+                        .clone()
+                        .unwrap_or_else(|| peripheral.name.clone()),
+                ));
+                peripheral_group_variable = svd_cache.cache_variable(
+                    Some(device_root_variable.variable_key),
+                    peripheral_group_variable,
+                    core,
+                )?;
+                peripheral_parent_key = peripheral_group_variable.variable_key;
+            }
+        }
+
         let mut peripheral_variable = Variable::new(None, None);
-        peripheral_variable.name = VariableName::Named(peripheral.name.clone());
-        peripheral_variable.type_name = peripheral
-            .description
-            .clone()
-            .unwrap_or_else(|| "Device Peripheral".to_string());
+        peripheral_variable.name = VariableName::Named(format!(
+            "{}.{}",
+            peripheral_group_variable.name.clone(),
+            peripheral.name.clone()
+        ));
+        peripheral_variable.type_name = "Peripheral".to_string();
         peripheral_variable.variable_node_type = probe_rs::debug::VariableNodeType::SvdPeripheral;
         peripheral_variable.memory_location = peripheral.base_address;
         peripheral_variable.set_value(probe_rs::debug::VariableValue::Valid(
@@ -65,11 +92,8 @@ pub(crate) fn variable_cache_from_svd(
                 .clone()
                 .unwrap_or_else(|| format!("{}", peripheral_variable.name)),
         ));
-        peripheral_variable = svd_cache.cache_variable(
-            Some(device_root_variable.variable_key),
-            peripheral_variable,
-            core,
-        )?;
+        peripheral_variable =
+            svd_cache.cache_variable(Some(peripheral_parent_key), peripheral_variable, core)?;
         for register in &resolve_registers(peripheral)? {
             let mut register_variable = Variable::new(None, None);
             register_variable.name = VariableName::Named(format!(
