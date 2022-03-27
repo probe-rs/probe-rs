@@ -22,10 +22,10 @@ use std::{
     time::Duration,
 };
 
-/// An error with the DAP protocol occured.
+/// An error with the DAP protocol occurred.
 #[derive(Debug, thiserror::Error, Clone, PartialEq)]
 pub enum DapError {
-    /// An error occured during SWD communication.
+    /// An error occurred during SWD communication.
     #[error("An error occurred in the SWD communication between probe and device.")]
     SwdProtocol,
     /// The target device did not respond to the request.
