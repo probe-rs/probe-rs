@@ -27,7 +27,7 @@ pub enum AccessPortError {
         /// The required alignment in bytes (address increments).
         alignment: usize,
     },
-    /// An error occured when trying to read a register.
+    /// An error occurred when trying to read a register.
     #[error("Failed to read register {name} at address 0x{address:08x}")]
     RegisterRead {
         /// The address of the register.
@@ -38,7 +38,7 @@ pub enum AccessPortError {
         #[source]
         source: Box<dyn std::error::Error + Send + Sync>,
     },
-    /// An error occured when trying to write a register.
+    /// An error occurred when trying to write a register.
     #[error("Failed to write register {name} at address 0x{address:08x}")]
     RegisterWrite {
         /// The address of the register.

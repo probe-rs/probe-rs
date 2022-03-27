@@ -102,7 +102,7 @@ pub enum DebugProbeError {
     /// You can use their official updater utility to update your probe firmware.
     #[error("The firmware on the probe is outdated")]
     ProbeFirmwareOutdated,
-    /// An error which is specific to the debug probe in use occured.
+    /// An error which is specific to the debug probe in use occurred.
     #[error("An error specific to a probe type occurred")]
     ProbeSpecific(#[source] Box<dyn std::error::Error + Send + Sync>),
     /// The debug probe handle could not be created as specified.
@@ -112,7 +112,7 @@ pub enum DebugProbeError {
     #[error("Probe does not support {0}")]
     UnsupportedProtocol(WireProtocol),
     // TODO: This is core specific, so should probably be moved there.
-    /// A timeout occured during an operation.
+    /// A timeout occurred during an operation.
     #[error("Operation timed out")]
     Timeout,
     /// An error that is specific to the selected  target core architecture occoured.
@@ -154,7 +154,7 @@ pub enum DebugProbeError {
     /// If possible, try using another probe.
     #[error("This debug sequence is not supported on the used probe: {0}")]
     DebugSequenceNotSupported(&'static str),
-    /// An error occured during the previously batched command.
+    /// An error occurred during the previously batched command.
     #[error("Error in previous batched command")]
     BatchError(BatchCommand),
     /// The used functionality is not supported by the selected probe.
