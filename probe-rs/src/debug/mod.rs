@@ -332,22 +332,35 @@ type UnitIter =
     gimli::DebugInfoUnitHeadersIter<gimli::EndianReader<gimli::LittleEndian, std::rc::Rc<[u8]>>>;
 
 /// Program row data that the debugger can use for breakpoints and stepping.
+/// To understand how this struct is used, use the following framework:
+/// - Everything is calculated from a given machine instruction address, usually the current program counter.
+/// - To calculate where the user might step to (step-over, step-into, step-out), we start from the given instruction address/program counter, and work our way through the subsequent sequence of instructions. A sequence of instructions represents a series of contiguous target machine instructions, and does not necessarily represent the whole of a function.
+/// - The next address in the target processor's instruction sequence may qualify as (one, or more) of the following:
+///   - The start of a new source statement (a source file may have multiple statements on a single line)
+///   - Another instruction that is part of the source statement started previously
+///   - The first instruction after the end of the epilogue.
+///   - The end of the current sequence of instructions.
+///   - Other indicators that are not relevant/used here.
+/// - Depending on the combinations of the above, we only use instructions that qualify as:
+///   - The beginning of a statement that is neither inside the prologue, nor inside the epilogue.
+/// - Based on this, we will attempt to fill the [`HaltLocations`] struct with as many of the four fields as possible, given the available information in the instruction sequence.
 /// All data is calculated using the `gimli::read::CompletedLineProgram` as well as, function call data from the debug info frame section.
-/// All addresses in this struct will have the following in common:
-/// - They point to program row statements where `gimli::read::LineRow::is_stmt()==true`.
-/// - They point to program row statements that are neither inside either the prologue nor inside the epilogue of a function.
 #[derive(Debug)]
-pub struct ValidHaltLocations {
-    /// The address of the first statement after the prologue.
-    ///  - If the current address is a call to an inlined function, then the next statement will be the first statement in that function.
+pub struct HaltLocations {
+    /// For when we are trying to determine a 'source breakpoint', this is the first valid statement past the program counter, where we can set a breakpoint.
+    ///  - If the current program_counter is in the prologue of a sequence, then this is the address of the first statement past the end of the prologue.
+    ///  - If the current program counter is a call to an inlined function, then the next statement will be the first statement in that function.
     pub first_halt_address: Option<u64>,
     /// The source location associated with the first_halt_address.
     pub first_halt_source_location: Option<SourceLocation>,
-    /// The address of the next valid statement where we can halt.
+    /// For when we want to 'step over' the current statement, then this is the address of the next valid statement where we can halt.
+    ///  - If the current program counter's statement lies between a prologue and epilogue, the `next_statement_address` will be the next statement to be processed by the target.
+    ///  - If the next statement happens to be inside a prologue, then the `next_statement_address` will be the address of the first statement after the prologue.
+    ///  - If the next statement happens to be inside an epilogue, then the `next_statement_address` will be the same as the `step_out_address` (see below).
     pub next_statement_address: Option<u64>,
-    /// The first statement after the current function returns.
-    /// For regular functions, this will be the `return address`.
-    /// For inline functions, this will be the statement from which the function was "called", because inline statements are executed before the statements that "call" them.  
+    /// For when we want to 'step out' of the current function, then this is the first statement after the current function returns.
+    /// - If this is a regular function, this will be the `return address`.
+    /// - If this is an inline function, this will be the statement from which the function was "called", because inline statements are executed before the statements that "call" them.  
     pub step_out_address: Option<u64>,
 }
 
@@ -565,13 +578,15 @@ impl DebugInfo {
     /// This function uses [`gimli::read::CompleteLineProgram`] functionality to calculate valid addresses where we can request a halt.
     /// Validity of halt locations are defined as target instructions that live between the end of the prologue, and the start of the end sequence of a [`gimli::read::LineRow`].
     ///
-    /// To populate a [`ValidHaltLocations`] struct for a given program_counter.
-    fn get_valid_halt_locations(
+    /// Please refer to [`HaltLocations`] struct for a description of the various halt locations that are available for the given program_counter.
+    /// - The consumer will have to choose which of the halt locations best fit the requirement of the current request.
+    /// -- For example,
+    fn get_halt_locations(
         &self,
         program_counter: u64,
         return_address: Option<u64>,
-    ) -> Result<ValidHaltLocations, DebugError> {
-        let mut program_row_data = ValidHaltLocations {
+    ) -> Result<HaltLocations, DebugError> {
+        let mut program_row_data = HaltLocations {
             first_halt_address: None,
             first_halt_source_location: None,
             next_statement_address: None,
@@ -682,7 +697,7 @@ impl DebugInfo {
                                                 if function.is_inline() {
                                                     // Step_out_address for inlined functions, is the first available breakpoint address after the last statement in this function.
                                                     program_row_data.step_out_address = self
-                                                        .get_valid_halt_locations(
+                                                        .get_halt_locations(
                                                             function.high_pc,
                                                             return_address,
                                                         )?
@@ -699,7 +714,7 @@ impl DebugInfo {
                                                     // Step_out_address for non-inlined functions is the first available breakpoint address after the return address.
                                                     program_row_data.step_out_address =
                                                         return_address.and_then(|return_address| {
-                                                            self.get_valid_halt_locations(
+                                                            self.get_halt_locations(
                                                                 return_address,
                                                                 None,
                                                             )
@@ -1617,7 +1632,7 @@ impl DebugInfo {
         path: &Path,
         line: u64,
         column: Option<u64>,
-    ) -> Result<ValidHaltLocations, DebugError> {
+    ) -> Result<HaltLocations, DebugError> {
         log::debug!(
             "Looking for breakpoint location for {}:{}:{}",
             path.display(),
@@ -1654,7 +1669,7 @@ impl DebugInfo {
                                 if cur_line.get() == line {
                                     // The first match of the file and row will be used a the locator address to select valid breakpoint location.
                                     // - The result will include a new source location, so that the debugger knows where the actual breakpoint was placed.
-                                    return self.get_valid_halt_locations(row.address(), None);
+                                    return self.get_halt_locations(row.address(), None);
                                 }
                             }
                         }
@@ -1743,7 +1758,7 @@ pub enum SteppingMode {
     /// - The best-effort approach is to step a single instruction, and then find the first valid breakpoint address.
     /// - The worst case is that the user might have to perform the step into action more than once before the debugger properly steps into a function at the specified address.
     IntoStatement,
-    /// Step to the calling statement, immediately after the current statement.
+    /// Step to the calling statement, immediately after the current function returns.
     OutOfStatement,
 }
 
@@ -1798,8 +1813,7 @@ impl SteppingMode {
         // Sometimes the target program_counter is at a location where the debug_info program row data does not contain valid statements for halt points.
         // When DebugError::NoValidHaltLocation happens, we will step to the next instruction and try again(until we can reasonably expect to have passed out of an epilogue), before giving up.
         for _ in 0..10 {
-            match debug_info
-                .get_valid_halt_locations(program_counter as u64, Some(return_address as u64))
+            match debug_info.get_halt_locations(program_counter as u64, Some(return_address as u64))
             {
                 Ok(program_row_data) => {
                     match self {
