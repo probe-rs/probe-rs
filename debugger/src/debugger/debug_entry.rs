@@ -561,18 +561,18 @@ impl Debugger {
             }
         };
 
-        let mut session_data = match session_data::SessionData::new(&self.config) {
-            Ok(session_data) => session_data,
-            Err(error) => {
-                debug_adapter.send_error_response(&error)?;
-                return Err(error);
-            }
-        };
-
         // Validate file specifications in the config.
         match self.config.validate_config_files() {
             Ok(_) => {}
             Err(error) => {
+                return Err(error);
+            }
+        };
+
+        let mut session_data = match session_data::SessionData::new(&self.config) {
+            Ok(session_data) => session_data,
+            Err(error) => {
+                debug_adapter.send_error_response(&error)?;
                 return Err(error);
             }
         };
@@ -1007,7 +1007,14 @@ pub fn debug(port: Option<u16>, vscode: bool) -> Result<()> {
                         let debug_adapter = DebugAdapter::new(dap_adapter);
 
                         match debugger.debug_session(debug_adapter) {
-                            Err(_) | Ok(DebuggerStatus::TerminateSession) => {
+                            Err(error) => {
+                                log::error!("probe-rs-debugger session ended: {}", &error);
+                                println!(
+                                    "{} CONSOLE: ....Closing session from  :{}, due to error: {}",
+                                    &program_name, addr, error
+                                );
+                            }
+                            Ok(DebuggerStatus::TerminateSession) => {
                                 println!(
                                     "{} CONSOLE: ....Closing session from  :{}",
                                     &program_name, addr
