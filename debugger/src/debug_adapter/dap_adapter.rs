@@ -1866,9 +1866,29 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
     }
 
     pub fn send_error_response(&mut self, response: &DebuggerError) -> Result<()> {
+        let expanded_error = {
+            let mut response_message = response.to_string();
+            let mut offset_iterations = 0;
+            let mut child_error: Option<&dyn std::error::Error> =
+                std::error::Error::source(&response);
+            while let Some(source_error) = child_error {
+                offset_iterations += 1;
+                response_message = format!("{}\n", response_message,);
+                for _offset_counter in 0..offset_iterations {
+                    response_message = format!("{}\t", response_message);
+                }
+                response_message = format!(
+                    "{}{:?}",
+                    response_message,
+                    <dyn std::error::Error>::to_string(source_error)
+                );
+                child_error = std::error::Error::source(source_error);
+            }
+            response_message
+        };
         if self
             .adapter
-            .show_message(MessageSeverity::Error, response.to_string())
+            .show_message(MessageSeverity::Error, expanded_error)
         {
             Ok(())
         } else {
