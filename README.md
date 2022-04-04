@@ -5,7 +5,7 @@
 `probe-run` is a custom Cargo runner that transparently runs Rust firmware on an embedded device.
 
 `probe-run` is powered by [`probe-rs`] and thus supports all the devices and probes supported by
-`probe-rs` does.
+`probe-rs`.
 
 [`probe-rs`]: https://probe.rs/
 
@@ -13,7 +13,7 @@
 
 * Acts as a Cargo runner, integrating into `cargo run`.
 * Displays program output streamed from the device via RTT.
-* Exits the firmware and prints a stack backtrace on breakpoints.
+* Exits the firmware and prints a stack backtrace on hardware breakpoints (e.g. `bkpt`), Rust panics and unrecoverable hardware exceptions (e.g. `HardFault`).
 
 ## Installation
 
@@ -30,7 +30,40 @@ $ sudo apt install -y libusb-1.0-0-dev libudev-dev
 $ sudo dnf install -y libusbx-devel systemd-devel
 ```
 
+### Using the latest `probe-rs`
+
+`probe-run` inherits device support from the `probe-rs` library.
+If your target chip does **not** appear in the output of `probe-run --list-chips` it could be that:
+1. The latest *git* version `probe-rs` supports your chip but the latest version on crates.io does not.
+You could try building `probe-run` against the latest `probe-rs` version; see instructions below.
+2. `probe-rs` does not yet support the device.
+You'll need to request support in [the `probe-rs` issue tracker](https://github.com/probe-rs/probe-rs/issues).
+
+To build `probe-run` against the latest git version `probe-rs` and install it follow these steps:
+
+``` console
+$ # clone the latest version of probe-run; line below uses version v0.3.3
+$ git clone --depth 1 --branch v0.3.3 https://github.com/knurling-rs/probe-run
+
+$ cd probe-run
+
+$ # modify Cargo.toml to use the git version of probe-rs
+$ # append these lines to Cargo.toml; command below is UNIX-y
+$ cat >> Cargo.toml << STOP
+[patch.crates-io]
+probe-rs = { git = "https://github.com/probe-rs/probe-rs" }
+STOP
+
+$ # install this patched version
+$ cargo install --path .
+```
+
+Note that you may need to modify `probe-rs-rtt` and/or `probe-run` itself to get `probe-run` to compile.
+As we only support the crates.io version of `probe-rs` in the unmodified `Cargo.toml` we cannot provide further assistance in that case.
+
 ## Setup
+
+**NOTE** for *new* Cargo projects we recommend starting from [`app-template`](https://github.com/knurling-rs/app-template)
 
 ### 1. Set the Cargo runner
 
@@ -113,7 +146,7 @@ use rtt_target::rprintln;
 
 #[entry]
 fn main() -> ! {
-    rtt_init_print!(); // You may prefer to initialize another way    
+    rtt_init_print!(); // You may prefer to initialize another way
     rprintln!("Hello, world!");
     loop { asm::bkpt() }
 }
@@ -218,8 +251,12 @@ Note: if `--backtrace=never` is set, setting `--backtrace-limit` has no effect.
 
 ### "Error: no probe was found."
 
-First, check your data cable:
+First, check your hardware:
 
+- make sure that your development board has an on-board *hardware* debugger.
+If it doesn't, you'll need a separate hardware debugger that works with the JTAG or SWD interface.
+Some boards have a USB micro-B or Type-C connector but only come with *bootloader* firmware that lets you load new program over USB Mass Storage, instead of having a dedicated on-board JTAG or SWD to USB chip;
+`probe-run` cannot be used with these boards.
 - make sure that it is connected to the right port on your development board
 - make sure that you are using a **data** cable– some cables are built for charging only! When in doubt, try using a different cable.
 
