@@ -197,7 +197,7 @@ fn overflowed_stack(sp: u32, active_ram_region: &Option<RamRegion>) -> bool {
         let range = active_ram_region.range.start..=active_ram_region.range.end;
         !range.contains(&sp)
     } else {
-        log::warn!("no RAM region appears to contain the stack; cannot determine if this was a stack overflow");
+        log::warn!("no RAM region appears to contain the stack; probe-run can't determine if this was a stack overflow");
         false
     }
 }
