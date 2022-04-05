@@ -3,14 +3,14 @@ use std::path::{Path, PathBuf};
 
 const TEST_DATA: [(u64, u64, ColumnType); 8] = [
     // Target address, line, column
-    (0x80006EA, 220, ColumnType::Column(28)),
-    (0x8000770, 231, ColumnType::Column(32)),
-    (0x800085C, 233, ColumnType::Column(34)),
-    (0x8000958, 236, ColumnType::Column(40)),
-    (0x8000942, 240, ColumnType::Column(34)),
-    (0x8000A34, 272, ColumnType::Column(26)),
-    (0x8000A48, 273, ColumnType::Column(23)),
-    (0x8000B58, 285, ColumnType::Column(28)),
+    (0x80006EA, 240, ColumnType::Column(28)),
+    (0x8000764, 248, ColumnType::Column(21)),
+    (0x8000856, 252, ColumnType::Column(27)),
+    (0x8000958, 256, ColumnType::Column(40)),
+    (0x800098E, 275, ColumnType::Column(65)),
+    (0x8000A34, 292, ColumnType::Column(26)),
+    (0x8000BB4, 309, ColumnType::Column(28)),
+    (0x8000D6A, 408, ColumnType::Column(55)),
 ];
 
 #[test]
@@ -44,8 +44,8 @@ fn breakpoint_location_absolute() {
 #[test]
 fn breakpoint_location_inexact() {
     // test getting breakpoint location for an inexact location,
-    // i.e. no exact entry exists for line 272 and column 1.
-    let test_data = [(0x8000A34, 272, ColumnType::LeftEdge)];
+    // i.e. no exact entry exists for line 277 and column 1, but we find one for column 10.
+    let test_data = [(0x80009AC, 277, ColumnType::LeftEdge)];
 
     let di = DebugInfo::from_file("tests/probe-rs-debugger-test").unwrap();
 
