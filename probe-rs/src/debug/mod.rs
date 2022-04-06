@@ -13,7 +13,7 @@ mod variable;
 use crate::{
     core::{Core, RegisterFile},
     debug::variable::VariableType,
-    MemoryInterface,
+    CoreStatus, MemoryInterface,
 };
 use num_traits::Zero;
 use probe_rs_target::Architecture;
@@ -62,6 +62,15 @@ pub enum DebugError {
     /// An int could not be created from the given string.
     #[error(transparent)]
     IntConversion(#[from] std::num::TryFromIntError),
+    /// Errors encountered while determining valid halt locations for breakpoints and stepping.
+    /// These are distinct from other errors because they terminate the current step, and result in a user message, but they do not interrupt the rest of the debug session.
+    #[error("{message}  @program_counter={:#010X}.", pc_at_error)]
+    NoValidHaltLocation {
+        /// A message that can be displayed to the user to help them make an informed recovery choice.
+        message: String,
+        /// The value of the program counter for which a halt was requested.
+        pc_at_error: u64,
+    },
     /// Some other error occurred.
     #[error(transparent)]
     Other(#[from] anyhow::Error),
@@ -322,12 +331,46 @@ type FunctionDieType<'abbrev, 'unit> =
 type UnitIter =
     gimli::DebugInfoUnitHeadersIter<gimli::EndianReader<gimli::LittleEndian, std::rc::Rc<[u8]>>>;
 
+/// Program row data that the debugger can use for breakpoints and stepping.
+/// To understand how this struct is used, use the following framework:
+/// - Everything is calculated from a given machine instruction address, usually the current program counter.
+/// - To calculate where the user might step to (step-over, step-into, step-out), we start from the given instruction address/program counter, and work our way through the subsequent sequence of instructions. A sequence of instructions represents a series of contiguous target machine instructions, and does not necessarily represent the whole of a function.
+/// - The next address in the target processor's instruction sequence may qualify as (one, or more) of the following:
+///   - The start of a new source statement (a source file may have multiple statements on a single line)
+///   - Another instruction that is part of the source statement started previously
+///   - The first instruction after the end of the epilogue.
+///   - The end of the current sequence of instructions.
+///   - Other indicators that are not relevant/used here.
+/// - Depending on the combinations of the above, we only use instructions that qualify as:
+///   - The beginning of a statement that is neither inside the prologue, nor inside the epilogue.
+/// - Based on this, we will attempt to fill the [`HaltLocations`] struct with as many of the four fields as possible, given the available information in the instruction sequence.
+/// All data is calculated using the `gimli::read::CompletedLineProgram` as well as, function call data from the debug info frame section.
+#[derive(Debug)]
+pub struct HaltLocations {
+    /// For when we are trying to determine a 'source breakpoint', this is the first valid statement past the program counter, where we can set a breakpoint.
+    ///  - If the current program_counter is in the prologue of a sequence, then this is the address of the first statement past the end of the prologue.
+    ///  - If the current program counter is a call to an inlined function, then the next statement will be the first statement in that function.
+    pub first_halt_address: Option<u64>,
+    /// The source location associated with the first_halt_address.
+    pub first_halt_source_location: Option<SourceLocation>,
+    /// For when we want to 'step over' the current statement, then this is the address of the next valid statement where we can halt.
+    ///  - If the current program counter's statement lies between a prologue and epilogue, the `next_statement_address` will be the next statement to be processed by the target.
+    ///  - If the next statement happens to be inside a prologue, then the `next_statement_address` will be the address of the first statement after the prologue.
+    ///  - If the next statement happens to be inside an epilogue, then the `next_statement_address` will be the same as the `step_out_address` (see below).
+    pub next_statement_address: Option<u64>,
+    /// For when we want to 'step out' of the current function, then this is the first statement after the current function returns.
+    /// - If this is a regular function, this will be the `return address`.
+    /// - If this is an inline function, this will be the statement from which the function was "called", because inline statements are executed before the statements that "call" them.  
+    pub step_out_address: Option<u64>,
+}
+
 /// Debug information which is parsed from DWARF debugging information.
 pub struct DebugInfo {
     dwarf: gimli::Dwarf<DwarfReader>,
     frame_section: gimli::DebugFrame<DwarfReader>,
     locations_section: gimli::LocationLists<DwarfReader>,
     address_section: gimli::DebugAddr<DwarfReader>,
+    debug_line_section: gimli::DebugLine<DwarfReader>,
     /// The minimum instruction size in bytes.
     instruction_size: u8,
 }
@@ -367,6 +410,7 @@ impl DebugInfo {
         let debug_loc = gimli::DebugLoc::load(load_section)?;
         let debug_loc_lists = gimli::DebugLocLists::load(load_section)?;
         let locations_section = gimli::LocationLists::new(debug_loc, debug_loc_lists);
+        let debug_line_section = gimli::DebugLine::load(load_section)?;
 
         // To support DWARF v2, where the address size is not encoded in the .debug_frame section,
         // we have to set the address size here.
@@ -378,6 +422,8 @@ impl DebugInfo {
             frame_section,
             locations_section,
             address_section,
+            debug_line_section,
+            // The minimum instruction size in bytes.
             // TODO: Currently `instruction_size` (minimum instruction size in bytes) is hardcoded. Investigate if we can and/or should use code to set it based on architecture differences.
             instruction_size: 2,
         })
@@ -527,6 +573,198 @@ impl DebugInfo {
             }
         }
         None
+    }
+
+    /// This function uses [`gimli::read::CompleteLineProgram`] functionality to calculate valid addresses where we can request a halt.
+    /// Validity of halt locations are defined as target instructions that live between the end of the prologue, and the start of the end sequence of a [`gimli::read::LineRow`].
+    ///
+    /// Please refer to [`HaltLocations`] struct for a description of the various halt locations that are available for the given program_counter.
+    /// - The consumer will have to choose which of the halt locations best fit the requirement of the current request.
+    /// -- For example,
+    fn get_halt_locations(
+        &self,
+        program_counter: u64,
+        return_address: Option<u64>,
+    ) -> Result<HaltLocations, DebugError> {
+        let mut program_row_data = HaltLocations {
+            first_halt_address: None,
+            first_halt_source_location: None,
+            next_statement_address: None,
+            step_out_address: None,
+        };
+        // First we have to find the compile unit at the current address.
+        let mut units = self.get_units();
+        let mut program_unit = None;
+        'headers: while let Some(header) = self.get_next_unit_info(&mut units) {
+            match self.dwarf.unit_ranges(&header.unit) {
+                Ok(mut ranges) => {
+                    while let Ok(Some(range)) = ranges.next() {
+                        if (range.begin <= program_counter) && (range.end > program_counter) {
+                            program_unit = Some(header);
+                            break 'headers;
+                        }
+                    }
+                }
+                Err(_) => continue 'headers,
+            };
+        }
+
+        // Use the gimli::read::DebugLine::program() to return the rows from the LineProgram.
+        // TODO: In theory we can cache the program rows and re-use them, but so far the performance is acceptable.
+        if let Some(program_unit) = program_unit.as_ref() {
+            if let Some(line_program) = program_unit.unit.line_program.clone() {
+                let offset = line_program.header().offset();
+                let address_size = line_program.header().address_size();
+
+                let incomplete_line_program =
+                    self.debug_line_section
+                        .program(offset, address_size, None, None)?;
+                let (complete_line_program, line_sequences) =
+                    incomplete_line_program.sequences()?;
+
+                if let Some(active_sequence) = line_sequences.iter().find(|line_sequence| {
+                    line_sequence.start <= program_counter && line_sequence.end > program_counter
+                }) {
+                    let mut rows = complete_line_program.resume_from(active_sequence);
+
+                    // By definition, ONLY the addresses inside a sequence will increase monotonically, so we have to be careful when using addresses as comparators.
+                    let mut prologue_end = u64::MAX;
+                    while let Ok(Some((program_header, row))) = rows.next_row() {
+                        log::trace!("Evaluating program row data @{:#010X}  stmt={:5}  ep={:5}  es={:5}  line={:04}  col={:05}  f={:02}",
+                                        row.address(),
+                                        row.is_stmt(),
+                                        row.prologue_end(),
+                                        row.end_sequence(),
+                                        match row.line() {
+                                            Some(line) => line.get(),
+                                            None => 0,
+                                        },
+                                        match row.column() {
+                                            gimli::ColumnType::LeftEdge => 0,
+                                            gimli::ColumnType::Column(column) => column.get(),
+                                        },
+                                        row.file_index());
+
+                        // Don't do anything until we are past the prologue of a function.
+                        if row.prologue_end() {
+                            prologue_end = row.address();
+                        }
+
+                        // row.end_sequence() is a row whose address is that of the byte after the last target machine instruction of the sequence.
+                        // - At this point, the program_counter register is no longer inside the code of the sequence.
+                        // - IMPORTANT: Because of the above, we will NOT allow a breakpoint, or a step target to be on a statement that is a row.end_sequence()
+
+                        // Set the first_breakpoint_address
+                        if program_row_data.first_halt_address.is_none()
+                            && row.address() >= prologue_end
+                            && row.address() >= program_counter
+                        {
+                            if row.end_sequence() {
+                                // If the first non-prologue row is a end of sequence, then we cannot determine valid halt addresses at this program counter.
+                                return Err(DebugError::NoValidHaltLocation{
+                                    message: "This function does not have any valid halt locations. Please consider using instruction level stepping.".to_string(),
+                                    pc_at_error: program_counter,
+                                });
+                            } else if row.is_stmt() {
+                                program_row_data.first_halt_address = Some(row.address());
+                                if let Some(file_entry) = row.file(program_header) {
+                                    if let Some((file, directory)) = self.find_file_and_directory(
+                                        &program_unit.unit,
+                                        program_header,
+                                        file_entry,
+                                    ) {
+                                        program_row_data.first_halt_source_location =
+                                            Some(SourceLocation {
+                                                line: row.line().map(NonZeroU64::get),
+                                                column: Some(row.column().into()),
+                                                file,
+                                                directory,
+                                                low_pc: Some(active_sequence.start as u32),
+                                                high_pc: Some(active_sequence.end as u32),
+                                            });
+                                    }
+                                }
+                                // This is a safe time to determine the step_out_statement.
+                                // Recursive calls will sometimes need to use a return_address as a program_counter, in which case we skip this part.
+                                if return_address.is_some() {
+                                    if let Ok(function_dies) =
+                                        program_unit.get_function_dies(program_counter as u64, true)
+                                    {
+                                        for function in function_dies {
+                                            if function.low_pc <= program_counter as u64
+                                                && function.high_pc > program_counter as u64
+                                            {
+                                                if function.is_inline() {
+                                                    // Step_out_address for inlined functions, is the first available breakpoint address after the last statement in this function.
+                                                    program_row_data.step_out_address = self
+                                                        .get_halt_locations(
+                                                            function.high_pc,
+                                                            return_address,
+                                                        )?
+                                                        .first_halt_address;
+                                                } else if function
+                                                    .get_attribute(gimli::DW_AT_noreturn)
+                                                    .is_some()
+                                                {
+                                                    // Cannot step out of non returning functions.
+                                                } else if program_row_data
+                                                    .step_out_address
+                                                    .is_none()
+                                                {
+                                                    // Step_out_address for non-inlined functions is the first available breakpoint address after the return address.
+                                                    program_row_data.step_out_address =
+                                                        return_address.and_then(|return_address| {
+                                                            self.get_halt_locations(
+                                                                return_address,
+                                                                None,
+                                                            )
+                                                            .map_or(None, |valid_halt_locations| {
+                                                                valid_halt_locations
+                                                                    .first_halt_address
+                                                            })
+                                                        });
+                                                }
+                                            }
+                                        }
+                                    };
+                                }
+                                // We can move to the next row until we find the next_statement_address.
+                                continue;
+                            } else {
+                                continue;
+                            }
+                        }
+
+                        // Set the next_statement_address
+                        if program_row_data.first_halt_address.is_some()
+                            && program_row_data.next_statement_address.is_none()
+                            && row.address() > program_counter
+                        {
+                            if row.end_sequence() {
+                                // If the next row is a end of sequence, then we cannot determine valid halt addresses at this program counter.
+                                return Err(DebugError::NoValidHaltLocation{
+                                    message: "This function does not have any additional halt locations. Please consider using instruction level stepping.".to_string(),
+                                    pc_at_error: program_counter,
+                                });
+                            } else if row.is_stmt() {
+                                // Use the next available statement.
+                                program_row_data.next_statement_address = Some(row.address());
+                                // We have what we need for now.
+                                break;
+                            } else {
+                                continue;
+                            }
+                        }
+                    }
+                } else {
+                    return Err(DebugError::NoValidHaltLocation{
+                        message: "The specified source location does not have any line information available. Please consider using instruction level stepping.".to_string(),
+                        pc_at_error: program_counter,
+                    });
+                }
+            }
+        }
+        Ok(program_row_data)
     }
 
     fn get_units(&self) -> UnitIter {
@@ -1394,7 +1632,7 @@ impl DebugInfo {
         path: &Path,
         line: u64,
         column: Option<u64>,
-    ) -> Result<Option<u64>, DebugError> {
+    ) -> Result<HaltLocations, DebugError> {
         log::debug!(
             "Looking for breakpoint location for {}:{}:{}",
             path.display(),
@@ -1405,8 +1643,6 @@ impl DebugInfo {
         );
 
         let mut unit_iter = self.dwarf.units();
-
-        let mut locations = Vec::new();
 
         while let Some(unit_header) = unit_iter.next()? {
             let unit = self.dwarf.unit(unit_header)?;
@@ -1431,7 +1667,9 @@ impl DebugInfo {
 
                             if let Some(cur_line) = row.line() {
                                 if cur_line.get() == line {
-                                    locations.push((row.address(), row.column()));
+                                    // The first match of the file and row will be used a the locator address to select valid breakpoint location.
+                                    // - The result will include a new source location, so that the debugger knows where the actual breakpoint was placed.
+                                    return self.get_halt_locations(row.address(), None);
                                 }
                             }
                         }
@@ -1439,53 +1677,12 @@ impl DebugInfo {
                 }
             }
         }
-
-        // Look for the break point location for the best match based on the column specified.
-        match locations.len() {
-            0 => Ok(None),
-            1 => Ok(Some(locations[0].0)),
-            n => {
-                log::debug!("Found {} possible breakpoint locations", n);
-
-                locations.sort_by({
-                    |a, b| {
-                        if a.1 != b.1 {
-                            a.1.cmp(&b.1)
-                        } else {
-                            a.0.cmp(&b.0)
-                        }
-                    }
-                });
-
-                for loc in &locations {
-                    log::debug!("col={:?}, addr={:#010x}", loc.1, loc.0);
-                }
-
-                match column {
-                    Some(search_col) => {
-                        let mut best_location = &locations[0];
-
-                        let search_col = match NonZeroU64::new(search_col) {
-                            None => gimli::read::ColumnType::LeftEdge,
-                            Some(c) => gimli::read::ColumnType::Column(c),
-                        };
-
-                        for loc in &locations[1..] {
-                            if loc.1 > search_col {
-                                break;
-                            }
-
-                            if best_location.1 < loc.1 {
-                                best_location = loc;
-                            }
-                        }
-
-                        Ok(Some(best_location.0))
-                    }
-                    None => Ok(Some(locations[0].0)),
-                }
-            }
-        }
+        Err(DebugError::Other(anyhow::anyhow!(
+            "No valid breakpoint information found for file: {:?}, line: {:?}, column: {:?}",
+            path,
+            line,
+            column
+        )))
     }
 
     /// Get the absolute path for an entry in a line program header
@@ -1550,6 +1747,175 @@ impl DebugInfo {
     }
 }
 
+/// Stepping granularity for stepping through a program during debug.
+#[derive(Debug)]
+pub enum SteppingMode {
+    /// Advance one machine instruction at a time.
+    StepInstruction,
+    /// Step Over the current statement, and halt at the start of the next statement.
+    OverStatement,
+    /// DWARF doesn't encode when a statement contains a call to a non-inlined function.
+    /// - The best-effort approach is to step a single instruction, and then find the first valid breakpoint address.
+    /// - The worst case is that the user might have to perform the step into action more than once before the debugger properly steps into a function at the specified address.
+    IntoStatement,
+    /// Step to the calling statement, immediately after the current function returns.
+    OutOfStatement,
+}
+
+impl SteppingMode {
+    /// Determine the program counter location where the SteppingMode is aimed, and step to it.
+    /// Return the new CoreStatus and program_counter value.
+    ///
+    /// Implementation Notes for stepping at statement granularity:
+    /// - If a hardware breakpoint is available, we will set it at the desired location, run to it, and release it.
+    /// - If no hardware breakpoints are available, we will do repeated instruction steps until we reach the desired location.
+    ///
+    /// Usage Note:
+    /// - Currently, no special provision is made for the effect of user defined breakpoints in interrupts that get triggered before this function completes.
+    pub fn step(
+        &self,
+        core: &mut Core<'_>,
+        debug_info: &DebugInfo,
+    ) -> Result<(CoreStatus, u32), DebugError> {
+        let mut core_status = core
+            .status()
+            .map_err(|error| DebugError::Other(anyhow::anyhow!(error)))
+            .map_err(|error| DebugError::Other(anyhow::anyhow!(error)))?;
+        let (mut program_counter, mut return_address) = match core_status {
+            CoreStatus::Halted(_) => (
+                core.read_core_reg(core.registers().program_counter())?,
+                core.read_core_reg(core.registers().return_address())?,
+            ),
+            _ => {
+                return Err(DebugError::Other(anyhow::anyhow!(
+                    "Core must be halted before stepping."
+                )))
+            }
+        };
+
+        // First deal with the two special cases.
+        match self {
+            SteppingMode::StepInstruction => {
+                program_counter = core.step()?.pc;
+                core_status = core.status()?;
+                return Ok((core_status, program_counter));
+            }
+            SteppingMode::IntoStatement => {
+                // Step a single instruction, then proceed to the next step.
+                program_counter = core.step()?.pc;
+            }
+            _ => {
+                // We will deal with the rest in the next step.
+            }
+        }
+
+        let mut target_address: Option<u64> = None;
+        // Sometimes the target program_counter is at a location where the debug_info program row data does not contain valid statements for halt points.
+        // When DebugError::NoValidHaltLocation happens, we will step to the next instruction and try again(until we can reasonably expect to have passed out of an epilogue), before giving up.
+        for _ in 0..10 {
+            match debug_info.get_halt_locations(program_counter as u64, Some(return_address as u64))
+            {
+                Ok(program_row_data) => {
+                    match self {
+                        SteppingMode::OverStatement => {
+                            target_address = program_row_data.next_statement_address
+                        }
+                        SteppingMode::OutOfStatement => {
+                            if program_row_data.step_out_address.is_none() {
+                                return Err(DebugError::NoValidHaltLocation {
+                                    message: "Cannot step out of a non-returning function"
+                                        .to_string(),
+                                    pc_at_error: program_counter as u64,
+                                });
+                            } else {
+                                target_address = program_row_data.step_out_address
+                            }
+                        }
+                        SteppingMode::IntoStatement => {
+                            // We have already stepped a single instruction, now use the next available breakpoint.
+                            target_address = program_row_data.first_halt_address
+                        }
+                        _ => {
+                            // We've already covered SteppingMode::StepInstruction
+                        }
+                    }
+                    // If we get here, we don't have to retry anymore.
+                    break;
+                }
+                Err(error) => match error {
+                    DebugError::NoValidHaltLocation {
+                        message,
+                        pc_at_error,
+                    } => {
+                        // Step on target instruction, and then try again.
+                        log::debug!(
+                            "Incomplete stepping information @{:#010X}: {}",
+                            pc_at_error,
+                            message
+                        );
+                        program_counter = core.step()?.pc;
+                        return_address = core.read_core_reg(core.registers().return_address())?;
+                        continue;
+                    }
+                    other_error => return Err(other_error),
+                },
+            }
+        }
+        match target_address {
+            Some(target_address) => {
+                log::debug!(
+                    "Preparing to step ({:20?}) from: {:#010X} to: {:#010X}",
+                    self,
+                    program_counter,
+                    target_address
+                );
+
+                if target_address == program_counter as u64 {
+                    // For simple functions that complete in a single statement.
+                    program_counter = core.step()?.pc;
+                } else if core.set_hw_breakpoint(target_address as u32).is_ok() {
+                    core.run()?;
+                    core.clear_hw_breakpoint(target_address as u32)?;
+                    core_status = match core.status() {
+                        Ok(core_status) => {
+                            match core_status {
+                                CoreStatus::Halted(_) => {
+                                    program_counter =
+                                        core.read_core_reg(core.registers().program_counter())?
+                                }
+                                other => {
+                                    log::error!(
+                                        "Core should be halted after stepping but is: {:?}",
+                                        &other
+                                    );
+                                    program_counter = 0;
+                                }
+                            };
+                            core_status
+                        }
+                        Err(error) => return Err(DebugError::Probe(error)),
+                    };
+                } else {
+                    while target_address != core.step()?.pc as u64 {
+                        // Single step the core until we get to the target_address;
+                        // TODO: In theory, this could go on for a long time. Should we consider NOT allowing this kind of stepping if there are no breakpoints available?
+                    }
+                    core_status = core.status()?;
+                    program_counter = target_address as u32;
+                }
+            }
+            None => {
+                return Err(DebugError::NoValidHaltLocation {
+                    message: "Unable to determine target address for this step request."
+                        .to_string(),
+                    pc_at_error: program_counter as u64,
+                });
+            }
+        }
+        Ok((core_status, program_counter))
+    }
+}
+
 /// Reference to a DIE for a function
 struct FunctionDie<'abbrev, 'unit, 'unit_info, 'debug_info> {
     unit_info: &'unit_info UnitInfo<'debug_info>,
@@ -1559,7 +1925,9 @@ struct FunctionDie<'abbrev, 'unit, 'unit_info, 'debug_info> {
     /// Only present for inlined functions, where this is a reference
     /// to the declaration of the function.
     abstract_die: Option<FunctionDieType<'abbrev, 'unit>>,
+    /// The address of the first instruction in this function.
     low_pc: u64,
+    /// The address of the first instruction after this funciton.
     high_pc: u64,
 }
 

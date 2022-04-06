@@ -897,6 +897,12 @@ impl Debugger {
                     "next" => debug_adapter
                         .next(&mut core_data, request)
                         .and(Ok(DebuggerStatus::ContinueSession)),
+                    "stepIn" => debug_adapter
+                        .step_in(&mut core_data, request)
+                        .and(Ok(DebuggerStatus::ContinueSession)),
+                    "stepOut" => debug_adapter
+                        .step_out(&mut core_data, request)
+                        .and(Ok(DebuggerStatus::ContinueSession)),
                     "pause" => debug_adapter
                         .pause(&mut core_data, request)
                         .and(Ok(DebuggerStatus::ContinueSession)),
@@ -1059,6 +1065,7 @@ impl Debugger {
             supports_clipboard_context: Some(true),
             supports_disassemble_request: Some(true),
             supports_instruction_breakpoints: Some(true),
+            supports_stepping_granularity: Some(true),
             // supports_value_formatting_options: Some(true),
             // supports_function_breakpoints: Some(true),
             // TODO: Use DEMCR register to implement exception breakpoints

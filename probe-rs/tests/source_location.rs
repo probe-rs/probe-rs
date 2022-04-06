@@ -3,23 +3,23 @@ use std::path::{Path, PathBuf};
 
 const TEST_DATA: [(u64, u64, ColumnType); 8] = [
     // Target address, line, column
-    (0x920, 11, ColumnType::LeftEdge),
-    (0x922, 13, ColumnType::Column(21)),
-    (0x92e, 13, ColumnType::Column(11)),
-    (0x938, 27, ColumnType::Column(4)),
-    (0x93a, 14, ColumnType::Column(19)),
-    (0x956, 20, ColumnType::Column(12)),
-    (0x962, 21, ColumnType::Column(12)),
-    (0x96a, 22, ColumnType::Column(12)),
+    (0x80006EA, 240, ColumnType::Column(28)),
+    (0x8000764, 248, ColumnType::Column(21)),
+    (0x8000856, 252, ColumnType::Column(27)),
+    (0x8000958, 256, ColumnType::Column(40)),
+    (0x800098E, 275, ColumnType::Column(65)),
+    (0x8000A34, 292, ColumnType::Column(26)),
+    (0x8000BB4, 309, ColumnType::Column(28)),
+    (0x8000D6A, 408, ColumnType::Column(55)),
 ];
 
 #[test]
 fn breakpoint_location_absolute() {
-    let di = DebugInfo::from_file("tests/gpio_hal_blinky").unwrap();
+    let di = DebugInfo::from_file("tests/probe-rs-debugger-test").unwrap();
 
     // Here we test with an absolute path, i.e. the combination of compilation directory
     // and relative path to the actual source file.
-    let path = Path::new("/home/dominik/Coding/microbit/examples/gpio_hal_blinky.rs");
+    let path = Path::new("/Users/jacknoppe/dev/probe-rs-debugger-test/src/main.rs");
 
     for (addr, line, col) in TEST_DATA.iter() {
         let col = if let ColumnType::Column(c) = col {
@@ -31,7 +31,8 @@ fn breakpoint_location_absolute() {
         assert_eq!(
             Some(*addr),
             di.get_breakpoint_location(path, *line, col)
-                .expect("Failed to find breakpoint location."),
+                .expect("Failed to find breakpoint location.")
+                .first_halt_address,
             "Addresses do not match for data path={:?}, line={:?}, col={:?}",
             &path,
             line,
@@ -43,12 +44,12 @@ fn breakpoint_location_absolute() {
 #[test]
 fn breakpoint_location_inexact() {
     // test getting breakpoint location for an inexact location,
-    // i.e. no exact entry exists for line 13 and column 14.
-    let test_data = [(0x92e, 13, ColumnType::Column(14))];
+    // i.e. no exact entry exists for line 277 and column 1, but we find one for column 10.
+    let test_data = [(0x80009AC, 277, ColumnType::LeftEdge)];
 
-    let di = DebugInfo::from_file("tests/gpio_hal_blinky").unwrap();
+    let di = DebugInfo::from_file("tests/probe-rs-debugger-test").unwrap();
 
-    let path = Path::new("/home/dominik/Coding/microbit/examples/gpio_hal_blinky.rs");
+    let path = Path::new("/Users/jacknoppe/dev/probe-rs-debugger-test/src/main.rs");
 
     for (addr, line, col) in test_data.iter() {
         let col = if let ColumnType::Column(c) = col {
@@ -60,7 +61,8 @@ fn breakpoint_location_inexact() {
         assert_eq!(
             Some(*addr),
             di.get_breakpoint_location(path, *line, col)
-                .expect("Failed to find breakpoint location."),
+                .expect("Failed to find valid breakpoint locations.")
+                .first_halt_address,
             "Addresses do not match for data path={:?}, line={:?}, col={:?}",
             &path,
             line,
@@ -71,19 +73,21 @@ fn breakpoint_location_inexact() {
 
 #[test]
 fn source_location() {
-    let di = DebugInfo::from_file("tests/gpio_hal_blinky").unwrap();
+    let di = DebugInfo::from_file("tests/probe-rs-debugger-test").unwrap();
 
-    let file = "gpio_hal_blinky.rs";
+    let file = "main.rs";
 
     for (addr, line, col) in TEST_DATA.iter() {
         assert_eq!(
             Some(SourceLocation {
                 line: Some(*line),
                 column: Some(*col),
-                directory: Some(PathBuf::from("/home/dominik/Coding/microbit/examples")),
+                directory: Some(PathBuf::from(
+                    "/Users/jacknoppe/dev/probe-rs-debugger-test/src"
+                )),
                 file: Some(file.to_owned()),
-                low_pc: Some(0x920),
-                high_pc: Some(0x980),
+                low_pc: Some(0x80006DE),
+                high_pc: Some(0x8000E0C),
             }),
             di.get_source_location(*addr)
         );
@@ -92,12 +96,12 @@ fn source_location() {
 
 #[test]
 fn find_non_existing_unit_by_path() {
-    let unit_path = Path::new("/home/dominik/Coding/microbit/non_existing.rs");
+    let unit_path =
+        Path::new("/Users/jacknoppe/dev/probe-rs-debugger-test/src/non-existent-path.rs");
 
-    let debug_info = DebugInfo::from_file("tests/gpio_hal_blinky").unwrap();
+    let debug_info = DebugInfo::from_file("tests/probe-rs-debugger-test").unwrap();
 
     assert!(debug_info
         .get_breakpoint_location(unit_path, 14, None)
-        .unwrap()
-        .is_none());
+        .is_err());
 }
