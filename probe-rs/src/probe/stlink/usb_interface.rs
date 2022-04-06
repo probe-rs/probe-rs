@@ -31,6 +31,7 @@ pub static USB_PID_EP_MAP: Lazy<HashMap<u16, StLinkInfo>> = Lazy::new(|| {
     m.insert(0x374e, StLinkInfo::new("V3", 0x374e, 0x01, 0x81, 0x82));
     m.insert(0x374f, StLinkInfo::new("V3", 0x374f, 0x01, 0x81, 0x82)); // Bridge
     m.insert(0x3753, StLinkInfo::new("V3", 0x3753, 0x01, 0x81, 0x82)); // 2VCP
+    m.insert(0x3754, StLinkInfo::new("V3", 0x3754, 0x01, 0x81, 0x82)); // Without mass storage
     m
 });
 
