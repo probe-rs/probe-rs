@@ -1035,7 +1035,7 @@
 		"DisconnectRequest": {
 			"allOf": [ { "$ref": "#/definitions/Request" }, {
 				"type": "object",
-				"description": "The 'disconnect' request is sent from the client to the debug adapter in order to stop debugging.\nIt asks the debug adapter to disconnect from the debuggee and to terminate the debug adapter.\nIf the debuggee has been started with the 'launch' request, the 'disconnect' request terminates the debuggee.\nIf the 'attach' request was used to connect to the debuggee, 'disconnect' does not terminate the debuggee.\nThis behavior can be controlled with the 'terminateDebuggee' argument (if supported by the debug adapter).",
+				"description": "The 'disconnect' request asks the debug adapter to disconnect from the debuggee (thus ending the debug session) and then to shut down itself (the debug adapter).\nIn addition, the debug adapter must terminate the debuggee if it was started with the 'launch' request. If an 'attach' request was used to connect to the debuggee, then the debug adapter must not terminate the debuggee.\nThis implicit behavior of when to terminate the debuggee can be overridden with the optional argument 'terminateDebuggee' (which is only supported by a debug adapter if the corresponding capability 'supportTerminateDebuggee' is true).",
 				"properties": {
 					"command": {
 						"type": "string",
@@ -1076,7 +1076,7 @@
 		"TerminateRequest": {
 			"allOf": [ { "$ref": "#/definitions/Request" }, {
 				"type": "object",
-				"description": "The 'terminate' request is sent from the client to the debug adapter in order to give the debuggee a chance for terminating itself.\nClients should only call this request if the capability 'supportsTerminateRequest' is true.",
+				"description": "The 'terminate' request is sent from the client to the debug adapter in order to shut down the debuggee gracefully. Clients should only call this request if the capability 'supportsTerminateRequest' is true.\nTypically a debug adapter implements 'terminate' by sending a software signal which the debuggee intercepts in order to clean things up properly before terminating itself.\nPlease note that this request does not directly affect the state of the debug session: if the debuggee decides to veto the graceful shutdown for any reason by not terminating itself, then the debug session will just continue.\nClients can surface the 'terminate' request as an explicit command or they can integrate it into a two stage Stop command that first sends 'terminate' to request a graceful shutdown, and if that fails uses 'disconnect' for a forceful shutdown.",
 				"properties": {
 					"command": {
 						"type": "string",
@@ -1195,7 +1195,7 @@
 			"properties": {
 				"source": {
 					"$ref": "#/definitions/Source",
-					"description": "The source location of the breakpoints; either 'source.path' or 'source.reference' must be specified."
+					"description": "The source location of the breakpoints; either 'source.path' or 'source.sourceReference' must be specified."
 				},
 				"breakpoints": {
 					"type": "array",
@@ -2417,18 +2417,19 @@
 				},
 				"context": {
 					"type": "string",
-					"_enum": [ "watch", "repl", "hover", "clipboard" ],
+					"_enum": [ "variables", "watch", "repl", "hover", "clipboard" ],
 					"enumDescriptions": [
-						"evaluate is run in a watch.",
-						"evaluate is run from REPL console.",
-						"evaluate is run from a data hover.",
-						"evaluate is run to generate the value that will be stored in the clipboard.\nThe attribute is only honored by a debug adapter if the capability 'supportsClipboardContext' is true."
+						"evaluate is called from a variables view context.",
+						"evaluate is called from a watch view context.",
+						"evaluate is called from a REPL context.",
+						"evaluate is called to generate the debug hover contents.\nThis value should only be used if the capability 'supportsEvaluateForHovers' is true.",
+						"evaluate is called to generate clipboard contents.\nThis value should only be used if the capability 'supportsClipboardContext' is true."
 					],
-					"description": "The context in which the evaluate request is run."
+					"description": "The context in which the evaluate request is used."
 				},
 				"format": {
 					"$ref": "#/definitions/ValueFormat",
-					"description": "Specifies details on how to format the Evaluate result.\nThe attribute is only honored by a debug adapter if the capability 'supportsValueFormattingOptions' is true."
+					"description": "Specifies details on how to format the result.\nThe attribute is only honored by a debug adapter if the capability 'supportsValueFormattingOptions' is true."
 				}
 			},
 			"required": [ "expression" ]
@@ -3940,7 +3941,7 @@
 
 		"ExceptionFilterOptions": {
 			"type": "object",
-			"description": "An ExceptionFilterOptions is used to specify an exception filter together with a condition for the setExceptionsFilter request.",
+			"description": "An ExceptionFilterOptions is used to specify an exception filter together with a condition for the 'setExceptionBreakpoints' request.",
 			"properties": {
 				"filterId": {
 					"type": "string",
