@@ -17,7 +17,7 @@ macro_rules! info_command {
                 Ok(1)
             }
 
-            fn from_bytes(&self, buffer: &[u8]) -> Result<Self::Response, SendError> {
+            fn parse_response(&self, buffer: &[u8]) -> Result<Self::Response, SendError> {
                 ParseFromResponse::from_response(buffer)
             }
         }
@@ -54,7 +54,7 @@ impl Request for TestDomainTimeCommand {
         buffer[0] = 0xF1;
         Ok(1)
     }
-    fn from_bytes(&self, buffer: &[u8]) -> Result<Self::Response, SendError> {
+    fn parse_response(&self, buffer: &[u8]) -> Result<Self::Response, SendError> {
         if buffer[0] == 0x08 {
             let res = buffer
                 .pread_with::<u32>(1, LE)

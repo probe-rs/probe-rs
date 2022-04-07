@@ -22,7 +22,7 @@ impl Request for TransportRequest {
         Ok(1)
     }
 
-    fn from_bytes(&self, buffer: &[u8]) -> Result<Self::Response, SendError> {
+    fn parse_response(&self, buffer: &[u8]) -> Result<Self::Response, SendError> {
         Ok(TransportResponse(Status::from_byte(buffer[0])?))
     }
 }
@@ -49,7 +49,7 @@ impl Request for ModeRequest {
         Ok(1)
     }
 
-    fn from_bytes(&self, buffer: &[u8]) -> Result<Self::Response, SendError> {
+    fn parse_response(&self, buffer: &[u8]) -> Result<Self::Response, SendError> {
         Ok(ModeResponse(Status::from_byte(buffer[0])?))
     }
 }
@@ -74,7 +74,7 @@ impl Request for BaudrateRequest {
         Ok(4)
     }
 
-    fn from_bytes(&self, buffer: &[u8]) -> Result<Self::Response, SendError> {
+    fn parse_response(&self, buffer: &[u8]) -> Result<Self::Response, SendError> {
         if buffer.len() < 4 {
             return Err(SendError::NotEnoughData);
         }
@@ -104,7 +104,7 @@ impl Request for ControlRequest {
         Ok(1)
     }
 
-    fn from_bytes(&self, buffer: &[u8]) -> Result<Self::Response, SendError> {
+    fn parse_response(&self, buffer: &[u8]) -> Result<Self::Response, SendError> {
         Ok(ControlResponse(Status::from_byte(buffer[0])?))
     }
 }
@@ -124,7 +124,7 @@ impl Request for StatusRequest {
         Ok(0)
     }
 
-    fn from_bytes(&self, buffer: &[u8]) -> Result<Self::Response, SendError> {
+    fn parse_response(&self, buffer: &[u8]) -> Result<Self::Response, SendError> {
         let status = TraceStatus::from(buffer[0]);
         let count = u32::from_le_bytes(
             buffer[1..5]
@@ -181,7 +181,7 @@ impl Request for ExtendedStatusRequest {
         Ok(1)
     }
 
-    fn from_bytes(&self, buffer: &[u8]) -> Result<Self::Response, SendError> {
+    fn parse_response(&self, buffer: &[u8]) -> Result<Self::Response, SendError> {
         if buffer.len() < 13 {
             return Err(SendError::NotEnoughData);
         }
@@ -238,7 +238,7 @@ impl Request for DataRequest {
         Ok(2)
     }
 
-    fn from_bytes(&self, buffer: &[u8]) -> Result<Self::Response, SendError> {
+    fn parse_response(&self, buffer: &[u8]) -> Result<Self::Response, SendError> {
         let status = TraceStatus::from(buffer[0]);
         let count = u16::from_le_bytes(
             buffer[1..3]

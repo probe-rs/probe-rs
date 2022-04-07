@@ -12,7 +12,7 @@ impl Request for ResetRequest {
         Ok(0)
     }
 
-    fn from_bytes(&self, buffer: &[u8]) -> Result<Self::Response, SendError> {
+    fn parse_response(&self, buffer: &[u8]) -> Result<Self::Response, SendError> {
         Ok(ResetResponse {
             _status: Status::from_byte(buffer[0])?,
             _execute: Execute::from_byte(buffer[1])?,
