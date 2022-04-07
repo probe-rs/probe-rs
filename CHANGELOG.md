@@ -27,7 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Debugger: Add support for DAP Requests (ReadMemory, WriteMemory, Evaluate & SetVariable) (#1035)
 - Debugger: Add support for DAP Requests (Disassemble & SetInstructionBreakpoints) (#1049)
 - Debugger: Add support for stepping at 'statement' level, plus 'step in', 'step out' (#1056)
-- Debugger: Add support for navigating and monitoring SVD Peripheral Registers. ()
+- Debugger: Add support for navigating and monitoring SVD Peripheral Registers. (#1072)
 
 ### Changed
 
@@ -44,7 +44,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Updated STM32H7 series yaml to support newly released chips. (#1011)
 - Debugger: Removed the CLI mode, in favour of `probe-rs-cli` which has richer functionality. (#1041)
 - Renamed `Probe::speed` to `Probe::speed_khz`.
-- Debugger: Requires changes to DAP Client `launch.json` to prepare for WIP multi-core support. ()
+- Debugger: Requires changes to DAP Client `launch.json` to prepare for WIP multi-core support. (#1072)
 
 ### Fixed
 
