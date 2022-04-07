@@ -1503,7 +1503,8 @@ impl DebugInfo {
                 ) {
                     Ok(frame_descriptor_entry) => frame_descriptor_entry,
                     Err(error) => {
-                        log::error!(
+                        // This is not an error, it just means we cannot unwind any deeper.
+                        log::debug!(
                         "UNWIND: Error reading previous FrameDescriptorEntry at PC={:#010x} : {}",
                         previous_frame_pc,
                         error

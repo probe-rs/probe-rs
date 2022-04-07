@@ -1263,10 +1263,17 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         // Control whether we need to read target memory in order to disassemble the next instruction.
         let mut read_more_bytes = true;
 
-        // The memory address for the next read from target memory. We have to manually adjust it to be word aligned.
-        let mut read_pointer =
-            (memory_reference + byte_offset + instruction_offset_as_bytes) as u32;
-        read_pointer = read_pointer - read_pointer % 4;
+        // The memory address for the next read from target memory. We have to manually adjust it to be word aligned, and make sure it doesn't underflow/overflow.
+        let mut read_pointer = if byte_offset.is_negative() {
+            memory_reference.saturating_sub(byte_offset.abs())
+        } else {
+            memory_reference.saturating_add(byte_offset)
+        } as u32;
+        read_pointer = if instruction_offset_as_bytes.is_negative() {
+            read_pointer.saturating_sub(instruction_offset_as_bytes.abs() as u32)
+        } else {
+            read_pointer.saturating_add(instruction_offset_as_bytes as u32)
+        };
 
         // The memory address for the next instruction to be disassembled
         let mut instruction_pointer = read_pointer as u64;
@@ -1280,7 +1287,14 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                 match target_core.core.read_word_32(read_pointer) {
                     Ok(new_word) => {
                         // Advance the read pointer for next time we need it.
-                        read_pointer += 4;
+                        read_pointer = if let Some(valid_read_pointer) = read_pointer.checked_add(4)
+                        {
+                            valid_read_pointer
+                        } else {
+                            // If this happens, the next loop will generate "invalid instruction" records.
+                            read_pointer = u32::MAX;
+                            continue;
+                        };
                         // Update the code buffer.
                         for new_byte in new_word.to_le_bytes() {
                             code_buffer.push(new_byte);
@@ -1288,7 +1302,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                     }
                     Err(_) => {
                         // If we can't read data at a given address, then create a "invalid instruction" record, and keep trying.
-                        read_pointer += 4;
+                        read_pointer = read_pointer.saturating_add(4);
                         assembly_lines.push(dap_types::DisassembledInstruction {
                             address: format!("{:#010X}", read_pointer),
                             column: None,
