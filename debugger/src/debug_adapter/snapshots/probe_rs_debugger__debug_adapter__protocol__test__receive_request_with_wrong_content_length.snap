@@ -1,7 +1,6 @@
 ---
-source: debugger/src/protocol.rs
+source: debugger/src/debug_adapter/protocol.rs
 expression: output_str
-
 ---
 Content-Length: 165
 
