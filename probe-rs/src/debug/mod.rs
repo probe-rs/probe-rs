@@ -12,7 +12,6 @@ mod variable;
 
 use crate::{
     core::{Core, RegisterFile},
-    debug::variable::VariableType,
     CoreStatus, MemoryInterface,
 };
 use gimli::{
@@ -33,7 +32,8 @@ use std::{
     vec,
 };
 pub use variable::{
-    Variable, VariableCache, VariableName, VariableNodeType, VariableValue, VariantRole,
+    Variable, VariableCache, VariableLocation, VariableName, VariableNodeType, VariableType,
+    VariableValue, VariantRole,
 };
 
 /// An error occurred while debugging the target.
@@ -894,8 +894,8 @@ impl DebugInfo {
                                         variable::VariableLocation::Address(memory_location)
                                     }
                                     Err(error) => {
-                                        log::error!("Failed to read referenced variable address from memory location {:#010x?} : {}.", parent_variable.memory_location , error);
-                                        variable::VariableLocation::Error(format!("Failed to read referenced variable address from memory location {:#010x?} : {}.", parent_variable.memory_location, error))
+                                        log::error!("Failed to read referenced variable address from memory location {} : {}.", parent_variable.memory_location , error);
+                                        variable::VariableLocation::Error(format!("Failed to read referenced variable address from memory location {} : {}.", parent_variable.memory_location, error))
                                     }
                                 };
                             }
@@ -3042,8 +3042,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                 };
                             child_variable.set_value(VariableValue::Valid(format!(
                                 "{}::{}",
-                                child_variable.type_name.display(),
-                                enumumerator_value
+                                child_variable.type_name, enumumerator_value
                             )));
                             // We don't need to keep these children.
                             cache.remove_cache_entry_children(child_variable.variable_key)?;

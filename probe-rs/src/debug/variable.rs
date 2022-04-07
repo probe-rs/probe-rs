@@ -415,20 +415,30 @@ impl Default for VariableNodeType {
     }
 }
 
+/// The variants of VariableType allows us to streamline the conditional logic that requires specific handling depending on the nature of the variable.
 #[derive(Debug, Clone, PartialEq)]
 pub enum VariableType {
+    /// A variable with a Rust base datatype.
     Base(String),
+    /// A Rust struct.
     Struct(String),
+    /// A Rust enum.
     Enum(String),
+    /// Namespace refers to the path that qualifies a variable. e.g. "std::string" is the namespace for the strucct "String"
     Namespace,
+    /// A Pointer is a variable that contains a reference to another variable
     Pointer(Option<String>),
+    /// A Rust array.
     Array {
         // TODO: Use a proper type here, not variable name
+        /// The name of the variable.
         entry_type: VariableName,
+        /// The number of entries in the array.
         count: usize,
     },
-    Unnamed,
+    /// When we are unable to determine the name of a variable.
     Unknown,
+    /// For infrequently used categories of variables that does not fall into any of the other VriableType variants.
     Other(String),
 }
 
@@ -439,6 +449,7 @@ impl Default for VariableType {
 }
 
 impl VariableType {
+    /// A Rust PhantomData type used as a marker for to "act like" they own a specific type.
     pub fn is_phantom_data(&self) -> bool {
         match self {
             VariableType::Struct(name) => name.starts_with("PhantomData"),
@@ -446,6 +457,7 @@ impl VariableType {
         }
     }
 
+    /// This variable is a reference to another variable.
     pub fn is_reference(&self) -> bool {
         match self {
             VariableType::Pointer(Some(name)) => name.starts_with('&'),
@@ -453,23 +465,26 @@ impl VariableType {
         }
     }
 
+    /// This variable is an array, and requires special processing during
     pub fn is_array(&self) -> bool {
         matches!(self, VariableType::Array { .. })
     }
+}
 
-    pub fn display(&self) -> String {
+impl std::fmt::Display for VariableType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            VariableType::Base(base) => base.clone(),
-            VariableType::Struct(struct_name) => struct_name.clone(),
-            VariableType::Enum(enum_name) => enum_name.clone(),
-            VariableType::Namespace => "<namespace>".to_string(),
+            VariableType::Base(base) => base.fmt(f),
+            VariableType::Struct(struct_name) => struct_name.fmt(f),
+            VariableType::Enum(enum_name) => enum_name.fmt(f),
+            VariableType::Namespace => "<namespace>".fmt(f),
             VariableType::Pointer(pointer_name) => pointer_name
                 .clone()
-                .unwrap_or_else(|| "<unnamed>".to_string()),
-            VariableType::Array { entry_type, count } => format!("[{}; {}]", entry_type, count),
-            VariableType::Unnamed => "<unnamed>".to_string(),
-            VariableType::Unknown => "<unknown>".to_string(),
-            VariableType::Other(other) => other.clone(),
+                .unwrap_or_else(|| "<unnamed>".to_string())
+                .fmt(f),
+            VariableType::Array { entry_type, count } => write!(f, "[{}; {}]", entry_type, count),
+            VariableType::Unknown => "<unknown>".fmt(f),
+            VariableType::Other(other) => other.fmt(f),
         }
     }
 }
@@ -513,6 +528,20 @@ impl VariableLocation {
             | VariableLocation::Value
             | VariableLocation::Unknown => true,
             _other => false,
+        }
+    }
+}
+
+impl std::fmt::Display for VariableLocation {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            VariableLocation::Unknown => "<unknown value>".fmt(f),
+            VariableLocation::Unavailable => "<value not available>".fmt(f),
+            VariableLocation::Address(address) => write!(f, "{:#010X}", address),
+            VariableLocation::Register(register) => write!(f, "r{}", register),
+            VariableLocation::Value => "<not applicable - statically stored value>".fmt(f),
+            VariableLocation::Error(error) => error.fmt(f),
+            VariableLocation::Unsupported(reason) => reason.fmt(f),
         }
     }
 }
@@ -685,7 +714,8 @@ impl Variable {
                 if let Ok(register_u32_value) = register_value.parse::<u32>() {
                     format!(
                         "{:032b} @ {:#010X}",
-                        register_u32_value, self.memory_location
+                        register_u32_value,
+                        self.memory_location.memory_address().unwrap_or(u32::MAX) // We should never encounter a memory location that is invalid if we already used it to read the register value.
                     )
                 } else {
                     format!("Invalid register value {}", register_value)
@@ -703,7 +733,7 @@ impl Variable {
                     format!(
                         "{:0width$b} @ {:#010X}:{}..{}",
                         bit_value,
-                        self.memory_location,
+                        self.memory_location.memory_address().unwrap_or(u32::MAX),
                         self.range_lower_bound,
                         self.range_upper_bound,
                         width = (self.range_upper_bound - self.range_lower_bound) as usize
@@ -772,33 +802,30 @@ impl Variable {
         {
             // Special handling for SVD registers.
             // Because we cache the SVD structure once per sesion, we have to re-read the actual register values whenever queried.
-            match core.read_word_32(self.memory_location as u32) {
+            match core.read_word_32(self.memory_location.memory_address().unwrap_or(u32::MAX)) {
                 Ok(u32_value) => self.value = VariableValue::Valid(u32_value.to_le().to_string()),
                 Err(error) => {
                     self.value = VariableValue::Error(format!(
                         "Unable to read peripheral register value @ {:#010X} : {:?}",
-                        self.memory_location, error
+                        self.memory_location.memory_address().unwrap_or(u32::MAX),
+                        error
                     ))
                 }
             }
             return;
         } else if !self.value.is_empty()
         // The value was set explicitly, so just leave it as is, or it was an error, so don't attempt anything else
-        || self.memory_location == u64::MAX
-        // Early on in the process of `Variable` evaluation
+        || !self.memory_location.valid()
+        // This may just be that we are early on in the process of `Variable` evaluation
         || self.type_name == VariableType::Unknown
+        // This may just be that we are early on in the process of `Variable` evaluation
         {
             // Quick exit if we don't really need to do much more.
             return;
         } else if self.variable_node_type.is_deferred() {
             // And we have not previously assigned the value, then assign the type and address as the value
-            let location = match &self.memory_location {
-                VariableLocation::Address(address) => format!("{:#010X}", address),
-                other => format!("{:?}", other),
-            };
-
             self.value =
-                VariableValue::Valid(format!("{} @ {}", self.type_name.display(), location));
+                VariableValue::Valid(format!("{} @ {}", self.type_name, self.memory_location));
             return;
         }
 
@@ -933,11 +960,7 @@ impl Variable {
                 // Use the supplied value or error message.
                 format!(
                     "{}{:\t<indentation$}{}: {} = {}",
-                    line_feed,
-                    "",
-                    self.name,
-                    self.type_name.display(),
-                    self.value
+                    line_feed, "", self.name, self.type_name, self.value
                 )
             } else {
                 // Use the supplied value or error message.
@@ -982,7 +1005,7 @@ impl Variable {
                             line_feed,
                             "",
                             self.name,
-                            self.type_name.display(),
+                            self.type_name,
                         );
                         let mut child_count: usize = 0;
                         for child in children.iter() {
@@ -1023,7 +1046,7 @@ impl Variable {
                             line_feed,
                             "",
                             self.name,
-                            self.type_name.display(),
+                            self.type_name,
                             compound_value
                         );
                         for child in children {
@@ -1070,9 +1093,9 @@ impl Variable {
                                             line_feed,
                                             "",
                                             self.name,
-                                            self.type_name.display(),
-                                            child.type_name.display(),
-                                            self.type_name.display(),
+                                            self.type_name,
+                                            child.type_name,
+                                            self.type_name,
                                         ));
                                         post_fix =
                                             Some(format!("{}{:\t<indentation$})", line_feed, ""));
@@ -1085,15 +1108,15 @@ impl Variable {
                                                 line_feed,
                                                 "",
                                                 self.name,
-                                                self.type_name.display(),
-                                                self.type_name.display(),
+                                                self.type_name,
+                                                self.type_name,
                                             ));
                                         } else {
                                             pre_fix = Some(format!(
                                                 "{}{:\t<indentation$}{} {{",
                                                 line_feed,
                                                 "",
-                                                self.type_name.display(),
+                                                self.type_name,
                                             ));
                                         }
                                         post_fix =
@@ -1139,7 +1162,7 @@ impl Variable {
                 }
             } else {
                 // We don't have a value, and we can't generate one from children values, so use the type_name
-                format!("{:\t<indentation$}{}", "", self.type_name.display())
+                format!("{:\t<indentation$}{}", "", self.type_name)
             }
         }
     }

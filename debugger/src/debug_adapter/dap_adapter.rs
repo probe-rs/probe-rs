@@ -8,7 +8,10 @@ use dap_types::*;
 use num_traits::Zero;
 use parse_int::parse;
 use probe_rs::{
-    debug::{ColumnType, Registers, SourceLocation, VariableCache, VariableName, VariableNodeType},
+    debug::{
+        ColumnType, Registers, SourceLocation, SteppingMode, VariableCache, VariableName,
+        VariableNodeType,
+    },
     CoreStatus, HaltReason, MemoryInterface,
 };
 use probe_rs_cli_util::rtt;
@@ -358,10 +361,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                         indexed_child_variables_cnt,
                     ) = self.get_variable_reference(&variable, variable_cache);
                     response_body.indexed_variables = Some(indexed_child_variables_cnt);
-
-                    if let VariableLocation::Address(address) = variable.memory_location {
-                        response_body.memory_reference = Some(format!("{:#010x}", address));
-                    }
+                    response_body.memory_reference = Some(format!("{}", variable.memory_location));
                     response_body.named_variables = Some(named_child_variables_cnt);
                     response_body.result = variable.get_value(variable_cache);
                     response_body.type_ = Some(format!("{:?}", variable.type_name));
@@ -669,7 +669,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                 };
 
                 let (verified_breakpoint, reason_msg) = if let Some(source_path) = source_path {
-                    match core_data.debug_info.get_breakpoint_location(
+                    match target_core.core_data.debug_info.get_breakpoint_location(
                         source_path,
                         requested_breakpoint_line,
                         requested_breakpoint_column,
@@ -678,7 +678,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                             if let Some(breakpoint_address) =
                                 valid_breakpoint_location.first_halt_address
                             {
-                                match core_data.set_breakpoint(
+                                match target_core.set_breakpoint(
                                     breakpoint_address as u32,
                                     BreakpointType::SourceBreakpoint,
                                 ) {
@@ -1027,7 +1027,11 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                         .0
                 } else if total_frames > 20 && start_frame + levels > total_frames {
                     // The MS DAP spec may also ask for more frames than what we reported.
-                    core_data.stack_frames.split_at(start_frame as usize).1
+                    target_core
+                        .core_data
+                        .stack_frames
+                        .split_at(start_frame as usize)
+                        .1
                 } else {
                     return self.send_response::<()>(
                         request,
@@ -1490,11 +1494,17 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                             },
                             // We use fully qualified Peripheral.Register.Field form to ensure the `evaluate` request can find the right registers and fields by name.
                             evaluate_name: Some(variable.name.to_string()),
-                            memory_reference: Some(format!("{:#010x}", variable.memory_location)),
+                            memory_reference: Some(format!(
+                                "{:#010x}",
+                                variable
+                                    .memory_location
+                                    .memory_address()
+                                    .unwrap_or(u32::MAX)
+                            )),
                             indexed_variables: Some(indexed_child_variables_cnt),
                             named_variables: Some(named_child_variables_cnt),
                             presentation_hint: None,
-                            type_: Some(variable.type_name.clone()),
+                            type_: Some(variable.type_name.to_string()),
                             value: {
                                 // The SVD cache is not automatically refreshed on every stack trace, and we only need to refresh the field values.
                                 variable.extract_value(
@@ -1626,21 +1636,13 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                             named_child_variables_cnt,
                             indexed_child_variables_cnt,
                         ) = self.get_variable_reference(variable, variable_cache);
-
-                        let memory_reference =
-                            if let VariableLocation::Address(address) = &variable.memory_location {
-                                Some(format!("{:#x}", address))
-                            } else {
-                                None
-                            };
-
                         Variable {
                             name: variable.name.to_string(),
                             // evaluate_name: Some(variable.name.to_string()),
                             // Do NOT use evaluate_name. It is impossible to distinguish between duplicate variable
                             // TODO: Implement qualified names.
                             evaluate_name: None,
-                            memory_reference: Some(format!("{:#010x}", variable.memory_location)),
+                            memory_reference: Some(variable.memory_location.to_string()),
                             indexed_variables: Some(indexed_child_variables_cnt),
                             named_variables: Some(named_child_variables_cnt),
                             presentation_hint: None,
@@ -1718,7 +1720,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
     /// Steps through the code at the requested granularity.
     /// - [SteppingMode::StepInstruction]: If MS DAP [SteppingGranularity::Instruction] (usually sent from the disassembly view)
     /// - [SteppingMode::OverStatement]: In all other cases.
-    pub(crate) fn next(&mut self, core_data: &mut CoreData, request: Request) -> Result<()> {
+    pub(crate) fn next(&mut self, target_core: &mut CoreHandle, request: Request) -> Result<()> {
         let arguments: NextArguments = get_arguments(&request)?;
 
         let stepping_granularity = match arguments.granularity {
@@ -1726,26 +1728,30 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             _ => SteppingMode::OverStatement,
         };
 
-        self.debug_step(stepping_granularity, core_data, request)
+        self.debug_step(stepping_granularity, target_core, request)
     }
 
     /// Steps through the code at the requested granularity.
     /// - [SteppingMode::StepInstruction]: If MS DAP [SteppingGranularity::Instruction] (usually sent from the disassembly view)
     /// - [SteppingMode::IntoStatement]: In all other cases.
-    pub(crate) fn step_in(&mut self, core_data: &mut CoreData, request: Request) -> Result<()> {
+    pub(crate) fn step_in(&mut self, target_core: &mut CoreHandle, request: Request) -> Result<()> {
         let arguments: StepInArguments = get_arguments(&request)?;
 
         let stepping_granularity = match arguments.granularity {
             Some(SteppingGranularity::Instruction) => SteppingMode::StepInstruction,
             _ => SteppingMode::IntoStatement,
         };
-        self.debug_step(stepping_granularity, core_data, request)
+        self.debug_step(stepping_granularity, target_core, request)
     }
 
     /// Steps through the code at the requested granularity.
     /// - [SteppingMode::StepInstruction]: If MS DAP [SteppingGranularity::Instruction] (usually sent from the disassembly view)
     /// - [SteppingMode::OutOfStatement]: In all other cases.
-    pub(crate) fn step_out(&mut self, core_data: &mut CoreData, request: Request) -> Result<()> {
+    pub(crate) fn step_out(
+        &mut self,
+        target_core: &mut CoreHandle,
+        request: Request,
+    ) -> Result<()> {
         let arguments: StepOutArguments = get_arguments(&request)?;
 
         let stepping_granularity = match arguments.granularity {
@@ -1753,36 +1759,37 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             _ => SteppingMode::OutOfStatement,
         };
 
-        self.debug_step(stepping_granularity, core_data, request)
+        self.debug_step(stepping_granularity, target_core, request)
     }
 
     /// Common code for the `next`, `step_in`, and `step_out` methods.
     fn debug_step(
         &mut self,
         stepping_granularity: SteppingMode,
-        core_data: &mut CoreData,
+        target_core: &mut CoreHandle,
         request: Request,
     ) -> Result<(), anyhow::Error> {
-        let (new_status, program_counter) =
-            match stepping_granularity.step(&mut core_data.target_core, core_data.debug_info) {
-                Ok((new_status, program_counter)) => (new_status, program_counter),
-                Err(error) => match &error {
-                    probe_rs::debug::DebugError::NoValidHaltLocation {
-                        message,
-                        pc_at_error,
-                    } => {
-                        self.show_message(
-                            MessageSeverity::Information,
-                            format!("Step error @{:#010X}: {}", pc_at_error, message),
-                        );
-                        (core_data.target_core.status()?, *pc_at_error as u32)
-                    }
-                    other_error => {
-                        core_data.target_core.halt(Duration::from_millis(100)).ok();
-                        return Err(anyhow!("Unexpected error during stepping :{}", other_error));
-                    }
-                },
-            };
+        let (new_status, program_counter) = match stepping_granularity
+            .step(&mut target_core.core, &target_core.core_data.debug_info)
+        {
+            Ok((new_status, program_counter)) => (new_status, program_counter),
+            Err(error) => match &error {
+                probe_rs::debug::DebugError::NoValidHaltLocation {
+                    message,
+                    pc_at_error,
+                } => {
+                    self.show_message(
+                        MessageSeverity::Information,
+                        format!("Step error @{:#010X}: {}", pc_at_error, message),
+                    );
+                    (target_core.core.status()?, *pc_at_error as u32)
+                }
+                other_error => {
+                    target_core.core.halt(Duration::from_millis(100)).ok();
+                    return Err(anyhow!("Unexpected error during stepping :{}", other_error));
+                }
+            },
+        };
 
         self.last_known_status = new_status;
         self.send_response::<()>(request, Ok(None))?;
@@ -1794,7 +1801,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                     new_status.short_long_status().1,
                     program_counter
                 )),
-                thread_id: Some(core_data.target_core.id() as i64),
+                thread_id: Some(target_core.core.id() as i64),
                 preserve_focus_hint: None,
                 text: None,
                 all_threads_stopped: Some(false), // TODO: Implement multi-core logic here

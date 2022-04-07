@@ -306,10 +306,10 @@ impl Debugger {
                         .next(&mut target_core, request)
                         .and(Ok(DebuggerStatus::ContinueSession)),
                     "stepIn" => debug_adapter
-                        .step_in(&mut core_data, request)
+                        .step_in(&mut target_core, request)
                         .and(Ok(DebuggerStatus::ContinueSession)),
                     "stepOut" => debug_adapter
-                        .step_out(&mut core_data, request)
+                        .step_out(&mut target_core, request)
                         .and(Ok(DebuggerStatus::ContinueSession)),
                     "pause" => debug_adapter
                         .pause(&mut target_core, request)
