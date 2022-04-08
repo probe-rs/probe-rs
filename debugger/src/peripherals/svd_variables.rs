@@ -240,13 +240,13 @@ pub(crate) fn resolve_peripherals(
     for device_peripheral in &peripheral_device.peripherals {
         if let Some(derived_from) = &device_peripheral.derived_from {
             if let Some(derived_result) = peripheral_device.get_peripheral(derived_from) {
-                match &device_peripheral.derive_from(derived_result) {
+                match device_peripheral.derive_from(derived_result) {
                     svd_rs::MaybeArray::Single(derived_peripheral) => {
-                        resolved_peripherals.push(derived_peripheral.clone());
+                        resolved_peripherals.push(derived_peripheral);
                     }
                     svd_rs::MaybeArray::Array(peripheral_array, _) => {
                         log::warn!("Unsupported Array in SVD for Peripheral:{}. Only the first instance will be visible.", peripheral_array.name);
-                        resolved_peripherals.push(peripheral_array.clone());
+                        resolved_peripherals.push(peripheral_array);
                     }
                 }
             } else {
@@ -279,13 +279,13 @@ pub(crate) fn resolve_registers(
     for peripheral_register in peripheral.registers() {
         if let Some(derived_from) = &peripheral_register.derived_from {
             if let Some(derived_result) = peripheral.get_register(derived_from) {
-                match &peripheral_register.derive_from(derived_result) {
+                match peripheral_register.derive_from(derived_result) {
                     svd_rs::MaybeArray::Single(derived_register) => {
-                        resolved_registers.push(derived_register.clone())
+                        resolved_registers.push(derived_register)
                     }
                     svd_rs::MaybeArray::Array(register_array, _) => {
                         log::warn!("Unsupported Array in SVD for Register:{}. Only the first instance will be visible.", register_array.name);
-                        resolved_registers.push(register_array.clone());
+                        resolved_registers.push(register_array);
                     }
                 }
             } else {
@@ -316,13 +316,13 @@ pub(crate) fn resolve_fields(register: &RegisterInfo) -> Result<Vec<FieldInfo>, 
     for register_field in register.fields() {
         if let Some(derived_from) = &register_field.derived_from {
             if let Some(derived_result) = register.get_field(derived_from) {
-                match &register_field.derive_from(derived_result) {
+                match register_field.derive_from(derived_result) {
                     svd_rs::MaybeArray::Single(derived_field) => {
-                        resolved_fields.push(derived_field.clone())
+                        resolved_fields.push(derived_field)
                     }
                     svd_rs::MaybeArray::Array(field_array, _) => {
                         log::warn!("Unsupported Array in SVD for Field:{}. Only the first instance will be visible.", field_array.name);
-                        resolved_fields.push(field_array.clone());
+                        resolved_fields.push(field_array);
                     }
                 }
             } else {
