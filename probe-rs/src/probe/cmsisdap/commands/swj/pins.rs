@@ -130,7 +130,7 @@ impl Request for SWJPinsRequest {
         Ok(6)
     }
 
-    fn from_bytes(&self, buffer: &[u8]) -> Result<Self::Response, SendError> {
+    fn parse_response(&self, buffer: &[u8]) -> Result<Self::Response, SendError> {
         Ok(Pins(buffer[0]))
     }
 }

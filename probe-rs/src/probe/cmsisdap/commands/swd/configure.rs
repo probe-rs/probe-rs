@@ -14,7 +14,7 @@ impl Request for ConfigureRequest {
         Ok(1)
     }
 
-    fn from_bytes(&self, buffer: &[u8]) -> Result<Self::Response, SendError> {
+    fn parse_response(&self, buffer: &[u8]) -> Result<Self::Response, SendError> {
         Ok(ConfigureResponse(Status::from_byte(buffer[0])?))
     }
 }

@@ -17,7 +17,7 @@ impl Request for ConnectRequest {
         Ok(1)
     }
 
-    fn from_bytes(&self, buffer: &[u8]) -> Result<Self::Response, SendError> {
+    fn parse_response(&self, buffer: &[u8]) -> Result<Self::Response, SendError> {
         match buffer[0] {
             0 => Ok(ConnectResponse::InitFailed),
             1 => Ok(ConnectResponse::SuccessfulInitForSWD),

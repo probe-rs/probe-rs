@@ -17,7 +17,7 @@ impl Request for SWJClockRequest {
         Ok(4)
     }
 
-    fn from_bytes(&self, buffer: &[u8]) -> Result<Self::Response, SendError> {
+    fn parse_response(&self, buffer: &[u8]) -> Result<Self::Response, SendError> {
         Ok(SWJClockResponse(Status::from_byte(buffer[0])?))
     }
 }

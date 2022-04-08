@@ -34,7 +34,7 @@ impl Request for SequenceRequest {
         Ok(1 + transfer_len_bytes)
     }
 
-    fn from_bytes(&self, buffer: &[u8]) -> Result<Self::Response, SendError> {
+    fn parse_response(&self, buffer: &[u8]) -> Result<Self::Response, SendError> {
         Ok(SequenceResponse(Status::from_byte(buffer[0])?))
     }
 }

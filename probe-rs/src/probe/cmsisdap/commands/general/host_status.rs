@@ -34,7 +34,7 @@ impl Request for HostStatusRequest {
         Ok(2)
     }
 
-    fn from_bytes(&self, _buffer: &[u8]) -> Result<Self::Response, SendError> {
+    fn parse_response(&self, _buffer: &[u8]) -> Result<Self::Response, SendError> {
         Ok(HostStatusResponse)
     }
 }
