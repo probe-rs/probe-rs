@@ -165,7 +165,7 @@ impl Request for TransferRequest {
         Ok(size)
     }
 
-    fn from_bytes(&self, mut buffer: &[u8]) -> Result<Self::Response, SendError> {
+    fn parse_response(&self, mut buffer: &[u8]) -> Result<Self::Response, SendError> {
         if buffer.len() < 2 {
             return Err(SendError::NotEnoughData);
         }
@@ -278,7 +278,7 @@ impl Request for TransferBlockRequest {
         Ok(size)
     }
 
-    fn from_bytes(&self, buffer: &[u8]) -> Result<Self::Response, SendError> {
+    fn parse_response(&self, buffer: &[u8]) -> Result<Self::Response, SendError> {
         let transfer_count = buffer
             .pread_with(0, LE)
             .map_err(|_| SendError::NotEnoughData)?;

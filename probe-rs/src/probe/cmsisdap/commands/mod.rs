@@ -318,7 +318,8 @@ pub(crate) trait Request {
     /// Returns the amount of bytes written to the buffer.
     fn to_bytes(&self, buffer: &mut [u8]) -> Result<usize, SendError>;
 
-    fn from_bytes(&self, buffer: &[u8]) -> Result<Self::Response, SendError>;
+    /// Parse the response to this request from received bytes.
+    fn parse_response(&self, buffer: &[u8]) -> Result<Self::Response, SendError>;
 }
 
 pub(crate) fn send_command<Req: Request>(
@@ -373,7 +374,7 @@ fn send_command_inner<Req: Request>(
     }
 
     if response_data[0] == Req::COMMAND_ID as u8 {
-        request.from_bytes(&response_data[1..])
+        request.parse_response(&response_data[1..])
     } else {
         Err(SendError::CommandIdMismatch(response_data[0]))
     }

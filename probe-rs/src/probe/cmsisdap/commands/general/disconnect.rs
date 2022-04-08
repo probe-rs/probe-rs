@@ -12,7 +12,7 @@ impl Request for DisconnectRequest {
         Ok(0)
     }
 
-    fn from_bytes(&self, buffer: &[u8]) -> Result<Self::Response, SendError> {
+    fn parse_response(&self, buffer: &[u8]) -> Result<Self::Response, SendError> {
         Ok(DisconnectResponse(Status::from_byte(buffer[0])?))
     }
 }

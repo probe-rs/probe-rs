@@ -45,6 +45,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Debugger: Removed the CLI mode, in favour of `probe-rs-cli` which has richer functionality. (#1041)
 - Renamed `Probe::speed` to `Probe::speed_khz`.
 - Debugger: Requires changes to DAP Client `launch.json` to prepare for WIP multi-core support. (#1072)
+- `ram_download` example now uses clap syntax.
 
 ### Fixed
 
@@ -62,6 +63,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Support the new `defmt` 0.3 `DEFMT_LOG` environment variable.
   - Requires `probe-rs/vscode` [PR #27](https://github.com/probe-rs/vscode/pull/27)
   - Debugger: Improved RTT reliability between debug adapter and VSCode (#1035)
+  - Fixed missing `derive` feature for examples using `clap`.
 
 ## [0.12.0]
 
