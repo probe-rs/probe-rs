@@ -8,17 +8,17 @@ use rand::prelude::*;
 
 use anyhow::{anyhow, Context, Result};
 
-#[derive(clap::StructOpt)]
+#[derive(clap::Parser)]
 struct Cli {
-    #[structopt(long = "chip")]
+    #[clap(long = "chip")]
     chip: Option<String>,
-    #[structopt(long = "address", parse(try_from_str = parse_hex))]
+    #[clap(long = "address", parse(try_from_str = parse_hex))]
     address: u32,
-    #[structopt(long = "size")]
+    #[clap(long = "size")]
     size: usize,
-    #[structopt(long = "speed")]
+    #[clap(long = "speed")]
     speed: Option<u32>,
-    #[structopt(long = "protocol")]
+    #[clap(long = "protocol")]
     protocol: Option<String>,
 }
 
