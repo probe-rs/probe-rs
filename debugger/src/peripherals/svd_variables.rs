@@ -9,8 +9,8 @@ use probe_rs::{
     Core,
 };
 use std::{fmt::Debug, fs::File, io::Read, path::Path};
-use svd_parser::{self as svd, ValidateLevel};
-use svd_rs::{Access, Device, EnumeratedValues, FieldInfo, PeripheralInfo, RegisterInfo};
+use svd_parser::{self as svd};
+use svd_rs::{Access, DeriveFrom, Device, FieldInfo, PeripheralInfo, RegisterInfo};
 
 /// The SVD file contents and related data
 #[derive(Debug)]
@@ -238,43 +238,16 @@ pub(crate) fn resolve_peripherals(
 ) -> Result<Vec<PeripheralInfo>, DebuggerError> {
     let mut resolved_peripherals = vec![];
     for device_peripheral in &peripheral_device.peripherals {
-        // TODO: Need to code for the impact of MaybeArray results.
-        let mut peripheral_builder = PeripheralInfo::builder();
         if let Some(derived_from) = &device_peripheral.derived_from {
-            if let Some(template_peripheral) = peripheral_device.get_peripheral(derived_from) {
-                if template_peripheral.group_name.is_some() {
-                    peripheral_builder =
-                        peripheral_builder.group_name(template_peripheral.group_name.clone());
-                }
-                if template_peripheral.display_name.is_some() {
-                    peripheral_builder =
-                        peripheral_builder.display_name(template_peripheral.display_name.clone());
-                }
-                if template_peripheral.description.is_some() {
-                    peripheral_builder =
-                        peripheral_builder.description(template_peripheral.description.clone());
-                }
-                if template_peripheral.prepend_to_name.is_some() {
-                    peripheral_builder = peripheral_builder
-                        .prepend_to_name(template_peripheral.prepend_to_name.clone());
-                }
-                if template_peripheral.append_to_name.is_some() {
-                    peripheral_builder = peripheral_builder
-                        .append_to_name(template_peripheral.append_to_name.clone());
-                }
-                peripheral_builder =
-                    peripheral_builder.base_address(template_peripheral.base_address);
-                peripheral_builder = peripheral_builder
-                    .default_register_properties(template_peripheral.default_register_properties);
-                if template_peripheral.address_block.is_some() {
-                    peripheral_builder =
-                        peripheral_builder.address_block(template_peripheral.address_block.clone());
-                }
-                peripheral_builder =
-                    peripheral_builder.interrupt(Some(template_peripheral.interrupt.clone()));
-                if template_peripheral.registers.is_some() {
-                    peripheral_builder =
-                        peripheral_builder.registers(template_peripheral.registers.clone());
+            if let Some(derived_result) = peripheral_device.get_peripheral(derived_from) {
+                match &device_peripheral.derive_from(derived_result) {
+                    svd_rs::MaybeArray::Single(derived_peripheral) => {
+                        resolved_peripherals.push(derived_peripheral.clone());
+                    }
+                    svd_rs::MaybeArray::Array(peripheral_array, _) => {
+                        log::warn!("Unsupported Array in SVD for Peripheral:{}. Only the first instance will be visible.", peripheral_array.name);
+                        resolved_peripherals.push(peripheral_array.clone());
+                    }
                 }
             } else {
                 return Err(DebuggerError::Other(anyhow::anyhow!(
@@ -282,45 +255,17 @@ pub(crate) fn resolve_peripherals(
                     derived_from
                 )));
             };
+        } else {
+            match device_peripheral {
+                svd_rs::MaybeArray::Single(original_peripheral) => {
+                    resolved_peripherals.push(original_peripheral.clone())
+                }
+                svd_rs::MaybeArray::Array(peripheral_array, _) => {
+                    log::warn!("Unsupported Array in SVD for Peripheral:{}. Only the first instance will be visible.", peripheral_array.name);
+                    resolved_peripherals.push(peripheral_array.clone());
+                }
+            }
         }
-        // Irrespective of derived_from values, set the values we need.
-        peripheral_builder = peripheral_builder.name(device_peripheral.name.clone());
-        if device_peripheral.description.is_some() {
-            peripheral_builder =
-                peripheral_builder.description(device_peripheral.description.clone());
-        }
-        if device_peripheral.display_name.is_some() {
-            peripheral_builder =
-                peripheral_builder.display_name(device_peripheral.display_name.clone());
-        }
-        if device_peripheral.group_name.is_some() {
-            peripheral_builder =
-                peripheral_builder.group_name(device_peripheral.group_name.clone());
-        }
-        if device_peripheral.prepend_to_name.is_some() {
-            peripheral_builder =
-                peripheral_builder.prepend_to_name(device_peripheral.prepend_to_name.clone());
-        }
-        if device_peripheral.append_to_name.is_some() {
-            peripheral_builder =
-                peripheral_builder.append_to_name(device_peripheral.append_to_name.clone());
-        }
-        peripheral_builder = peripheral_builder.base_address(device_peripheral.base_address);
-        peripheral_builder = peripheral_builder
-            .default_register_properties(device_peripheral.default_register_properties);
-        if device_peripheral.address_block.is_some() {
-            peripheral_builder =
-                peripheral_builder.address_block(device_peripheral.address_block.clone());
-        }
-        peripheral_builder =
-            peripheral_builder.interrupt(Some(device_peripheral.interrupt.clone()));
-        if device_peripheral.registers.is_some() {
-            peripheral_builder = peripheral_builder.registers(device_peripheral.registers.clone());
-        }
-        let resolved_peripheral = peripheral_builder
-            .build(ValidateLevel::Weak)
-            .map_err(|error| DebuggerError::Other(anyhow::anyhow!("{:?}", error)))?;
-        resolved_peripherals.push(resolved_peripheral);
     }
     Ok(resolved_peripherals)
 }
@@ -332,54 +277,16 @@ pub(crate) fn resolve_registers(
     // TODO: Need to code for the impact of register clusters.
     let mut resolved_registers = vec![];
     for peripheral_register in peripheral.registers() {
-        // TODO: Need to code for the impact of MaybeArray results.
-        let mut register_builder = RegisterInfo::builder();
-        // Deriving the properties starts from the peripheral level defaults.
-        let mut register_properties = peripheral.default_register_properties;
         if let Some(derived_from) = &peripheral_register.derived_from {
-            if let Some(template_register) = peripheral.get_register(derived_from) {
-                if template_register.display_name.is_some() {
-                    register_builder =
-                        register_builder.display_name(template_register.display_name.clone());
-                }
-                if template_register.description.is_some() {
-                    register_builder =
-                        register_builder.description(template_register.description.clone());
-                }
-                if template_register.modified_write_values.is_some() {
-                    register_builder = register_builder
-                        .modified_write_values(template_register.modified_write_values);
-                }
-                if template_register.write_constraint.is_some() {
-                    register_builder =
-                        register_builder.write_constraint(template_register.write_constraint);
-                }
-                if template_register.read_action.is_some() {
-                    register_builder = register_builder.read_action(template_register.read_action);
-                }
-                if template_register.fields.is_some() {
-                    register_builder = register_builder.fields(template_register.fields.clone());
-                }
-                // We don't update the register_builder properties directly until the next step.
-                if template_register.properties.size.is_some() {
-                    register_properties =
-                        register_properties.size(template_register.properties.size);
-                }
-                if template_register.properties.access.is_some() {
-                    register_properties =
-                        register_properties.access(template_register.properties.access);
-                }
-                if template_register.properties.protection.is_some() {
-                    register_properties =
-                        register_properties.protection(template_register.properties.protection);
-                }
-                if template_register.properties.reset_value.is_some() {
-                    register_properties =
-                        register_properties.reset_value(template_register.properties.reset_value);
-                }
-                if template_register.properties.reset_mask.is_some() {
-                    register_properties =
-                        register_properties.reset_mask(template_register.properties.reset_mask);
+            if let Some(derived_result) = peripheral.get_register(derived_from) {
+                match &peripheral_register.derive_from(derived_result) {
+                    svd_rs::MaybeArray::Single(derived_register) => {
+                        resolved_registers.push(derived_register.clone())
+                    }
+                    svd_rs::MaybeArray::Array(register_array, _) => {
+                        log::warn!("Unsupported Array in SVD for Register:{}. Only the first instance will be visible.", register_array.name);
+                        resolved_registers.push(register_array.clone());
+                    }
                 }
             } else {
                 return Err(DebuggerError::Other(anyhow::anyhow!(
@@ -387,65 +294,17 @@ pub(crate) fn resolve_registers(
                     derived_from
                 )));
             };
+        } else {
+            match peripheral_register {
+                svd_rs::MaybeArray::Single(original_register) => {
+                    resolved_registers.push(original_register.clone())
+                }
+                svd_rs::MaybeArray::Array(register_array, _) => {
+                    log::warn!("Unsupported Array in SVD for Register:{}. Only the first instance will be visible.", register_array.name);
+                    resolved_registers.push(register_array.clone());
+                }
+            }
         }
-        // Irrespective of derived_from values, set the values we need.
-        let mut register_name = peripheral_register.name.clone();
-        if let Some(prefix) = &peripheral.prepend_to_name {
-            register_name = format!("{}{}", prefix, register_name);
-        }
-        if let Some(suffix) = &peripheral.append_to_name {
-            register_name = format!("{}{}", register_name, suffix);
-        }
-        register_builder = register_builder.name(register_name);
-        if peripheral_register.display_name.is_some() {
-            register_builder =
-                register_builder.display_name(peripheral_register.display_name.clone());
-        }
-        if peripheral_register.description.is_some() {
-            register_builder =
-                register_builder.description(peripheral_register.description.clone());
-        }
-        register_builder = register_builder.address_offset(peripheral_register.address_offset);
-        register_builder = register_builder.properties(peripheral_register.properties);
-        if peripheral_register.modified_write_values.is_some() {
-            register_builder =
-                register_builder.modified_write_values(peripheral_register.modified_write_values);
-        }
-        if peripheral_register.write_constraint.is_some() {
-            register_builder =
-                register_builder.write_constraint(peripheral_register.write_constraint);
-        }
-        if peripheral_register.read_action.is_some() {
-            register_builder = register_builder.read_action(peripheral_register.read_action);
-        }
-        if peripheral_register.fields.is_some() {
-            register_builder = register_builder.fields(peripheral_register.fields.clone());
-        }
-        // Complete the derive of the register properties.
-        if peripheral_register.properties.size.is_some() {
-            register_properties = register_properties.size(peripheral_register.properties.size);
-        }
-        if peripheral_register.properties.access.is_some() {
-            register_properties = register_properties.access(peripheral_register.properties.access);
-        }
-        if peripheral_register.properties.protection.is_some() {
-            register_properties =
-                register_properties.protection(peripheral_register.properties.protection);
-        }
-        if peripheral_register.properties.reset_value.is_some() {
-            register_properties =
-                register_properties.reset_value(peripheral_register.properties.reset_value);
-        }
-        if peripheral_register.properties.reset_mask.is_some() {
-            register_properties =
-                register_properties.reset_mask(peripheral_register.properties.reset_mask);
-        }
-        register_builder = register_builder.properties(register_properties);
-        // Not that the register_builder has been updated, we can build it.
-        let resolved_register = register_builder
-            .build(ValidateLevel::Weak)
-            .map_err(|error| DebuggerError::Other(anyhow::anyhow!("{:?}", error)))?;
-        resolved_registers.push(resolved_register);
     }
     Ok(resolved_registers)
 }
@@ -455,25 +314,16 @@ pub(crate) fn resolve_fields(register: &RegisterInfo) -> Result<Vec<FieldInfo>, 
     // TODO: Need to code for the impact of field clusters.
     let mut resolved_fields = vec![];
     for register_field in register.fields() {
-        // TODO: Need to code for the impact of MaybeArray results.
-        let mut field_builder = FieldInfo::builder();
         if let Some(derived_from) = &register_field.derived_from {
-            if let Some(template_field) = register.get_field(derived_from) {
-                if template_field.description.is_some() {
-                    field_builder = field_builder.description(template_field.description.clone());
-                }
-                if template_field.access.is_some() {
-                    field_builder = field_builder.access(template_field.access);
-                }
-                if template_field.modified_write_values.is_some() {
-                    field_builder =
-                        field_builder.modified_write_values(template_field.modified_write_values);
-                }
-                if template_field.write_constraint.is_some() {
-                    field_builder = field_builder.write_constraint(template_field.write_constraint);
-                }
-                if template_field.read_action.is_some() {
-                    field_builder = field_builder.read_action(template_field.read_action);
+            if let Some(derived_result) = register.get_field(derived_from) {
+                match &register_field.derive_from(derived_result) {
+                    svd_rs::MaybeArray::Single(derived_field) => {
+                        resolved_fields.push(derived_field.clone())
+                    }
+                    svd_rs::MaybeArray::Array(field_array, _) => {
+                        log::warn!("Unsupported Array in SVD for Field:{}. Only the first instance will be visible.", field_array.name);
+                        resolved_fields.push(field_array.clone());
+                    }
                 }
             } else {
                 return Err(DebuggerError::Other(anyhow::anyhow!(
@@ -481,74 +331,17 @@ pub(crate) fn resolve_fields(register: &RegisterInfo) -> Result<Vec<FieldInfo>, 
                     derived_from
                 )));
             };
+        } else {
+            match register_field {
+                svd_rs::MaybeArray::Single(original_field) => {
+                    resolved_fields.push(original_field.clone())
+                }
+                svd_rs::MaybeArray::Array(field_array, _) => {
+                    log::warn!("Unsupported Array in SVD for Field:{}. Only the first instance will be visible.", field_array.name);
+                    resolved_fields.push(field_array.clone());
+                }
+            }
         }
-        // Irrespective of derived_from values, set the values we need.
-        field_builder = field_builder.name(register_field.name.clone());
-        if register_field.description.is_some() {
-            field_builder = field_builder.description(register_field.description.clone());
-        }
-        field_builder = field_builder.bit_range(register_field.bit_range);
-        field_builder = field_builder.access(register_field.access);
-        if register_field.modified_write_values.is_some() {
-            field_builder =
-                field_builder.modified_write_values(register_field.modified_write_values);
-        }
-        if register_field.write_constraint.is_some() {
-            field_builder = field_builder.write_constraint(register_field.write_constraint);
-        }
-        if register_field.read_action.is_some() {
-            field_builder = field_builder.read_action(register_field.read_action);
-        }
-        field_builder = field_builder.enumerated_values(register_field.enumerated_values.clone());
-        let resolved_field = field_builder
-            .build(ValidateLevel::Weak)
-            .map_err(|error| DebuggerError::Other(anyhow::anyhow!("{:?}", error)))?;
-        resolved_fields.push(resolved_field);
     }
     Ok(resolved_fields)
-}
-
-// TODO: Implement using these enumerated values for SVD fields.
-#[allow(dead_code)]
-/// Resolve all the enumerated values of a field through their (optional) `derived_from` values.
-pub(crate) fn enumerated_values(field: FieldInfo) -> Result<Vec<EnumeratedValues>, DebuggerError> {
-    // TODO: Need to code for the impact of enumerated value clusters.
-    let mut enumerated_values = vec![];
-    for field_enum_values in &field.enumerated_values {
-        // TODO: Need to code for the impact of MaybeArray results.
-        let mut enum_values_builder = EnumeratedValues::builder();
-        if let Some(derived_from) = &field_enum_values.derived_from {
-            if let Some(template_enum_values) =
-                field.enumerated_values.iter().find(|derived_from_values| {
-                    derived_from_values.name == Some(derived_from.to_owned())
-                })
-            {
-                if template_enum_values.name.is_some() {
-                    enum_values_builder =
-                        enum_values_builder.name(template_enum_values.name.clone());
-                }
-                if template_enum_values.usage.is_some() {
-                    enum_values_builder = enum_values_builder.usage(template_enum_values.usage);
-                }
-            } else {
-                return Err(DebuggerError::Other(anyhow::anyhow!(
-                    "Unable to retrieve 'derived_from' SVD field: {:?}",
-                    derived_from
-                )));
-            };
-        }
-        // Irrespective of derived_from values, set the values we need.
-        if field_enum_values.name.is_some() {
-            enum_values_builder = enum_values_builder.name(field_enum_values.name.clone());
-        }
-        if field_enum_values.usage.is_some() {
-            enum_values_builder = enum_values_builder.usage(field_enum_values.usage);
-        }
-        enum_values_builder = enum_values_builder.values(field_enum_values.values.clone());
-        let resolved_enum_values = enum_values_builder
-            .build(ValidateLevel::Weak)
-            .map_err(|error| DebuggerError::Other(anyhow::anyhow!("{:?}", error)))?;
-        enumerated_values.push(resolved_enum_values);
-    }
-    Ok(enumerated_values)
 }
