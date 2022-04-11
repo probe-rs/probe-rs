@@ -13,33 +13,61 @@ expression: run_result.output
 (HOST) DEBUG opened probe
 (HOST) DEBUG started session
 (HOST) INFO  flashing program (2 pages / 8.00 KiB)
-(HOST) DEBUG Erased sector of size 4096 bytes in 129 ms
-(HOST) DEBUG Erased sector of size 4096 bytes in 102 ms
-(HOST) DEBUG Programmed page of size 4096 bytes in 84 ms
-(HOST) DEBUG Programmed page of size 4096 bytes in 76 ms
+(HOST) DEBUG Erased sector of size 4096 bytes in 149 ms
+(HOST) DEBUG Erased sector of size 4096 bytes in 113 ms
+(HOST) DEBUG Programmed page of size 4096 bytes in 96 ms
+(HOST) DEBUG Programmed page of size 4096 bytes in 80 ms
 (HOST) INFO  success!
 (HOST) DEBUG 261062 bytes of stack available (0x20000000 ..= 0x2003FBC7), using 1024 byte canary
-(HOST) TRACE setting up canary took 0.010s (100.69 KiB/s)
+(HOST) TRACE setting up canary took 0.011s (91.54 KiB/s)
 (HOST) DEBUG starting device
 (HOST) DEBUG Successfully attached RTT
 ────────────────────────────────────────────────────────────────────────────────
 ERROR panicked at 'explicit panic'
 ────────────────────────────────────────────────────────────────────────────────
-(HOST) TRACE reading canary took 0.014s (73.24 KiB/s)
+(HOST) TRACE reading canary took 0.010s (95.49 KiB/s)
 (HOST) DEBUG stack canary intact
+(HOST) TRACE 0x000015b0: found FDE for 0x000015b0 .. 0x000015c4 at offset 6432
+(HOST) TRACE uwt row for pc 0x000015b0: UnwindTableRow { start_address: 5552, end_address: 5572, saved_args_size: 0, cfa: RegisterAndOffset { register: Register(13), offset: 0 }, registers: RegisterRuleMap { rules: [] } }
 (HOST) DEBUG LR=0xFFFFFFF9 PC=0x000015B0
+(HOST) TRACE 0x000008de: found FDE for 0x000008de .. 0x000008e2 at offset 8572
+(HOST) TRACE uwt row for pc 0x000008de: UnwindTableRow { start_address: 2270, end_address: 2274, saved_args_size: 0, cfa: RegisterAndOffset { register: Register(13), offset: 0 }, registers: RegisterRuleMap { rules: [] } }
 (HOST) DEBUG LR=0x000001C9 PC=0x000008DE
+(HOST) TRACE 0x000001c8: found FDE for 0x000001c0 .. 0x000001ca at offset 96
+(HOST) TRACE uwt row for pc 0x000001c8: UnwindTableRow { start_address: 452, end_address: 458, saved_args_size: 0, cfa: RegisterAndOffset { register: Register(7), offset: 8 }, registers: RegisterRuleMap { rules: [(Register(14), Offset(-4)), (Register(7), Offset(-8))] } }
 (HOST) DEBUG update_cfa: CFA changed Some(2003fb90) -> 2003fb98
+(HOST) TRACE update reg=Register(14), rule=Offset(-4), abs=0x2003fb94 -> value=0x000001d3
+(HOST) TRACE update reg=Register(7), rule=Offset(-8), abs=0x2003fb90 -> value=0x2003fb98
 (HOST) DEBUG LR=0x000001D3 PC=0x000001C8
+(HOST) TRACE 0x000001d2: found FDE for 0x000001ca .. 0x000001d4 at offset 152
+(HOST) TRACE uwt row for pc 0x000001d2: UnwindTableRow { start_address: 462, end_address: 468, saved_args_size: 0, cfa: RegisterAndOffset { register: Register(7), offset: 8 }, registers: RegisterRuleMap { rules: [(Register(14), Offset(-4)), (Register(7), Offset(-8))] } }
 (HOST) DEBUG update_cfa: CFA changed Some(2003fb98) -> 2003fba0
+(HOST) TRACE update reg=Register(14), rule=Offset(-4), abs=0x2003fb9c -> value=0x000001bf
+(HOST) TRACE update reg=Register(7), rule=Offset(-8), abs=0x2003fb98 -> value=0x2003fba8
 (HOST) DEBUG LR=0x000001BF PC=0x000001D2
+(HOST) TRACE 0x000001be: found FDE for 0x00000196 .. 0x000001c0 at offset 48
+(HOST) TRACE uwt row for pc 0x000001be: UnwindTableRow { start_address: 410, end_address: 448, saved_args_size: 0, cfa: RegisterAndOffset { register: Register(7), offset: 8 }, registers: RegisterRuleMap { rules: [(Register(14), Offset(-4)), (Register(7), Offset(-8))] } }
 (HOST) DEBUG update_cfa: CFA changed Some(2003fba0) -> 2003fbb0
+(HOST) TRACE update reg=Register(14), rule=Offset(-4), abs=0x2003fbac -> value=0x00000195
+(HOST) TRACE update reg=Register(7), rule=Offset(-8), abs=0x2003fba8 -> value=0x2003fbb0
 (HOST) DEBUG LR=0x00000195 PC=0x000001BE
+(HOST) TRACE 0x00000194: found FDE for 0x0000018c .. 0x00000196 at offset 20
+(HOST) TRACE uwt row for pc 0x00000194: UnwindTableRow { start_address: 400, end_address: 406, saved_args_size: 0, cfa: RegisterAndOffset { register: Register(7), offset: 8 }, registers: RegisterRuleMap { rules: [(Register(14), Offset(-4)), (Register(7), Offset(-8))] } }
 (HOST) DEBUG update_cfa: CFA changed Some(2003fbb0) -> 2003fbb8
+(HOST) TRACE update reg=Register(14), rule=Offset(-4), abs=0x2003fbb4 -> value=0x000001dd
+(HOST) TRACE update reg=Register(7), rule=Offset(-8), abs=0x2003fbb0 -> value=0x2003fbb8
 (HOST) DEBUG LR=0x000001DD PC=0x00000194
+(HOST) TRACE 0x000001dc: found FDE for 0x000001d4 .. 0x000001de at offset 6340
+(HOST) TRACE uwt row for pc 0x000001dc: UnwindTableRow { start_address: 472, end_address: 478, saved_args_size: 0, cfa: RegisterAndOffset { register: Register(7), offset: 8 }, registers: RegisterRuleMap { rules: [(Register(14), Offset(-4)), (Register(7), Offset(-8))] } }
 (HOST) DEBUG update_cfa: CFA changed Some(2003fbb8) -> 2003fbc0
+(HOST) TRACE update reg=Register(14), rule=Offset(-4), abs=0x2003fbbc -> value=0x0000018b
+(HOST) TRACE update reg=Register(7), rule=Offset(-8), abs=0x2003fbb8 -> value=0x2003fbc0
 (HOST) DEBUG LR=0x0000018B PC=0x000001DC
+(HOST) TRACE 0x0000018a: found FDE for 0x00000100 .. 0x0000018c at offset 6312
+(HOST) TRACE uwt row for pc 0x0000018a: UnwindTableRow { start_address: 260, end_address: 396, saved_args_size: 0, cfa: RegisterAndOffset { register: Register(7), offset: 8 }, registers: RegisterRuleMap { rules: [(Register(14), Offset(-4)), (Register(7), Offset(-8))] } }
 (HOST) DEBUG update_cfa: CFA changed Some(2003fbc0) -> 2003fbc8
+(HOST) TRACE update reg=Register(14), rule=Offset(-4), abs=0x2003fbc4 -> value=0xffffffff
+(HOST) TRACE update reg=Register(7), rule=Offset(-8), abs=0x2003fbc0 -> value=0x00000000
 (HOST) DEBUG LR=0xFFFFFFFF PC=0x0000018A
 (HOST) TRACE demangle Ok("_ZN3lib6inline5__udf17h4878bf20408765ceE") (language=Some(DwLang(1C))) -> Ok("lib::inline::__udf")
 (HOST) TRACE demangle Ok("__udf") (language=Some(DwLang(1C))) -> Ok("__udf")
