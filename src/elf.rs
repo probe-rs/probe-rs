@@ -11,10 +11,11 @@ use crate::cortexm;
 pub(crate) struct Elf<'file> {
     elf: ObjectFile<'file>,
     symbols: Symbols,
-    pub(crate) live_functions: HashSet<&'file str>,
-    pub(crate) defmt_table: Option<Table>,
-    pub(crate) defmt_locations: Option<Locations>,
+
     pub(crate) debug_frame: DebugFrame<'file>,
+    pub(crate) defmt_locations: Option<Locations>,
+    pub(crate) defmt_table: Option<Table>,
+    pub(crate) live_functions: HashSet<&'file str>,
     pub(crate) vector_table: cortexm::VectorTable,
 }
 
@@ -35,10 +36,10 @@ impl<'file> Elf<'file> {
         Ok(Self {
             elf,
             symbols,
-            live_functions,
-            defmt_table,
-            defmt_locations,
             debug_frame,
+            defmt_locations,
+            defmt_table,
+            live_functions,
             vector_table,
         })
     }
