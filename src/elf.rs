@@ -1,4 +1,4 @@
-use std::{collections::HashSet, convert::TryInto, env, ops::Deref};
+use std::{collections::HashSet, convert::TryInto, env, ops::Deref, path::Path};
 
 use anyhow::{anyhow, bail};
 use defmt_decoder::{Locations, Table};
@@ -11,15 +11,20 @@ use crate::cortexm;
 pub(crate) struct Elf<'file> {
     elf: ObjectFile<'file>,
     symbols: Symbols,
-    pub(crate) live_functions: HashSet<&'file str>,
-    pub(crate) defmt_table: Option<Table>,
-    pub(crate) defmt_locations: Option<Locations>,
+
     pub(crate) debug_frame: DebugFrame<'file>,
+    pub(crate) defmt_locations: Option<Locations>,
+    pub(crate) defmt_table: Option<Table>,
+    pub(crate) elf_path: &'file Path,
+    pub(crate) live_functions: HashSet<&'file str>,
     pub(crate) vector_table: cortexm::VectorTable,
 }
 
 impl<'file> Elf<'file> {
-    pub(crate) fn parse(elf_bytes: &'file [u8]) -> Result<Self, anyhow::Error> {
+    pub(crate) fn parse(
+        elf_bytes: &'file [u8],
+        elf_path: &'file Path,
+    ) -> Result<Self, anyhow::Error> {
         let elf = ObjectFile::parse(elf_bytes)?;
 
         let live_functions = extract_live_functions(&elf)?;
@@ -35,10 +40,11 @@ impl<'file> Elf<'file> {
         Ok(Self {
             elf,
             symbols,
-            live_functions,
-            defmt_table,
-            defmt_locations,
             debug_frame,
+            defmt_locations,
+            defmt_table,
+            elf_path,
+            live_functions,
             vector_table,
         })
     }
