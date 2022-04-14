@@ -56,12 +56,12 @@ fn check_processor_target_compatability(cores: &[Core], elf_path: &Path) {
     });
     let target = match target {
         Some(target) => target,
-        None => return,
+        None => return, // NOTE(return) If probe-run is not called through `cargo run` the elf_path
+                        // might not contain the compilation target. In that case we return early.
     };
 
     // NOTE(indexing): There *must* always be at least one core.
     let core_type = cores[0].core_type;
-
     let matches = match core_type {
         CoreType::Armv6m => target == "thumbv6m-none-eabi",
         CoreType::Armv7m => target == "thumbv7m-none-eabi",
@@ -71,7 +71,9 @@ fn check_processor_target_compatability(cores: &[Core], elf_path: &Path) {
                 || target == "thumbv8m.main-none-eabi"
                 || target == "thumbv8m.main-none-eabihf"
         }
-        CoreType::Riscv => return,
+        CoreType::Riscv => return, // NOTE(return) Since we do not get any info about instruction
+                                   // set support from probe-rs we do not know which compilation
+                                   // targets fit.
     };
 
     if matches {
