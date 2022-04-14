@@ -44,7 +44,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Updated STM32H7 series yaml to support newly released chips. (#1011)
 - Debugger: Removed the CLI mode, in favour of `probe-rs-cli` which has richer functionality. (#1041)
 - Renamed `Probe::speed` to `Probe::speed_khz`.
-- Debugger: Requires changes to DAP Client `launch.json` to prepare for WIP multi-core support. (#1072)
+- Debugger: Changes to DAP Client `launch.json` to prepare for WIP multi-core support. (#1072)
 - `ram_download` example now uses clap syntax.
 
 ### Fixed
