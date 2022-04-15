@@ -1265,18 +1265,23 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
 
         // The memory address for the next read from target memory. We have to manually adjust it to be word aligned, and make sure it doesn't underflow/overflow.
         let mut read_pointer = if byte_offset.is_negative() {
-            memory_reference.saturating_sub(byte_offset.abs())
+            Some(memory_reference.saturating_sub(byte_offset.abs()) as u32)
         } else {
-            memory_reference.saturating_add(byte_offset)
-        } as u32;
+            Some(memory_reference.saturating_add(byte_offset) as u32)
+        };
         read_pointer = if instruction_offset_as_bytes.is_negative() {
-            read_pointer.saturating_sub(instruction_offset_as_bytes.abs() as u32)
+            read_pointer.map(|rp| rp.saturating_sub(instruction_offset_as_bytes.abs() as u32))
         } else {
-            read_pointer.saturating_add(instruction_offset_as_bytes as u32)
+            read_pointer.map(|rp| rp.saturating_add(instruction_offset_as_bytes as u32))
         };
 
         // The memory address for the next instruction to be disassembled
-        let mut instruction_pointer = read_pointer as u64;
+        let mut instruction_pointer = if let Some(read_pointer) = read_pointer {
+            read_pointer as u64
+        } else {
+            let error_message = format!("Unable to calculate starting address for disassembly request with memory reference:{:#010X}, byte offset:{:#010X}, and instruction offset:{:#010X}.", memory_reference, byte_offset, instruction_offset);
+            return Err(DebuggerError::Other(anyhow!(error_message)));
+        };
 
         // We will only include source location data in a resulting instruction, if it is different from the previous one.
         let mut stored_source_location = None;
@@ -1284,37 +1289,40 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         // The MS DAP spec requires that we always have to return a fixed number of instructions.
         while assembly_lines.len() < instruction_count as usize {
             if read_more_bytes {
-                match target_core.core.read_word_32(read_pointer) {
-                    Ok(new_word) => {
-                        // Advance the read pointer for next time we need it.
-                        read_pointer = if let Some(valid_read_pointer) = read_pointer.checked_add(4)
-                        {
-                            valid_read_pointer
-                        } else {
-                            // If this happens, the next loop will generate "invalid instruction" records.
-                            read_pointer = u32::MAX;
-                            continue;
-                        };
-                        // Update the code buffer.
-                        for new_byte in new_word.to_le_bytes() {
-                            code_buffer.push(new_byte);
+                if let Some(current_read_pointer) = read_pointer {
+                    match target_core.core.read_word_32(current_read_pointer) {
+                        Ok(new_word) => {
+                            // Advance the read pointer for next time we need it.
+                            read_pointer = if let Some(valid_read_pointer) =
+                                current_read_pointer.checked_add(4)
+                            {
+                                Some(valid_read_pointer)
+                            } else {
+                                // If this happens, the next loop will generate "invalid instruction" records.
+                                read_pointer = None;
+                                continue;
+                            };
+                            // Update the code buffer.
+                            for new_byte in new_word.to_le_bytes() {
+                                code_buffer.push(new_byte);
+                            }
                         }
-                    }
-                    Err(_) => {
-                        // If we can't read data at a given address, then create a "invalid instruction" record, and keep trying.
-                        read_pointer = read_pointer.saturating_add(4);
-                        assembly_lines.push(dap_types::DisassembledInstruction {
-                            address: format!("{:#010X}", read_pointer),
-                            column: None,
-                            end_column: None,
-                            end_line: None,
-                            instruction: "<instruction address not readable>".to_string(),
-                            instruction_bytes: None,
-                            line: None,
-                            location: None,
-                            symbol: None,
-                        });
-                        continue;
+                        Err(_) => {
+                            // If we can't read data at a given address, then create a "invalid instruction" record, and keep trying.
+                            assembly_lines.push(dap_types::DisassembledInstruction {
+                                address: format!("{:#010X}", current_read_pointer),
+                                column: None,
+                                end_column: None,
+                                end_line: None,
+                                instruction: "<instruction address not readable>".to_string(),
+                                instruction_bytes: None,
+                                line: None,
+                                location: None,
+                                symbol: None,
+                            });
+                            read_pointer = Some(current_read_pointer.saturating_add(4));
+                            continue;
+                        }
                     }
                 }
             }
@@ -1508,13 +1516,13 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                             },
                             // We use fully qualified Peripheral.Register.Field form to ensure the `evaluate` request can find the right registers and fields by name.
                             evaluate_name: Some(variable.name.to_string()),
-                            memory_reference: Some(format!(
-                                "{:#010x}",
-                                variable
-                                    .memory_location
-                                    .memory_address()
-                                    .unwrap_or(u32::MAX)
-                            )),
+                            memory_reference: variable
+                                .memory_location
+                                .memory_address()
+                                .map_or_else(
+                                    |_| None,
+                                    |address| Some(format!("{:#010x}", address)),
+                                ),
                             indexed_variables: Some(indexed_child_variables_cnt),
                             named_variables: Some(named_child_variables_cnt),
                             presentation_hint: None,
@@ -1899,7 +1907,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                     response_message = format!("{}\t", response_message);
                 }
                 response_message = format!(
-                    "{}{:?}",
+                    "{}{}",
                     response_message,
                     <dyn std::error::Error>::to_string(source_error)
                 );

@@ -54,11 +54,11 @@ impl SessionConfig {
     /// Ensure all file names are correctly specified and that the files they point to are accessible.
     pub(crate) fn validate_config_files(&mut self) -> Result<(), DebuggerError> {
         // Update the `cwd`.
-        self.cwd = self.validate_and_update_cwd()?;
+        self.cwd = self.resolve_cwd()?;
 
         for target_core_config in &mut self.core_configs {
             // Update the `program_binary` and validate that the file exists.
-            target_core_config.program_binary = match qualify_and_update_os_file_path(
+            target_core_config.program_binary = match get_absolute_path(
                 self.cwd.clone(),
                 target_core_config.program_binary.as_ref(),
             ) {
@@ -79,31 +79,29 @@ impl SessionConfig {
             };
             // Update the `svd_file` and validate that the file exists.
             // If there is a problem with this file, warn the user and continue with the session.
-            target_core_config.svd_file = match qualify_and_update_os_file_path(
-                self.cwd.clone(),
-                target_core_config.svd_file.as_ref(),
-            ) {
-                Ok(svd_file) => {
-                    if !svd_file.is_file() {
-                        log::error!("SVD file {:?} not found.", svd_file);
-                        None
-                    } else {
-                        Some(svd_file)
+            target_core_config.svd_file =
+                match get_absolute_path(self.cwd.clone(), target_core_config.svd_file.as_ref()) {
+                    Ok(svd_file) => {
+                        if !svd_file.is_file() {
+                            log::error!("SVD file {:?} not found.", svd_file);
+                            None
+                        } else {
+                            Some(svd_file)
+                        }
                     }
-                }
-                Err(error) => {
-                    // SVD file is not mandatory.
-                    log::debug!("SVD file not specified: {:?}", &error);
-                    None
-                }
-            };
+                    Err(error) => {
+                        // SVD file is not mandatory.
+                        log::debug!("SVD file not specified: {:?}", &error);
+                        None
+                    }
+                };
         }
 
         Ok(())
     }
 
-    /// Validate the new cwd, or else set it from the environment.
-    pub(crate) fn validate_and_update_cwd(&self) -> Result<Option<PathBuf>, DebuggerError> {
+    /// Validate the new given cwd for this process exists, or else update the cwd setting to use the running process' current working directory.
+    pub(crate) fn resolve_cwd(&self) -> Result<Option<PathBuf>, DebuggerError> {
         Ok(match &self.cwd {
             Some(temp_path) => {
                 if temp_path.is_dir() {
@@ -128,7 +126,7 @@ impl SessionConfig {
 }
 
 /// If the path to the program to be debugged is relative, we join if with the cwd.
-fn qualify_and_update_os_file_path(
+fn get_absolute_path(
     configured_cwd: Option<PathBuf>,
     os_file_to_validate: Option<&PathBuf>,
 ) -> Result<PathBuf, DebuggerError> {

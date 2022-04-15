@@ -7,7 +7,8 @@ use schemafy::schemafy;
 use serde::{Deserialize, Serialize};
 use std::convert::TryFrom;
 
-schemafy!(root: debugserver_types "src/debug_adapter/debugProtocol.json");
+// Convert the MSDAP `debugAdaptor.json` file, renamed here as `schema.json` into Rust types.
+schemafy!(root: debugserver_types "src/debug_adapter/schema.json");
 
 /// Custom 'quit' request, so that VSCode can tell the `probe-rs-debugger` to terminate its own process.
 #[derive(Clone, PartialEq, Debug, Deserialize, Serialize)]
