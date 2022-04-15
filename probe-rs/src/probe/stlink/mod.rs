@@ -1576,6 +1576,10 @@ impl ArmProbe for StLinkMemoryInterface<'_> {
         Ok(())
     }
 
+    fn supports_8bit_transfers(&self) -> Result<bool, ProbeRsError> {
+        Ok(true)
+    }
+
     fn get_arm_communication_interface(
         &mut self,
     ) -> Result<&mut crate::architecture::arm::ArmCommunicationInterface<Initialized>, ProbeRsError>

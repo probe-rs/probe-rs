@@ -142,6 +142,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - gdb-server now supports floating point registers (#1133)
 - Debug: Correctly handle compressed vs non-compressed instructions sets for RISC-V. (#1224)
 - The core now needs to be halted for core register access. (#1044)
+- The memory functions to do memory transfers have been standardized. This effectively means that `read_*` and `write_*` do what the name says unconditionally. E.g. `read_8` will always do 8 bit reads or `write_32` will always do 32 bit writes. New functions that are called `read` and `write` have been introduced. Those will try to maximize throughput. They mix transfer sizes however they see fit. If you need to use a feature of a chip that requires a specific transfer size, please resort to the `read_*` and `write_*` functions. (#1078)
 
 ### Fixed
 

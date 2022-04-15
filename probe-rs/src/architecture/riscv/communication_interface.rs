@@ -1756,11 +1756,15 @@ impl MemoryInterface for RiscvCommunicationInterface {
         self.read_multiple(address, data)
     }
 
-    /// Read 8-bit values from target memory.
     fn read_8(&mut self, address: u64, data: &mut [u8]) -> Result<(), crate::Error> {
         let address = valid_32_address(address)?;
         tracing::debug!("read_8 from {:#08x}", address);
 
+        self.read_multiple(address, data)
+    }
+
+    fn read(&mut self, address: u64, data: &mut [u8]) -> Result<(), crate::Error> {
+        let address = valid_32_address(address)?;
         self.read_multiple(address, data)
     }
 
@@ -1805,6 +1809,11 @@ impl MemoryInterface for RiscvCommunicationInterface {
         let address = valid_32_address(address)?;
         tracing::debug!("write_8 to {:#08x}", address);
 
+        self.write_multiple(address, data)
+    }
+
+    fn write(&mut self, address: u64, data: &[u8]) -> Result<(), crate::Error> {
+        let address = valid_32_address(address)?;
         self.write_multiple(address, data)
     }
 

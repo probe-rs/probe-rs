@@ -8,8 +8,7 @@ use crate::{
     error,
 };
 
-use anyhow::anyhow;
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 
 /// An interface to be implemented for drivers that allow target memory access.
 pub trait MemoryInterface {
@@ -29,7 +28,7 @@ pub trait MemoryInterface {
     /// Read a 32bit word of at `address`.
     ///
     /// The address where the read should be performed at has to be word aligned.
-    /// Returns `AccessPortError::MemoryNotAligned` if this does not hold true.
+    /// Returns [`AccessPortError::MemoryNotAligned`] if this does not hold true.
     fn read_word_32(&mut self, address: u64) -> Result<u32, error::Error>;
 
     /// Read an 8bit word of at `address`.
@@ -46,7 +45,7 @@ pub trait MemoryInterface {
     ///
     /// The number of words read is `data.len()`.
     /// The address where the read should be performed at has to be word aligned.
-    /// Returns `AccessPortError::MemoryNotAligned` if this does not hold true.
+    /// Returns [`AccessPortError::MemoryNotAligned`] if this does not hold true.
     fn read_32(&mut self, address: u64, data: &mut [u32]) -> Result<(), error::Error>;
 
     /// Read a block of 8bit words at `address`.
@@ -120,7 +119,7 @@ pub trait MemoryInterface {
     /// Write a 32bit word at `address`.
     ///
     /// The address where the write should be performed at has to be word aligned.
-    /// Returns `AccessPortError::MemoryNotAligned` if this does not hold true.
+    /// Returns [`AccessPortError::MemoryNotAligned`] if this does not hold true.
     fn write_word_32(&mut self, address: u64, data: u32) -> Result<(), error::Error>;
 
     /// Write an 8bit word at `address`.
@@ -137,11 +136,16 @@ pub trait MemoryInterface {
     ///
     /// The number of words written is `data.len()`.
     /// The address where the write should be performed at has to be word aligned.
-    /// Returns `AccessPortError::MemoryNotAligned` if this does not hold true.
+    /// Returns [`AccessPortError::MemoryNotAligned`] if this does not hold true.
     fn write_32(&mut self, address: u64, data: &[u32]) -> Result<(), error::Error>;
 
     /// Write a block of 8bit words at `address`.
     fn write_8(&mut self, address: u64, data: &[u8]) -> Result<(), error::Error>;
+
+    /// Write a block of 8bit words at `address`. May use 32 bit memory access,
+    /// so should only be used if reading memory locations that don't have side
+    /// effects. Generally faster than [`MemoryInterface::read_8`].
+    fn write(&mut self, address: u64, data: &[u8]) -> Result<(), error::Error>;
 
     /// Flush any outstanding operations.
     ///
@@ -184,6 +188,10 @@ where
         (*self).read_8(address, data)
     }
 
+    fn read(&mut self, address: u64, data: &mut [u8]) -> Result<(), error::Error> {
+        (*self).read(address, data)
+    }
+
     fn write_word_64(&mut self, address: u64, data: u64) -> Result<(), error::Error> {
         (*self).write_word_64(address, data)
     }
@@ -206,6 +214,10 @@ where
 
     fn write_8(&mut self, address: u64, data: &[u8]) -> Result<(), error::Error> {
         (*self).write_8(address, data)
+    }
+
+    fn write(&mut self, address: u64, data: &[u8]) -> Result<(), error::Error> {
+        (*self).write(address, data)
     }
 
     fn flush(&mut self) -> Result<(), error::Error> {
@@ -272,6 +284,13 @@ impl<'probe> Memory<'probe> {
         self.inner.read_8(self.ap_sel, address, data)
     }
 
+    /// Read a block of 8bit words at `address`. May use 32 bit memory access,
+    /// so should only be used if reading memory locations that don't have side
+    /// effects. Generally faster than [`MemoryInterface::read_8`].
+    pub fn read(&mut self, address: u64, data: &mut [u8]) -> Result<(), error::Error> {
+        self.inner.read(self.ap_sel, address, data)
+    }
+
     /// Writes a 64 bit word to `address`.
     pub fn write_word_64(&mut self, address: u64, data: u64) -> Result<(), error::Error> {
         self.inner.write_64(self.ap_sel, address, &[data])
@@ -305,6 +324,15 @@ impl<'probe> Memory<'probe> {
     /// Flushes all pending writes to the target.
     ///
     /// This method is necessary when the underlying probe driver implements batching.
+    /// Read a block of 8bit words at `address`. May use 32 bit memory access,
+    /// so should only be used if writeing memory locations that don't have side
+    /// effects. Generally faster than [`MemoryInterface::write_8`].
+    pub fn write(&mut self, address: u64, data: &[u8]) -> Result<(), error::Error> {
+        self.inner.write(self.ap_sel, address, data)
+    }
+
+    /// Flushes all the outstanding read and write commands to the debug probe,
+    /// effectively executing all queued commands.
     pub fn flush(&mut self) -> Result<(), error::Error> {
         self.inner.flush()
     }
