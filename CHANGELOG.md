@@ -28,6 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Debugger: Add support for DAP Requests (Disassemble & SetInstructionBreakpoints) (#1049)
 - Debugger: Add support for stepping at 'statement' level, plus 'step in', 'step out' (#1056)
 - Debugger: Add support for navigating and monitoring SVD Peripheral Registers. (#1072)
+- Added GD32F3x0 series support (#1079)
 
 ### Changed
 
@@ -64,6 +65,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Requires `probe-rs/vscode` [PR #27](https://github.com/probe-rs/vscode/pull/27)
   - Debugger: Improved RTT reliability between debug adapter and VSCode (#1035)
   - Fixed missing `derive` feature for examples using `clap`.
+  - Increase SWD wait timeout (#994)
 
 ## [0.12.0]
 

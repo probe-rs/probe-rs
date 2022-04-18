@@ -440,7 +440,7 @@ impl DebugProbe for CmsisDap {
 
         self.transfer_configure(ConfigureRequest {
             idle_cycles: 0,
-            wait_retry: 80,
+            wait_retry: 0xffff,
             match_retry: 0,
         })?;
 
