@@ -1,9 +1,7 @@
 use super::*;
-use std::collections::HashMap;
-
-use anyhow::anyhow;
-
 use crate::Error;
+use anyhow::anyhow;
+use std::collections::HashMap;
 
 /// VariableCache stores available `Variable`s, and provides methods to create and navigate the parent-child relationships of the Variables.
 #[derive(Debug)]
