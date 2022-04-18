@@ -9,6 +9,7 @@
 #![warn(clippy::unwrap_used, clippy::panic, clippy::expect_used)]
 
 mod variable;
+mod variable_cache;
 
 use crate::{
     core::{Core, RegisterFile},
@@ -31,10 +32,8 @@ use std::{
     sync::atomic::{AtomicI64, Ordering},
     vec,
 };
-pub use variable::{
-    Variable, VariableCache, VariableLocation, VariableName, VariableNodeType, VariableType,
-    VariableValue, VariantRole,
-};
+pub use variable::*;
+pub use variable_cache::VariableCache;
 
 /// An error occurred while debugging the target.
 #[derive(Debug, thiserror::Error)]
