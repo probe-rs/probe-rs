@@ -634,15 +634,15 @@ struct HaltedState {
     program_counter: u32,
     current_frame: usize,
     frame_indices: Vec<i64>,
-    stack_frames: Vec<probe_rs::debug::StackFrame>,
+    stack_frames: Vec<probe_rs::debug::stack_frame::StackFrame>,
 }
 
 impl HaltedState {
-    fn get_current_frame(&self) -> Option<&probe_rs::debug::StackFrame> {
+    fn get_current_frame(&self) -> Option<&probe_rs::debug::stack_frame::StackFrame> {
         self.stack_frames.get(self.current_frame)
     }
 
-    fn get_current_frame_mut(&mut self) -> Option<&mut probe_rs::debug::StackFrame> {
+    fn get_current_frame_mut(&mut self) -> Option<&mut probe_rs::debug::stack_frame::StackFrame> {
         self.stack_frames.get_mut(self.current_frame)
     }
 }

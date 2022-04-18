@@ -8,6 +8,8 @@
 // Bad things happen to the VSCode debug extenison and debug_adapter if we panic at the wrong time.
 #![warn(clippy::unwrap_used, clippy::panic, clippy::expect_used)]
 
+/// The stack frame information used while unwinding the stack from a specific program counter.
+pub mod stack_frame;
 mod variable;
 mod variable_cache;
 
@@ -95,55 +97,6 @@ static CACHE_KEY: AtomicI64 = AtomicI64::new(1);
 /// Generate a unique key that can be used to assign id's to StackFrame and Variable structs.
 pub fn get_sequential_key() -> i64 {
     CACHE_KEY.fetch_add(1, Ordering::SeqCst)
-}
-
-/// A full stack frame with all its information contained.
-#[derive(Debug)]
-pub struct StackFrame {
-    /// The stackframe ID.
-    pub id: i64,
-    /// The name of the function this stackframe belongs to.
-    pub function_name: String,
-    /// The source location the function this stackframe belongs to originates.
-    pub source_location: Option<SourceLocation>,
-    /// The current register state represented in this stackframe.
-    pub registers: Registers,
-    /// The program counter / address of the current instruction when this stack frame was created
-    pub pc: u32,
-    /// Indicate if this stack frame belongs to an inlined function.
-    pub is_inlined: bool,
-    /// A cache of 'static' scoped variables for this stackframe
-    pub static_variables: Option<VariableCache>,
-    /// A cache of 'local' scoped variables for this stafckframe, with a `Variable` for each in-scope variable.
-    /// - Complex variables and pointers will have additional children.
-    ///   - This structure is recursive until a base type is encountered.
-    pub local_variables: Option<VariableCache>,
-}
-
-impl std::fmt::Display for StackFrame {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        // Header info for the StackFrame
-        writeln!(f, "Frame: {}", self.function_name)?;
-        if let Some(si) = &self.source_location {
-            write!(
-                f,
-                "\t{}/{}",
-                si.directory
-                    .as_ref()
-                    .map(|p| p.to_string_lossy())
-                    .unwrap_or_else(|| std::borrow::Cow::from("<unknown dir>")),
-                si.file.as_ref().unwrap_or(&"<unknown file>".to_owned())
-            )?;
-
-            if let (Some(column), Some(line)) = (si.column, si.line) {
-                match column {
-                    ColumnType::Column(c) => write!(f, ":{}:{}", line, c)?,
-                    ColumnType::LeftEdge => write!(f, ":{}", line)?,
-                }
-            }
-        }
-        writeln!(f)
-    }
 }
 
 /// All the register information currently available.
@@ -1024,7 +977,7 @@ impl DebugInfo {
         core: &mut Core<'_>,
         address: u64,
         unwind_registers: &Registers,
-    ) -> Result<Vec<StackFrame>, DebugError> {
+    ) -> Result<Vec<stack_frame::StackFrame>, DebugError> {
         let mut units = self.get_units();
 
         let unknown_function = format!("<unknown function @ {:#010x}>", address);
@@ -1104,7 +1057,7 @@ impl DebugInfo {
                             Some,
                         );
 
-                    frames.push(StackFrame {
+                    frames.push(stack_frame::StackFrame {
                         // MS DAP Specification requires the id to be unique accross all threads, so using  so using unique `Variable::variable_key` of the `stackframe_root_variable` as the id.
                         id: get_sequential_key(),
                         function_name,
@@ -1163,7 +1116,7 @@ impl DebugInfo {
                     Some,
                 );
 
-            frames.push(StackFrame {
+            frames.push(stack_frame::StackFrame {
                 // MS DAP Specification requires the id to be unique accross all threads, so using  so using unique `Variable::variable_key` of the `stackframe_root_variable` as the id.
                 id: get_sequential_key(),
                 function_name,
@@ -1179,7 +1132,7 @@ impl DebugInfo {
         }
 
         if frames.is_empty() {
-            Ok(vec![StackFrame {
+            Ok(vec![stack_frame::StackFrame {
                 id: get_sequential_key(),
                 function_name: unknown_function,
                 source_location: self.get_source_location(address),
@@ -1207,8 +1160,12 @@ impl DebugInfo {
     /// - Similarly, certain error conditions encountered in `StackFrameIterator` will also break out of the unwind loop.
     /// Note: In addition to populating the `StackFrame`s, this function will also populate the `DebugInfo::VariableCache` with `Variable`s for available Registers as well as static and function variables.
     /// TODO: Separate logic for stackframe creation and cache population
-    pub fn unwind(&self, core: &mut Core, address: u64) -> Result<Vec<StackFrame>, crate::Error> {
-        let mut stack_frames = Vec::<StackFrame>::new();
+    pub fn unwind(
+        &self,
+        core: &mut Core,
+        address: u64,
+    ) -> Result<Vec<stack_frame::StackFrame>, crate::Error> {
+        let mut stack_frames = Vec::<stack_frame::StackFrame>::new();
         let mut unwind_registers = Registers::from_core(core);
         // Register state as updated for every iteration (previous function) of the unwind process.
         if unwind_registers.get_program_counter().is_none() {
