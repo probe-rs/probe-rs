@@ -100,6 +100,27 @@
                 "help",
             ],
             "cwd": "${workspaceFolder}/debugger"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "display debug subcommand help text",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=probe-rs-debugger",
+                    "--package=probe-rs-debugger"
+                ],
+                "filter": {
+                    "name": "probe-rs-debugger",
+                    "kind": "bin"
+                }
+            },
+            "args": [
+                "help",
+                "debug",
+            ],
+            "cwd": "${workspaceFolder}/debugger"
         }
     ]
 }

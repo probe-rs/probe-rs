@@ -48,6 +48,12 @@ fn default_channel_formats() -> Vec<RttChannelConfig> {
     vec![]
 }
 
+/// Used by serde to provide defaults for `RttChannelConfig::show_location`
+fn default_include_location() -> bool {
+    // Setting this to true to allow compatibility with behaviour prior to when this option was introduced.
+    true
+}
+
 #[derive(Debug, Copy, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub enum DataFormat {
     String,
@@ -96,7 +102,12 @@ pub struct RttChannelConfig {
     pub data_format: DataFormat,
     #[structopt(skip)]
     #[serde(default)]
+    // Control the inclusion of timestamps for DataFormat::String.
     pub show_timestamps: bool,
+    #[structopt(skip)]
+    #[serde(default = "default_include_location")]
+    // Control the inclusion of source location information for DataFormat::Defmt.
+    pub show_location: bool,
 }
 
 /// This is the primary interface through which RTT channel data is read and written. Every actual RTT channel has a configuration and buffer that is used for this purpose.
@@ -110,6 +121,7 @@ pub struct RttActiveChannel {
     _input_data: String,
     rtt_buffer: RttBuffer,
     show_timestamps: bool,
+    show_location: bool,
 }
 
 /// A fully configured RttActiveChannel. The configuration will always try to 'default' based on information read from the RTT control block in the binary. Where insufficient information is available, it will use the supplied configuration, with final hardcoded defaults where no other information was available.
@@ -119,8 +131,8 @@ impl RttActiveChannel {
         down_channel: Option<DownChannel>,
         channel_config: Option<RttChannelConfig>,
     ) -> Self {
-        let full_config = match channel_config {
-            Some(channel_config) => channel_config,
+        let full_config = match &channel_config {
+            Some(channel_config) => channel_config.clone(),
             None => RttChannelConfig {
                 ..Default::default() // Will set intelligent defaults below ...
             },
@@ -149,10 +161,15 @@ impl RttActiveChannel {
                     .map(|down| down.name() == Some("defmt"))
             })
             .unwrap_or(false); // If no explicit config is requested, assign a default
-        let data_format: DataFormat = if defmt_enabled {
-            DataFormat::Defmt
+        let (data_format, show_location) = if defmt_enabled {
+            let show_location = if let Some(channel_config) = channel_config {
+                channel_config.show_location
+            } else {
+                true
+            };
+            (DataFormat::Defmt, show_location)
         } else {
-            full_config.data_format
+            (full_config.data_format, false)
         };
         Self {
             up_channel,
@@ -162,6 +179,7 @@ impl RttActiveChannel {
             _input_data: String::new(),
             rtt_buffer: RttBuffer::new(buffer_size),
             show_timestamps: full_config.show_timestamps,
+            show_location,
         }
     }
 
@@ -240,20 +258,22 @@ impl RttActiveChannel {
                                             // verified to exist in the `locs` map.
                                             let loc = locs.as_ref().map(|locs| &locs[&frame.index()]);
                                             writeln!(formatted_data, "{}", frame.display(false)).map_or_else(|err| log::error!("Failed to format RTT data - {:?}", err), |r|r);
-                                            if let Some(loc) = loc {
-                                                let relpath = if let Ok(relpath) =
-                                                    loc.file.strip_prefix(&std::env::current_dir().unwrap())
-                                                {
-                                                    relpath
-                                                } else {
-                                                    // not relative; use full path
-                                                    &loc.file
-                                                };
-                                                writeln!(formatted_data,
-                                                    "└─ {}:{}",
-                                                    relpath.display(),
-                                                    loc.line
-                                                ).map_or_else(|err| log::error!("Failed to format RTT data - {:?}", err), |r|r);
+                                            if self.show_location {
+                                                if let Some(loc) = loc {
+                                                    let relpath = if let Ok(relpath) =
+                                                        loc.file.strip_prefix(&std::env::current_dir().unwrap())
+                                                    {
+                                                        relpath
+                                                    } else {
+                                                        // not relative; use full path
+                                                        &loc.file
+                                                    };
+                                                    writeln!(formatted_data,
+                                                        "└─ {}:{}",
+                                                        relpath.display(),
+                                                        loc.line
+                                                    ).map_or_else(|err| log::error!("Failed to format RTT data - {:?}", err), |r|r);
+                                                }
                                             }
                                         }
                                     }

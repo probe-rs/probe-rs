@@ -392,7 +392,7 @@ impl DebugCli {
                                 println!(
                                     "{}: {} = {}",
                                     child.name,
-                                    child.type_name.display(),
+                                    child.type_name,
                                     child.get_value(local_variable_cache)
                                 );
                             }

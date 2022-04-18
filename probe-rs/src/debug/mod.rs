@@ -12,13 +12,14 @@ mod variable;
 
 use crate::{
     core::{Core, RegisterFile},
-    debug::variable::VariableType,
     CoreStatus, MemoryInterface,
 };
+use gimli::{
+    DebuggingInformationEntry, FileEntry, LineProgramHeader, Location, UnitOffset, UnwindContext,
+};
 use num_traits::Zero;
+use object::read::{Object, ObjectSection};
 use probe_rs_target::Architecture;
-pub use variable::{Variable, VariableCache, VariableLocation, VariableName, VariantRole};
-
 use std::{
     borrow,
     collections::HashMap,
@@ -30,13 +31,10 @@ use std::{
     sync::atomic::{AtomicI64, Ordering},
     vec,
 };
-
-use gimli::{
-    DebuggingInformationEntry, FileEntry, LineProgramHeader, Location, UnitOffset, UnwindContext,
+pub use variable::{
+    Variable, VariableCache, VariableLocation, VariableName, VariableNodeType, VariableType,
+    VariableValue, VariantRole,
 };
-use object::read::{Object, ObjectSection};
-
-use self::variable::{VariableNodeType, VariableValue};
 
 /// An error occurred while debugging the target.
 #[derive(Debug, thiserror::Error)]
@@ -896,8 +894,8 @@ impl DebugInfo {
                                         variable::VariableLocation::Address(memory_location)
                                     }
                                     Err(error) => {
-                                        log::error!("Failed to read referenced variable address from memory location {:#010x?} : {}.", parent_variable.memory_location , error);
-                                        variable::VariableLocation::Error(format!("Failed to read referenced variable address from memory location {:#010x?} : {}.", parent_variable.memory_location, error))
+                                        log::error!("Failed to read referenced variable address from memory location {} : {}.", parent_variable.memory_location , error);
+                                        variable::VariableLocation::Error(format!("Failed to read referenced variable address from memory location {} : {}.", parent_variable.memory_location, error))
                                     }
                                 };
                             }
@@ -1013,7 +1011,7 @@ impl DebugInfo {
                     }
                 }
             }
-            VariableNodeType::DoNotRecurse | VariableNodeType::RecurseToBaseType => {
+            _ => {
                 // Do nothing. These have already been recursed to their maximum.
             }
         }
@@ -1505,7 +1503,8 @@ impl DebugInfo {
                 ) {
                     Ok(frame_descriptor_entry) => frame_descriptor_entry,
                     Err(error) => {
-                        log::error!(
+                        // This is not an error, it just means we cannot unwind any deeper.
+                        log::debug!(
                         "UNWIND: Error reading previous FrameDescriptorEntry at PC={:#010x} : {}",
                         previous_frame_pc,
                         error
@@ -3044,8 +3043,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                 };
                             child_variable.set_value(VariableValue::Valid(format!(
                                 "{}::{}",
-                                child_variable.type_name.display(),
-                                enumumerator_value
+                                child_variable.type_name, enumumerator_value
                             )));
                             // We don't need to keep these children.
                             cache.remove_cache_entry_children(child_variable.variable_key)?;

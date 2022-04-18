@@ -1,17 +1,16 @@
 // Bad things happen to the VSCode debug extenison and debug_adapter if we panic at the wrong time.
 #![warn(clippy::unwrap_used, clippy::panic, clippy::expect_used)]
 // Uses Schemafy to generate DAP types from Json
-mod dap_types;
 mod debug_adapter;
 mod debugger;
-mod protocol;
+mod peripherals;
 
 use anyhow::Result;
 use clap::{crate_authors, crate_description, crate_name, crate_version, Parser};
-use debugger::{debug, list_connected_devices, list_supported_chips, DebuggerOptions};
-use probe_rs::architecture::arm::ap::AccessPortError;
-use probe_rs::flashing::FileDownloadError;
-use probe_rs::{DebugProbeError, Error};
+use debugger::debug_entry::{debug, list_connected_devices, list_supported_chips};
+use probe_rs::{
+    architecture::arm::ap::AccessPortError, flashing::FileDownloadError, DebugProbeError, Error,
+};
 
 #[derive(Debug, thiserror::Error)]
 pub enum DebuggerError {
@@ -62,6 +61,8 @@ pub enum DebuggerError {
     author = crate_authors!(),
     version = crate_version!()
 )]
+
+/// There are only 3 command line options for the debugger.
 enum CliCommands {
     /// List all connected debug probes
     List {},
@@ -71,8 +72,9 @@ enum CliCommands {
     /// Open target in debug mode and accept debug commands.
     /// This only works as a [protocol::DapAdapter] and uses DAP Protocol debug commands (enables connections from clients such as Microsoft Visual Studio Code).
     Debug {
-        #[clap(flatten)]
-        debugger_options: DebuggerOptions,
+        /// IP port number to listen for incoming DAP connections, e.g. "50000"
+        #[clap(long)]
+        port: Option<u16>,
 
         /// The debug adapter processed was launched by VSCode, and should terminate itself at the end of every debug session (when receiving `Disconnect` or `Terminate` Request from VSCode). The "false"(default) state of this option implies that the process was launched (and will be managed) by the user.
         #[clap(long, hide = true)]
@@ -90,10 +92,7 @@ fn main() -> Result<()> {
     match matches {
         CliCommands::List {} => list_connected_devices()?,
         CliCommands::ListChips {} => list_supported_chips()?,
-        CliCommands::Debug {
-            debugger_options,
-            vscode,
-        } => debug(debugger_options, vscode)?,
+        CliCommands::Debug { port, vscode } => debug(port, vscode)?,
     }
     Ok(())
 }
