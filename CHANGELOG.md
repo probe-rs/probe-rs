@@ -62,6 +62,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Requires `probe-rs/vscode` [PR #27](https://github.com/probe-rs/vscode/pull/27)
   - Debugger: Improved RTT reliability between debug adapter and VSCode (#1035)
   - Fixed missing `derive` feature for examples using `clap`.
+  - Increase SWD wait timeout (#994)
 
 ## [0.12.0]
 
