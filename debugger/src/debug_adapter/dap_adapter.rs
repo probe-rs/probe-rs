@@ -8,7 +8,10 @@ use dap_types::*;
 use num_traits::Zero;
 use parse_int::parse;
 use probe_rs::{
-    debug::{ColumnType, Registers, SourceLocation, SteppingMode, VariableName, VariableNodeType},
+    debug::{
+        registers::Registers, ColumnType, SourceLocation, SteppingMode, VariableName,
+        VariableNodeType,
+    },
     CoreStatus, HaltReason, MemoryInterface,
 };
 use probe_rs_cli_util::rtt;

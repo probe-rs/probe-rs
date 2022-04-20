@@ -8,26 +8,25 @@
 // Bad things happen to the VSCode debug extenison and debug_adapter if we panic at the wrong time.
 #![warn(clippy::unwrap_used, clippy::panic, clippy::expect_used)]
 
+/// Target Register definitions.
+pub mod registers;
 /// The stack frame information used while unwinding the stack from a specific program counter.
 pub mod stack_frame;
-mod variable;
-mod variable_cache;
+/// Variable information used during debug.
+pub mod variable;
+/// The hierarchical cache of all variables for a given scope.
+pub mod variable_cache;
 
-use self::stack_frame::StackFrame;
-use crate::{
-    core::{Core, RegisterFile},
-    CoreStatus, MemoryInterface,
-};
+pub use self::{registers::*, stack_frame::StackFrame, variable::*, variable_cache::VariableCache};
+use crate::{core::Core, CoreStatus, MemoryInterface};
 use gimli::{
     DebuggingInformationEntry, FileEntry, LineProgramHeader, Location, UnitOffset, UnwindContext,
 };
 use num_traits::Zero;
 use object::read::{Object, ObjectSection};
-use probe_rs_target::Architecture;
+
 use std::{
-    borrow,
-    collections::HashMap,
-    io,
+    borrow, io,
     num::NonZeroU64,
     path::{Path, PathBuf},
     rc::Rc,
@@ -35,8 +34,6 @@ use std::{
     sync::atomic::{AtomicI64, Ordering},
     vec,
 };
-pub use variable::*;
-pub use variable_cache::VariableCache;
 
 /// An error occurred while debugging the target.
 #[derive(Debug, thiserror::Error)]
@@ -98,160 +95,6 @@ static CACHE_KEY: AtomicI64 = AtomicI64::new(1);
 /// Generate a unique key that can be used to assign id's to StackFrame and Variable structs.
 pub fn get_sequential_key() -> i64 {
     CACHE_KEY.fetch_add(1, Ordering::SeqCst)
-}
-
-/// All the register information currently available.
-#[derive(Debug, Clone, PartialEq)]
-pub struct Registers {
-    register_description: &'static RegisterFile,
-
-    values: HashMap<u32, u32>,
-
-    architecture: Architecture,
-}
-
-impl Registers {
-    /// Read all registers from the given core.
-    pub fn from_core(core: &mut Core) -> Self {
-        let register_file = core.registers();
-
-        let num_platform_registers = register_file.platform_registers.len();
-
-        let mut registers = Registers {
-            register_description: register_file,
-            values: HashMap::new(),
-            architecture: core.architecture(),
-        };
-
-        for i in 0..num_platform_registers {
-            match core.read_core_reg(register_file.platform_register(i)) {
-                Ok(value) => registers.values.insert(i as u32, value),
-                Err(e) => {
-                    log::warn!("Failed to read value for register {}: {}", i, e);
-                    None
-                }
-            };
-        }
-        registers
-    }
-
-    // TODO: These get_ and set_ functions should probably be implemented as Traits, with architecture specific implementations.
-
-    /// Get the canonical frame address, as specified in the [DWARF](https://dwarfstd.org) specification, section 6.4.
-    /// [DWARF](https://dwarfstd.org)
-    pub fn get_frame_pointer(&self) -> Option<u32> {
-        match self.architecture {
-            Architecture::Arm => self.values.get(&7).copied(),
-            Architecture::Riscv => self.values.get(&8).copied(),
-        }
-    }
-    /// Set the canonical frame address, as specified in the [DWARF](https://dwarfstd.org) specification, section 6.4.
-    /// [DWARF](https://dwarfstd.org)
-    pub fn set_frame_pointer(&mut self, value: Option<u32>) {
-        let register_address = match self.architecture {
-            Architecture::Arm => 7,
-            Architecture::Riscv => 8,
-        };
-
-        if let Some(value) = value {
-            self.values.insert(register_address, value);
-        } else {
-            self.values.remove(&register_address);
-        }
-    }
-
-    // TODO: FIX Riscv .... PC is a separate register, and NOT r1 (which is the return address)
-    /// Get the program counter.
-    pub fn get_program_counter(&self) -> Option<u32> {
-        match self.architecture {
-            Architecture::Arm => self.values.get(&15).copied(),
-            Architecture::Riscv => self.values.get(&1).copied(),
-        }
-    }
-
-    /// Set the program counter.
-    pub fn set_program_counter(&mut self, value: Option<u32>) {
-        let register_address = match self.architecture {
-            Architecture::Arm => 15,
-            Architecture::Riscv => 1,
-        };
-
-        if let Some(value) = value {
-            self.values.insert(register_address, value);
-        } else {
-            self.values.remove(&register_address);
-        }
-    }
-
-    /// Get the stack pointer.
-    pub fn get_stack_pointer(&self) -> Option<u32> {
-        match self.architecture {
-            Architecture::Arm => self.values.get(&13).copied(),
-            Architecture::Riscv => self.values.get(&2).copied(),
-        }
-    }
-
-    /// Set the stack pointer.
-    pub fn set_stack_pointer(&mut self, value: Option<u32>) {
-        let register_address = match self.architecture {
-            Architecture::Arm => 13,
-            Architecture::Riscv => 2,
-        };
-
-        if let Some(value) = value {
-            self.values.insert(register_address, value);
-        } else {
-            self.values.remove(&register_address);
-        }
-    }
-
-    /// Get the return address.
-    pub fn get_return_address(&self) -> Option<u32> {
-        match self.architecture {
-            Architecture::Arm => self.values.get(&14).copied(),
-            Architecture::Riscv => self.values.get(&1).copied(),
-        }
-    }
-
-    /// Set the return address.
-    pub fn set_return_address(&mut self, value: Option<u32>) {
-        let register_address = match self.architecture {
-            Architecture::Arm => 14,
-            Architecture::Riscv => 1,
-        };
-
-        if let Some(value) = value {
-            self.values.insert(register_address, value);
-        } else {
-            self.values.remove(&register_address);
-        }
-    }
-
-    /// Get the value using the dwarf register number as an index.
-    pub fn get_value_by_dwarf_register_number(&self, register_number: u32) -> Option<u32> {
-        self.values.get(&register_number).copied()
-    }
-
-    /// Lookup the register name from the RegisterDescriptions.
-    pub fn get_name_by_dwarf_register_number(&self, register_number: u32) -> Option<String> {
-        self.register_description
-            .get_platform_register(register_number as usize)
-            .map(|platform_register| platform_register.name().to_string())
-    }
-
-    /// Set the value using the dwarf register number as an index.
-    pub fn set_by_dwarf_register_number(&mut self, register_number: u32, value: Option<u32>) {
-        if let Some(value) = value {
-            self.values.insert(register_number, value);
-        } else {
-            self.values.remove(&register_number);
-        }
-    }
-
-    /// Returns an iterator over all register numbers and their values.
-    pub fn registers(&self) -> impl Iterator<Item = (&u32, &u32)> {
-        self.values.iter()
-    }
 }
 
 /// A specific location in source code.
@@ -977,7 +820,7 @@ impl DebugInfo {
         &self,
         core: &mut Core<'_>,
         address: u64,
-        unwind_registers: &Registers,
+        unwind_registers: &registers::Registers,
     ) -> Result<Vec<StackFrame>, DebugError> {
         let mut units = self.get_units();
 
@@ -1167,7 +1010,7 @@ impl DebugInfo {
         address: u64,
     ) -> Result<Vec<stack_frame::StackFrame>, crate::Error> {
         let mut stack_frames = Vec::<stack_frame::StackFrame>::new();
-        let mut unwind_registers = Registers::from_core(core);
+        let mut unwind_registers = registers::Registers::from_core(core);
         // Register state as updated for every iteration (previous function) of the unwind process.
         if unwind_registers.get_program_counter().is_none() {
             unwind_registers.set_program_counter(Some(address as u32));
@@ -2163,7 +2006,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
         parent_variable: &mut Variable,
         mut child_variable: Variable,
         core: &mut Core<'_>,
-        stack_frame_registers: &Registers,
+        stack_frame_registers: &registers::Registers,
         cache: &mut VariableCache,
     ) -> Result<Variable, DebugError> {
         // Identify the parent.
@@ -2482,7 +2325,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
         parent_node: gimli::EntriesTreeNode<GimliReader>,
         mut parent_variable: Variable,
         core: &mut Core<'_>,
-        stack_frame_registers: &Registers,
+        stack_frame_registers: &registers::Registers,
         cache: &mut VariableCache,
     ) -> Result<Variable, DebugError> {
         if parent_variable.is_valid() {
@@ -2795,7 +2638,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
         parent_variable: &Variable,
         mut child_variable: Variable,
         core: &mut Core<'_>,
-        stack_frame_registers: &Registers,
+        stack_frame_registers: &registers::Registers,
         cache: &mut VariableCache,
     ) -> Result<Variable, DebugError> {
         let type_name = match node.entry().attr(gimli::DW_AT_name) {
@@ -3284,7 +3127,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
         parent_variable: &Variable,
         mut child_variable: Variable,
         core: &mut Core<'_>,
-        stack_frame_registers: &Registers,
+        stack_frame_registers: &registers::Registers,
         cache: &mut VariableCache,
     ) -> Result<Variable, DebugError> {
         let mut attrs = node.entry().attrs();
@@ -3412,7 +3255,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
         core: &mut Core<'_>,
         child_variable: &mut Variable,
         expression: gimli::Expression<GimliReader>,
-        stack_frame_registers: &Registers,
+        stack_frame_registers: &registers::Registers,
     ) -> Result<(), DebugError> {
         let pieces = self.expression_to_piece(core, expression, stack_frame_registers)?;
         if pieces.is_empty() {
@@ -3502,7 +3345,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
         &self,
         core: &mut Core<'_>,
         expression: gimli::Expression<GimliReader>,
-        stack_frame_registers: &Registers,
+        stack_frame_registers: &registers::Registers,
     ) -> Result<Vec<gimli::Piece<GimliReader, usize>>, DebugError> {
         let mut evaluation = expression.evaluation(self.unit.encoding());
         let frame_base = if let Some(frame_base) = stack_frame_registers.get_frame_pointer() {

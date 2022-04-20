@@ -11,7 +11,7 @@ pub struct StackFrame {
     /// The source location the function this stackframe belongs to originates.
     pub source_location: Option<SourceLocation>,
     /// The current register state represented in this stackframe.
-    pub registers: Registers,
+    pub registers: registers::Registers,
     /// The program counter / address of the current instruction when this stack frame was created
     pub pc: u32,
     /// Indicate if this stack frame belongs to an inlined function.

@@ -4,7 +4,7 @@ use capstone::Capstone;
 use num_traits::Num;
 use probe_rs::{
     architecture::arm::Dump,
-    debug::{stack_frame::StackFrame, DebugInfo, Registers, VariableName},
+    debug::{registers::Registers, stack_frame::StackFrame, DebugInfo, VariableName},
     Core, CoreRegisterAddress, MemoryInterface,
 };
 use std::fs::File;
