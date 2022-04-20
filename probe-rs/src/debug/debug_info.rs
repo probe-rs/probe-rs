@@ -1,6 +1,6 @@
 use super::{
-    get_sequential_key, variable::*, DebugError, FunctionDie, Registers, SourceLocation,
-    StackFrame, UnitInfo, UnitIter, VariableCache,
+    function_die::FunctionDie, get_sequential_key, variable::*, DebugError, Registers,
+    SourceLocation, StackFrame, UnitInfo, UnitIter, VariableCache,
 };
 use crate::{core::Core, debug::registers, MemoryInterface};
 use ::gimli::{FileEntry, LineProgramHeader, UnwindContext};
