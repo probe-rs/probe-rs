@@ -13,6 +13,7 @@ pub mod stack_frame;
 mod variable;
 mod variable_cache;
 
+use self::stack_frame::StackFrame;
 use crate::{
     core::{Core, RegisterFile},
     CoreStatus, MemoryInterface,
@@ -977,7 +978,7 @@ impl DebugInfo {
         core: &mut Core<'_>,
         address: u64,
         unwind_registers: &Registers,
-    ) -> Result<Vec<stack_frame::StackFrame>, DebugError> {
+    ) -> Result<Vec<StackFrame>, DebugError> {
         let mut units = self.get_units();
 
         let unknown_function = format!("<unknown function @ {:#010x}>", address);
