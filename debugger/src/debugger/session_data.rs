@@ -12,8 +12,8 @@ use capstone::{
     Capstone, Endian,
 };
 use probe_rs::{
-    config::TargetSelector, debug::DebugInfo, CoreStatus, DebugProbeError, Permissions, Probe,
-    ProbeCreationError, Session,
+    config::TargetSelector, debug::debug_info::DebugInfo, CoreStatus, DebugProbeError, Permissions,
+    Probe, ProbeCreationError, Session,
 };
 use std::env::set_current_dir;
 

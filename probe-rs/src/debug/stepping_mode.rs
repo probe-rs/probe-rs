@@ -1,5 +1,5 @@
+use super::debug_info::DebugInfo;
 use super::DebugError;
-use super::DebugInfo;
 use crate::core::Core;
 use crate::CoreStatus;
 

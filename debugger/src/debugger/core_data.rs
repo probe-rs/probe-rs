@@ -7,7 +7,7 @@ use crate::{
 };
 use anyhow::Result;
 use capstone::Capstone;
-use probe_rs::{debug::DebugInfo, Core};
+use probe_rs::{debug::debug_info::DebugInfo, Core};
 use probe_rs_cli_util::rtt;
 
 /// [CoreData] is used to cache data needed by the debugger, on a per-core basis.

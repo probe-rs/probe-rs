@@ -7,7 +7,7 @@ mod run;
 use debugger::CliState;
 
 use probe_rs::{
-    debug::DebugInfo,
+    debug::debug_info::DebugInfo,
     flashing::{erase_all, BinOptions, FileDownloadError, Format},
     MemoryInterface, Probe,
 };

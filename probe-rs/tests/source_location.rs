@@ -1,4 +1,4 @@
-use probe_rs::debug::{ColumnType, DebugInfo, SourceLocation};
+use probe_rs::debug::{debug_info::DebugInfo, ColumnType, SourceLocation};
 use std::path::{Path, PathBuf};
 
 const TEST_DATA: [(u64, u64, ColumnType); 8] = [
@@ -15,7 +15,7 @@ const TEST_DATA: [(u64, u64, ColumnType); 8] = [
 
 #[test]
 fn breakpoint_location_absolute() {
-    let di = DebugInfo::from_file("tests/probe-rs-debugger-test").unwrap();
+    let di = modname::DebugInfo::from_file("tests/probe-rs-debugger-test").unwrap();
 
     // Here we test with an absolute path, i.e. the combination of compilation directory
     // and relative path to the actual source file.
@@ -47,7 +47,7 @@ fn breakpoint_location_inexact() {
     // i.e. no exact entry exists for line 277 and column 1, but we find one for column 10.
     let test_data = [(0x80009AC, 277, ColumnType::LeftEdge)];
 
-    let di = DebugInfo::from_file("tests/probe-rs-debugger-test").unwrap();
+    let di = modname::DebugInfo::from_file("tests/probe-rs-debugger-test").unwrap();
 
     let path = Path::new("/Users/jacknoppe/dev/probe-rs-debugger-test/src/main.rs");
 
@@ -73,7 +73,7 @@ fn breakpoint_location_inexact() {
 
 #[test]
 fn source_location() {
-    let di = DebugInfo::from_file("tests/probe-rs-debugger-test").unwrap();
+    let di = modname::DebugInfo::from_file("tests/probe-rs-debugger-test").unwrap();
 
     let file = "main.rs";
 
@@ -99,7 +99,7 @@ fn find_non_existing_unit_by_path() {
     let unit_path =
         Path::new("/Users/jacknoppe/dev/probe-rs-debugger-test/src/non-existent-path.rs");
 
-    let debug_info = DebugInfo::from_file("tests/probe-rs-debugger-test").unwrap();
+    let debug_info = modname::DebugInfo::from_file("tests/probe-rs-debugger-test").unwrap();
 
     assert!(debug_info
         .get_breakpoint_location(unit_path, 14, None)
