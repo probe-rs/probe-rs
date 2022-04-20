@@ -47,6 +47,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Renamed `Probe::speed` to `Probe::speed_khz`.
 - Debugger: Changes to DAP Client `launch.json` to prepare for WIP multi-core support. (#1072)
 - `ram_download` example now uses clap syntax.
+- Update STM32L4 series yaml from Keil.STM32L4xx_DFP.2.5.0. (#1086)
 
 ### Fixed
 
