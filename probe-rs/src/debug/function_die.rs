@@ -1,4 +1,4 @@
-use super::{debug_info, extract_file, ColumnType, SourceLocation, UnitInfo};
+use super::{debug_info, extract_file, unit_info::UnitInfo, ColumnType, SourceLocation};
 
 pub(crate) type FunctionDieType<'abbrev, 'unit> =
     gimli::DebuggingInformationEntry<'abbrev, 'unit, debug_info::GimliReader, usize>;
