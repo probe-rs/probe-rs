@@ -9,8 +9,8 @@ use num_traits::Zero;
 use parse_int::parse;
 use probe_rs::{
     debug::{
-        registers::Registers, ColumnType, SourceLocation, SteppingMode, VariableName,
-        VariableNodeType,
+        registers::Registers, stepping_mode::SteppingMode, ColumnType, SourceLocation,
+        VariableName, VariableNodeType,
     },
     CoreStatus, HaltReason, MemoryInterface,
 };
