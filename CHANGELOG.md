@@ -47,6 +47,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Renamed `Probe::speed` to `Probe::speed_khz`.
 - Debugger: Changes to DAP Client `launch.json` to prepare for WIP multi-core support. (#1072)
 - `ram_download` example now uses clap syntax.
+- Refactored `probe-rs/src/debug/mod.rs` into several smaller files. (#1082)
 
 ### Fixed
 
