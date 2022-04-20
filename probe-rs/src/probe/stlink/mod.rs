@@ -252,6 +252,10 @@ impl DebugProbe for StLink<StLinkUsbDevice> {
         Ok(())
     }
 
+    fn active_protocol(&self) -> Option<WireProtocol> {
+        Some(self.protocol)
+    }
+
     fn get_swo_interface(&self) -> Option<&dyn SwoAccess> {
         Some(self as _)
     }

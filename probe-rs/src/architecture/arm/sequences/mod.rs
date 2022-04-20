@@ -91,9 +91,22 @@ pub trait ArmDebugSequence: Send + Sync {
         // Ensure current debug interface is in reset state.
         interface.swj_sequence(51, 0x0007_FFFF_FFFF_FFFF)?;
 
-        // Execute SWJ-DP Switch Sequence JTAG to SWD (0xE79E).
-        // Change if SWJ-DP uses deprecated switch code (0xEDB6).
-        interface.swj_sequence(16, 0xE79E)?;
+        match interface.active_protocol() {
+            Some(crate::WireProtocol::Jtag) => {
+                // Execute SWJ-DP Switch Sequence SWD to JTAG (0xE73C).
+                interface.swj_sequence(16, 0xE73C)?;
+            }
+            Some(crate::WireProtocol::Swd) => {
+                // Execute SWJ-DP Switch Sequence JTAG to SWD (0xE79E).
+                // Change if SWJ-DP uses deprecated switch code (0xEDB6).
+                interface.swj_sequence(16, 0xE79E)?;
+            }
+            _ => {
+                return Err(crate::Error::Probe(DebugProbeError::NotImplemented(
+                    "Cannot detect current protocol",
+                )));
+            }
+        }
 
         interface.swj_sequence(51, 0x0007_FFFF_FFFF_FFFF)?; // > 50 cycles SWDIO/TMS High.
         interface.swj_sequence(3, 0x00)?; // At least 2 idle cycles (SWDIO/TMS Low).

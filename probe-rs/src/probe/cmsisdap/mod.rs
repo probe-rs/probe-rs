@@ -489,6 +489,10 @@ impl DebugProbe for CmsisDap {
         }
     }
 
+    fn active_protocol(&self) -> Option<WireProtocol> {
+        self.protocol
+    }
+
     /// Asserts the nRESET pin.
     fn target_reset(&mut self) -> Result<(), DebugProbeError> {
         commands::send_command(&mut self.device, ResetRequest).map(|v: ResetResponse| {
