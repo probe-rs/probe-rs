@@ -7,7 +7,7 @@ use crate::{
 };
 use anyhow::Result;
 use capstone::Capstone;
-use probe_rs::{debug::DebugInfo, Core};
+use probe_rs::{debug::debug_info::DebugInfo, Core};
 use probe_rs_cli_util::rtt;
 
 /// [CoreData] is used to cache data needed by the debugger, on a per-core basis.
@@ -16,7 +16,7 @@ pub struct CoreData {
     pub(crate) target_name: String,
     pub(crate) debug_info: DebugInfo,
     pub(crate) core_peripherals: Option<SvdCache>,
-    pub(crate) stack_frames: Vec<probe_rs::debug::StackFrame>,
+    pub(crate) stack_frames: Vec<probe_rs::debug::stack_frame::StackFrame>,
     pub(crate) breakpoints: Vec<session_data::ActiveBreakpoint>,
     pub(crate) rtt_connection: Option<debug_rtt::RttConnection>,
 }
@@ -32,7 +32,10 @@ pub struct CoreHandle<'p> {
 
 impl<'p> CoreHandle<'p> {
     /// Search available [StackFrame]'s for the given `id`
-    pub(crate) fn get_stackframe(&'p self, id: i64) -> Option<&'p probe_rs::debug::StackFrame> {
+    pub(crate) fn get_stackframe(
+        &'p self,
+        id: i64,
+    ) -> Option<&'p probe_rs::debug::stack_frame::StackFrame> {
         self.core_data
             .stack_frames
             .iter()

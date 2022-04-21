@@ -1,4 +1,4 @@
-use probe_rs::debug::{ColumnType, DebugInfo, SourceLocation};
+use probe_rs::debug::{debug_info::DebugInfo, ColumnType, SourceLocation};
 use std::path::{Path, PathBuf};
 
 const TEST_DATA: [(u64, u64, ColumnType); 8] = [

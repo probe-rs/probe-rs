@@ -9,8 +9,8 @@ use num_traits::Zero;
 use parse_int::parse;
 use probe_rs::{
     debug::{
-        ColumnType, Registers, SourceLocation, SteppingMode, VariableCache, VariableName,
-        VariableNodeType,
+        registers::Registers, stepping_mode::SteppingMode, ColumnType, SourceLocation,
+        VariableName, VariableNodeType,
     },
     CoreStatus, HaltReason, MemoryInterface,
 };
@@ -323,7 +323,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             } else {
                 // If the expression wasn't pointing to a register, then check if is a local or static variable in our stack_frame
                 let mut variable: Option<probe_rs::debug::Variable> = None;
-                let mut variable_cache: Option<&mut VariableCache> = None;
+                let mut variable_cache: Option<&mut probe_rs::debug::VariableCache> = None;
                 // Search through available caches and stop as soon as the variable is found
                 #[allow(clippy::manual_flatten)]
                 for variable_cache_entry in [
@@ -437,7 +437,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
 
                 // The parent_key refers to a local or static variable in one of the in-scope StackFrames.
                 let mut cache_variable: Option<probe_rs::debug::Variable> = None;
-                let mut variable_cache: Option<&mut VariableCache> = None;
+                let mut variable_cache: Option<&mut probe_rs::debug::VariableCache> = None;
                 for search_frame in target_core.core_data.stack_frames.iter_mut() {
                     if let Some(search_cache) = &mut search_frame.local_variables {
                         if let Some(search_variable) = search_cache
@@ -1550,7 +1550,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
 
         let response = {
             let mut parent_variable: Option<probe_rs::debug::Variable> = None;
-            let mut variable_cache: Option<&mut VariableCache> = None;
+            let mut variable_cache: Option<&mut probe_rs::debug::VariableCache> = None;
             let mut stack_frame_registers: Option<&Registers> = None;
             for stack_frame in target_core.core_data.stack_frames.iter_mut() {
                 if let Some(search_cache) = &mut stack_frame.local_variables {
@@ -1841,7 +1841,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
     fn get_variable_reference(
         &mut self,
         parent_variable: &probe_rs::debug::Variable,
-        cache: &mut VariableCache,
+        cache: &mut probe_rs::debug::VariableCache,
     ) -> (i64, i64, i64) {
         if !parent_variable.is_valid() {
             return (0, 0, 0);

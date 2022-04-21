@@ -2,9 +2,11 @@ use crate::common::CliError;
 
 use capstone::Capstone;
 use num_traits::Num;
-use probe_rs::architecture::arm::Dump;
-use probe_rs::debug::{DebugInfo, Registers, VariableName};
-use probe_rs::{Core, CoreRegisterAddress, MemoryInterface};
+use probe_rs::{
+    architecture::arm::Dump,
+    debug::{debug_info::DebugInfo, registers::Registers, stack_frame::StackFrame, VariableName},
+    Core, CoreRegisterAddress, MemoryInterface,
+};
 use std::fs::File;
 use std::{io::prelude::*, time::Duration};
 
@@ -634,15 +636,15 @@ struct HaltedState {
     program_counter: u32,
     current_frame: usize,
     frame_indices: Vec<i64>,
-    stack_frames: Vec<probe_rs::debug::StackFrame>,
+    stack_frames: Vec<StackFrame>,
 }
 
 impl HaltedState {
-    fn get_current_frame(&self) -> Option<&probe_rs::debug::StackFrame> {
+    fn get_current_frame(&self) -> Option<&probe_rs::debug::stack_frame::StackFrame> {
         self.stack_frames.get(self.current_frame)
     }
 
-    fn get_current_frame_mut(&mut self) -> Option<&mut probe_rs::debug::StackFrame> {
+    fn get_current_frame_mut(&mut self) -> Option<&mut probe_rs::debug::stack_frame::StackFrame> {
         self.stack_frames.get_mut(self.current_frame)
     }
 }

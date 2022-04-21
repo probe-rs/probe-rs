@@ -1,4 +1,4 @@
-use probe_rs::debug::{DebugError, DebugInfo};
+use probe_rs::debug::{debug_info::DebugInfo, DebugError};
 
 type TestResult = Result<(), DebugError>;
 

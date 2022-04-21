@@ -12,8 +12,8 @@ use capstone::{
     Capstone, Endian,
 };
 use probe_rs::{
-    config::TargetSelector, debug::DebugInfo, CoreStatus, DebugProbeError, Permissions, Probe,
-    ProbeCreationError, Session,
+    config::TargetSelector, debug::debug_info::DebugInfo, CoreStatus, DebugProbeError, Permissions,
+    Probe, ProbeCreationError, Session,
 };
 use std::env::set_current_dir;
 
@@ -195,7 +195,7 @@ impl SessionData {
                 ),
                 debug_info,
                 core_peripherals: None,
-                stack_frames: Vec::<probe_rs::debug::StackFrame>::new(),
+                stack_frames: Vec::<probe_rs::debug::stack_frame::StackFrame>::new(),
                 breakpoints: Vec::<ActiveBreakpoint>::new(),
                 rtt_connection: None,
             })
