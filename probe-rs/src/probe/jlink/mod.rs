@@ -21,9 +21,9 @@ use crate::{
     DebugProbeSelector, Error as ProbeRsError,
 };
 
-use self::swd::{SwdSettings, SwdStatistics};
+use self::arm::{ProbeStatistics, SwdSettings};
 
-mod swd;
+mod arm;
 
 const SWO_BUFFER_SIZE: u16 = 128;
 
@@ -36,6 +36,9 @@ pub(crate) struct JLink {
     /// accesses to the DMI register
     jtag_idle_cycles: u8,
 
+    // JTAG IR register length
+    ir_len: usize,
+
     /// Currently selected protocol
     protocol: Option<WireProtocol>,
 
@@ -46,7 +49,7 @@ pub(crate) struct JLink {
 
     speed_khz: u32,
 
-    swd_statistics: SwdStatistics,
+    probe_statistics: ProbeStatistics,
     swd_settings: SwdSettings,
 }
 
@@ -389,11 +392,12 @@ impl DebugProbe for JLink {
             swo_config: None,
             supported_protocols,
             jtag_idle_cycles: 0,
+            ir_len: 0,
             protocol: None,
             current_ir_reg: 1,
             speed_khz: 0,
             swd_settings: SwdSettings::default(),
-            swd_statistics: SwdStatistics::default(),
+            probe_statistics: ProbeStatistics::default(),
         }))
     }
 
@@ -409,6 +413,10 @@ impl DebugProbe for JLink {
             self.protocol = Some(actual_protocol);
             Err(DebugProbeError::UnsupportedProtocol(protocol))
         }
+    }
+
+    fn active_protocol(&self) -> Option<WireProtocol> {
+        self.protocol
     }
 
     fn get_name(&self) -> &'static str {
@@ -580,7 +588,7 @@ impl DebugProbe for JLink {
     }
 
     fn has_arm_interface(&self) -> bool {
-        self.supported_protocols.contains(&WireProtocol::Swd)
+        true
     }
 
     fn has_riscv_interface(&self) -> bool {
@@ -596,26 +604,12 @@ impl DebugProbe for JLink {
     }
 
     fn try_get_arm_interface<'probe>(
-        mut self: Box<Self>,
+        self: Box<Self>,
     ) -> Result<Box<dyn UninitializedArmProbe + 'probe>, (Box<dyn DebugProbe>, DebugProbeError)>
     {
-        if self.supported_protocols.contains(&WireProtocol::Swd) {
-            if let Some(WireProtocol::Jtag) = self.protocol {
-                log::warn!("Debugging ARM chips over JTAG is not yet implemented for JLink.");
-                return Err((self, DebugProbeError::InterfaceNotAvailable("SWD/ARM")));
-            }
+        let uninitialized_interface = ArmCommunicationInterface::new(self, true);
 
-            // Ensure the SWD protocol is used.
-            if let Err(e) = self.select_protocol(WireProtocol::Swd) {
-                return Err((self, e));
-            };
-
-            let uninitialized_interface = ArmCommunicationInterface::new(self, true);
-
-            Ok(Box::new(uninitialized_interface))
-        } else {
-            Err((self, DebugProbeError::InterfaceNotAvailable("SWD/ARM")))
-        }
+        Ok(Box::new(uninitialized_interface))
     }
 
     fn get_target_voltage(&mut self) -> Result<Option<f32>, DebugProbeError> {
@@ -625,10 +619,15 @@ impl DebugProbe for JLink {
 }
 
 impl JTAGAccess for JLink {
+    fn set_ir_len(&mut self, len: u32) {
+        self.ir_len = len as usize;
+    }
+
     /// Read the data register
     fn read_register(&mut self, address: u32, len: u32) -> Result<Vec<u8>, DebugProbeError> {
         let address_bits = address.to_le_bytes();
 
+        // RYAN TODO
         // TODO: This is limited to 5 bit addresses for now
         if address > 0x1f {
             return Err(DebugProbeError::NotImplemented(
@@ -638,7 +637,7 @@ impl JTAGAccess for JLink {
 
         if self.current_ir_reg != address {
             // Write IR register
-            self.write_ir(&address_bits[..1], 5)?;
+            self.write_ir(&address_bits[..1], self.ir_len)?;
         }
 
         // read DR register
@@ -663,7 +662,7 @@ impl JTAGAccess for JLink {
 
         if self.current_ir_reg != address {
             // Write IR register
-            self.write_ir(&address_bits[..1], 5)?;
+            self.write_ir(&address_bits[..1], self.ir_len)?;
         }
 
         // write DR register

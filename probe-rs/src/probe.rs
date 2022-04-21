@@ -551,6 +551,9 @@ pub trait DebugProbe: Send + fmt::Debug {
     /// Selects the transport protocol to be used by the debug probe.
     fn select_protocol(&mut self, protocol: WireProtocol) -> Result<(), DebugProbeError>;
 
+    /// Get the transport protocol currently in active use by the debug probe.
+    fn active_protocol(&self) -> Option<WireProtocol>;
+
     /// Check if the proble offers an interface to debug ARM chips.
     fn has_arm_interface(&self) -> bool {
         false
@@ -801,6 +804,9 @@ pub trait JTAGAccess: DebugProbe {
 
     /// Return the currently configured idle cycles.
     fn get_idle_cycles(&self) -> u8;
+
+    /// Set the IR register length
+    fn set_ir_len(&mut self, len: u32);
 
     /// Write to a JTAG register
     ///

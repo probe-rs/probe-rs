@@ -113,6 +113,10 @@ impl DebugProbe for FakeProbe {
         Ok(())
     }
 
+    fn active_protocol(&self) -> Option<WireProtocol> {
+        Some(self.protocol)
+    }
+
     /// Leave debug mode
     fn detach(&mut self) -> Result<(), DebugProbeError> {
         Ok(())

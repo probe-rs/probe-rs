@@ -29,6 +29,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Debugger: Add support for stepping at 'statement' level, plus 'step in', 'step out' (#1056)
 - Debugger: Add support for navigating and monitoring SVD Peripheral Registers. (#1072)
 - Added GD32F3x0 series support (#1079)
+- Added support for connecting to ARM devices via JTAG to the JLink probe
 
 ### Changed
 

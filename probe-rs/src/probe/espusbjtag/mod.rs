@@ -261,6 +261,12 @@ impl EspUsbJtag {
 }
 
 impl JTAGAccess for EspUsbJtag {
+    fn set_ir_len(&mut self, len: u32) {
+        if len != 5 {
+            panic!("Only IR Length of 5 is currently supported");
+        }
+    }
+
     /// Read the data register
     fn read_register(&mut self, address: u32, len: u32) -> Result<Vec<u8>, DebugProbeError> {
         let address_bits = address.to_le_bytes();
@@ -335,6 +341,10 @@ impl DebugProbe for EspUsbJtag {
         } else {
             Err(DebugProbeError::UnsupportedProtocol(protocol))
         }
+    }
+
+    fn active_protocol(&self) -> Option<WireProtocol> {
+        Some(WireProtocol::Jtag)
     }
 
     fn get_name(&self) -> &'static str {

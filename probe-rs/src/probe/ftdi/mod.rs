@@ -528,6 +528,11 @@ impl DebugProbe for FtdiProbe {
         }
     }
 
+    fn active_protocol(&self) -> Option<WireProtocol> {
+        // Only supports JTAG
+        Some(WireProtocol::Jtag)
+    }
+
     fn try_get_riscv_interface(
         self: Box<Self>,
     ) -> Result<RiscvCommunicationInterface, (Box<dyn DebugProbe>, DebugProbeError)> {
@@ -724,6 +729,10 @@ impl JTAGAccess for FtdiProbe {
         }
 
         Ok(results)
+    }
+
+    fn set_ir_len(&mut self, _len: u32) {
+        // The FTDI implementation automatically sets this, so need need to act on this data
     }
 }
 
