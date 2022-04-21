@@ -21,9 +21,9 @@ use crate::{
     DebugProbeSelector, Error as ProbeRsError,
 };
 
-use self::swd::{ProbeStatistics, SwdSettings};
+use self::arm::{ProbeStatistics, SwdSettings};
 
-mod swd;
+mod arm;
 
 const SWO_BUFFER_SIZE: u16 = 128;
 
