@@ -136,6 +136,9 @@ const JTAG_ACCESS_PORT_IR_VALUE: u32 = 0xB;
 const JTAG_STATUS_WAIT: u32 = 0x1;
 const JTAG_STATUS_OK: u32 = 0x2;
 
+// ARM DR accesses are always 35 bits wide
+const JTAG_DR_BIT_LENGTH : u32 = 35;
+
 // Build a JTAG payload
 fn build_jtag_payload_and_address(transfer: &DapTransfer) -> (u64, u32) {
     if transfer.is_abort() {
@@ -187,7 +190,7 @@ fn perform_jtag_transfer<P: JTAGAccess + RawProtocolIo>(
 
     // This is a bit confusing, but a read from any port is still
     // a JTAG write as we have to transmit the address
-    let result = probe.write_register(address, &data[..], 35)?;
+    let result = probe.write_register(address, &data[..], JTAG_DR_BIT_LENGTH)?;
 
     // Clock out any idle time
     let idle_sequence = iter::repeat(false).take(transfer.idle_cycles_after as usize);
@@ -196,7 +199,7 @@ fn perform_jtag_transfer<P: JTAGAccess + RawProtocolIo>(
     let received = parse_jtag_response(&result);
 
     if transfer.is_abort() {
-        // No resposnes returned from this
+        // No responses returned from this
         return Ok((0, TransferStatus::Ok));
     }
 
@@ -1557,7 +1560,7 @@ mod test {
             let jtag_value = parse_jtag_response(&data[..5].to_vec());
 
             // Always 35 bit transfers
-            assert_eq!(len, 35);
+            assert_eq!(len, JTAG_DR_BIT_LENGTH);
 
             let jtag_transaction = self.jtag_transactions.remove(0);
 

@@ -805,7 +805,7 @@ pub trait JTAGAccess: DebugProbe {
     /// Return the currently configured idle cycles.
     fn get_idle_cycles(&self) -> u8;
 
-    // Set the IR register length
+    /// Set the IR register length
     fn set_ir_len(&mut self, len: u32);
 
     /// Write to a JTAG register
