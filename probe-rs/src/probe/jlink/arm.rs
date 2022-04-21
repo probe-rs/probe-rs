@@ -137,7 +137,7 @@ const JTAG_STATUS_WAIT: u32 = 0x1;
 const JTAG_STATUS_OK: u32 = 0x2;
 
 // ARM DR accesses are always 35 bits wide
-const JTAG_DR_BIT_LENGTH : u32 = 35;
+const JTAG_DR_BIT_LENGTH: u32 = 35;
 
 // Build a JTAG payload
 fn build_jtag_payload_and_address(transfer: &DapTransfer) -> (u64, u32) {
@@ -1338,7 +1338,8 @@ mod test {
 
     use super::{
         parse_jtag_response, ProbeStatistics, RawProtocolIo, SwdSettings, JTAG_ABORT_IR_VALUE,
-        JTAG_ACCESS_PORT_IR_VALUE, JTAG_DEBUG_PORT_IR_VALUE, JTAG_STATUS_OK, JTAG_STATUS_WAIT,
+        JTAG_ACCESS_PORT_IR_VALUE, JTAG_DEBUG_PORT_IR_VALUE, JTAG_DR_BIT_LENGTH, JTAG_STATUS_OK,
+        JTAG_STATUS_WAIT,
     };
 
     use bitvec::prelude::*;
@@ -1928,7 +1929,7 @@ mod test {
     mod transfer_handling {
         use crate::{
             architecture::arm::PortType,
-            probe::jlink::swd::{perform_transfers, DapTransfer, TransferStatus},
+            probe::jlink::arm::{perform_transfers, DapTransfer, TransferStatus},
         };
 
         use super::{DapAcknowledge, MockJaylink};
