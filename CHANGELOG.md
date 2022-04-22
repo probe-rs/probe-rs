@@ -50,6 +50,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `ram_download` example now uses clap syntax.
 - Refactored `probe-rs/src/debug/mod.rs` into several smaller files. (#1082)
 - Update STM32L4 series yaml from Keil.STM32L4xx_DFP.2.5.0. (#1086)
+- Updated cmsis-pack dependency to version 0.6.0. (#1089)
 
 ### Fixed
 
