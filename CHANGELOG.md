@@ -50,6 +50,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `ram_download` example now uses clap syntax.
 - Refactored `probe-rs/src/debug/mod.rs` into several smaller files. (#1082)
 - Update STM32L4 series yaml from Keil.STM32L4xx_DFP.2.5.0. (#1086)
+- Debugger: SVD uses new `expand` feature of `svd-parser` crate to expand arrays and clusters. (#1090)
 
 ### Fixed
 
