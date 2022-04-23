@@ -9,8 +9,8 @@ use probe_rs::{
     Core,
 };
 use std::{fmt::Debug, fs::File, io::Read, path::Path};
-use svd_parser::{self as svd};
-use svd_rs::{Access, DeriveFrom, Device, FieldInfo, PeripheralInfo, RegisterInfo};
+use svd_parser::{self as svd, Config};
+use svd_rs::{Access, Device};
 
 /// The SVD file contents and related data
 #[derive(Debug)]
@@ -37,7 +37,10 @@ impl SvdCache {
                     Some(dap_request_id),
                 )?;
                 let _ = svd_opened_file.read_to_string(svd_xml);
-                let svd_cache = match svd::parse(svd_xml) {
+                let svd_cache = match svd::parse_with_config(
+                    svd_xml,
+                    &Config::default().expand(true).ignore_enums(true),
+                ) {
                     Ok(peripheral_device) => {
                         debug_adapter
                             .update_progress(
@@ -86,27 +89,41 @@ pub(crate) fn variable_cache_from_svd<P: ProtocolAdapter>(
     let mut peripheral_group_variable = Variable::new(None, None);
     peripheral_group_variable.name = VariableName::Named(peripheral_device.name.clone());
     let mut peripheral_parent_key = device_root_variable.variable_key;
-    for peripheral in &resolve_peripherals(&peripheral_device)? {
+    for peripheral in &peripheral_device.peripherals {
         if let (Some(peripheral_group_name), VariableName::Named(variable_group_name)) =
             (&peripheral.group_name, &peripheral_group_variable.name)
         {
             if variable_group_name != peripheral_group_name {
-                peripheral_group_variable = Variable::new(None, None);
-                peripheral_group_variable.name = VariableName::Named(peripheral_group_name.clone());
-                peripheral_group_variable.type_name =
-                    VariableType::Other("Peripheral Group".to_string());
-                peripheral_group_variable.variable_node_type = VariableNodeType::SvdPeripheral;
-                peripheral_group_variable.set_value(probe_rs::debug::VariableValue::Valid(
-                    peripheral
-                        .description
-                        .clone()
-                        .unwrap_or_else(|| peripheral.name.clone()),
-                ));
-                peripheral_group_variable = svd_cache.cache_variable(
+                // Before we create a new group variable, check if we have one by that name already.
+                match svd_cache.get_variable_by_name_and_parent(
+                    &VariableName::Named(peripheral_group_name.clone()),
                     Some(device_root_variable.variable_key),
-                    peripheral_group_variable,
-                    core,
-                )?;
+                ) {
+                    Some(existing_peripharal_group_variable) => {
+                        peripheral_group_variable = existing_peripharal_group_variable
+                    }
+                    None => {
+                        peripheral_group_variable = Variable::new(None, None);
+                        peripheral_group_variable.name =
+                            VariableName::Named(peripheral_group_name.clone());
+                        peripheral_group_variable.type_name =
+                            VariableType::Other("Peripheral Group".to_string());
+                        peripheral_group_variable.variable_node_type =
+                            VariableNodeType::SvdPeripheral;
+                        peripheral_group_variable.set_value(probe_rs::debug::VariableValue::Valid(
+                            peripheral
+                                .description
+                                .clone()
+                                .unwrap_or_else(|| peripheral.name.clone()),
+                        ));
+                        peripheral_group_variable = svd_cache.cache_variable(
+                            Some(device_root_variable.variable_key),
+                            peripheral_group_variable,
+                            core,
+                        )?;
+                    }
+                };
+
                 peripheral_parent_key = peripheral_group_variable.variable_key;
                 debug_adapter
                     .update_progress(
@@ -139,7 +156,7 @@ pub(crate) fn variable_cache_from_svd<P: ProtocolAdapter>(
         ));
         peripheral_variable =
             svd_cache.cache_variable(Some(peripheral_parent_key), peripheral_variable, core)?;
-        for register in &resolve_registers(peripheral)? {
+        for register in peripheral.all_registers() {
             let mut register_variable = Variable::new(None, None);
             register_variable.name = VariableName::Named(format!(
                 "{}.{}",
@@ -173,7 +190,7 @@ pub(crate) fn variable_cache_from_svd<P: ProtocolAdapter>(
                 register_variable,
                 core,
             )?;
-            for field in &resolve_fields(register)? {
+            for field in register.fields() {
                 let mut field_variable = Variable::new(None, None);
                 field_variable.name = VariableName::Named(format!(
                     "{}.{}",
@@ -230,118 +247,4 @@ pub(crate) fn variable_cache_from_svd<P: ProtocolAdapter>(
     }
 
     Ok(svd_cache)
-}
-
-/// Resolve all the peripherals through their (optional) `derived_from` peripheral.
-pub(crate) fn resolve_peripherals(
-    peripheral_device: &Device,
-) -> Result<Vec<PeripheralInfo>, DebuggerError> {
-    let mut resolved_peripherals = vec![];
-    for device_peripheral in &peripheral_device.peripherals {
-        if let Some(derived_from) = &device_peripheral.derived_from {
-            if let Some(derived_result) = peripheral_device.get_peripheral(derived_from) {
-                match device_peripheral.derive_from(derived_result) {
-                    svd_rs::MaybeArray::Single(derived_peripheral) => {
-                        resolved_peripherals.push(derived_peripheral);
-                    }
-                    svd_rs::MaybeArray::Array(peripheral_array, _) => {
-                        log::warn!("Unsupported Array in SVD for Peripheral:{}. Only the first instance will be visible.", peripheral_array.name);
-                        resolved_peripherals.push(peripheral_array);
-                    }
-                }
-            } else {
-                return Err(DebuggerError::Other(anyhow::anyhow!(
-                    "Unable to retrieve 'derived_from' SVD peripheral: {:?}",
-                    derived_from
-                )));
-            };
-        } else {
-            match device_peripheral {
-                svd_rs::MaybeArray::Single(original_peripheral) => {
-                    resolved_peripherals.push(original_peripheral.clone())
-                }
-                svd_rs::MaybeArray::Array(peripheral_array, _) => {
-                    log::warn!("Unsupported Array in SVD for Peripheral:{}. Only the first instance will be visible.", peripheral_array.name);
-                    resolved_peripherals.push(peripheral_array.clone());
-                }
-            }
-        }
-    }
-    Ok(resolved_peripherals)
-}
-
-/// Resolve all the registers of a peripheral through their (optional) `derived_from` register.
-pub(crate) fn resolve_registers(
-    peripheral: &PeripheralInfo,
-) -> Result<Vec<RegisterInfo>, DebuggerError> {
-    // TODO: Need to code for the impact of register clusters.
-    let mut resolved_registers = vec![];
-    for peripheral_register in peripheral.registers() {
-        if let Some(derived_from) = &peripheral_register.derived_from {
-            if let Some(derived_result) = peripheral.get_register(derived_from) {
-                match peripheral_register.derive_from(derived_result) {
-                    svd_rs::MaybeArray::Single(derived_register) => {
-                        resolved_registers.push(derived_register)
-                    }
-                    svd_rs::MaybeArray::Array(register_array, _) => {
-                        log::warn!("Unsupported Array in SVD for Register:{}. Only the first instance will be visible.", register_array.name);
-                        resolved_registers.push(register_array);
-                    }
-                }
-            } else {
-                return Err(DebuggerError::Other(anyhow::anyhow!(
-                    "Unable to retrieve 'derived_from' SVD register: {:?}",
-                    derived_from
-                )));
-            };
-        } else {
-            match peripheral_register {
-                svd_rs::MaybeArray::Single(original_register) => {
-                    resolved_registers.push(original_register.clone())
-                }
-                svd_rs::MaybeArray::Array(register_array, _) => {
-                    log::warn!("Unsupported Array in SVD for Register:{}. Only the first instance will be visible.", register_array.name);
-                    resolved_registers.push(register_array.clone());
-                }
-            }
-        }
-    }
-    Ok(resolved_registers)
-}
-
-/// Resolve all the fields of a register through their (optional) `derived_from` field.
-pub(crate) fn resolve_fields(register: &RegisterInfo) -> Result<Vec<FieldInfo>, DebuggerError> {
-    // TODO: Need to code for the impact of field clusters.
-    let mut resolved_fields = vec![];
-    for register_field in register.fields() {
-        if let Some(derived_from) = &register_field.derived_from {
-            if let Some(derived_result) = register.get_field(derived_from) {
-                match register_field.derive_from(derived_result) {
-                    svd_rs::MaybeArray::Single(derived_field) => {
-                        resolved_fields.push(derived_field)
-                    }
-                    svd_rs::MaybeArray::Array(field_array, _) => {
-                        log::warn!("Unsupported Array in SVD for Field:{}. Only the first instance will be visible.", field_array.name);
-                        resolved_fields.push(field_array);
-                    }
-                }
-            } else {
-                return Err(DebuggerError::Other(anyhow::anyhow!(
-                    "Unable to retrieve 'derived_from' SVD field: {:?}",
-                    derived_from
-                )));
-            };
-        } else {
-            match register_field {
-                svd_rs::MaybeArray::Single(original_field) => {
-                    resolved_fields.push(original_field.clone())
-                }
-                svd_rs::MaybeArray::Array(field_array, _) => {
-                    log::warn!("Unsupported Array in SVD for Field:{}. Only the first instance will be visible.", field_array.name);
-                    resolved_fields.push(field_array.clone());
-                }
-            }
-        }
-    }
-    Ok(resolved_fields)
 }
