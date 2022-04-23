@@ -17,7 +17,7 @@ license = "MIT OR Apache-2.0"
 [dependencies]
 probe-rs = { path = "../probe-rs", version = "0.12.0", default-features = false }
 probe-rs-target = { path = "../probe-rs-target", version = "0.12.0", default-features = false }
-cmsis-pack = { version = "0.5.0" }
+cmsis-pack = { version = "0.6.0" }
 
 # , path = "../cmsis-pack-manager/rust/cmsis-pack"
 # , git = "https://github.com/probe-rs/cmsis-pack-manager.git"
@@ -30,7 +30,7 @@ zip = "0.6.0"
 clap = { version = "3.1", features = ["derive"] }
 base64 = "0.13.0"
 simplelog = "0.12.0"
-anyhow = "1.0.56"
+anyhow = "1.0.57"
 reqwest = { version = "0.11.10", features = ["json", "blocking"] }
 serde = { version = "1.0.136", features = ["derive"] }
 # chrono = { version = "0.4.0", features = ["serde"] }

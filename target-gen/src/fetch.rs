@@ -8,7 +8,7 @@ pub(crate) fn get_vidx() -> Result<Vidx> {
         .send()?
         .text()?;
 
-    let vidx = Vidx::from_string(&reader).map_err(|e| e.compat())?;
+    let vidx = Vidx::from_string(&reader)?;
 
     Ok(vidx)
 }

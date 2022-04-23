@@ -192,7 +192,7 @@ pub(crate) fn visit_dirs(path: &Path, families: &mut Vec<ChipFamily>) -> Result<
                 log::info!("Found .pdsc file: {}", path.display());
 
                 handle_package::<std::fs::File>(
-                    Package::from_path(&entry.path()).map_err(|e| e.compat())?,
+                    Package::from_path(&entry.path())?,
                     Kind::Directory(path),
                     families,
                 )
