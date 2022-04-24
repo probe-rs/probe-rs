@@ -34,8 +34,7 @@ pub struct SessionConfig {
     pub(crate) speed: Option<u32>,
 
     /// Protocol to use for target connection
-    #[serde(rename = "wire_protocol")]
-    pub(crate) protocol: Option<WireProtocol>,
+    pub(crate) wire_protocol: Option<WireProtocol>,
 
     ///Allow the session to erase all memory of the chip or reset it to factory default.
     #[serde(default)]

@@ -83,8 +83,8 @@ impl SessionData {
         };
 
         // Set the protocol, if the user explicitly selected a protocol. Otherwise, use the default protocol of the probe.
-        if let Some(protocol) = config.protocol {
-            target_probe.select_protocol(protocol)?;
+        if let Some(wire_protocol) = config.wire_protocol {
+            target_probe.select_protocol(wire_protocol)?;
         }
 
         // Set the speed.
