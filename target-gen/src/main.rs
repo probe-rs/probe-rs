@@ -166,6 +166,7 @@ fn cmd_elf(
                     core_access_options: CoreAccessOptions::Arm(ArmCoreAccessOptions {
                         ap: 0,
                         psel: 0,
+                        debug_base: None,
                     }),
                 }],
                 part: None,

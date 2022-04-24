@@ -9,6 +9,9 @@ use std::{
     time::{Duration, Instant},
 };
 
+use probe_rs_target::CoreType;
+
+use crate::architecture::arm::core::armv7a::Armv7DebugRegister;
 use crate::{architecture::arm::DapError, core::CoreRegister, DebugProbeError, Memory};
 
 use super::{
@@ -17,6 +20,14 @@ use super::{
     dp::{Abort, Ctrl, DpAccess, Select, DPIDR},
     ArmCommunicationInterface, DpAddress, Pins, PortType, Register,
 };
+
+/// An error occurred when executing an ARM debug sequence
+#[derive(thiserror::Error, Debug)]
+pub enum ArmDebugSequenceError {
+    /// Debug base address is required but not specified
+    #[error("Core access requries debug_base to be specified, but it is not")]
+    DebugBaseNotSpecified,
+}
 
 /// The default sequences that is used for ARM chips that do not specify a specific sequence.
 pub struct DefaultArmSequence(pub(crate) ());
@@ -29,6 +40,205 @@ impl DefaultArmSequence {
 }
 
 impl ArmDebugSequence for DefaultArmSequence {}
+
+/// ResetCatchSet for Cortex-A devices
+fn armv7a_reset_catch_set(core: &mut Memory, debug_base: Option<u32>) -> Result<(), crate::Error> {
+    use crate::architecture::arm::core::armv7a::Dbgprcr;
+
+    let debug_base = debug_base.ok_or_else(|| {
+        crate::Error::architecture_specific(ArmDebugSequenceError::DebugBaseNotSpecified)
+    })?;
+
+    let address = Dbgprcr::get_mmio_address(debug_base);
+    let mut dbgprcr = Dbgprcr(core.read_word_32(address)?);
+
+    dbgprcr.set_hcwr(true);
+
+    core.write_word_32(address, dbgprcr.into())?;
+
+    Ok(())
+}
+
+/// ResetCatchClear for Cortex-A devices
+fn armv7a_reset_catch_clear(
+    core: &mut Memory,
+    debug_base: Option<u32>,
+) -> Result<(), crate::Error> {
+    use crate::architecture::arm::core::armv7a::Dbgprcr;
+
+    let debug_base = debug_base.ok_or_else(|| {
+        crate::Error::architecture_specific(ArmDebugSequenceError::DebugBaseNotSpecified)
+    })?;
+
+    let address = Dbgprcr::get_mmio_address(debug_base);
+    let mut dbgprcr = Dbgprcr(core.read_word_32(address)?);
+
+    dbgprcr.set_hcwr(false);
+
+    core.write_word_32(address, dbgprcr.into())?;
+
+    Ok(())
+}
+
+fn armv7a_reset_system(
+    interface: &mut Memory,
+    debug_base: Option<u32>,
+) -> Result<(), crate::Error> {
+    use crate::architecture::arm::core::armv7a::{Dbgprcr, Dbgprsr};
+
+    let debug_base = debug_base.ok_or_else(|| {
+        crate::Error::architecture_specific(ArmDebugSequenceError::DebugBaseNotSpecified)
+    })?;
+
+    // Request reset
+    let address = Dbgprcr::get_mmio_address(debug_base);
+    let mut dbgprcr = Dbgprcr(interface.read_word_32(address)?);
+
+    dbgprcr.set_cwrr(true);
+
+    interface.write_word_32(address, dbgprcr.into())?;
+
+    // Wait until reset happens
+    let address = Dbgprsr::get_mmio_address(debug_base);
+
+    loop {
+        let dbgprsr = Dbgprsr(interface.read_word_32(address)?);
+        if dbgprsr.sr() {
+            break;
+        }
+    }
+
+    Ok(())
+}
+
+/// DebugCoreStart for v7 Cortex-A devices
+fn armv7a_core_start(core: &mut Memory, debug_base: Option<u32>) -> Result<(), crate::Error> {
+    use crate::architecture::arm::core::armv7a::{Dbgdsccr, Dbgdscr, Dbgdsmcr, Dbglar};
+
+    let debug_base = debug_base.ok_or_else(|| {
+        crate::Error::architecture_specific(ArmDebugSequenceError::DebugBaseNotSpecified)
+    })?;
+    log::debug!(
+        "Starting debug for ARMv7-A core with registers at {:#X}",
+        debug_base
+    );
+
+    // Lock OS register access to prevent race conditions
+    let address = Dbglar::get_mmio_address(debug_base);
+    core.write_word_32(address, Dbglar(0).into())?;
+
+    // Force write through / disable caching for debugger access
+    let address = Dbgdsccr::get_mmio_address(debug_base);
+    core.write_word_32(address, Dbgdsccr(0).into())?;
+
+    // Disable TLB matching and updates for debugger operations
+    let address = Dbgdsmcr::get_mmio_address(debug_base);
+    core.write_word_32(address, Dbgdsmcr(0).into())?;
+
+    // Enable halting
+    let address = Dbgdscr::get_mmio_address(debug_base);
+    let mut dbgdscr = Dbgdscr(core.read_word_32(address)?);
+
+    if dbgdscr.hdbgen() {
+        log::debug!("Core is already in debug mode, no need to enable it again");
+        return Ok(());
+    }
+
+    dbgdscr.set_hdbgen(true);
+    core.write_word_32(address, dbgdscr.into())?;
+
+    Ok(())
+}
+
+/// DebugCoreStart for Cortex-M devices
+fn cortex_m_core_start(core: &mut Memory) -> Result<(), crate::Error> {
+    use crate::architecture::arm::core::armv7m::Dhcsr;
+
+    let current_dhcsr = Dhcsr(core.read_word_32(Dhcsr::ADDRESS)?);
+
+    // Note: Manual addition for debugging, not part of the original DebugCoreStart function
+    if current_dhcsr.c_debugen() {
+        log::debug!("Core is already in debug mode, no need to enable it again");
+        return Ok(());
+    }
+    // -- End addition
+
+    let mut dhcsr = Dhcsr(0);
+    dhcsr.set_c_debugen(true);
+    dhcsr.enable_write();
+
+    core.write_word_32(Dhcsr::ADDRESS, dhcsr.into())?;
+
+    Ok(())
+}
+
+/// ResetCatchClear for Cortex-M devices
+fn cortex_m_reset_catch_clear(core: &mut Memory) -> Result<(), crate::Error> {
+    use crate::architecture::arm::core::armv7m::Demcr;
+
+    // Clear reset catch bit
+    let mut demcr = Demcr(core.read_word_32(Demcr::ADDRESS)?);
+    demcr.set_vc_corereset(false);
+
+    core.write_word_32(Demcr::ADDRESS, demcr.into())?;
+    Ok(())
+}
+
+/// ResetCatchSet for Cortex-M devices
+fn cortex_m_reset_catch_set(core: &mut Memory) -> Result<(), crate::Error> {
+    use crate::architecture::arm::core::armv7m::{Demcr, Dhcsr};
+
+    // Request halt after reset
+    let mut demcr = Demcr(core.read_word_32(Demcr::ADDRESS)?);
+    demcr.set_vc_corereset(true);
+
+    core.write_word_32(Demcr::ADDRESS, demcr.into())?;
+
+    // Clear the status bits by reading from DHCSR
+    let _ = core.read_word_32(Dhcsr::ADDRESS)?;
+
+    Ok(())
+}
+
+/// ResetSystem for Cortex-M devices
+fn cortex_m_reset_system(interface: &mut Memory) -> Result<(), crate::Error> {
+    use crate::architecture::arm::core::armv7m::{Aircr, Dhcsr};
+
+    let mut aircr = Aircr(0);
+    aircr.vectkey();
+    aircr.set_sysresetreq(true);
+
+    interface.write_word_32(Aircr::ADDRESS, aircr.into())?;
+
+    let start = Instant::now();
+
+    while start.elapsed() < Duration::from_micros(50_0000) {
+        let dhcsr = match interface.read_word_32(Dhcsr::ADDRESS) {
+            Ok(val) => Dhcsr(val),
+            Err(err) => {
+                if let crate::Error::ArchitectureSpecific(ref arch_err) = err {
+                    if let Some(AccessPortError::RegisterRead { .. }) =
+                        arch_err.downcast_ref::<AccessPortError>()
+                    {
+                        // Some combinations of debug probe and target (in
+                        // particular, hs-probe and ATSAMD21) result in
+                        // register read errors while the target is
+                        // resetting.
+                        continue;
+                    }
+                }
+                return Err(err);
+            }
+        };
+
+        // Wait until the S_RESET_ST bit is cleared on a read
+        if !dhcsr.s_reset_st() {
+            return Ok(());
+        }
+    }
+
+    Err(crate::Error::Probe(DebugProbeError::Timeout))
+}
 
 /// A interface to operate debug sequences for ARM targets.
 ///
@@ -91,6 +301,8 @@ pub trait ArmDebugSequence: Send + Sync {
         // Ensure current debug interface is in reset state.
         interface.swj_sequence(51, 0x0007_FFFF_FFFF_FFFF)?;
 
+        // Make sure the debug port is in the correct mode based on what the probe
+        // has selected via active_protocol
         match interface.active_protocol() {
             Some(crate::WireProtocol::Jtag) => {
                 // Execute SWJ-DP Switch Sequence SWD to JTAG (0xE73C).
@@ -197,25 +409,23 @@ pub trait ArmDebugSequence: Send + Sync {
     ///
     /// [ARM SVD Debug Description]: http://www.keil.com/pack/doc/cmsis/Pack/html/debug_description.html#debugCoreStart
     #[doc(alias = "DebugCoreStart")]
-    fn debug_core_start(&self, core: &mut Memory) -> Result<(), crate::Error> {
-        use crate::architecture::arm::core::armv7m::Dhcsr;
-
-        let current_dhcsr = Dhcsr(core.read_word_32(Dhcsr::ADDRESS)?);
-
-        // Note: Manual addition for debugging, not part of the original DebugCoreStart function
-        if current_dhcsr.c_debugen() {
-            log::debug!("Core is already in debug mode, no need to enable it again");
-            return Ok(());
+    fn debug_core_start(
+        &self,
+        core: &mut Memory,
+        core_type: CoreType,
+        debug_base: Option<u32>,
+    ) -> Result<(), crate::Error> {
+        // Dispatch based on core type (Cortex-A vs M)
+        match core_type {
+            CoreType::Armv7a => armv7a_core_start(core, debug_base),
+            CoreType::Armv6m | CoreType::Armv7m | CoreType::Armv7em | CoreType::Armv8m => {
+                cortex_m_core_start(core)
+            }
+            _ => panic!(
+                "Logic inconsistency bug - non ARM core type passed {:?}",
+                core_type
+            ),
         }
-        // -- End addition
-
-        let mut dhcsr = Dhcsr(0);
-        dhcsr.set_c_debugen(true);
-        dhcsr.enable_write();
-
-        core.write_word_32(Dhcsr::ADDRESS, dhcsr.into())?;
-
-        Ok(())
     }
 
     /// Configure the target to stop code execution after a reset. After this, the core will halt when it comes
@@ -224,19 +434,23 @@ pub trait ArmDebugSequence: Send + Sync {
     ///
     /// [ARM SVD Debug Description]: http://www.keil.com/pack/doc/cmsis/Pack/html/debug_description.html#resetCatchSet
     #[doc(alias = "ResetCatchSet")]
-    fn reset_catch_set(&self, core: &mut Memory) -> Result<(), crate::Error> {
-        use crate::architecture::arm::core::armv7m::{Demcr, Dhcsr};
-
-        // Request halt after reset
-        let mut demcr = Demcr(core.read_word_32(Demcr::ADDRESS)?);
-        demcr.set_vc_corereset(true);
-
-        core.write_word_32(Demcr::ADDRESS, demcr.into())?;
-
-        // Clear the status bits by reading from DHCSR
-        let _ = core.read_word_32(Dhcsr::ADDRESS)?;
-
-        Ok(())
+    fn reset_catch_set(
+        &self,
+        core: &mut Memory,
+        core_type: CoreType,
+        debug_base: Option<u32>,
+    ) -> Result<(), crate::Error> {
+        // Dispatch based on core type (Cortex-A vs M)
+        match core_type {
+            CoreType::Armv7a => armv7a_reset_catch_set(core, debug_base),
+            CoreType::Armv6m | CoreType::Armv7m | CoreType::Armv7em | CoreType::Armv8m => {
+                cortex_m_reset_catch_set(core)
+            }
+            _ => panic!(
+                "Logic inconsistency bug - non ARM core type passed {:?}",
+                core_type
+            ),
+        }
     }
 
     /// Free hardware resources allocated by ResetCatchSet.
@@ -245,15 +459,23 @@ pub trait ArmDebugSequence: Send + Sync {
     ///
     /// [ARM SVD Debug Description]: http://www.keil.com/pack/doc/cmsis/Pack/html/debug_description.html#resetCatchClear
     #[doc(alias = "ResetCatchClear")]
-    fn reset_catch_clear(&self, core: &mut Memory) -> Result<(), crate::Error> {
-        use crate::architecture::arm::core::armv7m::Demcr;
-
-        // Clear reset catch bit
-        let mut demcr = Demcr(core.read_word_32(Demcr::ADDRESS)?);
-        demcr.set_vc_corereset(false);
-
-        core.write_word_32(Demcr::ADDRESS, demcr.into())?;
-        Ok(())
+    fn reset_catch_clear(
+        &self,
+        core: &mut Memory,
+        core_type: CoreType,
+        debug_base: Option<u32>,
+    ) -> Result<(), crate::Error> {
+        // Dispatch based on core type (Cortex-A vs M)
+        match core_type {
+            CoreType::Armv7a => armv7a_reset_catch_clear(core, debug_base),
+            CoreType::Armv6m | CoreType::Armv7m | CoreType::Armv7em | CoreType::Armv8m => {
+                cortex_m_reset_catch_clear(core)
+            }
+            _ => panic!(
+                "Logic inconsistency bug - non ARM core type passed {:?}",
+                core_type
+            ),
+        }
     }
 
     /// Executes a system-wide reset without debug domain (or warm-reset that preserves debug connection) via software mechanisms,
@@ -262,43 +484,23 @@ pub trait ArmDebugSequence: Send + Sync {
     ///
     /// [ARM SVD Debug Description]: http://www.keil.com/pack/doc/cmsis/Pack/html/debug_description.html#resetSystem
     #[doc(alias = "ResetSystem")]
-    fn reset_system(&self, interface: &mut Memory) -> Result<(), crate::Error> {
-        use crate::architecture::arm::core::armv7m::{Aircr, Dhcsr};
-
-        let mut aircr = Aircr(0);
-        aircr.vectkey();
-        aircr.set_sysresetreq(true);
-
-        interface.write_word_32(Aircr::ADDRESS, aircr.into())?;
-
-        let start = Instant::now();
-
-        while start.elapsed() < Duration::from_micros(50_0000) {
-            let dhcsr = match interface.read_word_32(Dhcsr::ADDRESS) {
-                Ok(val) => Dhcsr(val),
-                Err(err) => {
-                    if let crate::Error::ArchitectureSpecific(ref arch_err) = err {
-                        if let Some(AccessPortError::RegisterRead { .. }) =
-                            arch_err.downcast_ref::<AccessPortError>()
-                        {
-                            // Some combinations of debug probe and target (in
-                            // particular, hs-probe and ATSAMD21) result in
-                            // register read errors while the target is
-                            // resetting.
-                            continue;
-                        }
-                    }
-                    return Err(err);
-                }
-            };
-
-            // Wait until the S_RESET_ST bit is cleared on a read
-            if !dhcsr.s_reset_st() {
-                return Ok(());
+    fn reset_system(
+        &self,
+        interface: &mut Memory,
+        core_type: CoreType,
+        debug_base: Option<u32>,
+    ) -> Result<(), crate::Error> {
+        // Dispatch based on core type (Cortex-A vs M)
+        match core_type {
+            CoreType::Armv7a => armv7a_reset_system(interface, debug_base),
+            CoreType::Armv6m | CoreType::Armv7m | CoreType::Armv7em | CoreType::Armv8m => {
+                cortex_m_reset_system(interface)
             }
+            _ => panic!(
+                "Logic inconsistency bug - non ARM core type passed {:?}",
+                core_type
+            ),
         }
-
-        Err(crate::Error::Probe(DebugProbeError::Timeout))
     }
 
     /// Check if the device is in a locked state and unlock it.

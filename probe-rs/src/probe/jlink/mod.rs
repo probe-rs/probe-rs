@@ -627,7 +627,6 @@ impl JTAGAccess for JLink {
     fn read_register(&mut self, address: u32, len: u32) -> Result<Vec<u8>, DebugProbeError> {
         let address_bits = address.to_le_bytes();
 
-        // RYAN TODO
         // TODO: This is limited to 5 bit addresses for now
         if address > 0x1f {
             return Err(DebugProbeError::NotImplemented(

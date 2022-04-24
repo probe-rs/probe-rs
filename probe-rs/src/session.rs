@@ -100,7 +100,12 @@ impl ArchitectureInterface {
                 };
                 let memory = state.memory_interface(MemoryAp::new(ap))?;
 
-                core.attach_arm(core_state, memory, target)
+                core.attach_arm(
+                    core_state,
+                    memory,
+                    arm_core_access_options.debug_base,
+                    target,
+                )
             }
             ArchitectureInterface::Riscv(state) => core.attach_riscv(core_state, state),
         }
@@ -180,14 +185,22 @@ impl Session {
                     sequence_handle.debug_device_unlock(&mut memory_interface, &permissions)?;
 
                     // Enable debug mode
-                    sequence_handle.debug_core_start(&mut memory_interface)?;
+                    sequence_handle.debug_core_start(
+                        &mut memory_interface,
+                        config.core_type,
+                        arm_core_access_options.debug_base,
+                    )?;
                 }
 
                 let session = if attach_method == AttachMethod::UnderReset {
                     {
                         let mut memory_interface = interface.memory_interface(default_memory_ap)?;
                         // we need to halt the chip here
-                        sequence_handle.reset_catch_set(&mut memory_interface)?;
+                        sequence_handle.reset_catch_set(
+                            &mut memory_interface,
+                            config.core_type,
+                            arm_core_access_options.debug_base,
+                        )?;
                         sequence_handle.reset_hardware_deassert(&mut memory_interface)?;
                     }
 
@@ -219,7 +232,11 @@ impl Session {
                         let interface = session.get_arm_interface()?;
                         let mut memory_interface = interface.memory_interface(default_memory_ap)?;
                         // we need to halt the chip here
-                        sequence_handle.reset_catch_clear(&mut memory_interface)?;
+                        sequence_handle.reset_catch_clear(
+                            &mut memory_interface,
+                            config.core_type,
+                            arm_core_access_options.debug_base,
+                        )?;
                     }
 
                     {

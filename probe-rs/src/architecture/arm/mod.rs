@@ -17,6 +17,7 @@ pub use swo::{SwoAccess, SwoConfig, SwoMode, SwoReader};
 pub use traits::*;
 
 pub use self::core::armv6m;
+pub use self::core::armv7a;
 pub use self::core::armv7m;
 pub use self::core::armv8m;
 pub use self::core::Dump;

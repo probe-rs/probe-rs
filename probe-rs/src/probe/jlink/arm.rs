@@ -240,7 +240,7 @@ fn perform_jtag_transfers<P: JTAGAccess + RawProtocolIo>(
 
         // Each response is read in the next transaction
         if i > 0 {
-            if transfers[i - 1].is_abort() {
+            if transfers[i - 1].is_abort() || transfers[i - 1].is_rdbuff() {
                 // No status
                 transfers[i - 1].status = TransferStatus::Ok;
             } else {
@@ -256,7 +256,7 @@ fn perform_jtag_transfers<P: JTAGAccess + RawProtocolIo>(
 
     // We need to do a final read to get the status for the last transaction
     let last_transfer = &mut transfers[transfers.len() - 1];
-    if last_transfer.is_abort() {
+    if last_transfer.is_abort() || last_transfer.is_rdbuff() {
         // No acknowledgement, so need need for another transfer
         last_transfer.status = TransferStatus::Ok;
     } else {
@@ -270,6 +270,36 @@ fn perform_jtag_transfers<P: JTAGAccess + RawProtocolIo>(
             && last_transfer.direction == TransferDirection::Read
         {
             last_transfer.value = received_value;
+        }
+    }
+
+    if !last_transfer.is_abort() {
+        // Check CTRL/STATUS to make sure OK/FAULT meant OK
+        let (_, _) = perform_jtag_transfer(
+            probe,
+            &DapTransfer::read(PortType::DebugPort, Ctrl::ADDRESS),
+        )?;
+        let (received_value, _) = perform_jtag_transfer(
+            probe,
+            &DapTransfer::read(PortType::DebugPort, RdBuff::ADDRESS),
+        )?;
+
+        if Ctrl(received_value).sticky_err() {
+            log::debug!("JTAG transaction set failed: {:#X?}", transfers);
+
+            // Clear the sticky bit so future transactions succeed
+            let (_, _) = perform_jtag_transfer(
+                probe,
+                &DapTransfer::write(PortType::DebugPort, Ctrl::ADDRESS, received_value),
+            )?;
+
+            // Mark OK/FAULT transactions as failed
+            // The caller will reset the sticky flag and retry if needed
+            for transfer in transfers {
+                if transfer.status == TransferStatus::Ok {
+                    transfer.status = TransferStatus::Failed(DapError::FaultResponse);
+                }
+            }
         }
     }
 
@@ -546,6 +576,12 @@ impl DapTransfer {
         self.port == PortType::DebugPort
             && self.address == Abort::ADDRESS
             && self.direction == TransferDirection::Write
+    }
+
+    fn is_rdbuff(&self) -> bool {
+        self.port == PortType::DebugPort
+            && self.address == RdBuff::ADDRESS
+            && self.direction == TransferDirection::Read
     }
 }
 
@@ -1565,7 +1601,12 @@ mod test {
 
             let jtag_transaction = self.jtag_transactions.remove(0);
 
-            assert_eq!(jtag_transaction.ir_address, address);
+            assert_eq!(
+                jtag_transaction.ir_address,
+                address,
+                "Address mismatch with {} remaining transactions",
+                self.jtag_transactions.len()
+            );
 
             if jtag_transaction.ir_address != JTAG_ABORT_IR_VALUE {
                 let value = (jtag_value >> 3) as u32;
@@ -1721,6 +1762,7 @@ mod test {
         let result = mock.select_protocol(crate::WireProtocol::Jtag);
         assert_eq!(false, result.is_err());
 
+        // Read request
         mock.add_jtag_response(PortType::AccessPort, 4, true, DapAcknowledge::Ok, 0, 0);
         mock.add_jtag_response(
             PortType::DebugPort,
@@ -1730,6 +1772,8 @@ mod test {
             read_value,
             0,
         );
+        // Check CTRL
+        mock.add_jtag_response(PortType::DebugPort, 4, true, DapAcknowledge::Ok, 0, 0);
         mock.add_jtag_response(PortType::DebugPort, 12, true, DapAcknowledge::Ok, 0, 0);
 
         let result = mock.raw_read_register(PortType::AccessPort, 4).unwrap();
@@ -1773,13 +1817,17 @@ mod test {
         let result = mock.select_protocol(crate::WireProtocol::Jtag);
         assert_eq!(false, result.is_err());
 
+        // Read
         mock.add_jtag_response(PortType::AccessPort, 4, true, DapAcknowledge::Ok, 0, 0);
         mock.add_jtag_response(PortType::DebugPort, 12, true, DapAcknowledge::Wait, 0, 0);
-        mock.add_jtag_response(PortType::DebugPort, 12, true, DapAcknowledge::Wait, 0, 0);
+        // Check CTRL
+        mock.add_jtag_response(PortType::DebugPort, 4, true, DapAcknowledge::Ok, 0, 0);
+        mock.add_jtag_response(PortType::DebugPort, 12, true, DapAcknowledge::Ok, 0, 0);
 
         //  When a wait response is received, the sticky overrun bit has to be cleared
         mock.add_jtag_abort();
 
+        // Retry
         mock.add_jtag_response(PortType::AccessPort, 4, true, DapAcknowledge::Ok, 0, 0);
         mock.add_jtag_response(
             PortType::DebugPort,
@@ -1789,6 +1837,8 @@ mod test {
             read_value,
             0,
         );
+        // Check CTRL
+        mock.add_jtag_response(PortType::DebugPort, 4, true, DapAcknowledge::Ok, 0, 0);
         mock.add_jtag_response(PortType::DebugPort, 12, true, DapAcknowledge::Ok, 0, 0);
 
         let result = mock.raw_read_register(PortType::AccessPort, 4).unwrap();
@@ -1834,7 +1884,9 @@ mod test {
             0x123,
             0x0,
         );
-        mock.add_jtag_response(PortType::DebugPort, 12, true, DapAcknowledge::Ok, 0x0, 0x0);
+        // Check CTRL
+        mock.add_jtag_response(PortType::DebugPort, 4, true, DapAcknowledge::Ok, 0, 0);
+        mock.add_jtag_response(PortType::DebugPort, 12, true, DapAcknowledge::Ok, 0, 0);
 
         mock.raw_write_register(PortType::AccessPort, 4, 0x123)
             .expect("Failed to write register");
@@ -1889,14 +1941,9 @@ mod test {
             0x0,
             0x0,
         );
-        mock.add_jtag_response(
-            PortType::DebugPort,
-            12,
-            true,
-            DapAcknowledge::Wait,
-            0x0,
-            0x0,
-        );
+        // Check CTRL
+        mock.add_jtag_response(PortType::DebugPort, 4, true, DapAcknowledge::Ok, 0, 0);
+        mock.add_jtag_response(PortType::DebugPort, 12, true, DapAcknowledge::Ok, 0, 0);
 
         // Expect a Write to the ABORT register.
         mock.add_jtag_abort();
@@ -1918,7 +1965,9 @@ mod test {
             0x123,
             0x0,
         );
-        mock.add_jtag_response(PortType::DebugPort, 12, true, DapAcknowledge::Ok, 0x0, 0x0);
+        // Check CTRL
+        mock.add_jtag_response(PortType::DebugPort, 4, true, DapAcknowledge::Ok, 0, 0);
+        mock.add_jtag_response(PortType::DebugPort, 12, true, DapAcknowledge::Ok, 0, 0);
 
         mock.raw_write_register(PortType::AccessPort, 4, 0x123)
             .expect("Failed to write register");

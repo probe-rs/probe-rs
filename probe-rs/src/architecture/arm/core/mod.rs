@@ -6,6 +6,7 @@ use crate::{
 use bitfield::bitfield;
 
 pub mod armv6m;
+pub mod armv7a;
 pub mod armv7m;
 pub mod armv8m;
 
