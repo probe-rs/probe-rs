@@ -427,13 +427,17 @@ impl DebugProbe for CmsisDap {
             ConnectRequest::DefaultPort
         };
 
-        let _result = commands::send_command(&mut self.device, protocol)
+        let used_protocol = commands::send_command(&mut self.device, protocol)
             .map_err(CmsisDapError::from)
             .and_then(|v| match v {
                 ConnectResponse::SuccessfulInitForSWD => Ok(WireProtocol::Swd),
                 ConnectResponse::SuccessfulInitForJTAG => Ok(WireProtocol::Jtag),
                 ConnectResponse::InitFailed => Err(CmsisDapError::ErrorResponse),
             })?;
+
+        // Store the actually used protocol, to handle cases where the default protocol is used.
+        log::info!("Using protocol {}", used_protocol);
+        self.protocol = Some(used_protocol);
 
         // Set speed after connecting as it can be reset during protocol selection
         self.set_speed(self.speed_khz)?;
