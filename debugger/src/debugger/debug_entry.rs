@@ -93,9 +93,39 @@ impl Debugger {
                         Ok(DebuggerStatus::ContinueSession)
                     }
                     CoreStatus::Halted(_) => {
-                        session_data.poll_rtt(&self.config, debug_adapter);
-                        // No need to poll the target status if we know it is halted and waiting for us to do something.
-                        thread::sleep(Duration::from_millis(50)); // Small delay to reduce fast looping costs on the client
+                        // We check for RTT data the first time we have entered halted status, to ensure the buffers are drained.
+                        // After that, for as long as we remain in halted state, we don't need to check RTT again.
+                        // TODO: This only works for a single core, so until it can be redesigned, will use the first one configured.
+                        let check_rtt = if let Some(target_core_config) =
+                            self.config.core_configs.first_mut()
+                        {
+                            if let Ok(mut core_handle) =
+                                session_data.attach_core(target_core_config.core_index)
+                            {
+                                match core_handle.core.status() {
+                                    Ok(new_status) => new_status != debug_adapter.last_known_status,
+                                    Err(error) => {
+                                        let error = DebuggerError::ProbeRs(error);
+                                        let _ = debug_adapter.send_error_response(&error);
+                                        return Err(error);
+                                    }
+                                }
+                            } else {
+                                return Err(DebuggerError::Other(anyhow!(
+                                    "Unable to connect to target core"
+                                )));
+                            }
+                        } else {
+                            return Err(DebuggerError::Other(anyhow!(
+                                "Cannot continue unless one target core configuration is defined."
+                            )));
+                        };
+                        if check_rtt {
+                            session_data.poll_rtt(&self.config, debug_adapter);
+                        } else {
+                            // No need to poll the target status if we know it is halted and waiting for us to do something.
+                            thread::sleep(Duration::from_millis(50)); // Small delay to reduce fast looping costs on the client
+                        }
                         Ok(DebuggerStatus::ContinueSession)
                     }
                     _other => {
