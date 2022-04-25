@@ -71,6 +71,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Debugger: Improved RTT reliability between debug adapter and VSCode (#1035)
   - Fixed missing `derive` feature for examples using `clap`.
   - Increase SWD wait timeout (#994)
+  - Debugger: Fix `Source` breakpoints only worked for a single source file. (#1098)
 
 ## [0.12.0]
 

@@ -3,7 +3,7 @@ use super::{
     core_data::{CoreData, CoreHandle},
 };
 use crate::{
-    debug_adapter::{dap_adapter::DebugAdapter, protocol::ProtocolAdapter},
+    debug_adapter::{dap_adapter::DebugAdapter, dap_types::Source, protocol::ProtocolAdapter},
     DebuggerError,
 };
 use anyhow::{anyhow, Result};
@@ -21,7 +21,7 @@ use std::env::set_current_dir;
 #[derive(Debug, PartialEq)]
 pub enum BreakpointType {
     InstructionBreakpoint,
-    SourceBreakpoint,
+    SourceBreakpoint(Source),
 }
 
 /// Provide the storage and methods to handle various [`BreakPointType`]
