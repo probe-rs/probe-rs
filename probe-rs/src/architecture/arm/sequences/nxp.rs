@@ -96,7 +96,12 @@ impl ArmDebugSequence for LPC55S69 {
         Ok(())
     }
 
-    fn reset_catch_set(&self, interface: &mut crate::Memory) -> Result<(), crate::Error> {
+    fn reset_catch_set(
+        &self,
+        interface: &mut crate::Memory,
+        _core_type: crate::CoreType,
+        _debug_base: Option<u32>,
+    ) -> Result<(), crate::Error> {
         use crate::architecture::arm::core::armv7m::{Demcr, Dhcsr};
 
         let mut reset_vector = 0xffff_ffff;
@@ -170,7 +175,12 @@ impl ArmDebugSequence for LPC55S69 {
         Ok(())
     }
 
-    fn reset_catch_clear(&self, interface: &mut crate::Memory) -> Result<(), crate::Error> {
+    fn reset_catch_clear(
+        &self,
+        interface: &mut crate::Memory,
+        _core_type: crate::CoreType,
+        _debug_base: Option<u32>,
+    ) -> Result<(), crate::Error> {
         use crate::architecture::arm::core::armv7m::Demcr;
 
         interface.write_word_32(0xE000_2008, 0x0)?;
@@ -183,7 +193,12 @@ impl ArmDebugSequence for LPC55S69 {
         interface.write_word_32(Demcr::ADDRESS, demcr.into())
     }
 
-    fn reset_system(&self, interface: &mut crate::Memory) -> Result<(), crate::Error> {
+    fn reset_system(
+        &self,
+        interface: &mut crate::Memory,
+        _core_type: crate::CoreType,
+        _debug_base: Option<u32>,
+    ) -> Result<(), crate::Error> {
         use crate::architecture::arm::core::armv7m::Aircr;
 
         let mut aircr = Aircr(0);

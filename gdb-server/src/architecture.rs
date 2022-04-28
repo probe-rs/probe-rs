@@ -144,6 +144,7 @@ impl GdbTargetExt for probe_rs::Target {
         // TODO: what if they're not all equal?
         let architecture = match self.cores[0].core_type {
             CoreType::Armv6m => "armv6-m",
+            CoreType::Armv7a => "armv7-a",
             CoreType::Armv7m => "armv7",
             CoreType::Armv7em => "armv7e-m",
             CoreType::Armv8m => "armv8-m.main",

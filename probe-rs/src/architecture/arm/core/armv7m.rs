@@ -834,15 +834,18 @@ impl<'probe> CoreInterface for Armv7m<'probe> {
     }
 
     fn reset(&mut self) -> Result<(), Error> {
-        self.sequence.reset_system(&mut self.memory)
+        self.sequence
+            .reset_system(&mut self.memory, crate::CoreType::Armv7m, None)
     }
 
     fn reset_and_halt(&mut self, _timeout: Duration) -> Result<CoreInformation, Error> {
         // Set the vc_corereset bit in the DEMCR register.
         // This will halt the core after reset.
 
-        self.sequence.reset_catch_set(&mut self.memory)?;
-        self.sequence.reset_system(&mut self.memory)?;
+        self.sequence
+            .reset_catch_set(&mut self.memory, crate::CoreType::Armv7m, None)?;
+        self.sequence
+            .reset_system(&mut self.memory, crate::CoreType::Armv7m, None)?;
 
         // Update core status
         let _ = self.status()?;
@@ -853,7 +856,8 @@ impl<'probe> CoreInterface for Armv7m<'probe> {
             self.write_core_reg(register::XPSR.address, xpsr_value | XPSR_THUMB)?;
         }
 
-        self.sequence.reset_catch_clear(&mut self.memory)?;
+        self.sequence
+            .reset_catch_clear(&mut self.memory, crate::CoreType::Armv7m, None)?;
 
         // try to read the program counter
         let pc_value = self.read_core_reg(register::PC.address)?;

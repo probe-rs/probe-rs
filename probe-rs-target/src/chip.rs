@@ -82,6 +82,9 @@ pub struct ArmCoreAccessOptions {
     pub ap: u8,
     /// The port select number to access the core
     pub psel: u32,
+    /// The base address of the debug registers for the core.
+    /// Required for Cortex-A, optional for Cortex-M
+    pub debug_base: Option<u32>,
 }
 
 /// The data required to access a Risc-V core

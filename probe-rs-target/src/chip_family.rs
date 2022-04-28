@@ -28,6 +28,8 @@ pub enum TargetDescriptionSource {
 pub enum CoreType {
     /// ARMv6-M: Cortex M0, M0+, M1
     Armv6m,
+    /// ARMv7-A: Cortex A7, A9, A15
+    Armv7a,
     /// ARMv7-M: Cortex M3
     Armv7m,
     /// ARMv7e-M: Cortex M4, M7

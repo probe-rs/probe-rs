@@ -4,6 +4,7 @@ pub use communication_interface::CommunicationInterface;
 pub use probe_rs_target::Architecture;
 use probe_rs_target::CoreType;
 
+use crate::architecture::arm::sequences::ArmDebugSequenceError;
 use crate::architecture::{
     arm::core::State, riscv::communication_interface::RiscvCommunicationInterface,
 };
@@ -331,6 +332,8 @@ impl CoreState {
 pub enum SpecificCoreState {
     /// The state of an ARMv6-M core.
     Armv6m(State),
+    /// The state of an ARMv7-A core.
+    Armv7a(State),
     /// The state of an ARMv7-M core.
     Armv7m(State),
     /// The state of an ARMv7-EM core.
@@ -345,6 +348,7 @@ impl SpecificCoreState {
     pub(crate) fn from_core_type(typ: CoreType) -> Self {
         match typ {
             CoreType::Armv6m => SpecificCoreState::Armv6m(State::new()),
+            CoreType::Armv7a => SpecificCoreState::Armv7a(State::new()),
             CoreType::Armv7m => SpecificCoreState::Armv7m(State::new()),
             CoreType::Armv7em => SpecificCoreState::Armv7m(State::new()),
             CoreType::Armv8m => SpecificCoreState::Armv8m(State::new()),
@@ -355,6 +359,7 @@ impl SpecificCoreState {
     pub(crate) fn core_type(&self) -> CoreType {
         match self {
             SpecificCoreState::Armv6m(_) => CoreType::Armv6m,
+            SpecificCoreState::Armv7a(_) => CoreType::Armv7a,
             SpecificCoreState::Armv7m(_) => CoreType::Armv7m,
             SpecificCoreState::Armv7em(_) => CoreType::Armv7em,
             SpecificCoreState::Armv8m(_) => CoreType::Armv8m,
@@ -366,6 +371,7 @@ impl SpecificCoreState {
         &'probe mut self,
         state: &'probe mut CoreState,
         memory: Memory<'probe>,
+        base_address: Option<u32>,
         target: &'target Target,
     ) -> Result<Core<'probe>, Error> {
         let debug_sequence = match &target.debug_sequence {
@@ -380,6 +386,17 @@ impl SpecificCoreState {
         Ok(match self {
             SpecificCoreState::Armv6m(s) => Core::new(
                 crate::architecture::arm::armv6m::Armv6m::new(memory, s, debug_sequence)?,
+                state,
+            ),
+            SpecificCoreState::Armv7a(s) => Core::new(
+                crate::architecture::arm::armv7a::Armv7a::new(
+                    memory,
+                    s,
+                    base_address.ok_or_else(|| {
+                        Error::architecture_specific(ArmDebugSequenceError::DebugBaseNotSpecified)
+                    })?,
+                    debug_sequence,
+                )?,
                 state,
             ),
             SpecificCoreState::Armv7m(s) | SpecificCoreState::Armv7em(s) => Core::new(
