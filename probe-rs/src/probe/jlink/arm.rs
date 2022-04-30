@@ -1293,7 +1293,7 @@ impl<Probe: DebugProbe + RawProtocolIo + JTAGAccess + 'static> RawDapAccess for 
     }
 
     fn swj_sequence(&mut self, bit_len: u8, mut bits: u64) -> Result<(), DebugProbeError> {
-        let protocol = self.active_protocol().unwrap();
+        let protocol = self.active_protocol().expect("No protocol set");
 
         let mut io_sequence = IoSequence::new();
 
