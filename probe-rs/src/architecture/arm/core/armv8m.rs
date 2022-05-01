@@ -9,7 +9,7 @@ use crate::{
     architecture::arm::core::register, CoreStatus, DebugProbeError, HaltReason, MemoryInterface,
 };
 use crate::{Architecture, CoreInformation};
-use crate::{CoreInterface, CoreRegister};
+use crate::{CoreInterface, CoreRegister, CoreType, InstructionSet};
 use anyhow::Result;
 
 use bitfield::bitfield;
@@ -276,6 +276,14 @@ impl<'probe> CoreInterface for Armv8m<'probe> {
 
     fn architecture(&self) -> Architecture {
         Architecture::Arm
+    }
+
+    fn core_type(&self) -> CoreType {
+        CoreType::Armv8m
+    }
+
+    fn instruction_set(&mut self) -> Result<InstructionSet, Error> {
+        Ok(InstructionSet::Thumb2)
     }
 
     fn status(&mut self) -> Result<crate::core::CoreStatus, Error> {

@@ -6,7 +6,6 @@ use crate::{
     DebuggerError,
 };
 use anyhow::Result;
-use capstone::Capstone;
 use probe_rs::{debug::debug_info::DebugInfo, Core};
 use probe_rs_cli_util::rtt;
 
@@ -26,7 +25,6 @@ pub struct CoreData {
 /// Usage: To get access to this structure please use the [SessionData::attach_core] method. Please keep access/locks to this to a minumum duration.
 pub struct CoreHandle<'p> {
     pub(crate) core: Core<'p>,
-    pub(crate) capstone: &'p Capstone,
     pub(crate) core_data: &'p mut CoreData,
 }
 

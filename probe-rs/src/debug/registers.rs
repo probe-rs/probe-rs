@@ -41,23 +41,17 @@ impl Registers {
         registers
     }
 
-    // TODO: These get_ and set_ functions should probably be implemented as Traits, with architecture specific implementations.
-
     /// Get the canonical frame address, as specified in the [DWARF](https://dwarfstd.org) specification, section 6.4.
     /// [DWARF](https://dwarfstd.org)
     pub fn get_frame_pointer(&self) -> Option<u32> {
-        match self.architecture {
-            Architecture::Arm => self.values.get(&7).copied(),
-            Architecture::Riscv => self.values.get(&8).copied(),
-        }
+        let reg_num = self.register_description.frame_pointer().address.0 as u32;
+
+        self.values.get(&reg_num).copied()
     }
     /// Set the canonical frame address, as specified in the [DWARF](https://dwarfstd.org) specification, section 6.4.
     /// [DWARF](https://dwarfstd.org)
     pub fn set_frame_pointer(&mut self, value: Option<u32>) {
-        let register_address = match self.architecture {
-            Architecture::Arm => 7,
-            Architecture::Riscv => 8,
-        };
+        let register_address = self.register_description.frame_pointer().address.0 as u32;
 
         if let Some(value) = value {
             self.values.insert(register_address, value);
@@ -66,21 +60,16 @@ impl Registers {
         }
     }
 
-    // TODO: FIX Riscv .... PC is a separate register, and NOT r1 (which is the return address)
     /// Get the program counter.
     pub fn get_program_counter(&self) -> Option<u32> {
-        match self.architecture {
-            Architecture::Arm => self.values.get(&15).copied(),
-            Architecture::Riscv => self.values.get(&1).copied(),
-        }
+        let reg_num = self.register_description.program_counter().address.0 as u32;
+
+        self.values.get(&reg_num).copied()
     }
 
     /// Set the program counter.
     pub fn set_program_counter(&mut self, value: Option<u32>) {
-        let register_address = match self.architecture {
-            Architecture::Arm => 15,
-            Architecture::Riscv => 1,
-        };
+        let register_address = self.register_description.program_counter().address.0 as u32;
 
         if let Some(value) = value {
             self.values.insert(register_address, value);
@@ -91,18 +80,14 @@ impl Registers {
 
     /// Get the stack pointer.
     pub fn get_stack_pointer(&self) -> Option<u32> {
-        match self.architecture {
-            Architecture::Arm => self.values.get(&13).copied(),
-            Architecture::Riscv => self.values.get(&2).copied(),
-        }
+        let reg_num = self.register_description.stack_pointer().address.0 as u32;
+
+        self.values.get(&reg_num).copied()
     }
 
     /// Set the stack pointer.
     pub fn set_stack_pointer(&mut self, value: Option<u32>) {
-        let register_address = match self.architecture {
-            Architecture::Arm => 13,
-            Architecture::Riscv => 2,
-        };
+        let register_address = self.register_description.stack_pointer().address.0 as u32;
 
         if let Some(value) = value {
             self.values.insert(register_address, value);
@@ -113,18 +98,14 @@ impl Registers {
 
     /// Get the return address.
     pub fn get_return_address(&self) -> Option<u32> {
-        match self.architecture {
-            Architecture::Arm => self.values.get(&14).copied(),
-            Architecture::Riscv => self.values.get(&1).copied(),
-        }
+        let reg_num = self.register_description.return_address().address.0 as u32;
+
+        self.values.get(&reg_num).copied()
     }
 
     /// Set the return address.
     pub fn set_return_address(&mut self, value: Option<u32>) {
-        let register_address = match self.architecture {
-            Architecture::Arm => 14,
-            Architecture::Riscv => 1,
-        };
+        let register_address = self.register_description.return_address().address.0 as u32;
 
         if let Some(value) = value {
             self.values.insert(register_address, value);

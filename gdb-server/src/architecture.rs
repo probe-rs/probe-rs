@@ -74,7 +74,14 @@ impl<'probe> GdbArchitectureExt for Core<'probe> {
 
     fn num_general_registers(&self) -> usize {
         match self.architecture() {
-            probe_rs::Architecture::Arm => 24,
+            probe_rs::Architecture::Arm => {
+                match self.core_type() {
+                    // 16 general purpose regs
+                    CoreType::Armv7a => 16,
+                    // 16 general purpose regs, 8 FP regs
+                    _ => 24,
+                }
+            }
             probe_rs::Architecture::Riscv => 33,
         }
     }
@@ -144,7 +151,7 @@ impl GdbTargetExt for probe_rs::Target {
         // TODO: what if they're not all equal?
         let architecture = match self.cores[0].core_type {
             CoreType::Armv6m => "armv6-m",
-            CoreType::Armv7a => "armv7-a",
+            CoreType::Armv7a => "armv7",
             CoreType::Armv7m => "armv7",
             CoreType::Armv7em => "armv7e-m",
             CoreType::Armv8m => "armv8-m.main",

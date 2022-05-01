@@ -22,4 +22,6 @@ pub enum CliError {
     },
     #[error(transparent)]
     ProbeRs(#[from] Error),
+    #[error(transparent)]
+    Other(#[from] anyhow::Error),
 }

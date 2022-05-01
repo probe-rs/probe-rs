@@ -19,10 +19,9 @@ use probe_rs_cli_util::{
     flash::run_flash_download,
 };
 
-use capstone::{arch::arm::ArchMode, prelude::*, Capstone, Endian};
 use rustyline::Editor;
 
-use anyhow::{anyhow, Context, Result};
+use anyhow::{Context, Result};
 
 use std::{fs::File, path::PathBuf};
 use std::{io, time::Instant};
@@ -422,13 +421,6 @@ fn trace_u32_on_target(
 fn debug(shared_options: &CoreOptions, common: &ProbeOptions, exe: Option<PathBuf>) -> Result<()> {
     let mut session = common.simple_attach()?;
 
-    let cs = Capstone::new()
-        .arm()
-        .mode(ArchMode::Thumb)
-        .endian(Endian::Little)
-        .build()
-        .map_err(|err| anyhow!("Error creating capstone: {:?}", err))?;
-
     let di = exe
         .as_ref()
         .and_then(|path| DebugInfo::from_file(path).ok());
@@ -437,7 +429,7 @@ fn debug(shared_options: &CoreOptions, common: &ProbeOptions, exe: Option<PathBu
 
     let core = session.core(shared_options.core)?;
 
-    let mut cli_data = debugger::CliData::new(core, di, cs)?;
+    let mut cli_data = debugger::CliData::new(core, di)?;
 
     let mut rl = Editor::<()>::new();
 

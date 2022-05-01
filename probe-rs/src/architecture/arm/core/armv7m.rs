@@ -6,7 +6,7 @@ use crate::core::{
 };
 use crate::error::Error;
 use crate::memory::Memory;
-use crate::DebugProbeError;
+use crate::{CoreType, DebugProbeError, InstructionSet};
 
 use super::{register, Dfsr, State, ARM_REGISTER_FILE};
 use crate::{
@@ -947,6 +947,14 @@ impl<'probe> CoreInterface for Armv7m<'probe> {
 
     fn architecture(&self) -> Architecture {
         Architecture::Arm
+    }
+
+    fn core_type(&self) -> CoreType {
+        CoreType::Armv7m
+    }
+
+    fn instruction_set(&mut self) -> Result<InstructionSet, Error> {
+        Ok(InstructionSet::Thumb2)
     }
 
     /// See docs on the [`CoreInterface::hw_breakpoints`] trait.

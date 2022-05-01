@@ -3,7 +3,7 @@
 #![allow(clippy::inconsistent_digit_grouping)]
 
 use crate::core::Architecture;
-use crate::CoreInterface;
+use crate::{CoreInterface, CoreType, InstructionSet};
 use anyhow::{anyhow, Result};
 use communication_interface::{
     AbstractCommandErrorKind, DebugRegister, RiscvCommunicationInterface, RiscvError,
@@ -446,6 +446,14 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
 
     fn architecture(&self) -> Architecture {
         Architecture::Riscv
+    }
+
+    fn core_type(&self) -> CoreType {
+        CoreType::Riscv
+    }
+
+    fn instruction_set(&mut self) -> Result<InstructionSet, Error> {
+        Ok(InstructionSet::RV32)
     }
 
     fn status(&mut self) -> Result<crate::core::CoreStatus, crate::Error> {

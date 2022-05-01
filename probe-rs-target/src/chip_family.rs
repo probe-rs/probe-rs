@@ -40,6 +40,16 @@ pub enum CoreType {
     Riscv,
 }
 
+impl CoreType {
+    /// Returns true if the core type is an ARM Cortex-M
+    pub fn is_cortex_m(&self) -> bool {
+        matches!(
+            self,
+            CoreType::Armv6m | CoreType::Armv7em | CoreType::Armv7m | CoreType::Armv8m
+        )
+    }
+}
+
 /// The architecture family of a specific [`CoreType`].
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Architecture {
@@ -57,6 +67,17 @@ impl CoreType {
             _ => Architecture::Arm,
         }
     }
+}
+
+/// Instruction set used by a core
+#[derive(Debug, Copy, Clone, PartialEq)]
+pub enum InstructionSet {
+    /// ARM Thumb 2 instruction set
+    Thumb2,
+    /// ARM A32 (often just called ARM) instruction set
+    A32,
+    /// RISC-V 32-bit instruction set
+    RV32,
 }
 
 /// This describes a chip family with all its variants.

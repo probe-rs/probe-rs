@@ -4,6 +4,10 @@ use crate::{
     DebuggerError,
 };
 use anyhow::{anyhow, Result};
+use capstone::{
+    arch::arm::ArchMode as armArchMode, arch::riscv::ArchMode as riscvArchMode, prelude::*,
+    Capstone, Endian,
+};
 use dap_types::*;
 use num_traits::Zero;
 use parse_int::parse;
@@ -12,7 +16,7 @@ use probe_rs::{
         registers::Registers, stepping_mode::SteppingMode, ColumnType, SourceLocation,
         VariableName, VariableNodeType,
     },
-    CoreStatus, HaltReason, MemoryInterface,
+    CoreStatus, HaltReason, InstructionSet, MemoryInterface,
 };
 use probe_rs_cli_util::rtt;
 use serde::{de::DeserializeOwned, Serialize};
@@ -1328,10 +1332,29 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                 }
             }
 
-            match target_core
-                .capstone
-                .disasm_count(&code_buffer, instruction_pointer as u64, 1)
-            {
+            let cs = match target_core.core.instruction_set()? {
+                InstructionSet::Thumb2 => Capstone::new()
+                    .arm()
+                    .mode(armArchMode::Thumb)
+                    .endian(Endian::Little)
+                    .build(),
+                InstructionSet::A32 => {
+                    // We need to inspect the CPSR to determine what mode this is opearting in
+                    Capstone::new()
+                        .arm()
+                        .mode(armArchMode::Arm)
+                        .endian(Endian::Little)
+                        .build()
+                }
+                InstructionSet::RV32 => Capstone::new()
+                    .riscv()
+                    .mode(riscvArchMode::RiscV32)
+                    .endian(Endian::Little)
+                    .build(),
+            }
+            .map_err(|err| anyhow!("Error creating capstone: {:?}", err))?;
+
+            match cs.disasm_count(&code_buffer, instruction_pointer as u64, 1) {
                 Ok(instructions) => {
                     if instructions.len().is_zero() {
                         read_more_bytes = true;
