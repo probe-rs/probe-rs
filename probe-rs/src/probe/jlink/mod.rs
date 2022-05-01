@@ -474,6 +474,7 @@ impl DebugProbe for JLink {
         }
 
         log::debug!("Attaching with protocol '{}'", actual_protocol);
+        self.protocol = Some(actual_protocol);
 
         // Get reference to JayLink instance
         let capabilities = self.handle.capabilities();
