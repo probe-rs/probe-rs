@@ -25,7 +25,7 @@ probe-rs-rtt = { version = "0.12.0", git = "https://github.com/probe-rs/probe-rs
 
 git-version = "0.3.5"
 env_logger = "0.9.0"
-log = { version = "0.4.14", features = ["serde"] }
+log = { version = "0.4.17", features = ["serde"] }
 lazy_static = "1.4.0"
 colored = "2.0.0"
 serde = { version = "1.0", features = ["derive"] }
