@@ -37,6 +37,8 @@ use crate::{backtrace::Outcome, canary::Canary, elf::Elf, target_info::TargetInf
 const TIMEOUT: Duration = Duration::from_secs(1);
 
 fn main() -> anyhow::Result<()> {
+    configure_terminal_colorization();
+
     #[allow(clippy::redundant_closure)]
     cli::handle_arguments().map(|code| process::exit(code))
 }
@@ -431,4 +433,14 @@ fn setup_logging_channel(
 /// Print a line to separate different execution stages.
 fn print_separator() -> io::Result<()> {
     writeln!(io::stderr(), "{}", "─".repeat(80).dimmed())
+}
+
+fn configure_terminal_colorization() {
+    // ! This should be detected by `colored`, but currently is not.
+    // See https://github.com/mackwic/colored/issues/108 and https://github.com/knurling-rs/probe-run/pull/318.
+
+    match env::var("TERM").as_deref() {
+        Ok("dumb") => colored::control::set_override(false),
+        _ => {}
+    }
 }
