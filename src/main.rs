@@ -439,8 +439,7 @@ fn configure_terminal_colorization() {
     // ! This should be detected by `colored`, but currently is not.
     // See https://github.com/mackwic/colored/issues/108 and https://github.com/knurling-rs/probe-run/pull/318.
 
-    match env::var("TERM").as_deref() {
-        Ok("dumb") => colored::control::set_override(false),
-        _ => {}
+    if let Ok("dumb") = env::var("TERM").as_deref() {
+        colored::control::set_override(false)
     }
 }
