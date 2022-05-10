@@ -7,10 +7,6 @@ use crate::{
     DebuggerError,
 };
 use anyhow::{anyhow, Result};
-use capstone::{
-    arch::arm::ArchMode as armArchMode, arch::riscv::ArchMode as riscvArchMode, prelude::*,
-    Capstone, Endian,
-};
 use probe_rs::{
     config::TargetSelector, debug::debug_info::DebugInfo, CoreStatus, DebugProbeError, Permissions,
     Probe, ProbeCreationError, Session,
@@ -36,8 +32,6 @@ pub struct ActiveBreakpoint {
 /// TODO: Adjust [SessionConfig] to allow multiple cores (and if appropriate, their binaries) to be specified.
 pub struct SessionData {
     pub(crate) session: Session,
-    /// Provides ability to disassemble binary code.
-    pub(crate) capstone: Capstone,
     /// [SessionData] will manage one [CoreData] per target core, that is also present in [SessionConfig::core_configs]
     pub(crate) core_data: Vec<CoreData>,
 }
@@ -118,23 +112,6 @@ impl SessionData {
                 })?
         };
 
-        // Create an instance of the [`capstone::Capstone`] for disassembly capabilities.
-        // TODO: I believe it is safe to share this between multiple cores, but needs to be tested.
-        let capstone = match target_session.architecture() {
-            probe_rs::Architecture::Arm => Capstone::new()
-                .arm()
-                .mode(armArchMode::Thumb)
-                .endian(Endian::Little)
-                .build()
-                .map_err(|err| anyhow!("Error creating Capstone disassembler: {:?}", err))?,
-            probe_rs::Architecture::Riscv => Capstone::new()
-                .riscv()
-                .mode(riscvArchMode::RiscV32)
-                .endian(Endian::Little)
-                .build()
-                .map_err(|err| anyhow!("Error creating Capstone disassembler: {:?}", err))?,
-        };
-
         // Change the current working directory if `config.cwd` is `Some(T)`.
         if let Some(new_cwd) = config.cwd.clone() {
             set_current_dir(new_cwd.as_path()).map_err(|err| {
@@ -203,7 +180,6 @@ impl SessionData {
 
         Ok(SessionData {
             session: target_session,
-            capstone,
             core_data: core_data_vec,
         })
     }
@@ -218,7 +194,6 @@ impl SessionData {
         ) {
             Ok(CoreHandle {
                 core: target_core,
-                capstone: &self.capstone,
                 core_data,
             })
         } else {

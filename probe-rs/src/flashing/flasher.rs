@@ -8,7 +8,7 @@ use crate::memory::MemoryInterface;
 use crate::{
     core::{Architecture, RegisterFile},
     session::Session,
-    Core, CoreRegisterAddress,
+    Core, CoreRegisterAddress, InstructionSet,
 };
 use std::{fmt::Debug, time::Duration};
 
@@ -584,7 +584,7 @@ impl<'probe, O: Operation> ActiveFlasher<'probe, O> {
                 regs.return_address(),
                 // For ARM Cortex-M cores, we have to add 1 to the return address,
                 // to ensure that we stay in Thumb mode.
-                if self.core.architecture() == Architecture::Arm {
+                if self.core.instruction_set()? == InstructionSet::Thumb2 {
                     Some(algo.load_address + 1)
                 } else {
                     Some(algo.load_address)

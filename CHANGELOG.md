@@ -31,6 +31,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added GD32F3x0 series support (#1079)
 - Added support for connecting to ARM devices via JTAG to the JLink probe
 - Added preliminary support for ARM v7-A cores
+- CLI Debugger: Added 8-bit read / write memory commands
 
 ### Changed
 
@@ -73,6 +74,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Fixed missing `derive` feature for examples using `clap`.
   - Increase SWD wait timeout (#994)
   - Debugger: Fix `Source` breakpoints only worked for a single source file. (#1098)
+  - Debugger: Fix assumptions for ARM cores
+  - GDB: Fix assumptions for ARM cores
 
 ## [0.12.0]
 

@@ -1,11 +1,15 @@
 use crate::common::CliError;
 
-use capstone::Capstone;
+use anyhow::anyhow;
+use capstone::{
+    arch::arm::ArchMode as armArchMode, arch::riscv::ArchMode as riscvArchMode, prelude::*,
+    Capstone, Endian,
+};
 use num_traits::Num;
 use probe_rs::{
     architecture::arm::Dump,
     debug::{debug_info::DebugInfo, registers::Registers, stack_frame::StackFrame, VariableName},
-    Core, CoreRegisterAddress, MemoryInterface,
+    Core, CoreRegisterAddress, CoreType, InstructionSet, MemoryInterface,
 };
 use std::fs::File;
 use std::{io::prelude::*, time::Duration};
@@ -60,24 +64,48 @@ impl DebugCli {
 
                 cli_data.core.read(cpu_info.pc, &mut code)?;
 
-                /*
-                let instructions = cli_data
-                    .capstone
-                    .disasm_all(&code, u64::from(cpu_info.pc))
-                    .unwrap();
-
-                for i in instructions.iter() {
-                    println!("{}", i);
+                let cs = match cli_data.core.instruction_set()? {
+                    InstructionSet::Thumb2 => Capstone::new()
+                        .arm()
+                        .mode(armArchMode::Thumb)
+                        .endian(Endian::Little)
+                        .build(),
+                    InstructionSet::A32 => {
+                        // We need to inspect the CPSR to determine what mode this is opearting in
+                        Capstone::new()
+                            .arm()
+                            .mode(armArchMode::Arm)
+                            .endian(Endian::Little)
+                            .build()
+                    }
+                    InstructionSet::RV32 => Capstone::new()
+                        .riscv()
+                        .mode(riscvArchMode::RiscV32)
+                        .endian(Endian::Little)
+                        .build(),
                 }
-                 */
+                .map_err(|err| anyhow!("Error creating capstone: {:?}", err))?;
 
-                for (offset, instruction) in code.iter().enumerate() {
-                    println!(
-                        "{:#010x}: {:010x}",
-                        cpu_info.pc + offset as u32,
-                        instruction
-                    );
-                }
+                // Attempt to dissassemble
+                match cs.disasm_all(&code, u64::from(cpu_info.pc)) {
+                    Ok(instructions) => {
+                        for i in instructions.iter() {
+                            println!("{}", i);
+                        }
+                    }
+                    Err(e) => {
+                        println!("Error disassembling instructions: {}", e);
+
+                        // Fallback to raw output
+                        for (offset, instruction) in code.iter().enumerate() {
+                            println!(
+                                "{:#010x}: {:010x}",
+                                cpu_info.pc + offset as u32,
+                                instruction
+                            );
+                        }
+                    }
+                };
 
                 Ok(CliState::Continue)
             },
@@ -100,60 +128,75 @@ impl DebugCli {
 
                     // determine if the target is handling an interupt
 
-                    // TODO: Proper address
-                    let xpsr = cli_data.core.read_core_reg(
-                        16,
-                    )?;
+                    if cli_data.core.architecture() == probe_rs::Architecture::Arm {
+                        match cli_data.core.core_type() {
+                            CoreType::Armv6m | CoreType::Armv7em | CoreType::Armv7m | CoreType::Armv8m | CoreType::Armv7a => {
+                                // Cortex-M and v7-A targets define the PSR as register 16
+                                let xpsr = cli_data.core.read_core_reg(
+                                    16,
+                                )?;
 
-                    println!("XPSR: {:#010x}", xpsr);
+                                println!("XPSR: {:#010x}", xpsr);
 
-                    let exception_number = xpsr & 0xff;
+                                // This is Cortex-M specific interpretation
+                                // It's hard to generally model these concepts for any possible CoreType,
+                                // but it may be worth considering moving this into the CoreInterface somehow
+                                // in the future
+                                if cli_data.core.core_type().is_cortex_m() {
 
-                    if exception_number != 0 {
-                        println!("Currently handling exception {}", exception_number);
+                                    let exception_number = xpsr & 0xff;
 
-                        if exception_number == 3 {
-                            println!("Hard Fault!");
+                                    if exception_number != 0 {
+                                        println!("Currently handling exception {}", exception_number);
 
-
-                            let return_address = cli_data.core.read_core_reg(cli_data.core.registers().return_address())?;
-
-                            println!("Return address (LR): {:#010x}", return_address);
-
-                            // Get reason for hard fault
-                            let hfsr = cli_data.core.read_word_32(0xE000_ED2C)?;
-
-                            if hfsr & (1 << 30) == (1 << 30) {
-                                println!("-> configurable priority exception has been escalated to hard fault!");
+                                        if exception_number == 3 {
+                                            println!("Hard Fault!");
 
 
-                                // read cfsr 
-                                let cfsr = cli_data.core.read_word_32(0xE000_ED28)?;
+                                            let return_address = cli_data.core.read_core_reg(cli_data.core.registers().return_address())?;
 
-                                let ufsr = (cfsr >> 16) & 0xffff;
-                                let bfsr = (cfsr >> 8) & 0xff;
-                                let mmfsr = cfsr & 0xff;
+                                            println!("Return address (LR): {:#010x}", return_address);
+
+                                            // Get reason for hard fault
+                                            let hfsr = cli_data.core.read_word_32(0xE000_ED2C)?;
+
+                                            if hfsr & (1 << 30) == (1 << 30) {
+                                                println!("-> configurable priority exception has been escalated to hard fault!");
 
 
-                                if ufsr != 0 {
-                                    println!("\tUsage Fault     - UFSR: {:#06x}", ufsr);
-                                }
+                                                // read cfsr 
+                                                let cfsr = cli_data.core.read_word_32(0xE000_ED28)?;
 
-                                if bfsr != 0 {
-                                    println!("\tBus Fault       - BFSR: {:#04x}", bfsr);
+                                                let ufsr = (cfsr >> 16) & 0xffff;
+                                                let bfsr = (cfsr >> 8) & 0xff;
+                                                let mmfsr = cfsr & 0xff;
 
-                                    if bfsr & (1 << 7) == (1 << 7) {
-                                        // Read address from BFAR
-                                        let bfar = cli_data.core.read_word_32(0xE000_ED38)?;
-                                        println!("\t Location       - BFAR: {:#010x}", bfar);
+
+                                                if ufsr != 0 {
+                                                    println!("\tUsage Fault     - UFSR: {:#06x}", ufsr);
+                                                }
+
+                                                if bfsr != 0 {
+                                                    println!("\tBus Fault       - BFSR: {:#04x}", bfsr);
+
+                                                    if bfsr & (1 << 7) == (1 << 7) {
+                                                        // Read address from BFAR
+                                                        let bfar = cli_data.core.read_word_32(0xE000_ED38)?;
+                                                        println!("\t Location       - BFAR: {:#010x}", bfar);
+                                                    }
+                                                }
+
+                                                if mmfsr != 0 {
+                                                    println!("\tMemManage Fault - BFSR: {:04x}", bfsr);
+                                                }
+
+                                            }
+                                        }
                                     }
                                 }
-
-                                if mmfsr != 0 {
-                                    println!("\tMemManage Fault - BFSR: {:04x}", bfsr);
-                                }
-
-                            }
+                            },
+                            // Nothing extra to log
+                            _ => {},
                         }
                     }
                 }
@@ -210,6 +253,35 @@ impl DebugCli {
         });
 
         cli.add_command(Command {
+            name: "read_byte",
+            help_text: "Read 8bit value from memory",
+
+            function: |cli_data, args| {
+                let address = get_int_argument(args, 0)?;
+
+                let num_bytes = if args.len() > 1 {
+                    get_int_argument(args, 1)?
+                } else {
+                    1
+                };
+
+                let mut buff = vec![0u8; num_bytes];
+
+                if num_bytes > 1 {
+                    cli_data.core.read_8(address, &mut buff)?;
+                } else {
+                    buff[0] = cli_data.core.read_word_8(address)?;
+                }
+
+                for (offset, byte) in buff.iter().enumerate() {
+                    println!("0x{:08x} = 0x{:02x}", address + (offset) as u32, byte);
+                }
+
+                Ok(CliState::Continue)
+            },
+        });
+
+        cli.add_command(Command {
             name: "write",
             help_text: "Write a 32bit value to memory",
 
@@ -218,6 +290,20 @@ impl DebugCli {
                 let data = get_int_argument(args, 1)?;
 
                 cli_data.core.write_word_32(address, data)?;
+
+                Ok(CliState::Continue)
+            },
+        });
+
+        cli.add_command(Command {
+            name: "write_byte",
+            help_text: "Write a 8bit value to memory",
+
+            function: |cli_data, args| {
+                let address = get_int_argument(args, 0)?;
+                let data: u8 = get_int_argument(args, 1)?;
+
+                cli_data.core.write_word_8(address, data)?;
 
                 Ok(CliState::Continue)
             },
@@ -572,17 +658,12 @@ impl DebugCli {
 pub struct CliData<'p> {
     pub core: Core<'p>,
     pub debug_info: Option<DebugInfo>,
-    pub capstone: Capstone,
 
     state: DebugState,
 }
 
 impl<'p> CliData<'p> {
-    pub fn new(
-        mut core: Core<'p>,
-        debug_info: Option<DebugInfo>,
-        capstone: Capstone,
-    ) -> Result<CliData, CliError> {
+    pub fn new(mut core: Core<'p>, debug_info: Option<DebugInfo>) -> Result<CliData, CliError> {
         let status = core.status()?;
 
         // TODO: In halted state we should get the backtrace here.
@@ -604,7 +685,6 @@ impl<'p> CliData<'p> {
         Ok(CliData {
             core,
             debug_info,
-            capstone,
             state: debug_state,
         })
     }

@@ -8,7 +8,7 @@ use crate::error::Error;
 use crate::memory::Memory;
 use crate::{
     Architecture, CoreInformation, CoreInterface, CoreRegister, CoreRegisterAddress, CoreStatus,
-    DebugProbeError, HaltReason, MemoryInterface,
+    CoreType, DebugProbeError, HaltReason, InstructionSet, MemoryInterface,
 };
 use anyhow::Result;
 use bitfield::bitfield;
@@ -694,6 +694,14 @@ impl<'probe> CoreInterface for Armv6m<'probe> {
 
     fn architecture(&self) -> Architecture {
         Architecture::Arm
+    }
+
+    fn core_type(&self) -> CoreType {
+        CoreType::Armv6m
+    }
+
+    fn instruction_set(&mut self) -> Result<InstructionSet, Error> {
+        Ok(InstructionSet::Thumb2)
     }
 
     fn status(&mut self) -> Result<crate::core::CoreStatus, Error> {

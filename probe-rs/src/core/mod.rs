@@ -1,8 +1,8 @@
 pub(crate) mod communication_interface;
 
+use crate::{CoreType, InstructionSet};
 pub use communication_interface::CommunicationInterface;
 pub use probe_rs_target::Architecture;
-use probe_rs_target::CoreType;
 
 use crate::architecture::arm::sequences::ArmDebugSequenceError;
 use crate::architecture::{
@@ -268,6 +268,14 @@ pub trait CoreInterface: MemoryInterface {
 
     /// Get the `Architecture` of the Core.
     fn architecture(&self) -> Architecture;
+
+    /// Get the `CoreType` of the Core
+    fn core_type(&self) -> CoreType;
+
+    /// Determine the instruction set the core is operating in
+    /// This must be queried while halted as this is a runtime
+    /// decision for some core types
+    fn instruction_set(&mut self) -> Result<InstructionSet, error::Error>;
 }
 
 impl<'probe> MemoryInterface for Core<'probe> {
@@ -636,6 +644,18 @@ impl<'probe> Core<'probe> {
     /// Returns the architecture of the core.
     pub fn architecture(&self) -> Architecture {
         self.inner.architecture()
+    }
+
+    /// Returns the core type of the core
+    pub fn core_type(&self) -> CoreType {
+        self.inner.core_type()
+    }
+
+    /// Determine the instruction set the core is operating in
+    /// This must be queried while halted as this is a runtime
+    /// decision for some core types
+    pub fn instruction_set(&mut self) -> Result<InstructionSet, error::Error> {
+        self.inner.instruction_set()
     }
 }
 
