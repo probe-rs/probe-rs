@@ -1274,10 +1274,22 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         } else {
             Some(memory_reference.saturating_add(byte_offset) as u32)
         };
+        // We can't rely on the MSDAP arguments to result in a memory aligned address for us to read from, so we force the read_pointer to be a memory_aligned address.
+        // TODO: Using 4 bytes for aligned memory reads is 32-Bit architecture specific, and needs to be addressed as part of 64-Bit implementation.
         read_pointer = if instruction_offset_as_bytes.is_negative() {
-            read_pointer.map(|rp| rp.saturating_sub(instruction_offset_as_bytes.abs() as u32))
+            read_pointer
+                .and_then(|rp| {
+                    rp.saturating_sub(instruction_offset_as_bytes.abs() as u32)
+                        .checked_div(4)
+                })
+                .map(|rp_memory_aligned| rp_memory_aligned * 4)
         } else {
-            read_pointer.map(|rp| rp.saturating_add(instruction_offset_as_bytes as u32))
+            read_pointer
+                .and_then(|rp| {
+                    rp.saturating_add(instruction_offset_as_bytes as u32)
+                        .checked_div(4)
+                })
+                .map(|rp_memory_aligned| rp_memory_aligned * 4)
         };
 
         // The memory address for the next instruction to be disassembled
@@ -1295,6 +1307,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         while assembly_lines.len() < instruction_count as usize {
             if read_more_bytes {
                 if let Some(current_read_pointer) = read_pointer {
+                    // TODO: This is architecture specific, and needs to be addressed.
                     match target_core.core.read_word_32(current_read_pointer) {
                         Ok(new_word) => {
                             // Advance the read pointer for next time we need it.
@@ -1312,14 +1325,17 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                                 code_buffer.push(new_byte);
                             }
                         }
-                        Err(_) => {
+                        Err(memory_read_error) => {
                             // If we can't read data at a given address, then create a "invalid instruction" record, and keep trying.
                             assembly_lines.push(dap_types::DisassembledInstruction {
                                 address: format!("{:#010X}", current_read_pointer),
                                 column: None,
                                 end_column: None,
                                 end_line: None,
-                                instruction: "<instruction address not readable>".to_string(),
+                                instruction: format!(
+                                    "<instruction address not readable : {:?}>",
+                                    memory_read_error
+                                ),
                                 instruction_bytes: None,
                                 line: None,
                                 location: None,
