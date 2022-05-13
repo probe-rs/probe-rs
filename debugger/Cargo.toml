@@ -39,8 +39,8 @@ schemafy = "^0.6"
 chrono = { version = "0.4", features = ["serde"] }
 goblin = "0.5.1"
 base64 = "0.13"
-svd-parser = { version = "0.13.2", features = ["expand"] }
-svd-rs = { version = "0.13.2", features = ["derive-from"] }
+svd-parser = { version = "0.13.4", features = ["expand"] }
+
 
 [dev-dependencies]
 insta = "1.8.0"

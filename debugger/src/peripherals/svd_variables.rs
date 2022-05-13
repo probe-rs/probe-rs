@@ -9,8 +9,11 @@ use probe_rs::{
     Core,
 };
 use std::{fmt::Debug, fs::File, io::Read, path::Path};
-use svd_parser::{self as svd, Config};
-use svd_rs::{Access, Device};
+use svd_parser::{
+    self as svd,
+    svd::{Access, Device},
+    Config,
+};
 
 /// The SVD file contents and related data
 #[derive(Debug)]
