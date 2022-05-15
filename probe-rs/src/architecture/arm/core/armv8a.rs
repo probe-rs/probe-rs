@@ -1,6 +1,6 @@
-//! Register types and the core interface for armv7-a
+//! Register types and the core interface for armv8-a
 
-use crate::architecture::arm::core::armv7a_debug_regs::*;
+use crate::architecture::arm::core::armv8a_debug_regs::*;
 use crate::architecture::arm::core::register;
 use crate::architecture::arm::sequences::ArmDebugSequence;
 use crate::core::RegisterFile;
@@ -12,24 +12,22 @@ use crate::CoreStatus;
 use crate::DebugProbeError;
 use crate::MemoryInterface;
 use crate::{Architecture, CoreInformation, CoreType, InstructionSet};
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 
-use super::instructions::aarch32::{
-    build_bx, build_ldc, build_mcr, build_mov, build_mrc, build_mrs, build_stc,
-};
 use super::CortexAState;
 use super::ARM_REGISTER_FILE;
 
-use std::mem::size_of;
+use super::instructions::thumb2::{build_ldr, build_mcr, build_mrc, build_str};
+
 use std::sync::Arc;
 use std::time::Duration;
 use std::time::Instant;
 
-/// Errors for the ARMv7-A state machine
+/// Errors for the ARMv8-A state machine
 #[derive(thiserror::Error, Debug)]
-pub enum Armv7aError {
+pub enum Armv8aError {
     /// Invalid register number
-    #[error("Register number {0} is not valid for ARMv7-A")]
+    #[error("Register number {0} is not valid for ARMv8-A")]
     InvalidRegisterNumber(u16),
 
     /// Not halted
@@ -41,37 +39,43 @@ pub enum Armv7aError {
     DataAbort,
 }
 
-/// Interface for interacting with an ARMv7-A core
-pub struct Armv7a<'probe> {
+/// When in 32-bit mode the two words have to be placed in swapped
+fn prep_instr_for_itr_32(instruction: u32) -> u32 {
+    ((instruction & 0xFFFF) << 16) | ((instruction & 0xFFFF_0000) >> 16)
+}
+
+/// Interface for interacting with an ARMv8-A core
+pub struct Armv8a<'probe> {
     memory: Memory<'probe>,
 
     state: &'probe mut CortexAState,
 
     base_address: u32,
 
+    cti_address: u32,
+
     sequence: Arc<dyn ArmDebugSequence>,
 
     num_breakpoints: Option<u32>,
-
-    itr_enabled: bool,
 }
 
-impl<'probe> Armv7a<'probe> {
+impl<'probe> Armv8a<'probe> {
     pub(crate) fn new(
         mut memory: Memory<'probe>,
         state: &'probe mut CortexAState,
         base_address: u32,
+        cti_address: u32,
         sequence: Arc<dyn ArmDebugSequence>,
     ) -> Result<Self, Error> {
         if !state.initialized() {
             // determine current state
-            let address = Dbgdscr::get_mmio_address(base_address);
-            let dbgdscr = Dbgdscr(memory.read_word_32(address)?);
+            let address = Edscr::get_mmio_address(base_address);
+            let edscr = Edscr(memory.read_word_32(address)?);
 
-            log::debug!("State when connecting: {:x?}", dbgdscr);
+            log::debug!("State when connecting: {:x?}", edscr);
 
-            let core_state = if dbgdscr.halted() {
-                let reason = dbgdscr.halt_reason();
+            let core_state = if edscr.halted() {
+                let reason = edscr.halt_reason();
 
                 log::debug!("Core was halted when connecting, reason: {:?}", reason);
 
@@ -81,6 +85,7 @@ impl<'probe> Armv7a<'probe> {
             };
 
             state.current_state = core_state;
+            state.is_64_bit = edscr.currently_64_bit();
             state.register_cache = vec![None; 17];
             state.initialize();
         }
@@ -89,64 +94,60 @@ impl<'probe> Armv7a<'probe> {
             memory,
             state,
             base_address,
+            cti_address,
             sequence,
             num_breakpoints: None,
-            itr_enabled: false,
         })
     }
 
     /// Execute an instruction
-    fn execute_instruction(&mut self, instruction: u32) -> Result<Dbgdscr, Error> {
+    fn execute_instruction(&mut self, instruction: u32) -> Result<Edscr, Error> {
         if !self.state.current_state.is_halted() {
-            return Err(Error::architecture_specific(Armv7aError::NotHalted));
+            return Err(Error::architecture_specific(Armv8aError::NotHalted));
         }
 
-        // Enable ITR if needed
-        if !self.itr_enabled {
-            let address = Dbgdscr::get_mmio_address(self.base_address);
-            let mut dbgdscr = Dbgdscr(self.memory.read_word_32(address)?);
-            dbgdscr.set_itren(true);
+        let mut final_instruction = instruction;
 
-            self.memory.write_word_32(address, dbgdscr.into())?;
-
-            self.itr_enabled = true;
+        if !self.state.is_64_bit {
+            // ITR 32-bit instruction encoding requires swapping the half words
+            final_instruction = prep_instr_for_itr_32(instruction)
         }
 
         // Run instruction
-        let address = Dbgitr::get_mmio_address(self.base_address);
-        self.memory.write_word_32(address, instruction)?;
+        let address = Editr::get_mmio_address(self.base_address);
+        self.memory.write_word_32(address, final_instruction)?;
 
         // Wait for completion
-        let address = Dbgdscr::get_mmio_address(self.base_address);
-        let mut dbgdscr = Dbgdscr(self.memory.read_word_32(address)?);
+        let address = Edscr::get_mmio_address(self.base_address);
+        let mut edscr = Edscr(self.memory.read_word_32(address)?);
 
-        while !dbgdscr.instrcoml_l() {
-            dbgdscr = Dbgdscr(self.memory.read_word_32(address)?);
+        while !edscr.ite() {
+            edscr = Edscr(self.memory.read_word_32(address)?);
         }
 
         // Check if we had any aborts, if so clear them and fail
-        if dbgdscr.adabort_l() || dbgdscr.sdabort_l() {
-            let address = Dbgdrcr::get_mmio_address(self.base_address);
-            let mut dbgdrcr = Dbgdrcr(0);
-            dbgdrcr.set_cse(true);
+        if edscr.err() || edscr.a() {
+            let address = Edrcr::get_mmio_address(self.base_address);
+            let mut edrcr = Edrcr(0);
+            edrcr.set_cse(true);
 
-            self.memory.write_word_32(address, dbgdrcr.into())?;
+            self.memory.write_word_32(address, edrcr.into())?;
 
-            return Err(Error::architecture_specific(Armv7aError::DataAbort));
+            return Err(Error::architecture_specific(Armv8aError::DataAbort));
         }
 
-        Ok(dbgdscr)
+        Ok(edscr)
     }
 
     /// Execute an instruction on the CPU and return the result
     fn execute_instruction_with_result(&mut self, instruction: u32) -> Result<u32, Error> {
         // Run instruction
-        let mut dbgdscr = self.execute_instruction(instruction)?;
+        let mut edscr = self.execute_instruction(instruction)?;
 
         // Wait for TXfull
-        while !dbgdscr.txfull_l() {
-            let address = Dbgdscr::get_mmio_address(self.base_address);
-            dbgdscr = Dbgdscr(self.memory.read_word_32(address)?);
+        while !edscr.txfull() {
+            let address = Edscr::get_mmio_address(self.base_address);
+            edscr = Edscr(self.memory.read_word_32(address)?);
         }
 
         // Read result
@@ -166,11 +167,11 @@ impl<'probe> Armv7a<'probe> {
         self.memory.write_word_32(address, value)?;
 
         // Wait for RXfull
-        let address = Dbgdscr::get_mmio_address(self.base_address);
-        let mut dbgdscr = Dbgdscr(self.memory.read_word_32(address)?);
+        let address = Edscr::get_mmio_address(self.base_address);
+        let mut edscr = Edscr(self.memory.read_word_32(address)?);
 
-        while !dbgdscr.rxfull_l() {
-            dbgdscr = Dbgdscr(self.memory.read_word_32(address)?);
+        while !edscr.rxfull() {
+            edscr = Edscr(self.memory.read_word_32(address)?);
         }
 
         // Run instruction
@@ -200,8 +201,8 @@ impl<'probe> Armv7a<'probe> {
 
                             self.execute_instruction_with_input(instruction, val)?;
 
-                            // BX r0
-                            let instruction = build_bx(0);
+                            // Write to DLR
+                            let instruction = build_mrc(15, 3, 0, 4, 5, 1);
                             self.execute_instruction(instruction)?;
                         }
                         _ => {
@@ -217,36 +218,55 @@ impl<'probe> Armv7a<'probe> {
         Ok(())
     }
 
-    /// Save r0 if needed before it gets clobbered by instruction execution
-    fn prepare_r0_for_clobber(&mut self) -> Result<(), Error> {
-        if self.state.register_cache[0].is_none() {
-            // cache r0 since we're going to clobber it
-            let r0_val = self.read_core_reg(CoreRegisterAddress(0))?;
+    /// Save register if needed before it gets clobbered by instruction execution
+    fn prepare_for_clobber(&mut self, reg: u16) -> Result<(), Error> {
+        if self.state.register_cache[reg as usize].is_none() {
+            // cache reg since we're going to clobber it
+            let val = self.read_core_reg(CoreRegisterAddress(reg))?;
 
-            // Mark r0 as needing writeback
-            self.state.register_cache[0] = Some((r0_val, true));
+            // Mark reg as needing writeback
+            self.state.register_cache[reg as usize] = Some((val, true));
         }
 
         Ok(())
     }
 
-    fn set_r0(&mut self, value: u32) -> Result<(), Error> {
-        let instruction = build_mrc(14, 0, 0, 0, 5, 0);
+    fn set_reg_value(&mut self, reg: u16, value: u32) -> Result<(), Error> {
+        let instruction = build_mrc(14, 0, reg, 0, 5, 0);
 
         self.execute_instruction_with_input(instruction, value)
     }
+
+    fn ack_cti_halt(&mut self) -> Result<(), Error> {
+        let mut ack = CtiIntack(0);
+        ack.set_ack(0, 1);
+
+        let address = CtiIntack::get_mmio_address(self.cti_address);
+        self.memory.write_word_32(address, ack.into())?;
+
+        loop {
+            let address = CtiTrigoutstatus::get_mmio_address(self.cti_address);
+            let trig_status = CtiTrigoutstatus(self.memory.read_word_32(address)?);
+
+            if trig_status.status(0) == 0 {
+                break;
+            }
+        }
+
+        Ok(())
+    }
 }
 
-impl<'probe> CoreInterface for Armv7a<'probe> {
+impl<'probe> CoreInterface for Armv8a<'probe> {
     fn wait_for_core_halted(&mut self, timeout: Duration) -> Result<(), Error> {
         // Wait until halted state is active again.
         let start = Instant::now();
 
-        let address = Dbgdscr::get_mmio_address(self.base_address);
+        let address = Edscr::get_mmio_address(self.base_address);
 
         while start.elapsed() < timeout {
-            let dbgdscr = Dbgdscr(self.memory.read_word_32(address)?);
-            if dbgdscr.halted() {
+            let edscr = Edscr(self.memory.read_word_32(address)?);
+            if edscr.halted() {
                 return Ok(());
             }
             std::thread::sleep(Duration::from_millis(1));
@@ -255,19 +275,28 @@ impl<'probe> CoreInterface for Armv7a<'probe> {
     }
 
     fn core_halted(&mut self) -> Result<bool, Error> {
-        let address = Dbgdscr::get_mmio_address(self.base_address);
-        let dbgdscr = Dbgdscr(self.memory.read_word_32(address)?);
+        let address = Edscr::get_mmio_address(self.base_address);
+        let edscr = Edscr(self.memory.read_word_32(address)?);
 
-        Ok(dbgdscr.halted())
+        Ok(edscr.halted())
     }
 
     fn halt(&mut self, timeout: Duration) -> Result<CoreInformation, Error> {
-        let address = Dbgdrcr::get_mmio_address(self.base_address);
-        let mut value = Dbgdrcr(0);
-        value.set_hrq(true);
+        // Ungate halt CTI channel
+        let mut cti_gate = CtiGate(0);
+        cti_gate.set_en(0, 1);
 
-        self.memory.write_word_32(address, value.into())?;
+        let address = CtiGate::get_mmio_address(self.cti_address);
+        self.memory.write_word_32(address, cti_gate.into())?;
 
+        // Pulse it
+        let mut pulse = CtiApppulse(0);
+        pulse.set_apppulse(0, 1);
+
+        let address = CtiApppulse::get_mmio_address(self.cti_address);
+        self.memory.write_word_32(address, pulse.into())?;
+
+        // Wait for halt
         self.wait_for_core_halted(timeout)?;
 
         // Reset our cached values
@@ -275,6 +304,12 @@ impl<'probe> CoreInterface for Armv7a<'probe> {
 
         // Update core status
         let _ = self.status()?;
+
+        // Gate halt channel
+        let cti_gate = CtiGate(0);
+
+        let address = CtiGate::get_mmio_address(self.cti_address);
+        self.memory.write_word_32(address, cti_gate.into())?;
 
         // try to read the program counter
         let pc_value = self.read_core_reg(register::PC.address)?;
@@ -287,18 +322,28 @@ impl<'probe> CoreInterface for Armv7a<'probe> {
         // set writeback values
         self.writeback_registers()?;
 
-        let address = Dbgdrcr::get_mmio_address(self.base_address);
-        let mut value = Dbgdrcr(0);
-        value.set_rrq(true);
+        self.ack_cti_halt()?;
 
-        self.memory.write_word_32(address, value.into())?;
+        // Ungate restart CTI channel
+        let mut cti_gate = CtiGate(0);
+        cti_gate.set_en(1, 1);
+
+        let address = CtiGate::get_mmio_address(self.cti_address);
+        self.memory.write_word_32(address, cti_gate.into())?;
+
+        // Pulse it
+        let mut pulse = CtiApppulse(0);
+        pulse.set_apppulse(1, 1);
+
+        let address = CtiApppulse::get_mmio_address(self.cti_address);
+        self.memory.write_word_32(address, pulse.into())?;
 
         // Wait for ack
-        let address = Dbgdscr::get_mmio_address(self.base_address);
+        let address = Edprsr::get_mmio_address(self.base_address);
 
         loop {
-            let dbgdscr = Dbgdscr(self.memory.read_word_32(address)?);
-            if dbgdscr.restarted() {
+            let edprsr = Edprsr(self.memory.read_word_32(address)?);
+            if edprsr.sdr() {
                 break;
             }
         }
@@ -307,13 +352,19 @@ impl<'probe> CoreInterface for Armv7a<'probe> {
         self.state.current_state = CoreStatus::Running;
         let _ = self.status()?;
 
+        // Gate restart channel
+        let cti_gate = CtiGate(0);
+
+        let address = CtiGate::get_mmio_address(self.cti_address);
+        self.memory.write_word_32(address, cti_gate.into())?;
+
         Ok(())
     }
 
     fn reset(&mut self) -> Result<(), Error> {
         self.sequence.reset_system(
             &mut self.memory,
-            crate::CoreType::Armv7a,
+            crate::CoreType::Armv8a,
             Some(self.base_address),
         )?;
 
@@ -326,26 +377,19 @@ impl<'probe> CoreInterface for Armv7a<'probe> {
     fn reset_and_halt(&mut self, timeout: Duration) -> Result<CoreInformation, Error> {
         self.sequence.reset_catch_set(
             &mut self.memory,
-            crate::CoreType::Armv7a,
+            crate::CoreType::Armv8a,
             Some(self.base_address),
         )?;
         self.sequence.reset_system(
             &mut self.memory,
-            crate::CoreType::Armv7a,
+            crate::CoreType::Armv8a,
             Some(self.base_address),
         )?;
-
-        // Request halt
-        let address = Dbgdrcr::get_mmio_address(self.base_address);
-        let mut value = Dbgdrcr(0);
-        value.set_hrq(true);
-
-        self.memory.write_word_32(address, value.into())?;
 
         // Release from reset
         self.sequence.reset_catch_clear(
             &mut self.memory,
-            crate::CoreType::Armv7a,
+            crate::CoreType::Armv8a,
             Some(self.base_address),
         )?;
 
@@ -365,33 +409,12 @@ impl<'probe> CoreInterface for Armv7a<'probe> {
     }
 
     fn step(&mut self) -> Result<CoreInformation, Error> {
-        // Save current breakpoint
-        let bp_unit_index = (self.available_breakpoint_units()? - 1) as usize;
-        let bp_value_addr =
-            Dbgbvr::get_mmio_address(self.base_address) + (bp_unit_index * size_of::<u32>()) as u32;
-        let saved_bp_value = self.memory.read_word_32(bp_value_addr)?;
+        // Load EDECR, set SS bit for step mode
+        let edecr_address = Edecr::get_mmio_address(self.base_address);
+        let mut edecr = Edecr(self.memory.read_word_32(edecr_address)?);
 
-        let bp_control_addr =
-            Dbgbcr::get_mmio_address(self.base_address) + (bp_unit_index * size_of::<u32>()) as u32;
-        let saved_bp_control = self.memory.read_word_32(bp_control_addr)?;
-
-        // Set breakpoint for any change
-        let current_pc = self.read_core_reg(register::PC.address)?;
-        let mut bp_control = Dbgbcr(0);
-
-        // Breakpoint type - address mismatch
-        bp_control.set_bt(0b0100);
-        // Match on all modes
-        bp_control.set_hmc(true);
-        bp_control.set_pmc(0b11);
-        // Match on all bytes
-        bp_control.set_bas(0b1111);
-        // Enable
-        bp_control.set_e(true);
-
-        self.memory.write_word_32(bp_value_addr, current_pc)?;
-        self.memory
-            .write_word_32(bp_control_addr, bp_control.into())?;
+        edecr.set_ss(true);
+        self.memory.write_word_32(edecr_address, edecr.into())?;
 
         // Resume
         self.run()?;
@@ -399,10 +422,9 @@ impl<'probe> CoreInterface for Armv7a<'probe> {
         // Wait for halt
         self.wait_for_core_halted(Duration::from_millis(100))?;
 
-        // Reset breakpoint
-        self.memory.write_word_32(bp_value_addr, saved_bp_value)?;
-        self.memory
-            .write_word_32(bp_control_addr, saved_bp_control)?;
+        // Reset EDECR
+        edecr.set_ss(false);
+        self.memory.write_word_32(edecr_address, edecr.into())?;
 
         // try to read the program counter
         let pc_value = self.read_core_reg(register::PC.address)?;
@@ -421,6 +443,11 @@ impl<'probe> CoreInterface for Armv7a<'probe> {
             }
         }
 
+        // TODO 64-bit - update with support
+        if self.state.is_64_bit {
+            return Err(Error::Other(anyhow!("64-bit not currently supported")));
+        }
+
         // Generate instruction to extract register
         let result = match reg_num {
             0..=14 => {
@@ -432,25 +459,24 @@ impl<'probe> CoreInterface for Armv7a<'probe> {
             }
             15 => {
                 // PC, must access via r0
-                self.prepare_r0_for_clobber()?;
+                self.prepare_for_clobber(0)?;
 
-                // MOV r0, PC
-                let instruction = build_mov(0, 15);
+                // MRC p15, 3, r0, c4, c5, 1 ; Read DLR to r0
+                let instruction = build_mrc(15, 3, 0, 4, 5, 1);
                 self.execute_instruction(instruction)?;
 
                 // Read from r0
                 let instruction = build_mcr(14, 0, 0, 0, 5, 0);
-                let pra_plus_offset = self.execute_instruction_with_result(instruction)?;
+                let pc = self.execute_instruction_with_result(instruction)?;
 
-                // PC returned is PC + 8
-                Ok(pra_plus_offset - 8)
+                Ok(pc)
             }
             16 => {
                 // CPSR, must access via r0
-                self.prepare_r0_for_clobber()?;
+                self.prepare_for_clobber(0)?;
 
-                // MRS r0, CPSR
-                let instruction = build_mrs(0);
+                // MRC c15, 3, r0, c4, c5, 0
+                let instruction = build_mrc(15, 3, 0, 4, 5, 0);
                 self.execute_instruction(instruction)?;
 
                 // Read from r0
@@ -460,7 +486,7 @@ impl<'probe> CoreInterface for Armv7a<'probe> {
                 Ok(cpsr)
             }
             _ => Err(Error::architecture_specific(
-                Armv7aError::InvalidRegisterNumber(reg_num),
+                Armv8aError::InvalidRegisterNumber(reg_num),
             )),
         };
 
@@ -476,7 +502,7 @@ impl<'probe> CoreInterface for Armv7a<'probe> {
 
         if (reg_num as usize) >= self.state.register_cache.len() {
             return Err(
-                Error::architecture_specific(Armv7aError::InvalidRegisterNumber(reg_num)).into(),
+                Error::architecture_specific(Armv8aError::InvalidRegisterNumber(reg_num)).into(),
             );
         }
         self.state.register_cache[reg_num as usize] = Some((value, true));
@@ -486,10 +512,10 @@ impl<'probe> CoreInterface for Armv7a<'probe> {
 
     fn available_breakpoint_units(&mut self) -> Result<u32, Error> {
         if self.num_breakpoints.is_none() {
-            let address = Dbgdidr::get_mmio_address(self.base_address);
-            let dbgdidr = Dbgdidr(self.memory.read_word_32(address)?);
+            let address = Eddfr::get_mmio_address(self.base_address);
+            let eddfr = Eddfr(self.memory.read_word_32(address)?);
 
-            self.num_breakpoints = Some(dbgdidr.brps() + 1);
+            self.num_breakpoints = Some(eddfr.brps() + 1);
         }
         Ok(self.num_breakpoints.unwrap())
     }
@@ -501,9 +527,9 @@ impl<'probe> CoreInterface for Armv7a<'probe> {
 
     fn set_hw_breakpoint(&mut self, bp_unit_index: usize, addr: u32) -> Result<(), Error> {
         let bp_value_addr =
-            Dbgbvr::get_mmio_address(self.base_address) + (bp_unit_index * size_of::<u32>()) as u32;
+            Dbgbvr::get_mmio_address(self.base_address) + (bp_unit_index * 16) as u32;
         let bp_control_addr =
-            Dbgbcr::get_mmio_address(self.base_address) + (bp_unit_index * size_of::<u32>()) as u32;
+            Dbgbcr::get_mmio_address(self.base_address) + (bp_unit_index * 16) as u32;
         let mut bp_control = Dbgbcr(0);
 
         // Breakpoint type - address match
@@ -516,6 +542,7 @@ impl<'probe> CoreInterface for Armv7a<'probe> {
         // Enable
         bp_control.set_e(true);
 
+        // TODO 64-bit - update value to 64 bit address
         self.memory.write_word_32(bp_value_addr, addr)?;
         self.memory
             .write_word_32(bp_control_addr, bp_control.into())?;
@@ -524,15 +551,17 @@ impl<'probe> CoreInterface for Armv7a<'probe> {
     }
 
     fn registers(&self) -> &'static RegisterFile {
+        // TODO 64-bit - this will need to be conditional based on the current CPU mode
         &ARM_REGISTER_FILE
     }
 
     fn clear_hw_breakpoint(&mut self, bp_unit_index: usize) -> Result<(), Error> {
         let bp_value_addr =
-            Dbgbvr::get_mmio_address(self.base_address) + (bp_unit_index * size_of::<u32>()) as u32;
+            Dbgbvr::get_mmio_address(self.base_address) + (bp_unit_index * 16) as u32;
         let bp_control_addr =
-            Dbgbcr::get_mmio_address(self.base_address) + (bp_unit_index * size_of::<u32>()) as u32;
+            Dbgbcr::get_mmio_address(self.base_address) + (bp_unit_index * 16) as u32;
 
+        // TODO 64-bit - update value to a 64-bit write
         self.memory.write_word_32(bp_value_addr, 0)?;
         self.memory.write_word_32(bp_control_addr, 0)?;
 
@@ -548,10 +577,14 @@ impl<'probe> CoreInterface for Armv7a<'probe> {
     }
 
     fn core_type(&self) -> CoreType {
-        CoreType::Armv7a
+        CoreType::Armv8a
     }
 
     fn instruction_set(&mut self) -> Result<InstructionSet, Error> {
+        if self.state.is_64_bit {
+            return Err(Error::Other(anyhow!("64-bit not currently supported")));
+        }
+
         let cpsr = self.read_core_reg(CoreRegisterAddress(16))?;
 
         // CPSR bit 5 - T - Thumb mode
@@ -563,13 +596,14 @@ impl<'probe> CoreInterface for Armv7a<'probe> {
 
     fn status(&mut self) -> Result<crate::core::CoreStatus, Error> {
         // determine current state
-        let address = Dbgdscr::get_mmio_address(self.base_address);
-        let dbgdscr = Dbgdscr(self.memory.read_word_32(address)?);
+        let address = Edscr::get_mmio_address(self.base_address);
+        let edscr = Edscr(self.memory.read_word_32(address)?);
 
-        if dbgdscr.halted() {
-            let reason = dbgdscr.halt_reason();
+        if edscr.halted() {
+            let reason = edscr.halt_reason();
 
             self.state.current_state = CoreStatus::Halted(reason);
+            self.state.is_64_bit = edscr.currently_64_bit();
 
             return Ok(CoreStatus::Halted(reason));
         }
@@ -588,13 +622,15 @@ impl<'probe> CoreInterface for Armv7a<'probe> {
         let mut breakpoints = vec![];
         let num_hw_breakpoints = self.available_breakpoint_units()? as usize;
 
+        // TODO 64-bit - this is actually a 64-bit value in all cases, regardless of CPU mode
+        // When 64-bit is supported this needs updated to read the upper bits
         for bp_unit_index in 0..num_hw_breakpoints {
-            let bp_value_addr = Dbgbvr::get_mmio_address(self.base_address)
-                + (bp_unit_index * size_of::<u32>()) as u32;
+            let bp_value_addr =
+                Dbgbvr::get_mmio_address(self.base_address) + (bp_unit_index * 16) as u32;
             let bp_value = self.memory.read_word_32(bp_value_addr)?;
 
-            let bp_control_addr = Dbgbcr::get_mmio_address(self.base_address)
-                + (bp_unit_index * size_of::<u32>()) as u32;
+            let bp_control_addr =
+                Dbgbcr::get_mmio_address(self.base_address) + (bp_unit_index * 16) as u32;
             let bp_control = Dbgbcr(self.memory.read_word_32(bp_control_addr)?);
 
             if bp_control.e() {
@@ -607,19 +643,27 @@ impl<'probe> CoreInterface for Armv7a<'probe> {
     }
 }
 
-impl<'probe> MemoryInterface for Armv7a<'probe> {
+impl<'probe> MemoryInterface for Armv8a<'probe> {
     fn read_word_32(&mut self, address: u32) -> Result<u32, Error> {
-        // LDC p14, c5, [r0], #4
-        let instr = build_ldc(14, 5, 0, 4);
+        if self.state.is_64_bit {
+            return Err(Error::Other(anyhow!("64-bit not currently supported")));
+        }
 
-        // Save r0
-        self.prepare_r0_for_clobber()?;
+        // Save r0, r1
+        self.prepare_for_clobber(0)?;
+        self.prepare_for_clobber(1)?;
 
         // Load r0 with the address to read from
-        self.set_r0(address)?;
+        self.set_reg_value(0, address)?;
 
-        // Read memory from [r0]
-        self.execute_instruction_with_result(instr)
+        // Read data to r1 - LDR r1, [r0], #4
+        let instruction = build_ldr(1, 0, 4);
+
+        self.execute_instruction(instruction)?;
+
+        // Move from r1 to transfer buffer - MCR p14, 0, r1, c0, c5, 0
+        let instruction = build_mcr(14, 0, 1, 0, 5, 0);
+        self.execute_instruction_with_result(instruction)
     }
     fn read_word_8(&mut self, address: u32) -> Result<u8, Error> {
         // Find the word this is in and its byte offset
@@ -647,17 +691,24 @@ impl<'probe> MemoryInterface for Armv7a<'probe> {
         Ok(())
     }
     fn write_word_32(&mut self, address: u32, data: u32) -> Result<(), Error> {
-        // STC p14, c5, [r0], #4
-        let instr = build_stc(14, 5, 0, 4);
+        if self.state.is_64_bit {
+            return Err(Error::Other(anyhow!("64-bit not currently supported")));
+        }
 
-        // Save r0
-        self.prepare_r0_for_clobber()?;
+        // Save r0, r1
+        self.prepare_for_clobber(0)?;
+        self.prepare_for_clobber(1)?;
 
         // Load r0 with the address to write to
-        self.set_r0(address)?;
+        self.set_reg_value(0, address)?;
+        self.set_reg_value(1, data)?;
 
-        // Write to [r0]
-        self.execute_instruction_with_input(instr, data)
+        // Write data to memory - STR r1, [r0], #4
+        let instruction = build_str(1, 0, 4);
+
+        self.execute_instruction(instruction)?;
+
+        Ok(())
     }
     fn write_word_8(&mut self, address: u32, data: u8) -> Result<(), Error> {
         // Find the word this is in and its byte offset
@@ -702,6 +753,7 @@ mod test {
     use super::*;
 
     const TEST_BASE_ADDRESS: u32 = 0x8000_1000;
+    const TEST_CTI_ADDRESS: u32 = 0x8000_2000;
 
     fn address_to_reg_num(address: u32) -> u32 {
         (address - TEST_BASE_ADDRESS) / 4
@@ -861,95 +913,148 @@ mod test {
     }
 
     fn add_status_expectations(probe: &mut MockProbe, halted: bool) {
-        let mut dbgdscr = Dbgdscr(0);
-        dbgdscr.set_halted(halted);
-        dbgdscr.set_restarted(true);
-        probe.expected_read(Dbgdscr::get_mmio_address(TEST_BASE_ADDRESS), dbgdscr.into());
-    }
-
-    fn add_enable_itr_expectations(probe: &mut MockProbe) {
-        let mut dbgdscr = Dbgdscr(0);
-        dbgdscr.set_halted(true);
-        probe.expected_read(Dbgdscr::get_mmio_address(TEST_BASE_ADDRESS), dbgdscr.into());
-        dbgdscr.set_itren(true);
-        probe.expected_write(Dbgdscr::get_mmio_address(TEST_BASE_ADDRESS), dbgdscr.into());
+        let mut edscr = Edscr(0);
+        edscr.set_status(if halted { 0b010011 } else { 0b000010 });
+        probe.expected_read(Edscr::get_mmio_address(TEST_BASE_ADDRESS), edscr.into());
     }
 
     fn add_read_reg_expectations(probe: &mut MockProbe, reg: u16, value: u32) {
         probe.expected_write(
-            Dbgitr::get_mmio_address(TEST_BASE_ADDRESS),
-            build_mcr(14, 0, reg, 0, 5, 0),
+            Editr::get_mmio_address(TEST_BASE_ADDRESS),
+            prep_instr_for_itr_32(build_mcr(14, 0, reg, 0, 5, 0)),
         );
-        let mut dbgdscr = Dbgdscr(0);
-        dbgdscr.set_instrcoml_l(true);
-        dbgdscr.set_txfull_l(true);
+        let mut edscr = Edscr(0);
+        edscr.set_ite(true);
+        edscr.set_txfull(true);
 
-        probe.expected_read(Dbgdscr::get_mmio_address(TEST_BASE_ADDRESS), dbgdscr.into());
+        probe.expected_read(Edscr::get_mmio_address(TEST_BASE_ADDRESS), edscr.into());
         probe.expected_read(Dbgdtrtx::get_mmio_address(TEST_BASE_ADDRESS), value);
     }
 
     fn add_read_pc_expectations(probe: &mut MockProbe, value: u32) {
-        let mut dbgdscr = Dbgdscr(0);
-        dbgdscr.set_instrcoml_l(true);
-        dbgdscr.set_txfull_l(true);
+        let mut edscr = Edscr(0);
+        edscr.set_ite(true);
+        edscr.set_txfull(true);
 
         probe.expected_write(
-            Dbgitr::get_mmio_address(TEST_BASE_ADDRESS),
-            build_mov(0, 15),
+            Editr::get_mmio_address(TEST_BASE_ADDRESS),
+            prep_instr_for_itr_32(build_mrc(15, 3, 0, 4, 5, 1)),
         );
-        probe.expected_read(Dbgdscr::get_mmio_address(TEST_BASE_ADDRESS), dbgdscr.into());
-        // + 8 to add expected offset on halt
-        add_read_reg_expectations(probe, 0, value + 8);
-    }
-
-    fn add_read_cpsr_expectations(probe: &mut MockProbe, value: u32) {
-        let mut dbgdscr = Dbgdscr(0);
-        dbgdscr.set_instrcoml_l(true);
-        dbgdscr.set_txfull_l(true);
-
-        probe.expected_write(Dbgitr::get_mmio_address(TEST_BASE_ADDRESS), build_mrs(0));
-        probe.expected_read(Dbgdscr::get_mmio_address(TEST_BASE_ADDRESS), dbgdscr.into());
+        probe.expected_read(Edscr::get_mmio_address(TEST_BASE_ADDRESS), edscr.into());
         add_read_reg_expectations(probe, 0, value);
     }
 
+    fn add_read_cpsr_expectations(probe: &mut MockProbe, value: u32) {
+        let mut edscr = Edscr(0);
+        edscr.set_ite(true);
+        edscr.set_txfull(true);
+
+        probe.expected_write(
+            Editr::get_mmio_address(TEST_BASE_ADDRESS),
+            prep_instr_for_itr_32(build_mrc(15, 3, 0, 4, 5, 0)),
+        );
+        probe.expected_read(Edscr::get_mmio_address(TEST_BASE_ADDRESS), edscr.into());
+        add_read_reg_expectations(probe, 0, value);
+    }
+
+    fn add_halt_expectations(probe: &mut MockProbe) {
+        let mut cti_gate = CtiGate(0);
+        cti_gate.set_en(0, 1);
+
+        probe.expected_write(CtiGate::get_mmio_address(TEST_CTI_ADDRESS), cti_gate.into());
+
+        let mut pulse = CtiApppulse(0);
+        pulse.set_apppulse(0, 1);
+
+        probe.expected_write(
+            CtiApppulse::get_mmio_address(TEST_CTI_ADDRESS),
+            pulse.into(),
+        );
+    }
+
+    fn add_halt_cleanup_expectations(probe: &mut MockProbe) {
+        let cti_gate = CtiGate(0);
+
+        probe.expected_write(CtiGate::get_mmio_address(TEST_CTI_ADDRESS), cti_gate.into());
+    }
+
+    fn add_resume_expectations(probe: &mut MockProbe) {
+        let mut ack = CtiIntack(0);
+        ack.set_ack(0, 1);
+
+        probe.expected_write(CtiIntack::get_mmio_address(TEST_CTI_ADDRESS), ack.into());
+
+        let status = CtiTrigoutstatus(0);
+        probe.expected_read(
+            CtiTrigoutstatus::get_mmio_address(TEST_CTI_ADDRESS),
+            status.into(),
+        );
+
+        let mut cti_gate = CtiGate(0);
+        cti_gate.set_en(1, 1);
+        probe.expected_write(CtiGate::get_mmio_address(TEST_CTI_ADDRESS), cti_gate.into());
+
+        let mut pulse = CtiApppulse(0);
+        pulse.set_apppulse(1, 1);
+        probe.expected_write(
+            CtiApppulse::get_mmio_address(TEST_CTI_ADDRESS),
+            pulse.into(),
+        );
+
+        let mut edprsr = Edprsr(0);
+        edprsr.set_sdr(true);
+        probe.expected_read(Edprsr::get_mmio_address(TEST_BASE_ADDRESS), edprsr.into());
+    }
+
+    fn add_resume_cleanup_expectations(probe: &mut MockProbe) {
+        let cti_gate = CtiGate(0);
+        probe.expected_write(CtiGate::get_mmio_address(TEST_CTI_ADDRESS), cti_gate.into());
+    }
+
     fn add_idr_expectations(probe: &mut MockProbe, bp_count: u32) {
-        let mut dbgdidr = Dbgdidr(0);
-        dbgdidr.set_brps(bp_count - 1);
-        probe.expected_read(Dbgdidr::get_mmio_address(TEST_BASE_ADDRESS), dbgdidr.into());
+        let mut eddfr = Eddfr(0);
+        eddfr.set_brps(bp_count - 1);
+        probe.expected_read(Eddfr::get_mmio_address(TEST_BASE_ADDRESS), eddfr.into());
     }
 
     fn add_set_r0_expectation(probe: &mut MockProbe, value: u32) {
-        let mut dbgdscr = Dbgdscr(0);
-        dbgdscr.set_instrcoml_l(true);
-        dbgdscr.set_rxfull_l(true);
+        let mut edscr = Edscr(0);
+        edscr.set_ite(true);
+        edscr.set_rxfull(true);
 
         probe.expected_write(Dbgdtrrx::get_mmio_address(TEST_BASE_ADDRESS), value);
-        probe.expected_read(Dbgdscr::get_mmio_address(TEST_BASE_ADDRESS), dbgdscr.into());
+        probe.expected_read(Edscr::get_mmio_address(TEST_BASE_ADDRESS), edscr.into());
 
         probe.expected_write(
-            Dbgitr::get_mmio_address(TEST_BASE_ADDRESS),
-            build_mrc(14, 0, 0, 0, 5, 0),
+            Editr::get_mmio_address(TEST_BASE_ADDRESS),
+            prep_instr_for_itr_32(build_mrc(14, 0, 0, 0, 5, 0)),
         );
-        probe.expected_read(Dbgdscr::get_mmio_address(TEST_BASE_ADDRESS), dbgdscr.into());
+        probe.expected_read(Edscr::get_mmio_address(TEST_BASE_ADDRESS), edscr.into());
     }
 
     fn add_read_memory_expectations(probe: &mut MockProbe, address: u32, value: u32) {
         add_set_r0_expectation(probe, address);
 
-        let mut dbgdscr = Dbgdscr(0);
-        dbgdscr.set_instrcoml_l(true);
-        dbgdscr.set_txfull_l(true);
+        let mut edscr = Edscr(0);
+        edscr.set_ite(true);
+        edscr.set_txfull(true);
 
         probe.expected_write(
-            Dbgitr::get_mmio_address(TEST_BASE_ADDRESS),
-            build_ldc(14, 5, 0, 4),
+            Editr::get_mmio_address(TEST_BASE_ADDRESS),
+            prep_instr_for_itr_32(build_ldr(1, 0, 4)),
         );
-        probe.expected_read(Dbgdscr::get_mmio_address(TEST_BASE_ADDRESS), dbgdscr.into());
+        probe.expected_read(Edscr::get_mmio_address(TEST_BASE_ADDRESS), edscr.into());
+
+        probe.expected_write(
+            Editr::get_mmio_address(TEST_BASE_ADDRESS),
+            prep_instr_for_itr_32(build_mcr(14, 0, 1, 0, 5, 0)),
+        );
+        probe.expected_read(Edscr::get_mmio_address(TEST_BASE_ADDRESS), edscr.into());
         probe.expected_read(Dbgdtrtx::get_mmio_address(TEST_BASE_ADDRESS), value);
     }
 
     #[test]
-    fn armv7a_new() {
+    fn armv8a_new() {
         let mut probe = MockProbe::new();
 
         // Add expectations
@@ -963,29 +1068,30 @@ mod test {
             }),
         );
 
-        let _ = Armv7a::new(
+        let _ = Armv8a::new(
             mock_mem,
             &mut CortexAState::new(),
             TEST_BASE_ADDRESS,
+            TEST_CTI_ADDRESS,
             DefaultArmSequence::create(),
         )
         .unwrap();
     }
 
     #[test]
-    fn armv7a_core_halted() {
+    fn armv8a_core_halted() {
         let mut probe = MockProbe::new();
         let mut state = CortexAState::new();
 
         // Add expectations
         add_status_expectations(&mut probe, true);
 
-        let mut dbgdscr = Dbgdscr(0);
-        dbgdscr.set_halted(false);
-        probe.expected_read(Dbgdscr::get_mmio_address(TEST_BASE_ADDRESS), dbgdscr.into());
+        let mut edscr = Edscr(0);
+        edscr.set_status(0b000010);
+        probe.expected_read(Edscr::get_mmio_address(TEST_BASE_ADDRESS), edscr.into());
 
-        dbgdscr.set_halted(true);
-        probe.expected_read(Dbgdscr::get_mmio_address(TEST_BASE_ADDRESS), dbgdscr.into());
+        edscr.set_status(0b010011);
+        probe.expected_read(Edscr::get_mmio_address(TEST_BASE_ADDRESS), edscr.into());
 
         let mock_mem = Memory::new(
             probe,
@@ -995,33 +1101,34 @@ mod test {
             }),
         );
 
-        let mut armv7a = Armv7a::new(
+        let mut armv8a = Armv8a::new(
             mock_mem,
             &mut state,
             TEST_BASE_ADDRESS,
+            TEST_CTI_ADDRESS,
             DefaultArmSequence::create(),
         )
         .unwrap();
 
         // First read false, second read true
-        assert_eq!(false, armv7a.core_halted().unwrap());
-        assert_eq!(true, armv7a.core_halted().unwrap());
+        assert_eq!(false, armv8a.core_halted().unwrap());
+        assert_eq!(true, armv8a.core_halted().unwrap());
     }
 
     #[test]
-    fn armv7a_wait_for_core_halted() {
+    fn armv8a_wait_for_core_halted() {
         let mut probe = MockProbe::new();
         let mut state = CortexAState::new();
 
         // Add expectations
         add_status_expectations(&mut probe, true);
 
-        let mut dbgdscr = Dbgdscr(0);
-        dbgdscr.set_halted(false);
-        probe.expected_read(Dbgdscr::get_mmio_address(TEST_BASE_ADDRESS), dbgdscr.into());
+        let mut edscr = Edscr(0);
+        edscr.set_status(0b000010);
+        probe.expected_read(Edscr::get_mmio_address(TEST_BASE_ADDRESS), edscr.into());
 
-        dbgdscr.set_halted(true);
-        probe.expected_read(Dbgdscr::get_mmio_address(TEST_BASE_ADDRESS), dbgdscr.into());
+        edscr.set_status(0b010011);
+        probe.expected_read(Edscr::get_mmio_address(TEST_BASE_ADDRESS), edscr.into());
 
         let mock_mem = Memory::new(
             probe,
@@ -1031,31 +1138,32 @@ mod test {
             }),
         );
 
-        let mut armv7a = Armv7a::new(
+        let mut armv8a = Armv8a::new(
             mock_mem,
             &mut state,
             TEST_BASE_ADDRESS,
+            TEST_CTI_ADDRESS,
             DefaultArmSequence::create(),
         )
         .unwrap();
 
         // Should halt on second read
-        armv7a
+        armv8a
             .wait_for_core_halted(Duration::from_millis(100))
             .unwrap();
     }
 
     #[test]
-    fn armv7a_status_running() {
+    fn armv8a_status_running() {
         let mut probe = MockProbe::new();
         let mut state = CortexAState::new();
 
         // Add expectations
         add_status_expectations(&mut probe, true);
 
-        let mut dbgdscr = Dbgdscr(0);
-        dbgdscr.set_halted(false);
-        probe.expected_read(Dbgdscr::get_mmio_address(TEST_BASE_ADDRESS), dbgdscr.into());
+        let mut edscr = Edscr(0);
+        edscr.set_status(0b000010);
+        probe.expected_read(Edscr::get_mmio_address(TEST_BASE_ADDRESS), edscr.into());
 
         let mock_mem = Memory::new(
             probe,
@@ -1065,29 +1173,29 @@ mod test {
             }),
         );
 
-        let mut armv7a = Armv7a::new(
+        let mut armv8a = Armv8a::new(
             mock_mem,
             &mut state,
             TEST_BASE_ADDRESS,
+            TEST_CTI_ADDRESS,
             DefaultArmSequence::create(),
         )
         .unwrap();
 
-        // Should halt on second read
-        assert_eq!(CoreStatus::Running, armv7a.status().unwrap());
+        assert_eq!(CoreStatus::Running, armv8a.status().unwrap());
     }
 
     #[test]
-    fn armv7a_status_halted() {
+    fn armv8a_status_halted() {
         let mut probe = MockProbe::new();
         let mut state = CortexAState::new();
 
         // Add expectations
         add_status_expectations(&mut probe, true);
 
-        let mut dbgdscr = Dbgdscr(0);
-        dbgdscr.set_halted(true);
-        probe.expected_read(Dbgdscr::get_mmio_address(TEST_BASE_ADDRESS), dbgdscr.into());
+        let mut edscr = Edscr(0);
+        edscr.set_status(0b010011);
+        probe.expected_read(Edscr::get_mmio_address(TEST_BASE_ADDRESS), edscr.into());
 
         let mock_mem = Memory::new(
             probe,
@@ -1097,23 +1205,23 @@ mod test {
             }),
         );
 
-        let mut armv7a = Armv7a::new(
+        let mut armv8a = Armv8a::new(
             mock_mem,
             &mut state,
             TEST_BASE_ADDRESS,
+            TEST_CTI_ADDRESS,
             DefaultArmSequence::create(),
         )
         .unwrap();
 
-        // Should halt on second read
         assert_eq!(
             CoreStatus::Halted(crate::HaltReason::Request),
-            armv7a.status().unwrap()
+            armv8a.status().unwrap()
         );
     }
 
     #[test]
-    fn armv7a_read_core_reg_common() {
+    fn armv8a_read_core_reg_common() {
         const REG_VALUE: u32 = 0xABCD;
 
         let mut probe = MockProbe::new();
@@ -1121,9 +1229,6 @@ mod test {
 
         // Add expectations
         add_status_expectations(&mut probe, true);
-
-        // Read status, update ITR
-        add_enable_itr_expectations(&mut probe);
 
         // Read register
         add_read_reg_expectations(&mut probe, 2, REG_VALUE);
@@ -1136,10 +1241,11 @@ mod test {
             }),
         );
 
-        let mut armv7a = Armv7a::new(
+        let mut armv8a = Armv8a::new(
             mock_mem,
             &mut state,
             TEST_BASE_ADDRESS,
+            TEST_CTI_ADDRESS,
             DefaultArmSequence::create(),
         )
         .unwrap();
@@ -1147,18 +1253,18 @@ mod test {
         // First read will hit expectations
         assert_eq!(
             REG_VALUE,
-            armv7a.read_core_reg(CoreRegisterAddress(2)).unwrap()
+            armv8a.read_core_reg(CoreRegisterAddress(2)).unwrap()
         );
 
         // Second read will cache, no new expectations
         assert_eq!(
             REG_VALUE,
-            armv7a.read_core_reg(CoreRegisterAddress(2)).unwrap()
+            armv8a.read_core_reg(CoreRegisterAddress(2)).unwrap()
         );
     }
 
     #[test]
-    fn armv7a_read_core_reg_pc() {
+    fn armv8a_read_core_reg_pc() {
         const REG_VALUE: u32 = 0xABCD;
 
         let mut probe = MockProbe::new();
@@ -1166,9 +1272,6 @@ mod test {
 
         // Add expectations
         add_status_expectations(&mut probe, true);
-
-        // Read status, update ITR
-        add_enable_itr_expectations(&mut probe);
 
         // Read PC
         add_read_reg_expectations(&mut probe, 0, 0);
@@ -1182,10 +1285,11 @@ mod test {
             }),
         );
 
-        let mut armv7a = Armv7a::new(
+        let mut armv8a = Armv8a::new(
             mock_mem,
             &mut state,
             TEST_BASE_ADDRESS,
+            TEST_CTI_ADDRESS,
             DefaultArmSequence::create(),
         )
         .unwrap();
@@ -1193,18 +1297,18 @@ mod test {
         // First read will hit expectations
         assert_eq!(
             REG_VALUE,
-            armv7a.read_core_reg(CoreRegisterAddress(15)).unwrap()
+            armv8a.read_core_reg(CoreRegisterAddress(15)).unwrap()
         );
 
         // Second read will cache, no new expectations
         assert_eq!(
             REG_VALUE,
-            armv7a.read_core_reg(CoreRegisterAddress(15)).unwrap()
+            armv8a.read_core_reg(CoreRegisterAddress(15)).unwrap()
         );
     }
 
     #[test]
-    fn armv7a_read_core_reg_cpsr() {
+    fn armv8a_read_core_reg_cpsr() {
         const REG_VALUE: u32 = 0xABCD;
 
         let mut probe = MockProbe::new();
@@ -1212,9 +1316,6 @@ mod test {
 
         // Add expectations
         add_status_expectations(&mut probe, true);
-
-        // Read status, update ITR
-        add_enable_itr_expectations(&mut probe);
 
         // Read CPSR
         add_read_reg_expectations(&mut probe, 0, 0);
@@ -1228,10 +1329,11 @@ mod test {
             }),
         );
 
-        let mut armv7a = Armv7a::new(
+        let mut armv8a = Armv8a::new(
             mock_mem,
             &mut state,
             TEST_BASE_ADDRESS,
+            TEST_CTI_ADDRESS,
             DefaultArmSequence::create(),
         )
         .unwrap();
@@ -1239,18 +1341,18 @@ mod test {
         // First read will hit expectations
         assert_eq!(
             REG_VALUE,
-            armv7a.read_core_reg(CoreRegisterAddress(16)).unwrap()
+            armv8a.read_core_reg(CoreRegisterAddress(16)).unwrap()
         );
 
         // Second read will cache, no new expectations
         assert_eq!(
             REG_VALUE,
-            armv7a.read_core_reg(CoreRegisterAddress(16)).unwrap()
+            armv8a.read_core_reg(CoreRegisterAddress(16)).unwrap()
         );
     }
 
     #[test]
-    fn armv7a_halt() {
+    fn armv8a_halt() {
         const REG_VALUE: u32 = 0xABCD;
 
         let mut probe = MockProbe::new();
@@ -1260,18 +1362,14 @@ mod test {
         add_status_expectations(&mut probe, true);
 
         // Write halt request
-        let mut dbgdrcr = Dbgdrcr(0);
-        dbgdrcr.set_hrq(true);
-        probe.expected_write(Dbgdrcr::get_mmio_address(TEST_BASE_ADDRESS), dbgdrcr.into());
+        add_halt_expectations(&mut probe);
 
         // Wait for halted
         add_status_expectations(&mut probe, true);
 
         // Read status
         add_status_expectations(&mut probe, true);
-
-        // Read status, update ITR
-        add_enable_itr_expectations(&mut probe);
+        add_halt_cleanup_expectations(&mut probe);
 
         // Read PC
         add_read_reg_expectations(&mut probe, 0, 0);
@@ -1285,10 +1383,11 @@ mod test {
             }),
         );
 
-        let mut armv7a = Armv7a::new(
+        let mut armv8a = Armv8a::new(
             mock_mem,
             &mut state,
             TEST_BASE_ADDRESS,
+            TEST_CTI_ADDRESS,
             DefaultArmSequence::create(),
         )
         .unwrap();
@@ -1296,12 +1395,12 @@ mod test {
         // Verify PC
         assert_eq!(
             REG_VALUE,
-            armv7a.halt(Duration::from_millis(100)).unwrap().pc
+            armv8a.halt(Duration::from_millis(100)).unwrap().pc
         );
     }
 
     #[test]
-    fn armv7a_run() {
+    fn armv8a_run() {
         let mut probe = MockProbe::new();
         let mut state = CortexAState::new();
 
@@ -1309,15 +1408,12 @@ mod test {
         add_status_expectations(&mut probe, true);
 
         // Write resume request
-        let mut dbgdrcr = Dbgdrcr(0);
-        dbgdrcr.set_rrq(true);
-        probe.expected_write(Dbgdrcr::get_mmio_address(TEST_BASE_ADDRESS), dbgdrcr.into());
-
-        // Wait for running
-        add_status_expectations(&mut probe, false);
+        add_resume_expectations(&mut probe);
 
         // Read status
         add_status_expectations(&mut probe, false);
+
+        add_resume_cleanup_expectations(&mut probe);
 
         let mock_mem = Memory::new(
             probe,
@@ -1327,19 +1423,20 @@ mod test {
             }),
         );
 
-        let mut armv7a = Armv7a::new(
+        let mut armv8a = Armv8a::new(
             mock_mem,
             &mut state,
             TEST_BASE_ADDRESS,
+            TEST_CTI_ADDRESS,
             DefaultArmSequence::create(),
         )
         .unwrap();
 
-        armv7a.run().unwrap();
+        armv8a.run().unwrap();
     }
 
     #[test]
-    fn armv7a_available_breakpoint_units() {
+    fn armv8a_available_breakpoint_units() {
         const BP_COUNT: u32 = 4;
         let mut probe = MockProbe::new();
         let mut state = CortexAState::new();
@@ -1358,19 +1455,20 @@ mod test {
             }),
         );
 
-        let mut armv7a = Armv7a::new(
+        let mut armv8a = Armv8a::new(
             mock_mem,
             &mut state,
             TEST_BASE_ADDRESS,
+            TEST_CTI_ADDRESS,
             DefaultArmSequence::create(),
         )
         .unwrap();
 
-        assert_eq!(BP_COUNT, armv7a.available_breakpoint_units().unwrap());
+        assert_eq!(BP_COUNT, armv8a.available_breakpoint_units().unwrap());
     }
 
     #[test]
-    fn armv7a_hw_breakpoints() {
+    fn armv8a_hw_breakpoints() {
         const BP_COUNT: u32 = 4;
         const BP1: u32 = 0x2345;
         const BP2: u32 = 0x8000_0000;
@@ -1387,14 +1485,14 @@ mod test {
         probe.expected_read(Dbgbvr::get_mmio_address(TEST_BASE_ADDRESS), BP1);
         probe.expected_read(Dbgbcr::get_mmio_address(TEST_BASE_ADDRESS), 1);
 
-        probe.expected_read(Dbgbvr::get_mmio_address(TEST_BASE_ADDRESS) + (1 * 4), BP2);
-        probe.expected_read(Dbgbcr::get_mmio_address(TEST_BASE_ADDRESS) + (1 * 4), 1);
+        probe.expected_read(Dbgbvr::get_mmio_address(TEST_BASE_ADDRESS) + (1 * 16), BP2);
+        probe.expected_read(Dbgbcr::get_mmio_address(TEST_BASE_ADDRESS) + (1 * 16), 1);
 
-        probe.expected_read(Dbgbvr::get_mmio_address(TEST_BASE_ADDRESS) + (2 * 4), 0);
-        probe.expected_read(Dbgbcr::get_mmio_address(TEST_BASE_ADDRESS) + (2 * 4), 0);
+        probe.expected_read(Dbgbvr::get_mmio_address(TEST_BASE_ADDRESS) + (2 * 16), 0);
+        probe.expected_read(Dbgbcr::get_mmio_address(TEST_BASE_ADDRESS) + (2 * 16), 0);
 
-        probe.expected_read(Dbgbvr::get_mmio_address(TEST_BASE_ADDRESS) + (3 * 4), 0);
-        probe.expected_read(Dbgbcr::get_mmio_address(TEST_BASE_ADDRESS) + (3 * 4), 0);
+        probe.expected_read(Dbgbvr::get_mmio_address(TEST_BASE_ADDRESS) + (3 * 16), 0);
+        probe.expected_read(Dbgbcr::get_mmio_address(TEST_BASE_ADDRESS) + (3 * 16), 0);
 
         let mock_mem = Memory::new(
             probe,
@@ -1404,15 +1502,16 @@ mod test {
             }),
         );
 
-        let mut armv7a = Armv7a::new(
+        let mut armv8a = Armv8a::new(
             mock_mem,
             &mut state,
             TEST_BASE_ADDRESS,
+            TEST_CTI_ADDRESS,
             DefaultArmSequence::create(),
         )
         .unwrap();
 
-        let results = armv7a.hw_breakpoints().unwrap();
+        let results = armv8a.hw_breakpoints().unwrap();
         assert_eq!(Some(BP1), results[0]);
         assert_eq!(Some(BP2), results[1]);
         assert_eq!(None, results[2]);
@@ -1420,7 +1519,7 @@ mod test {
     }
 
     #[test]
-    fn armv7a_set_hw_breakpoint() {
+    fn armv8a_set_hw_breakpoint() {
         const BP_VALUE: u32 = 0x2345;
         let mut probe = MockProbe::new();
         let mut state = CortexAState::new();
@@ -1449,19 +1548,20 @@ mod test {
             }),
         );
 
-        let mut armv7a = Armv7a::new(
+        let mut armv8a = Armv8a::new(
             mock_mem,
             &mut state,
             TEST_BASE_ADDRESS,
+            TEST_CTI_ADDRESS,
             DefaultArmSequence::create(),
         )
         .unwrap();
 
-        armv7a.set_hw_breakpoint(0, BP_VALUE).unwrap();
+        armv8a.set_hw_breakpoint(0, BP_VALUE).unwrap();
     }
 
     #[test]
-    fn armv7a_clear_hw_breakpoint() {
+    fn armv8a_clear_hw_breakpoint() {
         let mut probe = MockProbe::new();
         let mut state = CortexAState::new();
 
@@ -1480,19 +1580,20 @@ mod test {
             }),
         );
 
-        let mut armv7a = Armv7a::new(
+        let mut armv8a = Armv8a::new(
             mock_mem,
             &mut state,
             TEST_BASE_ADDRESS,
+            TEST_CTI_ADDRESS,
             DefaultArmSequence::create(),
         )
         .unwrap();
 
-        armv7a.clear_hw_breakpoint(0).unwrap();
+        armv8a.clear_hw_breakpoint(0).unwrap();
     }
 
     #[test]
-    fn armv7a_read_word_32() {
+    fn armv8a_read_word_32() {
         const MEMORY_VALUE: u32 = 0xBA5EBA11;
         const MEMORY_ADDRESS: u32 = 0x12345678;
 
@@ -1501,10 +1602,11 @@ mod test {
 
         // Add expectations
         add_status_expectations(&mut probe, true);
-        add_enable_itr_expectations(&mut probe);
 
         // Read memory
         add_read_reg_expectations(&mut probe, 0, 0);
+        add_read_reg_expectations(&mut probe, 1, 0);
+
         add_read_memory_expectations(&mut probe, MEMORY_ADDRESS, MEMORY_VALUE);
 
         let mock_mem = Memory::new(
@@ -1515,19 +1617,20 @@ mod test {
             }),
         );
 
-        let mut armv7a = Armv7a::new(
+        let mut armv8a = Armv8a::new(
             mock_mem,
             &mut state,
             TEST_BASE_ADDRESS,
+            TEST_CTI_ADDRESS,
             DefaultArmSequence::create(),
         )
         .unwrap();
 
-        assert_eq!(MEMORY_VALUE, armv7a.read_word_32(MEMORY_ADDRESS).unwrap());
+        assert_eq!(MEMORY_VALUE, armv8a.read_word_32(MEMORY_ADDRESS).unwrap());
     }
 
     #[test]
-    fn armv7a_read_word_8() {
+    fn armv8a_read_word_8() {
         const MEMORY_VALUE: u32 = 0xBA5EBA11;
         const MEMORY_ADDRESS: u32 = 0x12345679;
         const MEMORY_WORD_ADDRESS: u32 = 0x12345678;
@@ -1537,10 +1640,10 @@ mod test {
 
         // Add expectations
         add_status_expectations(&mut probe, true);
-        add_enable_itr_expectations(&mut probe);
 
         // Read memory
         add_read_reg_expectations(&mut probe, 0, 0);
+        add_read_reg_expectations(&mut probe, 1, 0);
         add_read_memory_expectations(&mut probe, MEMORY_WORD_ADDRESS, MEMORY_VALUE);
 
         let mock_mem = Memory::new(
@@ -1551,14 +1654,15 @@ mod test {
             }),
         );
 
-        let mut armv7a = Armv7a::new(
+        let mut armv8a = Armv8a::new(
             mock_mem,
             &mut state,
             TEST_BASE_ADDRESS,
+            TEST_CTI_ADDRESS,
             DefaultArmSequence::create(),
         )
         .unwrap();
 
-        assert_eq!(0xBA, armv7a.read_word_8(MEMORY_ADDRESS).unwrap());
+        assert_eq!(0xBA, armv8a.read_word_8(MEMORY_ADDRESS).unwrap());
     }
 }

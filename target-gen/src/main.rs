@@ -167,6 +167,7 @@ fn cmd_elf(
                         ap: 0,
                         psel: 0,
                         debug_base: None,
+                        cti_base: None,
                     }),
                 }],
                 part: None,

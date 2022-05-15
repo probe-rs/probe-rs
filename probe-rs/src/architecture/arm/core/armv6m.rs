@@ -1,6 +1,6 @@
 //! Register types and the core interface for armv6-M
 
-use super::{Dfsr, State, ARM_REGISTER_FILE};
+use super::{CortexMState, Dfsr, ARM_REGISTER_FILE};
 
 use crate::architecture::arm::sequences::ArmDebugSequence;
 use crate::core::{RegisterDescription, RegisterFile, RegisterKind};
@@ -445,7 +445,7 @@ const XPSR: RegisterDescription = RegisterDescription {
 pub(crate) struct Armv6m<'probe> {
     memory: Memory<'probe>,
 
-    state: &'probe mut State,
+    state: &'probe mut CortexMState,
 
     sequence: Arc<dyn ArmDebugSequence>,
 }
@@ -453,7 +453,7 @@ pub(crate) struct Armv6m<'probe> {
 impl<'probe> Armv6m<'probe> {
     pub(crate) fn new(
         mut memory: Memory<'probe>,
-        state: &'probe mut State,
+        state: &'probe mut CortexMState,
         sequence: Arc<dyn ArmDebugSequence>,
     ) -> Result<Self, Error> {
         if !state.initialized() {

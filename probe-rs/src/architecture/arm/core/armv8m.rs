@@ -14,7 +14,7 @@ use anyhow::Result;
 
 use bitfield::bitfield;
 
-use super::{Dfsr, State, ARM_REGISTER_FILE};
+use super::{CortexMState, Dfsr, ARM_REGISTER_FILE};
 use std::sync::Arc;
 use std::{
     mem::size_of,
@@ -25,7 +25,7 @@ use std::{
 pub struct Armv8m<'probe> {
     memory: Memory<'probe>,
 
-    state: &'probe mut State,
+    state: &'probe mut CortexMState,
 
     sequence: Arc<dyn ArmDebugSequence>,
 }
@@ -33,7 +33,7 @@ pub struct Armv8m<'probe> {
 impl<'probe> Armv8m<'probe> {
     pub(crate) fn new(
         mut memory: Memory<'probe>,
-        state: &'probe mut State,
+        state: &'probe mut CortexMState,
         sequence: Arc<dyn ArmDebugSequence>,
     ) -> Result<Self, Error> {
         if !state.initialized() {

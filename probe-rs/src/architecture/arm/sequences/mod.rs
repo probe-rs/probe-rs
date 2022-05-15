@@ -11,7 +11,7 @@ use std::{
 
 use probe_rs_target::CoreType;
 
-use crate::architecture::arm::core::armv7a::Armv7DebugRegister;
+use crate::architecture::arm::core::armv7a_debug_regs::Armv7DebugRegister;
 use crate::{architecture::arm::DapError, core::CoreRegister, DebugProbeError, Memory};
 
 use super::{
@@ -27,6 +27,10 @@ pub enum ArmDebugSequenceError {
     /// Debug base address is required but not specified
     #[error("Core access requries debug_base to be specified, but it is not")]
     DebugBaseNotSpecified,
+
+    /// CTI base address is required but not specified
+    #[error("Core access requries cti_base to be specified, but it is not")]
+    CtiBaseNotSpecified,
 }
 
 /// The default sequences that is used for ARM chips that do not specify a specific sequence.
@@ -43,7 +47,7 @@ impl ArmDebugSequence for DefaultArmSequence {}
 
 /// ResetCatchSet for Cortex-A devices
 fn armv7a_reset_catch_set(core: &mut Memory, debug_base: Option<u32>) -> Result<(), crate::Error> {
-    use crate::architecture::arm::core::armv7a::Dbgprcr;
+    use crate::architecture::arm::core::armv7a_debug_regs::Dbgprcr;
 
     let debug_base = debug_base.ok_or_else(|| {
         crate::Error::architecture_specific(ArmDebugSequenceError::DebugBaseNotSpecified)
@@ -64,7 +68,7 @@ fn armv7a_reset_catch_clear(
     core: &mut Memory,
     debug_base: Option<u32>,
 ) -> Result<(), crate::Error> {
-    use crate::architecture::arm::core::armv7a::Dbgprcr;
+    use crate::architecture::arm::core::armv7a_debug_regs::Dbgprcr;
 
     let debug_base = debug_base.ok_or_else(|| {
         crate::Error::architecture_specific(ArmDebugSequenceError::DebugBaseNotSpecified)
@@ -84,7 +88,7 @@ fn armv7a_reset_system(
     interface: &mut Memory,
     debug_base: Option<u32>,
 ) -> Result<(), crate::Error> {
-    use crate::architecture::arm::core::armv7a::{Dbgprcr, Dbgprsr};
+    use crate::architecture::arm::core::armv7a_debug_regs::{Dbgprcr, Dbgprsr};
 
     let debug_base = debug_base.ok_or_else(|| {
         crate::Error::architecture_specific(ArmDebugSequenceError::DebugBaseNotSpecified)
@@ -113,7 +117,7 @@ fn armv7a_reset_system(
 
 /// DebugCoreStart for v7 Cortex-A devices
 fn armv7a_core_start(core: &mut Memory, debug_base: Option<u32>) -> Result<(), crate::Error> {
-    use crate::architecture::arm::core::armv7a::{Dbgdsccr, Dbgdscr, Dbgdsmcr, Dbglar};
+    use crate::architecture::arm::core::armv7a_debug_regs::{Dbgdsccr, Dbgdscr, Dbgdsmcr, Dbglar};
 
     let debug_base = debug_base.ok_or_else(|| {
         crate::Error::architecture_specific(ArmDebugSequenceError::DebugBaseNotSpecified)
@@ -146,6 +150,143 @@ fn armv7a_core_start(core: &mut Memory, debug_base: Option<u32>) -> Result<(), c
 
     dbgdscr.set_hdbgen(true);
     core.write_word_32(address, dbgdscr.into())?;
+
+    Ok(())
+}
+
+/// ResetCatchSet for ARMv8-A devices
+fn armv8a_reset_catch_set(core: &mut Memory, debug_base: Option<u32>) -> Result<(), crate::Error> {
+    use crate::architecture::arm::core::armv8a_debug_regs::{Armv8DebugRegister, Edecr};
+
+    let debug_base = debug_base.ok_or_else(|| {
+        crate::Error::architecture_specific(ArmDebugSequenceError::DebugBaseNotSpecified)
+    })?;
+
+    let address = Edecr::get_mmio_address(debug_base);
+    let mut edecr = Edecr(core.read_word_32(address)?);
+
+    edecr.set_rce(true);
+
+    core.write_word_32(address, edecr.into())?;
+
+    Ok(())
+}
+
+/// ResetCatchClear for ARMv8-a devices
+fn armv8a_reset_catch_clear(
+    core: &mut Memory,
+    debug_base: Option<u32>,
+) -> Result<(), crate::Error> {
+    use crate::architecture::arm::core::armv8a_debug_regs::{Armv8DebugRegister, Edecr};
+
+    let debug_base = debug_base.ok_or_else(|| {
+        crate::Error::architecture_specific(ArmDebugSequenceError::DebugBaseNotSpecified)
+    })?;
+
+    let address = Edecr::get_mmio_address(debug_base);
+    let mut edecr = Edecr(core.read_word_32(address)?);
+
+    edecr.set_rce(false);
+
+    core.write_word_32(address, edecr.into())?;
+
+    Ok(())
+}
+
+fn armv8a_reset_system(
+    interface: &mut Memory,
+    debug_base: Option<u32>,
+) -> Result<(), crate::Error> {
+    use crate::architecture::arm::core::armv8a_debug_regs::{Armv8DebugRegister, Edprcr, Edprsr};
+
+    let debug_base = debug_base.ok_or_else(|| {
+        crate::Error::architecture_specific(ArmDebugSequenceError::DebugBaseNotSpecified)
+    })?;
+
+    // Request reset
+    let address = Edprcr::get_mmio_address(debug_base);
+    let mut edprcr = Edprcr(interface.read_word_32(address)?);
+
+    edprcr.set_cwrr(true);
+
+    interface.write_word_32(address, edprcr.into())?;
+
+    // Wait until reset happens
+    let address = Edprsr::get_mmio_address(debug_base);
+
+    loop {
+        let edprsr = Edprsr(interface.read_word_32(address)?);
+        if edprsr.sr() {
+            break;
+        }
+    }
+
+    Ok(())
+}
+
+/// DebugCoreStart for v8 Cortex-A devices
+fn armv8a_core_start(
+    core: &mut Memory,
+    debug_base: Option<u32>,
+    cti_base: Option<u32>,
+) -> Result<(), crate::Error> {
+    use crate::architecture::arm::core::armv8a_debug_regs::{
+        Armv8DebugRegister, CtiControl, CtiGate, CtiOuten, Edlar, Edscr,
+    };
+
+    let debug_base = debug_base.ok_or_else(|| {
+        crate::Error::architecture_specific(ArmDebugSequenceError::DebugBaseNotSpecified)
+    })?;
+    let cti_base = cti_base.ok_or_else(|| {
+        crate::Error::architecture_specific(ArmDebugSequenceError::CtiBaseNotSpecified)
+    })?;
+
+    log::debug!(
+        "Starting debug for ARMv8-A core with registers at {:#X}",
+        debug_base
+    );
+
+    // Lock OS register access to prevent race conditions
+    let address = Edlar::get_mmio_address(debug_base);
+    core.write_word_32(address, Edlar(0).into())?;
+
+    // Configure CTI
+    let mut cticontrol = CtiControl(0);
+    cticontrol.set_glben(true);
+
+    let address = CtiControl::get_mmio_address(cti_base);
+    core.write_word_32(address, cticontrol.into())?;
+
+    // Gate all events by default
+    let address = CtiGate::get_mmio_address(cti_base);
+    core.write_word_32(address, 0)?;
+
+    // Configure output channels for halt and resume
+    // Channel 0 - halt requests
+    let mut ctiouten = CtiOuten(0);
+    ctiouten.set_outen(0, 1);
+
+    let address = CtiOuten::get_mmio_address(cti_base);
+    core.write_word_32(address, ctiouten.into())?;
+
+    // Channel 1 - resume requests
+    let mut ctiouten = CtiOuten(0);
+    ctiouten.set_outen(1, 1);
+
+    let address = CtiOuten::get_mmio_address(cti_base) + 4;
+    core.write_word_32(address, ctiouten.into())?;
+
+    // Enable halting
+    let address = Edscr::get_mmio_address(debug_base);
+    let mut edscr = Edscr(core.read_word_32(address)?);
+
+    if edscr.hde() {
+        log::debug!("Core is already in debug mode, no need to enable it again");
+        return Ok(());
+    }
+
+    edscr.set_hde(true);
+    core.write_word_32(address, edscr.into())?;
 
     Ok(())
 }
@@ -414,10 +555,12 @@ pub trait ArmDebugSequence: Send + Sync {
         core: &mut Memory,
         core_type: CoreType,
         debug_base: Option<u32>,
+        cti_base: Option<u32>,
     ) -> Result<(), crate::Error> {
         // Dispatch based on core type (Cortex-A vs M)
         match core_type {
             CoreType::Armv7a => armv7a_core_start(core, debug_base),
+            CoreType::Armv8a => armv8a_core_start(core, debug_base, cti_base),
             CoreType::Armv6m | CoreType::Armv7m | CoreType::Armv7em | CoreType::Armv8m => {
                 cortex_m_core_start(core)
             }
@@ -443,6 +586,7 @@ pub trait ArmDebugSequence: Send + Sync {
         // Dispatch based on core type (Cortex-A vs M)
         match core_type {
             CoreType::Armv7a => armv7a_reset_catch_set(core, debug_base),
+            CoreType::Armv8a => armv8a_reset_catch_set(core, debug_base),
             CoreType::Armv6m | CoreType::Armv7m | CoreType::Armv7em | CoreType::Armv8m => {
                 cortex_m_reset_catch_set(core)
             }
@@ -468,6 +612,7 @@ pub trait ArmDebugSequence: Send + Sync {
         // Dispatch based on core type (Cortex-A vs M)
         match core_type {
             CoreType::Armv7a => armv7a_reset_catch_clear(core, debug_base),
+            CoreType::Armv8a => armv8a_reset_catch_clear(core, debug_base),
             CoreType::Armv6m | CoreType::Armv7m | CoreType::Armv7em | CoreType::Armv8m => {
                 cortex_m_reset_catch_clear(core)
             }
@@ -493,6 +638,7 @@ pub trait ArmDebugSequence: Send + Sync {
         // Dispatch based on core type (Cortex-A vs M)
         match core_type {
             CoreType::Armv7a => armv7a_reset_system(interface, debug_base),
+            CoreType::Armv8a => armv8a_reset_system(interface, debug_base),
             CoreType::Armv6m | CoreType::Armv7m | CoreType::Armv7em | CoreType::Armv8m => {
                 cortex_m_reset_system(interface)
             }

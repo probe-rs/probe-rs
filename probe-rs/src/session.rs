@@ -100,12 +100,7 @@ impl ArchitectureInterface {
                 };
                 let memory = state.memory_interface(MemoryAp::new(ap))?;
 
-                core.attach_arm(
-                    core_state,
-                    memory,
-                    arm_core_access_options.debug_base,
-                    target,
-                )
+                core.attach_arm(core_state, memory, target)
             }
             ArchitectureInterface::Riscv(state) => core.attach_riscv(core_state, state),
         }
@@ -129,7 +124,7 @@ impl Session {
             .map(|(id, core)| {
                 (
                     SpecificCoreState::from_core_type(core.core_type),
-                    Core::create_state(id),
+                    Core::create_state(id, core.core_access_options.clone()),
                 )
             })
             .collect();
@@ -189,6 +184,7 @@ impl Session {
                         &mut memory_interface,
                         config.core_type,
                         arm_core_access_options.debug_base,
+                        arm_core_access_options.cti_base,
                     )?;
                 }
 
@@ -203,18 +199,6 @@ impl Session {
                         )?;
                         sequence_handle.reset_hardware_deassert(&mut memory_interface)?;
                     }
-
-                    let cores = target
-                        .cores
-                        .iter()
-                        .enumerate()
-                        .map(|(id, core)| {
-                            (
-                                SpecificCoreState::from_core_type(core.core_type),
-                                Core::create_state(id),
-                            )
-                        })
-                        .collect();
 
                     let mut session = Session {
                         target,
