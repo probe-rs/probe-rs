@@ -98,7 +98,6 @@ You may also need to remove old versions of libusb:
 > sudo apt remove libusb-dev
 ```
 
-
 #### Windows
 
 On Windows you can use [vcpkg](https://github.com/microsoft/vcpkg#quick-start-windows) to install the prerequisites:
