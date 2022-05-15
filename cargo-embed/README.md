@@ -89,7 +89,7 @@ cargo-embed depends on the [libusb](https://libusb.info/) and optionally on [lib
 On Ubuntu or Debian, the following packages need to be installed:
 
 ```
-> sudo apt install -y pkg-config libusb-1.0-0-dev libftdi1-dev
+> sudo apt install -y pkg-config libusb-1.0-0-dev libftdi1-dev libudev-dev
 ```
 
 You may also need to remove old versions of libusb:
@@ -97,6 +97,7 @@ You may also need to remove old versions of libusb:
 ```
 > sudo apt remove libusb-dev
 ```
+
 
 #### Windows
 
