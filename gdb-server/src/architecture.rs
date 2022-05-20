@@ -78,6 +78,7 @@ impl<'probe> GdbArchitectureExt for Core<'probe> {
                 match self.core_type() {
                     // 16 general purpose regs
                     CoreType::Armv7a => 16,
+                    CoreType::Armv8a => 16,
                     // 16 general purpose regs, 8 FP regs
                     _ => 24,
                 }
@@ -154,6 +155,7 @@ impl GdbTargetExt for probe_rs::Target {
             CoreType::Armv7a => "armv7",
             CoreType::Armv7m => "armv7",
             CoreType::Armv7em => "armv7e-m",
+            CoreType::Armv8a => "armv8-a",
             CoreType::Armv8m => "armv8-m.main",
             CoreType::Riscv => "riscv:rv32",
         };

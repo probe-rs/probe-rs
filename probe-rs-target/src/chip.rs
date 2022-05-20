@@ -85,6 +85,9 @@ pub struct ArmCoreAccessOptions {
     /// The base address of the debug registers for the core.
     /// Required for Cortex-A, optional for Cortex-M
     pub debug_base: Option<u32>,
+    /// The base address of the cross trigger interface (CTI) for the core.
+    /// Required in ARMv8-A
+    pub cti_base: Option<u32>,
 }
 
 /// The data required to access a Risc-V core

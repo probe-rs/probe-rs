@@ -8,7 +8,7 @@ use crate::error::Error;
 use crate::memory::Memory;
 use crate::{CoreType, DebugProbeError, InstructionSet};
 
-use super::{register, Dfsr, State, ARM_REGISTER_FILE};
+use super::{register, CortexMState, Dfsr, ARM_REGISTER_FILE};
 use crate::{
     core::{Architecture, CoreStatus, HaltReason},
     MemoryInterface,
@@ -587,7 +587,7 @@ pub const PSP: CoreRegisterAddress = CoreRegisterAddress(0b000_1010);
 pub struct Armv7m<'probe> {
     memory: Memory<'probe>,
 
-    state: &'probe mut State,
+    state: &'probe mut CortexMState,
 
     sequence: Arc<dyn ArmDebugSequence>,
 }
@@ -595,7 +595,7 @@ pub struct Armv7m<'probe> {
 impl<'probe> Armv7m<'probe> {
     pub(crate) fn new(
         mut memory: Memory<'probe>,
-        state: &'probe mut State,
+        state: &'probe mut CortexMState,
         sequence: Arc<dyn ArmDebugSequence>,
     ) -> Result<Self, Error> {
         if !state.initialized() {

@@ -2,11 +2,11 @@ pub(crate) mod communication_interface;
 
 use crate::{CoreType, InstructionSet};
 pub use communication_interface::CommunicationInterface;
-pub use probe_rs_target::Architecture;
+pub use probe_rs_target::{Architecture, CoreAccessOptions};
 
-use crate::architecture::arm::sequences::ArmDebugSequenceError;
 use crate::architecture::{
-    arm::core::State, riscv::communication_interface::RiscvCommunicationInterface,
+    arm::core::CortexAState, arm::core::CortexMState,
+    riscv::communication_interface::RiscvCommunicationInterface,
 };
 use crate::error;
 use crate::Target;
@@ -320,12 +320,18 @@ impl<'probe> MemoryInterface for Core<'probe> {
 #[derive(Debug)]
 pub struct CoreState {
     id: usize,
+
+    /// Information needed to access the core
+    core_access_options: CoreAccessOptions,
 }
 
 impl CoreState {
     /// Creates a new core state from the core ID.
-    pub fn new(id: usize) -> Self {
-        Self { id }
+    pub fn new(id: usize, core_access_options: CoreAccessOptions) -> Self {
+        Self {
+            id,
+            core_access_options,
+        }
     }
 
     /// Returns the core ID.
@@ -339,15 +345,17 @@ impl CoreState {
 #[derive(Debug)]
 pub enum SpecificCoreState {
     /// The state of an ARMv6-M core.
-    Armv6m(State),
+    Armv6m(CortexMState),
     /// The state of an ARMv7-A core.
-    Armv7a(State),
+    Armv7a(CortexAState),
     /// The state of an ARMv7-M core.
-    Armv7m(State),
+    Armv7m(CortexMState),
     /// The state of an ARMv7-EM core.
-    Armv7em(State),
+    Armv7em(CortexMState),
+    /// The state of an ARMv8-A core.
+    Armv8a(CortexAState),
     /// The state of an ARMv8-M core.
-    Armv8m(State),
+    Armv8m(CortexMState),
     /// The state of an RISC-V core.
     Riscv,
 }
@@ -355,11 +363,12 @@ pub enum SpecificCoreState {
 impl SpecificCoreState {
     pub(crate) fn from_core_type(typ: CoreType) -> Self {
         match typ {
-            CoreType::Armv6m => SpecificCoreState::Armv6m(State::new()),
-            CoreType::Armv7a => SpecificCoreState::Armv7a(State::new()),
-            CoreType::Armv7m => SpecificCoreState::Armv7m(State::new()),
-            CoreType::Armv7em => SpecificCoreState::Armv7m(State::new()),
-            CoreType::Armv8m => SpecificCoreState::Armv8m(State::new()),
+            CoreType::Armv6m => SpecificCoreState::Armv6m(CortexMState::new()),
+            CoreType::Armv7a => SpecificCoreState::Armv7a(CortexAState::new()),
+            CoreType::Armv7m => SpecificCoreState::Armv7m(CortexMState::new()),
+            CoreType::Armv7em => SpecificCoreState::Armv7m(CortexMState::new()),
+            CoreType::Armv8a => SpecificCoreState::Armv8a(CortexAState::new()),
+            CoreType::Armv8m => SpecificCoreState::Armv8m(CortexMState::new()),
             CoreType::Riscv => SpecificCoreState::Riscv,
         }
     }
@@ -370,6 +379,7 @@ impl SpecificCoreState {
             SpecificCoreState::Armv7a(_) => CoreType::Armv7a,
             SpecificCoreState::Armv7m(_) => CoreType::Armv7m,
             SpecificCoreState::Armv7em(_) => CoreType::Armv7em,
+            SpecificCoreState::Armv8a(_) => CoreType::Armv8a,
             SpecificCoreState::Armv8m(_) => CoreType::Armv8m,
             SpecificCoreState::Riscv => CoreType::Riscv,
         }
@@ -379,12 +389,20 @@ impl SpecificCoreState {
         &'probe mut self,
         state: &'probe mut CoreState,
         memory: Memory<'probe>,
-        base_address: Option<u32>,
         target: &'target Target,
     ) -> Result<Core<'probe>, Error> {
         let debug_sequence = match &target.debug_sequence {
             crate::config::DebugSequence::Arm(sequence) => sequence.clone(),
             crate::config::DebugSequence::Riscv(_) => {
+                return Err(Error::UnableToOpenProbe(
+                    "Core architecture and Probe mismatch.",
+                ))
+            }
+        };
+
+        let options = match &state.core_access_options {
+            CoreAccessOptions::Arm(options) => options,
+            CoreAccessOptions::Riscv(_) => {
                 return Err(Error::UnableToOpenProbe(
                     "Core architecture and Probe mismatch.",
                 ))
@@ -400,15 +418,23 @@ impl SpecificCoreState {
                 crate::architecture::arm::armv7a::Armv7a::new(
                     memory,
                     s,
-                    base_address.ok_or_else(|| {
-                        Error::architecture_specific(ArmDebugSequenceError::DebugBaseNotSpecified)
-                    })?,
+                    options.debug_base.expect("base_address not specified"),
                     debug_sequence,
                 )?,
                 state,
             ),
             SpecificCoreState::Armv7m(s) | SpecificCoreState::Armv7em(s) => Core::new(
                 crate::architecture::arm::armv7m::Armv7m::new(memory, s, debug_sequence)?,
+                state,
+            ),
+            SpecificCoreState::Armv8a(s) => Core::new(
+                crate::architecture::arm::armv8a::Armv8a::new(
+                    memory,
+                    s,
+                    options.debug_base.expect("base_address not specified"),
+                    options.cti_base.expect("cti_address not specified"),
+                    debug_sequence,
+                )?,
                 state,
             ),
             SpecificCoreState::Armv8m(s) => Core::new(
@@ -462,8 +488,8 @@ impl<'probe> Core<'probe> {
     }
 
     /// Creates a new [`CoreState`]
-    pub fn create_state(id: usize) -> CoreState {
-        CoreState::new(id)
+    pub fn create_state(id: usize, options: CoreAccessOptions) -> CoreState {
+        CoreState::new(id, options)
     }
 
     /// Returns the ID of this core.

@@ -1,3 +1,5 @@
+use crate::CoreAccessOptions;
+
 use super::chip::Chip;
 use super::flash_algorithm::RawFlashAlgorithm;
 use jep106::JEP106Code;
@@ -34,6 +36,8 @@ pub enum CoreType {
     Armv7m,
     /// ARMv7e-M: Cortex M4, M7
     Armv7em,
+    /// ARMv7-A: Cortex A35, A55, A72
+    Armv8a,
     /// ARMv8-M: Cortex M23, M33
     Armv8m,
     /// RISC-V
@@ -150,6 +154,47 @@ impl ChipFamily {
                     "definition for variant `{}` does not contain any cores",
                     variant.name
                 ));
+            }
+
+            // Core specific validation logic based on type
+            for core in variant.cores.iter() {
+                // The core access options must match the core type specified
+                match &core.core_access_options {
+                    CoreAccessOptions::Arm(options) => {
+                        if !matches!(
+                            core.core_type,
+                            CoreType::Armv6m
+                                | CoreType::Armv7a
+                                | CoreType::Armv7em
+                                | CoreType::Armv7m
+                                | CoreType::Armv8a
+                                | CoreType::Armv8m
+                        ) {
+                            return Err(format!(
+                                "Arm options don't match core type {:?} on core {}",
+                                core.core_type, core.name
+                            ));
+                        }
+
+                        if matches!(core.core_type, CoreType::Armv7a | CoreType::Armv8a)
+                            && options.debug_base.is_none()
+                        {
+                            return Err(format!("Core {} requires setting debug_base", core.name));
+                        }
+
+                        if core.core_type == CoreType::Armv8a && options.cti_base.is_none() {
+                            return Err(format!("Core {} requires setting cti_base", core.name));
+                        }
+                    }
+                    CoreAccessOptions::Riscv(_) => {
+                        if core.core_type != CoreType::Riscv {
+                            return Err(format!(
+                                "Riscv options don't match core type {:?} on core {}",
+                                core.core_type, core.name
+                            ));
+                        }
+                    }
+                }
             }
         }
 

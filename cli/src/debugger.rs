@@ -130,7 +130,7 @@ impl DebugCli {
 
                     if cli_data.core.architecture() == probe_rs::Architecture::Arm {
                         match cli_data.core.core_type() {
-                            CoreType::Armv6m | CoreType::Armv7em | CoreType::Armv7m | CoreType::Armv8m | CoreType::Armv7a => {
+                            CoreType::Armv6m | CoreType::Armv7em | CoreType::Armv7m | CoreType::Armv8m | CoreType::Armv7a | CoreType::Armv8a => {
                                 // Cortex-M and v7-A targets define the PSR as register 16
                                 let xpsr = cli_data.core.read_core_reg(
                                     16,

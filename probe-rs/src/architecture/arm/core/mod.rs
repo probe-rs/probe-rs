@@ -8,7 +8,12 @@ use bitfield::bitfield;
 pub mod armv6m;
 pub mod armv7a;
 pub mod armv7m;
+pub mod armv8a;
 pub mod armv8m;
+
+pub(crate) mod armv7a_debug_regs;
+pub(crate) mod armv8a_debug_regs;
+pub(crate) mod instructions;
 
 /// Core information data which is downloaded from the target, represents its state and can be used for debugging.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -292,7 +297,7 @@ impl CoreRegister for Dfsr {
 }
 
 #[derive(Debug)]
-pub struct State {
+pub struct CortexMState {
     initialized: bool,
 
     hw_breakpoints_enabled: bool,
@@ -300,12 +305,43 @@ pub struct State {
     current_state: CoreStatus,
 }
 
-impl State {
+impl CortexMState {
     pub(crate) fn new() -> Self {
         Self {
             initialized: false,
             hw_breakpoints_enabled: false,
             current_state: CoreStatus::Unknown,
+        }
+    }
+
+    fn initialize(&mut self) {
+        self.initialized = true;
+    }
+
+    fn initialized(&self) -> bool {
+        self.initialized
+    }
+}
+
+#[derive(Debug)]
+pub struct CortexAState {
+    initialized: bool,
+
+    current_state: CoreStatus,
+
+    // Is the core currently in a 64-bit mode?
+    is_64_bit: bool,
+
+    register_cache: Vec<Option<(u32, bool)>>,
+}
+
+impl CortexAState {
+    pub(crate) fn new() -> Self {
+        Self {
+            initialized: false,
+            current_state: CoreStatus::Unknown,
+            is_64_bit: false,
+            register_cache: vec![],
         }
     }
 

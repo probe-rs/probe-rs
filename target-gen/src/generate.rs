@@ -158,6 +158,7 @@ fn create_core(processor: &Processor) -> Result<ProbeCore> {
                 ap: processor.ap,
                 psel: 0,
                 debug_base: None,
+                cti_base: None,
             }),
             Architecture::Riscv => CoreAccessOptions::Riscv(RiscvCoreAccessOptions {}),
         },
