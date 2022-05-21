@@ -4,9 +4,9 @@ mod dwt;
 mod itm;
 mod tpiu;
 
-use super::memory::romtable::{Component, PeripheralType, RomTableError};
+use super::memory::romtable::{CoresightComponent, PeripheralType, RomTableError};
 use crate::architecture::arm::core::armv6m::Demcr;
-use crate::architecture::arm::{SwoConfig, SwoMode};
+use crate::architecture::arm::{ArmProbeInterface, SwoConfig, SwoMode};
 use crate::{Core, CoreRegister, Error, MemoryInterface};
 pub use dwt::Dwt;
 pub use itm::Itm;
@@ -28,33 +28,53 @@ pub trait DebugRegister: Clone + From<u32> + Into<u32> + Sized + std::fmt::Debug
     const NAME: &'static str;
 
     /// Loads the register value from the given debug component via the given core.
-    fn load(component: &Component, core: &mut Core) -> Result<Self, Error> {
-        Ok(Self::from(component.read_reg(core, Self::ADDRESS)?))
+    fn load(
+        component: &CoresightComponent,
+        interface: &mut Box<dyn ArmProbeInterface>,
+    ) -> Result<Self, Error> {
+        Ok(Self::from(component.read_reg(interface, Self::ADDRESS)?))
     }
 
     /// Loads the register value from the given component in given unit via the given core.
-    fn load_unit(component: &Component, core: &mut Core, unit: usize) -> Result<Self, Error> {
+    fn load_unit(
+        component: &CoresightComponent,
+        interface: &mut Box<dyn ArmProbeInterface>,
+        unit: usize,
+    ) -> Result<Self, Error> {
         Ok(Self::from(
-            component.read_reg(core, Self::ADDRESS + 16 * unit as u32)?,
+            component.read_reg(interface, Self::ADDRESS + 16 * unit as u32)?,
         ))
     }
 
     /// Stores the register value to the given debug component via the given core.
-    fn store(&self, component: &Component, core: &mut Core) -> Result<(), Error> {
-        component.write_reg(core, Self::ADDRESS, self.clone().into())
+    fn store(
+        &self,
+        component: &CoresightComponent,
+        interface: &mut Box<dyn ArmProbeInterface>,
+    ) -> Result<(), Error> {
+        component.write_reg(interface, Self::ADDRESS, self.clone().into())
     }
 
     /// Stores the register value to the given component in given unit via the given core.
-    fn store_unit(&self, component: &Component, core: &mut Core, unit: usize) -> Result<(), Error> {
-        component.write_reg(core, Self::ADDRESS + 16 * unit as u32, self.clone().into())
+    fn store_unit(
+        &self,
+        component: &CoresightComponent,
+        interface: &mut Box<dyn ArmProbeInterface>,
+        unit: usize,
+    ) -> Result<(), Error> {
+        component.write_reg(
+            interface,
+            Self::ADDRESS + 16 * unit as u32,
+            self.clone().into(),
+        )
     }
 }
 
 /// Goes through every component in the vector and tries to find the first component with the given type
 fn find_component(
-    components: &[Component],
+    components: &[CoresightComponent],
     peripheral_type: PeripheralType,
-) -> Result<&Component, Error> {
+) -> Result<&CoresightComponent, Error> {
     components
         .iter()
         .find_map(|component| component.find_component(peripheral_type))
@@ -67,18 +87,15 @@ fn find_component(
 ///
 /// Expects to be given a list of all ROM table `components` as the second argument.
 pub(crate) fn setup_swv(
-    core: &mut Core,
-    components: &[Component],
+    interface: &mut Box<dyn ArmProbeInterface>,
+    components: &[CoresightComponent],
     config: &SwoConfig,
 ) -> Result<(), Error> {
-    // Enable tracing
-    enable_tracing(core)?;
-
     // Perform vendor-specific SWV setup
-    setup_swv_vendor(core, components, config)?;
+    setup_swv_vendor(interface, components, config)?;
 
     // Configure TPIU
-    let mut tpiu = Tpiu::new(core, find_component(components, PeripheralType::Tpiu)?);
+    let mut tpiu = Tpiu::new(interface, find_component(components, PeripheralType::Tpiu)?);
 
     tpiu.set_port_size(1)?;
     let prescaler = (config.tpiu_clk() / config.baud()) - 1;
@@ -98,24 +115,26 @@ pub(crate) fn setup_swv(
     }
 
     // Configure ITM
-    let mut itm = Itm::new(core, find_component(components, PeripheralType::Itm)?);
+    let mut itm = Itm::new(interface, find_component(components, PeripheralType::Itm)?);
     itm.unlock()?;
     itm.tx_enable()?;
 
     // Configure DWT
-    let mut dwt = Dwt::new(core, find_component(components, PeripheralType::Dwt)?);
+    let mut dwt = Dwt::new(interface, find_component(components, PeripheralType::Dwt)?);
     dwt.enable()?;
     dwt.enable_exception_trace()?;
 
-    core.flush()
+    // TODO: Replace flush
+    //interface.flush()
+    Ok(())
 }
 
 /// Sets up all vendor specific bit of all the SWV components.
 ///
 /// Expects to be given a list of all ROM table `components` as the second argument.
 fn setup_swv_vendor(
-    core: &mut Core,
-    components: &[Component],
+    interface: &mut Box<dyn ArmProbeInterface>,
+    components: &[CoresightComponent],
     config: &SwoConfig,
 ) -> Result<(), Error> {
     if components.is_empty() {
@@ -123,16 +142,21 @@ fn setup_swv_vendor(
     }
 
     for component in components.iter() {
-        match component.id().peripheral_id().jep106() {
+        let mut memory = interface.memory_interface(component.ap)?;
+
+        match component.component.id().peripheral_id().jep106() {
             Some(id) if id == jep106::JEP106Code::new(0x00, 0x20) => {
+                // TODO: The following statements are only valid for specific revisions - e.g. F4
+                // and F7 families. H7 components have a different DBGMCU architecture.
+
                 // STMicroelectronics:
                 // STM32 parts need TRACE_IOEN set to 1 and TRACE_MODE set to 00.
                 log::debug!("STMicroelectronics part detected, configuring DBGMCU");
                 const DBGMCU: u32 = 0xE004_2004;
-                let mut dbgmcu = core.read_word_32(DBGMCU)?;
+                let mut dbgmcu = memory.read_word_32(DBGMCU)?;
                 dbgmcu |= 1 << 5;
                 dbgmcu &= !(0b00 << 6);
-                return core.write_word_32(DBGMCU, dbgmcu);
+                return memory.write_word_32(DBGMCU, dbgmcu);
             }
             Some(id) if id == jep106::JEP106Code::new(0x02, 0x44) => {
                 // Nordic VLSI ASA
@@ -151,7 +175,7 @@ fn setup_swv_vendor(
                     }
                 };
                 traceconfig |= 1 << 16; // tracemux : serial = 1
-                return core.write_word_32(CLOCK_TRACECONFIG, traceconfig);
+                return memory.write_word_32(CLOCK_TRACECONFIG, traceconfig);
             }
             _ => {
                 continue;
@@ -167,12 +191,12 @@ fn setup_swv_vendor(
 ///
 /// Expects to be given a list of all ROM table `components` as the second argument.
 pub(crate) fn add_swv_data_trace(
-    core: &mut Core,
-    components: &[Component],
+    interface: &mut Box<dyn ArmProbeInterface>,
+    components: &[CoresightComponent],
     unit: usize,
     address: u32,
 ) -> Result<(), Error> {
-    let mut dwt = Dwt::new(core, find_component(components, PeripheralType::Dwt)?);
+    let mut dwt = Dwt::new(interface, find_component(components, PeripheralType::Dwt)?);
     dwt.enable_data_trace(unit, address)
 }
 
@@ -181,11 +205,11 @@ pub(crate) fn add_swv_data_trace(
 ///
 /// Expects to be given a list of all ROM table `components` as the second argument.
 pub fn remove_swv_data_trace(
-    core: &mut Core,
-    components: &[Component],
+    interface: &mut Box<dyn ArmProbeInterface>,
+    components: &[CoresightComponent],
     unit: usize,
 ) -> Result<(), Error> {
-    let mut dwt = Dwt::new(core, find_component(components, PeripheralType::Dwt)?);
+    let mut dwt = Dwt::new(interface, find_component(components, PeripheralType::Dwt)?);
     dwt.disable_data_trace(unit)
 }
 

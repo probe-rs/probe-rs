@@ -1,5 +1,6 @@
 use super::AccessPortError;
-use crate::{Core, Error, Memory, MemoryInterface};
+use crate::architecture::arm::{ap::MemoryAp, communication_interface::ArmProbeInterface};
+use crate::{Error, Memory};
 use enum_primitive_derive::Primitive;
 use num_traits::cast::FromPrimitive;
 
@@ -138,7 +139,7 @@ impl RomTable {
                     format: raw_entry.format,
                     power_domain_id: raw_entry.power_domain_id,
                     power_domain_valid: raw_entry.power_domain_valid,
-                    component,
+                    component: CoresightComponent::new(component, MemoryAp::new(memory.get_ap())),
                 });
             }
         }
@@ -215,7 +216,7 @@ struct RomTableEntry {
     /// It is unsure if it can have a RAZ value.
     format: bool,
     /// The component class of the component pointed to by this romtable entry.
-    pub(crate) component: Component,
+    pub(crate) component: CoresightComponent,
 }
 
 /// Component Identification information
@@ -451,23 +452,55 @@ impl Component {
             Component::CoreLinkOrPrimeCellOrSystemComponent(component_id) => component_id,
         }
     }
+}
+
+/// A Coresight debug component that can be configured with the Probe.
+#[derive(Debug)]
+pub struct CoresightComponent {
+    /// The component variant that is accessible.
+    pub component: Component,
+    /// The probe access point where the component can be accessed from
+    pub ap: MemoryAp,
+}
+
+impl CoresightComponent {
+    /// Construct a coresight component found on the provided access point.
+    pub fn new(component: Component, ap: MemoryAp) -> Self {
+        Self { component, ap }
+    }
 
     /// Reads a register of the component pointed to by this romtable entry.
-    pub fn read_reg(&self, core: &mut Core, offset: u32) -> Result<u32, Error> {
-        let value = core.read_word_32(self.id().component_address as u32 + offset)?;
+    pub fn read_reg(
+        &self,
+        interface: &mut Box<dyn ArmProbeInterface>,
+        offset: u32,
+    ) -> Result<u32, Error> {
+        let mut memory = interface.memory_interface(self.ap)?;
+        let value = memory.read_word_32(self.component.id().component_address as u32 + offset)?;
         Ok(value)
     }
 
     /// Writes a register of the component pointed to by this romtable entry.
-    pub fn write_reg(&self, core: &mut Core, offset: u32, value: u32) -> Result<(), Error> {
-        core.write_word_32(self.id().component_address as u32 + offset, value)?;
+    pub fn write_reg(
+        &self,
+        interface: &mut Box<dyn ArmProbeInterface>,
+        offset: u32,
+        value: u32,
+    ) -> Result<(), Error> {
+        let mut memory = interface.memory_interface(self.ap)?;
+        memory.write_word_32(self.component.id().component_address as u32 + offset, value)?;
         Ok(())
     }
 
     /// Finds the first component with the given peripheral type
-    pub fn find_component(&self, peripheral_type: PeripheralType) -> Option<&Component> {
+    pub fn find_component(&self, peripheral_type: PeripheralType) -> Option<&CoresightComponent> {
         for component in self.iter() {
-            if component.id().peripheral_id.is_of_type(peripheral_type) {
+            if component
+                .component
+                .id()
+                .peripheral_id
+                .is_of_type(peripheral_type)
+            {
                 return Some(component);
             }
         }
@@ -475,23 +508,29 @@ impl Component {
     }
 
     /// Turns this component into a component iterator which iterates all its children recursively.
-    pub fn iter(&self) -> ComponentIter {
-        ComponentIter::new(vec![self])
+    pub fn iter(&self) -> CoresightComponentIter {
+        CoresightComponentIter::new(vec![self])
+    }
+}
+
+impl PartialEq for CoresightComponent {
+    fn eq(&self, other: &Self) -> bool {
+        self.component.eq(&other.component)
     }
 }
 
 /// This is a recursive iterator over all CoreSight components.
-pub struct ComponentIter<'a> {
+pub struct CoresightComponentIter<'a> {
     /// The components of this iterator level.
-    components: Vec<&'a Component>,
+    components: Vec<&'a CoresightComponent>,
     /// The index of the item of the current level that should be returned next.
     current: usize,
     /// A possible child iterator. Always iterated first if there is a non exhausted one present.
-    children: Option<Box<ComponentIter<'a>>>,
+    children: Option<Box<CoresightComponentIter<'a>>>,
 }
 
-impl<'a> ComponentIter<'a> {
-    pub fn new(components: Vec<&'a Component>) -> Self {
+impl<'a> CoresightComponentIter<'a> {
+    pub fn new(components: Vec<&'a CoresightComponent>) -> Self {
         Self {
             components,
             current: 0,
@@ -500,8 +539,8 @@ impl<'a> ComponentIter<'a> {
     }
 }
 
-impl<'a> Iterator for ComponentIter<'a> {
-    type Item = &'a Component;
+impl<'a> Iterator for CoresightComponentIter<'a> {
+    type Item = &'a CoresightComponent;
 
     fn next(&mut self) -> Option<Self::Item> {
         // If we have children to iterate, do that first.
@@ -518,8 +557,8 @@ impl<'a> Iterator for ComponentIter<'a> {
         // If we have one more component to iterate, just return that first (do some other stuff first tho!).
         if let Some(component) = self.components.get(self.current) {
             // If it has children, remember to iterate them next.
-            self.children = match component {
-                Component::Class1RomTable(_, v) => Some(Box::new(ComponentIter::new(
+            self.children = match &component.component {
+                Component::Class1RomTable(_, v) => Some(Box::new(CoresightComponentIter::new(
                     v.entries.iter().map(|v| &v.component).collect(),
                 ))),
                 _ => None,
