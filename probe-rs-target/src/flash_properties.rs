@@ -10,7 +10,7 @@ use std::ops::Range;
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub struct FlashProperties {
     /// The range of the device flash.
-    pub address_range: Range<u32>,
+    pub address_range: Range<u64>,
     /// The page size of the device flash.
     pub page_size: u32,
     /// The value of a byte in flash that was just erased.

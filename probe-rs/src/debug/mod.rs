@@ -243,7 +243,7 @@ pub(crate) fn _print_all_attributes(
                         Complete => break,
                         RequiresMemory { address, size, .. } => {
                             let mut buff = vec![0u8; size as usize];
-                            core.read(address as u32, &mut buff)
+                            core.read(address, &mut buff)
                                 .expect("Failed to read memory");
                             match size {
                                 1 => evaluation

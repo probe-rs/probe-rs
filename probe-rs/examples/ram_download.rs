@@ -13,7 +13,7 @@ struct Cli {
     #[clap(long = "chip")]
     chip: Option<String>,
     #[clap(long = "address", parse(try_from_str = parse_hex))]
-    address: u32,
+    address: u64,
     #[clap(long = "size")]
     size: usize,
     #[clap(long = "speed")]
@@ -22,8 +22,8 @@ struct Cli {
     protocol: Option<String>,
 }
 
-fn parse_hex(src: &str) -> Result<u32, ParseIntError> {
-    u32::from_str_radix(src.trim_start_matches("0x"), 16)
+fn parse_hex(src: &str) -> Result<u64, ParseIntError> {
+    u64::from_str_radix(src.trim_start_matches("0x"), 16)
 }
 
 fn main() -> Result<()> {
@@ -114,7 +114,7 @@ fn main() -> Result<()> {
         sample_data.iter().zip(readback_data.iter()).enumerate()
     {
         if sample_data != readback_data {
-            let mismatch_address = matches.address + index as u32 * 4;
+            let mismatch_address = matches.address + index as u64 * 4;
 
             eprintln!(
                 "Readback data differs at address {:08x}: expected word {:08x}, got word {:08x}",

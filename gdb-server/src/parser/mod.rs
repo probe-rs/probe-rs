@@ -102,19 +102,19 @@ pub enum Packet {
     V(VPacket),
     // Packet 'X'
     WriteMemoryBinary {
-        address: u32,
+        address: u64,
         data: Vec<u8>,
     },
     // Packet 'z'
     RemoveBreakpoint {
         breakpoint_type: BreakpointType,
-        address: u32,
+        address: u64,
         kind: u32,
     },
     // Packet 'Z'
     InsertBreakpoint {
         breakpoint_type: BreakpointType,
-        address: u32,
+        address: u64,
         kind: u32,
     },
     // Byte 0x03
@@ -260,7 +260,7 @@ fn insert_breakpoint(input: &[u8]) -> IResult<&[u8], Packet> {
 
     let (input, _) = char(',')(input)?;
 
-    let (input, address) = hex_u32(input)?;
+    let (input, address) = hex_u64(input)?;
 
     let (input, _) = char(',')(input)?;
 
@@ -282,7 +282,7 @@ fn remove_breakpoint(input: &[u8]) -> IResult<&[u8], Packet> {
 
     let (input, _) = char(',')(input)?;
 
-    let (input, address) = hex_u32(input)?;
+    let (input, address) = hex_u64(input)?;
     let (input, _) = char(',')(input)?;
 
     let (input, kind) = hex_u32(input)?;
@@ -300,7 +300,7 @@ fn remove_breakpoint(input: &[u8]) -> IResult<&[u8], Packet> {
 fn write_memory_binary(input: &[u8]) -> IResult<&[u8], Packet> {
     let (input, _) = char('X')(input)?;
 
-    let (input, address) = hex_u32(input)?;
+    let (input, address) = hex_u64(input)?;
     let (input, _) = char(',')(input)?;
     let (input, length) = hex_u32(input)?;
     let (input, _) = char(':')(input)?;

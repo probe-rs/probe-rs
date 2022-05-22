@@ -149,8 +149,7 @@ pub(crate) fn variable_cache_from_svd<P: ProtocolAdapter>(
         ));
         peripheral_variable.type_name = VariableType::Other("Peripheral".to_string());
         peripheral_variable.variable_node_type = VariableNodeType::SvdPeripheral;
-        peripheral_variable.memory_location =
-            VariableLocation::Address(peripheral.base_address as u32);
+        peripheral_variable.memory_location = VariableLocation::Address(peripheral.base_address);
         peripheral_variable.set_value(probe_rs::debug::VariableValue::Valid(
             peripheral
                 .description
@@ -174,7 +173,7 @@ pub(crate) fn variable_cache_from_svd<P: ProtocolAdapter>(
             );
             register_variable.variable_node_type = VariableNodeType::SvdRegister;
             register_variable.memory_location =
-                VariableLocation::Address(peripheral.base_address as u32 + register.address_offset);
+                VariableLocation::Address(peripheral.base_address + register.address_offset as u64);
             let mut register_has_restricted_read = false;
             if register.read_action.is_some()
                 || (if let Some(register_access) = register.properties.access {

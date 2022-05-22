@@ -18,7 +18,7 @@ impl<'layout> FlashVisualizer<'layout> {
 
     /// Calculates the position in a [0, 100] range
     /// depending on the given address and the highest known sector end address.
-    fn memory_to_local(&self, address: u32) -> f32 {
+    fn memory_to_local(&self, address: u64) -> f32 {
         let top_sector_address = self
             .flash_layout
             .sectors()
@@ -28,7 +28,7 @@ impl<'layout> FlashVisualizer<'layout> {
         address as f32 / top_sector_address as f32 * 100.0
     }
 
-    fn memory_block(&self, address: u32, size: u32, dimensions: (u32, u32)) -> Group {
+    fn memory_block(&self, address: u64, size: u64, dimensions: (u32, u32)) -> Group {
         let height = self.memory_to_local(size);
         let start = 100.0 - self.memory_to_local(address) - height;
 
@@ -83,7 +83,7 @@ impl<'layout> FlashVisualizer<'layout> {
 
         for page in self.flash_layout.pages() {
             let rectangle = self
-                .memory_block(page.address(), page.size(), (100, 50))
+                .memory_block(page.address(), page.size() as u64, (100, 50))
                 .set("fill", "Crimson");
             // .set("stroke", "Black")
             // .set("stroke-width", 1);

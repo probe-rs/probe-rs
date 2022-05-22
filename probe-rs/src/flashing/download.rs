@@ -13,7 +13,7 @@ use crate::session::Session;
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 pub struct BinOptions {
     /// The address in memory where the binary will be put at.
-    pub base_address: Option<u32>,
+    pub base_address: Option<u64>,
     /// The number of bytes to skip at the start of the binary file.
     pub skip: u32,
 }
@@ -234,8 +234,7 @@ pub(super) fn extract_from_elf<'data>(
 
             let (segment_offset, segment_filesize) = segment.file_range(endian);
 
-            let sector: core::ops::Range<u32> =
-                segment_offset as u32..segment_offset as u32 + segment_filesize as u32;
+            let sector: core::ops::Range<u64> = segment_offset..segment_offset + segment_filesize;
 
             for section in binary.sections() {
                 let (section_offset, section_filesize) = match section.file_range() {
@@ -243,9 +242,7 @@ pub(super) fn extract_from_elf<'data>(
                     None => continue,
                 };
 
-                if sector.contains_range(
-                    &(section_offset as u32..section_offset as u32 + section_filesize as u32),
-                ) {
+                if sector.contains_range(&(section_offset..section_offset + section_filesize)) {
                     log::info!("Matching section: {:?}", section.name()?);
 
                     #[cfg(feature = "hexdump")]

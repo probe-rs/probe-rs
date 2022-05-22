@@ -18,30 +18,30 @@ pub struct FlashAlgorithm {
     /// Whether this flash algorithm is the default one or not.
     pub default: bool,
     /// Memory address where the flash algo instructions will be loaded to.
-    pub load_address: u32,
+    pub load_address: u64,
     /// List of 32-bit words containing the position-independent code for the algo.
     pub instructions: Vec<u32>,
     /// Address of the `Init()` entry point. Optional.
-    pub pc_init: Option<u32>,
+    pub pc_init: Option<u64>,
     /// Address of the `UnInit()` entry point. Optional.
-    pub pc_uninit: Option<u32>,
+    pub pc_uninit: Option<u64>,
     /// Address of the `ProgramPage()` entry point.
-    pub pc_program_page: u32,
+    pub pc_program_page: u64,
     /// Address of the `EraseSector()` entry point.
-    pub pc_erase_sector: u32,
+    pub pc_erase_sector: u64,
     /// Address of the `EraseAll()` entry point. Optional.
-    pub pc_erase_all: Option<u32>,
+    pub pc_erase_all: Option<u64>,
     /// Initial value of the R9 register for calling flash algo entry points, which
     /// determines where the position-independent data resides.
-    pub static_base: u32,
+    pub static_base: u64,
     /// Initial value of the stack pointer when calling any flash algo API.
-    pub begin_stack: u32,
+    pub begin_stack: u64,
     /// Base address of the page buffer. Used if `page_buffers` is not provided.
-    pub begin_data: u32,
+    pub begin_data: u64,
     /// An optional list of base addresses for page buffers. The buffers must be at
     /// least as large as the region's `page_size` attribute. If at least 2 buffers are included in
     /// the list, then double buffered programming will be enabled.
-    pub page_buffers: Vec<u32>,
+    pub page_buffers: Vec<u64>,
 
     /// The properties of the flash on the device.
     pub flash_properties: FlashProperties,
@@ -53,7 +53,7 @@ impl FlashAlgorithm {
     ///
     /// If the `address` is not part of the flash, None will
     /// be returned.
-    pub fn sector_info(&self, address: u32) -> Option<SectorInfo> {
+    pub fn sector_info(&self, address: u64) -> Option<SectorInfo> {
         if !self.flash_properties.address_range.contains(&address) {
             log::trace!("Address {:08x} not contained in this flash device", address);
             return None;
@@ -81,13 +81,13 @@ impl FlashAlgorithm {
 
     /// Returns the necessary information about the page which `address` resides in
     /// if the address is inside the flash region.
-    pub fn page_info(&self, address: u32) -> Option<PageInfo> {
+    pub fn page_info(&self, address: u64) -> Option<PageInfo> {
         if !self.flash_properties.address_range.contains(&address) {
             return None;
         }
 
         Some(PageInfo {
-            base_address: address - (address % self.flash_properties.page_size),
+            base_address: address - (address % self.flash_properties.page_size as u64),
             size: self.flash_properties.page_size,
         })
     }
@@ -138,7 +138,7 @@ impl FlashAlgorithm {
                 base_address: addr,
                 size: props.page_size,
             };
-            addr += props.page_size;
+            addr += props.page_size as u64;
 
             Some(page)
         })
@@ -223,25 +223,25 @@ impl FlashAlgorithm {
             addr_load = raw
                 .load_address
                 .map(|a| {
-                    a.checked_sub((header.len() * size_of::<u32>()) as u32) // adjust the raw load address to account for the algo header
+                    a.checked_sub((header.len() * size_of::<u32>()) as u64) // adjust the raw load address to account for the algo header
                         .ok_or(FlashError::InvalidFlashAlgorithmLoadAddress { address: addr_load })
                 })
                 .unwrap_or(Ok(ram_region.range.start))?;
             if addr_load < ram_region.range.start {
                 return Err(FlashError::InvalidFlashAlgorithmLoadAddress { address: addr_load });
             }
-            offset += (header.len() * size_of::<u32>()) as u32;
+            offset += (header.len() * size_of::<u32>()) as u64;
             code_start = addr_load + offset;
-            offset += (instructions.len() * size_of::<u32>()) as u32;
+            offset += (instructions.len() * size_of::<u32>()) as u64;
 
             // Stack start address (desc)
             addr_stack = addr_load
                 + offset
-                + (Self::FLASH_ALGO_STACK_SIZE - Self::FLASH_ALGO_STACK_DECREMENT * i);
+                + (Self::FLASH_ALGO_STACK_SIZE - Self::FLASH_ALGO_STACK_DECREMENT * i) as u64;
 
             // Data buffer 1
             addr_data = addr_stack;
-            offset += raw.flash_properties.page_size;
+            offset += raw.flash_properties.page_size as u64;
 
             if offset <= ram_region.range.end - addr_load {
                 break;
@@ -249,8 +249,8 @@ impl FlashAlgorithm {
         }
 
         // Data buffer 2
-        let addr_data2 = addr_data + raw.flash_properties.page_size;
-        offset += raw.flash_properties.page_size;
+        let addr_data2 = addr_data + raw.flash_properties.page_size as u64;
+        offset += raw.flash_properties.page_size as u64;
 
         // Determine whether we can use double buffering or not by the remaining RAM region size.
         let page_buffers = if offset <= ram_region.range.end - addr_load {

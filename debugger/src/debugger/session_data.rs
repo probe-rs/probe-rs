@@ -24,7 +24,7 @@ pub enum BreakpointType {
 #[derive(Debug)]
 pub struct ActiveBreakpoint {
     pub(crate) breakpoint_type: BreakpointType,
-    pub(crate) breakpoint_address: u32,
+    pub(crate) breakpoint_address: u64,
 }
 
 /// SessionData is designed to be similar to [probe_rs::Session], in as much that it provides handles to the [CoreHandle] instances for each of the available [probe_rs::Core] involved in the debug session.

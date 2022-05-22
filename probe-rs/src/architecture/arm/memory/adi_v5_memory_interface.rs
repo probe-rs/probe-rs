@@ -1,35 +1,23 @@
 use super::super::ap::{
     AccessPortError, AddressIncrement, ApAccess, ApRegister, DataSize, MemoryAp, CSW, DRW, TAR,
+    TAR2,
 };
 use crate::architecture::arm::communication_interface::SwdSequence;
 use crate::architecture::arm::ArmCommunicationInterface;
 use crate::architecture::arm::{
     communication_interface::Initialized, dp::DpAccess, MemoryApInformation,
 };
-use crate::{CommunicationInterface, CoreRegister, CoreRegisterAddress, DebugProbeError, Error};
+use crate::{CommunicationInterface, Error};
 use scroll::{Pread, Pwrite, LE};
 use std::convert::TryInto;
-use std::{
-    ops::Range,
-    time::{Duration, Instant},
-};
-
-use bitfield::bitfield;
+use std::ops::Range;
 
 pub trait ArmProbe: SwdSequence {
-    fn read_core_reg(&mut self, ap: MemoryAp, addr: CoreRegisterAddress) -> Result<u32, Error>;
-    fn write_core_reg(
-        &mut self,
-        ap: MemoryAp,
-        addr: CoreRegisterAddress,
-        value: u32,
-    ) -> Result<(), Error>;
+    fn read_8(&mut self, ap: MemoryAp, address: u64, data: &mut [u8]) -> Result<(), Error>;
+    fn read_32(&mut self, ap: MemoryAp, address: u64, data: &mut [u32]) -> Result<(), Error>;
 
-    fn read_8(&mut self, ap: MemoryAp, address: u32, data: &mut [u8]) -> Result<(), Error>;
-    fn read_32(&mut self, ap: MemoryAp, address: u32, data: &mut [u32]) -> Result<(), Error>;
-
-    fn write_8(&mut self, ap: MemoryAp, address: u32, data: &[u8]) -> Result<(), Error>;
-    fn write_32(&mut self, ap: MemoryAp, address: u32, data: &[u32]) -> Result<(), Error>;
+    fn write_8(&mut self, ap: MemoryAp, address: u64, data: &[u8]) -> Result<(), Error>;
+    fn write_32(&mut self, ap: MemoryAp, address: u64, data: &[u32]) -> Result<(), Error>;
 
     fn flush(&mut self) -> Result<(), Error>;
 
@@ -45,6 +33,9 @@ where
 {
     interface: &'interface mut AP,
     only_32bit_data_size: bool,
+
+    /// Supports 64-bit address values
+    has_large_address_extension: bool,
 
     // Does the connected memory AP support the HNONSEC bit?
     // If it doesn't support it, bit 30 in the CSW register has
@@ -73,6 +64,7 @@ where
             only_32bit_data_size: ap_information.only_32bit_data_size,
             supports_hnonsec: ap_information.supports_hnonsec,
             cached_csw_value: None,
+            has_large_address_extension: ap_information.has_large_address_extension,
         })
     }
 }
@@ -130,23 +122,29 @@ where
         }
     }
 
-    fn wait_for_core_register_transfer(
+    fn write_tar_register(
         &mut self,
         access_port: MemoryAp,
-        timeout: Duration,
-    ) -> Result<(), Error> {
-        // now we have to poll the dhcsr register, until the dhcsr.s_regrdy bit is set
-        // (see C1-292, cortex m0 arm)
-        let start = Instant::now();
+        address: u64,
+    ) -> Result<(), AccessPortError> {
+        let address_lower = address as u32;
+        let address_upper = (address >> 32) as u32;
 
-        while start.elapsed() < timeout {
-            let dhcsr_val = Dhcsr(self.read_word_32(access_port, Dhcsr::ADDRESS)?);
+        let tar = TAR {
+            address: address_lower,
+        };
+        self.write_ap_register(access_port, tar)?;
 
-            if dhcsr_val.s_regrdy() {
-                return Ok(());
-            }
+        if self.has_large_address_extension {
+            let tar = TAR2 {
+                address: address_upper,
+            };
+            self.write_ap_register(access_port, tar)?;
+        } else if address_upper != 0 {
+            return Err(AccessPortError::OutOfBounds);
         }
-        Err(Error::Probe(DebugProbeError::Timeout))
+
+        Ok(())
     }
 
     /// Read a 32 bit register on the given AP.
@@ -216,7 +214,7 @@ where
     pub fn read_word_32(
         &mut self,
         access_port: MemoryAp,
-        address: u32,
+        address: u64,
     ) -> Result<u32, AccessPortError> {
         if (address % 4) != 0 {
             return Err(AccessPortError::alignment_error(address, 4));
@@ -224,10 +222,8 @@ where
 
         let csw = self.build_csw_register(DataSize::U32);
 
-        let tar = TAR { address };
-
         self.write_csw_register(access_port, csw)?;
-        self.write_ap_register(access_port, tar)?;
+        self.write_tar_register(access_port, address)?;
         let result: DRW = self.read_ap_register(access_port)?;
 
         Ok(result.data)
@@ -237,7 +233,7 @@ where
     pub fn read_word_8(
         &mut self,
         access_port: MemoryAp,
-        address: u32,
+        address: u64,
     ) -> Result<u8, AccessPortError> {
         let aligned = aligned_range(address, 1)?;
 
@@ -249,9 +245,9 @@ where
             ((self.read_word_32(access_port, aligned.start)? >> bit_offset) & 0xFF) as u8
         } else {
             let csw = self.build_csw_register(DataSize::U8);
-            let tar = TAR { address };
+
             self.write_csw_register(access_port, csw)?;
-            self.write_ap_register(access_port, tar)?;
+            self.write_tar_register(access_port, address)?;
             let result: DRW = self.read_ap_register(access_port)?;
 
             // Extract the correct byte
@@ -270,7 +266,7 @@ where
     pub fn read_32(
         &mut self,
         access_port: MemoryAp,
-        start_address: u32,
+        start_address: u64,
         data: &mut [u32],
     ) -> Result<(), AccessPortError> {
         if data.is_empty() {
@@ -286,8 +282,7 @@ where
         self.write_csw_register(access_port, csw)?;
 
         let mut address = start_address;
-        let tar = TAR { address };
-        self.write_ap_register(access_port, tar)?;
+        self.write_tar_register(access_port, address)?;
 
         // figure out how many words we can write before the
         // data overflows
@@ -320,15 +315,14 @@ where
 
         remaining_data_len -= first_chunk_size_words;
         address = address
-            .checked_add((4 * first_chunk_size_words) as u32)
+            .checked_add((4 * first_chunk_size_words) as u64)
             .ok_or(AccessPortError::OutOfBounds)?;
         data_offset += first_chunk_size_words;
 
         while remaining_data_len > 0 {
             // the autoincrement is limited to the 10 lowest bits so we need to write the address
             // every time it overflows
-            let tar = TAR { address };
-            self.write_ap_register(access_port, tar)?;
+            self.write_tar_register(access_port, address)?;
 
             let next_chunk_size_bytes = std::cmp::min(max_chunk_size_bytes, remaining_data_len * 4);
 
@@ -347,7 +341,7 @@ where
             )?;
 
             remaining_data_len -= next_chunk_size_words;
-            address += (4 * next_chunk_size_words) as u32;
+            address += (4 * next_chunk_size_words) as u64;
             data_offset += next_chunk_size_words;
         }
 
@@ -359,7 +353,7 @@ where
     pub fn read_8(
         &mut self,
         access_port: MemoryAp,
-        address: u32,
+        address: u64,
         data: &mut [u8],
     ) -> Result<(), AccessPortError> {
         if data.is_empty() {
@@ -367,13 +361,14 @@ where
         }
 
         let aligned = aligned_range(address, data.len())?;
+        let aligned_len = (aligned.end - aligned.start) as usize;
 
         // Read aligned block of 32-bit words
-        let mut buf32 = vec![0u32; aligned.len() / 4];
+        let mut buf32 = vec![0u32; aligned_len / 4];
         self.read_32(access_port, aligned.start, &mut buf32)?;
 
         // Convert 32-bit words to bytes
-        let mut buf8 = vec![0u8; aligned.len()];
+        let mut buf8 = vec![0u8; aligned_len];
         for (i, word) in buf32.into_iter().enumerate() {
             buf8.pwrite_with(word, i * 4, LE).unwrap();
         }
@@ -392,7 +387,7 @@ where
     pub fn write_word_32(
         &mut self,
         access_port: MemoryAp,
-        address: u32,
+        address: u64,
         data: u32,
     ) -> Result<(), AccessPortError> {
         if (address % 4) != 0 {
@@ -401,10 +396,10 @@ where
 
         let csw = self.build_csw_register(DataSize::U32);
         let drw = DRW { data };
-        let tar = TAR { address };
+
         self.write_csw_register(access_port, csw)?;
 
-        self.write_ap_register(access_port, tar)?;
+        self.write_tar_register(access_port, address)?;
         self.write_ap_register(access_port, drw)?;
 
         Ok(())
@@ -414,7 +409,7 @@ where
     pub fn write_word_8(
         &mut self,
         access_port: MemoryAp,
-        address: u32,
+        address: u64,
         data: u8,
     ) -> Result<(), AccessPortError> {
         let aligned = aligned_range(address, 1)?;
@@ -434,10 +429,9 @@ where
             let drw = DRW {
                 data: u32::from(data) << bit_offset,
             };
-            let tar = TAR { address };
             self.write_csw_register(access_port, csw)?;
 
-            self.write_ap_register(access_port, tar)?;
+            self.write_tar_register(access_port, address)?;
             self.write_ap_register(access_port, drw)?;
         }
 
@@ -452,7 +446,7 @@ where
     pub fn write_32(
         &mut self,
         access_port: MemoryAp,
-        start_address: u32,
+        start_address: u64,
         data: &[u32],
     ) -> Result<(), AccessPortError> {
         if data.is_empty() {
@@ -475,8 +469,7 @@ where
         self.write_csw_register(access_port, csw)?;
 
         let mut address = start_address;
-        let tar = TAR { address };
-        self.write_ap_register(access_port, tar)?;
+        self.write_tar_register(access_port, address)?;
 
         // figure out how many words we can write before the
         // data overflows
@@ -508,14 +501,13 @@ where
         )?;
 
         remaining_data_len -= first_chunk_size_words;
-        address += (4 * first_chunk_size_words) as u32;
+        address += (4 * first_chunk_size_words) as u64;
         data_offset += first_chunk_size_words;
 
         while remaining_data_len > 0 {
             // the autoincrement is limited to the 10 lowest bits so we need to write the address
             // every time it overflows
-            let tar = TAR { address };
-            self.write_ap_register(access_port, tar)?;
+            self.write_tar_register(access_port, address)?;
 
             let next_chunk_size_bytes = std::cmp::min(max_chunk_size_bytes, remaining_data_len * 4);
 
@@ -534,7 +526,7 @@ where
             )?;
 
             remaining_data_len -= next_chunk_size_words;
-            address += (4 * next_chunk_size_words) as u32;
+            address += (4 * next_chunk_size_words) as u64;
             data_offset += next_chunk_size_words;
         }
 
@@ -549,7 +541,7 @@ where
     pub fn write_8(
         &mut self,
         access_port: MemoryAp,
-        address: u32,
+        address: u64,
         data: &[u8],
     ) -> Result<(), AccessPortError> {
         if data.is_empty() {
@@ -557,9 +549,10 @@ where
         }
 
         let aligned = aligned_range(address, data.len())?;
+        let aligned_len = (aligned.end - aligned.start) as usize;
 
         // Create buffer with aligned size
-        let mut buf8 = vec![0u8; aligned.len()];
+        let mut buf8 = vec![0u8; aligned_len];
 
         // If the start of the range isn't aligned, read the first word in to avoid clobbering
         if address != aligned.start {
@@ -568,10 +561,10 @@ where
         }
 
         // If the end of the range isn't aligned, read the last word in to avoid clobbering
-        if address + data.len() as u32 != aligned.end {
+        if address + data.len() as u64 != aligned.end {
             buf8.pwrite_with(
                 self.read_word_32(access_port, aligned.end - 4)?,
-                aligned.len() - 4,
+                aligned_len - 4,
                 LE,
             )
             .unwrap();
@@ -582,7 +575,7 @@ where
         buf8[start..start + data.len()].copy_from_slice(data);
 
         // Convert buffer to 32-bit words
-        let mut buf32 = vec![0u32; aligned.len() / 4];
+        let mut buf32 = vec![0u32; aligned_len / 4];
         for (i, word) in buf32.iter_mut().enumerate() {
             *word = buf8.pread_with(i * 4, LE).unwrap();
         }
@@ -613,42 +606,7 @@ impl<AP> ArmProbe for ADIMemoryInterface<'_, AP>
 where
     AP: CommunicationInterface + ApAccess + DpAccess,
 {
-    fn read_core_reg(&mut self, ap: MemoryAp, addr: CoreRegisterAddress) -> Result<u32, Error> {
-        // Write the DCRSR value to select the register we want to read.
-        let mut dcrsr_val = Dcrsr(0);
-        dcrsr_val.set_regwnr(false); // Perform a read.
-        dcrsr_val.set_regsel(addr.into()); // The address of the register to read.
-
-        self.write_word_32(ap, Dcrsr::ADDRESS, dcrsr_val.into())?;
-
-        self.wait_for_core_register_transfer(ap, Duration::from_millis(100))?;
-
-        let value = self.read_word_32(ap, Dcrdr::ADDRESS)?;
-
-        Ok(value)
-    }
-
-    fn write_core_reg(
-        &mut self,
-        ap: MemoryAp,
-        addr: CoreRegisterAddress,
-        value: u32,
-    ) -> Result<(), Error> {
-        self.write_word_32(ap, Dcrdr::ADDRESS, value)?;
-
-        // write the DCRSR value to select the register we want to write.
-        let mut dcrsr_val = Dcrsr(0);
-        dcrsr_val.set_regwnr(true); // Perform a write.
-        dcrsr_val.set_regsel(addr.into()); // The address of the register to write.
-
-        self.write_word_32(ap, Dcrsr::ADDRESS, dcrsr_val.into())?;
-
-        self.wait_for_core_register_transfer(ap, Duration::from_millis(100))?;
-
-        Ok(())
-    }
-
-    fn read_8(&mut self, ap: MemoryAp, address: u32, data: &mut [u8]) -> Result<(), Error> {
+    fn read_8(&mut self, ap: MemoryAp, address: u64, data: &mut [u8]) -> Result<(), Error> {
         if data.len() == 1 {
             data[0] = self.read_word_8(ap, address)?;
         } else {
@@ -658,7 +616,7 @@ where
         Ok(())
     }
 
-    fn read_32(&mut self, ap: MemoryAp, address: u32, data: &mut [u32]) -> Result<(), Error> {
+    fn read_32(&mut self, ap: MemoryAp, address: u64, data: &mut [u32]) -> Result<(), Error> {
         if data.len() == 1 {
             data[0] = self.read_word_32(ap, address)?;
         } else {
@@ -668,7 +626,7 @@ where
         Ok(())
     }
 
-    fn write_8(&mut self, ap: MemoryAp, address: u32, data: &[u8]) -> Result<(), Error> {
+    fn write_8(&mut self, ap: MemoryAp, address: u64, data: &[u8]) -> Result<(), Error> {
         if data.len() == 1 {
             self.write_word_8(ap, address, data[0])?;
         } else {
@@ -678,7 +636,7 @@ where
         Ok(())
     }
 
-    fn write_32(&mut self, ap: MemoryAp, address: u32, data: &[u32]) -> Result<(), Error> {
+    fn write_32(&mut self, ap: MemoryAp, address: u64, data: &[u32]) -> Result<(), Error> {
         if data.len() == 1 {
             self.write_word_32(ap, address, data[0])?;
         } else {
@@ -701,106 +659,15 @@ where
     }
 }
 
-bitfield! {
-    #[derive(Copy, Clone)]
-    pub struct Dhcsr(u32);
-    impl Debug;
-    pub s_reset_st, _: 25;
-    pub s_retire_st, _: 24;
-    pub s_lockup, _: 19;
-    pub s_sleep, _: 18;
-    pub s_halt, _: 17;
-    pub s_regrdy, _: 16;
-    pub c_maskints, set_c_maskints: 3;
-    pub c_step, set_c_step: 2;
-    pub c_halt, set_c_halt: 1;
-    pub c_debugen, set_c_debugen: 0;
-}
-
-impl Dhcsr {
-    /// This function sets the bit to enable writes to this register.
-    ///
-    /// C1.6.3 Debug Halting Control and Status Register, DHCSR:
-    /// Debug key:
-    /// Software must write 0xA05F to this field to enable write accesses to bits
-    /// [15:0], otherwise the processor ignores the write access.
-    pub fn enable_write(&mut self) {
-        self.0 &= !(0xffff << 16);
-        self.0 |= 0xa05f << 16;
-    }
-}
-
-impl From<u32> for Dhcsr {
-    fn from(value: u32) -> Self {
-        Self(value)
-    }
-}
-
-impl From<Dhcsr> for u32 {
-    fn from(value: Dhcsr) -> Self {
-        value.0
-    }
-}
-
-impl CoreRegister for Dhcsr {
-    const ADDRESS: u32 = 0xE000_EDF0;
-    const NAME: &'static str = "DHCSR";
-}
-
-bitfield! {
-    #[derive(Copy, Clone)]
-    pub struct Dcrsr(u32);
-    impl Debug;
-    pub _, set_regwnr: 16;
-    pub _, set_regsel: 4,0;
-}
-
-impl From<u32> for Dcrsr {
-    fn from(value: u32) -> Self {
-        Self(value)
-    }
-}
-
-impl From<Dcrsr> for u32 {
-    fn from(value: Dcrsr) -> Self {
-        value.0
-    }
-}
-
-impl CoreRegister for Dcrsr {
-    const ADDRESS: u32 = 0xE000_EDF4;
-    const NAME: &'static str = "DCRSR";
-}
-
-#[derive(Debug, Copy, Clone)]
-pub struct Dcrdr(u32);
-
-impl From<u32> for Dcrdr {
-    fn from(value: u32) -> Self {
-        Self(value)
-    }
-}
-
-impl From<Dcrdr> for u32 {
-    fn from(value: Dcrdr) -> Self {
-        value.0
-    }
-}
-
-impl CoreRegister for Dcrdr {
-    const ADDRESS: u32 = 0xE000_EDF8;
-    const NAME: &'static str = "DCRDR";
-}
-
 /// Calculates a 32-bit word aligned range from an address/length pair.
-fn aligned_range(address: u32, len: usize) -> Result<Range<u32>, AccessPortError> {
+fn aligned_range(address: u64, len: usize) -> Result<Range<u64>, AccessPortError> {
     // Round start address down to the nearest multiple of 4
     let start = address - (address % 4);
 
     let unaligned_end = len
         .try_into()
         .ok()
-        .and_then(|len: u32| len.checked_add(address))
+        .and_then(|len: u64| len.checked_add(address))
         .ok_or(AccessPortError::OutOfBounds)?;
 
     // Round end address up to the nearest multiple of 4
@@ -834,6 +701,8 @@ mod tests {
                 only_32bit_data_size: false,
                 supports_hnonsec: false,
                 debug_base_address: 0xf000_0000,
+                has_large_address_extension: false,
+                has_large_data_extension: false,
             };
 
             Self::new(mock, &ap_information).unwrap()
@@ -909,7 +778,7 @@ mod tests {
             let mut expected = Vec::from(mi.mock_memory());
             expected[address] = DATA8[0];
 
-            mi.write_word_8(DUMMY_AP, address as u32, DATA8[0])
+            mi.write_word_8(DUMMY_AP, address as u64, DATA8[0])
                 .unwrap_or_else(|_| panic!("write_word_8 failed, address = {}", address));
             assert_eq!(
                 mi.mock_memory(),
