@@ -7,7 +7,7 @@ use crate::{
         arm::{
             ap::{GenericAp, MemoryAp},
             communication_interface::{ArmProbeInterface, MemoryApInformation},
-            memory::Component,
+            memory::{Component, CoresightComponent},
             ApInformation, SwoConfig, SwoReader,
         },
         riscv::communication_interface::RiscvCommunicationInterface,
@@ -370,7 +370,7 @@ impl Session {
     ///
     /// This will recursively parse the Romtable of the attached target
     /// and create a list of all the contained components.
-    pub fn get_arm_components(&mut self) -> Result<Vec<Component>, Error> {
+    pub fn get_arm_components(&mut self) -> Result<Vec<CoresightComponent>, Error> {
         let interface = self.get_arm_interface()?;
 
         let mut components = Vec::new();
@@ -394,9 +394,11 @@ impl Session {
                     debug_base_address,
                     supports_hnonsec: _,
                 }) => {
-                    let mut memory = interface.memory_interface(MemoryAp::new(address))?;
-                    Component::try_parse(&mut memory, debug_base_address)
-                        .map_err(Error::architecture_specific)
+                    let ap = MemoryAp::new(address);
+                    let mut memory = interface.memory_interface(ap)?;
+                    let component = Component::try_parse(&mut memory, debug_base_address)
+                        .map_err(Error::architecture_specific)?;
+                    Ok(CoresightComponent::new(component, ap))
                 }
                 ApInformation::Other { address } => {
                     // Return an error, only possible to get Component from MemoryAP
@@ -441,8 +443,8 @@ impl Session {
 
         // Configure SWV on the target
         let components = self.get_arm_components()?;
-        let mut core = self.core(core_index)?;
-        crate::architecture::arm::component::setup_swv(&mut core, &components, config)
+        let interface = self.get_arm_interface()?;
+        crate::architecture::arm::component::setup_swv(interface, &components, config)
     }
 
     /// Configure the target to stop emitting SWV trace data.
@@ -451,16 +453,11 @@ impl Session {
     }
 
     /// Begin tracing a memory address over SWV.
-    pub fn add_swv_data_trace(
-        &mut self,
-        core_index: usize,
-        unit: usize,
-        address: u32,
-    ) -> Result<(), Error> {
+    pub fn add_swv_data_trace(&mut self, unit: usize, address: u32) -> Result<(), Error> {
         let components = self.get_arm_components()?;
-        let mut core = self.core(core_index)?;
+        let interface = self.get_arm_interface()?;
         crate::architecture::arm::component::add_swv_data_trace(
-            &mut core,
+            interface,
             &components,
             unit,
             address,
@@ -468,10 +465,10 @@ impl Session {
     }
 
     /// Stop tracing from a given SWV unit
-    pub fn remove_swv_data_trace(&mut self, core_index: usize, unit: usize) -> Result<(), Error> {
+    pub fn remove_swv_data_trace(&mut self, unit: usize) -> Result<(), Error> {
         let components = self.get_arm_components()?;
-        let mut core = self.core(core_index)?;
-        crate::architecture::arm::component::remove_swv_data_trace(&mut core, &components, unit)
+        let interface = self.get_arm_interface()?;
+        crate::architecture::arm::component::remove_swv_data_trace(interface, &components, unit)
     }
 
     /// Returns the memory map of the target.
