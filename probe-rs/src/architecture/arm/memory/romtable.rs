@@ -643,7 +643,10 @@ impl PeripheralID {
             ("ARM Ltd", 0x910, 0x00, 0x0000) => Some(PartInfo::new("CoreSight ETM9", PeripheralType::Etm)),
             ("ARM Ltd", 0x912, 0x11, 0x0000) => Some(PartInfo::new("CoreSight TPIU", PeripheralType::Tpiu)),
             ("ARM Ltd", 0x913, 0x00, 0x0000) => Some(PartInfo::new("CoreSight ITM", PeripheralType::Itm)),
+
             ("ARM Ltd", 0x914, 0x00, 0x0000) => Some(PartInfo::new("CoreSight SWO", PeripheralType::Swo)),
+            ("ARM Ltd", 0x914, 0x11, 0x0000) => Some(PartInfo::new("CoreSight SWO", PeripheralType::Swo)),
+
             ("ARM Ltd", 0x920, 0x00, 0x0000) => Some(PartInfo::new("CoreSight ETM11", PeripheralType::Etm)),
             ("ARM Ltd", 0x923, 0x11, 0x0000) => Some(PartInfo::new("Cortex-M3 TPIU", PeripheralType::Tpiu)),
             ("ARM Ltd", 0x924, 0x13, 0x0000) => Some(PartInfo::new("Cortex-M3 ETM", PeripheralType::Etm)),

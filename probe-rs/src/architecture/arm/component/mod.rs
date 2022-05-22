@@ -3,6 +3,7 @@
 mod dwt;
 mod itm;
 mod tpiu;
+mod swo;
 
 use super::memory::romtable::{Component, PeripheralType, RomTableError};
 use crate::architecture::arm::core::armv6m::Demcr;
@@ -11,6 +12,7 @@ use crate::{Core, CoreRegister, Error, MemoryInterface};
 pub use dwt::Dwt;
 pub use itm::Itm;
 pub use tpiu::Tpiu;
+pub use swo::Swo;
 
 /// An error when operating a core ROM table component occurred.
 #[derive(thiserror::Error, Debug)]
@@ -95,6 +97,23 @@ pub(crate) fn setup_swv(
     } else {
         // Clear EnFCont to only pass through raw ITM/DWT data.
         tpiu.set_formatter(0x100)?;
+    }
+
+    // Configure SWO - it may not be present in some architectures, as the TPIU may drive SWO.
+    if let Ok(component) = find_component(components, PeripheralType::Swo) {
+        let mut swo = Swo::new(core, component);
+        swo.unlock()?;
+
+        swo.set_prescaler(prescaler)?;
+
+        match config.mode() {
+            SwoMode::Manchester => swo.set_pin_protocol(1)?,
+            SwoMode::Uart => swo.set_pin_protocol(2)?,
+        }
+
+        // TODO: Configure the SWO Trace Filter
+    } else {
+        log::warn!("SWO component not found - assuming TPIU-only configuration");
     }
 
     // Configure ITM
