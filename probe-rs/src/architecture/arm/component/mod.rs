@@ -2,8 +2,9 @@
 
 mod dwt;
 mod itm;
-mod tpiu;
 mod swo;
+mod tpiu;
+mod trace_funnel;
 
 use super::memory::romtable::{CoresightComponent, PeripheralType, RomTableError};
 use crate::architecture::arm::core::armv6m::Demcr;
@@ -11,8 +12,9 @@ use crate::architecture::arm::{ArmProbeInterface, SwoConfig, SwoMode};
 use crate::{Core, CoreRegister, Error, MemoryInterface};
 pub use dwt::Dwt;
 pub use itm::Itm;
-pub use tpiu::Tpiu;
 pub use swo::Swo;
+pub use tpiu::Tpiu;
+pub use trace_funnel::TraceFunnel;
 
 /// An error when operating a core ROM table component occurred.
 #[derive(thiserror::Error, Debug)]
@@ -118,7 +120,7 @@ pub(crate) fn setup_swv(
 
     // Configure SWO - it may not be present in some architectures, as the TPIU may drive SWO.
     if let Ok(component) = find_component(components, PeripheralType::Swo) {
-        let mut swo = Swo::new(core, component);
+        let mut swo = Swo::new(interface, component);
         swo.unlock()?;
 
         swo.set_prescaler(prescaler)?;
@@ -127,10 +129,18 @@ pub(crate) fn setup_swv(
             SwoMode::Manchester => swo.set_pin_protocol(1)?,
             SwoMode::Uart => swo.set_pin_protocol(2)?,
         }
-
-        // TODO: Configure the SWO Trace Filter
     } else {
         log::warn!("SWO component not found - assuming TPIU-only configuration");
+    }
+
+    // Enable all ports of any trace funnels found.
+    for trace_funnel in components
+        .iter()
+        .filter_map(|comp| comp.find_component(PeripheralType::TraceFunnel))
+    {
+        let mut funnel = TraceFunnel::new(interface, trace_funnel);
+        funnel.unlock()?;
+        funnel.enable_port(0xFF)?;
     }
 
     // Configure ITM

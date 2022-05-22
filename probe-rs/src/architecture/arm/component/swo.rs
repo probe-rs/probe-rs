@@ -1,5 +1,10 @@
-use super::super::memory::romtable::Component;
-use crate::{Core, Error};
+//! Arm SWO CoreSight Component
+//!
+//! # Description
+//! This module provides access and control of the SWO CoreSight component block.
+use super::super::memory::romtable::CoresightComponent;
+use crate::architecture::arm::ArmProbeInterface;
+use crate::Error;
 
 const REGISTER_OFFSET_SWO_CODR: u32 = 0x10;
 const REGISTER_OFFSET_SWO_SPPR: u32 = 0xF0;
@@ -8,15 +13,21 @@ const REGISTER_OFFSET_ACCESS: u32 = 0xFB0;
 /// SWO unit
 ///
 /// Serial Wire Output unit.
-pub struct Swo<'probe: 'core, 'core> {
-    component: &'core Component,
-    core: &'core mut Core<'probe>,
+pub struct Swo<'a> {
+    component: &'a CoresightComponent,
+    interface: &'a mut Box<dyn ArmProbeInterface>,
 }
 
-impl <'probe: 'core, 'core> Swo<'probe, 'core> {
+impl<'a> Swo<'a> {
     /// Construct a new SWO component.
-    pub fn new(core: &'core mut Core<'probe>, component: &'core Component) -> Self {
-        Swo { component, core }
+    pub fn new(
+        interface: &'a mut Box<dyn ArmProbeInterface>,
+        component: &'a CoresightComponent,
+    ) -> Self {
+        Swo {
+            component,
+            interface,
+        }
     }
 
     /// Unlock the SWO and enable it for tracing the target.
@@ -24,7 +35,7 @@ impl <'probe: 'core, 'core> Swo<'probe, 'core> {
     /// This function enables the SWOunit as a whole. It does not actually send any data after enabling it.
     pub fn unlock(&mut self) -> Result<(), Error> {
         self.component
-            .write_reg(self.core, REGISTER_OFFSET_ACCESS, 0xC5AC_CE55)?;
+            .write_reg(self.interface, REGISTER_OFFSET_ACCESS, 0xC5AC_CE55)?;
 
         Ok(())
     }
@@ -32,7 +43,7 @@ impl <'probe: 'core, 'core> Swo<'probe, 'core> {
     /// Set the prescaler of the SWO.
     pub fn set_prescaler(&mut self, value: u32) -> Result<(), Error> {
         self.component
-            .write_reg(self.core, REGISTER_OFFSET_SWO_CODR, value)?;
+            .write_reg(self.interface, REGISTER_OFFSET_SWO_CODR, value)?;
         Ok(())
     }
 
@@ -43,7 +54,7 @@ impl <'probe: 'core, 'core> Swo<'probe, 'core> {
     /// 3 = reserved
     pub fn set_pin_protocol(&mut self, value: u32) -> Result<(), Error> {
         self.component
-            .write_reg(self.core, REGISTER_OFFSET_SWO_SPPR, value)?;
+            .write_reg(self.interface, REGISTER_OFFSET_SWO_SPPR, value)?;
         Ok(())
     }
 }

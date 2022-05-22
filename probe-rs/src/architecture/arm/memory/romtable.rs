@@ -706,6 +706,7 @@ impl PeripheralID {
             ("ARM Ltd", 0xD21, 0x00, 0x1A03) => Some(PartInfo::new("Cortex-M33 BPU", PeripheralType::Bpu)),
             ("ARM Ltd", 0xD21, 0x13, 0x4A13) => Some(PartInfo::new("Cortex-M33 ETM", PeripheralType::Etm)),
             ("ARM Ltd", 0xD21, 0x11, 0x0000) => Some(PartInfo::new("Cortex-M33 TPIU", PeripheralType::Tpiu)),
+            // TODO: Add support for trace funnel detection.
             _ => None,
         }
     }
@@ -770,6 +771,8 @@ pub enum PeripheralType {
     Rom,
     /// Serial Wire Output
     Swo,
+    /// CoreSight Trace funnel
+    TraceFunnel,
     /// Unknown
     Stm,
     /// Unknown
@@ -790,6 +793,7 @@ impl std::fmt::Display for PeripheralType {
             PeripheralType::Rom => write!(f, "Rom"),
             PeripheralType::Swo => write!(f, "Swo (Single Wire Output)"),
             PeripheralType::Stm => write!(f, "Stm (System Trace Macrocell)"),
+            PeripheralType::TraceFunnel => write!(f, "Trace Funnel"),
             PeripheralType::Tsgen => write!(f, "Tsgen (Time Stamp Generator)"),
         }
     }
