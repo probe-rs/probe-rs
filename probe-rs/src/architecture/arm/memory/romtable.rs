@@ -679,13 +679,11 @@ impl PeripheralID {
             ("ARM Ltd", 0x4C0, 0x00, 0x0000) => Some(PartInfo::new("Cortex-M0+ ROM", PeripheralType::Rom)),
             ("ARM Ltd", 0x4C4, 0x00, 0x0000) => Some(PartInfo::new("Cortex-M4 ROM", PeripheralType::Rom)),
             ("ARM Ltd", 0x907, 0x21, 0x0000) => Some(PartInfo::new("CoreSight ETB", PeripheralType::Etb)),
+            ("ARM Ltd", 0x908, 0x12, 0x0000) => Some(PartInfo::new("CoreSight TraceFunnel", PeripheralType::TraceFunnel)),
             ("ARM Ltd", 0x910, 0x00, 0x0000) => Some(PartInfo::new("CoreSight ETM9", PeripheralType::Etm)),
             ("ARM Ltd", 0x912, 0x11, 0x0000) => Some(PartInfo::new("CoreSight TPIU", PeripheralType::Tpiu)),
             ("ARM Ltd", 0x913, 0x00, 0x0000) => Some(PartInfo::new("CoreSight ITM", PeripheralType::Itm)),
-
-            ("ARM Ltd", 0x914, 0x00, 0x0000) => Some(PartInfo::new("CoreSight SWO", PeripheralType::Swo)),
             ("ARM Ltd", 0x914, 0x11, 0x0000) => Some(PartInfo::new("CoreSight SWO", PeripheralType::Swo)),
-
             ("ARM Ltd", 0x920, 0x00, 0x0000) => Some(PartInfo::new("CoreSight ETM11", PeripheralType::Etm)),
             ("ARM Ltd", 0x923, 0x11, 0x0000) => Some(PartInfo::new("Cortex-M3 TPIU", PeripheralType::Tpiu)),
             ("ARM Ltd", 0x924, 0x13, 0x0000) => Some(PartInfo::new("Cortex-M3 ETM", PeripheralType::Etm)),
@@ -706,7 +704,6 @@ impl PeripheralID {
             ("ARM Ltd", 0xD21, 0x00, 0x1A03) => Some(PartInfo::new("Cortex-M33 BPU", PeripheralType::Bpu)),
             ("ARM Ltd", 0xD21, 0x13, 0x4A13) => Some(PartInfo::new("Cortex-M33 ETM", PeripheralType::Etm)),
             ("ARM Ltd", 0xD21, 0x11, 0x0000) => Some(PartInfo::new("Cortex-M33 TPIU", PeripheralType::Tpiu)),
-            // TODO: Add support for trace funnel detection.
             _ => None,
         }
     }
