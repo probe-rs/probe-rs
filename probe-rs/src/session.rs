@@ -441,6 +441,14 @@ impl Session {
             crate::architecture::arm::component::enable_tracing(&mut core)?;
         }
 
+        {
+            // Enable vendor-specific configurations for SWV. This must be done before collecting
+            // CoreSight components because it may modify component power settings.
+            let components = self.get_arm_components()?;
+            let interface = self.get_arm_interface()?;
+            crate::architecture::arm::component::setup_swv_vendor(interface, &components, config)?;
+        }
+
         // Configure SWV on the target
         let components = self.get_arm_components()?;
         let interface = self.get_arm_interface()?;

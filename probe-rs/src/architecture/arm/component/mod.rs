@@ -161,7 +161,7 @@ pub(crate) fn setup_swv(
 /// Sets up all vendor specific bit of all the SWV components.
 ///
 /// Expects to be given a list of all ROM table `components` as the second argument.
-fn setup_swv_vendor(
+pub(crate) fn setup_swv_vendor(
     interface: &mut Box<dyn ArmProbeInterface>,
     components: &[CoresightComponent],
     config: &SwoConfig,
@@ -173,19 +173,40 @@ fn setup_swv_vendor(
     for component in components.iter() {
         let mut memory = interface.memory_interface(component.ap)?;
 
-        match component.component.id().peripheral_id().jep106() {
-            Some(id) if id == jep106::JEP106Code::new(0x00, 0x20) => {
-                // TODO: The following statements are only valid for specific revisions - e.g. F4
-                // and F7 families. H7 components have a different DBGMCU architecture.
+        let peripheral = component.component.id().peripheral_id();
 
+        match peripheral.jep106() {
+            Some(id) if id == jep106::JEP106Code::new(0x00, 0x20) => {
                 // STMicroelectronics:
-                // STM32 parts need TRACE_IOEN set to 1 and TRACE_MODE set to 00.
                 log::debug!("STMicroelectronics part detected, configuring DBGMCU");
-                const DBGMCU: u32 = 0xE004_2004;
-                let mut dbgmcu = memory.read_word_32(DBGMCU)?;
-                dbgmcu |= 1 << 5;
-                dbgmcu &= !(0b00 << 6);
-                return memory.write_word_32(DBGMCU, dbgmcu);
+                match peripheral.part() {
+                    // H7 parts
+                    0x450 => {
+                        log::debug!("Configuring STM32H7 DBGMCU");
+                        const DBGMCU: u32 = 0xE00E_1000;
+                        let mut dbgmcu_cr = memory.read_word_32(DBGMCU + 0x04)?;
+                        // Enable domain 3 debug clock.
+                        dbgmcu_cr |= 1 << 22;
+
+                        // Enable domain 1 debug clock.
+                        dbgmcu_cr |= 1 << 21;
+
+                        // Allow debugging in standby mode
+                        dbgmcu_cr |= 1 << 2;
+
+                        return memory.write_word_32(DBGMCU + 0x04, dbgmcu_cr);
+                    }
+
+                    _ => {
+                        // F4/F7 parts need TRACE_IOEN set to 1 and TRACE_MODE set to 00.
+                        log::debug!("Configuring default DBGMCU");
+                        const DBGMCU: u32 = 0xE004_2004;
+                        let mut dbgmcu = memory.read_word_32(DBGMCU)?;
+                        dbgmcu |= 1 << 5;
+                        dbgmcu &= !(0b00 << 6);
+                        return memory.write_word_32(DBGMCU, dbgmcu);
+                    }
+                }
             }
             Some(id) if id == jep106::JEP106Code::new(0x02, 0x44) => {
                 // Nordic VLSI ASA
