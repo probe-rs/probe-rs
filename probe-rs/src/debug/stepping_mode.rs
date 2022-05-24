@@ -39,7 +39,7 @@ impl SteppingMode {
             .map_err(|error| DebugError::Other(anyhow::anyhow!(error)))?;
         let (mut program_counter, mut return_address) = match core_status {
             CoreStatus::Halted(_) => (
-                core.read_core_reg(core.registers().program_counter())? as u64,
+                core.read_core_reg(core.registers().program_counter())?,
                 core.read_core_reg(core.registers().return_address())?,
             ),
             _ => {
@@ -69,7 +69,7 @@ impl SteppingMode {
         // Sometimes the target program_counter is at a location where the debug_info program row data does not contain valid statements for halt points.
         // When DebugError::NoValidHaltLocation happens, we will step to the next instruction and try again(until we can reasonably expect to have passed out of an epilogue), before giving up.
         for _ in 0..10 {
-            match debug_info.get_halt_locations(program_counter, Some(return_address as u64)) {
+            match debug_info.get_halt_locations(program_counter, Some(return_address)) {
                 Ok(program_row_data) => {
                     match self {
                         SteppingMode::OverStatement => {
@@ -135,9 +135,8 @@ impl SteppingMode {
                         Ok(core_status) => {
                             match core_status {
                                 CoreStatus::Halted(_) => {
-                                    program_counter = core
-                                        .read_core_reg(core.registers().program_counter())?
-                                        as u64
+                                    program_counter =
+                                        core.read_core_reg(core.registers().program_counter())?
                                 }
                                 other => {
                                     log::error!(

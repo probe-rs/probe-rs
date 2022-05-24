@@ -11,6 +11,7 @@ use crate::core::RegisterFile;
 pub struct Registers {
     pub(crate) register_description: &'static RegisterFile,
 
+    // TODO 64-bit - handle larger values
     pub(crate) values: HashMap<u32, u32>,
 
     pub(crate) architecture: Architecture,
@@ -29,8 +30,11 @@ impl Registers {
             architecture: core.architecture(),
         };
 
+        // TODO 64-bit - support other sizes
         for i in 0..num_platform_registers {
-            match core.read_core_reg(register_file.platform_register(i)) {
+            let result: Result<u32, crate::Error> =
+                core.read_core_reg(register_file.platform_register(i));
+            match result {
                 Ok(value) => registers.values.insert(i as u32, value),
                 Err(e) => {
                     log::warn!("Failed to read value for register {}: {}", i, e);

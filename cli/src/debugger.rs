@@ -121,7 +121,7 @@ impl DebugCli {
                 println!("Status: {:?}", &status);
 
                 if status.is_halted() {
-                    let pc = cli_data
+                    let pc: u64 = cli_data
                         .core
                         .read_core_reg(cli_data.core.registers().program_counter())?;
                     println!("Core halted at address {:#010x}", pc);
@@ -132,7 +132,7 @@ impl DebugCli {
                         match cli_data.core.core_type() {
                             CoreType::Armv6m | CoreType::Armv7em | CoreType::Armv7m | CoreType::Armv8m | CoreType::Armv7a | CoreType::Armv8a => {
                                 // Cortex-M and v7-A targets define the PSR as register 16
-                                let xpsr = cli_data.core.read_core_reg(
+                                let xpsr: u64 = cli_data.core.read_core_reg(
                                     16,
                                 )?;
 
@@ -153,7 +153,7 @@ impl DebugCli {
                                             println!("Hard Fault!");
 
 
-                                            let return_address = cli_data.core.read_core_reg(cli_data.core.registers().return_address())?;
+                                            let return_address: u64 = cli_data.core.read_core_reg(cli_data.core.registers().return_address())?;
 
                                             println!("Return address (LR): {:#010x}", return_address);
 
@@ -345,13 +345,12 @@ impl DebugCli {
                 match cli_data.state {
                     DebugState::Halted(ref mut halted_state) => {
                         let regs = cli_data.core.registers();
-                        let program_counter =
+                        let program_counter: u64 =
                             cli_data.core.read_core_reg(regs.program_counter())?;
 
                         if let Some(di) = &mut cli_data.debug_info {
-                            halted_state.stack_frames = di
-                                .unwind(&mut cli_data.core, u64::from(program_counter))
-                                .unwrap();
+                            halted_state.stack_frames =
+                                di.unwind(&mut cli_data.core, program_counter).unwrap();
 
                             halted_state.frame_indices = halted_state
                                 .stack_frames
@@ -418,7 +417,7 @@ impl DebugCli {
                 let register_file = cli_data.core.registers();
 
                 for register in register_file.registers() {
-                    let value = cli_data.core.read_core_reg(register)?;
+                    let value: u64 = cli_data.core.read_core_reg(register)?;
 
                     println!("{}: {:#010x}", register.name(), value)
                 }

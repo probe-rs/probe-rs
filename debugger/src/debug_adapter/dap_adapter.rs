@@ -74,7 +74,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             }
         };
         if status.is_halted() {
-            let pc = target_core
+            let pc: Result<u64, crate::Error> = target_core
                 .core
                 .read_core_reg(target_core.core.registers().program_counter());
             match pc {
@@ -919,7 +919,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                 // We do the actual stack trace here, because VSCode sometimes sends multiple StackTrace requests, which lead to unnecessary unwind processing.
                 // By doing it here, we do it once, and serve up the results when we get the StackTrace requests.
                 let regs = target_core.core.registers();
-                let pc = match target_core.core.read_core_reg(regs.program_counter()) {
+                let pc: u64 = match target_core.core.read_core_reg(regs.program_counter()) {
                     Ok(pc) => pc,
                     Err(error) => {
                         return self
@@ -934,7 +934,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                 target_core.core_data.stack_frames = target_core
                     .core_data
                     .debug_info
-                    .unwind(&mut target_core.core, u64::from(pc))?;
+                    .unwind(&mut target_core.core, pc)?;
             }
             CoreStatus::Running | CoreStatus::LockedUp | CoreStatus::Sleeping => {
                 return self.send_response::<()>(

@@ -280,7 +280,7 @@ pub(crate) fn _print_all_attributes(
                             register,
                             base_type,
                         } => {
-                            let raw_value = core
+                            let raw_value: u64 = core
                                 .read_core_reg(register.0 as u16)
                                 .expect("Failed to read memory");
 
@@ -290,7 +290,7 @@ pub(crate) fn _print_all_attributes(
                                 )
                             }
                             evaluation
-                                .resume_with_register(gimli::Value::Generic(raw_value as u64))
+                                .resume_with_register(gimli::Value::Generic(raw_value))
                                 .unwrap()
                         }
                         RequiresRelocatedAddress(address_index) => {

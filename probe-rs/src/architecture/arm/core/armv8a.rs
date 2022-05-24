@@ -3,7 +3,7 @@
 use crate::architecture::arm::core::armv8a_debug_regs::*;
 use crate::architecture::arm::core::register;
 use crate::architecture::arm::sequences::ArmDebugSequence;
-use crate::core::RegisterFile;
+use crate::core::{RegisterFile, RegisterValue};
 use crate::error::Error;
 use crate::memory::{valid_32_address, Memory};
 use crate::CoreInterface;
@@ -221,8 +221,9 @@ impl<'probe> Armv8a<'probe> {
     /// Save register if needed before it gets clobbered by instruction execution
     fn prepare_for_clobber(&mut self, reg: u16) -> Result<(), Error> {
         if self.state.register_cache[reg as usize].is_none() {
+            // TODO 64-bit - handle non-32 bit values
             // cache reg since we're going to clobber it
-            let val = self.read_core_reg(CoreRegisterAddress(reg))?;
+            let val: u32 = self.read_core_reg(CoreRegisterAddress(reg))?.try_into()?;
 
             // Mark reg as needing writeback
             self.state.register_cache[reg as usize] = Some((val, true));
@@ -316,7 +317,7 @@ impl<'probe> CoreInterface for Armv8a<'probe> {
 
         // get pc
         Ok(CoreInformation {
-            pc: pc_value.into(),
+            pc: pc_value.try_into()?,
         })
     }
 
@@ -408,7 +409,7 @@ impl<'probe> CoreInterface for Armv8a<'probe> {
 
         // get pc
         Ok(CoreInformation {
-            pc: pc_value.into(),
+            pc: pc_value.try_into()?,
         })
     }
 
@@ -435,17 +436,17 @@ impl<'probe> CoreInterface for Armv8a<'probe> {
 
         // get pc
         Ok(CoreInformation {
-            pc: pc_value.into(),
+            pc: pc_value.try_into()?,
         })
     }
 
-    fn read_core_reg(&mut self, address: CoreRegisterAddress) -> Result<u32, Error> {
+    fn read_core_reg(&mut self, address: CoreRegisterAddress) -> Result<RegisterValue, Error> {
         let reg_num = address.0;
 
         // check cache
         if (reg_num as usize) < self.state.register_cache.len() {
             if let Some(cached_result) = self.state.register_cache[reg_num as usize] {
-                return Ok(cached_result.0);
+                return Ok(cached_result.0.into());
             }
         }
 
@@ -498,12 +499,16 @@ impl<'probe> CoreInterface for Armv8a<'probe> {
 
         if let Ok(value) = result {
             self.state.register_cache[reg_num as usize] = Some((value, false));
-        }
 
-        result
+            Ok(value.into())
+        } else {
+            Err(result.err().unwrap())
+        }
     }
 
-    fn write_core_reg(&mut self, address: CoreRegisterAddress, value: u32) -> Result<()> {
+    fn write_core_reg(&mut self, address: CoreRegisterAddress, value: RegisterValue) -> Result<()> {
+        // TODO 64-bit
+        let value: u32 = value.try_into()?;
         let reg_num = address.0;
 
         if (reg_num as usize) >= self.state.register_cache.len() {
@@ -594,7 +599,7 @@ impl<'probe> CoreInterface for Armv8a<'probe> {
             return Err(Error::Other(anyhow!("64-bit not currently supported")));
         }
 
-        let cpsr = self.read_core_reg(CoreRegisterAddress(16))?;
+        let cpsr: u32 = self.read_core_reg(CoreRegisterAddress(16))?.try_into()?;
 
         // CPSR bit 5 - T - Thumb mode
         match (cpsr >> 5) & 1 {
@@ -1249,13 +1254,13 @@ mod test {
 
         // First read will hit expectations
         assert_eq!(
-            REG_VALUE,
+            RegisterValue::from(REG_VALUE),
             armv8a.read_core_reg(CoreRegisterAddress(2)).unwrap()
         );
 
         // Second read will cache, no new expectations
         assert_eq!(
-            REG_VALUE,
+            RegisterValue::from(REG_VALUE),
             armv8a.read_core_reg(CoreRegisterAddress(2)).unwrap()
         );
     }
@@ -1293,13 +1298,13 @@ mod test {
 
         // First read will hit expectations
         assert_eq!(
-            REG_VALUE,
+            RegisterValue::from(REG_VALUE),
             armv8a.read_core_reg(CoreRegisterAddress(15)).unwrap()
         );
 
         // Second read will cache, no new expectations
         assert_eq!(
-            REG_VALUE,
+            RegisterValue::from(REG_VALUE),
             armv8a.read_core_reg(CoreRegisterAddress(15)).unwrap()
         );
     }
@@ -1337,13 +1342,13 @@ mod test {
 
         // First read will hit expectations
         assert_eq!(
-            REG_VALUE,
+            RegisterValue::from(REG_VALUE),
             armv8a.read_core_reg(CoreRegisterAddress(16)).unwrap()
         );
 
         // Second read will cache, no new expectations
         assert_eq!(
-            REG_VALUE,
+            RegisterValue::from(REG_VALUE),
             armv8a.read_core_reg(CoreRegisterAddress(16)).unwrap()
         );
     }

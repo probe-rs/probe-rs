@@ -56,6 +56,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Debugger: SVD uses new `expand` feature of `svd-parser` crate to expand arrays and clusters. (#1090)
 - Updated cmsis-pack dependency to version 0.6.0. (#1089)
 - Updated all parameters and fields that refer to memory addresses from u32 to u64 in preparation for 64-bit target support. (#1115)
+- Updated `Core::read_core_reg` and `Core::write_core_reg` to work with both 32 and 64-bit values (#1119)
 
 ### Fixed
 

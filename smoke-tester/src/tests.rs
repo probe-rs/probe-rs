@@ -30,7 +30,7 @@ pub fn test_register_access(tracker: &TestTracker, core: &mut Core) -> Result<()
 
         core.write_core_reg(register.into(), test_value)?;
 
-        let readback = core.read_core_reg(register)?;
+        let readback: u64 = core.read_core_reg(register)?;
 
         assert_eq!(
             test_value, readback,
