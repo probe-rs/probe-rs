@@ -110,7 +110,17 @@ impl RomTable {
     ///
     /// This does not check whether the data actually signalizes
     /// to contain a ROM table but assumes this was checked beforehand.
-    fn try_parse(memory: &mut Memory<'_>, base_address: u64) -> Result<RomTable, RomTableError> {
+    ///
+    /// # Args
+    /// * `memory` - The memory interface to read the table from.
+    /// * `base_address` - The base address of the table.
+    /// * `max_table_depth` - The maximum number of ROM tables to recurse through. None if full
+    /// recursion is desired.
+    fn try_parse(
+        memory: &mut Memory<'_>,
+        base_address: u64,
+        max_table_depth: Option<usize>,
+    ) -> Result<RomTable, RomTableError> {
         // This is required for the collect down below.
         #![allow(clippy::needless_collect)]
         let mut entries = vec![];
@@ -132,7 +142,8 @@ impl RomTable {
             log::info!("Parsing entry at {:x?}", entry_base_addr);
 
             if raw_entry.entry_present {
-                let component = Component::try_parse(memory, u64::from(entry_base_addr))?;
+                let component =
+                    Component::try_parse(memory, u64::from(entry_base_addr), max_table_depth)?;
 
                 // Finally remmeber the entry.
                 entries.push(RomTableEntry {
@@ -400,9 +411,16 @@ pub enum Component {
 
 impl Component {
     /// Tries to parse a CoreSight component table.
+    ///
+    /// # Args
+    /// * `memory` - The memory interface to parse the component from.
+    /// * `baseaddr` - The base address at which the component can be accessed
+    /// * `max_table_depth` - The maximum number of ROM tables to recurse through. None if full
+    /// recursion is desired.
     pub fn try_parse<'probe: 'memory, 'memory>(
         memory: &'memory mut Memory<'probe>,
         baseaddr: u64,
+        max_table_depth: Option<usize>,
     ) -> Result<Component, RomTableError> {
         log::info!("\tReading component data at: {:08x}", baseaddr);
 
@@ -426,7 +444,22 @@ impl Component {
                 Component::GenericVerificationComponent(component_id)
             }
             RawComponent::RomTable => {
-                let rom_table = RomTable::try_parse(memory, component_id.component_address)?;
+                // Only parse the ROM table if we were asked to recurse.
+                let rom_table = match max_table_depth {
+                    Some(0) => RomTable { entries: vec![] },
+                    Some(depth) => {
+                        // Parse the table and decrement the allowed depth, since we just parsed a
+                        // ROM table.
+                        RomTable::try_parse(
+                            memory,
+                            component_id.component_address,
+                            Some(depth - 1),
+                        )?
+                    }
+                    None => RomTable::try_parse(memory, component_id.component_address, None)?,
+                    // If we should not recurse further into ROM tables, just parse this as an
+                    // empty table.
+                };
 
                 Component::Class1RomTable(component_id, rom_table)
             }

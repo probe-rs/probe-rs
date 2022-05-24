@@ -8,7 +8,7 @@ mod trace_funnel;
 
 use super::memory::romtable::{CoresightComponent, PeripheralType, RomTableError};
 use crate::architecture::arm::core::armv6m::Demcr;
-use crate::architecture::arm::{ArmProbeInterface, SwoConfig, SwoMode};
+use crate::architecture::arm::{ap::AccessPort, ArmProbeInterface, SwoConfig, SwoMode};
 use crate::{Core, CoreRegister, Error, MemoryInterface};
 pub use dwt::Dwt;
 pub use itm::Itm;
@@ -95,9 +95,7 @@ pub(crate) fn setup_swv(
     components: &[CoresightComponent],
     config: &SwoConfig,
 ) -> Result<(), Error> {
-    // Perform vendor-specific SWV setup
-    setup_swv_vendor(interface, components, config)?;
-
+    log::info!("Configuring TPIU");
     // Configure TPIU
     let mut tpiu = Tpiu::new(interface, find_component(components, PeripheralType::Tpiu)?);
 
@@ -120,6 +118,7 @@ pub(crate) fn setup_swv(
 
     // Configure SWO - it may not be present in some architectures, as the TPIU may drive SWO.
     if let Ok(component) = find_component(components, PeripheralType::Swo) {
+        log::info!("Configuring SWO");
         let mut swo = Swo::new(interface, component);
         swo.unlock()?;
 
@@ -134,6 +133,7 @@ pub(crate) fn setup_swv(
     }
 
     // Enable all ports of any trace funnels found.
+    log::info!("Enabling all trace funnels");
     for trace_funnel in components
         .iter()
         .filter_map(|comp| comp.find_component(PeripheralType::TraceFunnel))
@@ -144,11 +144,13 @@ pub(crate) fn setup_swv(
     }
 
     // Configure ITM
+    log::info!("Enabling ITM");
     let mut itm = Itm::new(interface, find_component(components, PeripheralType::Itm)?);
     itm.unlock()?;
     itm.tx_enable()?;
 
     // Configure DWT
+    log::info!("Enabling DWT");
     let mut dwt = Dwt::new(interface, find_component(components, PeripheralType::Dwt)?);
     dwt.enable()?;
     dwt.enable_exception_trace()?;
@@ -178,11 +180,15 @@ pub(crate) fn setup_swv_vendor(
         match peripheral.jep106() {
             Some(id) if id == jep106::JEP106Code::new(0x00, 0x20) => {
                 // STMicroelectronics:
-                log::debug!("STMicroelectronics part detected, configuring DBGMCU");
+                log::info!("STMicroelectronics part detected, configuring DBGMCU");
                 match peripheral.part() {
                     // H7 parts
                     0x450 => {
-                        log::debug!("Configuring STM32H7 DBGMCU");
+                        // The DBGMCU is only accessible on AP2 for the H7.
+                        if component.ap.ap_address().ap != 2 {
+                            continue;
+                        }
+                        log::info!("Configuring STM32H7 DBGMCU");
                         const DBGMCU: u32 = 0xE00E_1000;
                         let mut dbgmcu_cr = memory.read_word_32(DBGMCU + 0x04)?;
                         // Enable domain 3 debug clock.
@@ -190,6 +196,9 @@ pub(crate) fn setup_swv_vendor(
 
                         // Enable domain 1 debug clock.
                         dbgmcu_cr |= 1 << 21;
+
+                        // Enable TPIU clock.
+                        dbgmcu_cr |= 1 << 20;
 
                         // Allow debugging in standby mode
                         dbgmcu_cr |= 1 << 2;
@@ -199,7 +208,7 @@ pub(crate) fn setup_swv_vendor(
 
                     _ => {
                         // F4/F7 parts need TRACE_IOEN set to 1 and TRACE_MODE set to 00.
-                        log::debug!("Configuring default DBGMCU");
+                        log::info!("Configuring default DBGMCU");
                         const DBGMCU: u32 = 0xE004_2004;
                         let mut dbgmcu = memory.read_word_32(DBGMCU)?;
                         dbgmcu |= 1 << 5;
