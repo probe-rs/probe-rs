@@ -1,5 +1,6 @@
-use super::super::memory::romtable::Component;
-use crate::{Core, Error};
+use super::super::memory::romtable::CoresightComponent;
+use crate::architecture::arm::ArmProbeInterface;
+use crate::Error;
 
 pub const _TPIU_PID: [u8; 8] = [0xA1, 0xB9, 0x0B, 0x0, 0x4, 0x0, 0x0, 0x0];
 
@@ -12,28 +13,34 @@ const REGISTER_OFFSET_TPIU_FFCR: u32 = 0x304;
 /// TPIU unit
 ///
 /// Trace port interface unit unit.
-pub struct Tpiu<'probe: 'core, 'core> {
-    component: &'core Component,
-    core: &'core mut Core<'probe>,
+pub struct Tpiu<'a> {
+    component: &'a CoresightComponent,
+    interface: &'a mut Box<dyn ArmProbeInterface>,
 }
 
-impl<'probe: 'core, 'core> Tpiu<'probe, 'core> {
+impl<'a> Tpiu<'a> {
     /// Create a new TPIU interface from a probe and a ROM table component.
-    pub fn new(core: &'core mut Core<'probe>, component: &'core Component) -> Self {
-        Tpiu { component, core }
+    pub fn new(
+        interface: &'a mut Box<dyn ArmProbeInterface>,
+        component: &'a CoresightComponent,
+    ) -> Self {
+        Tpiu {
+            interface,
+            component,
+        }
     }
 
     /// Set the port size of the TPIU.
     pub fn set_port_size(&mut self, value: u32) -> Result<(), Error> {
         self.component
-            .write_reg(self.core, REGISTER_OFFSET_TPIU_CSPSR, value)?;
+            .write_reg(self.interface, REGISTER_OFFSET_TPIU_CSPSR, value)?;
         Ok(())
     }
 
     /// Set the prescaler of the TPIU.
     pub fn set_prescaler(&mut self, value: u32) -> Result<(), Error> {
         self.component
-            .write_reg(self.core, REGISTER_OFFSET_TPIU_ACPR, value)?;
+            .write_reg(self.interface, REGISTER_OFFSET_TPIU_ACPR, value)?;
         Ok(())
     }
 
@@ -44,14 +51,14 @@ impl<'probe: 'core, 'core> Tpiu<'probe, 'core> {
     /// 3 = reserved
     pub fn set_pin_protocol(&mut self, value: u32) -> Result<(), Error> {
         self.component
-            .write_reg(self.core, REGISTER_OFFSET_TPIU_SPPR, value)?;
+            .write_reg(self.interface, REGISTER_OFFSET_TPIU_SPPR, value)?;
         Ok(())
     }
 
     /// Set the TPIU formatter.
     pub fn set_formatter(&mut self, value: u32) -> Result<(), Error> {
         self.component
-            .write_reg(self.core, REGISTER_OFFSET_TPIU_FFCR, value)?;
+            .write_reg(self.interface, REGISTER_OFFSET_TPIU_FFCR, value)?;
         Ok(())
     }
 }

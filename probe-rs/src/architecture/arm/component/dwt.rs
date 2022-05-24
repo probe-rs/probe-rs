@@ -8,25 +8,32 @@
 
 use bitfield::bitfield;
 
-use super::super::memory::romtable::Component;
+use super::super::memory::romtable::CoresightComponent;
 use super::DebugRegister;
-use crate::{Core, Error};
+use crate::architecture::arm::ArmProbeInterface;
+use crate::Error;
 
 /// A struct representing a DWT unit on target.
-pub struct Dwt<'probe: 'core, 'core> {
-    component: &'core Component,
-    core: &'core mut Core<'probe>,
+pub struct Dwt<'a> {
+    component: &'a CoresightComponent,
+    interface: &'a mut Box<dyn ArmProbeInterface>,
 }
 
-impl<'probe: 'core, 'core> Dwt<'probe, 'core> {
+impl<'a> Dwt<'a> {
     /// Creates a new DWT component representation.
-    pub fn new(core: &'core mut Core<'probe>, component: &'core Component) -> Self {
-        Dwt { component, core }
+    pub fn new(
+        interface: &'a mut Box<dyn ArmProbeInterface>,
+        component: &'a CoresightComponent,
+    ) -> Self {
+        Dwt {
+            interface,
+            component,
+        }
     }
 
     /// Logs some info about the DWT component.
     pub fn info(&mut self) -> Result<(), Error> {
-        let ctrl = Ctrl::load(self.component, self.core)?;
+        let ctrl = Ctrl::load(self.component, self.interface)?;
 
         log::info!("DWT info:");
         log::info!("  number of comparators available: {}", ctrl.numcomp());
@@ -40,51 +47,51 @@ impl<'probe: 'core, 'core> Dwt<'probe, 'core> {
 
     /// Enables the DWT component.
     pub fn enable(&mut self) -> Result<(), Error> {
-        let mut ctrl = Ctrl::load(self.component, self.core)?;
+        let mut ctrl = Ctrl::load(self.component, self.interface)?;
         ctrl.set_synctap(0x01);
         ctrl.set_cyccntena(true);
-        ctrl.store(self.component, self.core)
+        ctrl.store(self.component, self.interface)
     }
 
     /// Enables data tracing on a specific address in memory on a specific DWT unit.
     pub fn enable_data_trace(&mut self, unit: usize, address: u32) -> Result<(), Error> {
-        let mut comp = Comp::load_unit(self.component, self.core, unit)?;
+        let mut comp = Comp::load_unit(self.component, self.interface, unit)?;
         comp.set_comp(address);
-        comp.store_unit(self.component, self.core, unit)?;
+        comp.store_unit(self.component, self.interface, unit)?;
 
-        let mut mask = Mask::load_unit(self.component, self.core, unit)?;
+        let mut mask = Mask::load_unit(self.component, self.interface, unit)?;
         mask.set_mask(0x0);
-        mask.store_unit(self.component, self.core, unit)?;
+        mask.store_unit(self.component, self.interface, unit)?;
 
-        let mut function = Function::load_unit(self.component, self.core, unit)?;
+        let mut function = Function::load_unit(self.component, self.interface, unit)?;
         function.set_datavsize(0x10);
         function.set_emitrange(false);
         function.set_datavmatch(false);
         function.set_cycmatch(false);
         function.set_function(0b11);
 
-        function.store_unit(self.component, self.core, unit)
+        function.store_unit(self.component, self.interface, unit)
     }
 
     /// Disables data tracing on the given unit.
     pub fn disable_data_trace(&mut self, unit: usize) -> Result<(), Error> {
-        let mut function = Function::load_unit(self.component, self.core, unit)?;
+        let mut function = Function::load_unit(self.component, self.interface, unit)?;
         function.set_function(0x0);
-        function.store_unit(self.component, self.core, unit)
+        function.store_unit(self.component, self.interface, unit)
     }
 
     /// Enable exception tracing.
     pub fn enable_exception_trace(&mut self) -> Result<(), Error> {
-        let mut ctrl = Ctrl::load(self.component, self.core)?;
+        let mut ctrl = Ctrl::load(self.component, self.interface)?;
         ctrl.set_exctrcena(true);
-        ctrl.store(self.component, self.core)
+        ctrl.store(self.component, self.interface)
     }
 
     /// Disable exception tracing.
     pub fn disable_exception_trace(&mut self) -> Result<(), Error> {
-        let mut ctrl = Ctrl::load(self.component, self.core)?;
+        let mut ctrl = Ctrl::load(self.component, self.interface)?;
         ctrl.set_exctrcena(false);
-        ctrl.store(self.component, self.core)
+        ctrl.store(self.component, self.interface)
     }
 }
 

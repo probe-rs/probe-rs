@@ -2,9 +2,10 @@
 //!
 //! ITM = Instrumentation Trace Macrocell
 
-use super::super::memory::romtable::Component;
+use super::super::memory::romtable::CoresightComponent;
 use super::DebugRegister;
-use crate::{Core, Error};
+use crate::architecture::arm::ArmProbeInterface;
+use crate::Error;
 
 pub const _ITM_PID: [u8; 8] = [0x1, 0xB0, 0x3b, 0x0, 0x4, 0x0, 0x0, 0x0];
 
@@ -23,19 +24,25 @@ pub const _ITM_PID: [u8; 8] = [0x1, 0xB0, 0x3b, 0x0, 0x4, 0x0, 0x0, 0x0];
 /// The Cortex-M4 clock or the bitclock rate of the Serial Wire Viewer (SWV) output clocks the counter.
 /// - Global system timestamping. Timestamps can optionally be generated using a system-wide 48-bit count value.
 /// The same count value can be used to insert timestamps in the ETM trace stream, allowing coarse-grain correlation.
-pub struct Itm<'probe: 'core, 'core> {
-    component: &'core Component,
-    core: &'core mut Core<'probe>,
+pub struct Itm<'a> {
+    component: &'a CoresightComponent,
+    interface: &'a mut Box<dyn ArmProbeInterface>,
 }
 
 const _REGISTER_OFFSET_ITM_TPR: u32 = 0xE40;
 const REGISTER_OFFSET_ITM_TCR: u32 = 0xE80;
 const REGISTER_OFFSET_ACCESS: u32 = 0xFB0;
 
-impl<'probe: 'core, 'core> Itm<'probe, 'core> {
+impl<'a> Itm<'a> {
     /// Create a new ITM interface from a probe and a ROM table component.
-    pub fn new(core: &'core mut Core<'probe>, component: &'core Component) -> Self {
-        Itm { component, core }
+    pub fn new(
+        interface: &'a mut Box<dyn ArmProbeInterface>,
+        component: &'a CoresightComponent,
+    ) -> Self {
+        Itm {
+            interface,
+            component,
+        }
     }
 
     /// Unlock the ITM and enable it for tracing the target.
@@ -45,7 +52,7 @@ impl<'probe: 'core, 'core> Itm<'probe, 'core> {
     /// To enable actual transaction of data, see [`Itm::tx_enable`].
     pub fn unlock(&mut self) -> Result<(), Error> {
         self.component
-            .write_reg(self.core, REGISTER_OFFSET_ACCESS, 0xC5AC_CE55)?;
+            .write_reg(self.interface, REGISTER_OFFSET_ACCESS, 0xC5AC_CE55)?;
 
         Ok(())
     }
@@ -56,7 +63,7 @@ impl<'probe: 'core, 'core> Itm<'probe, 'core> {
     pub fn tx_enable(&mut self) -> Result<(), Error> {
         let mut value = self
             .component
-            .read_reg(self.core, REGISTER_OFFSET_ITM_TCR)?;
+            .read_reg(self.interface, REGISTER_OFFSET_ITM_TCR)?;
 
         value |= 1 << 0; // ITMENA: enable ITM (master switch)
         value |= 1 << 1; // TSENA: enable local timestamps
@@ -65,11 +72,11 @@ impl<'probe: 'core, 'core> Itm<'probe, 'core> {
         value |= 1 << 11; // GTSFREQ: generate global timestamp every 8192 cycles
         value |= 13 << 16; // 7 bits trace bus ID
         self.component
-            .write_reg(self.core, REGISTER_OFFSET_ITM_TCR, value)?;
+            .write_reg(self.interface, REGISTER_OFFSET_ITM_TCR, value)?;
 
         // Enable all 32 channels.
         self.component.write_reg(
-            self.core,
+            self.interface,
             register::ITM_TER::ADDRESS,
             register::ITM_TER::enable_all().into(),
         )?;
