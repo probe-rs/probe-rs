@@ -92,6 +92,12 @@ On Ubuntu or Debian, the following packages need to be installed:
 > sudo apt install -y pkg-config libusb-1.0-0-dev libftdi1-dev libudev-dev
 ```
 
+For Fedora or CentOS
+
+```
+> dnf install systemd-devel
+```
+
 You may also need to remove old versions of libusb:
 
 ```
