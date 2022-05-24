@@ -79,6 +79,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Debugger: Fix `Source` breakpoints only worked for a single source file. (#1098)
   - Debugger: Fix assumptions for ARM cores
   - GDB: Fix assumptions for ARM cores
+- Fixed access to Arm CoreSight components being completed through the wrong AP (#1114)
 
 ## [0.12.0]
 
