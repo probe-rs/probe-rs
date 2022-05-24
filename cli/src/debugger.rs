@@ -87,7 +87,7 @@ impl DebugCli {
                 .map_err(|err| anyhow!("Error creating capstone: {:?}", err))?;
 
                 // Attempt to dissassemble
-                match cs.disasm_all(&code, u64::from(cpu_info.pc)) {
+                match cs.disasm_all(&code, cpu_info.pc) {
                     Ok(instructions) => {
                         for i in instructions.iter() {
                             println!("{}", i);
@@ -100,7 +100,7 @@ impl DebugCli {
                         for (offset, instruction) in code.iter().enumerate() {
                             println!(
                                 "{:#010x}: {:010x}",
-                                cpu_info.pc + offset as u32,
+                                cpu_info.pc + offset as u64,
                                 instruction
                             );
                         }
@@ -245,7 +245,7 @@ impl DebugCli {
                 }
 
                 for (offset, word) in buff.iter().enumerate() {
-                    println!("0x{:08x} = 0x{:08x}", address + (offset * 4) as u32, word);
+                    println!("0x{:08x} = 0x{:08x}", address + (offset * 4) as u64, word);
                 }
 
                 Ok(CliState::Continue)
@@ -274,7 +274,7 @@ impl DebugCli {
                 }
 
                 for (offset, byte) in buff.iter().enumerate() {
-                    println!("0x{:08x} = 0x{:02x}", address + (offset) as u32, byte);
+                    println!("0x{:08x} = 0x{:02x}", address + (offset) as u64, byte);
                 }
 
                 Ok(CliState::Continue)
@@ -553,7 +553,7 @@ impl DebugCli {
 
                 let mut stack = vec![0u8; (stack_top - stack_bot) as usize];
 
-                cli_data.core.read(stack_bot, &mut stack[..])?;
+                cli_data.core.read(stack_bot.into(), &mut stack[..])?;
 
                 let mut dump = Dump::new(stack_bot, stack);
 

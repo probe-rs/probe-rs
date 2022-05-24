@@ -7,7 +7,7 @@ pub struct NvmRegion {
     /// A name to describe the region
     pub name: Option<String>,
     /// Address range of the region
-    pub range: Range<u32>,
+    pub range: Range<u64>,
     /// True if the chip boots from this memory
     pub is_boot_memory: bool,
     /// List of cores that can access this region
@@ -29,7 +29,7 @@ pub struct RamRegion {
     /// A name to describe the region
     pub name: Option<String>,
     /// Address range of the region
-    pub range: Range<u32>,
+    pub range: Range<u64>,
     /// True if the chip boots from this memory
     pub is_boot_memory: bool,
     /// List of cores that can access this region
@@ -42,7 +42,7 @@ pub struct GenericRegion {
     /// A name to describe the region
     pub name: Option<String>,
     /// Address range of the region
-    pub range: Range<u32>,
+    pub range: Range<u64>,
     /// List of cores that can access this region
     pub cores: Vec<String>,
 }
@@ -52,9 +52,9 @@ pub struct GenericRegion {
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub struct SectorInfo {
     /// Base address of the flash sector
-    pub base_address: u32,
+    pub base_address: u64,
     /// Size of the flash sector
-    pub size: u32,
+    pub size: u64,
 }
 
 /// Information about a group of flash sectors, which
@@ -70,17 +70,17 @@ pub struct SectorInfo {
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct SectorDescription {
     /// Size of each individual flash sector
-    pub size: u32,
+    pub size: u64,
     /// Start address of the group of flash sectors, relative
     /// to the start address of the flash.
-    pub address: u32,
+    pub address: u64,
 }
 
 /// Holds information about a page in flash.
 #[derive(Debug, Copy, Clone)]
 pub struct PageInfo {
     /// Base address of the page in flash.
-    pub base_address: u32,
+    pub base_address: u64,
     /// Size of the page
     pub size: u32,
 }
@@ -88,20 +88,20 @@ pub struct PageInfo {
 /// Holds information about the entire flash.
 #[derive(Debug, Copy, Clone)]
 pub struct NvmInfo {
-    pub rom_start: u32,
+    pub rom_start: u64,
 }
 
 /// Enables the user to do range intersection testing.
 pub trait MemoryRange {
     /// Returns true if `self` contains `range` fully.
-    fn contains_range(&self, range: &Range<u32>) -> bool;
+    fn contains_range(&self, range: &Range<u64>) -> bool;
 
     /// Returns true if `self` intersects `range` partially.
-    fn intersects_range(&self, range: &Range<u32>) -> bool;
+    fn intersects_range(&self, range: &Range<u64>) -> bool;
 }
 
-impl MemoryRange for Range<u32> {
-    fn contains_range(&self, range: &Range<u32>) -> bool {
+impl MemoryRange for Range<u64> {
+    fn contains_range(&self, range: &Range<u64>) -> bool {
         if range.end == 0 {
             false
         } else {
@@ -109,7 +109,7 @@ impl MemoryRange for Range<u32> {
         }
     }
 
-    fn intersects_range(&self, range: &Range<u32>) -> bool {
+    fn intersects_range(&self, range: &Range<u64>) -> bool {
         if range.end == 0 {
             false
         } else {

@@ -100,7 +100,7 @@ impl ArmDebugSequence for LPC55S69 {
         &self,
         interface: &mut crate::Memory,
         _core_type: crate::CoreType,
-        _debug_base: Option<u32>,
+        _debug_base: Option<u64>,
     ) -> Result<(), crate::Error> {
         use crate::architecture::arm::core::armv7m::{Demcr, Dhcsr};
 
@@ -179,7 +179,7 @@ impl ArmDebugSequence for LPC55S69 {
         &self,
         interface: &mut crate::Memory,
         _core_type: crate::CoreType,
-        _debug_base: Option<u32>,
+        _debug_base: Option<u64>,
     ) -> Result<(), crate::Error> {
         use crate::architecture::arm::core::armv7m::Demcr;
 
@@ -197,7 +197,7 @@ impl ArmDebugSequence for LPC55S69 {
         &self,
         interface: &mut crate::Memory,
         _core_type: crate::CoreType,
-        _debug_base: Option<u32>,
+        _debug_base: Option<u64>,
     ) -> Result<(), crate::Error> {
         use crate::architecture::arm::core::armv7m::Aircr;
 

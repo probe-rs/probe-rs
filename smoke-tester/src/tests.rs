@@ -56,8 +56,8 @@ pub fn test_memory_access(
             probe_rs::config::MemoryRegion::Ram(ram)
                 if ram.cores.iter().any(|c| c == core_name) =>
             {
-                let ram_start = ram.range.start;
-                let ram_size = ram.range.end - ram.range.start;
+                let ram_start = ram.range.start as u64;
+                let ram_size = (ram.range.end - ram.range.start) as u64;
 
                 println_test_status!(tracker, blue, "Test - RAM Start 32");
                 // Write first word
@@ -123,25 +123,25 @@ pub fn test_hw_breakpoints(
     for region in memory_regions {
         match region {
             probe_rs::config::MemoryRegion::Nvm(nvm) => {
-                let initial_breakpoint_addr = nvm.range.start;
+                let initial_breakpoint_addr = nvm.range.start as u64;
 
                 let num_breakpoints = core.available_breakpoint_units()?;
 
                 println_test_status!(tracker, blue, "{} breakpoints supported", num_breakpoints);
 
                 for i in 0..num_breakpoints {
-                    core.set_hw_breakpoint(initial_breakpoint_addr + 4 * i)?;
+                    core.set_hw_breakpoint(initial_breakpoint_addr + 4 * i as u64)?;
                 }
 
                 // Try to set an additional breakpoint, which should fail
-                core.set_hw_breakpoint(initial_breakpoint_addr + num_breakpoints * 4)
+                core.set_hw_breakpoint(initial_breakpoint_addr + num_breakpoints as u64 * 4)
                     .expect_err(
                         "Trying to use more than supported number of breakpoints should fail.",
                     );
 
                 // Clear all breakpoints again
                 for i in 0..num_breakpoints {
-                    core.clear_hw_breakpoint(initial_breakpoint_addr + 4 * i)?;
+                    core.clear_hw_breakpoint(initial_breakpoint_addr + 4 * i as u64)?;
                 }
             }
 

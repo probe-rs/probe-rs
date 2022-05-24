@@ -555,6 +555,10 @@ pub fn print_families(mut f: impl Write) -> Result<(), OperationError> {
     Ok(())
 }
 
+fn get_range_len(range: &std::ops::Range<u64>) -> u64 {
+    range.end - range.start
+}
+
 /// Print all the available families and their contained chips to the
 /// commandline.
 pub fn print_chip_info(name: impl AsRef<str>, mut f: impl Write) -> anyhow::Result<()> {
@@ -575,19 +579,19 @@ pub fn print_chip_info(name: impl AsRef<str>, mut f: impl Write) -> anyhow::Resu
                 f,
                 "RAM: {:#010x?} ({})",
                 &region.range,
-                Byte::from_bytes(region.range.len() as u128).get_appropriate_unit(true)
+                Byte::from_bytes(get_range_len(&region.range) as u128).get_appropriate_unit(true)
             )?,
             probe_rs::config::MemoryRegion::Generic(region) => writeln!(
                 f,
                 "Generic: {:#010x?} ({})",
                 &region.range,
-                Byte::from_bytes(region.range.len() as u128).get_appropriate_unit(true)
+                Byte::from_bytes(get_range_len(&region.range) as u128).get_appropriate_unit(true)
             )?,
             probe_rs::config::MemoryRegion::Nvm(region) => writeln!(
                 f,
                 "NVM: {:#010x?} ({})",
                 &region.range,
-                Byte::from_bytes(region.range.len() as u128).get_appropriate_unit(true)
+                Byte::from_bytes(get_range_len(&region.range) as u128).get_appropriate_unit(true)
             )?,
         };
     }

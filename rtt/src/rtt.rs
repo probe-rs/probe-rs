@@ -79,7 +79,7 @@ impl Rtt {
             None => {
                 // If memory wasn't passed in, read the minimum header size
                 let mut mem = vec![0u8; Self::MIN_SIZE];
-                core.read(ptr, &mut mem)?;
+                core.read(ptr.into(), &mut mem)?;
                 Cow::Owned(mem)
             }
         };
@@ -114,7 +114,7 @@ impl Rtt {
             // If memory wasn't passed in, read the rest of the control block
             mem.resize(cb_len, 0);
             core.read(
-                ptr + Self::MIN_SIZE as u32,
+                (ptr + Self::MIN_SIZE as u32).into(),
                 &mut mem[Self::MIN_SIZE..cb_len],
             )?;
         }
@@ -190,7 +190,10 @@ impl Rtt {
                 memory_map
                     .iter()
                     .filter_map(|r| match r {
-                        MemoryRegion::Ram(r) => Some(r.range.clone()),
+                        MemoryRegion::Ram(r) => Some(Range {
+                            start: r.range.start as u32,
+                            end: r.range.end as u32,
+                        }),
                         _ => None,
                     })
                     .collect()
@@ -212,7 +215,7 @@ impl Rtt {
 
             mem.resize(range.len(), 0);
             {
-                core.read(range.start, mem.as_mut())?;
+                core.read(range.start.into(), mem.as_mut())?;
             }
 
             for offset in 0..(mem.len() - Self::MIN_SIZE) {

@@ -582,7 +582,7 @@ impl DebugInfo {
                                     .read_word_32(*address)
                                 {
                                     Ok(memory_location) => {
-                                        VariableLocation::Address(memory_location)
+                                        VariableLocation::Address(memory_location as u64)
                                     }
                                     Err(error) => {
                                         log::error!("Failed to read referenced variable address from memory location {} : {}.", parent_variable.memory_location , error);
@@ -1133,7 +1133,7 @@ impl DebugInfo {
                                         i64::from(unwind_cfa) + address_offset;
                                     let mut buff = [0u8; 4];
                                     if let Err(e) =
-                                        core.read(previous_frame_register_address as u32, &mut buff)
+                                        core.read(previous_frame_register_address as u64, &mut buff)
                                     {
                                         log::error!(
                                                         "UNWIND: Failed to read from address {:#010x} ({} bytes): {}",
@@ -1259,7 +1259,7 @@ impl DebugInfo {
                                         i64::from(unwind_cfa) + address_offset;
                                     let mut buff = [0u8; 4];
                                     if let Err(e) =
-                                        core.read(previous_frame_register_address as u32, &mut buff)
+                                        core.read(previous_frame_register_address as u64, &mut buff)
                                     {
                                         log::error!(
                                                         "UNWIND: Failed to read from address {:#010x} ({} bytes): {}",

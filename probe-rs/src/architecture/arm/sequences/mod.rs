@@ -46,7 +46,7 @@ impl DefaultArmSequence {
 impl ArmDebugSequence for DefaultArmSequence {}
 
 /// ResetCatchSet for Cortex-A devices
-fn armv7a_reset_catch_set(core: &mut Memory, debug_base: Option<u32>) -> Result<(), crate::Error> {
+fn armv7a_reset_catch_set(core: &mut Memory, debug_base: Option<u64>) -> Result<(), crate::Error> {
     use crate::architecture::arm::core::armv7a_debug_regs::Dbgprcr;
 
     let debug_base = debug_base.ok_or_else(|| {
@@ -66,7 +66,7 @@ fn armv7a_reset_catch_set(core: &mut Memory, debug_base: Option<u32>) -> Result<
 /// ResetCatchClear for Cortex-A devices
 fn armv7a_reset_catch_clear(
     core: &mut Memory,
-    debug_base: Option<u32>,
+    debug_base: Option<u64>,
 ) -> Result<(), crate::Error> {
     use crate::architecture::arm::core::armv7a_debug_regs::Dbgprcr;
 
@@ -86,7 +86,7 @@ fn armv7a_reset_catch_clear(
 
 fn armv7a_reset_system(
     interface: &mut Memory,
-    debug_base: Option<u32>,
+    debug_base: Option<u64>,
 ) -> Result<(), crate::Error> {
     use crate::architecture::arm::core::armv7a_debug_regs::{Dbgprcr, Dbgprsr};
 
@@ -116,7 +116,7 @@ fn armv7a_reset_system(
 }
 
 /// DebugCoreStart for v7 Cortex-A devices
-fn armv7a_core_start(core: &mut Memory, debug_base: Option<u32>) -> Result<(), crate::Error> {
+fn armv7a_core_start(core: &mut Memory, debug_base: Option<u64>) -> Result<(), crate::Error> {
     use crate::architecture::arm::core::armv7a_debug_regs::{Dbgdsccr, Dbgdscr, Dbgdsmcr, Dbglar};
 
     let debug_base = debug_base.ok_or_else(|| {
@@ -155,7 +155,7 @@ fn armv7a_core_start(core: &mut Memory, debug_base: Option<u32>) -> Result<(), c
 }
 
 /// ResetCatchSet for ARMv8-A devices
-fn armv8a_reset_catch_set(core: &mut Memory, debug_base: Option<u32>) -> Result<(), crate::Error> {
+fn armv8a_reset_catch_set(core: &mut Memory, debug_base: Option<u64>) -> Result<(), crate::Error> {
     use crate::architecture::arm::core::armv8a_debug_regs::{Armv8DebugRegister, Edecr};
 
     let debug_base = debug_base.ok_or_else(|| {
@@ -175,7 +175,7 @@ fn armv8a_reset_catch_set(core: &mut Memory, debug_base: Option<u32>) -> Result<
 /// ResetCatchClear for ARMv8-a devices
 fn armv8a_reset_catch_clear(
     core: &mut Memory,
-    debug_base: Option<u32>,
+    debug_base: Option<u64>,
 ) -> Result<(), crate::Error> {
     use crate::architecture::arm::core::armv8a_debug_regs::{Armv8DebugRegister, Edecr};
 
@@ -195,7 +195,7 @@ fn armv8a_reset_catch_clear(
 
 fn armv8a_reset_system(
     interface: &mut Memory,
-    debug_base: Option<u32>,
+    debug_base: Option<u64>,
 ) -> Result<(), crate::Error> {
     use crate::architecture::arm::core::armv8a_debug_regs::{Armv8DebugRegister, Edprcr, Edprsr};
 
@@ -227,8 +227,8 @@ fn armv8a_reset_system(
 /// DebugCoreStart for v8 Cortex-A devices
 fn armv8a_core_start(
     core: &mut Memory,
-    debug_base: Option<u32>,
-    cti_base: Option<u32>,
+    debug_base: Option<u64>,
+    cti_base: Option<u64>,
 ) -> Result<(), crate::Error> {
     use crate::architecture::arm::core::armv8a_debug_regs::{
         Armv8DebugRegister, CtiControl, CtiGate, CtiOuten, Edlar, Edscr,
@@ -554,8 +554,8 @@ pub trait ArmDebugSequence: Send + Sync {
         &self,
         core: &mut Memory,
         core_type: CoreType,
-        debug_base: Option<u32>,
-        cti_base: Option<u32>,
+        debug_base: Option<u64>,
+        cti_base: Option<u64>,
     ) -> Result<(), crate::Error> {
         // Dispatch based on core type (Cortex-A vs M)
         match core_type {
@@ -581,7 +581,7 @@ pub trait ArmDebugSequence: Send + Sync {
         &self,
         core: &mut Memory,
         core_type: CoreType,
-        debug_base: Option<u32>,
+        debug_base: Option<u64>,
     ) -> Result<(), crate::Error> {
         // Dispatch based on core type (Cortex-A vs M)
         match core_type {
@@ -607,7 +607,7 @@ pub trait ArmDebugSequence: Send + Sync {
         &self,
         core: &mut Memory,
         core_type: CoreType,
-        debug_base: Option<u32>,
+        debug_base: Option<u64>,
     ) -> Result<(), crate::Error> {
         // Dispatch based on core type (Cortex-A vs M)
         match core_type {
@@ -633,7 +633,7 @@ pub trait ArmDebugSequence: Send + Sync {
         &self,
         interface: &mut Memory,
         core_type: CoreType,
-        debug_base: Option<u32>,
+        debug_base: Option<u64>,
     ) -> Result<(), crate::Error> {
         // Dispatch based on core type (Cortex-A vs M)
         match core_type {

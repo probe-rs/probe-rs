@@ -69,10 +69,10 @@ pub fn run_flash_download(
                 Initialized { flash_layout } => {
                     let total_page_size: u32 = flash_layout.pages().iter().map(|s| s.size()).sum();
 
-                    let total_sector_size: u32 =
+                    let total_sector_size: u64 =
                         flash_layout.sectors().iter().map(|s| s.size()).sum();
 
-                    let total_fill_size: u32 = flash_layout.fills().iter().map(|s| s.size()).sum();
+                    let total_fill_size: u64 = flash_layout.fills().iter().map(|s| s.size()).sum();
 
                     if let Some(fp) = fill_progress.as_ref() {
                         fp.set_length(total_fill_size as u64)

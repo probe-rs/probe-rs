@@ -9,7 +9,7 @@ use super::{FlashAlgorithm, FlashError, FlashVisualizer};
 /// The description of a page in flash.
 #[derive(Clone, PartialEq, Eq)]
 pub struct FlashPage {
-    address: u32,
+    address: u64,
     data: Vec<u8>,
 }
 
@@ -32,7 +32,7 @@ impl FlashPage {
     }
 
     /// Returns the start address of the page.
-    pub fn address(&self) -> u32 {
+    pub fn address(&self) -> u64 {
         self.address
     }
 
@@ -55,18 +55,18 @@ impl FlashPage {
 /// The description of a sector in flash.
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct FlashSector {
-    address: u32,
-    size: u32,
+    address: u64,
+    size: u64,
 }
 
 impl FlashSector {
     /// Returns the start address of the sector.
-    pub fn address(&self) -> u32 {
+    pub fn address(&self) -> u64 {
         self.address
     }
 
     /// Returns the size of the sector in bytes.
-    pub fn size(&self) -> u32 {
+    pub fn size(&self) -> u64 {
         self.size
     }
 }
@@ -75,19 +75,19 @@ impl FlashSector {
 /// in the flash that is erased during flashing and has to be restored to its original value afterwards.
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct FlashFill {
-    address: u32,
-    size: u32,
+    address: u64,
+    size: u64,
     page_index: usize,
 }
 
 impl FlashFill {
     /// Returns the start address of the fill.
-    pub fn address(&self) -> u32 {
+    pub fn address(&self) -> u64 {
         self.address
     }
 
     /// Returns the size of the fill in bytes.
-    pub fn size(&self) -> u32 {
+    pub fn size(&self) -> u64 {
         self.size
     }
 
@@ -140,18 +140,18 @@ impl FlashLayout {
 /// A block of data that is to be written to flash.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct FlashDataBlockSpan {
-    address: u32,
-    size: u32,
+    address: u64,
+    size: u64,
 }
 
 impl FlashDataBlockSpan {
     /// Get the start address of the block.
-    pub fn address(&self) -> u32 {
+    pub fn address(&self) -> u64 {
         self.address
     }
 
     /// Returns the size of the block in bytes.
-    pub fn size(&self) -> u32 {
+    pub fn size(&self) -> u64 {
         self.size
     }
 }
@@ -159,7 +159,7 @@ impl FlashDataBlockSpan {
 /// A helper structure to build a flash layout from a set of data blocks.
 #[derive(Default)]
 pub(super) struct FlashBuilder {
-    pub(super) data: BTreeMap<u32, Vec<u8>>,
+    pub(super) data: BTreeMap<u64, Vec<u8>>,
 }
 
 impl FlashBuilder {
@@ -173,7 +173,7 @@ impl FlashBuilder {
     /// Stages a chunk of data to be programmed.
     ///
     /// The chunk can cross flash boundaries as long as one flash region connects to another flash region.
-    pub fn add_data(&mut self, address: u32, data: &[u8]) -> Result<(), FlashError> {
+    pub fn add_data(&mut self, address: u64, data: &[u8]) -> Result<(), FlashError> {
         // Ignore zero-length stuff
         if data.is_empty() {
             return Ok(());
@@ -181,22 +181,22 @@ impl FlashBuilder {
 
         // Check the new data doesn't overlap to the right.
         if let Some((&next_addr, next_data)) = self.data.range(address..).next() {
-            if address + (data.len() as u32) > next_addr {
+            if address + (data.len() as u64) > next_addr {
                 return Err(FlashError::DataOverlaps {
-                    added_addresses: address..address + data.len() as u32,
-                    existing_addresses: next_addr..next_addr + next_data.len() as u32,
+                    added_addresses: address..address + data.len() as u64,
+                    existing_addresses: next_addr..next_addr + next_data.len() as u64,
                 });
             }
         }
 
         // Check the new data doesn't overlap to the left.
         if let Some((&prev_addr, prev_data)) = self.data.range_mut(..address).next_back() {
-            let prev_end = prev_addr + (prev_data.len() as u32);
+            let prev_end = prev_addr + (prev_data.len() as u64);
 
             if prev_end > address {
                 return Err(FlashError::DataOverlaps {
-                    added_addresses: address..address + data.len() as u32,
-                    existing_addresses: prev_addr..prev_addr + prev_data.len() as u32,
+                    added_addresses: address..address + data.len() as u64,
+                    existing_addresses: prev_addr..prev_addr + prev_data.len() as u64,
                 });
             }
 
@@ -214,7 +214,7 @@ impl FlashBuilder {
     }
 
     /// Check whether there is staged data for a given address range.
-    pub(crate) fn has_data_in_range(&self, range: &Range<u32>) -> bool {
+    pub(crate) fn has_data_in_range(&self, range: &Range<u64>) -> bool {
         self.data_in_range(range).next().is_some()
     }
 
@@ -224,7 +224,7 @@ impl FlashBuilder {
     /// If a staged chunk is not fully contained in the range, only the contained part is
     /// returned. ie for each returned item (addr, data), it's guaranteed that the condition
     /// `start <= addr && addr + data.len() <= end` upholds.
-    pub(crate) fn data_in_range(&self, range: &Range<u32>) -> impl Iterator<Item = (u32, &[u8])> {
+    pub(crate) fn data_in_range(&self, range: &Range<u64>) -> impl Iterator<Item = (u64, &[u8])> {
         let range = range.clone();
 
         let mut adjusted_start = range.start;
@@ -232,7 +232,7 @@ impl FlashBuilder {
         // Check if the immediately preceding data overlaps with the wanted range.
         // If so, adjust the iteration start so it is included.
         if let Some((&prev_addr, prev_data)) = self.data.range(..range.start).next_back() {
-            if prev_addr + (prev_data.len() as u32) > range.start {
+            if prev_addr + (prev_data.len() as u64) > range.start {
                 adjusted_start = prev_addr;
             }
         }
@@ -250,7 +250,7 @@ impl FlashBuilder {
                 }
 
                 // Cut chunk from the right if it ends before `end`.
-                if addr + (data.len()) as u32 > range.end {
+                if addr + (data.len()) as u64 > range.end {
                     data = &data[..(range.end - addr) as usize];
                 }
 
@@ -279,7 +279,7 @@ impl FlashBuilder {
             }
 
             let page = flash_algorithm.page_info(info.base_address).unwrap();
-            let page_range = page.base_address..page.base_address + page.size;
+            let page_range = page.base_address..page.base_address + page.size as u64;
             let sector_has_data = self.has_data_in_range(&range);
             let page_has_data = self.has_data_in_range(&page_range);
 
@@ -295,7 +295,7 @@ impl FlashBuilder {
         }
 
         for info in flash_algorithm.iter_pages() {
-            let page_end = info.base_address + info.size;
+            let page_end = info.base_address + info.size as u64;
             let range = info.base_address..page_end;
 
             // Ignore the page if it's outside the NvmRegion.
@@ -332,7 +332,7 @@ impl FlashBuilder {
                         page_index: pages.len(),
                     });
                 }
-                fill_start_addr = address + data.len() as u32;
+                fill_start_addr = address + data.len() as u64;
             }
 
             // Fill the hole between the last data block (or page start if there are no blocks) and page end.
@@ -1031,14 +1031,14 @@ mod tests {
                     let mut sectors = Vec::with_capacity(88);
                     for i in 0..40 {
                         sectors.push(FlashSector {
-                            address: 128 * i as u32,
+                            address: 128 * i as u64,
                             size: 0x000080,
                         });
                     }
 
                     for i in 56..104 {
                         sectors.push(FlashSector {
-                            address: 128 * i as u32,
+                            address: 128 * i as u64,
                             size: 0x000080,
                         });
                     }

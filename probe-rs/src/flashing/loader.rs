@@ -42,7 +42,7 @@ impl FlashLoader {
 
     /// Check the given address range is completely covered by the memory map,
     /// possibly by multiple memory regions.
-    fn check_data_in_memory_map(&mut self, range: Range<u32>) -> Result<(), FlashError> {
+    fn check_data_in_memory_map(&mut self, range: Range<u64>) -> Result<(), FlashError> {
         let mut address = range.start;
         while address < range.end {
             match Self::get_region_for_address(&self.memory_map, address) {
@@ -63,20 +63,20 @@ impl FlashLoader {
     /// Stages a chunk of data to be programmed.
     ///
     /// The chunk can cross flash boundaries as long as one flash region connects to another flash region.
-    pub fn add_data(&mut self, address: u32, data: &[u8]) -> Result<(), FlashError> {
+    pub fn add_data(&mut self, address: u64, data: &[u8]) -> Result<(), FlashError> {
         log::trace!(
             "Adding data at address {:#010x} with size {} bytes",
             address,
             data.len()
         );
 
-        self.check_data_in_memory_map(address..address + data.len() as u32)?;
+        self.check_data_in_memory_map(address..address + data.len() as u64)?;
         self.builder.add_data(address, data)
     }
 
     pub(super) fn get_region_for_address(
         memory_map: &[MemoryRegion],
-        address: u32,
+        address: u64,
     ) -> Option<&MemoryRegion> {
         for region in memory_map {
             let r = match region {
@@ -130,16 +130,16 @@ impl FlashLoader {
             use Record::*;
             match record {
                 Data { offset, value } => {
-                    let offset = base_address + offset as u32;
+                    let offset = base_address + offset as u64;
                     self.add_data(offset, &value)?;
                 }
                 EndOfFile => (),
                 ExtendedSegmentAddress(address) => {
-                    base_address = (address as u32) * 16;
+                    base_address = (address as u64) * 16;
                 }
                 StartSegmentAddress { .. } => (),
                 ExtendedLinearAddress(address) => {
-                    base_address = (address as u32) << 16;
+                    base_address = (address as u64) << 16;
                 }
                 StartLinearAddress(_) => (),
             };
@@ -183,7 +183,7 @@ impl FlashLoader {
         }
 
         for data in extracted_data {
-            self.add_data(data.address, data.data)?;
+            self.add_data(data.address.into(), data.data)?;
         }
 
         Ok(())
@@ -206,7 +206,7 @@ impl FlashLoader {
             log::debug!(
                 "    data: {:08x}-{:08x} ({} bytes)",
                 address,
-                address + data.len() as u32,
+                address + data.len() as u64,
                 data.len()
             );
         }
@@ -378,11 +378,12 @@ impl FlashLoader {
                     log::debug!(
                         "     -- writing: {:08x}-{:08x} ({} bytes)",
                         address,
-                        address + data.len() as u32,
+                        address + data.len() as u64,
                         data.len()
                     );
                     // Write data to memory.
-                    core.write_8(address, data).map_err(FlashError::Core)?;
+                    core.write_8(address as u64, data)
+                        .map_err(FlashError::Core)?;
                 }
 
                 if !some {
@@ -397,7 +398,7 @@ impl FlashLoader {
                 log::debug!(
                     "    data: {:08x}-{:08x} ({} bytes)",
                     address,
-                    address + data.len() as u32,
+                    address + data.len() as u64,
                     data.len()
                 );
 
@@ -416,7 +417,7 @@ impl FlashLoader {
                 let mut core = session.core(core_index).map_err(FlashError::Core)?;
 
                 let mut written_data = vec![0; data.len()];
-                core.read(address, &mut written_data)
+                core.read(address as u64, &mut written_data)
                     .map_err(FlashError::Core)?;
 
                 if data != &written_data {

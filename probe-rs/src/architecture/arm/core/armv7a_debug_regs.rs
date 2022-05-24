@@ -7,14 +7,14 @@ use crate::HaltReason;
 /// A debug register that is accessible to the external debugger
 pub trait Armv7DebugRegister {
     /// Register number
-    const NUMBER: u32;
+    const NUMBER: usize;
 
     /// The register's name.
     const NAME: &'static str;
 
     /// Get the address in the memory map
-    fn get_mmio_address(base_address: u32) -> u32 {
-        base_address + (Self::NUMBER * size_of::<u32>() as u32)
+    fn get_mmio_address(base_address: u64) -> u64 {
+        base_address + (Self::NUMBER * size_of::<u32>()) as u64
     }
 }
 
@@ -259,7 +259,7 @@ impl Dbgdscr {
 }
 
 impl Armv7DebugRegister for Dbgdscr {
-    const NUMBER: u32 = 34;
+    const NUMBER: usize = 34;
     const NAME: &'static str = "DBGDSCR";
 }
 
@@ -330,7 +330,7 @@ bitfield! {
 }
 
 impl Armv7DebugRegister for Dbgdidr {
-    const NUMBER: u32 = 0;
+    const NUMBER: usize = 0;
     const NAME: &'static str = "DBGDIDR";
 }
 
@@ -369,7 +369,7 @@ bitfield! {
 }
 
 impl Armv7DebugRegister for Dbgdrcr {
-    const NUMBER: u32 = 36;
+    const NUMBER: usize = 36;
     const NAME: &'static str = "DBGDRCR";
 }
 
@@ -396,7 +396,7 @@ bitfield! {
 }
 
 impl Armv7DebugRegister for Dbgbvr {
-    const NUMBER: u32 = 64;
+    const NUMBER: usize = 64;
     const NAME: &'static str = "DBGBVR";
 }
 
@@ -444,7 +444,7 @@ bitfield! {
 }
 
 impl Armv7DebugRegister for Dbgbcr {
-    const NUMBER: u32 = 80;
+    const NUMBER: usize = 80;
     const NAME: &'static str = "DBGBCR";
 }
 
@@ -472,7 +472,7 @@ bitfield! {
 }
 
 impl Armv7DebugRegister for Dbglar {
-    const NUMBER: u32 = 1004;
+    const NUMBER: usize = 1004;
     const NAME: &'static str = "DBGLAR";
 }
 
@@ -505,7 +505,7 @@ bitfield! {
 }
 
 impl Armv7DebugRegister for Dbgdsccr {
-    const NUMBER: u32 = 10;
+    const NUMBER: usize = 10;
     const NAME: &'static str = "DBGDSCCR";
 }
 
@@ -541,7 +541,7 @@ bitfield! {
 }
 
 impl Armv7DebugRegister for Dbgdsmcr {
-    const NUMBER: u32 = 11;
+    const NUMBER: usize = 11;
     const NAME: &'static str = "DBGDSMCR";
 }
 
@@ -568,7 +568,7 @@ bitfield! {
 }
 
 impl Armv7DebugRegister for Dbgitr {
-    const NUMBER: u32 = 33;
+    const NUMBER: usize = 33;
     const NAME: &'static str = "DBGITR";
 }
 
@@ -595,7 +595,7 @@ bitfield! {
 }
 
 impl Armv7DebugRegister for Dbgdtrtx {
-    const NUMBER: u32 = 35;
+    const NUMBER: usize = 35;
     const NAME: &'static str = "DBGDTRTX";
 }
 
@@ -622,7 +622,7 @@ bitfield! {
 }
 
 impl Armv7DebugRegister for Dbgdtrrx {
-    const NUMBER: u32 = 32;
+    const NUMBER: usize = 32;
     const NAME: &'static str = "DBGDTRRX";
 }
 
@@ -658,7 +658,7 @@ bitfield! {
 }
 
 impl Armv7DebugRegister for Dbgprcr {
-    const NUMBER: u32 = 196;
+    const NUMBER: usize = 196;
     const NAME: &'static str = "DBGPRCR";
 }
 
@@ -703,7 +703,7 @@ bitfield! {
 }
 
 impl Armv7DebugRegister for Dbgprsr {
-    const NUMBER: u32 = 197;
+    const NUMBER: usize = 197;
     const NAME: &'static str = "DBGPRSR";
 }
 

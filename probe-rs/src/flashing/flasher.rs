@@ -133,11 +133,11 @@ impl<'session> Flasher<'session> {
             algo.load_address
         );
 
-        core.write_32(algo.load_address, algo.instructions.as_slice())
+        core.write_32(algo.load_address as u64, algo.instructions.as_slice())
             .map_err(FlashError::Core)?;
 
         let mut data = vec![0; algo.instructions.len()];
-        core.read_32(algo.load_address, &mut data)
+        core.read_32(algo.load_address as u64, &mut data)
             .map_err(FlashError::Core)?;
 
         for (offset, (original, read_back)) in algo.instructions.iter().zip(data.iter()).enumerate()
@@ -145,7 +145,7 @@ impl<'session> Flasher<'session> {
             if original != read_back {
                 log::error!(
                     "Failed to verify flash algorithm. Data mismatch at address {:#08x}",
-                    algo.load_address + (4 * offset) as u32
+                    algo.load_address + (4 * offset) as u64
                 );
                 log::error!("Original instruction: {:#08x}", original);
                 log::error!("Readback instruction: {:#08x}", read_back);
@@ -305,7 +305,7 @@ impl<'session> Flasher<'session> {
         self.run_verify(|active| {
             active
                 .core
-                .read(fill.address(), page_slice)
+                .read(fill.address() as u64, page_slice)
                 .map_err(FlashError::Core)
         })
     }
@@ -477,6 +477,20 @@ impl Debug for Registers {
     }
 }
 
+fn into_reg(val: u64) -> Result<u32, FlashError> {
+    let reg_value: u32 = val
+        .try_into()
+        .map_err(|_| FlashError::RegisterValueNotSupported(val))?;
+
+    Ok(reg_value)
+}
+
+impl From<FlashError> for crate::Error {
+    fn from(err: FlashError) -> Self {
+        Self::ArchitectureSpecific(Box::new(err))
+    }
+}
+
 pub(super) struct ActiveFlasher<'probe, O: Operation> {
     core: Core<'probe>,
     flash_algorithm: FlashAlgorithm,
@@ -495,8 +509,8 @@ impl<'probe, O: Operation> ActiveFlasher<'probe, O> {
             let result = self
                 .call_function_and_wait(
                     &Registers {
-                        pc: pc_init,
-                        r0: Some(address),
+                        pc: into_reg(pc_init)?,
+                        r0: Some(into_reg(address)?),
                         r1: clock.or(Some(0)),
                         r2: Some(O::operation()),
                         r3: None,
@@ -529,7 +543,7 @@ impl<'probe, O: Operation> ActiveFlasher<'probe, O> {
             let result = self
                 .call_function_and_wait(
                     &Registers {
-                        pc: pc_uninit,
+                        pc: into_reg(pc_uninit)?,
                         r0: Some(O::operation()),
                         r1: None,
                         r2: None,
@@ -574,20 +588,28 @@ impl<'probe, O: Operation> ActiveFlasher<'probe, O> {
             (regs.argument_register(3), registers.r3),
             (
                 regs.platform_register(9),
-                if init { Some(algo.static_base) } else { None },
+                if init {
+                    Some(into_reg(algo.static_base)?)
+                } else {
+                    None
+                },
             ),
             (
                 regs.stack_pointer(),
-                if init { Some(algo.begin_stack) } else { None },
+                if init {
+                    Some(into_reg(algo.begin_stack)?)
+                } else {
+                    None
+                },
             ),
             (
                 regs.return_address(),
                 // For ARM Cortex-M cores, we have to add 1 to the return address,
                 // to ensure that we stay in Thumb mode.
                 if self.core.instruction_set()? == InstructionSet::Thumb2 {
-                    Some(algo.load_address + 1)
+                    Some(into_reg(algo.load_address + 1)?)
                 } else {
-                    Some(algo.load_address)
+                    Some(into_reg(algo.load_address)?)
                 },
             ),
         ];
@@ -642,7 +664,7 @@ impl<'probe> ActiveFlasher<'probe, Erase> {
             let result = flasher
                 .call_function_and_wait(
                     &Registers {
-                        pc: pc_erase_all,
+                        pc: into_reg(pc_erase_all)?,
                         r0: None,
                         r1: None,
                         r2: None,
@@ -670,15 +692,15 @@ impl<'probe> ActiveFlasher<'probe, Erase> {
         }
     }
 
-    pub(super) fn erase_sector(&mut self, address: u32) -> Result<(), FlashError> {
+    pub(super) fn erase_sector(&mut self, address: u64) -> Result<(), FlashError> {
         log::info!("Erasing sector at address 0x{:08x}", address);
         let t1 = std::time::Instant::now();
 
         let result = self
             .call_function_and_wait(
                 &Registers {
-                    pc: self.flash_algorithm.pc_erase_sector,
-                    r0: Some(address),
+                    pc: into_reg(self.flash_algorithm.pc_erase_sector)?,
+                    r0: Some(into_reg(address)?),
                     r1: None,
                     r2: None,
                     r3: None,
@@ -710,7 +732,7 @@ impl<'probe> ActiveFlasher<'probe, Erase> {
 }
 
 impl<'p> ActiveFlasher<'p, Program> {
-    pub(super) fn program_page(&mut self, address: u32, bytes: &[u8]) -> Result<(), FlashError> {
+    pub(super) fn program_page(&mut self, address: u64, bytes: &[u8]) -> Result<(), FlashError> {
         let t1 = std::time::Instant::now();
 
         log::info!(
@@ -721,16 +743,16 @@ impl<'p> ActiveFlasher<'p, Program> {
 
         // Transfer the bytes to RAM.
         self.core
-            .write_8(self.flash_algorithm.begin_data, bytes)
+            .write_8(self.flash_algorithm.begin_data as u64, bytes)
             .map_err(FlashError::Core)?;
 
         let result = self
             .call_function_and_wait(
                 &Registers {
-                    pc: self.flash_algorithm.pc_program_page,
-                    r0: Some(address),
+                    pc: into_reg(self.flash_algorithm.pc_program_page)?,
+                    r0: Some(into_reg(address)?),
                     r1: Some(bytes.len() as u32),
-                    r2: Some(self.flash_algorithm.begin_data),
+                    r2: Some(into_reg(self.flash_algorithm.begin_data)?),
                     r3: None,
                 },
                 false,
@@ -759,7 +781,7 @@ impl<'p> ActiveFlasher<'p, Program> {
 
     pub(super) fn start_program_page_with_buffer(
         &mut self,
-        address: u32,
+        address: u64,
         buffer_number: usize,
     ) -> Result<(), FlashError> {
         // Ensure the buffer number is valid, otherwise there is a bug somewhere
@@ -772,10 +794,12 @@ impl<'p> ActiveFlasher<'p, Program> {
 
         self.call_function(
             &Registers {
-                pc: self.flash_algorithm.pc_program_page,
-                r0: Some(address),
+                pc: into_reg(self.flash_algorithm.pc_program_page)?,
+                r0: Some(into_reg(address)?),
                 r1: Some(self.flash_algorithm.flash_properties.page_size),
-                r2: Some(self.flash_algorithm.page_buffers[buffer_number as usize]),
+                r2: Some(into_reg(
+                    self.flash_algorithm.page_buffers[buffer_number as usize],
+                )?),
                 r3: None,
             },
             false,
@@ -790,7 +814,7 @@ impl<'p> ActiveFlasher<'p, Program> {
 
     pub(super) fn load_page_buffer(
         &mut self,
-        _address: u32,
+        _address: u64,
         bytes: &[u8],
         buffer_number: usize,
     ) -> Result<(), FlashError> {

@@ -10,7 +10,7 @@ use crate::DebugProbeError;
 
 pub use generic_ap::{ApClass, ApType, GenericAp, IDR};
 pub use memory_ap::{
-    AddressIncrement, BaseaddrFormat, DataSize, MemoryAp, BASE, BASE2, CSW, DRW, TAR,
+    AddressIncrement, BaseaddrFormat, DataSize, MemoryAp, BASE, BASE2, CSW, DRW, TAR, TAR2,
 };
 
 use super::{ApAddress, DapAccess, DpAddress, Register};
@@ -23,7 +23,7 @@ pub enum AccessPortError {
     #[error("Failed to access address 0x{address:08x} as it is not aligned to the requirement of {alignment} bytes.")]
     MemoryNotAligned {
         /// The address of the register.
-        address: u32,
+        address: u64,
         /// The required alignment in bytes (address increments).
         alignment: usize,
     },
@@ -84,7 +84,7 @@ impl AccessPortError {
     }
 
     /// Constructs a [`AccessPortError::MemoryNotAligned`] from the address and the required alignment.
-    pub fn alignment_error(address: u32, alignment: usize) -> Self {
+    pub fn alignment_error(address: u64, alignment: usize) -> Self {
         AccessPortError::MemoryNotAligned { address, alignment }
     }
 }

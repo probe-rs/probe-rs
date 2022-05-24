@@ -86,11 +86,11 @@ pub fn extract_flash_algo(
         let name = &elf.strtab[sym.st_name];
 
         match name {
-            "Init" => algo.pc_init = Some(sym.st_value as u32 - code_section_offset),
-            "UnInit" => algo.pc_uninit = Some(sym.st_value as u32 - code_section_offset),
-            "EraseChip" => algo.pc_erase_all = Some(sym.st_value as u32 - code_section_offset),
-            "EraseSector" => algo.pc_erase_sector = sym.st_value as u32 - code_section_offset,
-            "ProgramPage" => algo.pc_program_page = sym.st_value as u32 - code_section_offset,
+            "Init" => algo.pc_init = Some(sym.st_value - code_section_offset as u64),
+            "UnInit" => algo.pc_uninit = Some(sym.st_value - code_section_offset as u64),
+            "EraseChip" => algo.pc_erase_all = Some(sym.st_value - code_section_offset as u64),
+            "EraseSector" => algo.pc_erase_sector = sym.st_value - code_section_offset as u64,
+            "ProgramPage" => algo.pc_program_page = sym.st_value - code_section_offset as u64,
             _ => {}
         }
     }
@@ -103,20 +103,20 @@ pub fn extract_flash_algo(
         .unwrap()
         .to_lowercase();
     algo.default = default;
-    algo.data_section_offset = algorithm_binary.data_section.start;
+    algo.data_section_offset = algorithm_binary.data_section.start as u64;
 
     let sectors = flash_device
         .sectors
         .iter()
         .map(|si| SectorDescription {
-            address: si.address,
-            size: si.size,
+            address: si.address.into(),
+            size: si.size.into(),
         })
         .collect();
 
     let properties = FlashProperties {
-        address_range: flash_device.start_address
-            ..(flash_device.start_address + flash_device.device_size),
+        address_range: flash_device.start_address as u64
+            ..(flash_device.start_address as u64 + flash_device.device_size as u64),
 
         page_size: flash_device.page_size,
         erased_byte_value: flash_device.erased_default_value,

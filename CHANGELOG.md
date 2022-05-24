@@ -55,6 +55,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Update STM32L4 series yaml from Keil.STM32L4xx_DFP.2.5.0. (#1086)
 - Debugger: SVD uses new `expand` feature of `svd-parser` crate to expand arrays and clusters. (#1090)
 - Updated cmsis-pack dependency to version 0.6.0. (#1089)
+- Updated all parameters and fields that refer to memory addresses from u32 to u64 in preparation for 64-bit target support. (#1115)
 
 ### Fixed
 

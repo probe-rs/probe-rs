@@ -829,7 +829,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                             VariableLocation::Address(address) => {
                                 // This is a member of an array type, and needs special handling.
                                 let (location, has_overflowed) = address.overflowing_add(
-                                    child_member_index as u32 * child_variable.byte_size as u32,
+                                    child_member_index as u64 * child_variable.byte_size as u64,
                                 );
 
                                 if has_overflowed {
@@ -910,7 +910,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                             VariableLocation::Address(address) => {
                                 // This is a member of an array type, and needs special handling.
                                 let (location, has_overflowed) = address.overflowing_add(
-                                    child_member_index as u32 * child_variable.byte_size as u32,
+                                    child_member_index as u64 * child_variable.byte_size as u64,
                                 );
 
                                 // TODO:
@@ -1145,7 +1145,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                             VariableLocation::Address(address) => {
                                 // This is a member of an array type, and needs special handling.
                                 let (location, has_overflowed) = address.overflowing_add(
-                                    child_member_index as u32 * child_variable.byte_size as u32,
+                                    child_member_index as u64 * child_variable.byte_size as u64,
                                 );
 
                                 // TODO:
@@ -1298,7 +1298,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                         match &parent_variable.memory_location {
                             VariableLocation::Address(address) => {
                                 child_variable.memory_location =
-                                    VariableLocation::Address(address + offset_from_parent as u32)
+                                    VariableLocation::Address(address + offset_from_parent)
                             }
                             _other => {
                                 child_variable.memory_location = VariableLocation::Unavailable;
@@ -1425,7 +1425,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                     if *address == u32::MAX as u64 {
                         return Err(DebugError::Other(anyhow::anyhow!("BUG: Cannot resolve due to rust-lang issue https://github.com/rust-lang/rust/issues/32574".to_string())));
                     } else {
-                        child_variable.memory_location = VariableLocation::Address(*address as u32);
+                        child_variable.memory_location = VariableLocation::Address(*address);
                     }
                 }
                 Location::Value { value } => {
@@ -1506,7 +1506,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                 Complete => break,
                 RequiresMemory { address, size, .. } => {
                     let mut buff = vec![0u8; size as usize];
-                    core.read(address as u32, &mut buff).map_err(|_| {
+                    core.read(address, &mut buff).map_err(|_| {
                         DebugError::Other(anyhow::anyhow!("Unexpected error while reading debug expressions from target memory. Please report this as a bug."))
                     })?;
                     match size {

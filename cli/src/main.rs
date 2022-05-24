@@ -90,8 +90,8 @@ enum Cli {
         common: ProbeOptions,
 
         /// The address of the memory to dump from the target.
-        #[structopt(parse(try_from_str = parse_u32))]
-        loc: u32,
+        #[structopt(parse(try_from_str = parse_u64))]
+        loc: u64,
         /// The amount of memory (in words) to dump.
         #[structopt(parse(try_from_str = parse_u32))]
         words: u32,
@@ -106,8 +106,8 @@ enum Cli {
         format: DownloadFileType,
 
         /// The address in memory where the binary will be put at. This is only considered when `bin` is selected as the format.
-        #[structopt(long, parse(try_from_str = parse_u32))]
-        base_address: Option<u32>,
+        #[structopt(long, parse(try_from_str = parse_u64))]
+        base_address: Option<u64>,
         /// The number of bytes to skip at the start of the binary file. This is only considered when `bin` is selected as the format.
         #[structopt(long, parse(try_from_str = parse_u32))]
         skip_bytes: Option<u32>,
@@ -159,8 +159,8 @@ enum Cli {
         common: ProbeOptions,
 
         /// The address of the memory to dump from the target.
-        #[structopt(parse(try_from_str = parse_u32))]
-        loc: u32,
+        #[structopt(parse(try_from_str = parse_u64))]
+        loc: u64,
     },
     #[clap(subcommand)]
     Chip(Chip),
@@ -270,7 +270,7 @@ fn list_connected_devices() -> Result<()> {
 fn dump_memory(
     shared_options: &CoreOptions,
     common: &ProbeOptions,
-    loc: u32,
+    loc: u64,
     words: u32,
 ) -> Result<()> {
     let mut session = common.simple_attach()?;
@@ -292,7 +292,7 @@ fn dump_memory(
     for word in 0..words {
         println!(
             "Addr 0x{:08x?}: 0x{:08x}",
-            loc + 4 * word,
+            loc + 4 * word as u64,
             data[word as usize]
         );
     }
@@ -373,7 +373,7 @@ fn reset_target_of_device(
 fn trace_u32_on_target(
     shared_options: &CoreOptions,
     common: &ProbeOptions,
-    loc: u32,
+    loc: u64,
 ) -> Result<()> {
     use scroll::{Pwrite, LE};
     use std::io::prelude::*;
@@ -475,7 +475,7 @@ enum DownloadFileType {
 }
 
 impl DownloadFileType {
-    fn into(self, base_address: Option<u32>, skip: Option<u32>) -> Format {
+    fn into(self, base_address: Option<u64>, skip: Option<u32>) -> Format {
         match self {
             DownloadFileType::Elf => Format::Elf,
             DownloadFileType::Hex => Format::Hex,
@@ -488,5 +488,9 @@ impl DownloadFileType {
 }
 
 fn parse_u32(input: &str) -> Result<u32, ParseIntError> {
+    parse_int::parse(input)
+}
+
+fn parse_u64(input: &str) -> Result<u64, ParseIntError> {
     parse_int::parse(input)
 }

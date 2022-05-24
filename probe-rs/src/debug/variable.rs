@@ -249,7 +249,7 @@ pub enum VariableLocation {
     /// The variable does not have a location currently, probably due to optimisations.
     Unavailable,
     /// The variable can be found in memory, at this address.
-    Address(u32),
+    Address(u64),
     /// The value of the variable can be found in this register.
     Register(usize),
     /// The value of the variable is directly available.
@@ -262,7 +262,7 @@ pub enum VariableLocation {
 
 impl VariableLocation {
     /// Return the memory address, if available. Otherwise an error is returned.
-    pub fn memory_address(&self) -> Result<u32, DebugError> {
+    pub fn memory_address(&self) -> Result<u64, DebugError> {
         match self {
             VariableLocation::Address(address) => Ok(*address),
             other => Err(DebugError::Other(anyhow!(
@@ -467,7 +467,7 @@ impl Variable {
                     format!(
                         "{:032b} @ {:#010X}",
                         register_u32_value,
-                        self.memory_location.memory_address().unwrap_or(u32::MAX) // We should never encounter a memory location that is invalid if we already used it to read the register value.
+                        self.memory_location.memory_address().unwrap_or(u64::MAX) // We should never encounter a memory location that is invalid if we already used it to read the register value.
                     )
                 } else {
                     format!("Invalid register value {}", register_value)
@@ -485,7 +485,7 @@ impl Variable {
                     format!(
                         "{:0width$b} @ {:#010X}:{}..{}",
                         bit_value,
-                        self.memory_location.memory_address().unwrap_or(u32::MAX),
+                        self.memory_location.memory_address().unwrap_or(u64::MAX),
                         self.range_lower_bound,
                         self.range_upper_bound,
                         width = (self.range_upper_bound - self.range_lower_bound) as usize
@@ -558,12 +558,12 @@ impl Variable {
         {
             // Special handling for SVD registers.
             // Because we cache the SVD structure once per sesion, we have to re-read the actual register values whenever queried.
-            match core.read_word_32(self.memory_location.memory_address().unwrap_or(u32::MAX)) {
+            match core.read_word_32(self.memory_location.memory_address().unwrap_or(u64::MAX)) {
                 Ok(u32_value) => self.value = VariableValue::Valid(u32_value.to_le().to_string()),
                 Err(error) => {
                     self.value = VariableValue::Error(format!(
                         "Unable to read peripheral register value @ {:#010X} : {:?}",
-                        self.memory_location.memory_address().unwrap_or(u32::MAX),
+                        self.memory_location.memory_address().unwrap_or(u64::MAX),
                         error
                     ))
                 }
@@ -1035,15 +1035,15 @@ impl Value for String {
                             variable_cache.get_children(Some(location_value.variable_key))
                         {
                             if let Some(first_child) = child_variables.first() {
-                                first_child.memory_location.memory_address()? as u32
+                                first_child.memory_location.memory_address()?
                             } else {
-                                0_u32
+                                0_u64
                             }
                         } else {
-                            0_u32
+                            0_u64
                         }
                     }
-                    None => 0_u32,
+                    None => 0_u64,
                 };
                 if string_location.is_zero() {
                     str_value = "Error: Failed to determine &str memory location".to_string();
@@ -1062,7 +1062,7 @@ impl Value for String {
                     }
 
                     let mut buff = vec![0u8; string_length];
-                    core.read(string_location as u32, &mut buff)?;
+                    core.read(string_location, &mut buff)?;
                     str_value = core::str::from_utf8(&buff)?.to_owned();
                 }
             } else {
@@ -1089,7 +1089,7 @@ impl Value for i8 {
         _variable_cache: &variable_cache::VariableCache,
     ) -> Result<Self, DebugError> {
         let mut buff = [0u8; 1];
-        core.read(variable.memory_location.memory_address()? as u32, &mut buff)?;
+        core.read(variable.memory_location.memory_address()?, &mut buff)?;
         let ret_value = i8::from_le_bytes(buff);
         Ok(ret_value)
     }
@@ -1100,7 +1100,7 @@ impl Value for i8 {
         new_value: &str,
     ) -> Result<(), DebugError> {
         core.write_word_8(
-            variable.memory_location.memory_address()? as u32,
+            variable.memory_location.memory_address()?,
             <i8 as FromStr>::from_str(new_value).map_err(|error| {
                 DebugError::Other(anyhow::anyhow!(
                     "Invalid data conversion from value: {:?}. {:?}",
@@ -1119,7 +1119,7 @@ impl Value for i16 {
         _variable_cache: &variable_cache::VariableCache,
     ) -> Result<Self, DebugError> {
         let mut buff = [0u8; 2];
-        core.read(variable.memory_location.memory_address()? as u32, &mut buff)?;
+        core.read(variable.memory_location.memory_address()?, &mut buff)?;
         let ret_value = i16::from_le_bytes(buff);
         Ok(ret_value)
     }
@@ -1136,7 +1136,7 @@ impl Value for i16 {
                 error
             ))
         })?);
-        core.write_8(variable.memory_location.memory_address()? as u32, &buff)
+        core.write_8(variable.memory_location.memory_address()?, &buff)
             .map_err(|error| DebugError::Other(anyhow::anyhow!("{:?}", error)))
     }
 }
@@ -1147,7 +1147,7 @@ impl Value for i32 {
         _variable_cache: &variable_cache::VariableCache,
     ) -> Result<Self, DebugError> {
         let mut buff = [0u8; 4];
-        core.read(variable.memory_location.memory_address()? as u32, &mut buff)?;
+        core.read(variable.memory_location.memory_address()?, &mut buff)?;
         let ret_value = i32::from_le_bytes(buff);
         Ok(ret_value)
     }
@@ -1164,7 +1164,7 @@ impl Value for i32 {
                 error
             ))
         })?);
-        core.write_8(variable.memory_location.memory_address()? as u32, &buff)
+        core.write_8(variable.memory_location.memory_address()?, &buff)
             .map_err(|error| DebugError::Other(anyhow::anyhow!("{:?}", error)))
     }
 }
@@ -1175,7 +1175,7 @@ impl Value for i64 {
         _variable_cache: &variable_cache::VariableCache,
     ) -> Result<Self, DebugError> {
         let mut buff = [0u8; 8];
-        core.read(variable.memory_location.memory_address()? as u32, &mut buff)?;
+        core.read(variable.memory_location.memory_address()?, &mut buff)?;
         let ret_value = i64::from_le_bytes(buff);
         Ok(ret_value)
     }
@@ -1192,7 +1192,7 @@ impl Value for i64 {
                 error
             ))
         })?);
-        core.write_8(variable.memory_location.memory_address()? as u32, &buff)
+        core.write_8(variable.memory_location.memory_address()?, &buff)
             .map_err(|error| DebugError::Other(anyhow::anyhow!("{:?}", error)))
     }
 }
@@ -1203,7 +1203,7 @@ impl Value for i128 {
         _variable_cache: &variable_cache::VariableCache,
     ) -> Result<Self, DebugError> {
         let mut buff = [0u8; 16];
-        core.read(variable.memory_location.memory_address()? as u32, &mut buff)?;
+        core.read(variable.memory_location.memory_address()?, &mut buff)?;
         let ret_value = i128::from_le_bytes(buff);
         Ok(ret_value)
     }
@@ -1220,7 +1220,7 @@ impl Value for i128 {
                 error
             ))
         })?);
-        core.write_8(variable.memory_location.memory_address()? as u32, &buff)
+        core.write_8(variable.memory_location.memory_address()?, &buff)
             .map_err(|error| DebugError::Other(anyhow::anyhow!("{:?}", error)))
     }
 }
@@ -1231,7 +1231,7 @@ impl Value for isize {
         _variable_cache: &variable_cache::VariableCache,
     ) -> Result<Self, DebugError> {
         let mut buff = [0u8; 4];
-        core.read(variable.memory_location.memory_address()? as u32, &mut buff)?;
+        core.read(variable.memory_location.memory_address()?, &mut buff)?;
         // TODO: We can get the actual WORD length from [DWARF] instead of assuming `u32`
         let ret_value = i32::from_le_bytes(buff);
         Ok(ret_value as isize)
@@ -1250,7 +1250,7 @@ impl Value for isize {
                     error
                 ))
             })?);
-        core.write_8(variable.memory_location.memory_address()? as u32, &buff)
+        core.write_8(variable.memory_location.memory_address()?, &buff)
             .map_err(|error| DebugError::Other(anyhow::anyhow!("{:?}", error)))
     }
 }
@@ -1261,7 +1261,7 @@ impl Value for u8 {
         _variable_cache: &variable_cache::VariableCache,
     ) -> Result<Self, DebugError> {
         let mut buff = [0u8; 1];
-        core.read(variable.memory_location.memory_address()? as u32, &mut buff)?;
+        core.read(variable.memory_location.memory_address()?, &mut buff)?;
         let ret_value = u8::from_le_bytes(buff);
         Ok(ret_value)
     }
@@ -1272,7 +1272,7 @@ impl Value for u8 {
         new_value: &str,
     ) -> Result<(), DebugError> {
         core.write_word_8(
-            variable.memory_location.memory_address()? as u32,
+            variable.memory_location.memory_address()?,
             <u8 as FromStr>::from_str(new_value).map_err(|error| {
                 DebugError::Other(anyhow::anyhow!(
                     "Invalid data conversion from value: {:?}. {:?}",
@@ -1291,7 +1291,7 @@ impl Value for u16 {
         _variable_cache: &variable_cache::VariableCache,
     ) -> Result<Self, DebugError> {
         let mut buff = [0u8; 2];
-        core.read(variable.memory_location.memory_address()? as u32, &mut buff)?;
+        core.read(variable.memory_location.memory_address()?, &mut buff)?;
         let ret_value = u16::from_le_bytes(buff);
         Ok(ret_value)
     }
@@ -1308,7 +1308,7 @@ impl Value for u16 {
                 error
             ))
         })?);
-        core.write_8(variable.memory_location.memory_address()? as u32, &buff)
+        core.write_8(variable.memory_location.memory_address()?, &buff)
             .map_err(|error| DebugError::Other(anyhow::anyhow!("{:?}", error)))
     }
 }
@@ -1319,7 +1319,7 @@ impl Value for u32 {
         _variable_cache: &variable_cache::VariableCache,
     ) -> Result<Self, DebugError> {
         let mut buff = [0u8; 4];
-        core.read(variable.memory_location.memory_address()? as u32, &mut buff)?;
+        core.read(variable.memory_location.memory_address()?, &mut buff)?;
         let ret_value = u32::from_le_bytes(buff);
         Ok(ret_value)
     }
@@ -1336,7 +1336,7 @@ impl Value for u32 {
                 error
             ))
         })?);
-        core.write_8(variable.memory_location.memory_address()? as u32, &buff)
+        core.write_8(variable.memory_location.memory_address()?, &buff)
             .map_err(|error| DebugError::Other(anyhow::anyhow!("{:?}", error)))
     }
 }
@@ -1347,7 +1347,7 @@ impl Value for u64 {
         _variable_cache: &variable_cache::VariableCache,
     ) -> Result<Self, DebugError> {
         let mut buff = [0u8; 8];
-        core.read(variable.memory_location.memory_address()? as u32, &mut buff)?;
+        core.read(variable.memory_location.memory_address()?, &mut buff)?;
         let ret_value = u64::from_le_bytes(buff);
         Ok(ret_value)
     }
@@ -1364,7 +1364,7 @@ impl Value for u64 {
                 error
             ))
         })?);
-        core.write_8(variable.memory_location.memory_address()? as u32, &buff)
+        core.write_8(variable.memory_location.memory_address()?, &buff)
             .map_err(|error| DebugError::Other(anyhow::anyhow!("{:?}", error)))
     }
 }
@@ -1375,7 +1375,7 @@ impl Value for u128 {
         _variable_cache: &variable_cache::VariableCache,
     ) -> Result<Self, DebugError> {
         let mut buff = [0u8; 16];
-        core.read(variable.memory_location.memory_address()? as u32, &mut buff)?;
+        core.read(variable.memory_location.memory_address()?, &mut buff)?;
         let ret_value = u128::from_le_bytes(buff);
         Ok(ret_value)
     }
@@ -1392,7 +1392,7 @@ impl Value for u128 {
                 error
             ))
         })?);
-        core.write_8(variable.memory_location.memory_address()? as u32, &buff)
+        core.write_8(variable.memory_location.memory_address()?, &buff)
             .map_err(|error| DebugError::Other(anyhow::anyhow!("{:?}", error)))
     }
 }
@@ -1403,7 +1403,7 @@ impl Value for usize {
         _variable_cache: &variable_cache::VariableCache,
     ) -> Result<Self, DebugError> {
         let mut buff = [0u8; 4];
-        core.read(variable.memory_location.memory_address()? as u32, &mut buff)?;
+        core.read(variable.memory_location.memory_address()?, &mut buff)?;
         // TODO: We can get the actual WORD length from [DWARF] instead of assuming `u32`
         let ret_value = u32::from_le_bytes(buff);
         Ok(ret_value as usize)
@@ -1422,7 +1422,7 @@ impl Value for usize {
                     error
                 ))
             })?);
-        core.write_8(variable.memory_location.memory_address()? as u32, &buff)
+        core.write_8(variable.memory_location.memory_address()?, &buff)
             .map_err(|error| DebugError::Other(anyhow::anyhow!("{:?}", error)))
     }
 }
@@ -1433,7 +1433,7 @@ impl Value for f32 {
         _variable_cache: &variable_cache::VariableCache,
     ) -> Result<Self, DebugError> {
         let mut buff = [0u8; 4];
-        core.read(variable.memory_location.memory_address()? as u32, &mut buff)?;
+        core.read(variable.memory_location.memory_address()?, &mut buff)?;
         let ret_value = f32::from_le_bytes(buff);
         Ok(ret_value)
     }
@@ -1450,7 +1450,7 @@ impl Value for f32 {
                 error
             ))
         })?);
-        core.write_8(variable.memory_location.memory_address()? as u32, &buff)
+        core.write_8(variable.memory_location.memory_address()?, &buff)
             .map_err(|error| DebugError::Other(anyhow::anyhow!("{:?}", error)))
     }
 }
@@ -1461,7 +1461,7 @@ impl Value for f64 {
         _variable_cache: &variable_cache::VariableCache,
     ) -> Result<Self, DebugError> {
         let mut buff = [0u8; 8];
-        core.read(variable.memory_location.memory_address()? as u32, &mut buff)?;
+        core.read(variable.memory_location.memory_address()?, &mut buff)?;
         let ret_value = f64::from_le_bytes(buff);
         Ok(ret_value)
     }
@@ -1478,7 +1478,7 @@ impl Value for f64 {
                 error
             ))
         })?);
-        core.write_8(variable.memory_location.memory_address()? as u32, &buff)
+        core.write_8(variable.memory_location.memory_address()?, &buff)
             .map_err(|error| DebugError::Other(anyhow::anyhow!("{:?}", error)))
     }
 }

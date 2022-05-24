@@ -236,7 +236,7 @@ pub(crate) fn write_register(register: u32, hex_value: &str, mut core: Core) -> 
     reply_ok()
 }
 
-pub(crate) fn read_memory(address: u32, length: u32, mut core: Core) -> Option<String> {
+pub(crate) fn read_memory(address: u64, length: u32, mut core: Core) -> Option<String> {
     let mut readback_data = vec![0u8; length as usize];
     match core.read(address, &mut readback_data) {
         Ok(_) => Some(
@@ -286,17 +286,17 @@ pub(crate) fn step(mut core: Core, awaits_halt: &mut bool) -> Option<String> {
     Some("S05".into())
 }
 
-pub(crate) fn insert_hardware_break(address: u32, _kind: u32, mut core: Core) -> Option<String> {
+pub(crate) fn insert_hardware_break(address: u64, _kind: u32, mut core: Core) -> Option<String> {
     core.set_hw_breakpoint(address).unwrap();
     Some("OK".into())
 }
 
-pub(crate) fn remove_hardware_break(address: u32, _kind: u32, mut core: Core) -> Option<String> {
+pub(crate) fn remove_hardware_break(address: u64, _kind: u32, mut core: Core) -> Option<String> {
     core.clear_hw_breakpoint(address).unwrap();
     Some("OK".into())
 }
 
-pub(crate) fn write_memory(address: u32, data: &[u8], mut core: Core) -> Option<String> {
+pub(crate) fn write_memory(address: u64, data: &[u8], mut core: Core) -> Option<String> {
     core.write_8(address, data).unwrap();
 
     Some("OK".into())

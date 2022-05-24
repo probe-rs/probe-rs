@@ -149,7 +149,7 @@ impl Target {
     }
 
     /// Gets the first found [MemoryRegion] that contains the given address
-    pub(crate) fn get_memory_region_by_address(&self, address: u32) -> Option<&MemoryRegion> {
+    pub(crate) fn get_memory_region_by_address(&self, address: u64) -> Option<&MemoryRegion> {
         self.memory_map.iter().find(|region| match region {
             MemoryRegion::Ram(rr) if rr.range.contains(&address) => true,
             MemoryRegion::Generic(gr) if gr.range.contains(&address) => true,
