@@ -17,7 +17,7 @@ pub struct TraceFunnel<'a> {
 }
 
 impl<'a> TraceFunnel<'a> {
-    /// Construct a new SWO component.
+    /// Construct a new TraceFunnel component.
     pub fn new(
         interface: &'a mut Box<dyn ArmProbeInterface>,
         component: &'a CoresightComponent,
