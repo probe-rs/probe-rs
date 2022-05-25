@@ -32,7 +32,8 @@ impl<'a> Swo<'a> {
 
     /// Unlock the SWO and enable it for tracing the target.
     ///
-    /// This function enables the SWOunit as a whole. It does not actually send any data after enabling it.
+    /// This function enables the SWO unit as a whole. It does not actually send any data after
+    /// enabling it.
     pub fn unlock(&mut self) -> Result<(), Error> {
         self.component
             .write_reg(self.interface, REGISTER_OFFSET_ACCESS, 0xC5AC_CE55)?;

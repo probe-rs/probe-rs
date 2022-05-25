@@ -85,7 +85,7 @@ impl<'p> CoreHandle<'p> {
     /// Set a single breakpoint in target configuration as well as [`CoreHandle::breakpoints`]
     pub(crate) fn set_breakpoint(
         &mut self,
-        address: u32,
+        address: u64,
         breakpoint_type: session_data::BreakpointType,
     ) -> Result<(), DebuggerError> {
         self.core
@@ -101,7 +101,7 @@ impl<'p> CoreHandle<'p> {
     }
 
     /// Clear a single breakpoint from target configuration as well as [`CoreHandle::breakpoints`]
-    pub(crate) fn clear_breakpoint(&mut self, address: u32) -> Result<()> {
+    pub(crate) fn clear_breakpoint(&mut self, address: u64) -> Result<()> {
         self.core
             .clear_hw_breakpoint(address)
             .map_err(DebuggerError::ProbeRs)?;
@@ -131,7 +131,7 @@ impl<'p> CoreHandle<'p> {
             .iter()
             .filter(|breakpoint| breakpoint.breakpoint_type == breakpoint_type)
             .map(|breakpoint| breakpoint.breakpoint_address)
-            .collect::<Vec<u32>>();
+            .collect::<Vec<u64>>();
         for breakpoint in target_breakpoints {
             self.clear_breakpoint(breakpoint).ok();
         }

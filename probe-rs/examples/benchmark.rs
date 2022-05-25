@@ -15,7 +15,7 @@ struct Cli {
     #[clap(long = "chip")]
     chip: Option<String>,
     #[clap(long = "address", parse(try_from_str = parse_hex))]
-    address: u32,
+    address: u64,
     #[clap(long = "speed")]
     speed: Option<u32>,
     #[clap(long = "protocol")]
@@ -24,8 +24,8 @@ struct Cli {
     pr: Option<u64>,
 }
 
-fn parse_hex(src: &str) -> Result<u32, ParseIntError> {
-    u32::from_str_radix(src.trim_start_matches("0x"), 16)
+fn parse_hex(src: &str) -> Result<u64, ParseIntError> {
+    u64::from_str_radix(src.trim_start_matches("0x"), 16)
 }
 
 const SIZE: usize = 0x1000;

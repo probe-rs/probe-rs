@@ -11,9 +11,9 @@ pub enum FlashError {
     )]
     NoSuitableNvm {
         /// The start of the requested memory range.
-        start: u32,
+        start: u64,
         /// The end of the requested memory range.
-        end: u32,
+        end: u64,
         /// The source of this target description (was it a built in target or one loaded externally and from what file path?).
         description_source: TargetDescriptionSource,
     },
@@ -27,7 +27,7 @@ pub enum FlashError {
     #[error("Failed to erase flash sector at address {sector_address:#010x}.")]
     EraseFailed {
         /// The address of the sector that should have been erased.
-        sector_address: u32,
+        sector_address: u64,
         /// The source error of this error.
         #[source]
         source: Box<dyn std::error::Error + 'static + Send + Sync>,
@@ -36,7 +36,7 @@ pub enum FlashError {
     #[error("The page write of the page at address {page_address:#010x} failed.")]
     PageWrite {
         /// The address of the page that should have been written.
-        page_address: u32,
+        page_address: u64,
         /// The source error of this error.
         #[source]
         source: Box<dyn std::error::Error + 'static + Send + Sync>,
@@ -82,7 +82,7 @@ pub enum FlashError {
     )]
     InvalidFlashAlgorithmLoadAddress {
         /// The address where the algorithm was supposed to be loaded to.
-        address: u32,
+        address: u64,
     },
     /// The given page size is not valid. Only page sizes multiples of 4 bytes are allowed.
     #[error("Invalid page size {size:08X?}. Must be a multiple of 4 bytes.")]
@@ -138,9 +138,9 @@ pub enum FlashError {
     #[error("Adding data for addresses {added_addresses:08X?} overlaps previously added data for addresses {existing_addresses:08X?}.")]
     DataOverlaps {
         /// The address range that was tried to be added.
-        added_addresses: Range<u32>,
+        added_addresses: Range<u64>,
         /// The address range that was already present.
-        existing_addresses: Range<u32>,
+        existing_addresses: Range<u64>,
     },
     /// No core can access this NVM region.
     #[error("No core can access the NVM region {0:?}.")]
@@ -148,4 +148,7 @@ pub enum FlashError {
     /// No core can access this RAM region.
     #[error("No core can access the ram region {0:?}.")]
     NoRamCoreAccess(RamRegion),
+    /// The register value supplied for this flash algorithm is out of the supported range.
+    #[error("The register value {0:08X?} is out of the supported range.")]
+    RegisterValueNotSupported(u64),
 }

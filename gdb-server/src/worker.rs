@@ -5,7 +5,6 @@ use futures::future::FutureExt;
 use futures::select;
 use gdb_protocol::packet::{CheckedPacket, Kind as PacketKind};
 use probe_rs::Session;
-use std::convert::TryFrom;
 use std::{sync::Mutex, time::Duration};
 
 use crate::parser::parse_packet;
@@ -95,15 +94,7 @@ pub async fn handler(
                     handlers::write_register(address, &value, session.core(0)?)
                 }
                 ReadMemory { address, length } => {
-                    // LLDB will send 64 bit addresses, which are not supported by probe-rs
-                    // yet.
-
-                    if let Ok(address) = u32::try_from(address) {
-                        handlers::read_memory(address, length, session.core(0)?)
-                    } else {
-                        //
-                        handlers::reply_empty()
-                    }
+                    handlers::read_memory(address, length, session.core(0)?)
                 }
                 Detach => handlers::detach(&mut break_due),
                 V(VPacket::Continue(action)) => match action {

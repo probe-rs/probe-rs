@@ -390,7 +390,7 @@ pub(crate) fn get_ram(device: &Device) -> Option<RamRegion> {
     for memory in device.memories.0.values() {
         if memory.default && memory.access.read && memory.access.write {
             regions.push(RamRegion {
-                range: memory.start as u32..memory.start as u32 + memory.size as u32,
+                range: memory.start..memory.start + memory.size,
                 is_boot_memory: memory.startup,
                 cores: vec!["main".to_owned()],
                 name: None,
@@ -427,7 +427,7 @@ pub(crate) fn get_flash(device: &Device) -> Option<NvmRegion> {
     for memory in device.memories.0.values() {
         if memory.default && memory.access.read && memory.access.execute && !memory.access.write {
             regions.push(NvmRegion {
-                range: memory.start as u32..memory.start as u32 + memory.size as u32,
+                range: memory.start..memory.start + memory.size,
                 is_boot_memory: memory.startup,
                 cores: vec!["main".to_owned()],
                 name: None,

@@ -220,7 +220,7 @@ pub(crate) fn setup_swv_vendor(
             Some(id) if id == jep106::JEP106Code::new(0x02, 0x44) => {
                 // Nordic VLSI ASA
                 log::debug!("Nordic part detected, configuring CLOCK TRACECONFIG");
-                const CLOCK_TRACECONFIG: u32 = 0x4000_055C;
+                const CLOCK_TRACECONFIG: u64 = 0x4000_055C;
                 let mut traceconfig: u32 = 0;
                 traceconfig |= match config.tpiu_clk() {
                     4_000_000 => 3,

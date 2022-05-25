@@ -396,9 +396,8 @@ impl Session {
                 }) => Err(Error::Other(anyhow!("AP has a base address of 0"))),
                 ApInformation::MemoryAp(MemoryApInformation {
                     address,
-                    only_32bit_data_size: _,
                     debug_base_address,
-                    supports_hnonsec: _,
+                    ..
                 }) => {
                     let ap = MemoryAp::new(address);
                     let mut memory = interface.memory_interface(ap)?;

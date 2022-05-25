@@ -21,19 +21,19 @@ pub struct RawFlashAlgorithm {
     #[serde(serialize_with = "serialize")]
     pub instructions: Vec<u8>,
     /// Address to load algo into RAM. Optional.
-    pub load_address: Option<u32>,
+    pub load_address: Option<u64>,
     /// Address of the `Init()` entry point. Optional.
-    pub pc_init: Option<u32>,
+    pub pc_init: Option<u64>,
     /// Address of the `UnInit()` entry point. Optional.
-    pub pc_uninit: Option<u32>,
+    pub pc_uninit: Option<u64>,
     /// Address of the `ProgramPage()` entry point.
-    pub pc_program_page: u32,
+    pub pc_program_page: u64,
     /// Address of the `EraseSector()` entry point.
-    pub pc_erase_sector: u32,
+    pub pc_erase_sector: u64,
     /// Address of the `EraseAll()` entry point. Optional.
-    pub pc_erase_all: Option<u32>,
+    pub pc_erase_all: Option<u64>,
     /// The offset from the start of RAM to the data section.
-    pub data_section_offset: u32,
+    pub data_section_offset: u64,
     /// The properties of the flash on the device.
     pub flash_properties: FlashProperties,
     /// List of cores that can use this algorithm

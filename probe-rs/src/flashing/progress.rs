@@ -57,12 +57,12 @@ impl FlashProgress {
     }
 
     /// Signalize that the sector erasing procedure has made progress.
-    pub(super) fn sector_erased(&self, size: u32, time: Duration) {
+    pub(super) fn sector_erased(&self, size: u64, time: Duration) {
         self.emit(ProgressEvent::SectorErased { size, time });
     }
 
     /// Signalize that the page filling procedure has made progress.
-    pub(super) fn page_filled(&self, size: u32, time: Duration) {
+    pub(super) fn page_filled(&self, size: u64, time: Duration) {
         self.emit(ProgressEvent::PageFilled { size, time });
     }
 
@@ -130,7 +130,7 @@ pub enum ProgressEvent {
     /// Only its contents are determined at this point!
     PageFilled {
         /// The size of the page in bytes.
-        size: u32,
+        size: u64,
         /// The time it took to fill this flash page.
         time: Duration,
     },
@@ -143,7 +143,7 @@ pub enum ProgressEvent {
     /// A sector has been erased successfully.
     SectorErased {
         /// The size of the sector in bytes.
-        size: u32,
+        size: u64,
         /// The time it took to erase this sector.
         time: Duration,
     },

@@ -48,11 +48,11 @@ impl AlgorithmBinary {
             // Only regard sections that contain at least one byte.
             // And are marked loadable (this filters out debug symbols).
             if ph.p_type == PT_LOAD && ph.p_filesz > 0 {
-                let sector = ph.p_offset as u32..ph.p_offset as u32 + ph.p_filesz as u32;
+                let sector = ph.p_offset..ph.p_offset + ph.p_filesz;
 
                 // Scan all sectors if they contain any part of the sections found.
                 for sh in &elf.section_headers {
-                    let range = sh.sh_offset as u32..sh.sh_offset as u32 + sh.sh_size as u32;
+                    let range = sh.sh_offset..sh.sh_offset + sh.sh_size;
                     if sector.contains_range(&range) {
                         // If we found a valid section, store its contents.
                         let data =

@@ -444,3 +444,20 @@ define_ap_register!(
     from: value => TAR { address: value },
     to: value => value.address
 );
+
+define_ap_register!(
+    type: MemoryAp,
+    /// Transfer Address Register - upper word
+    ///
+    /// The transfer address register (TAR) holds the memory
+    /// address which will be accessed through a read or
+    /// write of the DRW register.
+    name: TAR2,
+    address: 0x08,
+    fields: [
+        /// The uppper 32-bits of the register address to be used for the next access to DRW.
+        address: u32,
+    ],
+    from: value => TAR2 { address: value },
+    to: value => value.address
+);

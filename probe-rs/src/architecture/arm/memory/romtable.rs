@@ -78,7 +78,7 @@ impl<'probe, 'memory, 'reader> Iterator for RomTableIterator<'probe, 'memory, 'r
         if let Err(e) = self
             .rom_table_reader
             .memory
-            .read_32(component_address as u32, &mut entry_data)
+            .read_32(component_address as u64, &mut entry_data)
         {
             return Some(Err(RomTableError::Memory(e)));
         }
@@ -277,7 +277,7 @@ impl<'probe: 'memory, 'memory> ComponentInformationReader<'probe, 'memory> {
         let mut cidr = [0u32; 4];
 
         self.memory
-            .read_32(self.base_address as u32 + 0xFF0, &mut cidr)
+            .read_32(self.base_address + 0xFF0, &mut cidr)
             .map_err(RomTableError::Memory)?;
 
         log::debug!("CIDR: {:x?}", cidr);
@@ -321,30 +321,30 @@ impl<'probe: 'memory, 'memory> ComponentInformationReader<'probe, 'memory> {
         );
 
         self.memory
-            .read_32(self.base_address as u32 + 0xFD0, &mut data[4..])
+            .read_32(self.base_address + 0xFD0, &mut data[4..])
             .map_err(RomTableError::Memory)?;
         self.memory
-            .read_32(self.base_address as u32 + 0xFE0, &mut data[..4])
+            .read_32(self.base_address + 0xFE0, &mut data[..4])
             .map_err(RomTableError::Memory)?;
 
         log::debug!("Raw peripheral id: {:x?}", data);
 
-        const DEV_TYPE_OFFSET: u32 = 0xFCC;
+        const DEV_TYPE_OFFSET: u64 = 0xFCC;
         const DEV_TYPE_MASK: u32 = 0xFF;
 
         let dev_type = self
             .memory
-            .read_word_32(self.base_address as u32 + DEV_TYPE_OFFSET)
+            .read_word_32(self.base_address + DEV_TYPE_OFFSET)
             .map(|v| (v & DEV_TYPE_MASK) as u8)
             .map_err(RomTableError::Memory)?;
 
-        const ARCH_ID_OFFSET: u32 = 0xFBC;
+        const ARCH_ID_OFFSET: u64 = 0xFBC;
         const ARCH_ID_MASK: u32 = 0xFFFF;
         const ARCH_ID_PRESENT_BIT: u32 = 1 << 20;
 
         let arch_id = self
             .memory
-            .read_word_32(self.base_address as u32 + ARCH_ID_OFFSET)
+            .read_word_32(self.base_address + ARCH_ID_OFFSET)
             .map(|v| {
                 if v & ARCH_ID_PRESENT_BIT > 0 {
                     (v & ARCH_ID_MASK) as u16
@@ -509,7 +509,7 @@ impl CoresightComponent {
         offset: u32,
     ) -> Result<u32, Error> {
         let mut memory = interface.memory_interface(self.ap)?;
-        let value = memory.read_word_32(self.component.id().component_address as u32 + offset)?;
+        let value = memory.read_word_32(self.component.id().component_address + offset as u64)?;
         Ok(value)
     }
 
@@ -521,7 +521,7 @@ impl CoresightComponent {
         value: u32,
     ) -> Result<(), Error> {
         let mut memory = interface.memory_interface(self.ap)?;
-        memory.write_word_32(self.component.id().component_address as u32 + offset, value)?;
+        memory.write_word_32(self.component.id().component_address + offset as u64, value)?;
         Ok(())
     }
 

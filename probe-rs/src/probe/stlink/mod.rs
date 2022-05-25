@@ -4,6 +4,7 @@ mod usb_interface;
 
 use self::usb_interface::{StLinkUsb, StLinkUsbDevice};
 use super::{DebugProbe, DebugProbeError, ProbeCreationError, WireProtocol};
+use crate::memory::valid_32_address;
 use crate::{
     architecture::arm::{
         ap::{valid_access_ports, AccessPort, ApAccess, ApClass, MemoryAp, IDR},
@@ -1049,40 +1050,6 @@ impl<D: StLinkUsb> StLink<D> {
 
         self.send_jtag_command(&cmd, &[], &mut buff, TIMEOUT)
     }
-
-    fn read_core_reg(&mut self, index: u32) -> Result<u32, DebugProbeError> {
-        log::trace!("Read core reg {:08x}", index);
-        let mut buff = [0u8; 8];
-
-        let mut cmd = [0u8; 2 + 1];
-        cmd[0] = commands::JTAG_COMMAND;
-        cmd[1] = commands::JTAG_READ_CORE_REG;
-
-        assert!(index < (u8::MAX as u32));
-
-        cmd[2] = index as u8;
-
-        self.send_jtag_command(&cmd, &[], &mut buff, TIMEOUT)?;
-
-        Ok(buff.pread_with(4, LE).unwrap())
-    }
-
-    fn write_core_reg(&mut self, index: u32, value: u32) -> Result<(), DebugProbeError> {
-        log::trace!("Write core reg {:08x}", index);
-        let mut buff = [0u8; 2];
-
-        let mut cmd = [0u8; 2 + 1 + 4];
-        cmd[0] = commands::JTAG_COMMAND;
-        cmd[1] = commands::JTAG_WRITE_CORE_REG;
-
-        assert!(index < (u8::MAX as u32));
-
-        cmd[2] = index as u8;
-
-        cmd.pwrite_with(value, 3, LE).unwrap();
-
-        self.send_jtag_command(&cmd, &[], &mut buff, TIMEOUT)
-    }
 }
 
 impl<D: StLinkUsb> SwoAccess for StLink<D> {
@@ -1397,9 +1364,11 @@ impl ArmProbe for StLinkMemoryInterface<'_> {
     fn read_32(
         &mut self,
         ap: MemoryAp,
-        address: u32,
+        address: u64,
         data: &mut [u32],
     ) -> Result<(), ProbeRsError> {
+        let address = valid_32_address(address)?;
+
         // Read needs to be chunked into chunks with appropiate max length (see STLINK_MAX_READ_LEN).
         for (index, chunk) in data.chunks_mut(STLINK_MAX_READ_LEN / 4).enumerate() {
             let mut buff = vec![0u8; 4 * chunk.len()];
@@ -1418,7 +1387,9 @@ impl ArmProbe for StLinkMemoryInterface<'_> {
         Ok(())
     }
 
-    fn read_8(&mut self, ap: MemoryAp, address: u32, data: &mut [u8]) -> Result<(), ProbeRsError> {
+    fn read_8(&mut self, ap: MemoryAp, address: u64, data: &mut [u8]) -> Result<(), ProbeRsError> {
+        let address = valid_32_address(address)?;
+
         // Read needs to be chunked into chunks of appropriate max length of the probe
         let chunk_size = if self.probe.probe.hw_version < 3 {
             64
@@ -1441,7 +1412,9 @@ impl ArmProbe for StLinkMemoryInterface<'_> {
         Ok(())
     }
 
-    fn write_32(&mut self, ap: MemoryAp, address: u32, data: &[u32]) -> Result<(), ProbeRsError> {
+    fn write_32(&mut self, ap: MemoryAp, address: u64, data: &[u32]) -> Result<(), ProbeRsError> {
+        let address = valid_32_address(address)?;
+
         let mut tx_buffer = vec![0u8; data.len() * 4];
 
         let mut offset = 0;
@@ -1463,7 +1436,9 @@ impl ArmProbe for StLinkMemoryInterface<'_> {
         Ok(())
     }
 
-    fn write_8(&mut self, ap: MemoryAp, address: u32, data: &[u8]) -> Result<(), ProbeRsError> {
+    fn write_8(&mut self, ap: MemoryAp, address: u64, data: &[u8]) -> Result<(), ProbeRsError> {
+        let address = valid_32_address(address)?;
+
         // The underlying STLink command is limited to a single USB frame at a time
         // so we must manually chunk it into multiple command if it exceeds
         // that size.
@@ -1547,29 +1522,6 @@ impl ArmProbe for StLinkMemoryInterface<'_> {
     }
 
     fn flush(&mut self) -> Result<(), ProbeRsError> {
-        Ok(())
-    }
-
-    fn read_core_reg(
-        &mut self,
-        _ap: MemoryAp,
-        addr: crate::CoreRegisterAddress,
-    ) -> Result<u32, ProbeRsError> {
-        // Unclear how this works with multiple APs
-
-        Ok(self.probe.probe.read_core_reg(addr.0 as u32)?)
-    }
-
-    fn write_core_reg(
-        &mut self,
-        _ap: MemoryAp,
-        addr: crate::CoreRegisterAddress,
-        value: u32,
-    ) -> Result<(), ProbeRsError> {
-        // Unclear how this works with multiple APs
-
-        self.probe.probe.write_core_reg(addr.0 as u32, value)?;
-
         Ok(())
     }
 

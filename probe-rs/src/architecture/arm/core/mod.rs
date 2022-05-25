@@ -13,6 +13,7 @@ pub mod armv8m;
 
 pub(crate) mod armv7a_debug_regs;
 pub(crate) mod armv8a_debug_regs;
+pub(crate) mod cortex_m;
 pub(crate) mod instructions;
 
 /// Core information data which is downloaded from the target, represents its state and can be used for debugging.
@@ -292,7 +293,7 @@ impl From<Dfsr> for u32 {
 }
 
 impl CoreRegister for Dfsr {
-    const ADDRESS: u32 = 0xE000_ED30;
+    const ADDRESS: u64 = 0xE000_ED30;
     const NAME: &'static str = "DFSR";
 }
 

@@ -32,14 +32,14 @@ impl SteppingMode {
         &self,
         core: &mut Core<'_>,
         debug_info: &DebugInfo,
-    ) -> Result<(CoreStatus, u32), DebugError> {
+    ) -> Result<(CoreStatus, u64), DebugError> {
         let mut core_status = core
             .status()
             .map_err(|error| DebugError::Other(anyhow::anyhow!(error)))
             .map_err(|error| DebugError::Other(anyhow::anyhow!(error)))?;
         let (mut program_counter, mut return_address) = match core_status {
             CoreStatus::Halted(_) => (
-                core.read_core_reg(core.registers().program_counter())?,
+                core.read_core_reg(core.registers().program_counter())? as u64,
                 core.read_core_reg(core.registers().return_address())?,
             ),
             _ => {
@@ -69,8 +69,7 @@ impl SteppingMode {
         // Sometimes the target program_counter is at a location where the debug_info program row data does not contain valid statements for halt points.
         // When DebugError::NoValidHaltLocation happens, we will step to the next instruction and try again(until we can reasonably expect to have passed out of an epilogue), before giving up.
         for _ in 0..10 {
-            match debug_info.get_halt_locations(program_counter as u64, Some(return_address as u64))
-            {
+            match debug_info.get_halt_locations(program_counter, Some(return_address as u64)) {
                 Ok(program_row_data) => {
                     match self {
                         SteppingMode::OverStatement => {
@@ -129,15 +128,16 @@ impl SteppingMode {
                 if target_address == program_counter as u64 {
                     // For simple functions that complete in a single statement.
                     program_counter = core.step()?.pc;
-                } else if core.set_hw_breakpoint(target_address as u32).is_ok() {
+                } else if core.set_hw_breakpoint(target_address).is_ok() {
                     core.run()?;
-                    core.clear_hw_breakpoint(target_address as u32)?;
+                    core.clear_hw_breakpoint(target_address)?;
                     core_status = match core.status() {
                         Ok(core_status) => {
                             match core_status {
                                 CoreStatus::Halted(_) => {
-                                    program_counter =
-                                        core.read_core_reg(core.registers().program_counter())?
+                                    program_counter = core
+                                        .read_core_reg(core.registers().program_counter())?
+                                        as u64
                                 }
                                 other => {
                                     log::error!(
@@ -152,12 +152,12 @@ impl SteppingMode {
                         Err(error) => return Err(DebugError::Probe(error)),
                     };
                 } else {
-                    while target_address != core.step()?.pc as u64 {
+                    while target_address != core.step()?.pc {
                         // Single step the core until we get to the target_address;
                         // TODO: In theory, this could go on for a long time. Should we consider NOT allowing this kind of stepping if there are no breakpoints available?
                     }
                     core_status = core.status()?;
-                    program_counter = target_address as u32;
+                    program_counter = target_address;
                 }
             }
             None => {

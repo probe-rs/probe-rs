@@ -5,7 +5,7 @@ use super::{CortexMState, Dfsr, ARM_REGISTER_FILE};
 use crate::architecture::arm::sequences::ArmDebugSequence;
 use crate::core::{RegisterDescription, RegisterFile, RegisterKind};
 use crate::error::Error;
-use crate::memory::Memory;
+use crate::memory::{valid_32_address, Memory};
 use crate::{
     Architecture, CoreInformation, CoreInterface, CoreRegister, CoreRegisterAddress, CoreStatus,
     CoreType, DebugProbeError, HaltReason, InstructionSet, MemoryInterface,
@@ -170,7 +170,7 @@ impl From<Dhcsr> for u32 {
 }
 
 impl CoreRegister for Dhcsr {
-    const ADDRESS: u32 = 0xE000_EDF0;
+    const ADDRESS: u64 = 0xE000_EDF0;
     const NAME: &'static str = "DHCSR";
 }
 
@@ -191,7 +191,7 @@ impl From<Dcrdr> for u32 {
 }
 
 impl CoreRegister for Dcrdr {
-    const ADDRESS: u32 = 0xE000_EDF8;
+    const ADDRESS: u64 = 0xE000_EDF8;
     const NAME: &'static str = "DCRDR";
 }
 
@@ -228,7 +228,7 @@ impl From<BpCtrl> for u32 {
 }
 
 impl CoreRegister for BpCtrl {
-    const ADDRESS: u32 = 0xE000_2000;
+    const ADDRESS: u64 = 0xE000_2000;
     const NAME: &'static str = "BP_CTRL";
 }
 
@@ -276,7 +276,7 @@ impl From<BpCompx> for u32 {
 }
 
 impl CoreRegister for BpCompx {
-    const ADDRESS: u32 = 0xE000_2008;
+    const ADDRESS: u64 = 0xE000_2008;
     const NAME: &'static str = "BP_CTRL0";
 }
 
@@ -364,7 +364,7 @@ impl Aircr {
 }
 
 impl CoreRegister for Aircr {
-    const ADDRESS: u32 = 0xE000_ED0C;
+    const ADDRESS: u64 = 0xE000_ED0C;
     const NAME: &'static str = "AIRCR";
 }
 
@@ -400,7 +400,7 @@ impl From<Demcr> for u32 {
 }
 
 impl CoreRegister for Demcr {
-    const ADDRESS: u32 = 0xe000_edfc;
+    const ADDRESS: u64 = 0xe000_edfc;
     const NAME: &'static str = "DEMCR";
 }
 
@@ -538,7 +538,9 @@ impl<'probe> CoreInterface for Armv6m<'probe> {
         let pc_value = self.read_core_reg(PC.address)?;
 
         // get pc
-        Ok(CoreInformation { pc: pc_value })
+        Ok(CoreInformation {
+            pc: pc_value.into(),
+        })
     }
 
     fn run(&mut self) -> Result<(), Error> {
@@ -591,7 +593,9 @@ impl<'probe> CoreInterface for Armv6m<'probe> {
         let pc_value = self.read_core_reg(PC.address)?;
 
         // get pc
-        Ok(CoreInformation { pc: pc_value })
+        Ok(CoreInformation {
+            pc: pc_value.into(),
+        })
     }
 
     fn reset(&mut self) -> Result<(), Error> {
@@ -621,7 +625,9 @@ impl<'probe> CoreInterface for Armv6m<'probe> {
         let pc_value = self.read_core_reg(PC.address)?;
 
         // get pc
-        Ok(CoreInformation { pc: pc_value })
+        Ok(CoreInformation {
+            pc: pc_value.into(),
+        })
     }
 
     fn available_breakpoint_units(&mut self) -> Result<u32, Error> {
@@ -646,7 +652,9 @@ impl<'probe> CoreInterface for Armv6m<'probe> {
         Ok(())
     }
 
-    fn set_hw_breakpoint(&mut self, bp_register_index: usize, addr: u32) -> Result<(), Error> {
+    fn set_hw_breakpoint(&mut self, bp_register_index: usize, addr: u64) -> Result<(), Error> {
+        let addr = valid_32_address(addr)?;
+
         log::debug!("Setting breakpoint on address 0x{:08x}", addr);
 
         // The highest 3 bits of the address have to be zero, otherwise the breakpoint cannot
@@ -666,7 +674,7 @@ impl<'probe> CoreInterface for Armv6m<'probe> {
         value.set_comp((addr >> 2) & 0x07FF_FFFF);
         value.set_enable(true);
 
-        let register_addr = BpCompx::ADDRESS + (bp_register_index * size_of::<u32>()) as u32;
+        let register_addr = BpCompx::ADDRESS + (bp_register_index * size_of::<u32>()) as u64;
 
         self.memory.write_word_32(register_addr, value.into())?;
 
@@ -678,7 +686,7 @@ impl<'probe> CoreInterface for Armv6m<'probe> {
     }
 
     fn clear_hw_breakpoint(&mut self, bp_unit_index: usize) -> Result<(), Error> {
-        let register_addr = BpCompx::ADDRESS + (bp_unit_index * size_of::<u32>()) as u32;
+        let register_addr = BpCompx::ADDRESS + (bp_unit_index * size_of::<u32>()) as u64;
 
         let mut value = BpCompx::from(0);
         value.set_enable(false);
@@ -771,25 +779,25 @@ impl<'probe> CoreInterface for Armv6m<'probe> {
     }
 
     fn read_core_reg(&mut self, address: CoreRegisterAddress) -> Result<u32, Error> {
-        self.memory.read_core_reg(address)
+        super::cortex_m::read_core_reg(&mut self.memory, address)
     }
 
     fn write_core_reg(&mut self, address: CoreRegisterAddress, value: u32) -> Result<()> {
-        self.memory.write_core_reg(address, value)?;
+        super::cortex_m::write_core_reg(&mut self.memory, address, value)?;
         Ok(())
     }
 
     /// See docs on the [`CoreInterface::hw_breakpoints`] trait
-    fn hw_breakpoints(&mut self) -> Result<Vec<Option<u32>>, Error> {
+    fn hw_breakpoints(&mut self) -> Result<Vec<Option<u64>>, Error> {
         let mut breakpoints = vec![];
         let num_hw_breakpoints = self.available_breakpoint_units()? as usize;
         for bp_unit_index in 0..num_hw_breakpoints {
-            let reg_addr = BpCompx::ADDRESS + (bp_unit_index * size_of::<u32>()) as u32;
+            let reg_addr = BpCompx::ADDRESS + (bp_unit_index * size_of::<u32>()) as u64;
             // The raw breakpoint address as read from memory
             let register_value = self.memory.read_word_32(reg_addr)?;
             if BpCompx::from(register_value).enable() {
                 let breakpoint = BpCompx::get_breakpoint_comparator(register_value)?;
-                breakpoints.push(Some(breakpoint));
+                breakpoints.push(Some(breakpoint as u64));
             } else {
                 breakpoints.push(None);
             }
@@ -799,28 +807,28 @@ impl<'probe> CoreInterface for Armv6m<'probe> {
 }
 
 impl<'probe> MemoryInterface for Armv6m<'probe> {
-    fn read_word_32(&mut self, address: u32) -> Result<u32, Error> {
+    fn read_word_32(&mut self, address: u64) -> Result<u32, Error> {
         self.memory.read_word_32(address)
     }
-    fn read_word_8(&mut self, address: u32) -> Result<u8, Error> {
+    fn read_word_8(&mut self, address: u64) -> Result<u8, Error> {
         self.memory.read_word_8(address)
     }
-    fn read_32(&mut self, address: u32, data: &mut [u32]) -> Result<(), Error> {
+    fn read_32(&mut self, address: u64, data: &mut [u32]) -> Result<(), Error> {
         self.memory.read_32(address, data)
     }
-    fn read_8(&mut self, address: u32, data: &mut [u8]) -> Result<(), Error> {
+    fn read_8(&mut self, address: u64, data: &mut [u8]) -> Result<(), Error> {
         self.memory.read_8(address, data)
     }
-    fn write_word_32(&mut self, address: u32, data: u32) -> Result<(), Error> {
+    fn write_word_32(&mut self, address: u64, data: u32) -> Result<(), Error> {
         self.memory.write_word_32(address, data)
     }
-    fn write_word_8(&mut self, address: u32, data: u8) -> Result<(), Error> {
+    fn write_word_8(&mut self, address: u64, data: u8) -> Result<(), Error> {
         self.memory.write_word_8(address, data)
     }
-    fn write_32(&mut self, address: u32, data: &[u32]) -> Result<(), Error> {
+    fn write_32(&mut self, address: u64, data: &[u32]) -> Result<(), Error> {
         self.memory.write_32(address, data)
     }
-    fn write_8(&mut self, address: u32, data: &[u8]) -> Result<(), Error> {
+    fn write_8(&mut self, address: u64, data: &[u8]) -> Result<(), Error> {
         self.memory.write_8(address, data)
     }
     fn flush(&mut self) -> Result<(), Error> {

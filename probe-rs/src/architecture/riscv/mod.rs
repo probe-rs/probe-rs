@@ -10,7 +10,9 @@ use communication_interface::{
 };
 
 use crate::core::{CoreInformation, RegisterFile};
+use crate::memory::valid_32_address;
 use crate::{CoreRegisterAddress, CoreStatus, Error, HaltReason, MemoryInterface};
+
 use bitfield::bitfield;
 use register::RISCV_REGISTERS;
 use std::time::{Duration, Instant};
@@ -116,7 +118,7 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
 
         let pc = self.read_core_reg(register::RISCV_REGISTERS.program_counter.address)?;
 
-        Ok(CoreInformation { pc })
+        Ok(CoreInformation { pc: pc.into() })
     }
 
     fn run(&mut self) -> Result<(), crate::Error> {
@@ -265,7 +267,7 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
 
         let pc = self.read_core_reg(CoreRegisterAddress(0x7b1))?;
 
-        Ok(CoreInformation { pc })
+        Ok(CoreInformation { pc: pc.into() })
     }
 
     fn step(&mut self) -> Result<crate::core::CoreInformation, crate::Error> {
@@ -288,7 +290,7 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
 
         self.write_csr(0x7b0, dcsr.0)?;
 
-        Ok(CoreInformation { pc })
+        Ok(CoreInformation { pc: pc.into() })
     }
 
     fn read_core_reg(&mut self, address: crate::CoreRegisterAddress) -> Result<u32, crate::Error> {
@@ -374,7 +376,9 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
         Ok(())
     }
 
-    fn set_hw_breakpoint(&mut self, bp_unit_index: usize, addr: u32) -> Result<(), crate::Error> {
+    fn set_hw_breakpoint(&mut self, bp_unit_index: usize, addr: u64) -> Result<(), crate::Error> {
+        let addr = valid_32_address(addr)?;
+
         // select requested trigger
         let tselect = 0x7a0;
         let tdata1 = 0x7a1;
@@ -494,7 +498,7 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
 
     /// See docs on the [`CoreInterface::hw_breakpoints`] trait
     /// NOTE: For riscv, this assumes that only execution breakpoints are used.
-    fn hw_breakpoints(&mut self) -> Result<Vec<Option<u32>>, Error> {
+    fn hw_breakpoints(&mut self) -> Result<Vec<Option<u64>>, Error> {
         let tselect = 0x7a0;
         let tdata1 = 0x7a1;
         let tdata2 = 0x7a2;
@@ -524,7 +528,7 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
                 && trigger_any_action_enabled
             {
                 let breakpoint = self.read_csr(tdata2)?;
-                breakpoints.push(Some(breakpoint));
+                breakpoints.push(Some(breakpoint as u64));
             } else {
                 breakpoints.push(None);
             }
@@ -535,28 +539,28 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
 }
 
 impl<'probe> MemoryInterface for Riscv32<'probe> {
-    fn read_word_32(&mut self, address: u32) -> Result<u32, Error> {
+    fn read_word_32(&mut self, address: u64) -> Result<u32, Error> {
         self.interface.read_word_32(address)
     }
-    fn read_word_8(&mut self, address: u32) -> Result<u8, Error> {
+    fn read_word_8(&mut self, address: u64) -> Result<u8, Error> {
         self.interface.read_word_8(address)
     }
-    fn read_32(&mut self, address: u32, data: &mut [u32]) -> Result<(), Error> {
+    fn read_32(&mut self, address: u64, data: &mut [u32]) -> Result<(), Error> {
         self.interface.read_32(address, data)
     }
-    fn read_8(&mut self, address: u32, data: &mut [u8]) -> Result<(), Error> {
+    fn read_8(&mut self, address: u64, data: &mut [u8]) -> Result<(), Error> {
         self.interface.read_8(address, data)
     }
-    fn write_word_32(&mut self, address: u32, data: u32) -> Result<(), Error> {
+    fn write_word_32(&mut self, address: u64, data: u32) -> Result<(), Error> {
         self.interface.write_word_32(address, data)
     }
-    fn write_word_8(&mut self, address: u32, data: u8) -> Result<(), Error> {
+    fn write_word_8(&mut self, address: u64, data: u8) -> Result<(), Error> {
         self.interface.write_word_8(address, data)
     }
-    fn write_32(&mut self, address: u32, data: &[u32]) -> Result<(), Error> {
+    fn write_32(&mut self, address: u64, data: &[u32]) -> Result<(), Error> {
         self.interface.write_32(address, data)
     }
-    fn write_8(&mut self, address: u32, data: &[u8]) -> Result<(), Error> {
+    fn write_8(&mut self, address: u64, data: &[u8]) -> Result<(), Error> {
         self.interface.write_8(address, data)
     }
     fn flush(&mut self) -> Result<(), Error> {

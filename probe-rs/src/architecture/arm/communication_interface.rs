@@ -225,11 +225,17 @@ impl ApInformation {
 
             log::debug!("HNONSEC supported: {}", supports_hnonsec);
 
+            // TODO 64-bit - read the real state of the large data / address extensions from CFG
+            let has_large_address_extension = false;
+            let has_large_data_extension = false;
+
             Ok(ApInformation::MemoryAp(MemoryApInformation {
                 address: access_port.ap_address(),
                 only_32bit_data_size,
                 debug_base_address: base_address,
                 supports_hnonsec,
+                has_large_address_extension,
+                has_large_data_extension,
             }))
         } else {
             Ok(ApInformation::Other {
@@ -262,6 +268,12 @@ pub struct MemoryApInformation {
     ///
     /// [ARM Debug Interface Architecture Specification]: https://developer.arm.com/documentation/ihi0031/d/
     pub supports_hnonsec: bool,
+
+    /// This AP has the large address extension present, supporting 64-bit addresses
+    pub has_large_address_extension: bool,
+
+    /// This AP has the large data extension present, supporting 64-bit data access
+    pub has_large_data_extension: bool,
 }
 
 /// An implementation of the communication protocol between probe and target.

@@ -5,7 +5,7 @@ use crate::architecture::arm::core::register;
 use crate::architecture::arm::sequences::ArmDebugSequence;
 use crate::core::RegisterFile;
 use crate::error::Error;
-use crate::memory::Memory;
+use crate::memory::{valid_32_address, Memory};
 use crate::CoreInterface;
 use crate::CoreRegisterAddress;
 use crate::CoreStatus;
@@ -47,7 +47,7 @@ pub struct Armv7a<'probe> {
 
     state: &'probe mut CortexAState,
 
-    base_address: u32,
+    base_address: u64,
 
     sequence: Arc<dyn ArmDebugSequence>,
 
@@ -60,7 +60,7 @@ impl<'probe> Armv7a<'probe> {
     pub(crate) fn new(
         mut memory: Memory<'probe>,
         state: &'probe mut CortexAState,
-        base_address: u32,
+        base_address: u64,
         sequence: Arc<dyn ArmDebugSequence>,
     ) -> Result<Self, Error> {
         if !state.initialized() {
@@ -280,7 +280,9 @@ impl<'probe> CoreInterface for Armv7a<'probe> {
         let pc_value = self.read_core_reg(register::PC.address)?;
 
         // get pc
-        Ok(CoreInformation { pc: pc_value })
+        Ok(CoreInformation {
+            pc: pc_value.into(),
+        })
     }
 
     fn run(&mut self) -> Result<(), Error> {
@@ -361,18 +363,20 @@ impl<'probe> CoreInterface for Armv7a<'probe> {
         let pc_value = self.read_core_reg(register::PC.address)?;
 
         // get pc
-        Ok(CoreInformation { pc: pc_value })
+        Ok(CoreInformation {
+            pc: pc_value.into(),
+        })
     }
 
     fn step(&mut self) -> Result<CoreInformation, Error> {
         // Save current breakpoint
         let bp_unit_index = (self.available_breakpoint_units()? - 1) as usize;
         let bp_value_addr =
-            Dbgbvr::get_mmio_address(self.base_address) + (bp_unit_index * size_of::<u32>()) as u32;
+            Dbgbvr::get_mmio_address(self.base_address) + (bp_unit_index * size_of::<u32>()) as u64;
         let saved_bp_value = self.memory.read_word_32(bp_value_addr)?;
 
         let bp_control_addr =
-            Dbgbcr::get_mmio_address(self.base_address) + (bp_unit_index * size_of::<u32>()) as u32;
+            Dbgbcr::get_mmio_address(self.base_address) + (bp_unit_index * size_of::<u32>()) as u64;
         let saved_bp_control = self.memory.read_word_32(bp_control_addr)?;
 
         // Set breakpoint for any change
@@ -408,7 +412,9 @@ impl<'probe> CoreInterface for Armv7a<'probe> {
         let pc_value = self.read_core_reg(register::PC.address)?;
 
         // get pc
-        Ok(CoreInformation { pc: pc_value })
+        Ok(CoreInformation {
+            pc: pc_value.into(),
+        })
     }
 
     fn read_core_reg(&mut self, address: CoreRegisterAddress) -> Result<u32, Error> {
@@ -499,11 +505,13 @@ impl<'probe> CoreInterface for Armv7a<'probe> {
         Ok(())
     }
 
-    fn set_hw_breakpoint(&mut self, bp_unit_index: usize, addr: u32) -> Result<(), Error> {
+    fn set_hw_breakpoint(&mut self, bp_unit_index: usize, addr: u64) -> Result<(), Error> {
+        let addr = valid_32_address(addr)?;
+
         let bp_value_addr =
-            Dbgbvr::get_mmio_address(self.base_address) + (bp_unit_index * size_of::<u32>()) as u32;
+            Dbgbvr::get_mmio_address(self.base_address) + (bp_unit_index * size_of::<u32>()) as u64;
         let bp_control_addr =
-            Dbgbcr::get_mmio_address(self.base_address) + (bp_unit_index * size_of::<u32>()) as u32;
+            Dbgbcr::get_mmio_address(self.base_address) + (bp_unit_index * size_of::<u32>()) as u64;
         let mut bp_control = Dbgbcr(0);
 
         // Breakpoint type - address match
@@ -529,9 +537,9 @@ impl<'probe> CoreInterface for Armv7a<'probe> {
 
     fn clear_hw_breakpoint(&mut self, bp_unit_index: usize) -> Result<(), Error> {
         let bp_value_addr =
-            Dbgbvr::get_mmio_address(self.base_address) + (bp_unit_index * size_of::<u32>()) as u32;
+            Dbgbvr::get_mmio_address(self.base_address) + (bp_unit_index * size_of::<u32>()) as u64;
         let bp_control_addr =
-            Dbgbcr::get_mmio_address(self.base_address) + (bp_unit_index * size_of::<u32>()) as u32;
+            Dbgbcr::get_mmio_address(self.base_address) + (bp_unit_index * size_of::<u32>()) as u64;
 
         self.memory.write_word_32(bp_value_addr, 0)?;
         self.memory.write_word_32(bp_control_addr, 0)?;
@@ -584,21 +592,21 @@ impl<'probe> CoreInterface for Armv7a<'probe> {
     }
 
     /// See docs on the [`CoreInterface::hw_breakpoints`] trait
-    fn hw_breakpoints(&mut self) -> Result<Vec<Option<u32>>, Error> {
+    fn hw_breakpoints(&mut self) -> Result<Vec<Option<u64>>, Error> {
         let mut breakpoints = vec![];
         let num_hw_breakpoints = self.available_breakpoint_units()? as usize;
 
         for bp_unit_index in 0..num_hw_breakpoints {
             let bp_value_addr = Dbgbvr::get_mmio_address(self.base_address)
-                + (bp_unit_index * size_of::<u32>()) as u32;
+                + (bp_unit_index * size_of::<u32>()) as u64;
             let bp_value = self.memory.read_word_32(bp_value_addr)?;
 
             let bp_control_addr = Dbgbcr::get_mmio_address(self.base_address)
-                + (bp_unit_index * size_of::<u32>()) as u32;
+                + (bp_unit_index * size_of::<u32>()) as u64;
             let bp_control = Dbgbcr(self.memory.read_word_32(bp_control_addr)?);
 
             if bp_control.e() {
-                breakpoints.push(Some(bp_value));
+                breakpoints.push(Some(bp_value as u64));
             } else {
                 breakpoints.push(None);
             }
@@ -608,7 +616,9 @@ impl<'probe> CoreInterface for Armv7a<'probe> {
 }
 
 impl<'probe> MemoryInterface for Armv7a<'probe> {
-    fn read_word_32(&mut self, address: u32) -> Result<u32, Error> {
+    fn read_word_32(&mut self, address: u64) -> Result<u32, Error> {
+        let address = valid_32_address(address)?;
+
         // LDC p14, c5, [r0], #4
         let instr = build_ldc(14, 5, 0, 4);
 
@@ -621,7 +631,7 @@ impl<'probe> MemoryInterface for Armv7a<'probe> {
         // Read memory from [r0]
         self.execute_instruction_with_result(instr)
     }
-    fn read_word_8(&mut self, address: u32) -> Result<u8, Error> {
+    fn read_word_8(&mut self, address: u64) -> Result<u8, Error> {
         // Find the word this is in and its byte offset
         let byte_offset = address % 4;
         let word_start = address - byte_offset;
@@ -632,21 +642,23 @@ impl<'probe> MemoryInterface for Armv7a<'probe> {
         // Return the byte
         Ok(data.to_le_bytes()[byte_offset as usize])
     }
-    fn read_32(&mut self, address: u32, data: &mut [u32]) -> Result<(), Error> {
+    fn read_32(&mut self, address: u64, data: &mut [u32]) -> Result<(), Error> {
         for (i, word) in data.iter_mut().enumerate() {
-            *word = self.read_word_32(address + ((i as u32) * 4))?;
+            *word = self.read_word_32(address + ((i as u64) * 4))?;
         }
 
         Ok(())
     }
-    fn read_8(&mut self, address: u32, data: &mut [u8]) -> Result<(), Error> {
+    fn read_8(&mut self, address: u64, data: &mut [u8]) -> Result<(), Error> {
         for (i, byte) in data.iter_mut().enumerate() {
-            *byte = self.read_word_8(address + (i as u32))?;
+            *byte = self.read_word_8(address + (i as u64))?;
         }
 
         Ok(())
     }
-    fn write_word_32(&mut self, address: u32, data: u32) -> Result<(), Error> {
+    fn write_word_32(&mut self, address: u64, data: u32) -> Result<(), Error> {
+        let address = valid_32_address(address)?;
+
         // STC p14, c5, [r0], #4
         let instr = build_stc(14, 5, 0, 4);
 
@@ -659,7 +671,7 @@ impl<'probe> MemoryInterface for Armv7a<'probe> {
         // Write to [r0]
         self.execute_instruction_with_input(instr, data)
     }
-    fn write_word_8(&mut self, address: u32, data: u8) -> Result<(), Error> {
+    fn write_word_8(&mut self, address: u64, data: u8) -> Result<(), Error> {
         // Find the word this is in and its byte offset
         let byte_offset = address % 4;
         let word_start = address - byte_offset;
@@ -671,16 +683,16 @@ impl<'probe> MemoryInterface for Armv7a<'probe> {
 
         self.write_word_32(word_start, u32::from_le_bytes(word_bytes))
     }
-    fn write_32(&mut self, address: u32, data: &[u32]) -> Result<(), Error> {
+    fn write_32(&mut self, address: u64, data: &[u32]) -> Result<(), Error> {
         for (i, word) in data.iter().enumerate() {
-            self.write_word_32(address + ((i as u32) * 4), *word)?;
+            self.write_word_32(address + ((i as u64) * 4), *word)?;
         }
 
         Ok(())
     }
-    fn write_8(&mut self, address: u32, data: &[u8]) -> Result<(), Error> {
+    fn write_8(&mut self, address: u64, data: &[u8]) -> Result<(), Error> {
         for (i, byte) in data.iter().enumerate() {
-            self.write_word_8(address + ((i as u32) * 4), *byte)?;
+            self.write_word_8(address + ((i as u64) * 4), *byte)?;
         }
 
         Ok(())
@@ -701,15 +713,15 @@ mod test {
 
     use super::*;
 
-    const TEST_BASE_ADDRESS: u32 = 0x8000_1000;
+    const TEST_BASE_ADDRESS: u64 = 0x8000_1000;
 
-    fn address_to_reg_num(address: u32) -> u32 {
-        (address - TEST_BASE_ADDRESS) / 4
+    fn address_to_reg_num(address: u64) -> u32 {
+        ((address - TEST_BASE_ADDRESS) / 4) as u32
     }
 
     pub struct ExpectedMemoryOp {
         read: bool,
-        address: u32,
+        address: u64,
         value: u32,
     }
 
@@ -724,7 +736,7 @@ mod test {
             }
         }
 
-        pub fn expected_read(&mut self, addr: u32, value: u32) {
+        pub fn expected_read(&mut self, addr: u64, value: u32) {
             self.expected_ops.push(ExpectedMemoryOp {
                 read: true,
                 address: addr,
@@ -732,7 +744,7 @@ mod test {
             });
         }
 
-        pub fn expected_write(&mut self, addr: u32, value: u32) {
+        pub fn expected_write(&mut self, addr: u64, value: u32) {
             self.expected_ops.push(ExpectedMemoryOp {
                 read: false,
                 address: addr,
@@ -742,28 +754,11 @@ mod test {
     }
 
     impl ArmProbe for MockProbe {
-        fn read_core_reg(
-            &mut self,
-            _ap: MemoryAp,
-            _addr: CoreRegisterAddress,
-        ) -> Result<u32, Error> {
+        fn read_8(&mut self, _ap: MemoryAp, _address: u64, _data: &mut [u8]) -> Result<(), Error> {
             todo!()
         }
 
-        fn write_core_reg(
-            &mut self,
-            _ap: MemoryAp,
-            _addr: CoreRegisterAddress,
-            _value: u32,
-        ) -> Result<(), Error> {
-            todo!()
-        }
-
-        fn read_8(&mut self, _ap: MemoryAp, _address: u32, _data: &mut [u8]) -> Result<(), Error> {
-            todo!()
-        }
-
-        fn read_32(&mut self, _ap: MemoryAp, address: u32, data: &mut [u32]) -> Result<(), Error> {
+        fn read_32(&mut self, _ap: MemoryAp, address: u64, data: &mut [u32]) -> Result<(), Error> {
             if self.expected_ops.len() == 0 {
                 panic!(
                     "Received unexpected read_32 op: register {:#}",
@@ -795,11 +790,11 @@ mod test {
             Ok(())
         }
 
-        fn write_8(&mut self, _ap: MemoryAp, _address: u32, _data: &[u8]) -> Result<(), Error> {
+        fn write_8(&mut self, _ap: MemoryAp, _address: u64, _data: &[u8]) -> Result<(), Error> {
             todo!()
         }
 
-        fn write_32(&mut self, _ap: MemoryAp, address: u32, data: &[u32]) -> Result<(), Error> {
+        fn write_32(&mut self, _ap: MemoryAp, address: u64, data: &[u32]) -> Result<(), Error> {
             if self.expected_ops.len() == 0 {
                 panic!(
                     "Received unexpected write_32 op: register {:#}",
@@ -933,8 +928,8 @@ mod test {
         probe.expected_read(Dbgdscr::get_mmio_address(TEST_BASE_ADDRESS), dbgdscr.into());
     }
 
-    fn add_read_memory_expectations(probe: &mut MockProbe, address: u32, value: u32) {
-        add_set_r0_expectation(probe, address);
+    fn add_read_memory_expectations(probe: &mut MockProbe, address: u64, value: u32) {
+        add_set_r0_expectation(probe, address as u32);
 
         let mut dbgdscr = Dbgdscr(0);
         dbgdscr.set_instrcoml_l(true);
@@ -1295,7 +1290,7 @@ mod test {
 
         // Verify PC
         assert_eq!(
-            REG_VALUE,
+            REG_VALUE as u64,
             armv7a.halt(Duration::from_millis(100)).unwrap().pc
         );
     }
@@ -1372,8 +1367,8 @@ mod test {
     #[test]
     fn armv7a_hw_breakpoints() {
         const BP_COUNT: u32 = 4;
-        const BP1: u32 = 0x2345;
-        const BP2: u32 = 0x8000_0000;
+        const BP1: u64 = 0x2345;
+        const BP2: u64 = 0x8000_0000;
         let mut probe = MockProbe::new();
         let mut state = CortexAState::new();
 
@@ -1384,10 +1379,13 @@ mod test {
         add_idr_expectations(&mut probe, BP_COUNT);
 
         // Read BP values and controls
-        probe.expected_read(Dbgbvr::get_mmio_address(TEST_BASE_ADDRESS), BP1);
+        probe.expected_read(Dbgbvr::get_mmio_address(TEST_BASE_ADDRESS), BP1 as u32);
         probe.expected_read(Dbgbcr::get_mmio_address(TEST_BASE_ADDRESS), 1);
 
-        probe.expected_read(Dbgbvr::get_mmio_address(TEST_BASE_ADDRESS) + (1 * 4), BP2);
+        probe.expected_read(
+            Dbgbvr::get_mmio_address(TEST_BASE_ADDRESS) + (1 * 4),
+            BP2 as u32,
+        );
         probe.expected_read(Dbgbcr::get_mmio_address(TEST_BASE_ADDRESS) + (1 * 4), 1);
 
         probe.expected_read(Dbgbvr::get_mmio_address(TEST_BASE_ADDRESS) + (2 * 4), 0);
@@ -1421,7 +1419,7 @@ mod test {
 
     #[test]
     fn armv7a_set_hw_breakpoint() {
-        const BP_VALUE: u32 = 0x2345;
+        const BP_VALUE: u64 = 0x2345;
         let mut probe = MockProbe::new();
         let mut state = CortexAState::new();
 
@@ -1438,7 +1436,7 @@ mod test {
         // Enable
         dbgbcr.set_e(true);
 
-        probe.expected_write(Dbgbvr::get_mmio_address(TEST_BASE_ADDRESS), BP_VALUE);
+        probe.expected_write(Dbgbvr::get_mmio_address(TEST_BASE_ADDRESS), BP_VALUE as u32);
         probe.expected_write(Dbgbcr::get_mmio_address(TEST_BASE_ADDRESS), dbgbcr.into());
 
         let mock_mem = Memory::new(
@@ -1494,7 +1492,7 @@ mod test {
     #[test]
     fn armv7a_read_word_32() {
         const MEMORY_VALUE: u32 = 0xBA5EBA11;
-        const MEMORY_ADDRESS: u32 = 0x12345678;
+        const MEMORY_ADDRESS: u64 = 0x12345678;
 
         let mut probe = MockProbe::new();
         let mut state = CortexAState::new();
@@ -1529,8 +1527,8 @@ mod test {
     #[test]
     fn armv7a_read_word_8() {
         const MEMORY_VALUE: u32 = 0xBA5EBA11;
-        const MEMORY_ADDRESS: u32 = 0x12345679;
-        const MEMORY_WORD_ADDRESS: u32 = 0x12345678;
+        const MEMORY_ADDRESS: u64 = 0x12345679;
+        const MEMORY_WORD_ADDRESS: u64 = 0x12345678;
 
         let mut probe = MockProbe::new();
         let mut state = CortexAState::new();

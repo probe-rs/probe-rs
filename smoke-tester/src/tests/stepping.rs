@@ -29,17 +29,17 @@ pub fn test_stepping(core: &mut Core, memory_regions: &[MemoryRegion]) -> Result
 
     core.halt(Duration::from_millis(100))?;
 
-    let code_load_address = ram_region.range.start as u32;
+    let code_load_address = ram_region.range.start as u64;
 
     core.write_8(code_load_address, TEST_CODE)?;
 
     let registers = core.registers();
 
-    core.write_core_reg(registers.program_counter().into(), code_load_address)?;
+    core.write_core_reg(registers.program_counter().into(), code_load_address as u32)?;
 
     let core_information = core.step()?;
 
-    assert_eq!(core_information.pc, code_load_address + 2);
+    assert_eq!(core_information.pc as u64, code_load_address + 2);
 
     let core_status = core.status()?;
 
@@ -88,7 +88,7 @@ pub fn test_stepping(core: &mut Core, memory_regions: &[MemoryRegion]) -> Result
 
     let pc = core.read_core_reg(registers.program_counter())?;
 
-    assert_eq!(pc, break_address);
+    assert_eq!(pc as u64, break_address);
 
     println!("Core halted at {:#08x}, now trying to run...", pc);
 
@@ -128,7 +128,11 @@ pub fn test_stepping(core: &mut Core, memory_regions: &[MemoryRegion]) -> Result
 
     let pc = core.read_core_reg(registers.program_counter())?;
 
-    assert_eq!(pc, break_address, "{:#08x} != {:#08x}", pc, break_address);
+    assert_eq!(
+        pc as u64, break_address,
+        "{:#08x} != {:#08x}",
+        pc, break_address
+    );
 
     // Register r2 should be 1 to indicate end of test.
     assert_eq!(1, core.read_core_reg(registers.platform_register(2))?);
