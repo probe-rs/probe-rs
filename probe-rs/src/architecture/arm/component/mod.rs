@@ -159,9 +159,7 @@ pub(crate) fn setup_swv(
 }
 
 /// Sets up all vendor specific bit of all the SWV components.
-///
-/// Expects to be given a list of all ROM table `components` as the second argument.
-pub(crate) fn setup_swv_vendor(
+fn setup_swv_vendor(
     interface: &mut Box<dyn ArmProbeInterface>,
     components: &[CoresightComponent],
     config: &SwoConfig,

@@ -5,7 +5,7 @@ use std::sync::Arc;
 use super::ArmDebugSequence;
 use crate::{
     architecture::arm::{
-        ap::MemoryAp, ApAddress,
+        ap::MemoryAp, communication_interface::Initialized, ApAddress, ArmCommunicationInterface,
         DpAddress,
     },
     Memory,
@@ -25,7 +25,6 @@ impl Stm32h7 {
     /// Enable all debug components on the chip.
     pub fn enable_debug_components(&self, memory: &mut Memory<'_>) -> Result<(), crate::Error> {
         log::info!("Enabling STM32H7 debug components");
-
         let mut control = dbgmcu::Control::read(memory)?;
 
         // Enable the debug clock doamins for D1 and D3. This ensures we can access CoreSight
