@@ -7,14 +7,14 @@ use crate::HaltReason;
 /// A debug register that is accessible to the external debugger
 pub trait Armv8DebugRegister {
     /// Register number
-    const NUMBER: u32;
+    const NUMBER: usize;
 
     /// The register's name.
     const NAME: &'static str;
 
     /// Get the address in the memory map
-    fn get_mmio_address(base_address: u32) -> u32 {
-        base_address + (Self::NUMBER * size_of::<u32>() as u32)
+    fn get_mmio_address(base_address: u64) -> u64 {
+        base_address + (Self::NUMBER * size_of::<u32>()) as u64
     }
 }
 
@@ -161,7 +161,7 @@ impl Edscr {
 }
 
 impl Armv8DebugRegister for Edscr {
-    const NUMBER: u32 = 34;
+    const NUMBER: usize = 34;
     const NAME: &'static str = "EDSCR";
 }
 
@@ -189,7 +189,7 @@ bitfield! {
 }
 
 impl Armv8DebugRegister for Edlar {
-    const NUMBER: u32 = 1004;
+    const NUMBER: usize = 1004;
     const NAME: &'static str = "EDLAR";
 }
 
@@ -216,7 +216,7 @@ bitfield! {
 }
 
 impl Armv8DebugRegister for Dbgbvr {
-    const NUMBER: u32 = 256;
+    const NUMBER: usize = 256;
     const NAME: &'static str = "DBGBVR";
 }
 
@@ -261,7 +261,7 @@ bitfield! {
 }
 
 impl Armv8DebugRegister for Dbgbcr {
-    const NUMBER: u32 = 258;
+    const NUMBER: usize = 258;
     const NAME: &'static str = "DBGBCR";
 }
 
@@ -300,7 +300,7 @@ bitfield! {
 }
 
 impl Armv8DebugRegister for Eddfr {
-    const NUMBER: u32 = 842;
+    const NUMBER: usize = 842;
     const NAME: &'static str = "EDDFR";
 }
 
@@ -327,7 +327,7 @@ bitfield! {
 }
 
 impl Armv8DebugRegister for Editr {
-    const NUMBER: u32 = 33;
+    const NUMBER: usize = 33;
     const NAME: &'static str = "EDITR";
 }
 
@@ -360,7 +360,7 @@ bitfield! {
 }
 
 impl Armv8DebugRegister for Edrcr {
-    const NUMBER: u32 = 36;
+    const NUMBER: usize = 36;
     const NAME: &'static str = "EDRCR";
 }
 
@@ -393,7 +393,7 @@ bitfield! {
 }
 
 impl Armv8DebugRegister for Edecr {
-    const NUMBER: u32 = 9;
+    const NUMBER: usize = 9;
     const NAME: &'static str = "EDECR";
 }
 
@@ -426,7 +426,7 @@ bitfield! {
 }
 
 impl Armv8DebugRegister for Edprcr {
-    const NUMBER: u32 = 196;
+    const NUMBER: usize = 196;
     const NAME: &'static str = "EDPRCR";
 }
 
@@ -453,7 +453,7 @@ bitfield! {
 }
 
 impl Armv8DebugRegister for Dbgdtrtx {
-    const NUMBER: u32 = 35;
+    const NUMBER: usize = 35;
     const NAME: &'static str = "DBGDTRTX";
 }
 
@@ -480,7 +480,7 @@ bitfield! {
 }
 
 impl Armv8DebugRegister for Dbgdtrrx {
-    const NUMBER: u32 = 32;
+    const NUMBER: usize = 32;
     const NAME: &'static str = "DBGDTRRX";
 }
 
@@ -540,7 +540,7 @@ bitfield! {
 }
 
 impl Armv8DebugRegister for Edprsr {
-    const NUMBER: u32 = 197;
+    const NUMBER: usize = 197;
     const NAME: &'static str = "EDPRSR";
 }
 
@@ -567,7 +567,7 @@ bitfield! {
 }
 
 impl Armv8DebugRegister for CtiControl {
-    const NUMBER: u32 = 0;
+    const NUMBER: usize = 0;
     const NAME: &'static str = "CTICONTROL";
 }
 
@@ -594,7 +594,7 @@ bitfield! {
 }
 
 impl Armv8DebugRegister for CtiGate {
-    const NUMBER: u32 = 80;
+    const NUMBER: usize = 80;
     const NAME: &'static str = "CTIGATE";
 }
 
@@ -621,7 +621,7 @@ bitfield! {
 }
 
 impl Armv8DebugRegister for CtiOuten {
-    const NUMBER: u32 = 40;
+    const NUMBER: usize = 40;
     const NAME: &'static str = "CTIOUTEN";
 }
 
@@ -648,7 +648,7 @@ bitfield! {
 }
 
 impl Armv8DebugRegister for CtiApppulse {
-    const NUMBER: u32 = 7;
+    const NUMBER: usize = 7;
     const NAME: &'static str = "CTIAPPPULSE";
 }
 
@@ -675,7 +675,7 @@ bitfield! {
 }
 
 impl Armv8DebugRegister for CtiIntack {
-    const NUMBER: u32 = 4;
+    const NUMBER: usize = 4;
     const NAME: &'static str = "CTIINTACK";
 }
 
@@ -702,7 +702,7 @@ bitfield! {
 }
 
 impl Armv8DebugRegister for CtiTrigoutstatus {
-    const NUMBER: u32 = 77;
+    const NUMBER: usize = 77;
     const NAME: &'static str = "CTITRIGOUTSTATUS";
 }
 

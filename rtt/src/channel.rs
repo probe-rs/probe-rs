@@ -109,7 +109,7 @@ impl Channel {
     fn read_pointers(&self, core: &mut Core, dir: &'static str) -> Result<(u32, u32), Error> {
         self.validate_core_id(core)?;
         let mut block = [0u32; 2];
-        core.read_32(self.ptr + Self::O_WRITE as u32, block.as_mut())?;
+        core.read_32((self.ptr + Self::O_WRITE as u32).into(), block.as_mut())?;
 
         let write: u32 = block[0];
         let read: u32 = block[1];
@@ -164,7 +164,7 @@ impl UpChannel {
     pub fn mode(&self, core: &mut Core) -> Result<ChannelMode, Error> {
         self.0.validate_core_id(core)?;
 
-        let flags = core.read_word_32(self.0.ptr + Channel::O_FLAGS as u32)?;
+        let flags = core.read_word_32((self.0.ptr + Channel::O_FLAGS as u32).into())?;
 
         match flags & 0x3 {
             0 => Ok(ChannelMode::NoBlockSkip),
@@ -181,10 +181,10 @@ impl UpChannel {
     /// See [`ChannelMode`] for more information on what the modes mean.
     pub fn set_mode(&self, core: &mut Core, mode: ChannelMode) -> Result<(), Error> {
         self.0.validate_core_id(core)?;
-        let flags = core.read_word_32(self.0.ptr + Channel::O_FLAGS as u32)?;
+        let flags = core.read_word_32((self.0.ptr + Channel::O_FLAGS as u32).into())?;
 
         let new_flags = (flags & !3) | (mode as u32);
-        core.write_word_32(self.0.ptr + Channel::O_FLAGS as u32, new_flags)?;
+        core.write_word_32((self.0.ptr + Channel::O_FLAGS as u32).into(), new_flags)?;
 
         Ok(())
     }
@@ -202,7 +202,7 @@ impl UpChannel {
                 break;
             }
 
-            core.read(self.0.buffer_ptr + read, &mut buf[..count])?;
+            core.read((self.0.buffer_ptr + read).into(), &mut buf[..count])?;
 
             total += count;
             read += count as u32;
@@ -229,7 +229,7 @@ impl UpChannel {
 
         if total > 0 {
             // Write read pointer back to target if something was read
-            core.write_word_32(self.0.ptr + Channel::O_READ as u32, read)?;
+            core.write_word_32((self.0.ptr + Channel::O_READ as u32).into(), read)?;
         }
 
         Ok(total)
@@ -312,7 +312,7 @@ impl DownChannel {
                 break;
             }
 
-            core.write_8(self.0.buffer_ptr + write, &buf[..count])?;
+            core.write_8((self.0.buffer_ptr + write).into(), &buf[..count])?;
 
             total += count;
             write += count as u32;
@@ -326,7 +326,7 @@ impl DownChannel {
         }
 
         // Write write pointer back to target
-        core.write_word_32(self.0.ptr + Channel::O_WRITE as u32, write)?;
+        core.write_word_32((self.0.ptr + Channel::O_WRITE as u32).into(), write)?;
 
         Ok(total)
     }
@@ -371,7 +371,7 @@ fn read_c_string(
             MemoryRegion::Ram(r) => Some(&r.range),
             _ => None,
         })
-        .find(|r| r.contains(&ptr));
+        .find(|r| r.contains(&(ptr as u64)));
 
     // If the pointer is not within any valid range, return None.
     let range = match range {
@@ -380,8 +380,8 @@ fn read_c_string(
     };
 
     // Read up to 128 bytes not going past the end of the region
-    let mut bytes = vec![0u8; min(128, (range.end - ptr) as usize)];
-    core.read(ptr, bytes.as_mut())?;
+    let mut bytes = vec![0u8; min(128, (range.end - ptr as u64) as usize)];
+    core.read(ptr.into(), bytes.as_mut())?;
 
     let return_value = bytes
         .iter()

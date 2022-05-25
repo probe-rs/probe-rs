@@ -17,7 +17,7 @@ use std::time::Duration;
 /// A core register (e.g. Stack Pointer).
 pub trait CoreRegister: Clone + From<u32> + Into<u32> + Sized + std::fmt::Debug {
     /// The register's address.
-    const ADDRESS: u32;
+    const ADDRESS: u64;
     /// The register's name.
     const NAME: &'static str;
 }
@@ -42,7 +42,7 @@ impl From<u16> for CoreRegisterAddress {
 #[derive(Debug, Clone)]
 pub struct CoreInformation {
     /// The current Program Counter.
-    pub pc: u32,
+    pub pc: u64,
 }
 
 /// Describes a register with its properties.
@@ -249,13 +249,13 @@ pub trait CoreInterface: MemoryInterface {
     /// Read the hardware breakpoints from FpComp registers, and adds them to the Result Vector.
     /// A value of None in any position of the Vector indicates that the position is unset/available.
     /// We intentionally return all breakpoints, irrespective of whether they are enabled or not.
-    fn hw_breakpoints(&mut self) -> Result<Vec<Option<u32>>, error::Error>;
+    fn hw_breakpoints(&mut self) -> Result<Vec<Option<u64>>, error::Error>;
 
     /// Enables breakpoints on this core. If a breakpoint is set, it will halt as soon as it is hit.
     fn enable_breakpoints(&mut self, state: bool) -> Result<(), error::Error>;
 
     /// Sets a breakpoint at `addr`. It does so by using unit `bp_unit_index`.
-    fn set_hw_breakpoint(&mut self, unit_index: usize, addr: u32) -> Result<(), error::Error>;
+    fn set_hw_breakpoint(&mut self, unit_index: usize, addr: u64) -> Result<(), error::Error>;
 
     /// Clears the breakpoint configured in unit `unit_index`.
     fn clear_hw_breakpoint(&mut self, unit_index: usize) -> Result<(), error::Error>;
@@ -279,35 +279,35 @@ pub trait CoreInterface: MemoryInterface {
 }
 
 impl<'probe> MemoryInterface for Core<'probe> {
-    fn read_word_32(&mut self, address: u32) -> Result<u32, Error> {
+    fn read_word_32(&mut self, address: u64) -> Result<u32, Error> {
         self.inner.read_word_32(address)
     }
 
-    fn read_word_8(&mut self, address: u32) -> Result<u8, Error> {
+    fn read_word_8(&mut self, address: u64) -> Result<u8, Error> {
         self.inner.read_word_8(address)
     }
 
-    fn read_32(&mut self, address: u32, data: &mut [u32]) -> Result<(), Error> {
+    fn read_32(&mut self, address: u64, data: &mut [u32]) -> Result<(), Error> {
         self.inner.read_32(address, data)
     }
 
-    fn read_8(&mut self, address: u32, data: &mut [u8]) -> Result<(), Error> {
+    fn read_8(&mut self, address: u64, data: &mut [u8]) -> Result<(), Error> {
         self.inner.read_8(address, data)
     }
 
-    fn write_word_32(&mut self, addr: u32, data: u32) -> Result<(), Error> {
+    fn write_word_32(&mut self, addr: u64, data: u32) -> Result<(), Error> {
         self.inner.write_word_32(addr, data)
     }
 
-    fn write_word_8(&mut self, addr: u32, data: u8) -> Result<(), Error> {
+    fn write_word_8(&mut self, addr: u64, data: u8) -> Result<(), Error> {
         self.inner.write_word_8(addr, data)
     }
 
-    fn write_32(&mut self, addr: u32, data: &[u32]) -> Result<(), Error> {
+    fn write_32(&mut self, addr: u64, data: &[u32]) -> Result<(), Error> {
         self.inner.write_32(addr, data)
     }
 
-    fn write_8(&mut self, addr: u32, data: &[u8]) -> Result<(), Error> {
+    fn write_8(&mut self, addr: u64, data: &[u8]) -> Result<(), Error> {
         self.inner.write_8(addr, data)
     }
 
@@ -599,7 +599,7 @@ impl<'probe> Core<'probe> {
     ///
     /// The amount of hardware breakpoints which are supported is chip specific,
     /// and can be queried using the `get_available_breakpoint_units` function.
-    pub fn set_hw_breakpoint(&mut self, address: u32) -> Result<(), error::Error> {
+    pub fn set_hw_breakpoint(&mut self, address: u64) -> Result<(), error::Error> {
         if !self.inner.hw_breakpoints_enabled() {
             self.enable_breakpoints(true)?;
         }
@@ -630,7 +630,7 @@ impl<'probe> Core<'probe> {
     /// Set a hardware breakpoint
     ///
     /// This function will try to clear a hardware breakpoint at `address` if there exists a breakpoint at that address.
-    pub fn clear_hw_breakpoint(&mut self, address: u32) -> Result<(), error::Error> {
+    pub fn clear_hw_breakpoint(&mut self, address: u64) -> Result<(), error::Error> {
         let bp_position = self
             .inner
             .hw_breakpoints()?

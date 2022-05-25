@@ -145,28 +145,18 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             Err(error) => return self.send_response::<()>(request, Err(error)),
         };
         let memory_offset = arguments.offset.unwrap_or(0);
-        let mut address: u32 = if let Ok(address) =
-            parse::<i64>(arguments.memory_reference.as_ref())
-        {
-            match (address + memory_offset).try_into() {
-                    Ok(modified_address) => modified_address,
-                    Err(error) => return self.send_response::<()>(
+        let mut address: u64 =
+            if let Ok(address) = parse::<u64>(arguments.memory_reference.as_ref()) {
+                address + memory_offset as u64
+            } else {
+                return self.send_response::<()>(
                     request,
                     Err(DebuggerError::Other(anyhow!(
-                        "Could not convert memory_reference: {} and offset: {:?} into a 32-bit memory address: {:?}",
-                        arguments.memory_reference, arguments.offset, error
+                        "Could not read any data at address {:?}",
+                        arguments.memory_reference
                     ))),
-                ),
-                }
-        } else {
-            return self.send_response::<()>(
-                request,
-                Err(DebuggerError::Other(anyhow!(
-                    "Could not read any data at address {:?}",
-                    arguments.memory_reference
-                ))),
-            );
-        };
+                );
+            };
         let mut num_bytes_unread = arguments.count as usize;
         let mut buff = vec![];
         while num_bytes_unread > 0 {
@@ -209,7 +199,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             Err(error) => return self.send_response::<()>(request, Err(error)),
         };
         let memory_offset = arguments.offset.unwrap_or(0);
-        let address: u32 = if let Ok(address) = parse::<i64>(arguments.memory_reference.as_ref()) {
+        let address: u64 = if let Ok(address) = parse::<i64>(arguments.memory_reference.as_ref()) {
             match (address + memory_offset).try_into() {
                     Ok(modified_address) => modified_address,
                     Err(error) => return self.send_response::<()>(
@@ -684,7 +674,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                                 valid_breakpoint_location.first_halt_address
                             {
                                 match target_core.set_breakpoint(
-                                    breakpoint_address as u32,
+                                    breakpoint_address,
                                     BreakpointType::SourceBreakpoint(args.source.clone()),
                                 ) {
                                     Ok(_) => (
@@ -805,7 +795,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                 if requested_breakpoint.instruction_reference.starts_with("0x")
                     || requested_breakpoint.instruction_reference.starts_with("0X")
                 {
-                    u32::from_str_radix(&requested_breakpoint.instruction_reference[2..], 16)
+                    u64::from_str_radix(&requested_breakpoint.instruction_reference[2..], 16)
                 } else {
                     requested_breakpoint.instruction_reference.parse()
                 }
@@ -1270,23 +1260,23 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
 
         // The memory address for the next read from target memory. We have to manually adjust it to be word aligned, and make sure it doesn't underflow/overflow.
         let mut read_pointer = if byte_offset.is_negative() {
-            Some(memory_reference.saturating_sub(byte_offset.abs()) as u32)
+            Some(memory_reference.saturating_sub(byte_offset.abs()) as u64)
         } else {
-            Some(memory_reference.saturating_add(byte_offset) as u32)
+            Some(memory_reference.saturating_add(byte_offset) as u64)
         };
         // We can't rely on the MSDAP arguments to result in a memory aligned address for us to read from, so we force the read_pointer to be a memory_aligned address.
         // TODO: Using 4 bytes for aligned memory reads is 32-Bit architecture specific, and needs to be addressed as part of 64-Bit implementation.
         read_pointer = if instruction_offset_as_bytes.is_negative() {
             read_pointer
                 .and_then(|rp| {
-                    rp.saturating_sub(instruction_offset_as_bytes.abs() as u32)
+                    rp.saturating_sub(instruction_offset_as_bytes.abs() as u64)
                         .checked_div(4)
                 })
                 .map(|rp_memory_aligned| rp_memory_aligned * 4)
         } else {
             read_pointer
                 .and_then(|rp| {
-                    rp.saturating_add(instruction_offset_as_bytes as u32)
+                    rp.saturating_add(instruction_offset_as_bytes as u64)
                         .checked_div(4)
                 })
                 .map(|rp_memory_aligned| rp_memory_aligned * 4)
@@ -1844,7 +1834,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                         MessageSeverity::Information,
                         format!("Step error @{:#010X}: {}", pc_at_error, message),
                     );
-                    (target_core.core.status()?, *pc_at_error as u32)
+                    (target_core.core.status()?, *pc_at_error)
                 }
                 other_error => {
                     target_core.core.halt(Duration::from_millis(100)).ok();

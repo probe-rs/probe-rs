@@ -53,7 +53,7 @@ impl Nrf5340 {
     /// The `ap_address` must be of the ahb ap of the application core.
     fn set_network_core_running(&self, interface: &mut crate::Memory) -> Result<(), crate::Error> {
         interface.write_32(
-            Self::APPLICATION_RESET_S_NETWORK_FORCEOFF_REGISTER,
+            Self::APPLICATION_RESET_S_NETWORK_FORCEOFF_REGISTER as u64,
             &[Self::RELEASE_FORCEOFF],
         )?;
         Ok(())

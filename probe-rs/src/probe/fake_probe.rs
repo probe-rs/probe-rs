@@ -289,6 +289,8 @@ impl ArmProbeInterface for FakeArmInterface<Initialized> {
             only_32bit_data_size: false,
             debug_base_address: 0xf000_0000,
             supports_hnonsec: false,
+            has_large_data_extension: false,
+            has_large_address_extension: false,
         };
 
         let memory = ADIMemoryInterface::new(&mut self.memory_ap, &ap_information)?;
