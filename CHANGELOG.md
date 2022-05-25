@@ -7,8 +7,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Added Arm Serial-Wire-View (SWV) support for more targets (e.g. STM32H7 families) (#1117)
-  - Support added for trace funnels and SWO peripherals
 - Added an option to disable use of double-buffering when downloading flash (#1030, #883)
 - rtt::ChannelMode implements additional traits: Clone, Copy, serde's Serialize and Deserialize
 - Added a permissions system that allows the user to specify if a full chip erase is allowed (#918)
@@ -35,6 +33,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added preliminary support for ARM v7-A cores
 - Added preliminary support for ARM v8-A cores
 - CLI Debugger: Added 8-bit read / write memory commands
+- Added Arm Serial-Wire-View (SWV) support for more targets (e.g. STM32H7 families) (#1117)
+  - Support added for trace funnels and SWO peripherals
 
 ### Changed
 

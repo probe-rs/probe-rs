@@ -28,9 +28,7 @@ impl<'a> TraceFunnel<'a> {
         }
     }
 
-    /// Unlock the SWO and enable it for tracing the target.
-    ///
-    /// This function enables the SWOunit as a whole. It does not actually send any data after enabling it.
+    /// Unlock the funnel and enable it for tracing the target.
     pub fn unlock(&mut self) -> Result<(), Error> {
         self.component
             .write_reg(self.interface, REGISTER_OFFSET_ACCESS, 0xC5AC_CE55)?;
@@ -51,10 +49,19 @@ impl<'a> TraceFunnel<'a> {
 }
 
 bitfield! {
+    /// The control register is described in "DDI0314H CoreSight Components Technical Reference
+    /// Manual" on page 7-5.
     #[derive(Clone, Default)]
     pub struct Control(u32);
     impl Debug;
+
+    /// The minimum hold time specifics the number of transactions that the arbiter of the funnel
+    /// will perform on individual active input before muxing to the next port. The arbiter uses a
+    /// round-robin topology for all enabled funnel inputs.
     pub u8, min_hold_time, set_min_hold_time: 11, 8;
+
+    /// The slave enable port specifies a bitfield which indicates which trace funnel input ports
+    /// are enabled.
     pub u8, enable_slave_port, set_slave_enable: 7, 0;
 }
 
