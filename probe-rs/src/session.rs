@@ -371,12 +371,7 @@ impl Session {
     ///
     /// This will recursively parse the Romtable of the attached target
     /// and create a list of all the contained components.
-    ///
-    /// # Args
-    /// * `shallow` - Specified if only a shallow search of components should occur. Performing a
-    /// shallow search will not recurse through all CoreSight components if they are not in the
-    /// root table.
-    pub fn get_arm_components(&mut self, shallow: bool) -> Result<Vec<CoresightComponent>, Error> {
+    pub fn get_arm_components(&mut self) -> Result<Vec<CoresightComponent>, Error> {
         let interface = self.get_arm_interface()?;
 
         let mut components = Vec::new();
@@ -401,11 +396,8 @@ impl Session {
                 }) => {
                     let ap = MemoryAp::new(address);
                     let mut memory = interface.memory_interface(ap)?;
-                    let search_depth = if shallow { Some(0) } else { None };
-
-                    let component =
-                        Component::try_parse(&mut memory, debug_base_address, search_depth)
-                            .map_err(Error::architecture_specific)?;
+                    let component = Component::try_parse(&mut memory, debug_base_address)
+                        .map_err(Error::architecture_specific)?;
                     Ok(CoresightComponent::new(component, ap))
                 }
                 ApInformation::Other { address } => {
@@ -449,21 +441,8 @@ impl Session {
             crate::architecture::arm::component::enable_tracing(&mut core)?;
         }
 
-        {
-            // Enable vendor-specific configurations for SWV. This must be done before collecting
-            // CoreSight components because it may modify component power settings.
-            log::info!("Configuring vendor SWV");
-            let components = self.get_arm_components(true)?;
-            let interface = self.get_arm_interface()?;
-            crate::architecture::arm::component::setup_swv_vendor(interface, &components, config)?;
-        }
-
         // Configure SWV on the target
-        log::info!("Configuring SWV");
-        let components = self.get_arm_components(false)?;
-        for component in &components {
-            log::info!("Found component: {:X?}", component);
-        }
+        let components = self.get_arm_components()?;
         let interface = self.get_arm_interface()?;
         crate::architecture::arm::component::setup_swv(interface, &components, config)
     }
@@ -475,7 +454,7 @@ impl Session {
 
     /// Begin tracing a memory address over SWV.
     pub fn add_swv_data_trace(&mut self, unit: usize, address: u32) -> Result<(), Error> {
-        let components = self.get_arm_components(false)?;
+        let components = self.get_arm_components()?;
         let interface = self.get_arm_interface()?;
         crate::architecture::arm::component::add_swv_data_trace(
             interface,
@@ -487,7 +466,7 @@ impl Session {
 
     /// Stop tracing from a given SWV unit
     pub fn remove_swv_data_trace(&mut self, unit: usize) -> Result<(), Error> {
-        let components = self.get_arm_components(false)?;
+        let components = self.get_arm_components()?;
         let interface = self.get_arm_interface()?;
         crate::architecture::arm::component::remove_swv_data_trace(interface, &components, unit)
     }

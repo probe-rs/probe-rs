@@ -98,7 +98,8 @@ impl Target {
         } else if chip.name.starts_with("nRF5340") {
             log::warn!("Using custom sequence for nRF5340");
             debug_sequence = DebugSequence::Arm(Nrf5340::create());
-        } else if chip.name.starts_with("stm32h7") {
+        } else if chip.name.starts_with("STM32H7") {
+            log::warn!("Using custom sequence for STM32H7");
             debug_sequence = DebugSequence::Arm(Stm32h7::create());
         }
 

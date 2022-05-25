@@ -1280,7 +1280,7 @@ impl<'probe> ArmProbeInterface for StlinkArmDebug {
                     .memory_interface(access_port)
                     .map_err(ProbeRsError::architecture_specific)?;
 
-                let component = Component::try_parse(&mut memory, baseaddr, Some(0))
+                let component = Component::try_parse(&mut memory, baseaddr)
                     .map_err(ProbeRsError::architecture_specific)?;
 
                 if let Component::Class1RomTable(component_id, _) = component {
