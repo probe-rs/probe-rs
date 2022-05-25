@@ -386,70 +386,6 @@ fn cortex_m_reset_system(interface: &mut Memory) -> Result<(), crate::Error> {
     Err(crate::Error::Probe(DebugProbeError::Timeout))
 }
 
-pub(crate) fn default_debug_port_start(
-    interface: &mut ArmCommunicationInterface<Initialized>,
-    dp: DpAddress,
-) -> Result<(), crate::DebugProbeError> {
-    // Clear all errors.
-    // CMSIS says this is only necessary to do inside the `if powered_down`, but
-    // without it here, nRF52840 faults in the next access.
-    let mut abort = Abort(0);
-    abort.set_orunerrclr(true);
-    abort.set_wderrclr(true);
-    abort.set_stkerrclr(true);
-    abort.set_stkcmpclr(true);
-    interface.write_dp_register(dp, abort)?;
-
-    interface.write_dp_register(dp, Select(0))?;
-
-    let ctrl = interface.read_dp_register::<Ctrl>(dp)?;
-
-    let powered_down = !(ctrl.csyspwrupack() && ctrl.cdbgpwrupack());
-
-    if powered_down {
-        let mut ctrl = Ctrl(0);
-        ctrl.set_cdbgpwrupreq(true);
-        ctrl.set_csyspwrupreq(true);
-        interface.write_dp_register(dp, ctrl)?;
-
-        let start = Instant::now();
-        let mut timeout = true;
-        while start.elapsed() < Duration::from_micros(100_0000) {
-            let ctrl = interface.read_dp_register::<Ctrl>(dp)?;
-            if ctrl.csyspwrupack() && ctrl.cdbgpwrupack() {
-                timeout = false;
-                break;
-            }
-        }
-
-        if timeout {
-            return Err(DebugProbeError::Timeout);
-        }
-
-        // TODO: Handle JTAG Specific part
-
-        // TODO: Only run the following code when the SWD protocol is used
-
-        // Init AP Transfer Mode, Transaction Counter, and Lane Mask (Normal Transfer Mode, Include all Byte Lanes)
-        let mut ctrl = Ctrl(0);
-        ctrl.set_cdbgpwrupreq(true);
-        ctrl.set_csyspwrupreq(true);
-        ctrl.set_mask_lane(0b1111);
-        interface.write_dp_register(dp, ctrl)?;
-
-        let ctrl_reg: Ctrl = interface.read_dp_register(dp)?;
-        if !(ctrl_reg.csyspwrupack() && ctrl_reg.cdbgpwrupack()) {
-            log::error!("Debug power request failed");
-            return Err(DapError::TargetPowerUpFailed.into());
-        }
-
-        // According to CMSIS docs, here's where we would clear errors
-        // in ABORT, but we do that above instead.
-    }
-
-    Ok(())
-}
-
 /// A interface to operate debug sequences for ARM targets.
 ///
 /// Should be implemented on a custom handle for chips that require special sequence code.
@@ -554,7 +490,64 @@ pub trait ArmDebugSequence: Send + Sync {
         interface: &mut ArmCommunicationInterface<Initialized>,
         dp: DpAddress,
     ) -> Result<(), crate::DebugProbeError> {
-        default_debug_port_start(interface, dp)
+        // Clear all errors.
+        // CMSIS says this is only necessary to do inside the `if powered_down`, but
+        // without it here, nRF52840 faults in the next access.
+        let mut abort = Abort(0);
+        abort.set_orunerrclr(true);
+        abort.set_wderrclr(true);
+        abort.set_stkerrclr(true);
+        abort.set_stkcmpclr(true);
+        interface.write_dp_register(dp, abort)?;
+
+        interface.write_dp_register(dp, Select(0))?;
+
+        let ctrl = interface.read_dp_register::<Ctrl>(dp)?;
+
+        let powered_down = !(ctrl.csyspwrupack() && ctrl.cdbgpwrupack());
+
+        if powered_down {
+            let mut ctrl = Ctrl(0);
+            ctrl.set_cdbgpwrupreq(true);
+            ctrl.set_csyspwrupreq(true);
+            interface.write_dp_register(dp, ctrl)?;
+
+            let start = Instant::now();
+            let mut timeout = true;
+            while start.elapsed() < Duration::from_micros(100_0000) {
+                let ctrl = interface.read_dp_register::<Ctrl>(dp)?;
+                if ctrl.csyspwrupack() && ctrl.cdbgpwrupack() {
+                    timeout = false;
+                    break;
+                }
+            }
+
+            if timeout {
+                return Err(DebugProbeError::Timeout);
+            }
+
+            // TODO: Handle JTAG Specific part
+
+            // TODO: Only run the following code when the SWD protocol is used
+
+            // Init AP Transfer Mode, Transaction Counter, and Lane Mask (Normal Transfer Mode, Include all Byte Lanes)
+            let mut ctrl = Ctrl(0);
+            ctrl.set_cdbgpwrupreq(true);
+            ctrl.set_csyspwrupreq(true);
+            ctrl.set_mask_lane(0b1111);
+            interface.write_dp_register(dp, ctrl)?;
+
+            let ctrl_reg: Ctrl = interface.read_dp_register(dp)?;
+            if !(ctrl_reg.csyspwrupack() && ctrl_reg.cdbgpwrupack()) {
+                log::error!("Debug power request failed");
+                return Err(DapError::TargetPowerUpFailed.into());
+            }
+
+            // According to CMSIS docs, here's where we would clear errors
+            // in ABORT, but we do that above instead.
+        }
+
+        Ok(())
     }
 
     /// Initialize core debug system. This is based on the
