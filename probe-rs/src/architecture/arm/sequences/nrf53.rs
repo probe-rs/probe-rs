@@ -3,9 +3,10 @@
 use std::sync::Arc;
 
 use super::ArmDebugSequence;
-use crate::architecture::arm::ap::CSW;
+use crate::architecture::arm::ap::{MemoryAp, CSW};
 use crate::architecture::arm::{
-    communication_interface::Initialized, ApAddress, ArmCommunicationInterface, DapAccess,
+    communication_interface::Initialized, ApAddress, ArmCommunicationInterface, ArmProbeInterface,
+    DapAccess,
 };
 
 /// The sequence handle for the nRF5340.
@@ -63,9 +64,12 @@ impl Nrf5340 {
 impl ArmDebugSequence for Nrf5340 {
     fn debug_device_unlock(
         &self,
-        interface: &mut crate::Memory,
+        interface: &mut Box<dyn ArmProbeInterface>,
+        default_ap: MemoryAp,
         permissions: &crate::Permissions,
     ) -> Result<(), crate::Error> {
+        let mut interface = interface.memory_interface(default_ap)?;
+
         // TODO: Eraseprotect is not considered. If enabled, the debugger must set up the same keys as the firmware does
         // TODO: Approtect and Secure Approtect are not considered. If enabled, the debugger must set up the same keys as the firmware does
         // These keys should be queried from the user if required and once that mechanism is implemented
@@ -107,7 +111,7 @@ impl ArmDebugSequence for Nrf5340 {
             }
         }
 
-        self.set_network_core_running(interface)?;
+        self.set_network_core_running(&mut interface)?;
 
         Ok(())
     }

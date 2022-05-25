@@ -13,10 +13,14 @@ use std::{
 use probe_rs_target::CoreType;
 
 use crate::architecture::arm::core::armv7a_debug_regs::Armv7DebugRegister;
-use crate::{architecture::arm::DapError, core::CoreRegister, DebugProbeError, Memory};
+use crate::{
+    architecture::arm::{ArmProbeInterface, DapError},
+    core::CoreRegister,
+    DebugProbeError, Memory,
+};
 
 use super::{
-    ap::AccessPortError,
+    ap::{AccessPortError, MemoryAp},
     communication_interface::{DapProbe, Initialized},
     dp::{Abort, Ctrl, DpAccess, Select, DPIDR},
     ArmCommunicationInterface, DpAddress, Pins, PortType, Register,
@@ -666,7 +670,8 @@ pub trait ArmDebugSequence: Send + Sync {
     #[doc(alias = "DebugDeviceUnlock")]
     fn debug_device_unlock(
         &self,
-        _interface: &mut crate::Memory,
+        _interface: &mut Box<dyn ArmProbeInterface>,
+        _default_ap: MemoryAp,
         _permissions: &crate::Permissions,
     ) -> Result<(), crate::Error> {
         // Empty by default

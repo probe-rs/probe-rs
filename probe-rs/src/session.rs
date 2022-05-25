@@ -173,11 +173,15 @@ impl Session {
 
                 let mut interface = interface.initialize(sequence_handle.clone())?;
 
+                // Enable debug mode
+                sequence_handle.debug_device_unlock(
+                    &mut interface,
+                    default_memory_ap,
+                    &permissions,
+                )?;
+
                 {
                     let mut memory_interface = interface.memory_interface(default_memory_ap)?;
-
-                    // Enable debug mode
-                    sequence_handle.debug_device_unlock(&mut memory_interface, &permissions)?;
 
                     // Enable debug mode
                     sequence_handle.debug_core_start(

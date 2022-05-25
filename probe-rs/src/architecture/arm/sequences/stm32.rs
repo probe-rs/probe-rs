@@ -4,14 +4,9 @@ use std::sync::Arc;
 
 use super::ArmDebugSequence;
 use crate::{
-    architecture::arm::{
-        ap::MemoryAp, communication_interface::Initialized, ApAddress, ArmCommunicationInterface,
-        DpAddress,
-    },
+    architecture::arm::{ap::MemoryAp, ApAddress, ArmProbeInterface, DpAddress},
     Memory,
 };
-
-use anyhow::anyhow;
 
 /// Marker struct indicating initialization sequencing for STM32H7 family parts.
 pub struct Stm32h7 {}
@@ -82,23 +77,20 @@ mod dbgmcu {
 }
 
 impl ArmDebugSequence for Stm32h7 {
-    fn debug_port_start(
+    fn debug_device_unlock(
         &self,
-        interface: &mut ArmCommunicationInterface<Initialized>,
-        dp: DpAddress,
-    ) -> Result<(), crate::DebugProbeError> {
-        super::default_debug_port_start(interface, dp)?;
-
+        interface: &mut Box<dyn ArmProbeInterface>,
+        _default_ap: MemoryAp,
+        _permissions: &crate::Permissions,
+    ) -> Result<(), crate::Error> {
         // Power up the debug components through AP2, which is the defualt AP debug port.
         let ap = MemoryAp::new(ApAddress {
             dp: DpAddress::Default,
             ap: 2,
         });
-        let mut memory = interface
-            .memory_interface(ap)
-            .map_err(|_| anyhow!("Failed to open debug AP"))?;
-        self.enable_debug_components(&mut memory)
-            .map_err(|_| anyhow!("Failed to enable debug components"))?;
+
+        let mut memory = interface.memory_interface(ap)?;
+        self.enable_debug_components(&mut memory)?;
 
         Ok(())
     }
