@@ -175,9 +175,6 @@ fn setup_swv_vendor(
 
         match component.component.id().peripheral_id().jep106() {
             Some(id) if id == jep106::JEP106Code::new(0x00, 0x20) => {
-                // TODO: The following statements are only valid for specific revisions - e.g. F4
-                // and F7 families. H7 components have a different DBGMCU architecture.
-
                 // STMicroelectronics:
                 // STM32 parts need TRACE_IOEN set to 1 and TRACE_MODE set to 00.
                 log::debug!("STMicroelectronics part detected, configuring DBGMCU");

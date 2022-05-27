@@ -2,6 +2,7 @@
 
 pub mod nrf53;
 pub mod nxp;
+pub mod stm32;
 
 use std::{
     sync::Arc,
@@ -12,10 +13,14 @@ use std::{
 use probe_rs_target::CoreType;
 
 use crate::architecture::arm::core::armv7a_debug_regs::Armv7DebugRegister;
-use crate::{architecture::arm::DapError, core::CoreRegister, DebugProbeError, Memory};
+use crate::{
+    architecture::arm::{ArmProbeInterface, DapError},
+    core::CoreRegister,
+    DebugProbeError, Memory,
+};
 
 use super::{
-    ap::AccessPortError,
+    ap::{AccessPortError, MemoryAp},
     communication_interface::{DapProbe, Initialized},
     dp::{Abort, Ctrl, DpAccess, Select, DPIDR},
     ArmCommunicationInterface, DpAddress, Pins, PortType, Register,
@@ -658,7 +663,8 @@ pub trait ArmDebugSequence: Send + Sync {
     #[doc(alias = "DebugDeviceUnlock")]
     fn debug_device_unlock(
         &self,
-        _interface: &mut crate::Memory,
+        _interface: &mut Box<dyn ArmProbeInterface>,
+        _default_ap: MemoryAp,
         _permissions: &crate::Permissions,
     ) -> Result<(), crate::Error> {
         // Empty by default
@@ -671,6 +677,20 @@ pub trait ArmDebugSequence: Send + Sync {
     /// [ARM SVD Debug Description]: http://www.keil.com/pack/doc/cmsis/Pack/html/debug_description.html#recoverSupportStart
     #[doc(alias = "RecoverSupportStart")]
     fn recover_support_start(&self, _interface: &mut crate::Memory) -> Result<(), crate::Error> {
+        // Empty by default
+        Ok(())
+    }
+
+    /// Executed when the debugger session is disconnected from the core.
+    ///
+    /// This is based on the `DebugCoreStop` function from the [ARM SVD Debug Description].
+    ///
+    /// [ARM SVD Debug Description]: http://www.keil.com/pack/doc/cmsis/Pack/html/debug_description.html#recoverSupportStart
+    #[doc(alias = "DebugCoreStop")]
+    fn debug_core_stop(
+        &self,
+        _interface: &mut Box<dyn ArmProbeInterface>,
+    ) -> Result<(), crate::Error> {
         // Empty by default
         Ok(())
     }

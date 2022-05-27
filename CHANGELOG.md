@@ -35,6 +35,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - CLI Debugger: Added 8-bit read / write memory commands
 - Added Arm Serial-Wire-View (SWV) support for more targets (e.g. STM32H7 families) (#1117)
   - Support added for trace funnels and SWO peripherals
+  - Added custom sequencing for STM32H7 parts to configure debug system components on attach
 
 ### Changed
 
