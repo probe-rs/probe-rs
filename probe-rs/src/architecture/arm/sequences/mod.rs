@@ -680,4 +680,18 @@ pub trait ArmDebugSequence: Send + Sync {
         // Empty by default
         Ok(())
     }
+
+    /// Executed when the debugger session is disconnected from the core.
+    ///
+    /// This is based on the `DebugCoreStop` function from the [ARM SVD Debug Description].
+    ///
+    /// [ARM SVD Debug Description]: http://www.keil.com/pack/doc/cmsis/Pack/html/debug_description.html#recoverSupportStart
+    #[doc(alias = "DebugCoreStop")]
+    fn debug_core_stop(
+        &self,
+        _interface: &mut Box<dyn ArmProbeInterface>,
+    ) -> Result<(), crate::Error> {
+        // Empty by default
+        Ok(())
+    }
 }

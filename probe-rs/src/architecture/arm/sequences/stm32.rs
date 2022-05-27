@@ -17,23 +17,32 @@ impl Stm32h7 {
         Arc::new(Self {})
     }
 
-    /// Enable all debug components on the chip.
-    pub fn enable_debug_components(&self, memory: &mut Memory<'_>) -> Result<(), crate::Error> {
-        log::info!("Enabling STM32H7 debug components");
+    /// Configure all debug components on the chip.
+    pub fn enable_debug_components(
+        &self,
+        memory: &mut Memory<'_>,
+        enable: bool,
+    ) -> Result<(), crate::Error> {
+        if enable {
+            log::info!("Enabling STM32H7 debug components");
+        } else {
+            log::info!("Disabling STM32H7 debug components");
+        }
+
         let mut control = dbgmcu::Control::read(memory)?;
 
-        // Enable the debug clock doamins for D1 and D3. This ensures we can access CoreSight
-        // components in these power domains.
-        control.enable_d1_clock(true);
-        control.enable_d3_clock(true);
+        // There are debug components in the D1 and D2 clock domains. This ensures we can access
+        // CoreSight components in these power domains at all times.
+        control.enable_d1_clock(enable);
+        control.enable_d3_clock(enable);
 
-        // The TRACECK also has to be enabled to communicate with the TPIU.
-        control.enable_traceck(true);
+        // The TRACECK has to be enabled to communicate with the TPIU.
+        control.enable_traceck(enable);
 
-        // Enable debug connection in all power modes.
-        control.enable_standby_debug(true);
-        control.enable_sleep_debug(true);
-        control.enable_stop_debug(true);
+        // Configure debug connection in all power modes.
+        control.enable_standby_debug(enable);
+        control.enable_sleep_debug(enable);
+        control.enable_stop_debug(enable);
 
         control.write(memory)?;
 
@@ -49,6 +58,8 @@ mod dbgmcu {
     const DBGMCU: u64 = 0xE00E_1000;
 
     bitfield! {
+        /// The control register (CR) of the DBGMCU. This register is described in "RM0433: STM32H7
+        /// family reference manual" section 60.5.8
         pub struct Control(u32);
         impl Debug;
 
@@ -65,11 +76,13 @@ mod dbgmcu {
         /// The offset of the Control register in the DBGMCU block.
         const ADDRESS: u64 = 0x04;
 
+        /// Read the control register from memory.
         pub fn read(memory: &mut Memory<'_>) -> Result<Self, crate::Error> {
             let contents = memory.read_word_32(DBGMCU + Self::ADDRESS)?;
             Ok(Self(contents))
         }
 
+        /// Write the control register to memory.
         pub fn write(&mut self, memory: &mut Memory<'_>) -> Result<(), crate::Error> {
             memory.write_word_32(DBGMCU + Self::ADDRESS, self.0)
         }
@@ -90,7 +103,23 @@ impl ArmDebugSequence for Stm32h7 {
         });
 
         let mut memory = interface.memory_interface(ap)?;
-        self.enable_debug_components(&mut memory)?;
+        self.enable_debug_components(&mut memory, true)?;
+
+        Ok(())
+    }
+
+    fn debug_core_stop(
+        &self,
+        interface: &mut Box<dyn ArmProbeInterface>,
+    ) -> Result<(), crate::Error> {
+        // Power up the debug components through AP2, which is the defualt AP debug port.
+        let ap = MemoryAp::new(ApAddress {
+            dp: DpAddress::Default,
+            ap: 2,
+        });
+
+        let mut memory = interface.memory_interface(ap)?;
+        self.enable_debug_components(&mut memory, false)?;
 
         Ok(())
     }

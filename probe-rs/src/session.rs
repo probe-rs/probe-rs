@@ -504,13 +504,29 @@ static_assertions::assert_impl_all!(Session: Send);
 // TODO tiwalun: Enable again, after rework of Session::new is done.
 impl Drop for Session {
     fn drop(&mut self) {
-        let result = { 0..self.cores.len() }.try_for_each(|i| {
+        if let Err(err) = { 0..self.cores.len() }.try_for_each(|i| {
             self.core(i)
                 .and_then(|mut core| core.clear_all_hw_breakpoints())
-        });
-
-        if let Err(err) = result {
+        }) {
             log::warn!("Could not clear all hardware breakpoints: {:?}", err);
+        }
+
+        // Disable tracing for all cores.
+        if let Err(err) = { 0..self.cores.len() }.try_for_each(|i| self.disable_swv(i)) {
+            log::warn!("Could not stop core tracing: {:?}", err);
+        }
+
+        // Call any necessary deconfiguration/shutdown hooks.
+        if let DebugSequence::Arm(sequence) = &self.target.debug_sequence {
+            let sequence = sequence.clone();
+
+            // Note(unwrap): We already verified we're using an arm debug sequence, so we should
+            // always be able to access the arm probe interface.
+            let interface = self.get_arm_interface().unwrap();
+
+            if sequence.debug_core_stop(interface).is_err() {
+                log::warn!("Failed to deconfigure device during shutdown");
+            }
         }
     }
 }
