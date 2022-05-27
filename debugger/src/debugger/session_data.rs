@@ -99,7 +99,7 @@ impl SessionData {
         }
 
         // Attach to the probe.
-        let target_session = if config.connect_under_reset {
+        let mut target_session = if config.connect_under_reset {
             target_probe.attach_under_reset(target_selector, permissions)?
         } else {
             target_probe
@@ -152,7 +152,7 @@ impl SessionData {
 
         for core_configuration in &valid_core_configs {
             // Configure the [DebugInfo].
-            let debug_info = if let Some(binary_path) = &core_configuration.program_binary {
+            let mut debug_info = if let Some(binary_path) = &core_configuration.program_binary {
                 DebugInfo::from_file(binary_path)
                     .map_err(|error| DebuggerError::Other(anyhow!(error)))?
             } else {
@@ -162,6 +162,24 @@ impl SessionData {
                 )
                 .into());
             };
+
+            debug_info.set_instruction_size(
+                match target_session
+                    .core(core_configuration.core_index)?
+                    .instruction_set()?
+                {
+                    probe_rs::InstructionSet::Thumb2 => {
+                        // Thumb2 uses a variable size (2 or 4) instruction set. For our purposes, we set it as 2, so that we don't accidentally read outside of addressable memory.
+                        2
+                    }
+                    probe_rs::InstructionSet::A32 => 4,
+                    probe_rs::InstructionSet::A64 => 4,
+                    probe_rs::InstructionSet::RV32 => {
+                        // Assume that we are using the RV32C (compressed) instruction set.
+                        2
+                    }
+                },
+            );
 
             core_data_vec.push(CoreData {
                 core_index: core_configuration.core_index,

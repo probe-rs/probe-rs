@@ -2,6 +2,7 @@ pub(crate) mod communication_interface;
 
 use crate::{CoreType, InstructionSet};
 pub use communication_interface::CommunicationInterface;
+use num_traits::Zero;
 pub use probe_rs_target::{Architecture, CoreAccessOptions};
 
 use crate::architecture::{
@@ -12,6 +13,7 @@ use crate::error;
 use crate::Target;
 use crate::{Error, Memory, MemoryInterface};
 use anyhow::{anyhow, Result};
+use std::cmp::Ordering;
 use std::time::Duration;
 
 /// A memory mapped register, for instance ARM debug registers (DHCSR, etc).
@@ -90,7 +92,7 @@ impl From<&RegisterDescription> for RegisterId {
 }
 
 /// The location of a CPU \register. This is not an actual memory address, but a core specific location that represents a specific core register.
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Copy, Clone, PartialEq, PartialOrd, Ord, Eq, Hash)]
 pub struct RegisterId(pub u16);
 
 impl From<RegisterId> for u32 {
@@ -116,7 +118,7 @@ pub(crate) enum RegisterKind {
 /// Creating a new `RegisterValue` should be done using From or Into.
 /// Converting a value back to a primitive type can be done with either
 /// a match arm or TryInto
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy)]
 pub enum RegisterValue {
     /// 32-bit unsigned integer
     U32(u32),
@@ -124,6 +126,67 @@ pub enum RegisterValue {
     U64(u64),
 }
 
+impl RegisterValue {
+    /// A helper function to determine if the contained register value is equal to the maximum value that can be stored in that datatype.
+    pub fn is_max_value(&self) -> bool {
+        match self {
+            RegisterValue::U32(register_value) => *register_value == u32::MAX,
+            RegisterValue::U64(register_value) => *register_value == u64::MAX,
+        }
+    }
+
+    /// A helper function to determine if the contained register value is zero.
+    pub fn is_zero(&self) -> bool {
+        match self {
+            RegisterValue::U32(register_value) => register_value.is_zero(),
+            RegisterValue::U64(register_value) => register_value.is_zero(),
+        }
+    }
+}
+
+impl Default for RegisterValue {
+    fn default() -> Self {
+        // Smallest data storage as default.
+        RegisterValue::U32(0_u32)
+    }
+}
+
+impl PartialOrd for RegisterValue {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        let self_value = match self {
+            RegisterValue::U32(self_value) => *self_value as u64,
+            RegisterValue::U64(self_value) => *self_value,
+        };
+        let other_value = match other {
+            RegisterValue::U32(other_value) => *other_value as u64,
+            RegisterValue::U64(other_value) => *other_value,
+        };
+        self_value.partial_cmp(&other_value)
+    }
+}
+
+impl PartialEq for RegisterValue {
+    fn eq(&self, other: &Self) -> bool {
+        let self_value = match self {
+            RegisterValue::U32(self_value) => *self_value as u64,
+            RegisterValue::U64(self_value) => *self_value,
+        };
+        let other_value = match other {
+            RegisterValue::U32(other_value) => *other_value as u64,
+            RegisterValue::U64(other_value) => *other_value,
+        };
+        self_value == other_value
+    }
+}
+
+impl core::fmt::Display for RegisterValue {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            RegisterValue::U32(register_value) => write!(f, "{:#010x}", register_value),
+            RegisterValue::U64(register_value) => write!(f, "{:#018x}", register_value),
+        }
+    }
+}
 impl From<u32> for RegisterValue {
     fn from(val: u32) -> Self {
         Self::U32(val)
@@ -189,8 +252,8 @@ pub struct RegisterFile {
 }
 
 impl RegisterFile {
-    /// Returns an iterator over the descriptions of all the registers of this core.
-    pub fn registers(&self) -> impl Iterator<Item = &RegisterDescription> {
+    /// Returns an iterator over the descriptions of all the "platform" registers of this core.
+    pub fn platform_registers(&self) -> impl Iterator<Item = &RegisterDescription> {
         self.platform_registers.iter()
     }
 

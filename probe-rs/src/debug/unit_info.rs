@@ -2,7 +2,7 @@ use super::{
     debug_info::*, extract_byte_size, extract_file, extract_line, extract_name,
     function_die::FunctionDie, registers, variable::*, DebugError, SourceLocation, VariableCache,
 };
-use crate::{core::Core, MemoryInterface};
+use crate::{core::Core, MemoryInterface, RegisterValue};
 use ::gimli::{Location, UnitOffset};
 use num_traits::Zero;
 
@@ -20,10 +20,10 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
     /// If `find_inlined` is `false`, then the result will contain a single [`FunctionDie`]
     pub(crate) fn get_function_dies(
         &self,
-        address: u64,
+        address: RegisterValue,
         find_inlined: bool,
     ) -> Result<Vec<FunctionDie>, DebugError> {
-        log::trace!("Searching Function DIE for address {:#010x}", address);
+        log::trace!("Searching Function DIE for address {}", address);
 
         let mut entries_cursor = self.unit.entries();
 
@@ -32,7 +32,9 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                 let mut ranges = self.debug_info.dwarf.die_ranges(&self.unit, current)?;
 
                 while let Ok(Some(ranges)) = ranges.next() {
-                    if (ranges.begin <= address) && (address < ranges.end) {
+                    if (RegisterValue::from(ranges.begin) <= address)
+                        && (address < RegisterValue::from(ranges.end))
+                    {
                         // Check if we are actually in an inlined function
 
                         if let Some(mut die) = FunctionDie::new(current.clone(), self) {
@@ -54,7 +56,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                     log::debug!("No inlined function found!");
                                 } else {
                                     log::debug!(
-                                        "{} inlined functions for address {:#010x}",
+                                        "{} inlined functions for address {}",
                                         inlined_functions.len(),
                                         address
                                     );
@@ -78,7 +80,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
     /// given address.
     pub(crate) fn find_inlined_functions(
         &self,
-        address: u64,
+        address: RegisterValue,
         offset: UnitOffset,
     ) -> Result<Vec<FunctionDie>, DebugError> {
         let mut current_depth = 0;
@@ -99,7 +101,9 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                     let mut ranges = self.debug_info.dwarf.die_ranges(&self.unit, current)?;
 
                     while let Ok(Some(ranges)) = ranges.next() {
-                        if (ranges.begin <= address) && (address < ranges.end) {
+                        if (RegisterValue::from(ranges.begin) <= address)
+                            && (address < RegisterValue::from(ranges.end))
+                        {
                             // Check if we are actually in an inlined function
 
                             // We don't have to search further up in the tree, if there are multiple inlined functions,
@@ -152,7 +156,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
         parent_variable: &mut Variable,
         mut child_variable: Variable,
         core: &mut Core<'_>,
-        stack_frame_registers: &registers::Registers,
+        stack_frame_registers: &registers::DebugRegisters,
         cache: &mut VariableCache,
     ) -> Result<Variable, DebugError> {
         // Identify the parent.
@@ -471,18 +475,20 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
         parent_node: gimli::EntriesTreeNode<GimliReader>,
         mut parent_variable: Variable,
         core: &mut Core<'_>,
-        stack_frame_registers: &registers::Registers,
+        stack_frame_registers: &registers::DebugRegisters,
         cache: &mut VariableCache,
     ) -> Result<Variable, DebugError> {
         if parent_variable.is_valid() {
-            let program_counter =
-                if let Some(program_counter) = stack_frame_registers.get_program_counter() {
-                    program_counter
-                } else {
-                    return Err(DebugError::Other(anyhow::anyhow!(
-                        "Cannot unwind `Variable` without a valid PC (program_counter)"
-                    )));
-                };
+            let program_counter = if let Some(program_counter) = stack_frame_registers
+                .get_program_counter()
+                .and_then(|reg| reg.value)
+            {
+                program_counter.try_into()?
+            } else {
+                return Err(DebugError::Other(anyhow::anyhow!(
+                    "Cannot unwind `Variable` without a valid PC (program_counter)"
+                )));
+            };
 
             log::trace!("process_tree for parent {}", parent_variable.variable_key);
 
@@ -659,7 +665,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                 // These have not been specified correctly ... something went wrong.
                                 parent_variable.set_value(VariableValue::Error("Error: Processing of variables failed because of invalid/unsupported scope information. Please log a bug at 'https://github.com/probe-rs/probe-rs/issues'".to_string()));
                             }
-                            if low_pc <= program_counter && program_counter < high_pc {
+                            if low_pc <= program_counter && program_counter  < high_pc {
                                 // We have established positive scope, so no need to continue.
                                 in_scope = true;
                             };
@@ -784,7 +790,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
         parent_variable: &Variable,
         mut child_variable: Variable,
         core: &mut Core<'_>,
-        stack_frame_registers: &registers::Registers,
+        stack_frame_registers: &registers::DebugRegisters,
         cache: &mut VariableCache,
     ) -> Result<Variable, DebugError> {
         let type_name = match node.entry().attr(gimli::DW_AT_name) {
@@ -1272,7 +1278,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
         parent_variable: &Variable,
         mut child_variable: Variable,
         core: &mut Core<'_>,
-        stack_frame_registers: &registers::Registers,
+        stack_frame_registers: &registers::DebugRegisters,
         cache: &mut VariableCache,
     ) -> Result<Variable, DebugError> {
         let mut attrs = node.entry().attrs();
@@ -1314,38 +1320,49 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                             self.unit.addr_base,
                         ) {
                             Ok(mut locations) => {
-                                let program_counter =
-                                    stack_frame_registers.get_program_counter().unwrap_or(0) as u64;
-                                let mut expression: Option<gimli::Expression<GimliReader>> = None;
-                                while let Some(location) = match locations.next() {
-                                    Ok(location_lists_entry) => location_lists_entry,
-                                    Err(error) => {
-                                        child_variable.set_value(VariableValue::Error(format!("Error: Iterating LocationLists for this variable: {:?}", &error)));
-                                        None
+                                if let Some(program_counter) = stack_frame_registers
+                                    .get_program_counter()
+                                    .and_then(|reg| reg.value)
+                                {
+                                    // let program_counter: u64 = pc.try_into()?;
+                                    let mut expression: Option<gimli::Expression<GimliReader>> =
+                                        None;
+                                    while let Some(location) = match locations.next() {
+                                        Ok(location_lists_entry) => location_lists_entry,
+                                        Err(error) => {
+                                            child_variable.set_value(VariableValue::Error(format!("Error: Iterating LocationLists for this variable: {:?}", &error)));
+                                            None
+                                        }
+                                    } {
+                                        if program_counter
+                                            >= RegisterValue::from(location.range.begin)
+                                            && program_counter
+                                                < RegisterValue::from(location.range.end)
+                                        {
+                                            expression = Some(location.data);
+                                            break;
+                                        }
                                     }
-                                } {
-                                    if program_counter >= location.range.begin
-                                        && program_counter < location.range.end
-                                    {
-                                        expression = Some(location.data);
-                                        break;
-                                    }
-                                }
 
-                                if let Some(valid_expression) = expression {
-                                    if let Err(error) = self.evaluate_expression(
-                                        core,
-                                        &mut child_variable,
-                                        valid_expression,
-                                        stack_frame_registers,
-                                    ) {
-                                        child_variable.set_value(VariableValue::Error(format!("Error: Determining memory location for this variable: {:?}", &error)));
+                                    if let Some(valid_expression) = expression {
+                                        if let Err(error) = self.evaluate_expression(
+                                            core,
+                                            &mut child_variable,
+                                            valid_expression,
+                                            stack_frame_registers,
+                                        ) {
+                                            child_variable.set_value(VariableValue::Error(format!("Error: Determining memory location for this variable: {:?}", &error)));
+                                        }
+                                    } else {
+                                        child_variable.set_value(VariableValue::Error(
+                                            "<value out of scope - moved or dropped>".to_string(),
+                                        ));
                                     }
                                 } else {
                                     child_variable.set_value(VariableValue::Error(
-                                        "<value out of scope - moved or dropped>".to_string(),
-                                    ));
-                                }
+                                            "Cannot determine variable location without a valid program counter.".to_string(),
+                                        ));
+                                };
                             }
                             Err(error) => {
                                 child_variable.set_value(VariableValue::Error(format!(
@@ -1398,7 +1415,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
         core: &mut Core<'_>,
         child_variable: &mut Variable,
         expression: gimli::Expression<GimliReader>,
-        stack_frame_registers: &registers::Registers,
+        stack_frame_registers: &registers::DebugRegisters,
     ) -> Result<(), DebugError> {
         let pieces = self.expression_to_piece(core, expression, stack_frame_registers)?;
         if pieces.is_empty() {
@@ -1486,10 +1503,13 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
         &self,
         core: &mut Core<'_>,
         expression: gimli::Expression<GimliReader>,
-        stack_frame_registers: &registers::Registers,
+        stack_frame_registers: &registers::DebugRegisters,
     ) -> Result<Vec<gimli::Piece<GimliReader, usize>>, DebugError> {
         let mut evaluation = expression.evaluation(self.unit.encoding());
-        let frame_base = if let Some(frame_base) = stack_frame_registers.get_frame_pointer() {
+        let frame_base = if let Some(frame_base) = stack_frame_registers
+            .get_frame_pointer()
+            .and_then(|reg| reg.value)
+        {
             frame_base
         } else {
             return Err(DebugError::Other(anyhow::anyhow!(
@@ -1530,21 +1550,24 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                         }
                     }
                 }
-                RequiresFrameBase => match evaluation.resume_with_frame_base(frame_base) {
-                    Ok(evaluation_result) => evaluation_result,
-                    Err(error) => {
-                        return Err(DebugError::Other(anyhow::anyhow!(
-                            "Error while calculating `Variable::memory_location`:{}.",
-                            error
-                        )))
+                RequiresFrameBase => {
+                    match evaluation.resume_with_frame_base(frame_base.try_into()?) {
+                        Ok(evaluation_result) => evaluation_result,
+                        Err(error) => {
+                            return Err(DebugError::Other(anyhow::anyhow!(
+                                "Error while calculating `Variable::memory_location`:{}.",
+                                error
+                            )))
+                        }
                     }
-                },
+                }
                 RequiresRegister {
                     register,
                     base_type,
                 } => {
                     let raw_value = match stack_frame_registers
-                        .get_value_by_dwarf_register_number(register.0 as u32)
+                        .get_register_by_dwarf_id(register.0)
+                        .and_then(|reg| reg.value)
                     {
                         Some(raw_value) => {
                             if base_type != gimli::UnitOffset(0) {
@@ -1563,7 +1586,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                         }
                     };
 
-                    evaluation.resume_with_register(gimli::Value::Generic(raw_value as u64))?
+                    evaluation.resume_with_register(gimli::Value::Generic(raw_value.try_into()?))?
                 }
                 RequiresRelocatedAddress(address_index) => {
                     if address_index.is_zero() {

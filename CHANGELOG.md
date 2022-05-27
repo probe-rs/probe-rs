@@ -85,6 +85,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Debugger: Fix assumptions for ARM cores
   - GDB: Fix assumptions for ARM cores
 - Fixed access to Arm CoreSight components being completed through the wrong AP (#1114)
+- Debug: Additions to complete RISC-V and 64-bit support.
+  - probe_rs::debug::Registers uses new `core::RegisterId` and `core::RegisterValue` for consistent register handling.
+  - RISCV `Disassembly` works correctly for 'compressed' (RV32C isa variants) instruction sets.
+  - RISCV stack unwind improvements (stack frames and registers work, variables do not resolve correctly.)
 
 ## [0.12.0]
 
@@ -240,7 +244,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Cache value of CSW register to reduce number of SWD transfers (#471).
 - Use `erased_byte_value` from target description as default value in the flash loader (#475).
 - Added retry functionality for CMSIS-DAP probes (#462).
-- riscv: Use abstract commands for CSR access for improved speed (#487).
+- RISCV: Use abstract commands for CSR access for improved speed (#487).
 - The `download_file` and `download_file_with_options` functions now accept `AsRef<Path>` instead of `&Path`to be more convenient to use (#545, #579).
 - Use `itm-decode` to decode ITM packets instead of built-in decoder (#564).
 - Flash API Improvements: Data is now owned by the `FlashLoader`and `FlashBuilder` structs to simply the API, and the `FlashLoader::commit()` accepts the `DownloadOptions` struct instead of bool flags (#605).
@@ -267,11 +271,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed off-by-one errors when flashing chip with contiguous memory ranges (#574).
 - Ensure only ELF segments with type `PT_LOAD` are flashed (#582).
 - Fixed overflow in hex file loading, and ensure addresses are calculated correctly (#604).
-- riscv: Fixed scanning for harts (#610).
-- riscv: Fixed abstract command handling (#611).
+- RISCV: Fixed scanning for harts (#610).
+- RISCV: Fixed abstract command handling (#611).
 - Fixed a bus congestion issue where the chip is polled too often, leading to problems while flashing (#613).
 - The breakpoint address is now verified to ensure a breakpoint at the given address is actually possible (#626).
-- riscv: Use correct address for access to `abstractauto`register (#511).
+- RISCV: Use correct address for access to `abstractauto`register (#511).
 - The `--chip` argument now works without specifying the `--elf` argument (fix #517).
 - Fixed: Invalid "Unable to set hardware breakpoint", by removing breakpoint caching, instead querying core directly (#632)
 - Fix crash on unknown AP class. (#662).
