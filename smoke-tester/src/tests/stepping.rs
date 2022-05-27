@@ -35,7 +35,7 @@ pub fn test_stepping(core: &mut Core, memory_regions: &[MemoryRegion]) -> Result
 
     let registers = core.registers();
 
-    core.write_core_reg(registers.program_counter().into(), code_load_address as u32)?;
+    core.write_core_reg(registers.program_counter().into(), code_load_address)?;
 
     let core_information = core.step()?;
 
@@ -47,7 +47,7 @@ pub fn test_stepping(core: &mut Core, memory_regions: &[MemoryRegion]) -> Result
         log::warn!("Unexpected core status: {:?}!", core_status);
     }
 
-    let r0_value = core.read_core_reg(registers.platform_register(0))?;
+    let r0_value: u64 = core.read_core_reg(registers.platform_register(0))?;
 
     assert_eq!(r0_value, 0);
 
@@ -68,14 +68,13 @@ pub fn test_stepping(core: &mut Core, memory_regions: &[MemoryRegion]) -> Result
             println!("Core did not halt after timeout!");
             core.halt(Duration::from_millis(100))?;
 
-            let pc = core.read_core_reg(registers.program_counter())?;
+            let pc: u64 = core.read_core_reg(registers.program_counter())?;
 
             println!("Core stopped at: {:#08x}", pc);
 
-            println!(
-                "$r2 = {:#08x}",
-                core.read_core_reg(registers.platform_register(2))?
-            );
+            let r2_val: u64 = core.read_core_reg(registers.platform_register(2))?;
+
+            println!("$r2 = {:#08x}", r2_val);
         }
         Err(other) => anyhow::bail!(other),
     }
@@ -86,9 +85,9 @@ pub fn test_stepping(core: &mut Core, memory_regions: &[MemoryRegion]) -> Result
 
     assert_eq!(core_status, CoreStatus::Halted(HaltReason::Breakpoint));
 
-    let pc = core.read_core_reg(registers.program_counter())?;
+    let pc: u64 = core.read_core_reg(registers.program_counter())?;
 
-    assert_eq!(pc as u64, break_address);
+    assert_eq!(pc, break_address);
 
     println!("Core halted at {:#08x}, now trying to run...", pc);
 
@@ -110,14 +109,13 @@ pub fn test_stepping(core: &mut Core, memory_regions: &[MemoryRegion]) -> Result
             println!("Core did not halt after timeout!");
             core.halt(Duration::from_millis(100))?;
 
-            let pc = core.read_core_reg(registers.program_counter())?;
+            let pc: u64 = core.read_core_reg(registers.program_counter())?;
 
             println!("Core stopped at: {:#08x}", pc);
 
-            println!(
-                "$r2 = {:#08x}",
-                core.read_core_reg(registers.platform_register(2))?
-            );
+            let r2_val: u64 = core.read_core_reg(registers.platform_register(2))?;
+
+            println!("$r2 = {:#08x}", r2_val);
         }
         Err(other) => anyhow::bail!(other),
     }
@@ -126,16 +124,13 @@ pub fn test_stepping(core: &mut Core, memory_regions: &[MemoryRegion]) -> Result
 
     assert_eq!(core_status, CoreStatus::Halted(HaltReason::Breakpoint));
 
-    let pc = core.read_core_reg(registers.program_counter())?;
+    let pc: u64 = core.read_core_reg(registers.program_counter())?;
 
-    assert_eq!(
-        pc as u64, break_address,
-        "{:#08x} != {:#08x}",
-        pc, break_address
-    );
+    assert_eq!(pc, break_address, "{:#08x} != {:#08x}", pc, break_address);
 
     // Register r2 should be 1 to indicate end of test.
-    assert_eq!(1, core.read_core_reg(registers.platform_register(2))?);
+    let r2_val: u64 = core.read_core_reg(registers.platform_register(2))?;
+    assert_eq!(1, r2_val);
 
     Ok(())
 }

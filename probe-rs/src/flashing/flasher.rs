@@ -621,7 +621,10 @@ impl<'probe, O: Operation> ActiveFlasher<'probe, O> {
                     "content of {} {:#x}: 0x{:08x} should be: 0x{:08x}",
                     description.name,
                     description.address.0,
-                    self.core.read_core_reg(description.address)?,
+                    {
+                        let value: u32 = self.core.read_core_reg(description.address)?;
+                        value
+                    },
                     *v
                 );
             }
@@ -629,7 +632,7 @@ impl<'probe, O: Operation> ActiveFlasher<'probe, O> {
 
         if self.core.architecture() == Architecture::Riscv {
             // Ensure ebreak enters debug mode, this is necessary for soft breakpoints to work.
-            let dcsr = self.core.read_core_reg(CoreRegisterAddress::from(0x7b0))?;
+            let dcsr: u32 = self.core.read_core_reg(CoreRegisterAddress::from(0x7b0))?;
 
             self.core.write_core_reg(
                 CoreRegisterAddress::from(0x7b0),
@@ -649,7 +652,7 @@ impl<'probe, O: Operation> ActiveFlasher<'probe, O> {
 
         self.core.wait_for_core_halted(timeout)?;
 
-        let r = self.core.read_core_reg(regs.result_register(0).address)?;
+        let r: u32 = self.core.read_core_reg(regs.result_register(0).address)?;
         Ok(r)
     }
 }

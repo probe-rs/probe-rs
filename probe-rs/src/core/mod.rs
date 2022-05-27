@@ -45,17 +45,45 @@ pub struct CoreInformation {
     pub pc: u64,
 }
 
+/// The type of data stored in a register
+#[derive(Debug, Clone, PartialEq)]
+pub enum RegisterDataType {
+    /// Unsigned integer data
+    UnsignedInteger,
+    /// Floating point data
+    FloatingPoint,
+}
+
 /// Describes a register with its properties.
 #[derive(Debug, Clone, PartialEq)]
 pub struct RegisterDescription {
     pub(crate) name: &'static str,
     pub(crate) _kind: RegisterKind,
     pub(crate) address: CoreRegisterAddress,
+    pub(crate) _type: RegisterDataType,
+    pub(crate) size_in_bits: usize,
 }
 
 impl RegisterDescription {
+    /// Get the display name of this register
     pub fn name(&self) -> &'static str {
         self.name
+    }
+
+    /// Get the type of data stored in this register
+    pub fn data_type(&self) -> RegisterDataType {
+        self._type.clone()
+    }
+
+    /// Get the size, in bits, of this register
+    pub fn size_in_bits(&self) -> usize {
+        self.size_in_bits
+    }
+
+    /// Get the size, in bytes, of this register
+    pub fn size_in_bytes(&self) -> usize {
+        // Always round up
+        (self.size_in_bits + 7) / 8
     }
 }
 
@@ -75,6 +103,55 @@ impl From<&RegisterDescription> for CoreRegisterAddress {
 pub(crate) enum RegisterKind {
     General,
     PC,
+}
+
+/// A value of a core register
+///
+/// Creating a new `RegisterValue` should be done using From or Into.
+/// Converting a value back to a primitive type can be done with either
+/// a match arm or TryInto
+#[derive(Debug, Clone, PartialEq)]
+pub enum RegisterValue {
+    /// 32-bit unsigned integer
+    U32(u32),
+    /// 64-bit unsigned integer
+    U64(u64),
+}
+
+impl From<u32> for RegisterValue {
+    fn from(val: u32) -> Self {
+        Self::U32(val)
+    }
+}
+
+impl From<u64> for RegisterValue {
+    fn from(val: u64) -> Self {
+        Self::U64(val)
+    }
+}
+
+impl TryInto<u32> for RegisterValue {
+    type Error = crate::Error;
+
+    fn try_into(self) -> Result<u32, Self::Error> {
+        match self {
+            Self::U32(v) => Ok(v),
+            Self::U64(v) => v
+                .try_into()
+                .map_err(|_| crate::Error::Other(anyhow!("Value '{}' too large for u32", v))),
+        }
+    }
+}
+
+impl TryInto<u64> for RegisterValue {
+    type Error = crate::Error;
+
+    fn try_into(self) -> Result<u64, Self::Error> {
+        match self {
+            Self::U32(v) => Ok(v.into()),
+            Self::U64(v) => Ok(v),
+        }
+    }
 }
 
 /// Register description for a core.
@@ -238,10 +315,13 @@ pub trait CoreInterface: MemoryInterface {
     fn step(&mut self) -> Result<CoreInformation, error::Error>;
 
     /// Read the value of a core register.
-    fn read_core_reg(&mut self, address: CoreRegisterAddress) -> Result<u32, error::Error>;
+    fn read_core_reg(
+        &mut self,
+        address: CoreRegisterAddress,
+    ) -> Result<RegisterValue, error::Error>;
 
     /// Write the value of a core register.
-    fn write_core_reg(&mut self, address: CoreRegisterAddress, value: u32) -> Result<()>;
+    fn write_core_reg(&mut self, address: CoreRegisterAddress, value: RegisterValue) -> Result<()>;
 
     /// Returns all the available breakpoint units of the core.
     fn available_breakpoint_units(&mut self) -> Result<u32, error::Error>;
@@ -547,20 +627,36 @@ impl<'probe> Core<'probe> {
     }
 
     /// Read the value of a core register.
-    pub fn read_core_reg(
+    ///
+    /// # Errors
+    ///
+    /// If `T` isn't large enough to hold the register value an error will be raised.
+    pub fn read_core_reg<T>(
         &mut self,
         address: impl Into<CoreRegisterAddress>,
-    ) -> Result<u32, error::Error> {
-        self.inner.read_core_reg(address.into())
+    ) -> Result<T, error::Error>
+    where
+        RegisterValue: TryInto<T, Error = error::Error>,
+    {
+        let value = self.inner.read_core_reg(address.into())?;
+
+        value.try_into()
     }
 
     /// Write the value of a core register.
-    pub fn write_core_reg(
+    ///
+    /// # Errors
+    ///
+    /// If T is too large to write to the target register an error will be raised.
+    pub fn write_core_reg<T>(
         &mut self,
         address: CoreRegisterAddress,
-        value: u32,
-    ) -> Result<(), error::Error> {
-        Ok(self.inner.write_core_reg(address, value)?)
+        value: T,
+    ) -> Result<(), error::Error>
+    where
+        T: Into<RegisterValue>,
+    {
+        Ok(self.inner.write_core_reg(address, value.into())?)
     }
 
     /// Returns all the available breakpoint units of the core.

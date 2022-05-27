@@ -55,7 +55,8 @@ pub(crate) fn read_general_registers(mut core: Core) -> Option<String> {
     for reg in 0..core.num_general_registers() {
         let (probe_rs_number, bytesize) = core.translate_gdb_register_number(reg as u32)?;
 
-        let mut value = core.read_core_reg(probe_rs_number).unwrap();
+        // TODO 64-bit - handle different sized values
+        let mut value: u32 = core.read_core_reg(probe_rs_number).unwrap();
 
         for _ in 0..bytesize {
             let byte = value as u8;
@@ -97,7 +98,8 @@ pub(crate) fn read_register(register: u32, mut core: Core) -> Option<String> {
 
     let (probe_rs_number, bytesize) = core.translate_gdb_register_number(register)?;
 
-    let mut value = core.read_core_reg(probe_rs_number).unwrap();
+    // TODO 64-bit - handle different sized values
+    let mut value: u32 = core.read_core_reg(probe_rs_number).unwrap();
 
     let mut register_value = String::new();
 
@@ -140,6 +142,7 @@ pub(crate) fn write_general_registers(reg_values: &str, mut core: Core) -> Optio
     for reg_num in 0..core.num_general_registers() as u32 {
         let (addr, bytesize) = core.translate_gdb_register_number(reg_num)?;
 
+        // TODO 64-bit - rework this
         // TODO: remove, when `Core::write_core_reg()` supports larger registers
         if bytesize as usize > std::mem::size_of::<u32>() {
             // Currently registers larger than 32 bits are not supported
@@ -213,6 +216,7 @@ pub(crate) fn write_register(register: u32, hex_value: &str, mut core: Core) -> 
 
     let (probe_rs_number, bytesize) = core.translate_gdb_register_number(register)?;
 
+    // TODO 64-bit - rework this
     // TODO: remove, when `Core::write_core_reg()` supports larger registers
     if bytesize as usize > std::mem::size_of::<u32>() {
         // Currently registers larger than 32 bits are not supported

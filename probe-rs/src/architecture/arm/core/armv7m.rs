@@ -2,7 +2,7 @@
 
 use crate::architecture::arm::sequences::ArmDebugSequence;
 use crate::core::{
-    CoreInformation, CoreInterface, CoreRegister, CoreRegisterAddress, RegisterFile,
+    CoreInformation, CoreInterface, CoreRegister, CoreRegisterAddress, RegisterFile, RegisterValue,
 };
 use crate::error::Error;
 use crate::memory::{valid_32_address, Memory};
@@ -729,12 +729,13 @@ impl<'probe> CoreInterface for Armv7m<'probe> {
         Ok(CoreStatus::Running)
     }
 
-    fn read_core_reg(&mut self, address: CoreRegisterAddress) -> Result<u32, Error> {
-        super::cortex_m::read_core_reg(&mut self.memory, address)
+    fn read_core_reg(&mut self, address: CoreRegisterAddress) -> Result<RegisterValue, Error> {
+        let val = super::cortex_m::read_core_reg(&mut self.memory, address)?;
+        Ok(val.into())
     }
 
-    fn write_core_reg(&mut self, address: CoreRegisterAddress, value: u32) -> Result<()> {
-        super::cortex_m::write_core_reg(&mut self.memory, address, value)?;
+    fn write_core_reg(&mut self, address: CoreRegisterAddress, value: RegisterValue) -> Result<()> {
+        super::cortex_m::write_core_reg(&mut self.memory, address, value.try_into()?)?;
 
         Ok(())
     }
@@ -759,7 +760,7 @@ impl<'probe> CoreInterface for Armv7m<'probe> {
 
         // get pc
         Ok(CoreInformation {
-            pc: pc_value.into(),
+            pc: pc_value.try_into()?,
         })
     }
 
@@ -833,7 +834,7 @@ impl<'probe> CoreInterface for Armv7m<'probe> {
 
         // get pc
         Ok(CoreInformation {
-            pc: pc_value.into(),
+            pc: pc_value.try_into()?,
         })
     }
 
@@ -855,9 +856,9 @@ impl<'probe> CoreInterface for Armv7m<'probe> {
         let _ = self.status()?;
 
         const XPSR_THUMB: u32 = 1 << 24;
-        let xpsr_value = self.read_core_reg(register::XPSR.address)?;
+        let xpsr_value: u32 = self.read_core_reg(register::XPSR.address)?.try_into()?;
         if xpsr_value & XPSR_THUMB == 0 {
-            self.write_core_reg(register::XPSR.address, xpsr_value | XPSR_THUMB)?;
+            self.write_core_reg(register::XPSR.address, (xpsr_value | XPSR_THUMB).into())?;
         }
 
         self.sequence
@@ -868,7 +869,7 @@ impl<'probe> CoreInterface for Armv7m<'probe> {
 
         // get pc
         Ok(CoreInformation {
-            pc: pc_value.into(),
+            pc: pc_value.try_into()?,
         })
     }
 
