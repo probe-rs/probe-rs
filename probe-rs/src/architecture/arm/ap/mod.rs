@@ -10,7 +10,7 @@ use crate::DebugProbeError;
 
 pub use generic_ap::{ApClass, ApType, GenericAp, IDR};
 pub use memory_ap::{
-    AddressIncrement, BaseaddrFormat, DataSize, MemoryAp, BASE, BASE2, CSW, DRW, TAR, TAR2,
+    AddressIncrement, BaseaddrFormat, DataSize, MemoryAp, BASE, BASE2, CFG, CSW, DRW, TAR, TAR2,
 };
 
 use super::{ApAddress, DapAccess, DpAddress, Register};

@@ -2,14 +2,14 @@ use crate::common::CliError;
 
 use anyhow::anyhow;
 use capstone::{
-    arch::arm::ArchMode as armArchMode, arch::riscv::ArchMode as riscvArchMode, prelude::*,
-    Capstone, Endian,
+    arch::arm::ArchMode as armArchMode, arch::arm64::ArchMode as aarch64ArchMode,
+    arch::riscv::ArchMode as riscvArchMode, prelude::*, Capstone, Endian,
 };
 use num_traits::Num;
 use probe_rs::{
     architecture::arm::Dump,
     debug::{debug_info::DebugInfo, registers::Registers, stack_frame::StackFrame, VariableName},
-    Core, CoreRegisterAddress, CoreType, InstructionSet, MemoryInterface,
+    Core, CoreRegisterAddress, CoreType, InstructionSet, MemoryInterface, RegisterDescription,
 };
 use std::fs::File;
 use std::{io::prelude::*, time::Duration};
@@ -78,6 +78,14 @@ impl DebugCli {
                             .endian(Endian::Little)
                             .build()
                     }
+                    InstructionSet::A64 => {
+                        // We need to inspect the CPSR to determine what mode this is opearting in
+                        Capstone::new()
+                            .arm64()
+                            .mode(aarch64ArchMode::Arm)
+                            .endian(Endian::Little)
+                            .build()
+                    }
                     InstructionSet::RV32 => Capstone::new()
                         .riscv()
                         .mode(riscvArchMode::RiscV32)
@@ -121,22 +129,25 @@ impl DebugCli {
                 println!("Status: {:?}", &status);
 
                 if status.is_halted() {
+                    let pc_desc = cli_data.core.registers().program_counter();
                     let pc: u64 = cli_data
                         .core
-                        .read_core_reg(cli_data.core.registers().program_counter())?;
-                    println!("Core halted at address {:#010x}", pc);
+                        .read_core_reg(pc_desc)?;
+                    println!("Core halted at address {:#0width$x}", pc, width = pc_desc.format_hex_width());
 
                     // determine if the target is handling an interupt
 
                     if cli_data.core.architecture() == probe_rs::Architecture::Arm {
                         match cli_data.core.core_type() {
                             CoreType::Armv6m | CoreType::Armv7em | CoreType::Armv7m | CoreType::Armv8m | CoreType::Armv7a | CoreType::Armv8a => {
-                                // Cortex-M and v7-A targets define the PSR as register 16
-                                let xpsr: u64 = cli_data.core.read_core_reg(
-                                    16,
+                                // Unwrap is safe here because ARM always defines this register
+                                let psr_desc = cli_data.core.registers().psr().unwrap();
+
+                                let xpsr: u32 = cli_data.core.read_core_reg(
+                                    psr_desc,
                                 )?;
 
-                                println!("XPSR: {:#010x}", xpsr);
+                                println!("XPSR: {:#0width$x}", xpsr, width = psr_desc.format_hex_width());
 
                                 // This is Cortex-M specific interpretation
                                 // It's hard to generally model these concepts for any possible CoreType,
@@ -282,6 +293,35 @@ impl DebugCli {
         });
 
         cli.add_command(Command {
+            name: "read_64",
+            help_text: "Read 64bit value from memory",
+
+            function: |cli_data, args| {
+                let address = get_int_argument(args, 0)?;
+
+                let num_words = if args.len() > 1 {
+                    get_int_argument(args, 1)?
+                } else {
+                    1
+                };
+
+                let mut buff = vec![0u64; num_words];
+
+                if num_words > 1 {
+                    cli_data.core.read_64(address, &mut buff)?;
+                } else {
+                    buff[0] = cli_data.core.read_word_64(address)?;
+                }
+
+                for (offset, word) in buff.iter().enumerate() {
+                    println!("0x{:08x} = 0x{:02x}", address + (offset * 8) as u64, word);
+                }
+
+                Ok(CliState::Continue)
+            },
+        });
+
+        cli.add_command(Command {
             name: "write",
             help_text: "Write a 32bit value to memory",
 
@@ -304,6 +344,20 @@ impl DebugCli {
                 let data: u8 = get_int_argument(args, 1)?;
 
                 cli_data.core.write_word_8(address, data)?;
+
+                Ok(CliState::Continue)
+            },
+        });
+
+        cli.add_command(Command {
+            name: "write_64",
+            help_text: "Write a 64bit value to memory",
+
+            function: |cli_data, args| {
+                let address = get_int_argument(args, 0)?;
+                let data = get_int_argument(args, 1)?;
+
+                cli_data.core.write_word_64(address, data)?;
 
                 Ok(CliState::Continue)
             },
@@ -416,10 +470,23 @@ impl DebugCli {
             function: |cli_data, _args| {
                 let register_file = cli_data.core.registers();
 
-                for register in register_file.registers() {
+                let psr_iter: Box<dyn Iterator<Item = &RegisterDescription>> =
+                    match register_file.psr() {
+                        Some(psr) => Box::new(std::iter::once(psr)),
+                        None => Box::new(std::iter::empty::<&RegisterDescription>()),
+                    };
+
+                let iter = register_file.registers().chain(psr_iter);
+
+                for register in iter {
                     let value: u64 = cli_data.core.read_core_reg(register)?;
 
-                    println!("{}: {:#010x}", register.name(), value)
+                    println!(
+                        "{:10}: {:#0width$x}",
+                        register.name(),
+                        value,
+                        width = register.format_hex_width()
+                    );
                 }
 
                 Ok(CliState::Continue)
@@ -712,7 +779,7 @@ enum DebugState {
 }
 
 struct HaltedState {
-    program_counter: u32,
+    program_counter: u64,
     current_frame: usize,
     frame_indices: Vec<i64>,
     stack_frames: Vec<StackFrame>,

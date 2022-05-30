@@ -73,7 +73,7 @@ bitfield! {
     pub hde, set_hde: 14;
 
     /// Exception level Execution state status.
-    pub rw, _: 13, 10;
+    pub rw, set_rw: 13, 10;
 
     /// Exception level.
     pub el, _: 9, 8;

@@ -1,4 +1,4 @@
-use crate::architecture::{GdbArchitectureExt, GdbTargetExt};
+use crate::architecture::{GdbArchitectureExt, GdbSessionExt};
 use probe_rs::{Core, CoreStatus, MemoryInterface, Session};
 use std::time::Duration;
 
@@ -55,8 +55,7 @@ pub(crate) fn read_general_registers(mut core: Core) -> Option<String> {
     for reg in 0..core.num_general_registers() {
         let (probe_rs_number, bytesize) = core.translate_gdb_register_number(reg as u32)?;
 
-        // TODO 64-bit - handle different sized values
-        let mut value: u32 = core.read_core_reg(probe_rs_number).unwrap();
+        let mut value: u64 = core.read_core_reg(probe_rs_number).unwrap();
 
         for _ in 0..bytesize {
             let byte = value as u8;
@@ -98,8 +97,7 @@ pub(crate) fn read_register(register: u32, mut core: Core) -> Option<String> {
 
     let (probe_rs_number, bytesize) = core.translate_gdb_register_number(register)?;
 
-    // TODO 64-bit - handle different sized values
-    let mut value: u32 = core.read_core_reg(probe_rs_number).unwrap();
+    let mut value: u64 = core.read_core_reg(probe_rs_number).unwrap();
 
     let mut register_value = String::new();
 
@@ -142,13 +140,6 @@ pub(crate) fn write_general_registers(reg_values: &str, mut core: Core) -> Optio
     for reg_num in 0..core.num_general_registers() as u32 {
         let (addr, bytesize) = core.translate_gdb_register_number(reg_num)?;
 
-        // TODO 64-bit - rework this
-        // TODO: remove, when `Core::write_core_reg()` supports larger registers
-        if bytesize as usize > std::mem::size_of::<u32>() {
-            // Currently registers larger than 32 bits are not supported
-            log::warn!("Register {} is truncated, because probe-rs does not currently support registers longer than 32 bit", reg_num);
-        }
-
         let current_str_regval_end = current_str_regval_offset + bytesize as usize * 2;
 
         if current_str_regval_end > reg_values.len() {
@@ -163,15 +154,9 @@ pub(crate) fn write_general_registers(reg_values: &str, mut core: Core) -> Optio
         let str_value = &reg_values[current_str_regval_offset..current_str_regval_end];
 
         let mut value = 0;
-        for (exp, ch) in str_value
-            .as_bytes()
-            .chunks(2)
-            .enumerate()
-            // TODO: remove, when `Core::write_core_reg()` supports larger registers
-            .take(std::mem::size_of::<u32>())
-        {
+        for (exp, ch) in str_value.as_bytes().chunks(2).enumerate() {
             value +=
-                u32::from_str_radix(std::str::from_utf8(ch).unwrap(), 16).unwrap() << (8 * exp);
+                u64::from_str_radix(std::str::from_utf8(ch).unwrap(), 16).unwrap() << (8 * exp);
         }
 
         core.write_core_reg(addr, value).unwrap();
@@ -216,23 +201,15 @@ pub(crate) fn write_register(register: u32, hex_value: &str, mut core: Core) -> 
 
     let (probe_rs_number, bytesize) = core.translate_gdb_register_number(register)?;
 
-    // TODO 64-bit - rework this
-    // TODO: remove, when `Core::write_core_reg()` supports larger registers
-    if bytesize as usize > std::mem::size_of::<u32>() {
-        // Currently registers larger than 32 bits are not supported
-        log::warn!("Register {} is truncated, because probe-rs does not currently support registers longer than 32 bit", register);
-    }
-
     let mut value = 0;
 
     for (exp, ch) in hex_value
         .as_bytes()
         .chunks(2)
         .enumerate()
-        // TODO: remove, when `Core::write_core_reg()` supports larger registers
-        .take(std::mem::size_of::<u32>())
+        .take(bytesize as usize)
     {
-        value += u32::from_str_radix(std::str::from_utf8(ch).unwrap(), 16).unwrap() << (8 * exp);
+        value += u64::from_str_radix(std::str::from_utf8(ch).unwrap(), 16).unwrap() << (8 * exp);
     }
 
     core.write_core_reg(probe_rs_number, value).unwrap();
@@ -306,10 +283,13 @@ pub(crate) fn write_memory(address: u64, data: &[u8], mut core: Core) -> Option<
     Some("OK".into())
 }
 
-pub(crate) fn get_memory_map(session: &Session) -> Option<String> {
-    let memory_map = session.target().gdb_memory_map();
+pub(crate) fn get_memory_map(session: &mut Session) -> Option<String> {
+    let memory_map = session
+        .gdb_memory_map()
+        .map(|d| gdb_sanitize_file(d.as_bytes(), 0, 1000))
+        .unwrap_or_else(|_| "E05".as_bytes().into());
 
-    Some(String::from_utf8(gdb_sanitize_file(memory_map.as_bytes(), 0, 1000)).unwrap())
+    Some(String::from_utf8(memory_map).unwrap())
 }
 
 pub(crate) fn user_halt(mut core: Core, awaits_halt: &mut bool) -> Option<String> {
@@ -349,12 +329,15 @@ fn gdb_sanitize_file(data: &[u8], offset: u32, len: u32) -> Vec<u8> {
     }
 }
 
-pub(crate) fn read_target_description(session: &Session, annex: &[u8]) -> Option<String> {
+pub(crate) fn read_target_description(session: &mut Session, annex: &[u8]) -> Option<String> {
     // Only target.xml is supported
     if annex == b"target.xml" {
-        let description = session.target().target_description();
+        let description = session
+            .target_description()
+            .map(|d| gdb_sanitize_file(d.as_bytes(), 0, 1000))
+            .unwrap_or_else(|_| "E05".as_bytes().into());
 
-        Some(String::from_utf8(gdb_sanitize_file(description.as_bytes(), 0, 1000)).unwrap())
+        Some(String::from_utf8(description).unwrap())
     } else {
         None
     }

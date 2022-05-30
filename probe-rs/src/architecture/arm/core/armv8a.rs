@@ -1,7 +1,6 @@
 //! Register types and the core interface for armv8-a
 
 use crate::architecture::arm::core::armv8a_debug_regs::*;
-use crate::architecture::arm::core::register;
 use crate::architecture::arm::sequences::ArmDebugSequence;
 use crate::core::{RegisterFile, RegisterValue};
 use crate::error::Error;
@@ -12,11 +11,13 @@ use crate::CoreStatus;
 use crate::DebugProbeError;
 use crate::MemoryInterface;
 use crate::{Architecture, CoreInformation, CoreType, InstructionSet};
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 
+use super::armv8a_core_regs::AARCH64_REGISTER_FILE;
 use super::CortexAState;
 use super::ARM_REGISTER_FILE;
 
+use super::instructions::aarch64;
 use super::instructions::thumb2::{build_ldr, build_mcr, build_mrc, build_str};
 
 use std::sync::Arc;
@@ -27,8 +28,8 @@ use std::time::Instant;
 #[derive(thiserror::Error, Debug)]
 pub enum Armv8aError {
     /// Invalid register number
-    #[error("Register number {0} is not valid for ARMv8-A")]
-    InvalidRegisterNumber(u16),
+    #[error("Register number {0} is not valid for ARMv8-A in {1}-bit mode")]
+    InvalidRegisterNumber(u16, u16),
 
     /// Not halted
     #[error("Core is running but operation requires it to be halted")]
@@ -86,18 +87,21 @@ impl<'probe> Armv8a<'probe> {
 
             state.current_state = core_state;
             state.is_64_bit = edscr.currently_64_bit();
-            state.register_cache = vec![None; 17];
             state.initialize();
         }
 
-        Ok(Self {
+        let mut core = Self {
             memory,
             state,
             base_address,
             cti_address,
             sequence,
             num_breakpoints: None,
-        })
+        };
+
+        core.reset_register_cache();
+
+        Ok(core)
     }
 
     /// Execute an instruction
@@ -140,7 +144,7 @@ impl<'probe> Armv8a<'probe> {
     }
 
     /// Execute an instruction on the CPU and return the result
-    fn execute_instruction_with_result(&mut self, instruction: u32) -> Result<u32, Error> {
+    fn execute_instruction_with_result_32(&mut self, instruction: u32) -> Result<u32, Error> {
         // Run instruction
         let mut edscr = self.execute_instruction(instruction)?;
 
@@ -157,7 +161,28 @@ impl<'probe> Armv8a<'probe> {
         Ok(result)
     }
 
-    fn execute_instruction_with_input(
+    /// Execute an instruction on the CPU and return the result
+    fn execute_instruction_with_result_64(&mut self, instruction: u32) -> Result<u64, Error> {
+        // Run instruction
+        let mut edscr = self.execute_instruction(instruction)?;
+
+        // Wait for TXfull
+        while !edscr.txfull() {
+            let address = Edscr::get_mmio_address(self.base_address);
+            edscr = Edscr(self.memory.read_word_32(address)?);
+        }
+
+        // Read result
+        let address = Dbgdtrrx::get_mmio_address(self.base_address);
+        let mut result: u64 = (self.memory.read_word_32(address)? as u64) << 32;
+
+        let address = Dbgdtrtx::get_mmio_address(self.base_address);
+        result |= self.memory.read_word_32(address)? as u64;
+
+        Ok(result)
+    }
+
+    fn execute_instruction_with_input_32(
         &mut self,
         instruction: u32,
         value: u32,
@@ -180,26 +205,63 @@ impl<'probe> Armv8a<'probe> {
         Ok(())
     }
 
-    fn reset_register_cache(&mut self) {
-        self.state.register_cache = vec![None; 17];
+    fn execute_instruction_with_input_64(
+        &mut self,
+        instruction: u32,
+        value: u64,
+    ) -> Result<(), Error> {
+        // Move value
+        let high_word = (value >> 32) as u32;
+        let low_word = (value & 0xFFFF_FFFF) as u32;
+
+        let address = Dbgdtrtx::get_mmio_address(self.base_address);
+        self.memory.write_word_32(address, high_word)?;
+
+        let address = Dbgdtrrx::get_mmio_address(self.base_address);
+        self.memory.write_word_32(address, low_word)?;
+
+        // Wait for RXfull
+        let address = Edscr::get_mmio_address(self.base_address);
+        let mut edscr = Edscr(self.memory.read_word_32(address)?);
+
+        while !edscr.rxfull() {
+            edscr = Edscr(self.memory.read_word_32(address)?);
+        }
+
+        // Run instruction
+        self.execute_instruction(instruction)?;
+
+        Ok(())
     }
 
-    /// Sync any updated registers back to the core
-    fn writeback_registers(&mut self) -> Result<(), Error> {
-        for i in 0..self.state.register_cache.len() {
-            if let Some((val, writeback)) = self.state.register_cache[i] {
+    fn reset_register_cache(&mut self) {
+        if self.state.is_64_bit {
+            // 31 general purpose regs, SP, PC, PSR, 31 FP registers, FPSR, FPCR
+            // Numbers match what GDB defines for aarch64
+            self.state.register_cache = vec![None; 68];
+        } else {
+            self.state.register_cache = vec![None; 17];
+        }
+    }
+
+    fn writeback_registers_aarch32(&mut self) -> Result<(), Error> {
+        // Update SP, PC, CPSR first since they clobber the GP registeres
+        let writeback_iter = (15u16..=16).chain(0u16..=14);
+
+        for i in writeback_iter {
+            if let Some((val, writeback)) = self.state.register_cache[i as usize] {
                 if writeback {
                     match i {
                         0..=14 => {
                             let instruction = build_mrc(14, 0, i as u16, 0, 5, 0);
 
-                            self.execute_instruction_with_input(instruction, val)?;
+                            self.execute_instruction_with_input_32(instruction, val.try_into()?)?;
                         }
                         15 => {
                             // Move val to r0
                             let instruction = build_mrc(14, 0, 0, 0, 5, 0);
 
-                            self.execute_instruction_with_input(instruction, val)?;
+                            self.execute_instruction_with_input_32(instruction, val.try_into()?)?;
 
                             // Write to DLR
                             let instruction = build_mrc(15, 3, 0, 4, 5, 1);
@@ -213,6 +275,55 @@ impl<'probe> Armv8a<'probe> {
             }
         }
 
+        Ok(())
+    }
+
+    fn writeback_registers_aarch64(&mut self) -> Result<(), Error> {
+        // Update SP, PC, CPSR first since they clobber the GP registeres
+        let writeback_iter = (31u16..=33).chain(0u16..=30);
+
+        for i in writeback_iter {
+            if let Some((val, writeback)) = self.state.register_cache[i as usize] {
+                if writeback {
+                    match i {
+                        0..=30 => {
+                            self.set_reg_value(i, val.try_into()?)?;
+                        }
+                        31 => {
+                            // Move val to r0
+                            self.set_reg_value(0, val.try_into()?)?;
+
+                            // MSR SP_EL0, X0
+                            let instruction = aarch64::build_msr(3, 0, 4, 1, 0, 0);
+                            self.execute_instruction(instruction)?;
+                        }
+                        32 => {
+                            // Move val to r0
+                            self.set_reg_value(0, val.try_into()?)?;
+
+                            // MSR DLR_EL0, X0
+                            let instruction = aarch64::build_msr(3, 3, 4, 5, 1, 0);
+                            self.execute_instruction(instruction)?;
+                        }
+                        _ => {
+                            panic!("Logic missing for writeback of register {}", i);
+                        }
+                    }
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Sync any updated registers back to the core
+    fn writeback_registers(&mut self) -> Result<(), Error> {
+        if self.state.is_64_bit {
+            self.writeback_registers_aarch64()?;
+        } else {
+            self.writeback_registers_aarch32()?;
+        }
+
         self.reset_register_cache();
 
         Ok(())
@@ -221,9 +332,8 @@ impl<'probe> Armv8a<'probe> {
     /// Save register if needed before it gets clobbered by instruction execution
     fn prepare_for_clobber(&mut self, reg: u16) -> Result<(), Error> {
         if self.state.register_cache[reg as usize].is_none() {
-            // TODO 64-bit - handle non-32 bit values
             // cache reg since we're going to clobber it
-            let val: u32 = self.read_core_reg(CoreRegisterAddress(reg))?.try_into()?;
+            let val = self.read_core_reg(CoreRegisterAddress(reg))?;
 
             // Mark reg as needing writeback
             self.state.register_cache[reg as usize] = Some((val, true));
@@ -232,10 +342,19 @@ impl<'probe> Armv8a<'probe> {
         Ok(())
     }
 
-    fn set_reg_value(&mut self, reg: u16, value: u32) -> Result<(), Error> {
-        let instruction = build_mrc(14, 0, reg, 0, 5, 0);
+    fn set_reg_value(&mut self, reg: u16, value: u64) -> Result<(), Error> {
+        if self.state.is_64_bit {
+            // MRS DBGDTR_EL0, X<n>
+            let instruction = aarch64::build_mrs(2, 3, 0, 4, 0, reg);
 
-        self.execute_instruction_with_input(instruction, value)
+            self.execute_instruction_with_input_64(instruction, value)
+        } else {
+            let value = valid_32_address(value)?;
+
+            let instruction = build_mrc(14, 0, reg, 0, 5, 0);
+
+            self.execute_instruction_with_input_32(instruction, value)
+        }
     }
 
     fn ack_cti_halt(&mut self) -> Result<(), Error> {
@@ -253,6 +372,249 @@ impl<'probe> Armv8a<'probe> {
                 break;
             }
         }
+
+        Ok(())
+    }
+
+    fn read_core_reg_32(&mut self, reg_num: u16) -> Result<RegisterValue, Error> {
+        // Generate instruction to extract register
+        match reg_num {
+            0..=14 => {
+                // r0-r14, valid
+                // MCR p14, 0, <Rd>, c0, c5, 0 ; Write DBGDTRTXint Register
+                let instruction = build_mcr(14, 0, reg_num, 0, 5, 0);
+
+                let reg_value = self.execute_instruction_with_result_32(instruction)?;
+
+                Ok(reg_value.into())
+            }
+            15 => {
+                // PC, must access via r0
+                self.prepare_for_clobber(0)?;
+
+                // MRC p15, 3, r0, c4, c5, 1 ; Read DLR to r0
+                let instruction = build_mrc(15, 3, 0, 4, 5, 1);
+                self.execute_instruction(instruction)?;
+
+                // Read from r0
+                let instruction = build_mcr(14, 0, 0, 0, 5, 0);
+                let pc = self.execute_instruction_with_result_32(instruction)?;
+
+                Ok(pc.into())
+            }
+            16 => {
+                // CPSR, must access via r0
+                self.prepare_for_clobber(0)?;
+
+                // MRC c15, 3, r0, c4, c5, 0
+                let instruction = build_mrc(15, 3, 0, 4, 5, 0);
+                self.execute_instruction(instruction)?;
+
+                // Read from r0
+                let instruction = build_mcr(14, 0, 0, 0, 5, 0);
+                let cpsr = self.execute_instruction_with_result_32(instruction)?;
+
+                Ok(cpsr.into())
+            }
+            _ => Err(Error::architecture_specific(
+                Armv8aError::InvalidRegisterNumber(reg_num, 32),
+            )),
+        }
+    }
+
+    fn read_core_reg_64(&mut self, reg_num: u16) -> Result<RegisterValue, Error> {
+        match reg_num {
+            0..=30 => {
+                // GP register
+
+                // MSR DBGDTR_EL0, X<n>
+                let instruction = aarch64::build_msr(2, 3, 0, 4, 0, reg_num);
+
+                let reg_value = self.execute_instruction_with_result_64(instruction)?;
+
+                Ok(reg_value.into())
+            }
+            31 => {
+                // SP
+                self.prepare_for_clobber(0)?;
+
+                // MRS SP_EL0, X0
+                let instruction = aarch64::build_mrs(3, 0, 4, 1, 0, 0);
+                self.execute_instruction(instruction)?;
+
+                // Read from x0
+                let instruction = aarch64::build_msr(2, 3, 0, 4, 0, 0);
+                let pc = self.execute_instruction_with_result_64(instruction)?;
+
+                Ok(pc.into())
+            }
+            32 => {
+                // PC, must access via x0
+                self.prepare_for_clobber(0)?;
+
+                // MRS DLR_EL0, X0
+                let instruction = aarch64::build_mrs(3, 3, 4, 5, 1, 0);
+                self.execute_instruction(instruction)?;
+
+                // Read from x0
+                let instruction = aarch64::build_msr(2, 3, 0, 4, 0, 0);
+                let sp = self.execute_instruction_with_result_64(instruction)?;
+
+                Ok(sp.into())
+            }
+            33 => {
+                // PSR
+                self.prepare_for_clobber(0)?;
+
+                // MRS DSPSR_EL0, X0
+                let instruction = aarch64::build_mrs(3, 3, 4, 5, 0, 0);
+                self.execute_instruction(instruction)?;
+
+                // Read from x0
+                let instruction = aarch64::build_msr(2, 3, 0, 4, 0, 0);
+                let psr: u32 = self.execute_instruction_with_result_64(instruction)? as u32;
+
+                Ok(psr.into())
+            }
+            66 => {
+                // FPSR
+                self.prepare_for_clobber(0)?;
+
+                // MRS FPSR, X0
+                let instruction = aarch64::build_mrs(3, 3, 4, 4, 1, 0);
+                self.execute_instruction(instruction)?;
+
+                // Read from x0
+                let instruction = aarch64::build_msr(2, 3, 0, 4, 0, 0);
+                let fpsr: u32 = self.execute_instruction_with_result_64(instruction)? as u32;
+
+                Ok(fpsr.into())
+            }
+            67 => {
+                // FPCR
+                self.prepare_for_clobber(0)?;
+
+                // MRS FPCR, X0
+                let instruction = aarch64::build_mrs(3, 3, 4, 4, 0, 0);
+                self.execute_instruction(instruction)?;
+
+                // Read from x0
+                let instruction = aarch64::build_msr(2, 3, 0, 4, 0, 0);
+                let fpsr: u32 = self.execute_instruction_with_result_64(instruction)? as u32;
+
+                Ok(fpsr.into())
+            }
+            _ => Err(Error::architecture_specific(
+                Armv8aError::InvalidRegisterNumber(reg_num, 64),
+            )),
+        }
+    }
+
+    fn read_cpu_memory_aarch32_32(&mut self, address: u64) -> Result<u32, Error> {
+        let address = valid_32_address(address)?;
+
+        // Save r0, r1
+        self.prepare_for_clobber(0)?;
+        self.prepare_for_clobber(1)?;
+
+        // Load r0 with the address to read from
+        self.set_reg_value(0, address.into())?;
+
+        // Read data to r1 - LDR r1, [r0], #4
+        let instruction = build_ldr(1, 0, 4);
+
+        self.execute_instruction(instruction)?;
+
+        // Move from r1 to transfer buffer - MCR p14, 0, r1, c0, c5, 0
+        let instruction = build_mcr(14, 0, 1, 0, 5, 0);
+        self.execute_instruction_with_result_32(instruction)
+    }
+
+    fn read_cpu_memory_aarch64_32(&mut self, address: u64) -> Result<u32, Error> {
+        // Save x0, x1
+        self.prepare_for_clobber(0)?;
+        self.prepare_for_clobber(1)?;
+
+        // Load x0 with the address to read from
+        self.set_reg_value(0, address)?;
+
+        // Read data to w1 - LDR w1, [x0], #4
+        let instruction = aarch64::build_ldrw(1, 0, 4);
+
+        self.execute_instruction(instruction)?;
+
+        // MSR DBGDTRTX_EL0, X1
+        let instruction = aarch64::build_msr(2, 3, 0, 5, 0, 1);
+        self.execute_instruction_with_result_32(instruction)
+    }
+
+    fn read_cpu_memory_aarch64_64(&mut self, address: u64) -> Result<u64, Error> {
+        // Save x0, x1
+        self.prepare_for_clobber(0)?;
+        self.prepare_for_clobber(1)?;
+
+        // Load x0 with the address to read from
+        self.set_reg_value(0, address)?;
+
+        // Read data to x1 - LDR x1, [x0], #8
+        let instruction = aarch64::build_ldr(1, 0, 8);
+
+        self.execute_instruction(instruction)?;
+
+        // MSR DBGDTR_EL0, X1
+        let instruction = aarch64::build_msr(2, 3, 0, 4, 0, 1);
+        self.execute_instruction_with_result_64(instruction)
+    }
+
+    fn write_cpu_memory_aarch32_32(&mut self, address: u64, data: u32) -> Result<(), Error> {
+        let address = valid_32_address(address)?;
+
+        // Save r0, r1
+        self.prepare_for_clobber(0)?;
+        self.prepare_for_clobber(1)?;
+
+        // Load x0 with the address to write to
+        self.set_reg_value(0, address.into())?;
+        self.set_reg_value(1, data.into())?;
+
+        // Write data to memory - STR r1, [r0], #4
+        let instruction = build_str(1, 0, 4);
+
+        self.execute_instruction(instruction)?;
+
+        Ok(())
+    }
+
+    fn write_cpu_memory_aarch64_32(&mut self, address: u64, data: u32) -> Result<(), Error> {
+        // Save x0, x1
+        self.prepare_for_clobber(0)?;
+        self.prepare_for_clobber(1)?;
+
+        // Load r0 with the address to write to
+        self.set_reg_value(0, address)?;
+        self.set_reg_value(1, data.into())?;
+
+        // Write data to memory - STR x1, [x0], #4
+        let instruction = aarch64::build_strw(1, 0, 4);
+
+        self.execute_instruction(instruction)?;
+
+        Ok(())
+    }
+
+    fn write_cpu_memory_aarch64_64(&mut self, address: u64, data: u64) -> Result<(), Error> {
+        // Save x0, x1
+        self.prepare_for_clobber(0)?;
+        self.prepare_for_clobber(1)?;
+
+        // Load r0 with the address to write to
+        self.set_reg_value(0, address)?;
+        self.set_reg_value(1, data)?;
+
+        // Write data to memory - STR x1, [x0], #8
+        let instruction = aarch64::build_str(1, 0, 8);
+
+        self.execute_instruction(instruction)?;
 
         Ok(())
     }
@@ -313,7 +675,7 @@ impl<'probe> CoreInterface for Armv8a<'probe> {
         self.memory.write_word_32(address, cti_gate.into())?;
 
         // try to read the program counter
-        let pc_value = self.read_core_reg(register::PC.address)?;
+        let pc_value = self.read_core_reg(self.registers().program_counter().address)?;
 
         // get pc
         Ok(CoreInformation {
@@ -405,7 +767,7 @@ impl<'probe> CoreInterface for Armv8a<'probe> {
         self.reset_register_cache();
 
         // try to read the program counter
-        let pc_value = self.read_core_reg(register::PC.address)?;
+        let pc_value = self.read_core_reg(self.registers().program_counter().address)?;
 
         // get pc
         Ok(CoreInformation {
@@ -432,7 +794,7 @@ impl<'probe> CoreInterface for Armv8a<'probe> {
         self.memory.write_word_32(edecr_address, edecr.into())?;
 
         // try to read the program counter
-        let pc_value = self.read_core_reg(register::PC.address)?;
+        let pc_value = self.read_core_reg(self.registers().program_counter().address)?;
 
         // get pc
         Ok(CoreInformation {
@@ -446,74 +808,36 @@ impl<'probe> CoreInterface for Armv8a<'probe> {
         // check cache
         if (reg_num as usize) < self.state.register_cache.len() {
             if let Some(cached_result) = self.state.register_cache[reg_num as usize] {
-                return Ok(cached_result.0.into());
+                return Ok(cached_result.0);
             }
         }
 
-        // TODO 64-bit - update with support
-        if self.state.is_64_bit {
-            return Err(Error::Other(anyhow!("64-bit not currently supported")));
-        }
-
-        // Generate instruction to extract register
-        let result = match reg_num {
-            0..=14 => {
-                // r0-r14, valid
-                // MCR p14, 0, <Rd>, c0, c5, 0 ; Write DBGDTRTXint Register
-                let instruction = build_mcr(14, 0, reg_num, 0, 5, 0);
-
-                self.execute_instruction_with_result(instruction)
-            }
-            15 => {
-                // PC, must access via r0
-                self.prepare_for_clobber(0)?;
-
-                // MRC p15, 3, r0, c4, c5, 1 ; Read DLR to r0
-                let instruction = build_mrc(15, 3, 0, 4, 5, 1);
-                self.execute_instruction(instruction)?;
-
-                // Read from r0
-                let instruction = build_mcr(14, 0, 0, 0, 5, 0);
-                let pc = self.execute_instruction_with_result(instruction)?;
-
-                Ok(pc)
-            }
-            16 => {
-                // CPSR, must access via r0
-                self.prepare_for_clobber(0)?;
-
-                // MRC c15, 3, r0, c4, c5, 0
-                let instruction = build_mrc(15, 3, 0, 4, 5, 0);
-                self.execute_instruction(instruction)?;
-
-                // Read from r0
-                let instruction = build_mcr(14, 0, 0, 0, 5, 0);
-                let cpsr = self.execute_instruction_with_result(instruction)?;
-
-                Ok(cpsr)
-            }
-            _ => Err(Error::architecture_specific(
-                Armv8aError::InvalidRegisterNumber(reg_num),
-            )),
+        let result = if self.state.is_64_bit {
+            self.read_core_reg_64(reg_num)
+        } else {
+            self.read_core_reg_32(reg_num)
         };
 
         if let Ok(value) = result {
             self.state.register_cache[reg_num as usize] = Some((value, false));
 
-            Ok(value.into())
+            Ok(value)
         } else {
             Err(result.err().unwrap())
         }
     }
 
     fn write_core_reg(&mut self, address: CoreRegisterAddress, value: RegisterValue) -> Result<()> {
-        // TODO 64-bit
-        let value: u32 = value.try_into()?;
         let reg_num = address.0;
+        let current_mode = if self.state.is_64_bit { 64 } else { 32 };
 
         if (reg_num as usize) >= self.state.register_cache.len() {
             return Err(
-                Error::architecture_specific(Armv8aError::InvalidRegisterNumber(reg_num)).into(),
+                Error::architecture_specific(Armv8aError::InvalidRegisterNumber(
+                    reg_num,
+                    current_mode,
+                ))
+                .into(),
             );
         }
         self.state.register_cache[reg_num as usize] = Some((value, true));
@@ -565,8 +889,11 @@ impl<'probe> CoreInterface for Armv8a<'probe> {
     }
 
     fn registers(&self) -> &'static RegisterFile {
-        // TODO 64-bit - this will need to be conditional based on the current CPU mode
-        &ARM_REGISTER_FILE
+        if self.state.is_64_bit {
+            &AARCH64_REGISTER_FILE
+        } else {
+            &ARM_REGISTER_FILE
+        }
     }
 
     fn clear_hw_breakpoint(&mut self, bp_unit_index: usize) -> Result<(), Error> {
@@ -575,8 +902,8 @@ impl<'probe> CoreInterface for Armv8a<'probe> {
         let bp_control_addr =
             Dbgbcr::get_mmio_address(self.base_address) + (bp_unit_index * 16) as u64;
 
-        // TODO 64-bit - update value to a 64-bit write
         self.memory.write_word_32(bp_value_addr, 0)?;
+        self.memory.write_word_32(bp_value_addr + 4, 0)?;
         self.memory.write_word_32(bp_control_addr, 0)?;
 
         Ok(())
@@ -596,15 +923,15 @@ impl<'probe> CoreInterface for Armv8a<'probe> {
 
     fn instruction_set(&mut self) -> Result<InstructionSet, Error> {
         if self.state.is_64_bit {
-            return Err(Error::Other(anyhow!("64-bit not currently supported")));
-        }
+            Ok(InstructionSet::A64)
+        } else {
+            let cpsr: u32 = self.read_core_reg(CoreRegisterAddress(16))?.try_into()?;
 
-        let cpsr: u32 = self.read_core_reg(CoreRegisterAddress(16))?.try_into()?;
-
-        // CPSR bit 5 - T - Thumb mode
-        match (cpsr >> 5) & 1 {
-            1 => Ok(InstructionSet::Thumb2),
-            _ => Ok(InstructionSet::A32),
+            // CPSR bit 5 - T - Thumb mode
+            match (cpsr >> 5) & 1 {
+                1 => Ok(InstructionSet::Thumb2),
+                _ => Ok(InstructionSet::A32),
+            }
         }
     }
 
@@ -636,8 +963,6 @@ impl<'probe> CoreInterface for Armv8a<'probe> {
         let mut breakpoints = vec![];
         let num_hw_breakpoints = self.available_breakpoint_units()? as usize;
 
-        // TODO 64-bit - this is actually a 64-bit value in all cases, regardless of CPU mode
-        // When 64-bit is supported this needs updated to read the upper bits
         for bp_unit_index in 0..num_hw_breakpoints {
             let bp_value_addr =
                 Dbgbvr::get_mmio_address(self.base_address) + (bp_unit_index * 16) as u64;
@@ -659,29 +984,29 @@ impl<'probe> CoreInterface for Armv8a<'probe> {
 }
 
 impl<'probe> MemoryInterface for Armv8a<'probe> {
-    fn read_word_32(&mut self, address: u64) -> Result<u32, Error> {
-        let address = valid_32_address(address)?;
-
-        if self.state.is_64_bit {
-            return Err(Error::Other(anyhow!("64-bit not currently supported")));
-        }
-
-        // Save r0, r1
-        self.prepare_for_clobber(0)?;
-        self.prepare_for_clobber(1)?;
-
-        // Load r0 with the address to read from
-        self.set_reg_value(0, address)?;
-
-        // Read data to r1 - LDR r1, [r0], #4
-        let instruction = build_ldr(1, 0, 4);
-
-        self.execute_instruction(instruction)?;
-
-        // Move from r1 to transfer buffer - MCR p14, 0, r1, c0, c5, 0
-        let instruction = build_mcr(14, 0, 1, 0, 5, 0);
-        self.execute_instruction_with_result(instruction)
+    fn supports_native_64bit_access(&mut self) -> bool {
+        self.state.is_64_bit
     }
+
+    fn read_word_64(&mut self, address: u64) -> Result<u64, Error> {
+        if self.state.is_64_bit {
+            self.read_cpu_memory_aarch64_64(address)
+        } else {
+            let mut ret = self.read_cpu_memory_aarch32_32(address)? as u64;
+            ret |= (self.read_cpu_memory_aarch32_32(address + 4)? as u64) << 32;
+
+            Ok(ret)
+        }
+    }
+
+    fn read_word_32(&mut self, address: u64) -> Result<u32, Error> {
+        if self.state.is_64_bit {
+            self.read_cpu_memory_aarch64_32(address)
+        } else {
+            self.read_cpu_memory_aarch32_32(address)
+        }
+    }
+
     fn read_word_8(&mut self, address: u64) -> Result<u8, Error> {
         // Find the word this is in and its byte offset
         let byte_offset = address % 4;
@@ -692,6 +1017,13 @@ impl<'probe> MemoryInterface for Armv8a<'probe> {
 
         // Return the byte
         Ok(data.to_le_bytes()[byte_offset as usize])
+    }
+    fn read_64(&mut self, address: u64, data: &mut [u64]) -> Result<(), Error> {
+        for (i, word) in data.iter_mut().enumerate() {
+            *word = self.read_word_64(address + ((i as u64) * 8))?;
+        }
+
+        Ok(())
     }
     fn read_32(&mut self, address: u64, data: &mut [u32]) -> Result<(), Error> {
         for (i, word) in data.iter_mut().enumerate() {
@@ -707,27 +1039,23 @@ impl<'probe> MemoryInterface for Armv8a<'probe> {
 
         Ok(())
     }
-    fn write_word_32(&mut self, address: u64, data: u32) -> Result<(), Error> {
-        let address = valid_32_address(address)?;
-
+    fn write_word_64(&mut self, address: u64, data: u64) -> Result<(), Error> {
         if self.state.is_64_bit {
-            return Err(Error::Other(anyhow!("64-bit not currently supported")));
+            self.write_cpu_memory_aarch64_64(address, data)
+        } else {
+            let low_word = data as u32;
+            let high_word = (data >> 32) as u32;
+
+            self.write_cpu_memory_aarch32_32(address, low_word)?;
+            self.write_cpu_memory_aarch32_32(address + 4, high_word)
         }
-
-        // Save r0, r1
-        self.prepare_for_clobber(0)?;
-        self.prepare_for_clobber(1)?;
-
-        // Load r0 with the address to write to
-        self.set_reg_value(0, address)?;
-        self.set_reg_value(1, data)?;
-
-        // Write data to memory - STR r1, [r0], #4
-        let instruction = build_str(1, 0, 4);
-
-        self.execute_instruction(instruction)?;
-
-        Ok(())
+    }
+    fn write_word_32(&mut self, address: u64, data: u32) -> Result<(), Error> {
+        if self.state.is_64_bit {
+            self.write_cpu_memory_aarch64_32(address, data)
+        } else {
+            self.write_cpu_memory_aarch32_32(address, data)
+        }
     }
     fn write_word_8(&mut self, address: u64, data: u8) -> Result<(), Error> {
         // Find the word this is in and its byte offset
@@ -740,6 +1068,13 @@ impl<'probe> MemoryInterface for Armv8a<'probe> {
         word_bytes[byte_offset as usize] = data;
 
         self.write_word_32(word_start, u32::from_le_bytes(word_bytes))
+    }
+    fn write_64(&mut self, address: u64, data: &[u64]) -> Result<(), Error> {
+        for (i, word) in data.iter().enumerate() {
+            self.write_word_64(address + ((i as u64) * 8), *word)?;
+        }
+
+        Ok(())
     }
     fn write_32(&mut self, address: u64, data: &[u32]) -> Result<(), Error> {
         for (i, word) in data.iter().enumerate() {
@@ -786,12 +1121,14 @@ mod test {
 
     pub struct MockProbe {
         expected_ops: Vec<ExpectedMemoryOp>,
+        is_64_bit: bool,
     }
 
     impl MockProbe {
-        pub fn new() -> Self {
+        pub fn new(is_64_bit: bool) -> Self {
             MockProbe {
                 expected_ops: vec![],
+                is_64_bit,
             }
         }
 
@@ -897,6 +1234,23 @@ mod test {
         > {
             todo!()
         }
+
+        fn read_64(
+            &mut self,
+            _ap: MemoryAp,
+            _address: u64,
+            _data: &mut [u64],
+        ) -> Result<(), Error> {
+            todo!()
+        }
+
+        fn write_64(&mut self, _ap: MemoryAp, _address: u64, _data: &[u64]) -> Result<(), Error> {
+            todo!()
+        }
+
+        fn supports_native_64bit_access(&mut self) -> bool {
+            false
+        }
     }
 
     impl SwdSequence for MockProbe {
@@ -917,6 +1271,9 @@ mod test {
     fn add_status_expectations(probe: &mut MockProbe, halted: bool) {
         let mut edscr = Edscr(0);
         edscr.set_status(if halted { 0b010011 } else { 0b000010 });
+        if probe.is_64_bit {
+            edscr.set_rw(0b1111);
+        }
         probe.expected_read(Edscr::get_mmio_address(TEST_BASE_ADDRESS), edscr.into());
     }
 
@@ -933,6 +1290,23 @@ mod test {
         probe.expected_read(Dbgdtrtx::get_mmio_address(TEST_BASE_ADDRESS), value);
     }
 
+    fn add_read_reg_64_expectations(probe: &mut MockProbe, reg: u16, value: u64) {
+        probe.expected_write(
+            Editr::get_mmio_address(TEST_BASE_ADDRESS),
+            aarch64::build_msr(2, 3, 0, 4, 0, reg),
+        );
+        let mut edscr = Edscr(0);
+        edscr.set_ite(true);
+        edscr.set_txfull(true);
+
+        probe.expected_read(Edscr::get_mmio_address(TEST_BASE_ADDRESS), edscr.into());
+        probe.expected_read(
+            Dbgdtrrx::get_mmio_address(TEST_BASE_ADDRESS),
+            (value >> 32) as u32,
+        );
+        probe.expected_read(Dbgdtrtx::get_mmio_address(TEST_BASE_ADDRESS), value as u32);
+    }
+
     fn add_read_pc_expectations(probe: &mut MockProbe, value: u32) {
         let mut edscr = Edscr(0);
         edscr.set_ite(true);
@@ -946,6 +1320,19 @@ mod test {
         add_read_reg_expectations(probe, 0, value);
     }
 
+    fn add_read_pc_64_expectations(probe: &mut MockProbe, value: u64) {
+        let mut edscr = Edscr(0);
+        edscr.set_ite(true);
+        edscr.set_txfull(true);
+
+        probe.expected_write(
+            Editr::get_mmio_address(TEST_BASE_ADDRESS),
+            aarch64::build_mrs(3, 3, 4, 5, 1, 0),
+        );
+        probe.expected_read(Edscr::get_mmio_address(TEST_BASE_ADDRESS), edscr.into());
+        add_read_reg_64_expectations(probe, 0, value);
+    }
+
     fn add_read_cpsr_expectations(probe: &mut MockProbe, value: u32) {
         let mut edscr = Edscr(0);
         edscr.set_ite(true);
@@ -957,6 +1344,19 @@ mod test {
         );
         probe.expected_read(Edscr::get_mmio_address(TEST_BASE_ADDRESS), edscr.into());
         add_read_reg_expectations(probe, 0, value);
+    }
+
+    fn add_read_cpsr_64_expectations(probe: &mut MockProbe, value: u32) {
+        let mut edscr = Edscr(0);
+        edscr.set_ite(true);
+        edscr.set_txfull(true);
+
+        probe.expected_write(
+            Editr::get_mmio_address(TEST_BASE_ADDRESS),
+            aarch64::build_mrs(3, 3, 4, 5, 0, 0),
+        );
+        probe.expected_read(Edscr::get_mmio_address(TEST_BASE_ADDRESS), edscr.into());
+        add_read_reg_64_expectations(probe, 0, value.into());
     }
 
     fn add_halt_expectations(probe: &mut MockProbe) {
@@ -1034,6 +1434,25 @@ mod test {
         probe.expected_read(Edscr::get_mmio_address(TEST_BASE_ADDRESS), edscr.into());
     }
 
+    fn add_set_x0_expectation(probe: &mut MockProbe, value: u64) {
+        let mut edscr = Edscr(0);
+        edscr.set_ite(true);
+        edscr.set_rxfull(true);
+
+        probe.expected_write(
+            Dbgdtrtx::get_mmio_address(TEST_BASE_ADDRESS),
+            (value >> 32) as u32,
+        );
+        probe.expected_write(Dbgdtrrx::get_mmio_address(TEST_BASE_ADDRESS), value as u32);
+        probe.expected_read(Edscr::get_mmio_address(TEST_BASE_ADDRESS), edscr.into());
+
+        probe.expected_write(
+            Editr::get_mmio_address(TEST_BASE_ADDRESS),
+            aarch64::build_mrs(2, 3, 0, 4, 0, 0),
+        );
+        probe.expected_read(Edscr::get_mmio_address(TEST_BASE_ADDRESS), edscr.into());
+    }
+
     fn add_read_memory_expectations(probe: &mut MockProbe, address: u64, value: u32) {
         add_set_r0_expectation(probe, address as u32);
 
@@ -1055,9 +1474,30 @@ mod test {
         probe.expected_read(Dbgdtrtx::get_mmio_address(TEST_BASE_ADDRESS), value);
     }
 
+    fn add_read_memory_aarch64_expectations(probe: &mut MockProbe, address: u64, value: u32) {
+        add_set_x0_expectation(probe, address);
+
+        let mut edscr = Edscr(0);
+        edscr.set_ite(true);
+        edscr.set_txfull(true);
+
+        probe.expected_write(
+            Editr::get_mmio_address(TEST_BASE_ADDRESS),
+            aarch64::build_ldrw(1, 0, 4),
+        );
+        probe.expected_read(Edscr::get_mmio_address(TEST_BASE_ADDRESS), edscr.into());
+
+        probe.expected_write(
+            Editr::get_mmio_address(TEST_BASE_ADDRESS),
+            aarch64::build_msr(2, 3, 0, 5, 0, 1),
+        );
+        probe.expected_read(Edscr::get_mmio_address(TEST_BASE_ADDRESS), edscr.into());
+        probe.expected_read(Dbgdtrtx::get_mmio_address(TEST_BASE_ADDRESS), value);
+    }
+
     #[test]
     fn armv8a_new() {
-        let mut probe = MockProbe::new();
+        let mut probe = MockProbe::new(false);
 
         // Add expectations
         add_status_expectations(&mut probe, true);
@@ -1070,19 +1510,23 @@ mod test {
             }),
         );
 
-        let _ = Armv8a::new(
+        let mut state = CortexAState::new();
+
+        let core = Armv8a::new(
             mock_mem,
-            &mut CortexAState::new(),
+            &mut state,
             TEST_BASE_ADDRESS,
             TEST_CTI_ADDRESS,
             DefaultArmSequence::create(),
         )
         .unwrap();
+
+        assert_eq!(core.state.is_64_bit, false);
     }
 
     #[test]
     fn armv8a_core_halted() {
-        let mut probe = MockProbe::new();
+        let mut probe = MockProbe::new(false);
         let mut state = CortexAState::new();
 
         // Add expectations
@@ -1119,7 +1563,7 @@ mod test {
 
     #[test]
     fn armv8a_wait_for_core_halted() {
-        let mut probe = MockProbe::new();
+        let mut probe = MockProbe::new(false);
         let mut state = CortexAState::new();
 
         // Add expectations
@@ -1157,7 +1601,7 @@ mod test {
 
     #[test]
     fn armv8a_status_running() {
-        let mut probe = MockProbe::new();
+        let mut probe = MockProbe::new(false);
         let mut state = CortexAState::new();
 
         // Add expectations
@@ -1189,7 +1633,7 @@ mod test {
 
     #[test]
     fn armv8a_status_halted() {
-        let mut probe = MockProbe::new();
+        let mut probe = MockProbe::new(false);
         let mut state = CortexAState::new();
 
         // Add expectations
@@ -1226,7 +1670,7 @@ mod test {
     fn armv8a_read_core_reg_common() {
         const REG_VALUE: u32 = 0xABCD;
 
-        let mut probe = MockProbe::new();
+        let mut probe = MockProbe::new(false);
         let mut state = CortexAState::new();
 
         // Add expectations
@@ -1266,10 +1710,53 @@ mod test {
     }
 
     #[test]
+    fn armv8a_read_core_reg_common_64() {
+        const REG_VALUE: u64 = 0xFFFF_EEEE_0000_ABCD;
+
+        let mut probe = MockProbe::new(true);
+        let mut state = CortexAState::new();
+
+        // Add expectations
+        add_status_expectations(&mut probe, true);
+
+        // Read register
+        add_read_reg_64_expectations(&mut probe, 2, REG_VALUE);
+
+        let mock_mem = Memory::new(
+            probe,
+            MemoryAp::new(ApAddress {
+                ap: 0,
+                dp: DpAddress::Default,
+            }),
+        );
+
+        let mut armv8a = Armv8a::new(
+            mock_mem,
+            &mut state,
+            TEST_BASE_ADDRESS,
+            TEST_CTI_ADDRESS,
+            DefaultArmSequence::create(),
+        )
+        .unwrap();
+
+        // First read will hit expectations
+        assert_eq!(
+            RegisterValue::from(REG_VALUE),
+            armv8a.read_core_reg(CoreRegisterAddress(2)).unwrap()
+        );
+
+        // Second read will cache, no new expectations
+        assert_eq!(
+            RegisterValue::from(REG_VALUE),
+            armv8a.read_core_reg(CoreRegisterAddress(2)).unwrap()
+        );
+    }
+
+    #[test]
     fn armv8a_read_core_reg_pc() {
         const REG_VALUE: u32 = 0xABCD;
 
-        let mut probe = MockProbe::new();
+        let mut probe = MockProbe::new(false);
         let mut state = CortexAState::new();
 
         // Add expectations
@@ -1310,10 +1797,54 @@ mod test {
     }
 
     #[test]
+    fn armv8a_read_core_64_reg_pc() {
+        const REG_VALUE: u64 = 0xFFFF_EEEE_0000_ABCD;
+
+        let mut probe = MockProbe::new(true);
+        let mut state = CortexAState::new();
+
+        // Add expectations
+        add_status_expectations(&mut probe, true);
+
+        // Read PC
+        add_read_reg_64_expectations(&mut probe, 0, 0);
+        add_read_pc_64_expectations(&mut probe, REG_VALUE);
+
+        let mock_mem = Memory::new(
+            probe,
+            MemoryAp::new(ApAddress {
+                ap: 0,
+                dp: DpAddress::Default,
+            }),
+        );
+
+        let mut armv8a = Armv8a::new(
+            mock_mem,
+            &mut state,
+            TEST_BASE_ADDRESS,
+            TEST_CTI_ADDRESS,
+            DefaultArmSequence::create(),
+        )
+        .unwrap();
+
+        // First read will hit expectations
+        assert_eq!(
+            RegisterValue::from(REG_VALUE),
+            armv8a.read_core_reg(CoreRegisterAddress(32)).unwrap()
+        );
+
+        // Second read will cache, no new expectations
+        assert_eq!(
+            RegisterValue::from(REG_VALUE),
+            armv8a.read_core_reg(CoreRegisterAddress(32)).unwrap()
+        );
+    }
+
+    #[test]
     fn armv8a_read_core_reg_cpsr() {
         const REG_VALUE: u32 = 0xABCD;
 
-        let mut probe = MockProbe::new();
+        let mut probe = MockProbe::new(false);
         let mut state = CortexAState::new();
 
         // Add expectations
@@ -1354,10 +1885,54 @@ mod test {
     }
 
     #[test]
+    fn armv8a_read_core_64_reg_cpsr() {
+        const REG_VALUE: u32 = 0xABCD;
+
+        let mut probe = MockProbe::new(true);
+        let mut state = CortexAState::new();
+
+        // Add expectations
+        add_status_expectations(&mut probe, true);
+
+        // Read CPSR
+        add_read_reg_64_expectations(&mut probe, 0, 0);
+        add_read_cpsr_64_expectations(&mut probe, REG_VALUE);
+
+        let mock_mem = Memory::new(
+            probe,
+            MemoryAp::new(ApAddress {
+                ap: 0,
+                dp: DpAddress::Default,
+            }),
+        );
+
+        let mut armv8a = Armv8a::new(
+            mock_mem,
+            &mut state,
+            TEST_BASE_ADDRESS,
+            TEST_CTI_ADDRESS,
+            DefaultArmSequence::create(),
+        )
+        .unwrap();
+
+        // First read will hit expectations
+        assert_eq!(
+            RegisterValue::from(REG_VALUE),
+            armv8a.read_core_reg(CoreRegisterAddress(33)).unwrap()
+        );
+
+        // Second read will cache, no new expectations
+        assert_eq!(
+            RegisterValue::from(REG_VALUE),
+            armv8a.read_core_reg(CoreRegisterAddress(33)).unwrap()
+        );
+    }
+
+    #[test]
     fn armv8a_halt() {
         const REG_VALUE: u32 = 0xABCD;
 
-        let mut probe = MockProbe::new();
+        let mut probe = MockProbe::new(false);
         let mut state = CortexAState::new();
 
         // Add expectations
@@ -1403,7 +1978,7 @@ mod test {
 
     #[test]
     fn armv8a_run() {
-        let mut probe = MockProbe::new();
+        let mut probe = MockProbe::new(false);
         let mut state = CortexAState::new();
 
         // Add expectations
@@ -1440,7 +2015,7 @@ mod test {
     #[test]
     fn armv8a_available_breakpoint_units() {
         const BP_COUNT: u32 = 4;
-        let mut probe = MockProbe::new();
+        let mut probe = MockProbe::new(false);
         let mut state = CortexAState::new();
 
         // Add expectations
@@ -1474,7 +2049,7 @@ mod test {
         const BP_COUNT: u32 = 4;
         const BP1: u64 = 0x2345;
         const BP2: u64 = 0x8000_0000;
-        let mut probe = MockProbe::new();
+        let mut probe = MockProbe::new(false);
         let mut state = CortexAState::new();
 
         // Add expectations
@@ -1539,7 +2114,7 @@ mod test {
     #[test]
     fn armv8a_set_hw_breakpoint() {
         const BP_VALUE: u64 = 0x2345;
-        let mut probe = MockProbe::new();
+        let mut probe = MockProbe::new(false);
         let mut state = CortexAState::new();
 
         // Add expectations
@@ -1581,7 +2156,7 @@ mod test {
 
     #[test]
     fn armv8a_clear_hw_breakpoint() {
-        let mut probe = MockProbe::new();
+        let mut probe = MockProbe::new(false);
         let mut state = CortexAState::new();
 
         // Add expectations
@@ -1589,6 +2164,7 @@ mod test {
 
         // Update BP value and control
         probe.expected_write(Dbgbvr::get_mmio_address(TEST_BASE_ADDRESS), 0);
+        probe.expected_write(Dbgbvr::get_mmio_address(TEST_BASE_ADDRESS) + 4, 0);
         probe.expected_write(Dbgbcr::get_mmio_address(TEST_BASE_ADDRESS), 0);
 
         let mock_mem = Memory::new(
@@ -1616,7 +2192,7 @@ mod test {
         const MEMORY_VALUE: u32 = 0xBA5EBA11;
         const MEMORY_ADDRESS: u64 = 0x12345678;
 
-        let mut probe = MockProbe::new();
+        let mut probe = MockProbe::new(false);
         let mut state = CortexAState::new();
 
         // Add expectations
@@ -1649,12 +2225,49 @@ mod test {
     }
 
     #[test]
+    fn armv8a_read_word_32_aarch64() {
+        const MEMORY_VALUE: u32 = 0xBA5EBA11;
+        const MEMORY_ADDRESS: u64 = 0x12345678;
+
+        let mut probe = MockProbe::new(true);
+        let mut state = CortexAState::new();
+
+        // Add expectations
+        add_status_expectations(&mut probe, true);
+
+        // Read memory
+        add_read_reg_64_expectations(&mut probe, 0, 0);
+        add_read_reg_64_expectations(&mut probe, 1, 0);
+
+        add_read_memory_aarch64_expectations(&mut probe, MEMORY_ADDRESS, MEMORY_VALUE);
+
+        let mock_mem = Memory::new(
+            probe,
+            MemoryAp::new(ApAddress {
+                ap: 0,
+                dp: DpAddress::Default,
+            }),
+        );
+
+        let mut armv8a = Armv8a::new(
+            mock_mem,
+            &mut state,
+            TEST_BASE_ADDRESS,
+            TEST_CTI_ADDRESS,
+            DefaultArmSequence::create(),
+        )
+        .unwrap();
+
+        assert_eq!(MEMORY_VALUE, armv8a.read_word_32(MEMORY_ADDRESS).unwrap());
+    }
+
+    #[test]
     fn armv8a_read_word_8() {
         const MEMORY_VALUE: u32 = 0xBA5EBA11;
         const MEMORY_ADDRESS: u64 = 0x12345679;
         const MEMORY_WORD_ADDRESS: u64 = 0x12345678;
 
-        let mut probe = MockProbe::new();
+        let mut probe = MockProbe::new(false);
         let mut state = CortexAState::new();
 
         // Add expectations
@@ -1664,6 +2277,43 @@ mod test {
         add_read_reg_expectations(&mut probe, 0, 0);
         add_read_reg_expectations(&mut probe, 1, 0);
         add_read_memory_expectations(&mut probe, MEMORY_WORD_ADDRESS, MEMORY_VALUE);
+
+        let mock_mem = Memory::new(
+            probe,
+            MemoryAp::new(ApAddress {
+                ap: 0,
+                dp: DpAddress::Default,
+            }),
+        );
+
+        let mut armv8a = Armv8a::new(
+            mock_mem,
+            &mut state,
+            TEST_BASE_ADDRESS,
+            TEST_CTI_ADDRESS,
+            DefaultArmSequence::create(),
+        )
+        .unwrap();
+
+        assert_eq!(0xBA, armv8a.read_word_8(MEMORY_ADDRESS).unwrap());
+    }
+
+    #[test]
+    fn armv8a_read_word_aarch64_8() {
+        const MEMORY_VALUE: u32 = 0xBA5EBA11;
+        const MEMORY_ADDRESS: u64 = 0x12345679;
+        const MEMORY_WORD_ADDRESS: u64 = 0x12345678;
+
+        let mut probe = MockProbe::new(true);
+        let mut state = CortexAState::new();
+
+        // Add expectations
+        add_status_expectations(&mut probe, true);
+
+        // Read memory
+        add_read_reg_64_expectations(&mut probe, 0, 0);
+        add_read_reg_64_expectations(&mut probe, 1, 0);
+        add_read_memory_aarch64_expectations(&mut probe, MEMORY_WORD_ADDRESS, MEMORY_VALUE);
 
         let mock_mem = Memory::new(
             probe,

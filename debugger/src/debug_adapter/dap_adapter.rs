@@ -5,8 +5,8 @@ use crate::{
 };
 use anyhow::{anyhow, Result};
 use capstone::{
-    arch::arm::ArchMode as armArchMode, arch::riscv::ArchMode as riscvArchMode, prelude::*,
-    Capstone, Endian,
+    arch::arm::ArchMode as armArchMode, arch::arm64::ArchMode as aarch64ArchMode,
+    arch::riscv::ArchMode as riscvArchMode, prelude::*, Capstone, Endian,
 };
 use dap_types::*;
 use num_traits::Zero;
@@ -1352,6 +1352,14 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                         .endian(Endian::Little)
                         .build()
                 }
+                InstructionSet::A64 => {
+                    // We need to inspect the CPSR to determine what mode this is opearting in
+                    Capstone::new()
+                        .arm64()
+                        .mode(aarch64ArchMode::Arm)
+                        .endian(Endian::Little)
+                        .build()
+                }
                 InstructionSet::RV32 => Capstone::new()
                     .riscv()
                     .mode(riscvArchMode::RiscV32)
@@ -1610,7 +1618,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                     let mut sorted_registers = stack_frame
                         .registers
                         .registers()
-                        .collect::<Vec<(&u32, &u32)>>();
+                        .collect::<Vec<(&u32, &u64)>>();
                     sorted_registers
                         .sort_by_key(|(register_number, _register_value)| *register_number);
 
@@ -1632,7 +1640,15 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                             named_variables: None,
                             presentation_hint: None, // TODO: Implement hint as Hex for registers
                             type_: Some(format!("{}", VariableName::RegistersRoot)),
-                            value: format!("{:#010x}", register_value),
+                            value: format!(
+                                "{:#0width$x}",
+                                register_value,
+                                width = stack_frame
+                                    .registers
+                                    .get_description_by_dwarf_register_number(register_number)
+                                    .map(|d| d.format_hex_width())
+                                    .unwrap_or_else(|| 10)
+                            ),
                             variables_reference: 0,
                         })
                         .collect();

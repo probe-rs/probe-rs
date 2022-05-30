@@ -1361,6 +1361,33 @@ impl SwdSequence for StLinkMemoryInterface<'_> {
 }
 
 impl ArmProbe for StLinkMemoryInterface<'_> {
+    fn supports_native_64bit_access(&mut self) -> bool {
+        false
+    }
+
+    fn read_64(
+        &mut self,
+        ap: MemoryAp,
+        address: u64,
+        data: &mut [u64],
+    ) -> Result<(), ProbeRsError> {
+        let address = valid_32_address(address)?;
+
+        for (i, d) in data.iter_mut().enumerate() {
+            let mut buff = vec![0u8; 8];
+
+            self.probe.probe.read_mem_32bit(
+                address + (i * 8) as u32,
+                &mut buff,
+                ap.ap_address().ap,
+            )?;
+
+            *d = u64::from_le_bytes(buff.try_into().unwrap());
+        }
+
+        Ok(())
+    }
+
     fn read_32(
         &mut self,
         ap: MemoryAp,
@@ -1407,6 +1434,30 @@ impl ArmProbe for StLinkMemoryInterface<'_> {
                 chunk.len() as u16,
                 ap.ap_address().ap,
             )?);
+        }
+
+        Ok(())
+    }
+
+    fn write_64(&mut self, ap: MemoryAp, address: u64, data: &[u64]) -> Result<(), ProbeRsError> {
+        let address = valid_32_address(address)?;
+
+        let mut tx_buffer = vec![0u8; data.len() * 8];
+
+        let mut offset = 0;
+
+        for word in data {
+            tx_buffer
+                .gwrite(word, &mut offset)
+                .expect("Failed to write into tx_buffer");
+        }
+
+        for (index, chunk) in tx_buffer.chunks(STLINK_MAX_WRITE_LEN).enumerate() {
+            self.probe.probe.write_mem_32bit(
+                address + (index * STLINK_MAX_WRITE_LEN) as u32,
+                chunk,
+                ap.ap_address().ap,
+            )?;
         }
 
         Ok(())

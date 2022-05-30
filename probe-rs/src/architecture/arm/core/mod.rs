@@ -1,7 +1,7 @@
 use crate::{
     core::{
         CoreRegister, CoreRegisterAddress, RegisterDataType, RegisterDescription, RegisterFile,
-        RegisterKind,
+        RegisterKind, RegisterValue,
     },
     CoreStatus, HaltReason,
 };
@@ -15,6 +15,7 @@ pub mod armv8a;
 pub mod armv8m;
 
 pub(crate) mod armv7a_debug_regs;
+pub(crate) mod armv8a_core_regs;
 pub(crate) mod armv8a_debug_regs;
 pub(crate) mod cortex_m;
 pub(crate) mod instructions;
@@ -103,12 +104,11 @@ pub(crate) mod register {
         size_in_bits: 32,
     };
 
-    // TODO: Floating point support
     pub const FP: RegisterDescription = RegisterDescription {
         name: "FP",
         _kind: RegisterKind::General,
         address: CoreRegisterAddress(7),
-        _type: RegisterDataType::FloatingPoint,
+        _type: RegisterDataType::UnsignedInteger,
         size_in_bits: 32,
     };
 }
@@ -285,6 +285,7 @@ static ARM_REGISTER_FILE: RegisterFile = RegisterFile {
     msp: Some(&register::MSP),
     psp: Some(&register::PSP),
     extra: Some(&register::EXTRA),
+    psr: Some(&register::XPSR),
     // TODO: Floating point support
 };
 
@@ -396,7 +397,7 @@ pub struct CortexAState {
     // Is the core currently in a 64-bit mode?
     is_64_bit: bool,
 
-    register_cache: Vec<Option<(u32, bool)>>,
+    register_cache: Vec<Option<(RegisterValue, bool)>>,
 }
 
 impl CortexAState {

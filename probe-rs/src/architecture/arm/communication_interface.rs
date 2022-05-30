@@ -1,7 +1,7 @@
 use super::{
     ap::{
         valid_access_ports, AccessPort, ApAccess, ApClass, BaseaddrFormat, GenericAp, MemoryAp,
-        BASE, BASE2, CSW, IDR,
+        BASE, BASE2, CFG, CSW, IDR,
     },
     dp::{Abort, Ctrl, DebugPortError, DebugPortVersion, DpAccess, Select, DPIDR},
     memory::{adi_v5_memory_interface::ADIMemoryInterface, Component},
@@ -225,9 +225,10 @@ impl ApInformation {
 
             log::debug!("HNONSEC supported: {}", supports_hnonsec);
 
-            // TODO 64-bit - read the real state of the large data / address extensions from CFG
-            let has_large_address_extension = false;
-            let has_large_data_extension = false;
+            let cfg: CFG = probe.read_ap_register(access_port)?;
+
+            let has_large_address_extension = cfg.LA == 1;
+            let has_large_data_extension = cfg.LD == 1;
 
             Ok(ApInformation::MemoryAp(MemoryApInformation {
                 address: access_port.ap_address(),

@@ -80,6 +80,8 @@ pub enum InstructionSet {
     Thumb2,
     /// ARM A32 (often just called ARM) instruction set
     A32,
+    /// ARM A64 (aarch64) instruction set
+    A64,
     /// RISC-V 32-bit instruction set
     RV32,
 }
