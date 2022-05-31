@@ -1,6 +1,6 @@
 use probe_rs::{
     config::{CoreType, MemoryRegion},
-    Core, InstructionSet, RegisterNumber,
+    Core, InstructionSet, RegisterLocation,
 };
 
 /// Extension trait for probe_rs::Core, which adds some GDB -> probe-rs internal translation functions.
@@ -12,7 +12,7 @@ pub(crate) trait GdbArchitectureExt {
     fn translate_gdb_register_number(
         &mut self,
         gdb_reg_number: u32,
-    ) -> Option<(RegisterNumber, u32)>;
+    ) -> Option<(RegisterLocation, u32)>;
 
     /// Returns the number of general registers.
     fn num_general_registers(&mut self) -> usize;
@@ -22,7 +22,7 @@ impl<'probe> GdbArchitectureExt for Core<'probe> {
     fn translate_gdb_register_number(
         &mut self,
         gdb_reg_number: u32,
-    ) -> Option<(RegisterNumber, u32)> {
+    ) -> Option<(RegisterLocation, u32)> {
         let (probe_rs_number, bytesize): (u16, _) = match self.architecture() {
             probe_rs::Architecture::Arm => {
                 match self.instruction_set().unwrap_or(InstructionSet::Thumb2) {
@@ -66,7 +66,7 @@ impl<'probe> GdbArchitectureExt for Core<'probe> {
             probe_rs::Architecture::Riscv => match gdb_reg_number {
                 // general purpose registers 0 to 31
                 x @ 0..=31 => {
-                    let addr: RegisterNumber = self
+                    let addr: RegisterLocation = self
                         .registers()
                         .get_platform_register(x as usize)
                         .expect("riscv register must exist")
@@ -75,7 +75,7 @@ impl<'probe> GdbArchitectureExt for Core<'probe> {
                 }
                 // Program counter
                 32 => {
-                    let addr: RegisterNumber = self.registers().program_counter().into();
+                    let addr: RegisterLocation = self.registers().program_counter().into();
                     (addr.0, 8)
                 }
                 other => {
@@ -85,7 +85,7 @@ impl<'probe> GdbArchitectureExt for Core<'probe> {
             },
         };
 
-        Some((RegisterNumber(probe_rs_number as u16), bytesize))
+        Some((RegisterLocation(probe_rs_number as u16), bytesize))
     }
 
     fn num_general_registers(&mut self) -> usize {

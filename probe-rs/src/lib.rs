@@ -88,7 +88,7 @@ pub use crate::config::{CoreType, InstructionSet, Target};
 pub use crate::core::{
     Architecture, BreakpointId, CommunicationInterface, Core, CoreInformation, CoreInterface,
     CoreState, CoreStatus, HaltReason, MemoryMappedRegister, RegisterDescription, RegisterFile,
-    RegisterNumber, RegisterValue, SpecificCoreState,
+    RegisterLocation, RegisterValue, SpecificCoreState,
 };
 pub use crate::error::Error;
 pub use crate::memory::{Memory, MemoryInterface};

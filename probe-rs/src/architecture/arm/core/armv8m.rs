@@ -9,7 +9,7 @@ use crate::{
 };
 use crate::{Architecture, CoreInformation};
 use crate::{CoreInterface, CoreType, InstructionSet, MemoryMappedRegister};
-use crate::{RegisterNumber, RegisterValue};
+use crate::{RegisterLocation, RegisterValue};
 use anyhow::Result;
 
 use bitfield::bitfield;
@@ -114,7 +114,7 @@ impl<'probe> CoreInterface for Armv8m<'probe> {
         let _ = self.status()?;
 
         // try to read the program counter
-        let pc_value = self.read_core_reg(register::PC.register_number)?;
+        let pc_value = self.read_core_reg(register::PC.location)?;
 
         // get pc
         Ok(CoreInformation {
@@ -158,21 +158,16 @@ impl<'probe> CoreInterface for Armv8m<'probe> {
         let _ = self.status()?;
 
         const XPSR_THUMB: u32 = 1 << 24;
-        let xpsr_value: u32 = self
-            .read_core_reg(register::XPSR.register_number)?
-            .try_into()?;
+        let xpsr_value: u32 = self.read_core_reg(register::XPSR.location)?.try_into()?;
         if xpsr_value & XPSR_THUMB == 0 {
-            self.write_core_reg(
-                register::XPSR.register_number,
-                (xpsr_value | XPSR_THUMB).into(),
-            )?;
+            self.write_core_reg(register::XPSR.location, (xpsr_value | XPSR_THUMB).into())?;
         }
 
         self.sequence
             .reset_catch_clear(&mut self.memory, crate::CoreType::Armv8m, None)?;
 
         // try to read the program counter
-        let pc_value = self.read_core_reg(register::PC.register_number)?;
+        let pc_value = self.read_core_reg(register::PC.location)?;
 
         // get pc
         Ok(CoreInformation {
@@ -211,7 +206,7 @@ impl<'probe> CoreInterface for Armv8m<'probe> {
         }
 
         // try to read the program counter
-        let pc_value = self.read_core_reg(register::PC.register_number)?;
+        let pc_value = self.read_core_reg(register::PC.location)?;
 
         // get pc
         Ok(CoreInformation {
@@ -219,12 +214,12 @@ impl<'probe> CoreInterface for Armv8m<'probe> {
         })
     }
 
-    fn read_core_reg(&mut self, address: RegisterNumber) -> Result<RegisterValue, Error> {
+    fn read_core_reg(&mut self, address: RegisterLocation) -> Result<RegisterValue, Error> {
         let value = super::cortex_m::read_core_reg(&mut self.memory, address)?;
         Ok(value.into())
     }
 
-    fn write_core_reg(&mut self, address: RegisterNumber, value: RegisterValue) -> Result<()> {
+    fn write_core_reg(&mut self, address: RegisterLocation, value: RegisterValue) -> Result<()> {
         super::cortex_m::write_core_reg(&mut self.memory, address, value.try_into()?)?;
         Ok(())
     }
