@@ -14,15 +14,15 @@ use crate::{Error, Memory, MemoryInterface};
 use anyhow::{anyhow, Result};
 use std::time::Duration;
 
-/// A core register (e.g. Stack Pointer).
-pub trait CoreRegister: Clone + From<u32> + Into<u32> + Sized + std::fmt::Debug {
-    /// The register's address.
+/// A memory mapped register, for instance ARM debug registers (DHCSR, etc).
+pub trait MemoryMappedRegister: Clone + From<u32> + Into<u32> + Sized + std::fmt::Debug {
+    /// The register's address in the target memory.
     const ADDRESS: u64;
     /// The register's name.
     const NAME: &'static str;
 }
 
-/// The address of a core register.
+/// The address of a  register mapped to a CPU core. This is not an actual memory address, but more of a number that represents a specific core register.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct CoreRegisterAddress(pub u16);
 

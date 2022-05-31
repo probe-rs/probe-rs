@@ -11,7 +11,7 @@ use probe_rs::{
         },
         riscv::communication_interface::RiscvCommunicationInterface,
     },
-    CoreRegister, Probe, WireProtocol,
+    MemoryMappedRegister, Probe, WireProtocol,
 };
 
 use anyhow::Result;

@@ -1,6 +1,6 @@
 //! Common functions and data types for Cortex-M core variants
 
-use crate::{CoreRegister, CoreRegisterAddress, DebugProbeError, Error, Memory};
+use crate::{CoreRegisterAddress, DebugProbeError, Error, Memory, MemoryMappedRegister};
 
 use bitfield::bitfield;
 use std::time::{Duration, Instant};
@@ -46,7 +46,7 @@ impl From<Dhcsr> for u32 {
     }
 }
 
-impl CoreRegister for Dhcsr {
+impl MemoryMappedRegister for Dhcsr {
     const ADDRESS: u64 = 0xE000_EDF0;
     const NAME: &'static str = "DHCSR";
 }
@@ -71,7 +71,7 @@ impl From<Dcrsr> for u32 {
     }
 }
 
-impl CoreRegister for Dcrsr {
+impl MemoryMappedRegister for Dcrsr {
     const ADDRESS: u64 = 0xE000_EDF4;
     const NAME: &'static str = "DCRSR";
 }
@@ -91,7 +91,7 @@ impl From<Dcrdr> for u32 {
     }
 }
 
-impl CoreRegister for Dcrdr {
+impl MemoryMappedRegister for Dcrdr {
     const ADDRESS: u64 = 0xE000_EDF8;
     const NAME: &'static str = "DCRDR";
 }

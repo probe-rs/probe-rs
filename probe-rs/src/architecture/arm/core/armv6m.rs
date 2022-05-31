@@ -9,8 +9,8 @@ use crate::core::{
 use crate::error::Error;
 use crate::memory::{valid_32_address, Memory};
 use crate::{
-    Architecture, CoreInformation, CoreInterface, CoreRegister, CoreRegisterAddress, CoreStatus,
-    CoreType, DebugProbeError, HaltReason, InstructionSet, MemoryInterface,
+    Architecture, CoreInformation, CoreInterface, CoreRegisterAddress, CoreStatus, CoreType,
+    DebugProbeError, HaltReason, InstructionSet, MemoryInterface, MemoryMappedRegister,
 };
 use anyhow::Result;
 use bitfield::bitfield;
@@ -171,7 +171,7 @@ impl From<Dhcsr> for u32 {
     }
 }
 
-impl CoreRegister for Dhcsr {
+impl MemoryMappedRegister for Dhcsr {
     const ADDRESS: u64 = 0xE000_EDF0;
     const NAME: &'static str = "DHCSR";
 }
@@ -192,7 +192,7 @@ impl From<Dcrdr> for u32 {
     }
 }
 
-impl CoreRegister for Dcrdr {
+impl MemoryMappedRegister for Dcrdr {
     const ADDRESS: u64 = 0xE000_EDF8;
     const NAME: &'static str = "DCRDR";
 }
@@ -229,7 +229,7 @@ impl From<BpCtrl> for u32 {
     }
 }
 
-impl CoreRegister for BpCtrl {
+impl MemoryMappedRegister for BpCtrl {
     const ADDRESS: u64 = 0xE000_2000;
     const NAME: &'static str = "BP_CTRL";
 }
@@ -277,7 +277,7 @@ impl From<BpCompx> for u32 {
     }
 }
 
-impl CoreRegister for BpCompx {
+impl MemoryMappedRegister for BpCompx {
     const ADDRESS: u64 = 0xE000_2008;
     const NAME: &'static str = "BP_CTRL0";
 }
@@ -365,7 +365,7 @@ impl Aircr {
     }
 }
 
-impl CoreRegister for Aircr {
+impl MemoryMappedRegister for Aircr {
     const ADDRESS: u64 = 0xE000_ED0C;
     const NAME: &'static str = "AIRCR";
 }
@@ -401,7 +401,7 @@ impl From<Demcr> for u32 {
     }
 }
 
-impl CoreRegister for Demcr {
+impl MemoryMappedRegister for Demcr {
     const ADDRESS: u64 = 0xe000_edfc;
     const NAME: &'static str = "DEMCR";
 }

@@ -2,7 +2,8 @@
 
 use crate::architecture::arm::sequences::ArmDebugSequence;
 use crate::core::{
-    CoreInformation, CoreInterface, CoreRegister, CoreRegisterAddress, RegisterFile, RegisterValue,
+    CoreInformation, CoreInterface, CoreRegisterAddress, MemoryMappedRegister, RegisterFile,
+    RegisterValue,
 };
 use crate::error::Error;
 use crate::memory::{valid_32_address, Memory};
@@ -197,7 +198,7 @@ impl From<Dhcsr> for u32 {
     }
 }
 
-impl CoreRegister for Dhcsr {
+impl MemoryMappedRegister for Dhcsr {
     const ADDRESS: u64 = 0xE000_EDF0;
     const NAME: &'static str = "DHCSR";
 }
@@ -218,7 +219,7 @@ impl From<Dcrdr> for u32 {
     }
 }
 
-impl CoreRegister for Dcrdr {
+impl MemoryMappedRegister for Dcrdr {
     const ADDRESS: u64 = 0xE000_EDF8;
     const NAME: &'static str = "DCRDR";
 }
@@ -304,7 +305,7 @@ impl Aircr {
     }
 }
 
-impl CoreRegister for Aircr {
+impl MemoryMappedRegister for Aircr {
     const ADDRESS: u64 = 0xE000_ED0C;
     const NAME: &'static str = "AIRCR";
 }
@@ -358,7 +359,7 @@ impl From<Demcr> for u32 {
     }
 }
 
-impl CoreRegister for Demcr {
+impl MemoryMappedRegister for Demcr {
     const ADDRESS: u64 = 0xe000_edfc;
     const NAME: &'static str = "DEMCR";
 }
@@ -400,7 +401,7 @@ impl FpCtrl {
     }
 }
 
-impl CoreRegister for FpCtrl {
+impl MemoryMappedRegister for FpCtrl {
     const ADDRESS: u64 = 0xE000_2000;
     const NAME: &'static str = "FP_CTRL";
 }
@@ -467,7 +468,7 @@ bitfield! {
     pub enable, set_enable: 0;
 }
 
-impl CoreRegister for FpRev1CompX {
+impl MemoryMappedRegister for FpRev1CompX {
     const ADDRESS: u64 = 0xE000_2008;
     const NAME: &'static str = "FP_CTRL";
 }
@@ -548,7 +549,7 @@ bitfield! {
     pub enable, set_enable: 0;
 }
 
-impl CoreRegister for FpRev2CompX {
+impl MemoryMappedRegister for FpRev2CompX {
     const ADDRESS: u64 = 0xE000_2008;
     const NAME: &'static str = "FP_CTRL";
 }

@@ -1,7 +1,7 @@
 use crate::{
     core::{
-        CoreRegister, CoreRegisterAddress, RegisterDataType, RegisterDescription, RegisterFile,
-        RegisterKind, RegisterValue,
+        CoreRegisterAddress, MemoryMappedRegister, RegisterDataType, RegisterDescription,
+        RegisterFile, RegisterKind, RegisterValue,
     },
     CoreStatus, HaltReason,
 };
@@ -356,7 +356,7 @@ impl From<Dfsr> for u32 {
     }
 }
 
-impl CoreRegister for Dfsr {
+impl MemoryMappedRegister for Dfsr {
     const ADDRESS: u64 = 0xE000_ED30;
     const NAME: &'static str = "DFSR";
 }
