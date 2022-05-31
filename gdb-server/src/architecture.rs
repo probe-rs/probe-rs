@@ -1,6 +1,6 @@
 use probe_rs::{
     config::{CoreType, MemoryRegion},
-    Core, RegisterNumber, InstructionSet,
+    Core, InstructionSet, RegisterNumber,
 };
 
 /// Extension trait for probe_rs::Core, which adds some GDB -> probe-rs internal translation functions.
