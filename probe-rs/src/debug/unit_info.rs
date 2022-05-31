@@ -477,7 +477,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
         if parent_variable.is_valid() {
             let program_counter =
                 if let Some(program_counter) = stack_frame_registers.get_program_counter() {
-                    u64::from(program_counter)
+                    program_counter
                 } else {
                     return Err(DebugError::Other(anyhow::anyhow!(
                         "Cannot unwind `Variable` without a valid PC (program_counter)"
@@ -1490,7 +1490,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
     ) -> Result<Vec<gimli::Piece<GimliReader, usize>>, DebugError> {
         let mut evaluation = expression.evaluation(self.unit.encoding());
         let frame_base = if let Some(frame_base) = stack_frame_registers.get_frame_pointer() {
-            u64::from(frame_base)
+            frame_base
         } else {
             return Err(DebugError::Other(anyhow::anyhow!(
                 "Cannot unwind `Variable` location without a valid CFA (canonical frame address)"

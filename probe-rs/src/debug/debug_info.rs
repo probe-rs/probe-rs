@@ -904,17 +904,14 @@ impl DebugInfo {
         let mut unwind_registers = registers::Registers::from_core(core);
         // Register state as updated for every iteration (previous function) of the unwind process.
         if unwind_registers.get_program_counter().is_none() {
-            unwind_registers.set_program_counter(Some(address as u32));
+            unwind_registers.set_program_counter(Some(address));
         }
         let mut unwind_context: Box<UnwindContext<DwarfReader>> =
             Box::new(gimli::UnwindContext::new());
         let unwind_bases = gimli::BaseAddresses::default();
 
         // Unwind [StackFrame]'s for as long as we can unwind a valid PC value.
-        'unwind: while let Some(frame_pc) = unwind_registers
-            .get_program_counter()
-            .map(|frame_pc| frame_pc as u64)
-        {
+        'unwind: while let Some(frame_pc) = unwind_registers.get_program_counter() {
             // PART 1: Construct the `StackFrame` for the current pc.
             log::trace!(
                 "UNWIND: Will generate `StackFrame` for function at address (PC) {:#010x}",
@@ -957,7 +954,7 @@ impl DebugInfo {
             // Part 1-b: Check LR values to determine if we can continue unwinding.
             // TODO: ARM has special ranges of LR addresses to indicate fault conditions. We should check those also.
             if let Some(check_return_address) = unwind_registers.get_return_address() {
-                if check_return_address == u32::MAX {
+                if check_return_address == u32::MAX as u64 {
                     // When we encounter the starting (after reset) return address, we've reached the bottom of the stack, so no more unwinding after this.
                     // TODO: Validate that this applies to RISCV also.
                     stack_frames.push(return_frame);
@@ -1013,7 +1010,7 @@ impl DebugInfo {
                                 .get_value_by_dwarf_register_number(register.0 as u32);
                             match reg_val {
                                 Some(reg_val) => {
-                                    let unwind_cfa = (i64::from(reg_val) + offset) as u32;
+                                    let unwind_cfa = add_to_address(reg_val, *offset);
                                     log::trace!(
                                         "UNWIND - CFA : {:#010x}\tRule: {:?}",
                                         unwind_cfa,
@@ -1101,14 +1098,14 @@ impl DebugInfo {
                                         // NOTE: PC = Current instruction + 1 address, so to reverse this from LR return address, we have to subtract 4 bytes
                                         // TODO: Ensure that this operation does not seem to have a negative effect on RISCV.
                                         let address_size =
-                                            frame_descriptor_entry.cie().address_size() as u32;
+                                            frame_descriptor_entry.cie().address_size() as u64;
                                         register_rule_string = format!(
                                             "PC=(unwound LR & !0b1) - {} (dwarf Undefined)",
                                             address_size
                                         );
                                         unwind_registers.get_return_address().and_then(
                                             |return_address| {
-                                                if return_address == u32::MAX {
+                                                if return_address == u32::MAX as u64 {
                                                     // No reliable return is available.
                                                     None
                                                 } else if return_address.is_zero() {
@@ -1130,11 +1127,29 @@ impl DebugInfo {
                             Offset(address_offset) => {
                                 if let Some(unwind_cfa) = unwind_cfa {
                                     let previous_frame_register_address =
-                                        i64::from(unwind_cfa) + address_offset;
-                                    let mut buff = [0u8; 4];
-                                    if let Err(e) =
-                                        core.read(previous_frame_register_address as u64, &mut buff)
-                                    {
+                                        add_to_address(unwind_cfa, address_offset);
+                                    let address_size =
+                                        callee_frame_registers.get_address_size_bytes();
+
+                                    let result = match address_size {
+                                        4 => {
+                                            let mut buff = [0u8; 4];
+                                            core.read(previous_frame_register_address, &mut buff)
+                                                .map(|_| u64::from(u32::from_le_bytes(buff)))
+                                        }
+                                        8 => {
+                                            let mut buff = [0u8; 8];
+                                            core.read(previous_frame_register_address, &mut buff)
+                                                .map(|_| u64::from_le_bytes(buff))
+                                        }
+                                        _ => {
+                                            log::error!("UNWIND: Address size {} not supported.  Please report this as a bug.", address_size);
+                                            stack_frames.push(return_frame);
+                                            break 'unwind;
+                                        }
+                                    };
+
+                                    if let Err(e) = result {
                                         log::error!(
                                                         "UNWIND: Failed to read from address {:#010x} ({} bytes): {}",
                                                         previous_frame_register_address,
@@ -1149,8 +1164,8 @@ impl DebugInfo {
                                         stack_frames.push(return_frame);
                                         break 'unwind;
                                     }
-                                    let previous_frame_register_value = u32::from_le_bytes(buff);
-                                    Some(previous_frame_register_value as u32)
+
+                                    Some(result.unwrap_or_default())
                                 } else {
                                     log::error!("UNWIND: Tried to unwind `RegisterRule` at CFA = None. Please report this as a bug.");
                                     stack_frames.push(return_frame);
@@ -1218,7 +1233,7 @@ impl DebugInfo {
                                     .get_value_by_dwarf_register_number(register.0 as u32);
                                 match reg_val {
                                     Some(reg_val) => {
-                                        let unwind_cfa = (i64::from(reg_val) + offset) as u32;
+                                        let unwind_cfa = add_to_address(reg_val, *offset);
                                         log::trace!(
                                             "UNWIND - CFA : {:#010x}\tRule: Previous Function {:?}",
                                             unwind_cfa,
@@ -1256,11 +1271,28 @@ impl DebugInfo {
                             Offset(address_offset) => {
                                 if let Some(unwind_cfa) = previous_unwind_cfa {
                                     let previous_frame_register_address =
-                                        i64::from(unwind_cfa) + address_offset;
-                                    let mut buff = [0u8; 4];
-                                    if let Err(e) =
-                                        core.read(previous_frame_register_address as u64, &mut buff)
-                                    {
+                                        add_to_address(unwind_cfa, address_offset);
+                                    let address_size = unwind_registers.get_address_size_bytes();
+
+                                    let result = match address_size {
+                                        4 => {
+                                            let mut buff = [0u8; 4];
+                                            core.read(previous_frame_register_address, &mut buff)
+                                                .map(|_| u64::from(u32::from_le_bytes(buff)))
+                                        }
+                                        8 => {
+                                            let mut buff = [0u8; 8];
+                                            core.read(previous_frame_register_address, &mut buff)
+                                                .map(|_| u64::from_le_bytes(buff))
+                                        }
+                                        _ => {
+                                            log::error!("UNWIND: Address size {} not supported.  Please report this as a bug.", address_size);
+                                            stack_frames.push(return_frame);
+                                            break 'unwind;
+                                        }
+                                    };
+
+                                    if let Err(e) = result {
                                         log::error!(
                                                         "UNWIND: Failed to read from address {:#010x} ({} bytes): {}",
                                                         previous_frame_register_address,
@@ -1275,8 +1307,7 @@ impl DebugInfo {
                                         stack_frames.push(return_frame);
                                         break;
                                     }
-                                    let previous_frame_register_value = u32::from_le_bytes(buff);
-                                    Some(previous_frame_register_value as u32)
+                                    Some(result.unwrap_or_default())
                                 } else {
                                     log::error!("UNWIND: Tried to unwind `RegisterRule` at CFA = None. Please report this as a bug.");
                                     stack_frames.push(return_frame);
@@ -1434,5 +1465,16 @@ impl DebugInfo {
         let directory = combined_path.parent().map(|p| p.to_path_buf());
 
         Some((file_name, directory))
+    }
+}
+
+/// Helper function to handle adding a signed offset to a u64 address
+/// Wraps, which matches previous behavior of using i64 operations and
+/// casting to u32
+fn add_to_address(address: u64, offset: i64) -> u64 {
+    if offset >= 0 {
+        address.wrapping_add(offset as u64)
+    } else {
+        address.wrapping_sub(offset.unsigned_abs())
     }
 }

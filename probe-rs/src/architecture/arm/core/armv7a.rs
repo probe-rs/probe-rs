@@ -192,13 +192,13 @@ impl<'probe> Armv7a<'probe> {
                         0..=14 => {
                             let instruction = build_mrc(14, 0, i as u16, 0, 5, 0);
 
-                            self.execute_instruction_with_input(instruction, val)?;
+                            self.execute_instruction_with_input(instruction, val.try_into()?)?;
                         }
                         15 => {
                             // Move val to r0
                             let instruction = build_mrc(14, 0, 0, 0, 5, 0);
 
-                            self.execute_instruction_with_input(instruction, val)?;
+                            self.execute_instruction_with_input(instruction, val.try_into()?)?;
 
                             // BX r0
                             let instruction = build_bx(0);
@@ -224,7 +224,7 @@ impl<'probe> Armv7a<'probe> {
             let r0_val: u32 = self.read_core_reg(CoreRegisterAddress(0))?.try_into()?;
 
             // Mark r0 as needing writeback
-            self.state.register_cache[0] = Some((r0_val, true));
+            self.state.register_cache[0] = Some((r0_val.into(), true));
         }
 
         Ok(())
@@ -423,7 +423,7 @@ impl<'probe> CoreInterface for Armv7a<'probe> {
         // check cache
         if (reg_num as usize) < self.state.register_cache.len() {
             if let Some(cached_result) = self.state.register_cache[reg_num as usize] {
-                return Ok(cached_result.0.into());
+                return Ok(cached_result.0);
             }
         }
 
@@ -471,7 +471,7 @@ impl<'probe> CoreInterface for Armv7a<'probe> {
         };
 
         if let Ok(value) = result {
-            self.state.register_cache[reg_num as usize] = Some((value, false));
+            self.state.register_cache[reg_num as usize] = Some((value.into(), false));
 
             Ok(value.into())
         } else {
@@ -488,7 +488,7 @@ impl<'probe> CoreInterface for Armv7a<'probe> {
                 Error::architecture_specific(Armv7aError::InvalidRegisterNumber(reg_num)).into(),
             );
         }
-        self.state.register_cache[reg_num as usize] = Some((value, true));
+        self.state.register_cache[reg_num as usize] = Some((value.into(), true));
 
         Ok(())
     }
@@ -619,6 +619,15 @@ impl<'probe> CoreInterface for Armv7a<'probe> {
 }
 
 impl<'probe> MemoryInterface for Armv7a<'probe> {
+    fn supports_native_64bit_access(&mut self) -> bool {
+        false
+    }
+    fn read_word_64(&mut self, address: u64) -> Result<u64, crate::error::Error> {
+        let mut ret: u64 = self.read_word_32(address)? as u64;
+        ret |= (self.read_word_32(address + 4)? as u64) << 32;
+
+        Ok(ret)
+    }
     fn read_word_32(&mut self, address: u64) -> Result<u32, Error> {
         let address = valid_32_address(address)?;
 
@@ -645,6 +654,13 @@ impl<'probe> MemoryInterface for Armv7a<'probe> {
         // Return the byte
         Ok(data.to_le_bytes()[byte_offset as usize])
     }
+    fn read_64(&mut self, address: u64, data: &mut [u64]) -> Result<(), crate::error::Error> {
+        for (i, word) in data.iter_mut().enumerate() {
+            *word = self.read_word_64(address + ((i as u64) * 8))?;
+        }
+
+        Ok(())
+    }
     fn read_32(&mut self, address: u64, data: &mut [u32]) -> Result<(), Error> {
         for (i, word) in data.iter_mut().enumerate() {
             *word = self.read_word_32(address + ((i as u64) * 4))?;
@@ -658,6 +674,13 @@ impl<'probe> MemoryInterface for Armv7a<'probe> {
         }
 
         Ok(())
+    }
+    fn write_word_64(&mut self, address: u64, data: u64) -> Result<(), crate::error::Error> {
+        let data_low = data as u32;
+        let data_high = (data >> 32) as u32;
+
+        self.write_word_32(address, data_low)?;
+        self.write_word_32(address + 4, data_high)
     }
     fn write_word_32(&mut self, address: u64, data: u32) -> Result<(), Error> {
         let address = valid_32_address(address)?;
@@ -685,6 +708,13 @@ impl<'probe> MemoryInterface for Armv7a<'probe> {
         word_bytes[byte_offset as usize] = data;
 
         self.write_word_32(word_start, u32::from_le_bytes(word_bytes))
+    }
+    fn write_64(&mut self, address: u64, data: &[u64]) -> Result<(), crate::error::Error> {
+        for (i, word) in data.iter().enumerate() {
+            self.write_word_64(address + ((i as u64) * 8), *word)?;
+        }
+
+        Ok(())
     }
     fn write_32(&mut self, address: u64, data: &[u32]) -> Result<(), Error> {
         for (i, word) in data.iter().enumerate() {
@@ -840,6 +870,23 @@ mod test {
             Error,
         > {
             todo!()
+        }
+
+        fn read_64(
+            &mut self,
+            _ap: MemoryAp,
+            _address: u64,
+            _data: &mut [u64],
+        ) -> Result<(), Error> {
+            todo!()
+        }
+
+        fn write_64(&mut self, _ap: MemoryAp, _address: u64, _data: &[u64]) -> Result<(), Error> {
+            todo!()
+        }
+
+        fn supports_native_64bit_access(&mut self) -> bool {
+            false
         }
     }
 

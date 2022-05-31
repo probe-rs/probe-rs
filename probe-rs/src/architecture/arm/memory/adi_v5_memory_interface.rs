@@ -15,11 +15,15 @@ use std::ops::Range;
 pub trait ArmProbe: SwdSequence {
     fn read_8(&mut self, ap: MemoryAp, address: u64, data: &mut [u8]) -> Result<(), Error>;
     fn read_32(&mut self, ap: MemoryAp, address: u64, data: &mut [u32]) -> Result<(), Error>;
+    fn read_64(&mut self, ap: MemoryAp, address: u64, data: &mut [u64]) -> Result<(), Error>;
 
     fn write_8(&mut self, ap: MemoryAp, address: u64, data: &[u8]) -> Result<(), Error>;
     fn write_32(&mut self, ap: MemoryAp, address: u64, data: &[u32]) -> Result<(), Error>;
+    fn write_64(&mut self, ap: MemoryAp, address: u64, data: &[u64]) -> Result<(), Error>;
 
     fn flush(&mut self) -> Result<(), Error>;
+
+    fn supports_native_64bit_access(&mut self) -> bool;
 
     fn get_arm_communication_interface(
         &mut self,
@@ -36,6 +40,9 @@ where
 
     /// Supports 64-bit address values
     has_large_address_extension: bool,
+
+    /// Supports 64-bit reads / writes
+    has_large_data_extension: bool,
 
     // Does the connected memory AP support the HNONSEC bit?
     // If it doesn't support it, bit 30 in the CSW register has
@@ -65,6 +72,7 @@ where
             supports_hnonsec: ap_information.supports_hnonsec,
             cached_csw_value: None,
             has_large_address_extension: ap_information.has_large_address_extension,
+            has_large_data_extension: ap_information.has_large_data_extension,
         })
     }
 }
@@ -205,6 +213,40 @@ where
         self.interface
             .write_ap_register_repeated(access_port, register, values)
             .map_err(AccessPortError::register_write_error::<R, _>)
+    }
+
+    /// Read a 64bit word at `addr`.
+    ///
+    /// The address where the read should be performed at has to be word aligned.
+    /// Returns `AccessPortError::MemoryNotAligned` if this does not hold true.
+    pub fn read_word_64(
+        &mut self,
+        access_port: MemoryAp,
+        address: u64,
+    ) -> Result<u64, AccessPortError> {
+        if (address % 8) != 0 {
+            return Err(AccessPortError::alignment_error(address, 4));
+        }
+
+        if !self.has_large_data_extension {
+            let mut ret: u64 = self.read_word_32(access_port, address)? as u64;
+            ret |= (self.read_word_32(access_port, address + 4)? as u64) << 32;
+
+            Ok(ret)
+        } else {
+            let csw = self.build_csw_register(DataSize::U64);
+
+            self.write_csw_register(access_port, csw)?;
+            self.write_tar_register(access_port, address)?;
+
+            let result: DRW = self.read_ap_register(access_port)?;
+
+            let mut ret = result.data as u64;
+            let result: DRW = self.read_ap_register(access_port)?;
+            ret |= (result.data as u64) << 32;
+
+            Ok(ret)
+        }
     }
 
     /// Read a 32bit word at `addr`.
@@ -378,6 +420,42 @@ where
         data.copy_from_slice(&buf8[start..start + data.len()]);
 
         Ok(())
+    }
+
+    /// Write a 64bit word at `addr`.
+    ///
+    /// The address where the write should be performed at has to be word aligned.
+    /// Returns `AccessPortError::MemoryNotAligned` if this does not hold true.
+    pub fn write_word_64(
+        &mut self,
+        access_port: MemoryAp,
+        address: u64,
+        data: u64,
+    ) -> Result<(), AccessPortError> {
+        if (address % 8) != 0 {
+            return Err(AccessPortError::alignment_error(address, 4));
+        }
+
+        let low_word = data as u32;
+        let high_word = (data >> 32) as u32;
+
+        if !self.has_large_data_extension {
+            self.write_word_32(access_port, address, low_word)?;
+            self.write_word_32(access_port, address + 4, high_word)
+        } else {
+            let csw = self.build_csw_register(DataSize::U64);
+            let drw = DRW { data: low_word };
+
+            self.write_csw_register(access_port, csw)?;
+
+            self.write_tar_register(access_port, address)?;
+            self.write_ap_register(access_port, drw)?;
+
+            let drw = DRW { data: high_word };
+            self.write_ap_register(access_port, drw)?;
+
+            Ok(())
+        }
     }
 
     /// Write a 32bit word at `addr`.
@@ -606,6 +684,10 @@ impl<AP> ArmProbe for ADIMemoryInterface<'_, AP>
 where
     AP: CommunicationInterface + ApAccess + DpAccess,
 {
+    fn supports_native_64bit_access(&mut self) -> bool {
+        self.has_large_data_extension
+    }
+
     fn read_8(&mut self, ap: MemoryAp, address: u64, data: &mut [u8]) -> Result<(), Error> {
         if data.len() == 1 {
             data[0] = self.read_word_8(ap, address)?;
@@ -626,6 +708,14 @@ where
         Ok(())
     }
 
+    fn read_64(&mut self, ap: MemoryAp, address: u64, data: &mut [u64]) -> Result<(), Error> {
+        for (i, d) in data.iter_mut().enumerate() {
+            *d = self.read_word_64(ap, address + (i as u64 * 8))?;
+        }
+
+        Ok(())
+    }
+
     fn write_8(&mut self, ap: MemoryAp, address: u64, data: &[u8]) -> Result<(), Error> {
         if data.len() == 1 {
             self.write_word_8(ap, address, data[0])?;
@@ -641,6 +731,14 @@ where
             self.write_word_32(ap, address, data[0])?;
         } else {
             self.write_32(ap, address, data)?;
+        }
+
+        Ok(())
+    }
+
+    fn write_64(&mut self, ap: MemoryAp, address: u64, data: &[u64]) -> Result<(), Error> {
+        for (i, d) in data.iter().enumerate() {
+            self.write_word_64(ap, address + (i as u64 * 8), *d)?;
         }
 
         Ok(())

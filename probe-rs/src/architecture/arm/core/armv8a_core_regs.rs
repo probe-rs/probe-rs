@@ -1,403 +1,343 @@
-use crate::core::RegisterDescription;
-use crate::{
-    core::{RegisterDataType, RegisterFile, RegisterKind},
-    CoreRegisterAddress,
+use super::{
+    CoreRegisterAddress, RegisterDataType, RegisterDescription, RegisterFile, RegisterKind,
 };
 
-macro_rules! data_register {
-    ($(#[$outer:meta])* $i:ident, $addr:expr, $name:expr) => {
-        $(#[$outer])*
-        #[derive(Debug, Copy, Clone)]
-        struct $i(u32);
-
-        impl DebugRegister for $i {
-            const ADDRESS: u8 = $addr;
-            const NAME: &'static str = $name;
-        }
-
-        impl From<$i> for u32 {
-            fn from(register: $i) -> Self {
-                register.0
-            }
-        }
-
-        impl From<u32> for $i {
-            fn from(value: u32) -> Self {
-                Self(value)
-            }
-        }
-    };
-
-    (pub $i:ident, $addr:expr, $name:expr) => {
-        #[derive(Debug, Copy, Clone)]
-        #[doc = concat!(stringify!($name), " register.")]
-        pub struct $i(u32);
-
-        impl DebugRegister for $i {
-            const ADDRESS: u8 = $addr;
-            const NAME: &'static str = $name;
-        }
-
-        impl From<$i> for u32 {
-            fn from(register: $i) -> Self {
-                register.0
-            }
-        }
-
-        impl From<u32> for $i {
-            fn from(value: u32) -> Self {
-                Self(value)
-            }
-        }
-    };
-}
-
-static PC: RegisterDescription = RegisterDescription {
-    name: "pc",
-    _kind: RegisterKind::PC,
-    /// This is a CSR register
-    address: CoreRegisterAddress(0x7b1),
-    _type: RegisterDataType::UnsignedInteger,
-    size_in_bits: 32,
-};
-
-static RA: RegisterDescription = RegisterDescription {
-    name: "ra",
+const SP: RegisterDescription = RegisterDescription {
+    name: "SP",
     _kind: RegisterKind::General,
-    /// This is a CSR register
-    address: CoreRegisterAddress(0x1001),
+    address: CoreRegisterAddress(31),
     _type: RegisterDataType::UnsignedInteger,
-    size_in_bits: 32,
+    size_in_bits: 64,
 };
 
-static SP: RegisterDescription = RegisterDescription {
-    name: "sp",
+const PC: RegisterDescription = RegisterDescription {
+    name: "PC",
     _kind: RegisterKind::General,
-    /// This is a CSR register
-    address: CoreRegisterAddress(0x1002),
+    address: CoreRegisterAddress(32),
     _type: RegisterDataType::UnsignedInteger,
-    size_in_bits: 32,
+    size_in_bits: 64,
 };
 
-static FP: RegisterDescription = RegisterDescription {
-    name: "fp",
+const LR: RegisterDescription = RegisterDescription {
+    name: "LR",
     _kind: RegisterKind::General,
-    /// This is a CSR register
-    address: CoreRegisterAddress(0x1008),
+    address: CoreRegisterAddress(30),
     _type: RegisterDataType::UnsignedInteger,
-    size_in_bits: 32,
+    size_in_bits: 64,
 };
 
-pub static S0: RegisterDescription = RegisterDescription {
-    name: "s0",
+const FP: RegisterDescription = RegisterDescription {
+    name: "FP",
     _kind: RegisterKind::General,
-    /// This is a CSR register
-    address: CoreRegisterAddress(0x1008),
+    address: CoreRegisterAddress(29),
     _type: RegisterDataType::UnsignedInteger,
-    size_in_bits: 32,
+    size_in_bits: 64,
 };
 
-pub static S1: RegisterDescription = RegisterDescription {
-    name: "s1",
+const PSTATE: RegisterDescription = RegisterDescription {
+    name: "PSTATE",
     _kind: RegisterKind::General,
-    /// This is a CSR register
-    address: CoreRegisterAddress(0x1009),
+    address: CoreRegisterAddress(33),
     _type: RegisterDataType::UnsignedInteger,
     size_in_bits: 32,
 };
 
-pub(super) static RISCV_REGISTERS: RegisterFile = RegisterFile {
+pub static AARCH64_REGISTER_FILE: RegisterFile = RegisterFile {
     platform_registers: &[
         RegisterDescription {
-            name: "x0",
+            name: "X0",
             _kind: RegisterKind::General,
-            address: CoreRegisterAddress(0x1000),
+            address: CoreRegisterAddress(0),
             _type: RegisterDataType::UnsignedInteger,
-            size_in_bits: 32,
+            size_in_bits: 64,
         },
         RegisterDescription {
-            name: "x1",
+            name: "X1",
             _kind: RegisterKind::General,
-            address: CoreRegisterAddress(0x1001),
+            address: CoreRegisterAddress(1),
             _type: RegisterDataType::UnsignedInteger,
-            size_in_bits: 32,
+            size_in_bits: 64,
         },
         RegisterDescription {
-            name: "x2",
+            name: "X2",
             _kind: RegisterKind::General,
-            address: CoreRegisterAddress(0x1002),
+            address: CoreRegisterAddress(2),
             _type: RegisterDataType::UnsignedInteger,
-            size_in_bits: 32,
+            size_in_bits: 64,
         },
         RegisterDescription {
-            name: "x3",
+            name: "X3",
             _kind: RegisterKind::General,
-            address: CoreRegisterAddress(0x1003),
+            address: CoreRegisterAddress(3),
             _type: RegisterDataType::UnsignedInteger,
-            size_in_bits: 32,
+            size_in_bits: 64,
         },
         RegisterDescription {
-            name: "x4",
+            name: "X4",
             _kind: RegisterKind::General,
-            address: CoreRegisterAddress(0x1004),
+            address: CoreRegisterAddress(4),
             _type: RegisterDataType::UnsignedInteger,
-            size_in_bits: 32,
+            size_in_bits: 64,
         },
         RegisterDescription {
-            name: "x5",
+            name: "X5",
             _kind: RegisterKind::General,
-            address: CoreRegisterAddress(0x1005),
+            address: CoreRegisterAddress(5),
             _type: RegisterDataType::UnsignedInteger,
-            size_in_bits: 32,
+            size_in_bits: 64,
         },
         RegisterDescription {
-            name: "x6",
+            name: "X6",
             _kind: RegisterKind::General,
-            address: CoreRegisterAddress(0x1006),
+            address: CoreRegisterAddress(6),
             _type: RegisterDataType::UnsignedInteger,
-            size_in_bits: 32,
+            size_in_bits: 64,
         },
         RegisterDescription {
-            name: "x7",
+            name: "X7",
             _kind: RegisterKind::General,
-            address: CoreRegisterAddress(0x1007),
+            address: CoreRegisterAddress(7),
             _type: RegisterDataType::UnsignedInteger,
-            size_in_bits: 32,
+            size_in_bits: 64,
         },
         RegisterDescription {
-            name: "x8",
+            name: "X8",
             _kind: RegisterKind::General,
-            address: CoreRegisterAddress(0x1008),
+            address: CoreRegisterAddress(8),
             _type: RegisterDataType::UnsignedInteger,
-            size_in_bits: 32,
+            size_in_bits: 64,
         },
         RegisterDescription {
-            name: "x9",
+            name: "X9",
             _kind: RegisterKind::General,
-            address: CoreRegisterAddress(0x1009),
+            address: CoreRegisterAddress(9),
             _type: RegisterDataType::UnsignedInteger,
-            size_in_bits: 32,
+            size_in_bits: 64,
         },
         RegisterDescription {
-            name: "x10",
+            name: "X10",
             _kind: RegisterKind::General,
-            address: CoreRegisterAddress(0x100A),
+            address: CoreRegisterAddress(10),
             _type: RegisterDataType::UnsignedInteger,
-            size_in_bits: 32,
+            size_in_bits: 64,
         },
         RegisterDescription {
-            name: "x11",
+            name: "X11",
             _kind: RegisterKind::General,
-            address: CoreRegisterAddress(0x100B),
+            address: CoreRegisterAddress(11),
             _type: RegisterDataType::UnsignedInteger,
-            size_in_bits: 32,
+            size_in_bits: 64,
         },
         RegisterDescription {
-            name: "x12",
+            name: "X12",
             _kind: RegisterKind::General,
-            address: CoreRegisterAddress(0x100C),
+            address: CoreRegisterAddress(12),
             _type: RegisterDataType::UnsignedInteger,
-            size_in_bits: 32,
+            size_in_bits: 64,
         },
         RegisterDescription {
-            name: "x13",
+            name: "X13",
             _kind: RegisterKind::General,
-            address: CoreRegisterAddress(0x100D),
+            address: CoreRegisterAddress(13),
             _type: RegisterDataType::UnsignedInteger,
-            size_in_bits: 32,
+            size_in_bits: 64,
         },
         RegisterDescription {
-            name: "x14",
+            name: "X14",
             _kind: RegisterKind::General,
-            address: CoreRegisterAddress(0x100E),
+            address: CoreRegisterAddress(14),
             _type: RegisterDataType::UnsignedInteger,
-            size_in_bits: 32,
+            size_in_bits: 64,
         },
         RegisterDescription {
-            name: "x15",
+            name: "X15",
             _kind: RegisterKind::General,
-            address: CoreRegisterAddress(0x100F),
+            address: CoreRegisterAddress(15),
             _type: RegisterDataType::UnsignedInteger,
-            size_in_bits: 32,
+            size_in_bits: 64,
         },
         RegisterDescription {
-            name: "x16",
+            name: "X16",
             _kind: RegisterKind::General,
-            address: CoreRegisterAddress(0x1010),
+            address: CoreRegisterAddress(16),
             _type: RegisterDataType::UnsignedInteger,
-            size_in_bits: 32,
+            size_in_bits: 64,
         },
         RegisterDescription {
-            name: "x17",
+            name: "X17",
             _kind: RegisterKind::General,
-            address: CoreRegisterAddress(0x1011),
+            address: CoreRegisterAddress(17),
             _type: RegisterDataType::UnsignedInteger,
-            size_in_bits: 32,
+            size_in_bits: 64,
         },
         RegisterDescription {
-            name: "x18",
+            name: "X18",
             _kind: RegisterKind::General,
-            address: CoreRegisterAddress(0x1012),
+            address: CoreRegisterAddress(18),
             _type: RegisterDataType::UnsignedInteger,
-            size_in_bits: 32,
+            size_in_bits: 64,
         },
         RegisterDescription {
-            name: "x19",
+            name: "X19",
             _kind: RegisterKind::General,
-            address: CoreRegisterAddress(0x1013),
+            address: CoreRegisterAddress(19),
             _type: RegisterDataType::UnsignedInteger,
-            size_in_bits: 32,
+            size_in_bits: 64,
         },
         RegisterDescription {
-            name: "x20",
+            name: "X20",
             _kind: RegisterKind::General,
-            address: CoreRegisterAddress(0x1014),
+            address: CoreRegisterAddress(20),
             _type: RegisterDataType::UnsignedInteger,
-            size_in_bits: 32,
+            size_in_bits: 64,
         },
         RegisterDescription {
-            name: "x21",
+            name: "X21",
             _kind: RegisterKind::General,
-            address: CoreRegisterAddress(0x1015),
+            address: CoreRegisterAddress(21),
             _type: RegisterDataType::UnsignedInteger,
-            size_in_bits: 32,
+            size_in_bits: 64,
         },
         RegisterDescription {
-            name: "x22",
+            name: "X22",
             _kind: RegisterKind::General,
-            address: CoreRegisterAddress(0x1016),
+            address: CoreRegisterAddress(22),
             _type: RegisterDataType::UnsignedInteger,
-            size_in_bits: 32,
+            size_in_bits: 64,
         },
         RegisterDescription {
-            name: "x23",
+            name: "X23",
             _kind: RegisterKind::General,
-            address: CoreRegisterAddress(0x1017),
+            address: CoreRegisterAddress(23),
             _type: RegisterDataType::UnsignedInteger,
-            size_in_bits: 32,
+            size_in_bits: 64,
         },
         RegisterDescription {
-            name: "x24",
+            name: "X24",
             _kind: RegisterKind::General,
-            address: CoreRegisterAddress(0x1018),
+            address: CoreRegisterAddress(24),
             _type: RegisterDataType::UnsignedInteger,
-            size_in_bits: 32,
+            size_in_bits: 64,
         },
         RegisterDescription {
-            name: "x25",
+            name: "X25",
             _kind: RegisterKind::General,
-            address: CoreRegisterAddress(0x1019),
+            address: CoreRegisterAddress(25),
             _type: RegisterDataType::UnsignedInteger,
-            size_in_bits: 32,
+            size_in_bits: 64,
         },
         RegisterDescription {
-            name: "x26",
+            name: "X26",
             _kind: RegisterKind::General,
-            address: CoreRegisterAddress(0x101A),
+            address: CoreRegisterAddress(26),
             _type: RegisterDataType::UnsignedInteger,
-            size_in_bits: 32,
+            size_in_bits: 64,
         },
         RegisterDescription {
-            name: "x27",
+            name: "X27",
             _kind: RegisterKind::General,
-            address: CoreRegisterAddress(0x101B),
+            address: CoreRegisterAddress(27),
             _type: RegisterDataType::UnsignedInteger,
-            size_in_bits: 32,
+            size_in_bits: 64,
         },
         RegisterDescription {
-            name: "x28",
+            name: "X28",
             _kind: RegisterKind::General,
-            address: CoreRegisterAddress(0x101C),
+            address: CoreRegisterAddress(28),
             _type: RegisterDataType::UnsignedInteger,
-            size_in_bits: 32,
+            size_in_bits: 64,
         },
         RegisterDescription {
-            name: "x29",
+            name: "X29",
             _kind: RegisterKind::General,
-            address: CoreRegisterAddress(0x101D),
+            address: CoreRegisterAddress(29),
             _type: RegisterDataType::UnsignedInteger,
-            size_in_bits: 32,
+            size_in_bits: 64,
         },
         RegisterDescription {
-            name: "x30",
+            name: "X30",
             _kind: RegisterKind::General,
-            address: CoreRegisterAddress(0x101E),
+            address: CoreRegisterAddress(30),
             _type: RegisterDataType::UnsignedInteger,
-            size_in_bits: 32,
+            size_in_bits: 64,
         },
         RegisterDescription {
-            name: "x31",
+            name: "SP",
             _kind: RegisterKind::General,
-            address: CoreRegisterAddress(0x101F),
+            address: CoreRegisterAddress(31),
             _type: RegisterDataType::UnsignedInteger,
-            size_in_bits: 32,
+            size_in_bits: 64,
+        },
+        RegisterDescription {
+            name: "PC",
+            _kind: RegisterKind::General,
+            address: CoreRegisterAddress(32),
+            _type: RegisterDataType::UnsignedInteger,
+            size_in_bits: 64,
         },
     ],
 
     program_counter: &PC,
-
-    return_address: &RA,
-
     stack_pointer: &SP,
-
+    return_address: &LR,
     frame_pointer: &FP,
 
     argument_registers: &[
         RegisterDescription {
             name: "a0",
             _kind: RegisterKind::General,
-            address: CoreRegisterAddress(0x100A),
+            address: CoreRegisterAddress(0),
             _type: RegisterDataType::UnsignedInteger,
-            size_in_bits: 32,
+            size_in_bits: 64,
         },
         RegisterDescription {
             name: "a1",
             _kind: RegisterKind::General,
-            address: CoreRegisterAddress(0x100B),
+            address: CoreRegisterAddress(1),
             _type: RegisterDataType::UnsignedInteger,
-            size_in_bits: 32,
+            size_in_bits: 64,
         },
         RegisterDescription {
             name: "a2",
             _kind: RegisterKind::General,
-            address: CoreRegisterAddress(0x100C),
+            address: CoreRegisterAddress(2),
             _type: RegisterDataType::UnsignedInteger,
-            size_in_bits: 32,
+            size_in_bits: 64,
         },
         RegisterDescription {
             name: "a3",
             _kind: RegisterKind::General,
-            address: CoreRegisterAddress(0x100D),
+            address: CoreRegisterAddress(3),
             _type: RegisterDataType::UnsignedInteger,
-            size_in_bits: 32,
+            size_in_bits: 64,
         },
         RegisterDescription {
             name: "a4",
             _kind: RegisterKind::General,
-            address: CoreRegisterAddress(0x100E),
+            address: CoreRegisterAddress(4),
             _type: RegisterDataType::UnsignedInteger,
-            size_in_bits: 32,
+            size_in_bits: 64,
         },
         RegisterDescription {
             name: "a5",
             _kind: RegisterKind::General,
-            address: CoreRegisterAddress(0x100F),
+            address: CoreRegisterAddress(5),
             _type: RegisterDataType::UnsignedInteger,
-            size_in_bits: 32,
+            size_in_bits: 64,
         },
         RegisterDescription {
             name: "a6",
             _kind: RegisterKind::General,
-            address: CoreRegisterAddress(0x1010),
+            address: CoreRegisterAddress(6),
             _type: RegisterDataType::UnsignedInteger,
-            size_in_bits: 32,
+            size_in_bits: 64,
         },
         RegisterDescription {
             name: "a7",
             _kind: RegisterKind::General,
-            address: CoreRegisterAddress(0x1011),
+            address: CoreRegisterAddress(7),
             _type: RegisterDataType::UnsignedInteger,
-            size_in_bits: 32,
+            size_in_bits: 64,
         },
     ],
 
@@ -405,21 +345,21 @@ pub(super) static RISCV_REGISTERS: RegisterFile = RegisterFile {
         RegisterDescription {
             name: "a0",
             _kind: RegisterKind::General,
-            address: CoreRegisterAddress(0x100A),
+            address: CoreRegisterAddress(0),
             _type: RegisterDataType::UnsignedInteger,
-            size_in_bits: 32,
+            size_in_bits: 64,
         },
         RegisterDescription {
             name: "a1",
             _kind: RegisterKind::General,
-            address: CoreRegisterAddress(0x100B),
+            address: CoreRegisterAddress(1),
             _type: RegisterDataType::UnsignedInteger,
-            size_in_bits: 32,
+            size_in_bits: 64,
         },
     ],
 
-    psp: None,
-    msp: None,
+    msp: Some(&SP),
+    psp: Some(&SP),
     extra: None,
-    psr: None,
+    psr: Some(&PSTATE),
 };

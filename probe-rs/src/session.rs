@@ -511,8 +511,16 @@ impl Drop for Session {
             log::warn!("Could not clear all hardware breakpoints: {:?}", err);
         }
 
-        // Disable tracing for all cores.
-        if let Err(err) = { 0..self.cores.len() }.try_for_each(|i| self.disable_swv(i)) {
+        // Disable tracing for all Cortex-M cores.
+        if let Err(err) = { 0..self.cores.len() }.try_for_each(|i| {
+            let is_cortex_m = self.core(i)?.core_type().is_cortex_m();
+
+            if is_cortex_m {
+                self.disable_swv(i)
+            } else {
+                Ok(())
+            }
+        }) {
             log::warn!("Could not stop core tracing: {:?}", err);
         }
 

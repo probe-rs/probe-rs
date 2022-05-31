@@ -142,7 +142,7 @@ pub async fn handler(
                         b"memory-map" => {
                             match operation {
                                 TransferOperation::Read { .. } => {
-                                    handlers::get_memory_map(&session)
+                                    handlers::get_memory_map(&mut session)
                                 }
                                 TransferOperation::Write { .. } => {
                                     // not supported
@@ -153,7 +153,7 @@ pub async fn handler(
                         b"features" => {
                             match operation {
                                 TransferOperation::Read { annex, .. } => {
-                                    handlers::read_target_description(&session, &annex)
+                                    handlers::read_target_description(&mut session, &annex)
                                 }
                                 TransferOperation::Write { .. } => {
                                     // not supported

@@ -85,6 +85,12 @@ impl RegisterDescription {
         // Always round up
         (self.size_in_bits + 7) / 8
     }
+
+    /// Get the width to format this register as a hex string
+    /// Assumes a format string like {:#0<width>x}
+    pub fn format_hex_width(&self) -> usize {
+        (self.size_in_bytes() * 2) + 2
+    }
 }
 
 impl From<RegisterDescription> for CoreRegisterAddress {
@@ -110,7 +116,7 @@ pub(crate) enum RegisterKind {
 /// Creating a new `RegisterValue` should be done using From or Into.
 /// Converting a value back to a primitive type can be done with either
 /// a match arm or TryInto
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum RegisterValue {
     /// 32-bit unsigned integer
     U32(u32),
@@ -177,6 +183,8 @@ pub struct RegisterFile {
     pub(crate) psp: Option<&'static RegisterDescription>,
 
     pub(crate) extra: Option<&'static RegisterDescription>,
+
+    pub(crate) psr: Option<&'static RegisterDescription>,
     // TODO: floating point support
 }
 
@@ -256,6 +264,11 @@ impl RegisterFile {
     /// The process stack pointer.
     pub fn psp(&self) -> Option<&RegisterDescription> {
         self.psp
+    }
+
+    /// The processor status register.
+    pub fn psr(&self) -> Option<&RegisterDescription> {
+        self.psr
     }
 
     // ARM DDI 0403E.d (ID070218)
@@ -359,12 +372,24 @@ pub trait CoreInterface: MemoryInterface {
 }
 
 impl<'probe> MemoryInterface for Core<'probe> {
+    fn supports_native_64bit_access(&mut self) -> bool {
+        self.inner.supports_native_64bit_access()
+    }
+
+    fn read_word_64(&mut self, address: u64) -> Result<u64, Error> {
+        self.inner.read_word_64(address)
+    }
+
     fn read_word_32(&mut self, address: u64) -> Result<u32, Error> {
         self.inner.read_word_32(address)
     }
 
     fn read_word_8(&mut self, address: u64) -> Result<u8, Error> {
         self.inner.read_word_8(address)
+    }
+
+    fn read_64(&mut self, address: u64, data: &mut [u64]) -> Result<(), Error> {
+        self.inner.read_64(address, data)
     }
 
     fn read_32(&mut self, address: u64, data: &mut [u32]) -> Result<(), Error> {
@@ -375,12 +400,20 @@ impl<'probe> MemoryInterface for Core<'probe> {
         self.inner.read_8(address, data)
     }
 
+    fn write_word_64(&mut self, addr: u64, data: u64) -> Result<(), Error> {
+        self.inner.write_word_64(addr, data)
+    }
+
     fn write_word_32(&mut self, addr: u64, data: u32) -> Result<(), Error> {
         self.inner.write_word_32(addr, data)
     }
 
     fn write_word_8(&mut self, addr: u64, data: u8) -> Result<(), Error> {
         self.inner.write_word_8(addr, data)
+    }
+
+    fn write_64(&mut self, addr: u64, data: &[u64]) -> Result<(), Error> {
+        self.inner.write_64(addr, data)
     }
 
     fn write_32(&mut self, addr: u64, data: &[u32]) -> Result<(), Error> {

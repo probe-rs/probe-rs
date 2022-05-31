@@ -1701,6 +1701,18 @@ impl RiscvValue for u128 {
 }
 
 impl MemoryInterface for RiscvCommunicationInterface {
+    fn supports_native_64bit_access(&mut self) -> bool {
+        false
+    }
+
+    fn read_word_64(&mut self, address: u64) -> Result<u64, crate::error::Error> {
+        let address = valid_32_address(address)?;
+        let mut ret = self.read_word::<u32>(address)? as u64;
+        ret |= (self.read_word::<u32>(address + 4)? as u64) << 32;
+
+        Ok(ret)
+    }
+
     fn read_word_32(&mut self, address: u64) -> Result<u32, crate::Error> {
         let address = valid_32_address(address)?;
         self.read_word(address)
@@ -1710,6 +1722,17 @@ impl MemoryInterface for RiscvCommunicationInterface {
         let address = valid_32_address(address)?;
         log::debug!("read_word_8 from {:#08x}", address);
         self.read_word(address)
+    }
+
+    fn read_64(&mut self, address: u64, data: &mut [u64]) -> Result<(), crate::error::Error> {
+        let address = valid_32_address(address)?;
+        log::debug!("read_64 from {:#08x}", address);
+
+        for (i, d) in data.iter_mut().enumerate() {
+            *d = self.read_word_64((address + (i as u32 * 8)).into())?;
+        }
+
+        Ok(())
     }
 
     fn read_32(&mut self, address: u64, data: &mut [u32]) -> Result<(), crate::Error> {
@@ -1726,6 +1749,15 @@ impl MemoryInterface for RiscvCommunicationInterface {
         self.read_multiple(address, data)
     }
 
+    fn write_word_64(&mut self, address: u64, data: u64) -> Result<(), crate::error::Error> {
+        let address = valid_32_address(address)?;
+        let low_word = data as u32;
+        let high_word = (data >> 32) as u32;
+
+        self.write_word(address, low_word)?;
+        self.write_word(address + 4, high_word)
+    }
+
     fn write_word_32(&mut self, address: u64, data: u32) -> Result<(), crate::Error> {
         let address = valid_32_address(address)?;
         self.write_word(address, data)
@@ -1734,6 +1766,17 @@ impl MemoryInterface for RiscvCommunicationInterface {
     fn write_word_8(&mut self, address: u64, data: u8) -> Result<(), crate::Error> {
         let address = valid_32_address(address)?;
         self.write_word(address, data)
+    }
+
+    fn write_64(&mut self, address: u64, data: &[u64]) -> Result<(), crate::error::Error> {
+        let address = valid_32_address(address)?;
+        log::debug!("write_64 to {:#08x}", address);
+
+        for (i, d) in data.iter().enumerate() {
+            self.write_word_64((address + (i as u32 * 8)).into(), *d)?;
+        }
+
+        Ok(())
     }
 
     fn write_32(&mut self, address: u64, data: &[u32]) -> Result<(), crate::Error> {

@@ -196,3 +196,123 @@ pub(crate) mod thumb2 {
         }
     }
 }
+
+pub(crate) mod aarch64 {
+    pub(crate) fn build_ldr(reg_target: u16, reg_source: u16, imm: u16) -> u32 {
+        let mut ret = 0b1111_1000_0100_0000_0000_0100_0000_0000;
+
+        ret |= (imm as u32) << 12;
+        ret |= (reg_source as u32) << 5;
+        ret |= reg_target as u32;
+
+        ret
+    }
+
+    pub(crate) fn build_ldrw(reg_target: u16, reg_source: u16, imm: u16) -> u32 {
+        let mut ret = 0b1011_1000_0100_0000_0000_0100_0000_0000;
+
+        ret |= (imm as u32) << 12;
+        ret |= (reg_source as u32) << 5;
+        ret |= reg_target as u32;
+
+        ret
+    }
+
+    pub(crate) fn build_mrs(op0: u8, op1: u8, crn: u8, crm: u8, op2: u8, reg: u16) -> u32 {
+        let mut ret = 0b1101_0101_0011_0000_0000_0000_0000_0000;
+
+        ret |= (op0 as u32) << 19;
+        ret |= (op1 as u32) << 16;
+        ret |= (crn as u32) << 12;
+        ret |= (crm as u32) << 8;
+        ret |= (op2 as u32) << 5;
+        ret |= reg as u32;
+
+        ret
+    }
+
+    pub(crate) fn build_msr(op0: u8, op1: u8, crn: u8, crm: u8, op2: u8, reg: u16) -> u32 {
+        let mut ret = 0b1101_0101_0001_0000_0000_0000_0000_0000;
+
+        ret |= (op0 as u32) << 19;
+        ret |= (op1 as u32) << 16;
+        ret |= (crn as u32) << 12;
+        ret |= (crm as u32) << 8;
+        ret |= (op2 as u32) << 5;
+        ret |= reg as u32;
+
+        ret
+    }
+
+    pub(crate) fn build_str(reg_target: u16, reg_source: u16, imm: u16) -> u32 {
+        let mut ret = 0b1111_1000_0000_0000_0000_0100_0000_0000;
+
+        ret |= (imm as u32) << 12;
+        ret |= (reg_source as u32) << 5;
+        ret |= reg_target as u32;
+
+        ret
+    }
+
+    pub(crate) fn build_strw(reg_target: u16, reg_source: u16, imm: u16) -> u32 {
+        let mut ret = 0b1011_1000_0000_0000_0000_0100_0000_0000;
+
+        ret |= (imm as u32) << 12;
+        ret |= (reg_source as u32) << 5;
+        ret |= reg_target as u32;
+
+        ret
+    }
+
+    #[cfg(test)]
+    mod tests {
+        use super::*;
+        #[test]
+        fn gen_ldr_instruction() {
+            let instr = build_ldr(2, 3, 4);
+
+            // LDR x2, [x3], #4
+            assert_eq!(0xF8404462, instr);
+        }
+
+        #[test]
+        fn gen_ldrw_instruction() {
+            let instr = build_ldrw(2, 3, 4);
+
+            // LDR w2, [x3], #4
+            assert_eq!(0xB8404462, instr);
+        }
+
+        #[test]
+        fn gen_msr_instruction() {
+            let instr = build_msr(2, 3, 4, 1, 2, 3);
+
+            // MSR x3, s3_3_c4_c1_2
+            assert_eq!(0xD5134143, instr);
+        }
+
+        #[test]
+        fn gen_mrs_instruction() {
+            let instr = build_mrs(2, 3, 4, 1, 2, 3);
+
+            // MRS x3, s3_3_c4_c1_2
+            assert_eq!(0xD5334143, instr);
+        }
+
+        #[test]
+        fn gen_str_instruction() {
+            let instr = build_str(2, 3, 4);
+
+            // STR x2, [x3], #4
+            assert_eq!(0xF8004462, instr);
+        }
+
+        #[test]
+        fn gen_strw_instruction() {
+            let instr = build_strw(2, 3, 4);
+
+            // STR w2, [x3], #4
+            assert_eq!(0xB8004462, instr);
+        }
+    }
+}
