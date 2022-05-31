@@ -14,7 +14,6 @@ use probe_rs_cli_util::logging::{ask_to_log_crash, capture_panic};
 
 use probe_rs_cli_util::{build_artifact, log, logging, logging::Metadata};
 
-const CARGO_NAME: &str = env!("CARGO_PKG_NAME");
 const CARGO_VERSION: &str = env!("CARGO_PKG_VERSION");
 const GIT_VERSION: &str = git_version::git_version!(fallback = "crates.io");
 
@@ -75,17 +74,13 @@ fn main_try() -> Result<(), OperationError> {
     let matches = FlashOptions::into_app()
         .bin_name("cargo flash")
         .after_help(CargoOptions::help_message("cargo flash").as_str())
+        .version(CARGO_VERSION)
+        .long_version(&*format!(
+            "{}\ngit commit: {}",
+            CARGO_VERSION, GIT_VERSION
+        ))
         .get_matches_from(&args);
     let opt = FlashOptions::from_arg_matches(&matches)?;
-
-    // If we get the version option, print the current version immediately and exit.
-    if opt.version {
-        println!(
-            "{} {}\ngit commit: {}",
-            CARGO_NAME, CARGO_VERSION, GIT_VERSION
-        );
-        return Ok(());
-    }
 
     // Initialize the logger with the loglevel given on the commandline.
     logging::init(opt.log);
