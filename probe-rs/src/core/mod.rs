@@ -22,22 +22,6 @@ pub trait MemoryMappedRegister: Clone + From<u32> + Into<u32> + Sized + std::fmt
     const NAME: &'static str;
 }
 
-/// The address of a  register mapped to a CPU core. This is not an actual memory address, but more of a number that represents a specific core register.
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-pub struct CoreRegisterAddress(pub u16);
-
-impl From<CoreRegisterAddress> for u32 {
-    fn from(value: CoreRegisterAddress) -> Self {
-        u32::from(value.0)
-    }
-}
-
-impl From<u16> for CoreRegisterAddress {
-    fn from(value: u16) -> Self {
-        CoreRegisterAddress(value)
-    }
-}
-
 /// An struct for storing the current state of a core.
 #[derive(Debug, Clone)]
 pub struct CoreInformation {
@@ -59,7 +43,7 @@ pub enum RegisterDataType {
 pub struct RegisterDescription {
     pub(crate) name: &'static str,
     pub(crate) _kind: RegisterKind,
-    pub(crate) address: CoreRegisterAddress,
+    pub(crate) register_number: RegisterNumber,
     pub(crate) _type: RegisterDataType,
     pub(crate) size_in_bits: usize,
 }
@@ -93,15 +77,31 @@ impl RegisterDescription {
     }
 }
 
-impl From<RegisterDescription> for CoreRegisterAddress {
-    fn from(description: RegisterDescription) -> CoreRegisterAddress {
-        description.address
+impl From<RegisterDescription> for RegisterNumber {
+    fn from(description: RegisterDescription) -> RegisterNumber {
+        description.register_number
     }
 }
 
-impl From<&RegisterDescription> for CoreRegisterAddress {
-    fn from(description: &RegisterDescription) -> CoreRegisterAddress {
-        description.address
+impl From<&RegisterDescription> for RegisterNumber {
+    fn from(description: &RegisterDescription) -> RegisterNumber {
+        description.register_number
+    }
+}
+
+/// The number of a CPU core register  to a CPU core. This is not an actual memory address, but a number that represents a specific core register.
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub struct RegisterNumber(pub u16);
+
+impl From<RegisterNumber> for u32 {
+    fn from(value: RegisterNumber) -> Self {
+        u32::from(value.0)
+    }
+}
+
+impl From<u16> for RegisterNumber {
+    fn from(value: u16) -> Self {
+        RegisterNumber(value)
     }
 }
 
@@ -328,13 +328,10 @@ pub trait CoreInterface: MemoryInterface {
     fn step(&mut self) -> Result<CoreInformation, error::Error>;
 
     /// Read the value of a core register.
-    fn read_core_reg(
-        &mut self,
-        address: CoreRegisterAddress,
-    ) -> Result<RegisterValue, error::Error>;
+    fn read_core_reg(&mut self, address: RegisterNumber) -> Result<RegisterValue, error::Error>;
 
     /// Write the value of a core register.
-    fn write_core_reg(&mut self, address: CoreRegisterAddress, value: RegisterValue) -> Result<()>;
+    fn write_core_reg(&mut self, address: RegisterNumber, value: RegisterValue) -> Result<()>;
 
     /// Returns all the available breakpoint units of the core.
     fn available_breakpoint_units(&mut self) -> Result<u32, error::Error>;
@@ -666,7 +663,7 @@ impl<'probe> Core<'probe> {
     /// If `T` isn't large enough to hold the register value an error will be raised.
     pub fn read_core_reg<T>(
         &mut self,
-        address: impl Into<CoreRegisterAddress>,
+        address: impl Into<RegisterNumber>,
     ) -> Result<T, error::Error>
     where
         RegisterValue: TryInto<T, Error = error::Error>,
@@ -683,7 +680,7 @@ impl<'probe> Core<'probe> {
     /// If T is too large to write to the target register an error will be raised.
     pub fn write_core_reg<T>(
         &mut self,
-        address: CoreRegisterAddress,
+        address: RegisterNumber,
         value: T,
     ) -> Result<(), error::Error>
     where

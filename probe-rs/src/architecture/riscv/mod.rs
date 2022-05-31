@@ -11,7 +11,7 @@ use communication_interface::{
 
 use crate::core::{CoreInformation, RegisterFile, RegisterValue};
 use crate::memory::valid_32_address;
-use crate::{CoreRegisterAddress, CoreStatus, Error, HaltReason, MemoryInterface};
+use crate::{CoreStatus, Error, HaltReason, MemoryInterface, RegisterNumber};
 
 use bitfield::bitfield;
 use register::RISCV_REGISTERS;
@@ -116,7 +116,7 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
 
         self.interface.write_dm_register(dmcontrol)?;
 
-        let pc = self.read_core_reg(register::RISCV_REGISTERS.program_counter.address)?;
+        let pc = self.read_core_reg(register::RISCV_REGISTERS.program_counter.register_number)?;
 
         Ok(CoreInformation { pc: pc.try_into()? })
     }
@@ -265,13 +265,13 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
 
         self.interface.write_dm_register(dmcontrol)?;
 
-        let pc = self.read_core_reg(CoreRegisterAddress(0x7b1))?;
+        let pc = self.read_core_reg(RegisterNumber(0x7b1))?;
 
         Ok(CoreInformation { pc: pc.try_into()? })
     }
 
     fn step(&mut self) -> Result<crate::core::CoreInformation, crate::Error> {
-        let mut dcsr = Dcsr(self.read_core_reg(CoreRegisterAddress(0x7b0))?.try_into()?);
+        let mut dcsr = Dcsr(self.read_core_reg(RegisterNumber(0x7b0))?.try_into()?);
 
         dcsr.set_step(true);
 
@@ -281,10 +281,10 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
 
         self.wait_for_core_halted(Duration::from_millis(100))?;
 
-        let pc = self.read_core_reg(CoreRegisterAddress(0x7b1))?;
+        let pc = self.read_core_reg(RegisterNumber(0x7b1))?;
 
         // clear step request
-        let mut dcsr = Dcsr(self.read_core_reg(CoreRegisterAddress(0x7b0))?.try_into()?);
+        let mut dcsr = Dcsr(self.read_core_reg(RegisterNumber(0x7b0))?.try_into()?);
 
         dcsr.set_step(false);
 
@@ -295,7 +295,7 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
 
     fn read_core_reg(
         &mut self,
-        address: crate::CoreRegisterAddress,
+        address: crate::RegisterNumber,
     ) -> Result<RegisterValue, crate::Error> {
         self.read_csr(address.0)
             .map(|v| v.into())
@@ -304,7 +304,7 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
 
     fn write_core_reg(
         &mut self,
-        address: crate::CoreRegisterAddress,
+        address: crate::RegisterNumber,
         value: RegisterValue,
     ) -> Result<()> {
         let value: u32 = value.try_into()?;
@@ -479,7 +479,7 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
         if status.allhalted() {
             // determine reason for halt
             let dcsr = Dcsr(
-                self.read_core_reg(CoreRegisterAddress::from(0x7b0))?
+                self.read_core_reg(RegisterNumber::from(0x7b0))?
                     .try_into()?,
             );
 

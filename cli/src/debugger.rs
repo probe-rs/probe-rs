@@ -9,7 +9,7 @@ use num_traits::Num;
 use probe_rs::{
     architecture::arm::Dump,
     debug::{debug_info::DebugInfo, registers::Registers, stack_frame::StackFrame, VariableName},
-    Core, CoreRegisterAddress, CoreType, InstructionSet, MemoryInterface, RegisterDescription,
+    Core, RegisterNumber, CoreType, InstructionSet, MemoryInterface, RegisterDescription,
 };
 use std::fs::File;
 use std::{io::prelude::*, time::Duration};
@@ -627,7 +627,7 @@ impl DebugCli {
                     dump.regs[i as usize] =
                         cli_data
                             .core
-                            .read_core_reg(Into::<CoreRegisterAddress>::into(i))?;
+                            .read_core_reg(Into::<RegisterNumber>::into(i))?;
                 }
 
                 dump.regs[13] = stack_bot;

@@ -9,8 +9,8 @@ use crate::core::{
 use crate::error::Error;
 use crate::memory::{valid_32_address, Memory};
 use crate::{
-    Architecture, CoreInformation, CoreInterface, CoreRegisterAddress, CoreStatus, CoreType,
-    DebugProbeError, HaltReason, InstructionSet, MemoryInterface, MemoryMappedRegister,
+    Architecture, CoreInformation, CoreInterface, CoreStatus, CoreType, DebugProbeError,
+    HaltReason, InstructionSet, MemoryInterface, MemoryMappedRegister, RegisterNumber,
 };
 use anyhow::Result;
 use bitfield::bitfield;
@@ -427,14 +427,14 @@ const REGISTERS: RegisterFile = RegisterFile {
 */
 
 /// The Main Stack Pointer
-pub const MSP: CoreRegisterAddress = CoreRegisterAddress(0b01001);
+pub const MSP: RegisterNumber = RegisterNumber(0b01001);
 /// The Process Stack Pointer ([only used with OSes](See ARMv6-M architecture manual B1.4.1 (The SP registers))
-pub const PSP: CoreRegisterAddress = CoreRegisterAddress(0b01010);
+pub const PSP: RegisterNumber = RegisterNumber(0b01010);
 
 const PC: RegisterDescription = RegisterDescription {
     name: "PC",
     _kind: RegisterKind::PC,
-    address: CoreRegisterAddress(0b0_1111),
+    register_number: RegisterNumber(0b0_1111),
     _type: RegisterDataType::UnsignedInteger,
     size_in_bits: 32,
 };
@@ -442,7 +442,7 @@ const PC: RegisterDescription = RegisterDescription {
 const XPSR: RegisterDescription = RegisterDescription {
     name: "XPSR",
     _kind: RegisterKind::General,
-    address: CoreRegisterAddress(0b1_0000),
+    register_number: RegisterNumber(0b1_0000),
     _type: RegisterDataType::UnsignedInteger,
     size_in_bits: 32,
 };
@@ -541,7 +541,7 @@ impl<'probe> CoreInterface for Armv6m<'probe> {
         let _ = self.status()?;
 
         // try to read the program counter
-        let pc_value = self.read_core_reg(PC.address)?;
+        let pc_value = self.read_core_reg(PC.register_number)?;
 
         // get pc
         Ok(CoreInformation {
@@ -596,7 +596,7 @@ impl<'probe> CoreInterface for Armv6m<'probe> {
             self.enable_breakpoints(true)?;
         }
         // try to read the program counter
-        let pc_value = self.read_core_reg(PC.address)?;
+        let pc_value = self.read_core_reg(PC.register_number)?;
 
         // get pc
         Ok(CoreInformation {
@@ -619,16 +619,16 @@ impl<'probe> CoreInterface for Armv6m<'probe> {
         let _ = self.status()?;
 
         const XPSR_THUMB: u32 = 1 << 24;
-        let xpsr_value: u32 = self.read_core_reg(XPSR.address)?.try_into()?;
+        let xpsr_value: u32 = self.read_core_reg(XPSR.register_number)?.try_into()?;
         if xpsr_value & XPSR_THUMB == 0 {
-            self.write_core_reg(XPSR.address, (xpsr_value | XPSR_THUMB).into())?;
+            self.write_core_reg(XPSR.register_number, (xpsr_value | XPSR_THUMB).into())?;
         }
 
         self.sequence
             .reset_catch_clear(&mut self.memory, crate::CoreType::Armv6m, None)?;
 
         // try to read the program counter
-        let pc_value = self.read_core_reg(PC.address)?;
+        let pc_value = self.read_core_reg(PC.register_number)?;
 
         // get pc
         Ok(CoreInformation {
@@ -784,12 +784,12 @@ impl<'probe> CoreInterface for Armv6m<'probe> {
         Ok(CoreStatus::Running)
     }
 
-    fn read_core_reg(&mut self, address: CoreRegisterAddress) -> Result<RegisterValue, Error> {
+    fn read_core_reg(&mut self, address: RegisterNumber) -> Result<RegisterValue, Error> {
         let val = super::cortex_m::read_core_reg(&mut self.memory, address)?;
         Ok(val.into())
     }
 
-    fn write_core_reg(&mut self, address: CoreRegisterAddress, value: RegisterValue) -> Result<()> {
+    fn write_core_reg(&mut self, address: RegisterNumber, value: RegisterValue) -> Result<()> {
         super::cortex_m::write_core_reg(&mut self.memory, address, value.try_into()?)?;
         Ok(())
     }

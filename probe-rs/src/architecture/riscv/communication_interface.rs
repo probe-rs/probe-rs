@@ -15,7 +15,7 @@ use crate::{
 };
 use crate::{MemoryInterface, Probe};
 
-use crate::{probe::JTAGAccess, CoreRegisterAddress, Error as ProbeRsError};
+use crate::{probe::JTAGAccess, Error as ProbeRsError, RegisterNumber};
 
 use crate::memory::valid_32_address;
 
@@ -204,7 +204,7 @@ pub struct RiscvCommunicationInterfaceState {
 
     /// describes, if the given register can be read / written with an
     /// abstract command
-    abstract_cmd_register_info: HashMap<CoreRegisterAddress, CoreRegisterAbstractCmdSupport>,
+    abstract_cmd_register_info: HashMap<RegisterNumber, CoreRegisterAbstractCmdSupport>,
 }
 
 /// Timeout for RISCV operations.
@@ -704,7 +704,7 @@ impl<'probe> RiscvCommunicationInterface {
         command.set_postexec(true);
 
         // register s0, ie. 0x1008
-        command.set_regno((register::S0).address.0 as u32);
+        command.set_regno((register::S0).register_number.0 as u32);
 
         self.write_dm_register(command)?;
 
@@ -755,7 +755,7 @@ impl<'probe> RiscvCommunicationInterface {
         command.set_postexec(true);
 
         // register s0, ie. 0x1008
-        command.set_regno((register::S0).address.0 as u32);
+        command.set_regno((register::S0).register_number.0 as u32);
 
         self.write_dm_register(command)?;
 
@@ -771,7 +771,7 @@ impl<'probe> RiscvCommunicationInterface {
             command.set_aarsize(RiscvBusAccess::A32);
             command.set_postexec(true);
 
-            command.set_regno((register::S1).address.0 as u32);
+            command.set_regno((register::S1).register_number.0 as u32);
 
             self.write_dm_register(command)?;
 
@@ -877,7 +877,7 @@ impl<'probe> RiscvCommunicationInterface {
         command.set_postexec(true);
 
         // register s1, ie. 0x1009
-        command.set_regno((register::S1).address.0 as u32);
+        command.set_regno((register::S1).register_number.0 as u32);
 
         self.write_dm_register(command)?;
 
@@ -941,7 +941,7 @@ impl<'probe> RiscvCommunicationInterface {
             command.set_postexec(true);
 
             // register s1
-            command.set_regno((register::S1).address.0 as u32);
+            command.set_regno((register::S1).register_number.0 as u32);
 
             self.write_dm_register(command)?;
         }
@@ -1033,7 +1033,7 @@ impl<'probe> RiscvCommunicationInterface {
     /// Check if a register can be accessed via abstract commands
     fn check_abstract_cmd_register_support(
         &self,
-        regno: CoreRegisterAddress,
+        regno: RegisterNumber,
         rw: CoreRegisterAbstractCmdSupport,
     ) -> bool {
         if let Some(status) = self.state.abstract_cmd_register_info.get(&regno) {
@@ -1047,7 +1047,7 @@ impl<'probe> RiscvCommunicationInterface {
     /// Remember, that the given register can not be accessed via abstract commands
     fn set_abstract_cmd_register_unsupported(
         &mut self,
-        regno: CoreRegisterAddress,
+        regno: RegisterNumber,
         rw: CoreRegisterAbstractCmdSupport,
     ) {
         let entry = self
@@ -1062,7 +1062,7 @@ impl<'probe> RiscvCommunicationInterface {
     // Read a core register using an abstract command
     pub(crate) fn abstract_cmd_register_read(
         &mut self,
-        regno: impl Into<CoreRegisterAddress>,
+        regno: impl Into<RegisterNumber>,
     ) -> Result<u32, RiscvError> {
         let regno = regno.into();
 
@@ -1101,7 +1101,7 @@ impl<'probe> RiscvCommunicationInterface {
 
     pub(crate) fn abstract_cmd_register_write<V: RiscvValue>(
         &mut self,
-        regno: impl Into<CoreRegisterAddress>,
+        regno: impl Into<RegisterNumber>,
         value: V,
     ) -> Result<(), RiscvError> {
         let regno = regno.into();
