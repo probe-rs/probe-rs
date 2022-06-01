@@ -46,7 +46,7 @@ fn main() {
             #[cfg(not(feature = "sentry"))]
             log::info!("{:#?}", &METADATA.lock().unwrap());
 
-            // Ensure stderr is flushed before calling proces::exit,
+            // Ensure stderr is flushed before calling process::exit,
             // otherwise the process might panic, because it tries
             // to access stderr during shutdown.
             //
