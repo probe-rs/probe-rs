@@ -624,9 +624,8 @@ impl DebugCli {
                 let mut dump = Dump::new(stack_bot, stack);
 
                 for i in 0..12 {
-                    dump.regs[i as usize] = cli_data
-                        .core
-                        .read_core_reg(Into::<RegisterId>::into(i))?;
+                    dump.regs[i as usize] =
+                        cli_data.core.read_core_reg(Into::<RegisterId>::into(i))?;
                 }
 
                 dump.regs[13] = stack_bot;
