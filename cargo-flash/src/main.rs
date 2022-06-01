@@ -75,10 +75,7 @@ fn main_try() -> Result<(), OperationError> {
         .bin_name("cargo flash")
         .after_help(CargoOptions::help_message("cargo flash").as_str())
         .version(CARGO_VERSION)
-        .long_version(&*format!(
-            "{}\ngit commit: {}",
-            CARGO_VERSION, GIT_VERSION
-        ))
+        .long_version(&*format!("{}\ngit commit: {}", CARGO_VERSION, GIT_VERSION))
         .get_matches_from(&args);
     let opt = FlashOptions::from_arg_matches(&matches)?;
 

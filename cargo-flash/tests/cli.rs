@@ -9,8 +9,7 @@ fn query_long_version() -> Result<(), Box<dyn std::error::Error>> {
     cmd.arg("--version");
     cmd.assert()
         .success()
-        .stdout(predicate::str::is_match(
-            "^cargo-flash \\S+\ngit commit: \\S+\\n$").unwrap());
+        .stdout(predicate::str::is_match("^cargo-flash \\S+\ngit commit: \\S+\\n$").unwrap());
 
     Ok(())
 }
@@ -22,8 +21,7 @@ fn query_short_version() -> Result<(), Box<dyn std::error::Error>> {
     cmd.arg("-V");
     cmd.assert()
         .success()
-        .stdout(predicate::str::is_match(
-            "^cargo-flash \\S+\\n$").unwrap());
+        .stdout(predicate::str::is_match("^cargo-flash \\S+\\n$").unwrap());
 
     Ok(())
 }
