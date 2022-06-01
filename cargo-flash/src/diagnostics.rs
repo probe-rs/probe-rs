@@ -214,30 +214,18 @@ pub(crate) fn render_diagnostics(error: OperationError) {
 
     use std::io::Write;
     let mut stderr = std::io::stderr();
-    let mut source = error.source();
-    let mut i = 0;
-    while let Some(s) = source {
-        if hints.is_empty() {
-            let string = format!("{}: {}", i, s);
-            write_with_offset(
-                &mut stderr,
-                if i == 0 {
-                    "Error".red().bold()
-                } else {
-                    "".red().bold()
-                },
-                &string,
-            );
-        } else {
-            log::debug!("{}: {}", i, s);
-        }
-        i += 1;
-        source = s.source();
-    }
 
-    if !hints.is_empty() {
-        let _ = write_with_offset(&mut stderr, "Error".red().bold(), &selected_error);
-    };
+    let _ = write_with_offset(&mut stderr, "Error".red().bold(), &selected_error);
+
+    // print cause chain
+    // TODO: use 'anyhow' for all this?
+    if let Some(initial_cause) = error.source() {
+        let _ = writeln!(stderr); // whitespace
+        write_with_offset(&mut stderr, "Caused by:".bold(), " ");
+        for (i, cause) in std::iter::successors(Some(initial_cause), |&e| e.source()).enumerate() {
+            write_with_offset(&mut stderr, format!("{i}:").bold(), &cause.to_string());
+        }
+    }
 
     let _ = writeln!(stderr);
 
