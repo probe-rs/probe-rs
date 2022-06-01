@@ -1051,7 +1051,7 @@ impl DebugInfo {
                                         == unwind_registers
                                             .register_description
                                             .frame_pointer()
-                                            .address
+                                            .id
                                             .0
                                             as u32 =>
                                     {
@@ -1063,7 +1063,7 @@ impl DebugInfo {
                                         == unwind_registers
                                             .register_description
                                             .stack_pointer()
-                                            .address
+                                            .id
                                             .0
                                             as u32 =>
                                     {
@@ -1077,7 +1077,7 @@ impl DebugInfo {
                                         == unwind_registers
                                             .register_description
                                             .return_address()
-                                            .address
+                                            .id
                                             .0
                                             as u32 =>
                                     {
@@ -1090,7 +1090,7 @@ impl DebugInfo {
                                         == unwind_registers
                                             .register_description
                                             .program_counter()
-                                            .address
+                                            .id
                                             .0
                                             as u32 =>
                                     {

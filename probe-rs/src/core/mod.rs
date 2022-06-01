@@ -14,28 +14,12 @@ use crate::{Error, Memory, MemoryInterface};
 use anyhow::{anyhow, Result};
 use std::time::Duration;
 
-/// A core register (e.g. Stack Pointer).
-pub trait CoreRegister: Clone + From<u32> + Into<u32> + Sized + std::fmt::Debug {
-    /// The register's address.
+/// A memory mapped register, for instance ARM debug registers (DHCSR, etc).
+pub trait MemoryMappedRegister: Clone + From<u32> + Into<u32> + Sized + std::fmt::Debug {
+    /// The register's address in the target memory.
     const ADDRESS: u64;
     /// The register's name.
     const NAME: &'static str;
-}
-
-/// The address of a core register.
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-pub struct CoreRegisterAddress(pub u16);
-
-impl From<CoreRegisterAddress> for u32 {
-    fn from(value: CoreRegisterAddress) -> Self {
-        u32::from(value.0)
-    }
-}
-
-impl From<u16> for CoreRegisterAddress {
-    fn from(value: u16) -> Self {
-        CoreRegisterAddress(value)
-    }
 }
 
 /// An struct for storing the current state of a core.
@@ -59,7 +43,7 @@ pub enum RegisterDataType {
 pub struct RegisterDescription {
     pub(crate) name: &'static str,
     pub(crate) _kind: RegisterKind,
-    pub(crate) address: CoreRegisterAddress,
+    pub(crate) id: RegisterId,
     pub(crate) _type: RegisterDataType,
     pub(crate) size_in_bits: usize,
 }
@@ -93,15 +77,31 @@ impl RegisterDescription {
     }
 }
 
-impl From<RegisterDescription> for CoreRegisterAddress {
-    fn from(description: RegisterDescription) -> CoreRegisterAddress {
-        description.address
+impl From<RegisterDescription> for RegisterId {
+    fn from(description: RegisterDescription) -> RegisterId {
+        description.id
     }
 }
 
-impl From<&RegisterDescription> for CoreRegisterAddress {
-    fn from(description: &RegisterDescription) -> CoreRegisterAddress {
-        description.address
+impl From<&RegisterDescription> for RegisterId {
+    fn from(description: &RegisterDescription) -> RegisterId {
+        description.id
+    }
+}
+
+/// The location of a CPU \register. This is not an actual memory address, but a core specific location that represents a specific core register.
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub struct RegisterId(pub u16);
+
+impl From<RegisterId> for u32 {
+    fn from(value: RegisterId) -> Self {
+        u32::from(value.0)
+    }
+}
+
+impl From<u16> for RegisterId {
+    fn from(value: u16) -> Self {
+        RegisterId(value)
     }
 }
 
@@ -328,13 +328,10 @@ pub trait CoreInterface: MemoryInterface {
     fn step(&mut self) -> Result<CoreInformation, error::Error>;
 
     /// Read the value of a core register.
-    fn read_core_reg(
-        &mut self,
-        address: CoreRegisterAddress,
-    ) -> Result<RegisterValue, error::Error>;
+    fn read_core_reg(&mut self, address: RegisterId) -> Result<RegisterValue, error::Error>;
 
     /// Write the value of a core register.
-    fn write_core_reg(&mut self, address: CoreRegisterAddress, value: RegisterValue) -> Result<()>;
+    fn write_core_reg(&mut self, address: RegisterId, value: RegisterValue) -> Result<()>;
 
     /// Returns all the available breakpoint units of the core.
     fn available_breakpoint_units(&mut self) -> Result<u32, error::Error>;
@@ -664,10 +661,7 @@ impl<'probe> Core<'probe> {
     /// # Errors
     ///
     /// If `T` isn't large enough to hold the register value an error will be raised.
-    pub fn read_core_reg<T>(
-        &mut self,
-        address: impl Into<CoreRegisterAddress>,
-    ) -> Result<T, error::Error>
+    pub fn read_core_reg<T>(&mut self, address: impl Into<RegisterId>) -> Result<T, error::Error>
     where
         RegisterValue: TryInto<T, Error = error::Error>,
     {
@@ -681,11 +675,7 @@ impl<'probe> Core<'probe> {
     /// # Errors
     ///
     /// If T is too large to write to the target register an error will be raised.
-    pub fn write_core_reg<T>(
-        &mut self,
-        address: CoreRegisterAddress,
-        value: T,
-    ) -> Result<(), error::Error>
+    pub fn write_core_reg<T>(&mut self, address: RegisterId, value: T) -> Result<(), error::Error>
     where
         T: Into<RegisterValue>,
     {

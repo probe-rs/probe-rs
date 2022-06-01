@@ -8,8 +8,8 @@ use crate::{
     architecture::arm::core::register, CoreStatus, DebugProbeError, HaltReason, MemoryInterface,
 };
 use crate::{Architecture, CoreInformation};
-use crate::{CoreInterface, CoreRegister, CoreType, InstructionSet};
-use crate::{CoreRegisterAddress, RegisterValue};
+use crate::{CoreInterface, CoreType, InstructionSet, MemoryMappedRegister};
+use crate::{RegisterId, RegisterValue};
 use anyhow::Result;
 
 use bitfield::bitfield;
@@ -114,7 +114,7 @@ impl<'probe> CoreInterface for Armv8m<'probe> {
         let _ = self.status()?;
 
         // try to read the program counter
-        let pc_value = self.read_core_reg(register::PC.address)?;
+        let pc_value = self.read_core_reg(register::PC.id)?;
 
         // get pc
         Ok(CoreInformation {
@@ -158,16 +158,16 @@ impl<'probe> CoreInterface for Armv8m<'probe> {
         let _ = self.status()?;
 
         const XPSR_THUMB: u32 = 1 << 24;
-        let xpsr_value: u32 = self.read_core_reg(register::XPSR.address)?.try_into()?;
+        let xpsr_value: u32 = self.read_core_reg(register::XPSR.id)?.try_into()?;
         if xpsr_value & XPSR_THUMB == 0 {
-            self.write_core_reg(register::XPSR.address, (xpsr_value | XPSR_THUMB).into())?;
+            self.write_core_reg(register::XPSR.id, (xpsr_value | XPSR_THUMB).into())?;
         }
 
         self.sequence
             .reset_catch_clear(&mut self.memory, crate::CoreType::Armv8m, None)?;
 
         // try to read the program counter
-        let pc_value = self.read_core_reg(register::PC.address)?;
+        let pc_value = self.read_core_reg(register::PC.id)?;
 
         // get pc
         Ok(CoreInformation {
@@ -206,7 +206,7 @@ impl<'probe> CoreInterface for Armv8m<'probe> {
         }
 
         // try to read the program counter
-        let pc_value = self.read_core_reg(register::PC.address)?;
+        let pc_value = self.read_core_reg(register::PC.id)?;
 
         // get pc
         Ok(CoreInformation {
@@ -214,12 +214,12 @@ impl<'probe> CoreInterface for Armv8m<'probe> {
         })
     }
 
-    fn read_core_reg(&mut self, address: CoreRegisterAddress) -> Result<RegisterValue, Error> {
+    fn read_core_reg(&mut self, address: RegisterId) -> Result<RegisterValue, Error> {
         let value = super::cortex_m::read_core_reg(&mut self.memory, address)?;
         Ok(value.into())
     }
 
-    fn write_core_reg(&mut self, address: CoreRegisterAddress, value: RegisterValue) -> Result<()> {
+    fn write_core_reg(&mut self, address: RegisterId, value: RegisterValue) -> Result<()> {
         super::cortex_m::write_core_reg(&mut self.memory, address, value.try_into()?)?;
         Ok(())
     }
@@ -700,7 +700,7 @@ impl From<Dhcsr> for u32 {
     }
 }
 
-impl CoreRegister for Dhcsr {
+impl MemoryMappedRegister for Dhcsr {
     const ADDRESS: u64 = 0xE000_EDF0;
     const NAME: &'static str = "DHCSR";
 }
@@ -796,7 +796,7 @@ impl Aircr {
     }
 }
 
-impl CoreRegister for Aircr {
+impl MemoryMappedRegister for Aircr {
     const ADDRESS: u64 = 0xE000_ED0C;
     const NAME: &'static str = "AIRCR";
 }
@@ -817,7 +817,7 @@ impl From<Dcrdr> for u32 {
     }
 }
 
-impl CoreRegister for Dcrdr {
+impl MemoryMappedRegister for Dcrdr {
     const ADDRESS: u64 = 0xE000_EDF8;
     const NAME: &'static str = "DCRDR";
 }
@@ -880,7 +880,7 @@ impl From<Demcr> for u32 {
     }
 }
 
-impl CoreRegister for Demcr {
+impl MemoryMappedRegister for Demcr {
     const ADDRESS: u64 = 0xe000_edfc;
     const NAME: &'static str = "DEMCR";
 }
@@ -918,7 +918,7 @@ impl FpCtrl {
     }
 }
 
-impl CoreRegister for FpCtrl {
+impl MemoryMappedRegister for FpCtrl {
     const ADDRESS: u64 = 0xE000_2000;
     const NAME: &'static str = "FP_CTRL";
 }
@@ -951,7 +951,7 @@ bitfield! {
     pub enable, set_enable: 0;
 }
 
-impl CoreRegister for FpCompN {
+impl MemoryMappedRegister for FpCompN {
     const ADDRESS: u64 = 0xE000_2008;
     const NAME: &'static str = "FP_COMPn";
 }

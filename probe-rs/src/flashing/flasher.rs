@@ -8,7 +8,7 @@ use crate::memory::MemoryInterface;
 use crate::{
     core::{Architecture, RegisterFile},
     session::Session,
-    Core, CoreRegisterAddress, InstructionSet,
+    Core, InstructionSet, RegisterId,
 };
 use std::{fmt::Debug, time::Duration};
 
@@ -616,13 +616,13 @@ impl<'probe, O: Operation> ActiveFlasher<'probe, O> {
 
         for (description, value) in &registers {
             if let Some(v) = value {
-                self.core.write_core_reg(description.address, *v)?;
+                self.core.write_core_reg(description.id, *v)?;
                 log::debug!(
                     "content of {} {:#x}: 0x{:08x} should be: 0x{:08x}",
                     description.name,
-                    description.address.0,
+                    description.id.0,
                     {
-                        let value: u32 = self.core.read_core_reg(description.address)?;
+                        let value: u32 = self.core.read_core_reg(description.id)?;
                         value
                     },
                     *v
@@ -632,10 +632,10 @@ impl<'probe, O: Operation> ActiveFlasher<'probe, O> {
 
         if self.core.architecture() == Architecture::Riscv {
             // Ensure ebreak enters debug mode, this is necessary for soft breakpoints to work.
-            let dcsr: u32 = self.core.read_core_reg(CoreRegisterAddress::from(0x7b0))?;
+            let dcsr: u32 = self.core.read_core_reg(RegisterId::from(0x7b0))?;
 
             self.core.write_core_reg(
-                CoreRegisterAddress::from(0x7b0),
+                RegisterId::from(0x7b0),
                 dcsr | (1 << 15) | (1 << 13) | (1 << 12),
             )?;
         }
@@ -652,7 +652,7 @@ impl<'probe, O: Operation> ActiveFlasher<'probe, O> {
 
         self.core.wait_for_core_halted(timeout)?;
 
-        let r: u32 = self.core.read_core_reg(regs.result_register(0).address)?;
+        let r: u32 = self.core.read_core_reg(regs.result_register(0).id)?;
         Ok(r)
     }
 }

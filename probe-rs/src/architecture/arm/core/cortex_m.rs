@@ -1,6 +1,6 @@
 //! Common functions and data types for Cortex-M core variants
 
-use crate::{CoreRegister, CoreRegisterAddress, DebugProbeError, Error, Memory};
+use crate::{DebugProbeError, Error, Memory, MemoryMappedRegister, RegisterId};
 
 use bitfield::bitfield;
 use std::time::{Duration, Instant};
@@ -46,7 +46,7 @@ impl From<Dhcsr> for u32 {
     }
 }
 
-impl CoreRegister for Dhcsr {
+impl MemoryMappedRegister for Dhcsr {
     const ADDRESS: u64 = 0xE000_EDF0;
     const NAME: &'static str = "DHCSR";
 }
@@ -71,7 +71,7 @@ impl From<Dcrsr> for u32 {
     }
 }
 
-impl CoreRegister for Dcrsr {
+impl MemoryMappedRegister for Dcrsr {
     const ADDRESS: u64 = 0xE000_EDF4;
     const NAME: &'static str = "DCRSR";
 }
@@ -91,12 +91,12 @@ impl From<Dcrdr> for u32 {
     }
 }
 
-impl CoreRegister for Dcrdr {
+impl MemoryMappedRegister for Dcrdr {
     const ADDRESS: u64 = 0xE000_EDF8;
     const NAME: &'static str = "DCRDR";
 }
 
-pub(crate) fn read_core_reg(memory: &mut Memory, addr: CoreRegisterAddress) -> Result<u32, Error> {
+pub(crate) fn read_core_reg(memory: &mut Memory, addr: RegisterId) -> Result<u32, Error> {
     // Write the DCRSR value to select the register we want to read.
     let mut dcrsr_val = Dcrsr(0);
     dcrsr_val.set_regwnr(false); // Perform a read.
@@ -113,7 +113,7 @@ pub(crate) fn read_core_reg(memory: &mut Memory, addr: CoreRegisterAddress) -> R
 
 pub(crate) fn write_core_reg(
     memory: &mut Memory,
-    addr: CoreRegisterAddress,
+    addr: RegisterId,
     value: u32,
 ) -> Result<(), Error> {
     memory.write_word_32(Dcrdr::ADDRESS, value)?;

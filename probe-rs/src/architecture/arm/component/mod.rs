@@ -9,7 +9,7 @@ mod trace_funnel;
 use super::memory::romtable::{CoresightComponent, PeripheralType, RomTableError};
 use crate::architecture::arm::core::armv6m::Demcr;
 use crate::architecture::arm::{ArmProbeInterface, SwoConfig, SwoMode};
-use crate::{Core, CoreRegister, Error, MemoryInterface};
+use crate::{Core, Error, MemoryInterface, MemoryMappedRegister};
 pub use dwt::Dwt;
 pub use itm::Itm;
 pub use swo::Swo;

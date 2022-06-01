@@ -13,7 +13,7 @@ use crate::{
         dp::{Abort, Ctrl, DpAccess, Select, DPIDR},
         ApAddress, ArmCommunicationInterface, DapAccess, DpAddress,
     },
-    core::CoreRegister,
+    core::MemoryMappedRegister,
     CommunicationInterface, DebugProbeError,
 };
 

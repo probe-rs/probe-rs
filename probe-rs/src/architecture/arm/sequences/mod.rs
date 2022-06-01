@@ -15,7 +15,7 @@ use probe_rs_target::CoreType;
 use crate::architecture::arm::core::armv7a_debug_regs::Armv7DebugRegister;
 use crate::{
     architecture::arm::{ArmProbeInterface, DapError},
-    core::CoreRegister,
+    core::MemoryMappedRegister,
     DebugProbeError, Memory,
 };
 
