@@ -1,7 +1,7 @@
 use crate::{
     core::{
-        MemoryMappedRegister, RegisterDataType, RegisterDescription, RegisterFile, RegisterKind,
-        RegisterLocation, RegisterValue,
+        MemoryMappedRegister, RegisterDataType, RegisterDescription, RegisterFile, RegisterId,
+        RegisterKind, RegisterValue,
     },
     CoreStatus, HaltReason,
 };
@@ -43,13 +43,13 @@ impl Dump {
 pub(crate) mod register {
     use crate::{
         core::{RegisterDataType, RegisterDescription, RegisterKind},
-        RegisterLocation,
+        RegisterId,
     };
 
     pub const PC: RegisterDescription = RegisterDescription {
         name: "PC",
         _kind: RegisterKind::PC,
-        location: RegisterLocation(15),
+        id: RegisterId(15),
         _type: RegisterDataType::UnsignedInteger,
         size_in_bits: 32,
     };
@@ -57,7 +57,7 @@ pub(crate) mod register {
     pub const XPSR: RegisterDescription = RegisterDescription {
         name: "XPSR",
         _kind: RegisterKind::General,
-        location: RegisterLocation(0b1_0000),
+        id: RegisterId(0b1_0000),
         _type: RegisterDataType::UnsignedInteger,
         size_in_bits: 32,
     };
@@ -65,7 +65,7 @@ pub(crate) mod register {
     pub const SP: RegisterDescription = RegisterDescription {
         name: "SP",
         _kind: RegisterKind::General,
-        location: RegisterLocation(13),
+        id: RegisterId(13),
         _type: RegisterDataType::UnsignedInteger,
         size_in_bits: 32,
     };
@@ -73,7 +73,7 @@ pub(crate) mod register {
     pub const LR: RegisterDescription = RegisterDescription {
         name: "LR",
         _kind: RegisterKind::General,
-        location: RegisterLocation(14),
+        id: RegisterId(14),
         _type: RegisterDataType::UnsignedInteger,
         size_in_bits: 32,
     };
@@ -81,7 +81,7 @@ pub(crate) mod register {
     pub const MSP: RegisterDescription = RegisterDescription {
         name: "MSP",
         _kind: RegisterKind::General,
-        location: RegisterLocation(0b10001),
+        id: RegisterId(0b10001),
         _type: RegisterDataType::UnsignedInteger,
         size_in_bits: 32,
     };
@@ -89,7 +89,7 @@ pub(crate) mod register {
     pub const PSP: RegisterDescription = RegisterDescription {
         name: "PSP",
         _kind: RegisterKind::General,
-        location: RegisterLocation(0b10010),
+        id: RegisterId(0b10010),
         _type: RegisterDataType::UnsignedInteger,
         size_in_bits: 32,
     };
@@ -99,7 +99,7 @@ pub(crate) mod register {
     pub const EXTRA: RegisterDescription = RegisterDescription {
         name: "EXTRA",
         _kind: RegisterKind::General,
-        location: RegisterLocation(0b10100),
+        id: RegisterId(0b10100),
         _type: RegisterDataType::UnsignedInteger,
         size_in_bits: 32,
     };
@@ -107,7 +107,7 @@ pub(crate) mod register {
     pub const FP: RegisterDescription = RegisterDescription {
         name: "FP",
         _kind: RegisterKind::General,
-        location: RegisterLocation(7),
+        id: RegisterId(7),
         _type: RegisterDataType::UnsignedInteger,
         size_in_bits: 32,
     };
@@ -118,112 +118,112 @@ static ARM_REGISTER_FILE: RegisterFile = RegisterFile {
         RegisterDescription {
             name: "R0",
             _kind: RegisterKind::General,
-            location: RegisterLocation(0),
+            id: RegisterId(0),
             _type: RegisterDataType::UnsignedInteger,
             size_in_bits: 32,
         },
         RegisterDescription {
             name: "R1",
             _kind: RegisterKind::General,
-            location: RegisterLocation(1),
+            id: RegisterId(1),
             _type: RegisterDataType::UnsignedInteger,
             size_in_bits: 32,
         },
         RegisterDescription {
             name: "R2",
             _kind: RegisterKind::General,
-            location: RegisterLocation(2),
+            id: RegisterId(2),
             _type: RegisterDataType::UnsignedInteger,
             size_in_bits: 32,
         },
         RegisterDescription {
             name: "R3",
             _kind: RegisterKind::General,
-            location: RegisterLocation(3),
+            id: RegisterId(3),
             _type: RegisterDataType::UnsignedInteger,
             size_in_bits: 32,
         },
         RegisterDescription {
             name: "R4",
             _kind: RegisterKind::General,
-            location: RegisterLocation(4),
+            id: RegisterId(4),
             _type: RegisterDataType::UnsignedInteger,
             size_in_bits: 32,
         },
         RegisterDescription {
             name: "R5",
             _kind: RegisterKind::General,
-            location: RegisterLocation(5),
+            id: RegisterId(5),
             _type: RegisterDataType::UnsignedInteger,
             size_in_bits: 32,
         },
         RegisterDescription {
             name: "R6",
             _kind: RegisterKind::General,
-            location: RegisterLocation(6),
+            id: RegisterId(6),
             _type: RegisterDataType::UnsignedInteger,
             size_in_bits: 32,
         },
         RegisterDescription {
             name: "R7",
             _kind: RegisterKind::General,
-            location: RegisterLocation(7),
+            id: RegisterId(7),
             _type: RegisterDataType::UnsignedInteger,
             size_in_bits: 32,
         },
         RegisterDescription {
             name: "R8",
             _kind: RegisterKind::General,
-            location: RegisterLocation(8),
+            id: RegisterId(8),
             _type: RegisterDataType::UnsignedInteger,
             size_in_bits: 32,
         },
         RegisterDescription {
             name: "R9",
             _kind: RegisterKind::General,
-            location: RegisterLocation(9),
+            id: RegisterId(9),
             _type: RegisterDataType::UnsignedInteger,
             size_in_bits: 32,
         },
         RegisterDescription {
             name: "R10",
             _kind: RegisterKind::General,
-            location: RegisterLocation(10),
+            id: RegisterId(10),
             _type: RegisterDataType::UnsignedInteger,
             size_in_bits: 32,
         },
         RegisterDescription {
             name: "R11",
             _kind: RegisterKind::General,
-            location: RegisterLocation(11),
+            id: RegisterId(11),
             _type: RegisterDataType::UnsignedInteger,
             size_in_bits: 32,
         },
         RegisterDescription {
             name: "R12",
             _kind: RegisterKind::General,
-            location: RegisterLocation(12),
+            id: RegisterId(12),
             _type: RegisterDataType::UnsignedInteger,
             size_in_bits: 32,
         },
         RegisterDescription {
             name: "R13",
             _kind: RegisterKind::General,
-            location: RegisterLocation(13),
+            id: RegisterId(13),
             _type: RegisterDataType::UnsignedInteger,
             size_in_bits: 32,
         },
         RegisterDescription {
             name: "R14",
             _kind: RegisterKind::General,
-            location: RegisterLocation(14),
+            id: RegisterId(14),
             _type: RegisterDataType::UnsignedInteger,
             size_in_bits: 32,
         },
         RegisterDescription {
             name: "R15",
             _kind: RegisterKind::General,
-            location: RegisterLocation(15),
+            id: RegisterId(15),
             _type: RegisterDataType::UnsignedInteger,
             size_in_bits: 32,
         },
@@ -238,28 +238,28 @@ static ARM_REGISTER_FILE: RegisterFile = RegisterFile {
         RegisterDescription {
             name: "a1",
             _kind: RegisterKind::General,
-            location: RegisterLocation(0),
+            id: RegisterId(0),
             _type: RegisterDataType::UnsignedInteger,
             size_in_bits: 32,
         },
         RegisterDescription {
             name: "a2",
             _kind: RegisterKind::General,
-            location: RegisterLocation(1),
+            id: RegisterId(1),
             _type: RegisterDataType::UnsignedInteger,
             size_in_bits: 32,
         },
         RegisterDescription {
             name: "a3",
             _kind: RegisterKind::General,
-            location: RegisterLocation(2),
+            id: RegisterId(2),
             _type: RegisterDataType::UnsignedInteger,
             size_in_bits: 32,
         },
         RegisterDescription {
             name: "a4",
             _kind: RegisterKind::General,
-            location: RegisterLocation(3),
+            id: RegisterId(3),
             _type: RegisterDataType::UnsignedInteger,
             size_in_bits: 32,
         },
@@ -269,14 +269,14 @@ static ARM_REGISTER_FILE: RegisterFile = RegisterFile {
         RegisterDescription {
             name: "a1",
             _kind: RegisterKind::General,
-            location: RegisterLocation(0),
+            id: RegisterId(0),
             _type: RegisterDataType::UnsignedInteger,
             size_in_bits: 32,
         },
         RegisterDescription {
             name: "a2",
             _kind: RegisterKind::General,
-            location: RegisterLocation(1),
+            id: RegisterId(1),
             _type: RegisterDataType::UnsignedInteger,
             size_in_bits: 32,
         },

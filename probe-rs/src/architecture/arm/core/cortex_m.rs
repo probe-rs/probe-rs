@@ -1,6 +1,6 @@
 //! Common functions and data types for Cortex-M core variants
 
-use crate::{DebugProbeError, Error, Memory, MemoryMappedRegister, RegisterLocation};
+use crate::{DebugProbeError, Error, Memory, MemoryMappedRegister, RegisterId};
 
 use bitfield::bitfield;
 use std::time::{Duration, Instant};
@@ -96,7 +96,7 @@ impl MemoryMappedRegister for Dcrdr {
     const NAME: &'static str = "DCRDR";
 }
 
-pub(crate) fn read_core_reg(memory: &mut Memory, addr: RegisterLocation) -> Result<u32, Error> {
+pub(crate) fn read_core_reg(memory: &mut Memory, addr: RegisterId) -> Result<u32, Error> {
     // Write the DCRSR value to select the register we want to read.
     let mut dcrsr_val = Dcrsr(0);
     dcrsr_val.set_regwnr(false); // Perform a read.
@@ -113,7 +113,7 @@ pub(crate) fn read_core_reg(memory: &mut Memory, addr: RegisterLocation) -> Resu
 
 pub(crate) fn write_core_reg(
     memory: &mut Memory,
-    addr: RegisterLocation,
+    addr: RegisterId,
     value: u32,
 ) -> Result<(), Error> {
     memory.write_word_32(Dcrdr::ADDRESS, value)?;

@@ -43,7 +43,7 @@ pub enum RegisterDataType {
 pub struct RegisterDescription {
     pub(crate) name: &'static str,
     pub(crate) _kind: RegisterKind,
-    pub(crate) location: RegisterLocation,
+    pub(crate) id: RegisterId,
     pub(crate) _type: RegisterDataType,
     pub(crate) size_in_bits: usize,
 }
@@ -77,31 +77,31 @@ impl RegisterDescription {
     }
 }
 
-impl From<RegisterDescription> for RegisterLocation {
-    fn from(description: RegisterDescription) -> RegisterLocation {
-        description.location
+impl From<RegisterDescription> for RegisterId {
+    fn from(description: RegisterDescription) -> RegisterId {
+        description.id
     }
 }
 
-impl From<&RegisterDescription> for RegisterLocation {
-    fn from(description: &RegisterDescription) -> RegisterLocation {
-        description.location
+impl From<&RegisterDescription> for RegisterId {
+    fn from(description: &RegisterDescription) -> RegisterId {
+        description.id
     }
 }
 
 /// The location of a CPU \register. This is not an actual memory address, but a core specific location that represents a specific core register.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-pub struct RegisterLocation(pub u16);
+pub struct RegisterId(pub u16);
 
-impl From<RegisterLocation> for u32 {
-    fn from(value: RegisterLocation) -> Self {
+impl From<RegisterId> for u32 {
+    fn from(value: RegisterId) -> Self {
         u32::from(value.0)
     }
 }
 
-impl From<u16> for RegisterLocation {
+impl From<u16> for RegisterId {
     fn from(value: u16) -> Self {
-        RegisterLocation(value)
+        RegisterId(value)
     }
 }
 
@@ -328,10 +328,10 @@ pub trait CoreInterface: MemoryInterface {
     fn step(&mut self) -> Result<CoreInformation, error::Error>;
 
     /// Read the value of a core register.
-    fn read_core_reg(&mut self, address: RegisterLocation) -> Result<RegisterValue, error::Error>;
+    fn read_core_reg(&mut self, address: RegisterId) -> Result<RegisterValue, error::Error>;
 
     /// Write the value of a core register.
-    fn write_core_reg(&mut self, address: RegisterLocation, value: RegisterValue) -> Result<()>;
+    fn write_core_reg(&mut self, address: RegisterId, value: RegisterValue) -> Result<()>;
 
     /// Returns all the available breakpoint units of the core.
     fn available_breakpoint_units(&mut self) -> Result<u32, error::Error>;
@@ -661,10 +661,7 @@ impl<'probe> Core<'probe> {
     /// # Errors
     ///
     /// If `T` isn't large enough to hold the register value an error will be raised.
-    pub fn read_core_reg<T>(
-        &mut self,
-        address: impl Into<RegisterLocation>,
-    ) -> Result<T, error::Error>
+    pub fn read_core_reg<T>(&mut self, address: impl Into<RegisterId>) -> Result<T, error::Error>
     where
         RegisterValue: TryInto<T, Error = error::Error>,
     {
@@ -678,11 +675,7 @@ impl<'probe> Core<'probe> {
     /// # Errors
     ///
     /// If T is too large to write to the target register an error will be raised.
-    pub fn write_core_reg<T>(
-        &mut self,
-        address: RegisterLocation,
-        value: T,
-    ) -> Result<(), error::Error>
+    pub fn write_core_reg<T>(&mut self, address: RegisterId, value: T) -> Result<(), error::Error>
     where
         T: Into<RegisterValue>,
     {

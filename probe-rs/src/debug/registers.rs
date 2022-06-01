@@ -55,14 +55,14 @@ impl Registers {
     /// Get the canonical frame address, as specified in the [DWARF](https://dwarfstd.org) specification, section 6.4.
     /// [DWARF](https://dwarfstd.org)
     pub fn get_frame_pointer(&self) -> Option<u64> {
-        let reg_num = self.register_description.frame_pointer().location.0 as u32;
+        let reg_num = self.register_description.frame_pointer().id.0 as u32;
 
         self.values.get(&reg_num).copied()
     }
     /// Set the canonical frame address, as specified in the [DWARF](https://dwarfstd.org) specification, section 6.4.
     /// [DWARF](https://dwarfstd.org)
     pub fn set_frame_pointer(&mut self, value: Option<u64>) {
-        let register_address = self.register_description.frame_pointer().location.0 as u32;
+        let register_address = self.register_description.frame_pointer().id.0 as u32;
 
         if let Some(value) = value {
             self.values.insert(register_address, value);
@@ -73,14 +73,14 @@ impl Registers {
 
     /// Get the program counter.
     pub fn get_program_counter(&self) -> Option<u64> {
-        let reg_num = self.register_description.program_counter().location.0 as u32;
+        let reg_num = self.register_description.program_counter().id.0 as u32;
 
         self.values.get(&reg_num).copied()
     }
 
     /// Set the program counter.
     pub fn set_program_counter(&mut self, value: Option<u64>) {
-        let register_address = self.register_description.program_counter().location.0 as u32;
+        let register_address = self.register_description.program_counter().id.0 as u32;
 
         if let Some(value) = value {
             self.values.insert(register_address, value);
@@ -91,14 +91,14 @@ impl Registers {
 
     /// Get the stack pointer.
     pub fn get_stack_pointer(&self) -> Option<u64> {
-        let reg_num = self.register_description.stack_pointer().location.0 as u32;
+        let reg_num = self.register_description.stack_pointer().id.0 as u32;
 
         self.values.get(&reg_num).copied()
     }
 
     /// Set the stack pointer.
     pub fn set_stack_pointer(&mut self, value: Option<u64>) {
-        let register_address = self.register_description.stack_pointer().location.0 as u32;
+        let register_address = self.register_description.stack_pointer().id.0 as u32;
 
         if let Some(value) = value {
             self.values.insert(register_address, value);
@@ -109,14 +109,14 @@ impl Registers {
 
     /// Get the return address.
     pub fn get_return_address(&self) -> Option<u64> {
-        let reg_num = self.register_description.return_address().location.0 as u32;
+        let reg_num = self.register_description.return_address().id.0 as u32;
 
         self.values.get(&reg_num).copied()
     }
 
     /// Set the return address.
     pub fn set_return_address(&mut self, value: Option<u64>) {
-        let register_address = self.register_description.return_address().location.0 as u32;
+        let register_address = self.register_description.return_address().id.0 as u32;
 
         if let Some(value) = value {
             self.values.insert(register_address, value);

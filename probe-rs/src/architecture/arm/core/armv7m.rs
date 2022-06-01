@@ -2,8 +2,7 @@
 
 use crate::architecture::arm::sequences::ArmDebugSequence;
 use crate::core::{
-    CoreInformation, CoreInterface, MemoryMappedRegister, RegisterFile, RegisterLocation,
-    RegisterValue,
+    CoreInformation, CoreInterface, MemoryMappedRegister, RegisterFile, RegisterId, RegisterValue,
 };
 use crate::error::Error;
 use crate::memory::{valid_32_address, Memory};
@@ -580,9 +579,9 @@ impl FpRev2CompX {
 }
 
 /// The Main Stack Pointer
-pub const MSP: RegisterLocation = RegisterLocation(0b000_1001);
+pub const MSP: RegisterId = RegisterId(0b000_1001);
 /// The Process Stack Pointer ([only used with OSes](See ARMv7-M architecture manual B1.4.1 (The SP registers))
-pub const PSP: RegisterLocation = RegisterLocation(0b000_1010);
+pub const PSP: RegisterId = RegisterId(0b000_1010);
 
 /// The state of a core that can be used to persist core state across calls to multiple different cores.
 pub struct Armv7m<'probe> {
@@ -730,12 +729,12 @@ impl<'probe> CoreInterface for Armv7m<'probe> {
         Ok(CoreStatus::Running)
     }
 
-    fn read_core_reg(&mut self, address: RegisterLocation) -> Result<RegisterValue, Error> {
+    fn read_core_reg(&mut self, address: RegisterId) -> Result<RegisterValue, Error> {
         let val = super::cortex_m::read_core_reg(&mut self.memory, address)?;
         Ok(val.into())
     }
 
-    fn write_core_reg(&mut self, address: RegisterLocation, value: RegisterValue) -> Result<()> {
+    fn write_core_reg(&mut self, address: RegisterId, value: RegisterValue) -> Result<()> {
         super::cortex_m::write_core_reg(&mut self.memory, address, value.try_into()?)?;
 
         Ok(())
@@ -757,7 +756,7 @@ impl<'probe> CoreInterface for Armv7m<'probe> {
         let _ = self.status()?;
 
         // try to read the program counter
-        let pc_value = self.read_core_reg(register::PC.location)?;
+        let pc_value = self.read_core_reg(register::PC.id)?;
 
         // get pc
         Ok(CoreInformation {
@@ -831,7 +830,7 @@ impl<'probe> CoreInterface for Armv7m<'probe> {
         }
 
         // Try to read the program counter.
-        let pc_value = self.read_core_reg(register::PC.location)?;
+        let pc_value = self.read_core_reg(register::PC.id)?;
 
         // get pc
         Ok(CoreInformation {
@@ -857,16 +856,16 @@ impl<'probe> CoreInterface for Armv7m<'probe> {
         let _ = self.status()?;
 
         const XPSR_THUMB: u32 = 1 << 24;
-        let xpsr_value: u32 = self.read_core_reg(register::XPSR.location)?.try_into()?;
+        let xpsr_value: u32 = self.read_core_reg(register::XPSR.id)?.try_into()?;
         if xpsr_value & XPSR_THUMB == 0 {
-            self.write_core_reg(register::XPSR.location, (xpsr_value | XPSR_THUMB).into())?;
+            self.write_core_reg(register::XPSR.id, (xpsr_value | XPSR_THUMB).into())?;
         }
 
         self.sequence
             .reset_catch_clear(&mut self.memory, crate::CoreType::Armv7m, None)?;
 
         // try to read the program counter
-        let pc_value = self.read_core_reg(register::PC.location)?;
+        let pc_value = self.read_core_reg(register::PC.id)?;
 
         // get pc
         Ok(CoreInformation {

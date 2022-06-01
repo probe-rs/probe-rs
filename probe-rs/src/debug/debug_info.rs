@@ -1051,7 +1051,7 @@ impl DebugInfo {
                                         == unwind_registers
                                             .register_description
                                             .frame_pointer()
-                                            .location
+                                            .id
                                             .0
                                             as u32 =>
                                     {
@@ -1063,7 +1063,7 @@ impl DebugInfo {
                                         == unwind_registers
                                             .register_description
                                             .stack_pointer()
-                                            .location
+                                            .id
                                             .0
                                             as u32 =>
                                     {
@@ -1077,7 +1077,7 @@ impl DebugInfo {
                                         == unwind_registers
                                             .register_description
                                             .return_address()
-                                            .location
+                                            .id
                                             .0
                                             as u32 =>
                                     {
@@ -1090,7 +1090,7 @@ impl DebugInfo {
                                         == unwind_registers
                                             .register_description
                                             .program_counter()
-                                            .location
+                                            .id
                                             .0
                                             as u32 =>
                                     {
