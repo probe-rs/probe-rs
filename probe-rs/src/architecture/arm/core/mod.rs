@@ -294,7 +294,7 @@ static ARM_REGISTER_FILE: RegisterFile = RegisterFile {
     psp: Some(&register::PSP),
     extra: Some(&register::EXTRA),
     psr: Some(&register::XPSR),
-    
+
     fpscr: Some(&register::FPSCR),
     fpu_registers: Some(&[
         RegisterDescription {

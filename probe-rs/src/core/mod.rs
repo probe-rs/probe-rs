@@ -186,7 +186,7 @@ pub struct RegisterFile {
     pub(crate) extra: Option<&'static RegisterDescription>,
 
     pub(crate) psr: Option<&'static RegisterDescription>,
-    
+
     pub(crate) fpscr: Option<&'static RegisterDescription>,
 
     pub(crate) fpu_registers: Option<&'static [RegisterDescription]>,
@@ -310,7 +310,6 @@ impl RegisterFile {
     pub fn get_fpu_register(&self, index: usize) -> Option<&RegisterDescription> {
         self.fpu_registers.map(|r| r.get(index)).flatten()
     }
-
 }
 
 /// A generic interface to control a MCU core.
@@ -835,7 +834,6 @@ impl<'probe> Core<'probe> {
     pub fn fpu_support(&mut self) -> Result<bool, error::Error> {
         self.inner.fpu_support()
     }
-
 }
 
 /// The id of a breakpoint.
