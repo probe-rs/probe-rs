@@ -288,13 +288,6 @@ static ARM_REGISTER_FILE: RegisterFile = RegisterFile {
     psr: Some(&register::XPSR),
     fpu_registers: Some(&[
         RegisterDescription {
-            name: "FPSCR",
-            _kind: RegisterKind::Fpu,
-            id: RegisterId(33),
-            _type: RegisterDataType::UnsignedInteger,
-            size_in_bits: 32,
-        },
-        RegisterDescription {
             name: "S0",
             _kind: RegisterKind::Fpu,
             id: RegisterId(64),
@@ -516,6 +509,13 @@ static ARM_REGISTER_FILE: RegisterFile = RegisterFile {
             _kind: RegisterKind::Fpu,
             id: RegisterId(95),
             _type: RegisterDataType::FloatingPoint,
+            size_in_bits: 32,
+        },
+        RegisterDescription {
+            name: "FPSCR",
+            _kind: RegisterKind::Fpu,
+            id: RegisterId(33),
+            _type: RegisterDataType::UnsignedInteger,
             size_in_bits: 32,
         },
     ]),

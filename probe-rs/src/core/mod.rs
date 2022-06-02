@@ -285,13 +285,25 @@ impl RegisterFile {
     //     self.extra
     // }
 
-    // TODO: support for floating point registers
-    // 0b0100001            Floating-point Status and Control Register, FPSCR.
-    // 0b1000000-0b1011111  FP registers S0-S31.
-    // For example, 0b1000000 specifies S0, and 0b1000101 specifies S5.
-    // All other values are Reserved.
-    // If the processor does not implement the FP extension the REGSEL field is bits[4:0], and
-    // bits[6:5] are Reserved, SBZ.
+    /// Returns an iterator over the descriptions of all the registers of this core.
+    pub fn fpu_registers(&self) -> Option<impl Iterator<Item = &RegisterDescription>> {
+        self.fpu_registers.map(|r| r.iter())
+    }
+
+    /// Returns the nth fpu register.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the register at given index does not exist.
+    pub fn fpu_register(&self, index: usize) -> Option<&RegisterDescription> {
+        self.fpu_registers.map(|r| &r[index])
+    }
+
+    /// Returns the nth fpu register if it is exists, `None` otherwise.
+    pub fn get_fpu_register(&self, index: usize) -> Option<&RegisterDescription> {
+        self.fpu_registers.map(|r| r.get(index)).flatten()
+    }
+
 }
 
 /// A generic interface to control a MCU core.
