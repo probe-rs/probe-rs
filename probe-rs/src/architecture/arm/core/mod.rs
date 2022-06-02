@@ -111,6 +111,14 @@ pub(crate) mod register {
         _type: RegisterDataType::UnsignedInteger,
         size_in_bits: 32,
     };
+
+    pub const FPSCR: RegisterDescription = RegisterDescription {
+        name: "FPSCR",
+        _kind: RegisterKind::Fpu,
+        id: RegisterId(33),
+        _type: RegisterDataType::UnsignedInteger,
+        size_in_bits: 32,
+    };
 }
 
 static ARM_REGISTER_FILE: RegisterFile = RegisterFile {
@@ -286,6 +294,8 @@ static ARM_REGISTER_FILE: RegisterFile = RegisterFile {
     psp: Some(&register::PSP),
     extra: Some(&register::EXTRA),
     psr: Some(&register::XPSR),
+    
+    fpscr: Some(&register::FPSCR),
     fpu_registers: Some(&[
         RegisterDescription {
             name: "S0",
@@ -509,13 +519,6 @@ static ARM_REGISTER_FILE: RegisterFile = RegisterFile {
             _kind: RegisterKind::Fpu,
             id: RegisterId(95),
             _type: RegisterDataType::FloatingPoint,
-            size_in_bits: 32,
-        },
-        RegisterDescription {
-            name: "FPSCR",
-            _kind: RegisterKind::Fpu,
-            id: RegisterId(33),
-            _type: RegisterDataType::UnsignedInteger,
             size_in_bits: 32,
         },
     ]),

@@ -422,5 +422,7 @@ pub(super) static RISCV_REGISTERS: RegisterFile = RegisterFile {
     msp: None,
     extra: None,
     psr: None,
-    fpu_registers: None, // TODO: Add FPU registers
+    // TODO: Add FPU registers
+    fpu_registers: None,
+    fpscr: None, 
 };

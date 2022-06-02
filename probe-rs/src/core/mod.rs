@@ -187,6 +187,8 @@ pub struct RegisterFile {
 
     pub(crate) psr: Option<&'static RegisterDescription>,
     
+    pub(crate) fpscr: Option<&'static RegisterDescription>,
+
     pub(crate) fpu_registers: Option<&'static [RegisterDescription]>,
 }
 
@@ -284,6 +286,11 @@ impl RegisterFile {
     // pub fn extra(&self) -> Option<&RegisterDescription> {
     //     self.extra
     // }
+
+    /// The fpu status register.
+    pub fn fpscr(&self) -> Option<&RegisterDescription> {
+        self.fpscr
+    }
 
     /// Returns an iterator over the descriptions of all the registers of this core.
     pub fn fpu_registers(&self) -> Option<impl Iterator<Item = &RegisterDescription>> {
