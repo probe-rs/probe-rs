@@ -828,6 +828,14 @@ impl<'probe> Core<'probe> {
     pub fn instruction_set(&mut self) -> Result<InstructionSet, error::Error> {
         self.inner.instruction_set()
     }
+
+    /// Determine if an FPU is present.
+    /// This must be queried while halted as this is a runtime
+    /// decision for some core types.
+    pub fn fpu_support(&mut self) -> Result<bool, error::Error> {
+        self.inner.fpu_support()
+    }
+
 }
 
 /// The id of a breakpoint.
