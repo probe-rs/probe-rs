@@ -109,6 +109,7 @@ impl From<u16> for RegisterId {
 pub(crate) enum RegisterKind {
     General,
     PC,
+    Fpu,
 }
 
 /// A value of a core register
@@ -185,7 +186,8 @@ pub struct RegisterFile {
     pub(crate) extra: Option<&'static RegisterDescription>,
 
     pub(crate) psr: Option<&'static RegisterDescription>,
-    // TODO: floating point support
+    
+    pub(crate) fpu_registers: Option<&'static [RegisterDescription]>,
 }
 
 impl RegisterFile {
@@ -366,6 +368,11 @@ pub trait CoreInterface: MemoryInterface {
     /// This must be queried while halted as this is a runtime
     /// decision for some core types
     fn instruction_set(&mut self) -> Result<InstructionSet, error::Error>;
+
+    /// Determine if an FPU is present.
+    /// This must be queried while halted as this is a runtime
+    /// decision for some core types.
+    fn fpu_support(&mut self) -> Result<bool, error::Error>;
 }
 
 impl<'probe> MemoryInterface for Core<'probe> {

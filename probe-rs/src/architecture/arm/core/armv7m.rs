@@ -8,6 +8,7 @@ use crate::error::Error;
 use crate::memory::{valid_32_address, Memory};
 use crate::{CoreType, DebugProbeError, InstructionSet};
 
+use super::cortex_m::Cpacr;
 use super::{register, CortexMState, Dfsr, ARM_REGISTER_FILE};
 use crate::{
     core::{Architecture, CoreStatus, HaltReason},
@@ -996,6 +997,10 @@ impl<'probe> CoreInterface for Armv7m<'probe> {
             Ok(())
         })?;
         Ok(breakpoints)
+    }
+
+    fn fpu_support(&mut self) -> Result<bool, crate::error::Error> {
+        Ok(Cpacr(self.memory.read_word_32(Cpacr::ADDRESS)?).fpu_present())
     }
 }
 

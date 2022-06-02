@@ -811,6 +811,10 @@ impl<'probe> CoreInterface for Armv6m<'probe> {
         }
         Ok(breakpoints)
     }
+
+    fn fpu_support(&mut self) -> Result<bool, crate::error::Error> {
+        Ok(false)
+    }
 }
 
 impl<'probe> MemoryInterface for Armv6m<'probe> {

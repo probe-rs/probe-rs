@@ -616,6 +616,10 @@ impl<'probe> CoreInterface for Armv7a<'probe> {
         }
         Ok(breakpoints)
     }
+
+    fn fpu_support(&mut self) -> Result<bool, crate::error::Error> {
+        Err(crate::error::Error::Other(anyhow::anyhow!("Fpu detection not yet implemented")))
+    }
 }
 
 impl<'probe> MemoryInterface for Armv7a<'probe> {
