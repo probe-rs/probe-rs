@@ -109,7 +109,7 @@ impl From<u16> for RegisterId {
 pub(crate) enum RegisterKind {
     General,
     PC,
-    Fpu,
+    Fp,
 }
 
 /// A value of a core register
@@ -187,9 +187,9 @@ pub struct RegisterFile {
 
     pub(crate) psr: Option<&'static RegisterDescription>,
 
-    pub(crate) fpscr: Option<&'static RegisterDescription>,
+    pub(crate) fp_status: Option<&'static RegisterDescription>,
 
-    pub(crate) fpu_registers: Option<&'static [RegisterDescription]>,
+    pub(crate) fp_registers: Option<&'static [RegisterDescription]>,
 }
 
 impl RegisterFile {
@@ -289,12 +289,12 @@ impl RegisterFile {
 
     /// The fpu status register.
     pub fn fpscr(&self) -> Option<&RegisterDescription> {
-        self.fpscr
+        self.fp_status
     }
 
     /// Returns an iterator over the descriptions of all the registers of this core.
     pub fn fpu_registers(&self) -> Option<impl Iterator<Item = &RegisterDescription>> {
-        self.fpu_registers.map(|r| r.iter())
+        self.fp_registers.map(|r| r.iter())
     }
 
     /// Returns the nth fpu register.
@@ -303,12 +303,12 @@ impl RegisterFile {
     ///
     /// Panics if the register at given index does not exist.
     pub fn fpu_register(&self, index: usize) -> Option<&RegisterDescription> {
-        self.fpu_registers.map(|r| &r[index])
+        self.fp_registers.map(|r| &r[index])
     }
 
     /// Returns the nth fpu register if it is exists, `None` otherwise.
     pub fn get_fpu_register(&self, index: usize) -> Option<&RegisterDescription> {
-        self.fpu_registers.map(|r| r.get(index)).flatten()
+        self.fp_registers.map(|r| r.get(index)).flatten()
     }
 }
 
