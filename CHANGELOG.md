@@ -85,6 +85,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Debugger: Fix assumptions for ARM cores
   - GDB: Fix assumptions for ARM cores
 - Fixed access to Arm CoreSight components being completed through the wrong AP (#1114)
+- Fixed a possible endless recursion in the J-Link code, when no chip is connected. (#1123)
 
 ## [0.12.0]
 
