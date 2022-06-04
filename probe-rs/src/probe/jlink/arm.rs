@@ -883,23 +883,32 @@ impl RawProtocolIo for JLink {
 
         const NUM_RESET_BITS: u8 = 50;
 
+        let idle_cycles = std::cmp::max(1, self.swd_settings().num_idle_cycles_between_writes);
+
         let mut result = Ok(());
 
         for _ in 0..2 {
             self.probe_statistics().report_line_reset();
 
             self.swj_sequence(NUM_RESET_BITS, 0x7FFFFFFFFFFFF)?;
-            let read_result = self.raw_read_register(PortType::DebugPort, 0);
 
-            // Parse the response after the reset bits.
-            match read_result {
-                Ok(_) => {
-                    // Line reset was succesful
-                    return Ok(());
+            // Read DPIDR register
+            //
+            // The `raw_read_register` function cannot be called here, because that function can call `line_reset` again,
+            // resulting in an endless loop.
+            let mut transfers = [DapTransfer::read(PortType::DebugPort, 0)];
+
+            perform_transfers(self, &mut transfers, idle_cycles)?;
+
+            match &transfers[0].status {
+                TransferStatus::Ok => return Ok(()),
+                TransferStatus::Pending => {
+                    log::debug!("Unexpected pending status in line reset.");
+                    // Transfer will be retried.
                 }
-                Err(e) => {
-                    // Try again, first reset might fail.
-                    result = Err(e);
+                TransferStatus::Failed(e) => {
+                    log::debug!("Error reading DPIDR register after line reset: {e:?}");
+                    result = Err(DebugProbeError::ArchitectureSpecific(e.clone().into()));
                 }
             }
         }
