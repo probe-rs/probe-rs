@@ -181,15 +181,36 @@ impl Session {
                 )?;
 
                 {
-                    let mut memory_interface = interface.memory_interface(default_memory_ap)?;
+                    // For each core, setup debugging
+                    for i in 0..target.cores.len() {
+                        let config = target.cores[i].clone();
+                        let arm_core_access_options = match config.core_access_options {
+                            probe_rs_target::CoreAccessOptions::Arm(opt) => opt,
+                            probe_rs_target::CoreAccessOptions::Riscv(_) => {
+                                unreachable!(
+                                    "This should never happen. Please file a bug if it does."
+                                )
+                            }
+                        };
 
-                    // Enable debug mode
-                    sequence_handle.debug_core_start(
-                        &mut memory_interface,
-                        config.core_type,
-                        arm_core_access_options.debug_base,
-                        arm_core_access_options.cti_base,
-                    )?;
+                        let mem_ap = MemoryAp::new(ApAddress {
+                            dp: match arm_core_access_options.psel {
+                                0 => DpAddress::Default,
+                                x => DpAddress::Multidrop(x),
+                            },
+                            ap: arm_core_access_options.ap,
+                        });
+
+                        let mut memory_interface = interface.memory_interface(mem_ap)?;
+
+                        // Enable debug mode
+                        sequence_handle.debug_core_start(
+                            &mut memory_interface,
+                            config.core_type,
+                            arm_core_access_options.debug_base,
+                            arm_core_access_options.cti_base,
+                        )?;
+                    }
                 }
 
                 let session = if attach_method == AttachMethod::UnderReset {
