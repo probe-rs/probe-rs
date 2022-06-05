@@ -360,4 +360,7 @@ pub static AARCH64_REGISTER_FILE: RegisterFile = RegisterFile {
     psp: Some(&SP),
     extra: None,
     psr: Some(&PSTATE),
+    // TODO: Add fpu registers
+    fp_registers: None,
+    fp_status: None,
 };

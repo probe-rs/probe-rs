@@ -56,7 +56,8 @@ bitfield! {
     pub struct Dcrsr(u32);
     impl Debug;
     pub _, set_regwnr: 16;
-    pub _, set_regsel: 4,0;
+    // If the processor does not implement the FP extension the REGSEL field is bits [4:0], and bits [6:5] are Reserved, SBZ.
+    pub _, set_regsel: 6,0;
 }
 
 impl From<u32> for Dcrsr {
@@ -94,6 +95,37 @@ impl From<Dcrdr> for u32 {
 impl MemoryMappedRegister for Dcrdr {
     const ADDRESS: u64 = 0xE000_EDF8;
     const NAME: &'static str = "DCRDR";
+}
+
+bitfield! {
+    ///  Coprocessor Access Control Register
+    #[derive(Copy, Clone)]
+    pub struct Cpacr(u32);
+    impl Debug;
+    pub fpu_privilige, _: 21,20;
+}
+
+impl Cpacr {
+    pub fn fpu_present(&self) -> bool {
+        self.fpu_privilige() != 0
+    }
+}
+
+impl From<u32> for Cpacr {
+    fn from(value: u32) -> Self {
+        Self(value)
+    }
+}
+
+impl From<Cpacr> for u32 {
+    fn from(value: Cpacr) -> Self {
+        value.0
+    }
+}
+
+impl MemoryMappedRegister for Cpacr {
+    const ADDRESS: u64 = 0xE000_ED88;
+    const NAME: &'static str = "CPACR";
 }
 
 pub(crate) fn read_core_reg(memory: &mut Memory, addr: RegisterId) -> Result<u32, Error> {
