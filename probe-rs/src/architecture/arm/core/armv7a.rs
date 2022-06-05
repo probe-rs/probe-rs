@@ -618,7 +618,9 @@ impl<'probe> CoreInterface for Armv7a<'probe> {
     }
 
     fn fpu_support(&mut self) -> Result<bool, crate::error::Error> {
-        Ok(false) // TODO
+        Err(crate::error::Error::Other(anyhow::anyhow!(
+            "Fpu detection not yet implemented"
+        )))
     }
 }
 
