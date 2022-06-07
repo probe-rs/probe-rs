@@ -25,7 +25,7 @@ pub enum TargetDescriptionSource {
 }
 
 /// Type of a supported core.
-#[derive(Debug, Copy, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum CoreType {
     /// ARMv6-M: Cortex M0, M0+, M1

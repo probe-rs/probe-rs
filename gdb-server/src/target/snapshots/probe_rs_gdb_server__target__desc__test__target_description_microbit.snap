@@ -1,8 +1,7 @@
 ---
-source: gdb-server/src/architecture.rs
-assertion_line: 179
+source: gdb-server/src/target/desc.rs
+assertion_line: 186
 expression: description
-
 ---
 <?xml version="1.0"?>
         <!DOCTYPE target SYSTEM "gdb-target.dtd">
