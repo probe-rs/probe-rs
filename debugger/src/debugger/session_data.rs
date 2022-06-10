@@ -163,7 +163,7 @@ impl SessionData {
                 .into());
             };
 
-            debug_info.set_instruction_size(
+            debug_info.set_minimum_instruction_size(
                 match target_session
                     .core(core_configuration.core_index)?
                     .instruction_set()?

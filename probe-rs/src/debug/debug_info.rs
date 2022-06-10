@@ -64,7 +64,7 @@ pub struct DebugInfo {
     pub(crate) address_section: gimli::DebugAddr<DwarfReader>,
     pub(crate) debug_line_section: gimli::DebugLine<DwarfReader>,
     /// The minimum instruction size in bytes. This is set as 2 by default, and can/should be updated once we've queried the actual size from the core.
-    pub(crate) instruction_size: u8,
+    pub(crate) minimum_instruction_size: u8,
 }
 
 impl DebugInfo {
@@ -96,18 +96,12 @@ impl DebugInfo {
         let dwarf_cow = gimli::Dwarf::load(&load_section)?;
 
         use gimli::Section;
-        let mut frame_section = gimli::DebugFrame::load(load_section)?;
-
+        let frame_section = gimli::DebugFrame::load(load_section)?;
         let address_section = gimli::DebugAddr::load(load_section)?;
         let debug_loc = gimli::DebugLoc::load(load_section)?;
         let debug_loc_lists = gimli::DebugLocLists::load(load_section)?;
         let locations_section = gimli::LocationLists::new(debug_loc, debug_loc_lists);
         let debug_line_section = gimli::DebugLine::load(load_section)?;
-
-        // To support DWARF v2, where the address size is not encoded in the .debug_frame section,
-        // we have to set the address size here.
-        // TODO: With current versions of RUST, do we still need to do this?
-        frame_section.set_address_size(4);
 
         Ok(DebugInfo {
             dwarf: dwarf_cow,
@@ -116,7 +110,7 @@ impl DebugInfo {
             address_section,
             debug_line_section,
             // The minimum instruction size in bytes. This value should be updated once the actual size can be read from the core.
-            instruction_size: 2,
+            minimum_instruction_size: 2,
         })
     }
 
@@ -1253,13 +1247,13 @@ impl DebugInfo {
     }
 
     /// Update DebugInfo with an appropriate minimum instruction size in bytes.
-    pub fn set_instruction_size(&mut self, core_instruction_size: u8) {
-        self.instruction_size = core_instruction_size
+    pub fn set_minimum_instruction_size(&mut self, core_instruction_size: u8) {
+        self.minimum_instruction_size = core_instruction_size
     }
 
     /// Set the minimum instruction size in bytes.
-    pub fn get_instruction_size(&self) -> u8 {
-        self.instruction_size
+    pub fn get_minimum_instruction_size(&self) -> u8 {
+        self.minimum_instruction_size
     }
 
     pub(crate) fn find_file_and_directory(

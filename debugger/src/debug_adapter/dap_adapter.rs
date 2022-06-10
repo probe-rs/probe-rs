@@ -1289,12 +1289,19 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             InstructionSet::Thumb2 | InstructionSet::RV32 => {
                 // Since we cannot guarantee the size of individual instructions, let's assume we will read the 120% of the requested number of 16-bit instructions.
                 (instruction_offset
-                    * target_core.core_data.debug_info.get_instruction_size() as i64)
+                    * target_core
+                        .core_data
+                        .debug_info
+                        .get_minimum_instruction_size() as i64)
                     / 4
                     * 5
             }
             InstructionSet::A32 | InstructionSet::A64 => {
-                instruction_offset * target_core.core_data.debug_info.get_instruction_size() as i64
+                instruction_offset
+                    * target_core
+                        .core_data
+                        .debug_info
+                        .get_minimum_instruction_size() as i64
             }
         };
 
