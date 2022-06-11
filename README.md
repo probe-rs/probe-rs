@@ -59,7 +59,7 @@ fn main() -> Result<(), probe_rs::Error> {
     let probe = probes[0].open()?;
 
     // Attach to a chip.
-    let mut session = probe.attach("nrf52")?;
+    let mut session = probe.attach("nRF52840_xxAA")?;
 
     // Select a core.
     let mut core = session.core(0)?;
@@ -78,7 +78,7 @@ use probe_rs::{MemoryInterface, Session};
 
 fn main() -> Result<(), probe_rs::Error> {
     // Attach to a chip.
-    let mut session = Session::auto_attach("nrf52")?;
+    let mut session = Session::auto_attach("nRF52840_xxAA")?;
 
     // Select a core.
     let mut core = session.core(0)?;
