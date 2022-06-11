@@ -85,7 +85,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Debugger: Fix assumptions for ARM cores
   - GDB: Fix assumptions for ARM cores
 - Fixed access to Arm CoreSight components being completed through the wrong AP (#1114)
-- Debug: Additions to complete RISC-V and 64-bit support.
+- Debug: Additions to complete RISC-V and 64-bit support. (#1129)
   - probe_rs::debug::Registers uses new `core::RegisterId` and `core::RegisterValue` for consistent register handling.
   - RISCV `Disassembly` works correctly for 'compressed' (RV32C isa variants) instruction sets.
   - RISCV stack unwind improvements (stack frames and registers work, variables do not resolve correctly.)
