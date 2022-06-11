@@ -23,6 +23,7 @@ pub struct DebugRegister {
     pub register_file: &'static RegisterFile,
     /// Register definitions are grouped depending on their purpose.
     pub group: RegisterGroup,
+    // TODO: Consider capturing reference to RegisterDescription, so we can delegate actions like size_in_bytes.
     /// The name of the register.
     pub name: &'static str,
     /// If a special name exists for an existing register, e.g. Arm register 'r15' is also known as 'pc' (program counter)
@@ -124,6 +125,7 @@ impl DebugRegisters {
                             name: platform_register.name(),
                             special_name: None,
                             id: platform_register.id,
+                            // TODO: Consider adding dwarf_id to RegisterDescription, to ensure we have the right values.
                             dwarf_id: if matches!(register_group, RegisterGroup::Base) {
                                 Some(dwarf_id as u16)
                             } else {
@@ -131,6 +133,7 @@ impl DebugRegisters {
                             },
                             data_type: platform_register.data_type(),
                             size_in_bits: platform_register.size_in_bits(),
+                            // TODO: Fix this so that read_core_reg can return a RegisterValue directly, to simplify code here and other places.
                             value: match core.read_core_reg(platform_register.id) {
                                 Ok::<u64, Error>(register_value) => {
                                     if platform_register.size_in_bits() <= 32 {
