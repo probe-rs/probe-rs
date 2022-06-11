@@ -63,8 +63,6 @@ pub struct DebugInfo {
     pub(crate) locations_section: gimli::LocationLists<DwarfReader>,
     pub(crate) address_section: gimli::DebugAddr<DwarfReader>,
     pub(crate) debug_line_section: gimli::DebugLine<DwarfReader>,
-    /// The minimum instruction size in bytes. This is set as 2 by default, and can/should be updated once we've queried the actual size from the core.
-    pub(crate) minimum_instruction_size: u8,
 }
 
 impl DebugInfo {
@@ -109,8 +107,6 @@ impl DebugInfo {
             locations_section,
             address_section,
             debug_line_section,
-            // The minimum instruction size in bytes. This value should be updated once the actual size can be read from the core.
-            minimum_instruction_size: 2,
         })
     }
 
@@ -1244,16 +1240,6 @@ impl DebugInfo {
         }
 
         Some(combined_path)
-    }
-
-    /// Update DebugInfo with an appropriate minimum instruction size in bytes.
-    pub fn set_minimum_instruction_size(&mut self, core_instruction_size: u8) {
-        self.minimum_instruction_size = core_instruction_size
-    }
-
-    /// Set the minimum instruction size in bytes.
-    pub fn get_minimum_instruction_size(&self) -> u8 {
-        self.minimum_instruction_size
     }
 
     pub(crate) fn find_file_and_directory(

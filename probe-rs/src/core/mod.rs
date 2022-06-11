@@ -371,7 +371,7 @@ impl RegisterFile {
 
     /// Returns the nth fpu register if it is exists, `None` otherwise.
     pub fn get_fpu_register(&self, index: usize) -> Option<&RegisterDescription> {
-        self.fp_registers.map(|r| r.get(index)).flatten()
+        self.fp_registers.and_then(|r| r.get(index))
     }
 }
 

@@ -1243,7 +1243,6 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                 capstone_builder.build()
             }
             InstructionSet::A32 => {
-                // TODO: We need to inspect the CPSR to determine what mode this is opearting in
                 let mut capstone_builder = Capstone::new()
                     .arm()
                     .mode(armArchMode::Arm)
@@ -1265,14 +1264,11 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                 }
                 capstone_builder.build()
             }
-            InstructionSet::A64 => {
-                // TODO: We need to inspect the CPSR to determine what mode this is opearting in
-                Capstone::new()
-                    .arm64()
-                    .mode(aarch64ArchMode::Arm)
-                    .endian(Endian::Little)
-                    .build()
-            }
+            InstructionSet::A64 => Capstone::new()
+                .arm64()
+                .mode(aarch64ArchMode::Arm)
+                .endian(Endian::Little)
+                .build(),
             InstructionSet::RV32 => Capstone::new()
                 .riscv()
                 .mode(riscvArchMode::RiscV32)
@@ -1290,8 +1286,8 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                 // Since we cannot guarantee the size of individual instructions, let's assume we will read the 120% of the requested number of 16-bit instructions.
                 (instruction_offset
                     * target_core
-                        .core_data
-                        .debug_info
+                        .core
+                        .instruction_set()?
                         .get_minimum_instruction_size() as i64)
                     / 4
                     * 5
@@ -1299,8 +1295,8 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             InstructionSet::A32 | InstructionSet::A64 => {
                 instruction_offset
                     * target_core
-                        .core_data
-                        .debug_info
+                        .core
+                        .instruction_set()?
                         .get_minimum_instruction_size() as i64
             }
         };
