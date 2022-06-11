@@ -1242,28 +1242,11 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                 }
                 capstone_builder.build()
             }
-            InstructionSet::A32 => {
-                let mut capstone_builder = Capstone::new()
-                    .arm()
-                    .mode(armArchMode::Arm)
-                    .endian(Endian::Little);
-                if matches!(target_core.core.core_type(), CoreType::Armv8m) {
-                    capstone_builder = capstone_builder.extra_mode(
-                        [
-                            capstone::arch::arm::ArchExtraMode::V8,
-                            capstone::arch::arm::ArchExtraMode::MClass,
-                        ]
-                        .into_iter(),
-                    );
-                } else if matches!(
-                    target_core.core.core_type(),
-                    CoreType::Armv6m | CoreType::Armv7m | CoreType::Armv7em
-                ) {
-                    capstone_builder = capstone_builder
-                        .extra_mode(std::iter::once(capstone::arch::arm::ArchExtraMode::MClass));
-                }
-                capstone_builder.build()
-            }
+            InstructionSet::A32 => Capstone::new()
+                .arm()
+                .mode(armArchMode::Arm)
+                .endian(Endian::Little)
+                .build(),
             InstructionSet::A64 => Capstone::new()
                 .arm64()
                 .mode(aarch64ArchMode::Arm)
