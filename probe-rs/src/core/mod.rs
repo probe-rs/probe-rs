@@ -111,6 +111,7 @@ impl From<u16> for RegisterId {
 pub(crate) enum RegisterKind {
     General,
     PC,
+    Fp,
 }
 
 /// A value of a core register
@@ -248,7 +249,10 @@ pub struct RegisterFile {
     pub(crate) extra: Option<&'static RegisterDescription>,
 
     pub(crate) psr: Option<&'static RegisterDescription>,
-    // TODO: floating point support
+
+    pub(crate) fp_status: Option<&'static RegisterDescription>,
+
+    pub(crate) fp_registers: Option<&'static [RegisterDescription]>,
 }
 
 impl RegisterFile {
@@ -346,13 +350,29 @@ impl RegisterFile {
     //     self.extra
     // }
 
-    // TODO: support for floating point registers
-    // 0b0100001            Floating-point Status and Control Register, FPSCR.
-    // 0b1000000-0b1011111  FP registers S0-S31.
-    // For example, 0b1000000 specifies S0, and 0b1000101 specifies S5.
-    // All other values are Reserved.
-    // If the processor does not implement the FP extension the REGSEL field is bits[4:0], and
-    // bits[6:5] are Reserved, SBZ.
+    /// The fpu status register.
+    pub fn fpscr(&self) -> Option<&RegisterDescription> {
+        self.fp_status
+    }
+
+    /// Returns an iterator over the descriptions of all the registers of this core.
+    pub fn fpu_registers(&self) -> Option<impl Iterator<Item = &RegisterDescription>> {
+        self.fp_registers.map(|r| r.iter())
+    }
+
+    /// Returns the nth fpu register.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the register at given index does not exist.
+    pub fn fpu_register(&self, index: usize) -> Option<&RegisterDescription> {
+        self.fp_registers.map(|r| &r[index])
+    }
+
+    /// Returns the nth fpu register if it is exists, `None` otherwise.
+    pub fn get_fpu_register(&self, index: usize) -> Option<&RegisterDescription> {
+        self.fp_registers.map(|r| r.get(index)).flatten()
+    }
 }
 
 /// A generic interface to control a MCU core.
@@ -429,6 +449,11 @@ pub trait CoreInterface: MemoryInterface {
     /// This must be queried while halted as this is a runtime
     /// decision for some core types
     fn instruction_set(&mut self) -> Result<InstructionSet, error::Error>;
+
+    /// Determine if an FPU is present.
+    /// This must be queried while halted as this is a runtime
+    /// decision for some core types.
+    fn fpu_support(&mut self) -> Result<bool, error::Error>;
 }
 
 impl<'probe> MemoryInterface for Core<'probe> {
@@ -864,6 +889,13 @@ impl<'probe> Core<'probe> {
     /// decision for some core types
     pub fn instruction_set(&mut self) -> Result<InstructionSet, error::Error> {
         self.inner.instruction_set()
+    }
+
+    /// Determine if an FPU is present.
+    /// This must be queried while halted as this is a runtime
+    /// decision for some core types.
+    pub fn fpu_support(&mut self) -> Result<bool, error::Error> {
+        self.inner.fpu_support()
     }
 }
 

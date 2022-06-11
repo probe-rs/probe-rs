@@ -14,6 +14,7 @@ use anyhow::Result;
 
 use bitfield::bitfield;
 
+use super::cortex_m::Cpacr;
 use super::{CortexMState, Dfsr, ARM_REGISTER_FILE};
 use std::sync::Arc;
 use std::{
@@ -378,6 +379,10 @@ impl<'probe> CoreInterface for Armv8m<'probe> {
             }
         }
         Ok(breakpoints)
+    }
+
+    fn fpu_support(&mut self) -> Result<bool, crate::error::Error> {
+        Ok(Cpacr(self.memory.read_word_32(Cpacr::ADDRESS)?).fpu_present())
     }
 }
 
