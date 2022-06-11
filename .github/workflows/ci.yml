@@ -45,6 +45,11 @@ jobs:
       - name: Cache Dependencies
         uses: Swatinem/rust-cache@v1.4.0
 
+      - name: Check with default features
+        uses: actions-rs/cargo@v1.0.3
+        with:
+          command: check
+
       - name: cargo check for probe-rs, --no-default-features
         uses: actions-rs/cargo@v1.0.3
         with:
@@ -99,11 +104,6 @@ jobs:
         with:
           command: test
           args: --all-features
-
-      - name: Build with default features
-        uses: actions-rs/cargo@v1.0.3
-        with:
-          command: build
 
   fmt:
     name: Rustfmt

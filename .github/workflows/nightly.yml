@@ -1,0 +1,82 @@
+name: nightly
+on:
+  pull_request:
+    branches: [master]
+    types: [closed]
+  workflow_dispatch:
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            suffix: ".gz"
+          - os: macos-latest
+            target: x86_64-apple-darwin
+            suffix: ".gz"
+          - os: macos-latest
+            target: aarch64-apple-darwin
+            suffix: ".gz"
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            suffix: ".exe"
+    runs-on: ${{ matrix.os }}
+    if: github.event.pull_request.merged == true
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install libusb, libudev (linux)
+        run: |
+          sudo apt update
+          sudo apt install -y libusb-1.0-0-dev libudev-dev
+        # Only install on Ubuntu
+        if: (matrix.os == 'ubuntu-latest') || (matrix.os == 'ubuntu-20.04')
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          profile: minimal
+          target: ${{ matrix.target }}
+          override: true
+      - name: Cache Dependencies
+        uses: Swatinem/rust-cache@v1
+        with:
+          key: ${{ matrix.target }}
+      - uses: actions-rs/cargo@v1
+        with:
+          command: build
+          args: --bin probe-rs-cli --target ${{ matrix.target }} --release
+      - name: Compress and rename executable
+        if: ${{ matrix.os != 'windows-latest' }}
+        run: gzip -c target/${{ matrix.target }}/release/probe-rs-cli > probe-rs-cli-${{ matrix.target }}${{ matrix.suffix }}
+      - name: Rename executable
+        if: ${{ matrix.os == 'windows-latest' }}
+        run: mv target/${{ matrix.target }}/release/probe-rs-cli${{ matrix.suffix }} probe-rs-cli-${{ matrix.target }}${{ matrix.suffix }}
+
+      - uses: actions/upload-artifact@v3
+        with:
+          name: probe-rs-cli-${{ matrix.target }}
+          path: probe-rs-cli-${{ matrix.target }}${{ matrix.suffix }}
+
+  release:
+    name: release
+    runs-on: ubuntu-latest
+    needs: [build]
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/download-artifact@v3
+        with:
+          path: artifacts
+      - run: ls -R ./artifacts
+      - id: changelog-reader
+        uses: mindsers/changelog-reader-action@v2.0.0
+        with:
+          version: 'Unreleased'
+      - uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ format('nightly-{0}', github.sha) }}
+          name: ${{ format('Nightly {0}', github.sha) }}
+          body: See [CHANGELOG](https://github.com/probe-rs/probe-rs/blob/e4e8d44552c486fb8bdc88fd4c67f4e7598a12d0/CHANGELOG.md#unreleased)
+          prerelease: true
+          files: |
+            artifacts/**/*
