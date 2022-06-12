@@ -87,7 +87,6 @@ impl<'probe> Armv8a<'probe> {
 
             state.current_state = core_state;
             state.is_64_bit = edscr.currently_64_bit();
-            state.initialize();
         }
 
         let mut core = Self {
@@ -99,7 +98,10 @@ impl<'probe> Armv8a<'probe> {
             num_breakpoints: None,
         };
 
-        core.reset_register_cache();
+        if !core.state.initialized() {
+            core.reset_register_cache();
+            core.state.initialize();
+        }
 
         Ok(core)
     }
@@ -645,25 +647,27 @@ impl<'probe> CoreInterface for Armv8a<'probe> {
     }
 
     fn halt(&mut self, timeout: Duration) -> Result<CoreInformation, Error> {
-        // Ungate halt CTI channel
-        let mut cti_gate = CtiGate(0);
-        cti_gate.set_en(0, 1);
+        if !matches!(self.state.current_state, CoreStatus::Halted(_)) {
+            // Ungate halt CTI channel
+            let mut cti_gate = CtiGate(0);
+            cti_gate.set_en(0, 1);
 
-        let address = CtiGate::get_mmio_address(self.cti_address);
-        self.memory.write_word_32(address, cti_gate.into())?;
+            let address = CtiGate::get_mmio_address(self.cti_address);
+            self.memory.write_word_32(address, cti_gate.into())?;
 
-        // Pulse it
-        let mut pulse = CtiApppulse(0);
-        pulse.set_apppulse(0, 1);
+            // Pulse it
+            let mut pulse = CtiApppulse(0);
+            pulse.set_apppulse(0, 1);
 
-        let address = CtiApppulse::get_mmio_address(self.cti_address);
-        self.memory.write_word_32(address, pulse.into())?;
+            let address = CtiApppulse::get_mmio_address(self.cti_address);
+            self.memory.write_word_32(address, pulse.into())?;
 
-        // Wait for halt
-        self.wait_for_core_halted(timeout)?;
+            // Wait for halt
+            self.wait_for_core_halted(timeout)?;
 
-        // Reset our cached values
-        self.reset_register_cache();
+            // Reset our cached values
+            self.reset_register_cache();
+        }
 
         // Update core status
         let _ = self.status()?;
@@ -684,6 +688,10 @@ impl<'probe> CoreInterface for Armv8a<'probe> {
     }
 
     fn run(&mut self) -> Result<(), Error> {
+        if matches!(self.state.current_state, CoreStatus::Running) {
+            return Ok(());
+        }
+
         // set writeback values
         self.writeback_registers()?;
 
@@ -986,6 +994,16 @@ impl<'probe> CoreInterface for Armv8a<'probe> {
         Err(crate::error::Error::Other(anyhow::anyhow!(
             "Fpu detection not yet implemented"
         )))
+    }
+
+    fn on_session_stop(&mut self) -> Result<(), Error> {
+        if matches!(self.state.current_state, CoreStatus::Halted(_)) {
+            // We may have clobbered registers we wrote during debugging
+            // Best effort attempt to put them back before we exit
+            self.writeback_registers()
+        } else {
+            Ok(())
+        }
     }
 }
 
@@ -1942,7 +1960,7 @@ mod test {
         let mut state = CortexAState::new();
 
         // Add expectations
-        add_status_expectations(&mut probe, true);
+        add_status_expectations(&mut probe, false);
 
         // Write halt request
         add_halt_expectations(&mut probe);
