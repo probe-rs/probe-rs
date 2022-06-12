@@ -1,0 +1,9 @@
+---
+source: gdb-server/src/target/desc/test.rs
+assertion_line: 29
+expression: description
+---
+<?xml version="1.0"?>
+        <!DOCTYPE target SYSTEM "gdb-target.dtd">
+        <target version="1.0">
+        <architecture>armv6-m</architecture><feature name='org.probe-rs.feature1'><reg name='r0' bitsize='32' type='uint32'/><reg name='x1' bitsize='64' type='uint64'/><reg name='at2' bitsize='64' type='special_reg'/></feature><feature name='org.probe-rs.feature2'><reg name='v4' bitsize='128' type='uint128'/></feature></target>

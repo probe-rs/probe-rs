@@ -59,3 +59,9 @@ impl From<RuntimeRegId> for u32 {
         r.0.into()
     }
 }
+
+impl From<RuntimeRegId> for usize {
+    fn from(r: RuntimeRegId) -> Self {
+        r.0.into()
+    }
+}

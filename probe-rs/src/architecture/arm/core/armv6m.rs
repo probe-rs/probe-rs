@@ -1,6 +1,6 @@
 //! Register types and the core interface for armv6-M
 
-use super::{CortexMState, Dfsr, ARM_REGISTER_FILE};
+use super::{CortexMState, Dfsr, CORTEX_M_COMMON_REGS};
 
 use crate::architecture::arm::sequences::ArmDebugSequence;
 use crate::core::{
@@ -688,7 +688,7 @@ impl<'probe> CoreInterface for Armv6m<'probe> {
     }
 
     fn registers(&self) -> &'static RegisterFile {
-        &ARM_REGISTER_FILE
+        &CORTEX_M_COMMON_REGS
     }
 
     fn clear_hw_breakpoint(&mut self, bp_unit_index: usize) -> Result<(), Error> {

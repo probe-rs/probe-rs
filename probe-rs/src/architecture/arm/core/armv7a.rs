@@ -18,7 +18,7 @@ use super::instructions::aarch32::{
     build_bx, build_ldc, build_mcr, build_mov, build_mrc, build_mrs, build_stc,
 };
 use super::CortexAState;
-use super::ARM_REGISTER_FILE;
+use super::AARCH32_COMMON_REGS;
 
 use std::mem::size_of;
 use std::sync::Arc;
@@ -540,7 +540,7 @@ impl<'probe> CoreInterface for Armv7a<'probe> {
     }
 
     fn registers(&self) -> &'static RegisterFile {
-        &ARM_REGISTER_FILE
+        &AARCH32_COMMON_REGS
     }
 
     fn clear_hw_breakpoint(&mut self, bp_unit_index: usize) -> Result<(), Error> {

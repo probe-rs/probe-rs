@@ -128,6 +128,38 @@ impl MemoryMappedRegister for Cpacr {
     const NAME: &'static str = "CPACR";
 }
 
+bitfield! {
+    ///  Media and VFP Feature Register 0
+    #[derive(Copy, Clone)]
+    pub struct Mvfr0(u32);
+    impl Debug;
+    pub fpdp, _: 11, 8;
+    pub fpsp, _: 7, 4;
+}
+
+impl Mvfr0 {
+    pub fn fp_present(&self) -> bool {
+        self.fpdp() != 0 || self.fpsp() != 0
+    }
+}
+
+impl From<u32> for Mvfr0 {
+    fn from(value: u32) -> Self {
+        Self(value)
+    }
+}
+
+impl From<Mvfr0> for u32 {
+    fn from(value: Mvfr0) -> Self {
+        value.0
+    }
+}
+
+impl MemoryMappedRegister for Mvfr0 {
+    const ADDRESS: u64 = 0xE000_EF40;
+    const NAME: &'static str = "MVFR0";
+}
+
 pub(crate) fn read_core_reg(memory: &mut Memory, addr: RegisterId) -> Result<u32, Error> {
     // Write the DCRSR value to select the register we want to read.
     let mut dcrsr_val = Dcrsr(0);

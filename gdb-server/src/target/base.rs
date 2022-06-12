@@ -1,3 +1,4 @@
+use super::desc::GdbRegisterSource;
 use super::{GdbErrorExt, RuntimeTarget};
 use crate::arch::{RuntimeRegId, RuntimeRegisters};
 
@@ -7,7 +8,7 @@ use gdbstub::target::ext::base::multithread::MultiThreadResumeOps;
 use gdbstub::target::ext::base::single_register_access::SingleRegisterAccess;
 use gdbstub::target::ext::base::single_register_access::SingleRegisterAccessOps;
 use gdbstub::target::TargetError;
-use probe_rs::{Core, CoreType, InstructionSet, MemoryInterface, RegisterId};
+use probe_rs::{Core, Error, MemoryInterface};
 
 impl MultiThreadBase for RuntimeTarget<'_> {
     fn read_registers(
@@ -24,11 +25,10 @@ impl MultiThreadBase for RuntimeTarget<'_> {
 
         let mut reg_buffer = Vec::<u8>::new();
 
-        for reg in 0..num_general_registers(&mut core) {
-            let (probe_rs_number, bytesize) =
-                translate_gdb_register_number(&mut core, reg as u32).unwrap();
-
-            let mut value: u64 = core.read_core_reg(probe_rs_number).unwrap();
+        for reg in self.target_desc.get_registers_for_main_group() {
+            let bytesize = reg.size_in_bytes();
+            let mut value: u64 =
+                read_register_from_source(&mut core, reg.source()).into_target_result()?;
 
             for _ in 0..bytesize {
                 let byte = value as u8;
@@ -55,16 +55,16 @@ impl MultiThreadBase for RuntimeTarget<'_> {
 
         let mut current_regval_offset = 0;
 
-        for reg_num in 0..num_general_registers(&mut core) as u32 {
-            let (addr, bytesize) = translate_gdb_register_number(&mut core, reg_num).unwrap();
+        for reg in self.target_desc.get_registers_for_main_group() {
+            let bytesize = reg.size_in_bytes();
 
             let current_regval_end = current_regval_offset + bytesize as usize;
 
             if current_regval_end > regs.regs.len() {
                 // Supplied write general registers command argument length not valid, tell GDB
                 log::error!(
-                    "Unable to write register {}, because supplied register value length was too short",
-                    reg_num
+                    "Unable to write register {:#?}, because supplied register value length was too short",
+                    reg.source()
                 );
                 return Err(TargetError::Errno(22));
             }
@@ -76,7 +76,7 @@ impl MultiThreadBase for RuntimeTarget<'_> {
                 value += (*ch as u64) << (8 * exp);
             }
 
-            core.write_core_reg(addr, value).into_target_result()?;
+            write_register_from_source(&mut core, reg.source(), value).into_target_result()?;
 
             current_regval_offset = current_regval_end;
 
@@ -145,10 +145,11 @@ impl SingleRegisterAccess<Tid> for RuntimeTarget<'_> {
         let mut session = self.session.borrow_mut();
         let mut core = session.core(tid.get() - 1).into_target_result()?;
 
-        let (probe_rs_number, bytesize) =
-            translate_gdb_register_number(&mut core, reg_id.into()).unwrap();
+        let reg = self.target_desc.get_register(reg_id.into());
+        let bytesize = reg.size_in_bytes();
 
-        let mut value: u64 = core.read_core_reg(probe_rs_number).unwrap();
+        let mut value: u64 =
+            read_register_from_source(&mut core, reg.source()).into_target_result()?;
 
         for i in 0..bytesize {
             let byte = value as u8;
@@ -168,8 +169,8 @@ impl SingleRegisterAccess<Tid> for RuntimeTarget<'_> {
         let mut session = self.session.borrow_mut();
         let mut core = session.core(tid.get() - 1).into_target_result()?;
 
-        let (probe_rs_number, bytesize) =
-            translate_gdb_register_number(&mut core, reg_id.into()).unwrap();
+        let reg = self.target_desc.get_register(reg_id.into());
+        let bytesize = reg.size_in_bytes();
 
         let mut value = 0;
 
@@ -177,101 +178,51 @@ impl SingleRegisterAccess<Tid> for RuntimeTarget<'_> {
             value += (*ch as u64) << (8 * exp);
         }
 
-        core.write_core_reg(probe_rs_number, value)
-            .into_target_result()?;
+        write_register_from_source(&mut core, reg.source(), value).into_target_result()?;
 
         Ok(())
     }
 }
 
-/// Take a GDB register number and transmate it into a Probe-RS register number
-/// for use with [Core::read_core_reg()] and [Core::write_core_reg()]
-fn translate_gdb_register_number(
-    core: &mut Core,
-    gdb_reg_number: u32,
-) -> Option<(RegisterId, u32)> {
-    let (probe_rs_number, bytesize): (u16, _) = match core.architecture() {
-        probe_rs::Architecture::Arm => {
-            match core.instruction_set().unwrap_or(InstructionSet::Thumb2) {
-                InstructionSet::A64 => match gdb_reg_number {
-                    // x0-30, SP, PC
-                    x @ 0..=32 => (x as u16, 8),
-                    // CPSR
-                    x @ 33 => (x as u16, 4),
-                    // FPSR
-                    x @ 66 => (x as u16, 4),
-                    // FPCR
-                    x @ 67 => (x as u16, 4),
-                    other => {
-                        log::warn!("Request for unsupported register with number {}", other);
-                        return None;
-                    }
-                },
-                _ => match gdb_reg_number {
-                    // Default ARM register (arm-m-profile.xml)
-                    // Register 0 to 15
-                    x @ 0..=15 => (x as u16, 4),
-                    // CPSR register has number 16 in probe-rs
-                    // See REGSEL bits, DCRSR register, ARM Reference Manual
-                    25 => (16, 4),
-                    // Floating Point registers (arm-m-profile-with-fpa.xml)
-                    // f0 -f7 start at offset 0x40
-                    // See REGSEL bits, DCRSR register, ARM Reference Manual
-                    reg @ 16..=23 => ((reg as u16 - 16 + 0x40), 12),
-                    // FPSCR has number 0x21 in probe-rs
-                    // See REGSEL bits, DCRSR register, ARM Reference Manual
-                    24 => (0x21, 4),
-                    // Other registers are currently not supported,
-                    // they are not listed in the xml files in GDB
-                    other => {
-                        log::warn!("Request for unsupported register with number {}", other);
-                        return None;
-                    }
-                },
-            }
-        }
-        probe_rs::Architecture::Riscv => match gdb_reg_number {
-            // general purpose registers 0 to 31
-            x @ 0..=31 => {
-                let addr: RegisterId = core
-                    .registers()
-                    .get_platform_register(x as usize)
-                    .expect("riscv register must exist")
-                    .into();
-                (addr.0, 8)
-            }
-            // Program counter
-            32 => {
-                let addr: RegisterId = core.registers().program_counter().into();
-                (addr.0, 8)
-            }
-            other => {
-                log::warn!("Request for unsupported register with number {}", other);
-                return None;
-            }
-        },
-    };
+fn read_register_from_source(core: &mut Core, source: GdbRegisterSource) -> Result<u64, Error> {
+    match source {
+        GdbRegisterSource::SingleRegister(id) => {
+            let val: u64 = core.read_core_reg(id)?;
 
-    Some((RegisterId(probe_rs_number as u16), bytesize))
+            Ok(val)
+        }
+        GdbRegisterSource::TwoWordRegister {
+            low,
+            high,
+            word_size,
+        } => {
+            let mut val: u64 = core.read_core_reg(low)?;
+            let high_val: u64 = core.read_core_reg(high)?;
+
+            val |= high_val << word_size;
+
+            Ok(val)
+        }
+    }
 }
 
-fn num_general_registers(core: &mut Core) -> usize {
-    match core.architecture() {
-        probe_rs::Architecture::Arm => {
-            match core.core_type() {
-                // 16 general purpose regs
-                CoreType::Armv7a => 16,
-                // When in 64 bit mode, 31 GP regs, otherwise 16
-                CoreType::Armv8a => {
-                    match core.instruction_set().unwrap_or(InstructionSet::Thumb2) {
-                        InstructionSet::A64 => 31,
-                        _ => 16,
-                    }
-                }
-                // 16 general purpose regs, 8 FP regs
-                _ => 24,
-            }
+fn write_register_from_source(
+    core: &mut Core,
+    source: GdbRegisterSource,
+    value: u64,
+) -> Result<(), Error> {
+    match source {
+        GdbRegisterSource::SingleRegister(id) => core.write_core_reg(id, value),
+        GdbRegisterSource::TwoWordRegister {
+            low,
+            high,
+            word_size,
+        } => {
+            let low_word = value & ((1 << word_size) - 1);
+            let high_word = value >> word_size;
+
+            core.write_core_reg(low, low_word)?;
+            core.write_core_reg(high, high_word)
         }
-        probe_rs::Architecture::Riscv => 33,
     }
 }

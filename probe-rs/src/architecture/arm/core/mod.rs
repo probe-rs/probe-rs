@@ -54,6 +54,14 @@ pub(crate) mod register {
         size_in_bits: 32,
     };
 
+    pub const CPSR: RegisterDescription = RegisterDescription {
+        name: "CPSR",
+        _kind: RegisterKind::General,
+        id: RegisterId(0b1_0000),
+        _type: RegisterDataType::UnsignedInteger,
+        size_in_bits: 32,
+    };
+
     pub const XPSR: RegisterDescription = RegisterDescription {
         name: "XPSR",
         _kind: RegisterKind::General,
@@ -121,7 +129,7 @@ pub(crate) mod register {
     };
 }
 
-static ARM_REGISTER_FILE: RegisterFile = RegisterFile {
+static ARM32_COMMON_REGS: RegisterFile = RegisterFile {
     platform_registers: &[
         RegisterDescription {
             name: "R0",
@@ -290,11 +298,31 @@ static ARM_REGISTER_FILE: RegisterFile = RegisterFile {
         },
     ],
 
+    msp: None,
+    psp: None,
+    extra: None,
+    psr: None,
+
+    fp_status: None,
+    fp_registers: None,
+};
+
+static AARCH32_COMMON_REGS: RegisterFile = RegisterFile {
+    psr: Some(&register::CPSR),
+
+    ..ARM32_COMMON_REGS
+};
+
+static CORTEX_M_COMMON_REGS: RegisterFile = RegisterFile {
     msp: Some(&register::MSP),
     psp: Some(&register::PSP),
     extra: Some(&register::EXTRA),
     psr: Some(&register::XPSR),
 
+    ..ARM32_COMMON_REGS
+};
+
+static CORTEX_M_WITH_FP_REGS: RegisterFile = RegisterFile {
     fp_status: Some(&register::FPSCR),
     fp_registers: Some(&[
         RegisterDescription {
@@ -522,6 +550,8 @@ static ARM_REGISTER_FILE: RegisterFile = RegisterFile {
             size_in_bits: 32,
         },
     ]),
+
+    ..CORTEX_M_COMMON_REGS
 };
 
 bitfield! {
@@ -603,6 +633,8 @@ pub struct CortexMState {
     hw_breakpoints_enabled: bool,
 
     current_state: CoreStatus,
+
+    fp_present: bool,
 }
 
 impl CortexMState {
@@ -611,6 +643,7 @@ impl CortexMState {
             initialized: false,
             hw_breakpoints_enabled: false,
             current_state: CoreStatus::Unknown,
+            fp_present: false,
         }
     }
 
