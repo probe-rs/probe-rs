@@ -133,15 +133,8 @@ impl DebugRegisters {
                             },
                             data_type: platform_register.data_type(),
                             size_in_bits: platform_register.size_in_bits(),
-                            // TODO: Fix this so that read_core_reg can return a RegisterValue directly, to simplify code here and other places.
                             value: match core.read_core_reg(platform_register.id) {
-                                Ok::<u64, Error>(register_value) => {
-                                    if platform_register.size_in_bits() <= 32 {
-                                        Some(RegisterValue::U32(register_value as u32))
-                                    } else {
-                                        Some(RegisterValue::U64(register_value))
-                                    }
-                                }
+                                Ok::<RegisterValue, Error>(register_value) => Some(register_value),
                                 Err(e) => {
                                     log::warn!(
                                         "Failed to read value for register {:?}: {}",

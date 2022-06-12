@@ -264,7 +264,11 @@ fn build_aarch64_registers(desc: &mut TargetDescription, regs: &RegisterFile) {
         desc.add_register(psr);
     }
 
-    // TODO when FP support is ready: org.gnu.gdb.aarch64.fpu, v0-v31 + fpsr, fpcr
+    // AArch64 always has FP support
+    desc.add_gdb_feature("org.gnu.gdb.aarch64.fpu");
+    desc.add_registers(regs.fpu_registers().unwrap());
+    desc.add_register(regs.other_by_name("FPCR").unwrap());
+    desc.add_register(regs.fpscr().unwrap());
 
     // GDB expects PSTATE to be called CPSR, even though that's the old v7 name
     desc.update_register_name("PSTATE", "CPSR");
