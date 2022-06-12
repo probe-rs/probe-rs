@@ -391,6 +391,11 @@ pub trait CoreInterface: MemoryInterface {
     /// This must be queried while halted as this is a runtime
     /// decision for some core types.
     fn fpu_support(&mut self) -> Result<bool, error::Error>;
+
+    /// Called during session stop to do any pending cleanup
+    fn on_session_stop(&mut self) -> Result<(), Error> {
+        Ok(())
+    }
 }
 
 impl<'probe> MemoryInterface for Core<'probe> {
@@ -833,6 +838,11 @@ impl<'probe> Core<'probe> {
     /// decision for some core types.
     pub fn fpu_support(&mut self) -> Result<bool, error::Error> {
         self.inner.fpu_support()
+    }
+
+    /// Called during session tear down to do any pending cleanup
+    pub(crate) fn on_session_stop(&mut self) -> Result<(), Error> {
+        self.inner.on_session_stop()
     }
 }
 
