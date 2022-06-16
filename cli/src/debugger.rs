@@ -703,6 +703,12 @@ impl DebugCli {
         args: &[&str],
     ) -> Result<CliState, CliError> {
         match (command.function)(cli_data, args) {
+            Ok(cli_state) => {
+                // Resync status from core
+                cli_data.update_debug_status_from_core()?;
+
+                Ok(cli_state)
+            }
             Err(CliError::MissingArgument) => {
                 println!("Error: Missing argument\n\n{}", command.help_text);
                 Ok(CliState::Continue)
@@ -729,14 +735,26 @@ pub struct CliData<'p> {
 }
 
 impl<'p> CliData<'p> {
-    pub fn new(mut core: Core<'p>, debug_info: Option<DebugInfo>) -> Result<CliData, CliError> {
-        let status = core.status()?;
+    pub fn new(core: Core<'p>, debug_info: Option<DebugInfo>) -> Result<CliData, CliError> {
+        let mut cli_data = CliData {
+            core,
+            debug_info,
+            state: DebugState::default(),
+        };
 
+        cli_data.update_debug_status_from_core()?;
+
+        Ok(cli_data)
+    }
+
+    /// Fill out DebugStatus for a given core
+    fn update_debug_status_from_core(&mut self) -> Result<(), CliError> {
         // TODO: In halted state we should get the backtrace here.
-        let debug_state = match status {
-            probe_rs::CoreStatus::Halted(_) => {
-                let registers = DebugRegisters::from_core(&mut core);
+        let status = self.core.status()?;
 
+        self.state = match status {
+            probe_rs::CoreStatus::Halted(_) => {
+                let registers = DebugRegisters::from_core(&mut self.core);
                 DebugState::Halted(HaltedState {
                     program_counter: registers
                         .get_program_counter()
@@ -751,12 +769,7 @@ impl<'p> CliData<'p> {
             _other => DebugState::Running,
         };
 
-        // TODO: Find initial state
-        Ok(CliData {
-            core,
-            debug_info,
-            state: debug_state,
-        })
+        Ok(())
     }
 
     pub fn print_state(&mut self) -> Result<(), CliError> {
@@ -780,6 +793,12 @@ impl<'p> CliData<'p> {
 enum DebugState {
     Running,
     Halted(HaltedState),
+}
+
+impl std::default::Default for DebugState {
+    fn default() -> Self {
+        DebugState::Running
+    }
 }
 
 struct HaltedState {

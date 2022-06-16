@@ -262,17 +262,18 @@ impl<'probe> CoreInterface for Armv7a<'probe> {
     }
 
     fn halt(&mut self, timeout: Duration) -> Result<CoreInformation, Error> {
-        let address = Dbgdrcr::get_mmio_address(self.base_address);
-        let mut value = Dbgdrcr(0);
-        value.set_hrq(true);
+        if !matches!(self.state.current_state, CoreStatus::Halted(_)) {
+            let address = Dbgdrcr::get_mmio_address(self.base_address);
+            let mut value = Dbgdrcr(0);
+            value.set_hrq(true);
 
-        self.memory.write_word_32(address, value.into())?;
+            self.memory.write_word_32(address, value.into())?;
 
-        self.wait_for_core_halted(timeout)?;
+            self.wait_for_core_halted(timeout)?;
 
-        // Reset our cached values
-        self.reset_register_cache();
-
+            // Reset our cached values
+            self.reset_register_cache();
+        }
         // Update core status
         let _ = self.status()?;
 
@@ -286,6 +287,10 @@ impl<'probe> CoreInterface for Armv7a<'probe> {
     }
 
     fn run(&mut self) -> Result<(), Error> {
+        if matches!(self.state.current_state, CoreStatus::Running) {
+            return Ok(());
+        }
+
         // set writeback values
         self.writeback_registers()?;
 
@@ -621,6 +626,16 @@ impl<'probe> CoreInterface for Armv7a<'probe> {
         Err(crate::error::Error::Other(anyhow::anyhow!(
             "Fpu detection not yet implemented"
         )))
+    }
+
+    fn on_session_stop(&mut self) -> Result<(), Error> {
+        if matches!(self.state.current_state, CoreStatus::Halted(_)) {
+            // We may have clobbered registers we wrote during debugging
+            // Best effort attempt to put them back before we exit
+            self.writeback_registers()
+        } else {
+            Ok(())
+        }
     }
 }
 
@@ -1308,7 +1323,7 @@ mod test {
         let mut state = CortexAState::new();
 
         // Add expectations
-        add_status_expectations(&mut probe, true);
+        add_status_expectations(&mut probe, false);
 
         // Write halt request
         let mut dbgdrcr = Dbgdrcr(0);

@@ -93,6 +93,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - RISCV `Disassembly` works correctly for 'compressed' (RV32C isa variants) instruction sets.
   - RISCV stack unwind improvements (stack frames and registers work, variables do not resolve correctly.)
 - Fixed a possible endless recursion in the J-Link code, when no chip is connected. (#1123)
+- Fixed an issue with ARMv7-a/v8-a where some register values might be corrupted. (#1131)
+- Fixed an issue where `probe-rs-cli`'s debug console didn't detect if the core is halted (#1131)
 
 ## [0.12.0]
 

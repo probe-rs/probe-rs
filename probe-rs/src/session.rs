@@ -532,6 +532,12 @@ impl Drop for Session {
             log::warn!("Could not clear all hardware breakpoints: {:?}", err);
         }
 
+        if let Err(err) = { 0..self.cores.len() }
+            .try_for_each(|i| self.core(i).and_then(|mut core| core.on_session_stop()))
+        {
+            log::warn!("Error during on_session_stop: {:?}", err);
+        }
+
         // Disable tracing for all Cortex-M cores.
         if let Err(err) = { 0..self.cores.len() }.try_for_each(|i| {
             let is_cortex_m = self.core(i)?.core_type().is_cortex_m();
