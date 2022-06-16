@@ -86,6 +86,25 @@ pub enum InstructionSet {
     RV32,
 }
 
+impl InstructionSet {
+    /// Set the minimum instruction size in bytes.
+    pub fn get_minimum_instruction_size(&self) -> u8 {
+        match self {
+            InstructionSet::Thumb2 => {
+                // Thumb2 uses a variable size (2 or 4) instruction set. For our purposes, we set it as 2, so that we don't accidentally read outside of addressable memory.
+                2
+            }
+            InstructionSet::A32 => 4,
+            InstructionSet::A64 => 4,
+            InstructionSet::RV32 => {
+                // Assume that we are using the RV32C (compressed) instruction set.
+                // TODO: Need an impl of RV32 and RV32C to properly differentiate this, then we don't need to assume.
+                2
+            }
+        }
+    }
+}
+
 /// This describes a chip family with all its variants.
 ///
 /// This struct is usually read from a target description

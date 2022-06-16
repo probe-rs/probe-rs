@@ -89,7 +89,7 @@ fn source_location() {
                 low_pc: Some(0x80006DE),
                 high_pc: Some(0x8000E0C),
             }),
-            di.get_source_location(*addr)
+            di.get_source_location(probe_rs::RegisterValue::U64(*addr))
         );
     }
 }

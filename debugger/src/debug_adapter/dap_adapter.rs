@@ -13,10 +13,10 @@ use num_traits::Zero;
 use parse_int::parse;
 use probe_rs::{
     debug::{
-        registers::Registers, stepping_mode::SteppingMode, ColumnType, SourceLocation,
+        registers::DebugRegisters, stepping_mode::SteppingMode, ColumnType, SourceLocation,
         VariableName, VariableNodeType,
     },
-    CoreStatus, HaltReason, InstructionSet, MemoryInterface,
+    CoreStatus, CoreType, HaltReason, InstructionSet, MemoryInterface, RegisterValue,
 };
 use probe_rs_cli_util::rtt;
 use serde::{de::DeserializeOwned, Serialize};
@@ -300,20 +300,13 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             }
         } {
             // Always search the registers first, because we don't have a VariableCache for them.
-            if let Some((_register_number, register_value)) =
-                stack_frame.registers.registers().into_iter().find(
-                    |(register_number, _register_value)| {
-                        let register_number = **register_number;
-                        let register_name = stack_frame
-                            .registers
-                            .get_name_by_dwarf_register_number(register_number)
-                            .unwrap_or_else(|| format!("r{:#}", register_number));
-                        register_name == expression
-                    },
-                )
+            if let Some(register_value) = stack_frame
+                .registers
+                .get_register_by_name(expression.as_str())
+                .and_then(|reg| reg.value)
             {
                 response_body.type_ = Some(format!("{}", VariableName::RegistersRoot));
-                response_body.result = format!("{:#010x}", register_value);
+                response_body.result = format!("{}", register_value);
             } else {
                 // If the expression wasn't pointing to a register, then check if is a local or static variable in our stack_frame
                 let mut variable: Option<probe_rs::debug::Variable> = None;
@@ -405,17 +398,10 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         {
             Some(stack_frame) => {
                 // The variable is a register value in this StackFrame
-                if let Some((_register_number, _register_value)) =
-                    stack_frame.registers.registers().into_iter().find(
-                        |(register_number, _register_value)| {
-                            let register_number = **register_number;
-                            let register_name = stack_frame
-                                .registers
-                                .get_name_by_dwarf_register_number(register_number)
-                                .unwrap_or_else(|| format!("r{:#}", register_number));
-                            register_name == arguments.name
-                        },
-                    )
+                if let Some(_register_value) = stack_frame
+                    .registers
+                    .get_register_by_name(arguments.name.as_str())
+                    .and_then(|reg| reg.value)
                 {
                     // TODO: Does it make sense for us to consider implementing an update of platform registers?
                     return self.send_response::<SetVariableResponseBody>(
@@ -811,7 +797,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                         match target_core
                             .core_data
                             .debug_info
-                            .get_source_location(memory_reference as u64)
+                            .get_source_location(memory_reference.into())
                         {
                             Some(source_location) => {
                                 breakpoint_response.source = get_dap_source(&source_location);
@@ -919,7 +905,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                 // We do the actual stack trace here, because VSCode sometimes sends multiple StackTrace requests, which lead to unnecessary unwind processing.
                 // By doing it here, we do it once, and serve up the results when we get the StackTrace requests.
                 let regs = target_core.core.registers();
-                let pc: u64 = match target_core.core.read_core_reg(regs.program_counter()) {
+                let pc = match target_core.core.read_core_reg(regs.program_counter()) {
                     Ok(pc) => pc,
                     Err(error) => {
                         return self
@@ -993,7 +979,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                     id: i64,
                     function_name: String,
                     source_location: Option<SourceLocation>,
-                    pc: u32,
+                    pc: RegisterValue,
                     is_inlined: bool,
                 }
 
@@ -1068,7 +1054,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                         let function_display_name = if frame.is_inlined {
                             format!("{} #[inline]", frame.function_name)
                         } else {
-                            format!("{} @{:#010x}", frame.function_name, frame.pc)
+                            format!("{} @{}", frame.function_name, frame.pc)
                         };
 
                         // Create the appropriate [`dap_types::Source`] for the response
@@ -1091,7 +1077,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                             module_id: None,
                             presentation_hint: Some("normal".to_owned()),
                             can_restart: Some(false),
-                            instruction_pointer_reference: Some(format!("{:#010x}", frame.pc)),
+                            instruction_pointer_reference: Some(format!("{}", frame.pc)),
                         }
                     })
                     .collect();
@@ -1244,10 +1230,59 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         // The EXACT number of instructions to return in the result.
         instruction_count: i64,
     ) -> Result<Vec<dap_types::DisassembledInstruction>, DebuggerError> {
-        let instruction_offset_as_bytes = (instruction_offset
-            * target_core.core_data.debug_info.get_instruction_size() as i64)
-            / 4
-            * 5;
+        let cs = match target_core.core.instruction_set()? {
+            InstructionSet::Thumb2 => {
+                let mut capstone_builder = Capstone::new()
+                    .arm()
+                    .mode(armArchMode::Thumb)
+                    .endian(Endian::Little);
+                if matches!(target_core.core.core_type(), CoreType::Armv8m) {
+                    capstone_builder = capstone_builder
+                        .extra_mode(std::iter::once(capstone::arch::arm::ArchExtraMode::V8));
+                }
+                capstone_builder.build()
+            }
+            InstructionSet::A32 => Capstone::new()
+                .arm()
+                .mode(armArchMode::Arm)
+                .endian(Endian::Little)
+                .build(),
+            InstructionSet::A64 => Capstone::new()
+                .arm64()
+                .mode(aarch64ArchMode::Arm)
+                .endian(Endian::Little)
+                .build(),
+            InstructionSet::RV32 => Capstone::new()
+                .riscv()
+                .mode(riscvArchMode::RiscV32)
+                .endian(Endian::Little)
+                .extra_mode(std::iter::once(
+                    capstone::arch::riscv::ArchExtraMode::RiscVC,
+                ))
+                .build(),
+        }
+        .map_err(|err| anyhow!("Error creating capstone: {:?}", err))?;
+
+        // Adjust instruction offset as required for variable length instruction sets.
+        let instruction_offset_as_bytes = match target_core.core.instruction_set()? {
+            InstructionSet::Thumb2 | InstructionSet::RV32 => {
+                // Since we cannot guarantee the size of individual instructions, let's assume we will read the 120% of the requested number of 16-bit instructions.
+                (instruction_offset
+                    * target_core
+                        .core
+                        .instruction_set()?
+                        .get_minimum_instruction_size() as i64)
+                    / 4
+                    * 5
+            }
+            InstructionSet::A32 | InstructionSet::A64 => {
+                instruction_offset
+                    * target_core
+                        .core
+                        .instruction_set()?
+                        .get_minimum_instruction_size() as i64
+            }
+        };
 
         // The vector we will use to return results.
         let mut assembly_lines: Vec<DisassembledInstruction> = vec![];
@@ -1264,8 +1299,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         } else {
             Some(memory_reference.saturating_add(byte_offset) as u64)
         };
-        // We can't rely on the MSDAP arguments to result in a memory aligned address for us to read from, so we force the read_pointer to be a memory_aligned address.
-        // TODO: Using 4 bytes for aligned memory reads is 32-Bit architecture specific, and needs to be addressed as part of 64-Bit implementation.
+        // We can't rely on the MSDAP arguments to result in a memory aligned address for us to read from, so we force the read_pointer to be a 32-bit memory_aligned address.
         read_pointer = if instruction_offset_as_bytes.is_negative() {
             read_pointer
                 .and_then(|rp| {
@@ -1297,7 +1331,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         while assembly_lines.len() < instruction_count as usize {
             if read_more_bytes {
                 if let Some(current_read_pointer) = read_pointer {
-                    // TODO: This is architecture specific, and needs to be addressed.
+                    // All supported architectures use maximum 32-bit instructions, and require 32-bit memory aligned reads.
                     match target_core.core.read_word_32(current_read_pointer) {
                         Ok(new_word) => {
                             // Advance the read pointer for next time we need it.
@@ -1338,52 +1372,38 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                 }
             }
 
-            let cs = match target_core.core.instruction_set()? {
-                InstructionSet::Thumb2 => Capstone::new()
-                    .arm()
-                    .mode(armArchMode::Thumb)
-                    .endian(Endian::Little)
-                    .build(),
-                InstructionSet::A32 => {
-                    // We need to inspect the CPSR to determine what mode this is opearting in
-                    Capstone::new()
-                        .arm()
-                        .mode(armArchMode::Arm)
-                        .endian(Endian::Little)
-                        .build()
-                }
-                InstructionSet::A64 => {
-                    // We need to inspect the CPSR to determine what mode this is opearting in
-                    Capstone::new()
-                        .arm64()
-                        .mode(aarch64ArchMode::Arm)
-                        .endian(Endian::Little)
-                        .build()
-                }
-                InstructionSet::RV32 => Capstone::new()
-                    .riscv()
-                    .mode(riscvArchMode::RiscV32)
-                    .endian(Endian::Little)
-                    .build(),
-            }
-            .map_err(|err| anyhow!("Error creating capstone: {:?}", err))?;
-
             match cs.disasm_count(&code_buffer, instruction_pointer as u64, 1) {
                 Ok(instructions) => {
                     if instructions.len().is_zero() {
-                        read_more_bytes = true;
-                        continue;
+                        match target_core.core.instruction_set()? {
+                            InstructionSet::Thumb2 | InstructionSet::RV32 => {
+                                //Special handling for variable length instructions.
+                                if code_buffer.len() == 2 {
+                                    // It is possible the last instruction was 2 bytes and the next needs 4 bytes, so read more bytes and try again.
+                                    read_more_bytes = true;
+                                    continue;
+                                }
+                            }
+                            InstructionSet::A32 | InstructionSet::A64 => {
+                                // Nothing special required here.
+                            }
+                        }
+                        // The capstone library sometimes returns an empty result set, instead of an Err. Catch it here or else we risk an infinte loop looking for a valid instruction.
+                        return Err(DebuggerError::Other(anyhow::anyhow!(
+                            "Disassembly encountered unsupported instructions at memory reference {:#010x?}",
+                            instruction_pointer
+                        )));
                     }
 
                     let mut result_instruction = instructions
                         .iter()
                         .map(|instruction| {
                             // Before processing, update the code buffer appropriately
-                            code_buffer = code_buffer.split_at(instruction.bytes().len() as usize).1.to_vec();
+                            code_buffer = code_buffer.split_at(instruction.len() as usize).1.to_vec();
                             read_more_bytes = code_buffer.is_empty();
 
                             // Move the instruction_pointer for the next read.
-                            instruction_pointer += instruction.bytes().len() as u64;
+                            instruction_pointer += instruction.len() as u64;
 
                             // Try to resolve the source location for this instruction.
                             // If we find one, we use it ONLY if it is different from the previous one (stored_source_location).
@@ -1395,7 +1415,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                             if let Some(current_source_location) = target_core
                                 .core_data
                                 .debug_info
-                                .get_source_location(instruction.address()) {
+                                .get_source_location(instruction.address().into()) {
                                 if let Some(previous_source_location) = stored_source_location.clone() {
                                     if current_source_location != previous_source_location {
                                         location = get_dap_source(&current_source_location);
@@ -1589,7 +1609,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         let response = {
             let mut parent_variable: Option<probe_rs::debug::Variable> = None;
             let mut variable_cache: Option<&mut probe_rs::debug::VariableCache> = None;
-            let mut stack_frame_registers: Option<&Registers> = None;
+            let mut stack_frame_registers: Option<&DebugRegisters> = None;
             for stack_frame in target_core.core_data.stack_frames.iter_mut() {
                 if let Some(search_cache) = &mut stack_frame.local_variables {
                     if let Some(search_variable) =
@@ -1615,40 +1635,19 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                 if stack_frame.id == arguments.variables_reference {
                     // This is a special case, where we just want to return the stack frame registers.
 
-                    let mut sorted_registers = stack_frame
+                    let dap_variables: Vec<Variable> = stack_frame
                         .registers
-                        .registers()
-                        .collect::<Vec<(&u32, &u64)>>();
-                    sorted_registers
-                        .sort_by_key(|(register_number, _register_value)| *register_number);
-
-                    let dap_variables: Vec<Variable> = sorted_registers
+                        .0
                         .iter()
-                        .map(|(&register_number, &register_value)| Variable {
-                            name: stack_frame
-                                .registers
-                                .get_name_by_dwarf_register_number(register_number)
-                                .unwrap_or_else(|| format!("r{:#}", register_number)),
-                            evaluate_name: Some(
-                                stack_frame
-                                    .registers
-                                    .get_name_by_dwarf_register_number(register_number)
-                                    .unwrap_or_else(|| format!("r{:#}", register_number)),
-                            ),
+                        .map(|register| Variable {
+                            name: register.get_register_name(),
+                            evaluate_name: Some(register.get_register_name()),
                             memory_reference: None,
                             indexed_variables: None,
                             named_variables: None,
                             presentation_hint: None, // TODO: Implement hint as Hex for registers
                             type_: Some(format!("{}", VariableName::RegistersRoot)),
-                            value: format!(
-                                "{:#0width$x}",
-                                register_value,
-                                width = stack_frame
-                                    .registers
-                                    .get_description_by_dwarf_register_number(register_number)
-                                    .map(|d| d.format_hex_width())
-                                    .unwrap_or_else(|| 10)
-                            ),
+                            value: register.value.unwrap_or_default().to_string(),
                             variables_reference: 0,
                         })
                         .collect();

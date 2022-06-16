@@ -8,7 +8,9 @@ use capstone::{
 use num_traits::Num;
 use probe_rs::{
     architecture::arm::Dump,
-    debug::{debug_info::DebugInfo, registers::Registers, stack_frame::StackFrame, VariableName},
+    debug::{
+        debug_info::DebugInfo, registers::DebugRegisters, stack_frame::StackFrame, VariableName,
+    },
     Core, CoreType, InstructionSet, MemoryInterface, RegisterDescription, RegisterId,
 };
 use std::fs::File;
@@ -413,7 +415,7 @@ impl DebugCli {
                                 .collect();
 
                             for (i, frame) in halted_state.stack_frames.iter().enumerate() {
-                                print!("Frame {}: {} @ {:#010x}", i, frame.function_name, frame.pc);
+                                print!("Frame {}: {} @ {}", i, frame.function_name, frame.pc);
 
                                 if frame.is_inlined {
                                     print!(" inline");
@@ -476,7 +478,7 @@ impl DebugCli {
                         None => Box::new(std::iter::empty::<&RegisterDescription>()),
                     };
 
-                let iter = register_file.registers().chain(psr_iter);
+                let iter = register_file.platform_registers().chain(psr_iter);
 
                 for register in iter {
                     let value: u64 = cli_data.core.read_core_reg(register)?;
@@ -752,10 +754,13 @@ impl<'p> CliData<'p> {
 
         self.state = match status {
             probe_rs::CoreStatus::Halted(_) => {
-                let registers = Registers::from_core(&mut self.core);
-
+                let registers = DebugRegisters::from_core(&mut self.core);
                 DebugState::Halted(HaltedState {
-                    program_counter: registers.get_program_counter().unwrap_or_default(),
+                    program_counter: registers
+                        .get_program_counter()
+                        .and_then(|reg| reg.value)
+                        .unwrap_or_default()
+                        .try_into()?,
                     current_frame: 0,
                     frame_indices: vec![1],
                     stack_frames: vec![],
