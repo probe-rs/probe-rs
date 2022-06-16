@@ -2,7 +2,7 @@
 name = "probe-rs-cli-util"
 version = "0.12.0"
 authors = [
-    "Noah Hüsser <yatekii@yatekii.ch",
+    "Noah Hüsser <yatekii@yatekii.ch>",
     "Dominik Boehi <dominik.boehi@gmail.com>",
 ]
 edition = "2021"
