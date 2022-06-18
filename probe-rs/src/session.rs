@@ -154,6 +154,9 @@ impl Session {
                     }
                 };
 
+                // Attach to the probe first so manipulating the reset pin works.
+                probe.inner_attach()?;
+
                 if AttachMethod::UnderReset == attach_method {
                     if let Some(dap_probe) = probe.try_as_dap_probe() {
                         sequence_handle.reset_hardware_assert(dap_probe)?;
@@ -166,8 +169,6 @@ impl Session {
                         probe.target_reset_assert()?;
                     }
                 }
-
-                probe.inner_attach()?;
 
                 let interface = probe.try_into_arm_interface().map_err(|(_, err)| err)?;
 

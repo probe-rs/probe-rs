@@ -98,6 +98,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed an issue with ARMv7-a/v8-a where some register values might be corrupted. (#1131)
 - Fixed an issue where `probe-rs-cli`'s debug console didn't detect if the core is halted (#1131)
 - Fix GDB interface to require a Mutex to enable multi-threaded usage (#1144)
+- Fix connection ordering so `--connect-under-reset` is able to minipulate the reset pin.
 
 ## [0.12.0]
 
