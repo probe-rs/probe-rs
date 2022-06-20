@@ -797,7 +797,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                         match target_core
                             .core_data
                             .debug_info
-                            .get_source_location(memory_reference.into())
+                            .get_source_location(memory_reference)
                         {
                             Some(source_location) => {
                                 breakpoint_response.source = get_dap_source(&source_location);
@@ -1415,7 +1415,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                             if let Some(current_source_location) = target_core
                                 .core_data
                                 .debug_info
-                                .get_source_location(instruction.address().into()) {
+                                .get_source_location(instruction.address()) {
                                 if let Some(previous_source_location) = stored_source_location.clone() {
                                     if current_source_location != previous_source_location {
                                         location = get_dap_source(&current_source_location);

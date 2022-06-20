@@ -20,7 +20,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
     /// If `find_inlined` is `false`, then the result will contain a single [`FunctionDie`]
     pub(crate) fn get_function_dies(
         &self,
-        address: RegisterValue,
+        address: u64,
         find_inlined: bool,
     ) -> Result<Vec<FunctionDie>, DebugError> {
         log::trace!("Searching Function DIE for address {}", address);
@@ -32,9 +32,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                 let mut ranges = self.debug_info.dwarf.die_ranges(&self.unit, current)?;
 
                 while let Ok(Some(ranges)) = ranges.next() {
-                    if (RegisterValue::from(ranges.begin) <= address)
-                        && (address < RegisterValue::from(ranges.end))
-                    {
+                    if ranges.begin <= address && address < ranges.end {
                         // Check if we are actually in an inlined function
 
                         if let Some(mut die) = FunctionDie::new(current.clone(), self) {
@@ -80,7 +78,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
     /// given address.
     pub(crate) fn find_inlined_functions(
         &self,
-        address: RegisterValue,
+        address: u64,
         offset: UnitOffset,
     ) -> Result<Vec<FunctionDie>, DebugError> {
         let mut current_depth = 0;
@@ -101,9 +99,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                     let mut ranges = self.debug_info.dwarf.die_ranges(&self.unit, current)?;
 
                     while let Ok(Some(ranges)) = ranges.next() {
-                        if (RegisterValue::from(ranges.begin) <= address)
-                            && (address < RegisterValue::from(ranges.end))
-                        {
+                        if ranges.begin <= address && address < ranges.end {
                             // Check if we are actually in an inlined function
 
                             // We don't have to search further up in the tree, if there are multiple inlined functions,

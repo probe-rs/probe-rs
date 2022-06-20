@@ -119,7 +119,7 @@ impl DebugInfo {
     /// This function will currently return the innermost function in that case.
     pub fn function_name(
         &self,
-        address: RegisterValue,
+        address: u64,
         find_inlined: bool,
     ) -> Result<Option<String>, DebugError> {
         let mut units = self.dwarf.units();
@@ -142,7 +142,7 @@ impl DebugInfo {
     }
 
     /// Try get the [`SourceLocation`] for a given address.
-    pub fn get_source_location(&self, address: RegisterValue) -> Option<SourceLocation> {
+    pub fn get_source_location(&self, address: u64) -> Option<SourceLocation> {
         let mut units = self.dwarf.units();
 
         while let Ok(Some(header)) = units.next() {
@@ -154,9 +154,7 @@ impl DebugInfo {
             match self.dwarf.unit_ranges(&unit) {
                 Ok(mut ranges) => {
                     while let Ok(Some(range)) = ranges.next() {
-                        if (RegisterValue::from(range.begin) <= address)
-                            && (address < RegisterValue::from(range.end))
-                        {
+                        if range.begin <= address && address < range.end {
                             // Get the function name.
 
                             let ilnp = match unit.line_program.as_ref() {
@@ -170,9 +168,7 @@ impl DebugInfo {
                                     let mut target_seq = None;
 
                                     for seq in sequences {
-                                        if (RegisterValue::from(seq.start) <= address)
-                                            && (address < RegisterValue::from(seq.end))
-                                        {
+                                        if seq.start <= address && address < seq.end {
                                             target_seq = Some(seq);
                                             break;
                                         }
@@ -184,7 +180,7 @@ impl DebugInfo {
                                         let mut rows = program.resume_from(target_seq);
 
                                         while let Ok(Some((header, row))) = rows.next_row() {
-                                            if RegisterValue::from(row.address()) == address {
+                                            if row.address() == address {
                                                 if let Some(file_entry) = row.file(header) {
                                                     if let Some((file, directory)) = self
                                                         .find_file_and_directory(
@@ -207,7 +203,7 @@ impl DebugInfo {
                                                         });
                                                     }
                                                 }
-                                            } else if (RegisterValue::from(row.address()) > address)
+                                            } else if row.address() > address
                                                 && previous_row.is_some()
                                             {
                                                 if let Some(file_entry) = row.file(header) {
@@ -372,10 +368,9 @@ impl DebugInfo {
                                 // This is a safe time to determine the step_out_statement.
                                 // Recursive calls will sometimes need to use a return_address as a program_counter, in which case we skip this part.
                                 if return_address.is_some() {
-                                    if let Ok(function_dies) = program_unit.get_function_dies(
-                                        RegisterValue::from(program_counter),
-                                        true,
-                                    ) {
+                                    if let Ok(function_dies) =
+                                        program_unit.get_function_dies(program_counter, true)
+                                    {
                                         for function in function_dies {
                                             if function.low_pc <= program_counter as u64
                                                 && function.high_pc > program_counter as u64
@@ -711,7 +706,7 @@ impl DebugInfo {
     pub(crate) fn get_stackframe_info(
         &self,
         core: &mut Core<'_>,
-        address: RegisterValue,
+        address: u64,
         unwind_registers: &registers::DebugRegisters,
     ) -> Result<Vec<StackFrame>, DebugError> {
         let mut units = self.get_units();
@@ -858,7 +853,7 @@ impl DebugInfo {
                 function_name,
                 source_location: function_location,
                 registers: stack_frame_registers.clone(),
-                pc: address,
+                pc: RegisterValue::from(address),
                 is_inlined: last_function.is_inline(),
                 static_variables,
                 local_variables,
@@ -873,7 +868,7 @@ impl DebugInfo {
                 function_name: unknown_function,
                 source_location: self.get_source_location(address),
                 registers: stack_frame_registers,
-                pc: address,
+                pc: RegisterValue::from(address),
                 is_inlined: false,
                 static_variables: None,
                 local_variables: None,
@@ -911,11 +906,14 @@ impl DebugInfo {
             Box::new(gimli::UnwindContext::new());
 
         // Unwind [StackFrame]'s for as long as we can unwind a valid PC value.
-        'unwind: while let Some(frame_pc) = unwind_registers
+        'unwind: while let Some(frame_pc_register_value) = unwind_registers
             .get_program_counter()
             .and_then(|pc| pc.value)
         {
             // PART 1: Construct the `StackFrame` for the current pc.
+            let frame_pc = frame_pc_register_value
+                .try_into()
+                .map_err(|error| crate::Error::Other(anyhow::anyhow!("Cannot convert register value for program counter to a 64-bit integeer value: {:?}", error)))?;
             log::trace!(
                 "UNWIND: Will generate `StackFrame` for function at address (PC) {}",
                 frame_pc,
@@ -1047,10 +1045,11 @@ impl DebugInfo {
             // TODO: Investigate and document why and under which circumstances this extra step is necessary. It was added during PR#895.
             // TODO: Test on RISCV and fix as needed
             if matches!(core.architecture(), probe_rs_target::Architecture::Arm) {
-                if let Some(previous_frame_pc) = unwind_registers
+                if let Some(previous_frame_pc_register_value) = unwind_registers
                     .get_program_counter()
                     .and_then(|reg| reg.value)
                 {
+                    let previous_frame_pc = previous_frame_pc_register_value.try_into().map_err(|error| crate::Error::Other(anyhow::anyhow!("Cannot convert register value for program counter to a 64-bit integeer value: {:?}", error)))?;
                     if let Ok(previous_unwind_info) =
                         get_unwind_info(&mut unwind_context, &self.frame_section, previous_frame_pc)
                     {
@@ -1255,12 +1254,12 @@ impl DebugInfo {
 fn get_unwind_info<'a>(
     unwind_context: &'a mut Box<UnwindContext<DwarfReader>>,
     frame_section: &'a DebugFrame<DwarfReader>,
-    frame_program_counter: RegisterValue,
+    frame_program_counter: u64,
 ) -> Result<&'a gimli::UnwindTableRow<DwarfReader, gimli::StoreOnHeap>, DebugError> {
     let unwind_bases = BaseAddresses::default();
     let frame_descriptor_entry = match frame_section.fde_for_address(
         &unwind_bases,
-        frame_program_counter.try_into()?,
+        frame_program_counter,
         gimli::DebugFrame::cie_from_offset,
     ) {
         Ok(frame_descriptor_entry) => frame_descriptor_entry,
@@ -1278,7 +1277,7 @@ fn get_unwind_info<'a>(
             frame_section,
             &unwind_bases,
             unwind_context,
-            frame_program_counter.try_into()?,
+            frame_program_counter,
         )
         .map_err(|error| {
             DebugError::Other(anyhow::anyhow!(
