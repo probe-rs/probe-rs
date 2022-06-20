@@ -6,7 +6,7 @@ use crate::{
 /// The group name of a register.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum RegisterGroup {
-    /// Core / CPU Registers
+    /// Core / CPU Registers. Using the term `Base` rather than `platform`, because that is what the DWARF spec calls these registers.
     Base,
     /// Argument Register
     Argument,
