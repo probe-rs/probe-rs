@@ -1051,69 +1051,58 @@ impl DebugInfo {
                     .get_program_counter()
                     .and_then(|reg| reg.value)
                 {
-                    match get_unwind_info(
-                        &mut unwind_context,
-                        &self.frame_section,
-                        previous_frame_pc,
-                    ) {
-                        Ok(previous_unwind_info) => {
-                            let previous_unwind_cfa = match previous_unwind_info.cfa() {
-                                gimli::CfaRule::RegisterAndOffset { register, offset } => {
-                                    let reg_val = unwind_registers
-                                        .get_register_by_dwarf_id(register.0)
-                                        .and_then(|reg| reg.value);
-                                    match reg_val {
-                                        Some(reg_val) => {
-                                            let unwind_cfa =
-                                                add_to_address(reg_val.try_into()?, *offset);
-                                            log::trace!(
+                    if let Ok(previous_unwind_info) =
+                        get_unwind_info(&mut unwind_context, &self.frame_section, previous_frame_pc)
+                    {
+                        let previous_unwind_cfa = match previous_unwind_info.cfa() {
+                            gimli::CfaRule::RegisterAndOffset { register, offset } => {
+                                let reg_val = unwind_registers
+                                    .get_register_by_dwarf_id(register.0)
+                                    .and_then(|reg| reg.value);
+                                match reg_val {
+                                    Some(reg_val) => {
+                                        let unwind_cfa =
+                                            add_to_address(reg_val.try_into()?, *offset);
+                                        log::trace!(
                                             "UNWIND - CFA : {:#010x}\tRule: Previous Function {:?}",
                                             unwind_cfa,
                                             previous_unwind_info.cfa()
                                         );
-                                            Some(unwind_cfa)
-                                        }
-                                        None => {
-                                            log::error!(
+                                        Some(unwind_cfa)
+                                    }
+                                    None => {
+                                        log::error!(
                                                         "UNWIND: `StackFrameIterator` unable to determine the previous frame unwind CFA: Missing value of register {}",
                                                         register.0
                                                     );
-                                            stack_frames.push(return_frame);
-                                            break;
-                                        }
+                                        stack_frames.push(return_frame);
+                                        break;
                                     }
                                 }
-                                gimli::CfaRule::Expression(_) => unimplemented!(),
-                            };
-                            let callee_frame_registers = unwind_registers.clone();
-                            if let Some(return_register_id) =
-                                unwind_registers.get_return_address().map(|ra| ra.id)
+                            }
+                            gimli::CfaRule::Expression(_) => unimplemented!(),
+                        };
+                        let callee_frame_registers = unwind_registers.clone();
+                        if let Some(return_register_id) =
+                            unwind_registers.get_return_address().map(|ra| ra.id)
+                        {
+                            if let Some(return_register) =
+                                unwind_registers.get_register_mut(return_register_id)
                             {
-                                if let Some(return_register) =
-                                    unwind_registers.get_register_mut(return_register_id)
+                                let mut unwound_return_address: Option<RegisterValue> = None;
+                                if unwind_register(
+                                    return_register,
+                                    &callee_frame_registers,
+                                    previous_unwind_info,
+                                    previous_unwind_cfa,
+                                    &mut unwound_return_address,
+                                    core,
+                                )
+                                .is_break()
                                 {
-                                    let mut unwound_return_address: Option<RegisterValue> = None;
-                                    if unwind_register(
-                                        return_register,
-                                        &callee_frame_registers,
-                                        previous_unwind_info,
-                                        previous_unwind_cfa,
-                                        &mut unwound_return_address,
-                                        core,
-                                    )
-                                    .is_break()
-                                    {
-                                        stack_frames.push(return_frame);
-                                        break 'unwind;
-                                    };
-                                } else {
-                                    log::error!(
-                                        "UNWIND: No available return address for frame {}",
-                                        return_frame.function_name
-                                    );
                                     stack_frames.push(return_frame);
-                                    break;
-                                }
+                                    break 'unwind;
+                                };
                             } else {
                                 log::error!(
                                     "UNWIND: No available return address for frame {}",
@@ -1122,9 +1111,11 @@ impl DebugInfo {
                                 stack_frames.push(return_frame);
                                 break;
                             }
-                        }
-                        Err(error) => {
-                            log::trace!("UNWIND: Stack unwind complete. No available debug info for program counter {}: {}",frame_pc, error);
+                        } else {
+                            log::error!(
+                                "UNWIND: No available return address for frame {}",
+                                return_frame.function_name
+                            );
                             stack_frames.push(return_frame);
                             break;
                         }
