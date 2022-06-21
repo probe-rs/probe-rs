@@ -27,6 +27,8 @@ use gdbstub::target::Target;
 
 pub(crate) use traits::{GdbErrorExt, ProbeRsErrorExt};
 
+use desc::TargetDescription;
+
 /// Actions for resuming a core
 #[derive(Debug, Copy, Clone)]
 pub(crate) enum ResumeAction {
@@ -51,6 +53,9 @@ pub(crate) struct RuntimeTarget<'a> {
     gdb: Option<GdbStubStateMachine<'a, RuntimeTarget<'a>, TcpStream>>,
     /// Resume action to be used upon a continue request
     resume_action: (usize, ResumeAction),
+
+    /// Description of target's architecture and registers
+    target_desc: TargetDescription,
 }
 
 impl RuntimeTarget<'_> {
@@ -69,6 +74,7 @@ impl RuntimeTarget<'_> {
             listener,
             gdb: None,
             resume_action: (0, ResumeAction::Unchanged),
+            target_desc: TargetDescription::default(),
         })
     }
 
@@ -83,13 +89,16 @@ impl RuntimeTarget<'_> {
                 Ok((s, addr)) => {
                     log::info!("New connection from {:#?}", addr);
 
-                    for core_id in self.cores.iter() {
+                    for i in 0..self.cores.len() {
+                        let core_id = self.cores[i];
                         // When we first attach to the core, GDB expects us to halt the core, so we do this here when a new client connects.
                         // If the core is already halted, nothing happens if we issue a halt command again, so we always do this no matter of core state.
                         self.session
                             .borrow_mut()
-                            .core(*core_id)?
+                            .core(core_id)?
                             .halt(Duration::from_millis(100))?;
+
+                        self.load_target_desc()?;
                     }
 
                     // Start the GDB Stub state machine

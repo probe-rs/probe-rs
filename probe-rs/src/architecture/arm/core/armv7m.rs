@@ -8,8 +8,8 @@ use crate::error::Error;
 use crate::memory::{valid_32_address, Memory};
 use crate::{CoreType, DebugProbeError, InstructionSet};
 
-use super::cortex_m::Cpacr;
-use super::{register, CortexMState, Dfsr, ARM_REGISTER_FILE};
+use super::cortex_m::Mvfr0;
+use super::{register, CortexMState, Dfsr, CORTEX_M_COMMON_REGS, CORTEX_M_WITH_FP_REGS};
 use crate::{
     core::{Architecture, CoreStatus, HaltReason},
     MemoryInterface,
@@ -624,6 +624,8 @@ impl<'probe> Armv7m<'probe> {
             memory.write_word_32(Dfsr::ADDRESS, dfsr_clear.into())?;
 
             state.current_state = core_state;
+            state.fp_present = Mvfr0(memory.read_word_32(Mvfr0::ADDRESS)?).fp_present();
+
             state.initialize();
         }
 
@@ -937,7 +939,11 @@ impl<'probe> CoreInterface for Armv7m<'probe> {
     }
 
     fn registers(&self) -> &'static RegisterFile {
-        &ARM_REGISTER_FILE
+        if self.state.fp_present {
+            &CORTEX_M_WITH_FP_REGS
+        } else {
+            &CORTEX_M_COMMON_REGS
+        }
     }
 
     fn clear_hw_breakpoint(&mut self, bp_unit_index: usize) -> Result<(), Error> {
@@ -1000,7 +1006,7 @@ impl<'probe> CoreInterface for Armv7m<'probe> {
     }
 
     fn fpu_support(&mut self) -> Result<bool, crate::error::Error> {
-        Ok(Cpacr(self.memory.read_word_32(Cpacr::ADDRESS)?).fpu_present())
+        Ok(self.state.fp_present)
     }
 }
 

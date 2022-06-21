@@ -15,7 +15,7 @@ use anyhow::Result;
 
 use super::armv8a_core_regs::AARCH64_REGISTER_FILE;
 use super::CortexAState;
-use super::ARM_REGISTER_FILE;
+use super::AARCH32_COMMON_REGS;
 
 use super::instructions::aarch64;
 use super::instructions::thumb2::{build_ldr, build_mcr, build_mrc, build_str};
@@ -900,7 +900,7 @@ impl<'probe> CoreInterface for Armv8a<'probe> {
         if self.state.is_64_bit {
             &AARCH64_REGISTER_FILE
         } else {
-            &ARM_REGISTER_FILE
+            &AARCH32_COMMON_REGS
         }
     }
 

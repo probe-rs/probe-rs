@@ -65,6 +65,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Renamed `core::CoreRegisterAddress` to `core::RegisterId`, and `core::CoreRegister` to `core::MemoryMappedRegister`. (#1121)
 - Updated gdb-server to use gdbstub internally (#1125)
 - gdb-server now uses all cores on a target (#1125)
+- gdb-server now supports floating point registers (#1133)
 
 ### Fixed
 

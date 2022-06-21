@@ -14,8 +14,8 @@ use anyhow::Result;
 
 use bitfield::bitfield;
 
-use super::cortex_m::Cpacr;
-use super::{CortexMState, Dfsr, ARM_REGISTER_FILE};
+use super::cortex_m::Mvfr0;
+use super::{CortexMState, Dfsr, CORTEX_M_COMMON_REGS, CORTEX_M_WITH_FP_REGS};
 use std::sync::Arc;
 use std::{
     mem::size_of,
@@ -64,6 +64,8 @@ impl<'probe> Armv8m<'probe> {
             memory.write_word_32(Dfsr::ADDRESS, dfsr_clear.into())?;
 
             state.current_state = core_state;
+            state.fp_present = Mvfr0(memory.read_word_32(Mvfr0::ADDRESS)?).fp_present();
+
             state.initialize();
         }
 
@@ -265,7 +267,11 @@ impl<'probe> CoreInterface for Armv8m<'probe> {
     }
 
     fn registers(&self) -> &'static RegisterFile {
-        &ARM_REGISTER_FILE
+        if self.state.fp_present {
+            &CORTEX_M_WITH_FP_REGS
+        } else {
+            &CORTEX_M_COMMON_REGS
+        }
     }
 
     fn clear_hw_breakpoint(&mut self, bp_unit_index: usize) -> Result<(), Error> {
@@ -382,7 +388,7 @@ impl<'probe> CoreInterface for Armv8m<'probe> {
     }
 
     fn fpu_support(&mut self) -> Result<bool, crate::error::Error> {
-        Ok(Cpacr(self.memory.read_word_32(Cpacr::ADDRESS)?).fpu_present())
+        Ok(self.state.fp_present)
     }
 }
 

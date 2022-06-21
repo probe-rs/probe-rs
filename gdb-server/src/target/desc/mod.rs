@@ -1,13 +1,19 @@
 use super::{GdbErrorExt, RuntimeTarget};
 
+mod data;
+
 use anyhow::anyhow;
+
+use data::build_target_description;
 
 use gdbstub::target::ext::memory_map::MemoryMap;
 use gdbstub::target::ext::target_description_xml_override::TargetDescriptionXmlOverride;
 use gdbstub::target::TargetError;
 
 use probe_rs::config::MemoryRegion;
-use probe_rs::{CoreType, InstructionSet, Session};
+use probe_rs::{CoreType, Session};
+
+pub(crate) use data::{GdbRegisterSource, TargetDescription};
 
 fn copy_to_buf(data: &[u8], buf: &mut [u8]) -> usize {
     let len = data.len();
@@ -41,16 +47,22 @@ impl TargetDescriptionXmlOverride for RuntimeTarget<'_> {
             ));
         }
 
-        let mut session = self.session.borrow_mut();
-        let mut core = session.core(self.cores[0]).into_target_result()?;
-
-        let xml = build_target_description(
-            core.core_type(),
-            core.instruction_set().into_target_result()?,
-        );
+        let xml = self.target_desc.get_target_xml();
         let xml_data = xml.as_bytes();
 
         Ok(copy_range_to_buf(xml_data, offset, length, buf))
+    }
+}
+
+impl RuntimeTarget<'_> {
+    pub(crate) fn load_target_desc(&mut self) -> Result<(), probe_rs::Error> {
+        let mut session = self.session.borrow_mut();
+        let mut core = session.core(self.cores[0])?;
+
+        self.target_desc =
+            build_target_description(core.registers(), core.core_type(), core.instruction_set()?);
+
+        Ok(())
     }
 }
 
@@ -137,52 +149,5 @@ fn gdb_memory_map(
     Ok(xml_map)
 }
 
-/// Build the GDB target description XML for a core type and ISA
-fn build_target_description(core_type: CoreType, isa: InstructionSet) -> String {
-    // GDB-architectures
-    //
-    // - armv6-m      -> Core-M0
-    // - armv7-m      -> Core-M3
-    // - armv7e-m      -> Core-M4, Core-M7
-    // - armv8-m.base -> Core-M23
-    // - armv8-m.main -> Core-M33
-    // - riscv:rv32   -> RISCV
-
-    let architecture = match core_type {
-        CoreType::Armv6m => "armv6-m",
-        CoreType::Armv7a => "armv7",
-        CoreType::Armv7m => "armv7",
-        CoreType::Armv7em => "armv7e-m",
-        CoreType::Armv8a => match isa {
-            InstructionSet::A64 => "aarch64",
-            _ => "armv8-a",
-        },
-        CoreType::Armv8m => "armv8-m.main",
-        CoreType::Riscv => "riscv:rv32",
-    };
-
-    // Only target.xml is supported
-    let mut target_description = r#"<?xml version="1.0"?>
-        <!DOCTYPE target SYSTEM "gdb-target.dtd">
-        <target version="1.0">
-        "#
-    .to_owned();
-
-    target_description.push_str(&format!("<architecture>{}</architecture>", architecture));
-
-    target_description.push_str("</target>");
-
-    target_description
-}
-
 #[cfg(test)]
-mod test {
-    use super::{build_target_description, CoreType, InstructionSet};
-
-    #[test]
-    fn test_target_description_microbit() {
-        let description = build_target_description(CoreType::Armv6m, InstructionSet::Thumb2);
-
-        insta::assert_snapshot!(description);
-    }
-}
+mod test;
