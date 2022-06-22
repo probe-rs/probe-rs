@@ -9,7 +9,6 @@ use capstone::{
     arch::riscv::ArchMode as riscvArchMode, prelude::*, Capstone, Endian,
 };
 use dap_types::*;
-use num_traits::Zero;
 use parse_int::parse;
 use probe_rs::{
     debug::{
@@ -1230,7 +1229,8 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         // The EXACT number of instructions to return in the result.
         instruction_count: i64,
     ) -> Result<Vec<dap_types::DisassembledInstruction>, DebuggerError> {
-        let cs = match target_core.core.instruction_set()? {
+        let target_instruction_set = target_core.core.instruction_set()?;
+        let mut cs = match target_instruction_set {
             InstructionSet::Thumb2 => {
                 let mut capstone_builder = Capstone::new()
                     .arm()
@@ -1262,9 +1262,10 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                 .build(),
         }
         .map_err(|err| anyhow!("Error creating capstone: {:?}", err))?;
+        let _ = cs.set_skipdata(true);
 
         // Adjust instruction offset as required for variable length instruction sets.
-        let instruction_offset_as_bytes = match target_core.core.instruction_set()? {
+        let instruction_offset_as_bytes = match target_instruction_set {
             InstructionSet::Thumb2 | InstructionSet::RV32 => {
                 // Since we cannot guarantee the size of individual instructions, let's assume we will read the 120% of the requested number of 16-bit instructions.
                 (instruction_offset
@@ -1372,22 +1373,9 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                 }
             }
 
-            match cs.disasm_count(&code_buffer, instruction_pointer as u64, 1) {
+            match cs.disasm_all(&code_buffer, instruction_pointer as u64) {
                 Ok(instructions) => {
-                    if instructions.len().is_zero() {
-                        match target_core.core.instruction_set()? {
-                            InstructionSet::Thumb2 | InstructionSet::RV32 => {
-                                //Special handling for variable length instructions.
-                                if code_buffer.len() == 2 {
-                                    // It is possible the last instruction was 2 bytes and the next needs 4 bytes, so read more bytes and try again.
-                                    read_more_bytes = true;
-                                    continue;
-                                }
-                            }
-                            InstructionSet::A32 | InstructionSet::A64 => {
-                                // Nothing special required here.
-                            }
-                        }
+                    if num_traits::Zero::is_zero(&instructions.len()) {
                         // The capstone library sometimes returns an empty result set, instead of an Err. Catch it here or else we risk an infinte loop looking for a valid instruction.
                         return Err(DebuggerError::Other(anyhow::anyhow!(
                             "Disassembly encountered unsupported instructions at memory reference {:#010x?}",
@@ -1400,7 +1388,9 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                         .map(|instruction| {
                             // Before processing, update the code buffer appropriately
                             code_buffer = code_buffer.split_at(instruction.len() as usize).1.to_vec();
-                            read_more_bytes = code_buffer.is_empty();
+
+                            // Variable width instruction sets my not use the full `code_buffer`, so we need to read ahead, to ensure we have enough code in the buffer to disassemble the 'widest' of instructions in the instruction set.
+                            read_more_bytes = code_buffer.len() < target_instruction_set.get_maximum_instruction_size() as usize;
 
                             // Move the instruction_pointer for the next read.
                             instruction_pointer += instruction.len() as u64;
