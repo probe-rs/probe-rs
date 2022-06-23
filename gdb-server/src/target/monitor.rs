@@ -18,7 +18,11 @@ impl MonitorCmd for RuntimeTarget<'_> {
 
         match cmd.as_ref() {
             "info" => {
-                outputln!(out, "Target info:\n\n{:#?}", self.session.borrow().target());
+                outputln!(
+                    out,
+                    "Target info:\n\n{:#?}",
+                    self.session.lock().unwrap().target()
+                );
             }
             _ => {
                 outputln!(out, "{}", HELP_TEXT);

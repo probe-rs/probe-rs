@@ -1,9 +1,8 @@
 use anyhow::Result;
 use probe_rs::{CoreType, Error, Session};
 
-use std::cell::RefCell;
 use std::net::{SocketAddr, ToSocketAddrs};
-use std::rc::Rc;
+use std::sync::Mutex;
 use std::time::Duration;
 
 use itertools::Itertools;
@@ -77,29 +76,20 @@ impl GdbInstanceConfiguration {
 ///
 /// # Arguments
 ///
-/// * session - The [Session] to use
+/// * session - The [Session] to use, protected by a [std::sync::Mutex]
 /// * instances - a list of [GdbInstanceConfiguration] objects used to configure the GDB session
 ///
 /// # Remarks
 ///
 /// A default configuration can be created by calling [GdbInstanceConfiguration::from_session()]
 pub fn run<'a>(
-    session: Session,
+    session: &Mutex<Session>,
     instances: impl Iterator<Item = &'a GdbInstanceConfiguration>,
 ) -> Result<()> {
-    // We can't use &mut Session because we have more than one target active.
-    // Rc / RefCell give the same behavior as &mut with runtime borrow checking.
-    // Arc / Mutex is not needed because all logic in this stub runs on one thread.
-    let session = Rc::new(RefCell::new(session));
-
     // Turn our group list into GDB targets
     let mut targets = instances
         .map(|instance| {
-            target::RuntimeTarget::new(
-                session.clone(),
-                instance.cores.to_vec(),
-                &instance.socket_addrs[..],
-            )
+            target::RuntimeTarget::new(session, instance.cores.to_vec(), &instance.socket_addrs[..])
         })
         .collect::<Result<Vec<target::RuntimeTarget>, Error>>()?;
 
