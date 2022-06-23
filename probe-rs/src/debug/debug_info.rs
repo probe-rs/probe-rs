@@ -761,7 +761,7 @@ impl DebugInfo {
                 if let Some(inlined_call_site) = inlined_call_site {
                     log::debug!("UNWIND: Call site: {:?}", inlined_caller_source_location);
 
-                    println!("UNWIND: Function name: {}", function_name);
+                    log::trace!("UNWIND: Function name: {}", function_name);
 
                     // Now that we have the function_name and function_source_location, we can create the appropriate variable caches for this stack frame.
                     // Resolve the statics that belong to the compilation unit that this function is in.
@@ -926,7 +926,7 @@ impl DebugInfo {
             let frame_pc = frame_pc_register_value
                 .try_into()
                 .map_err(|error| crate::Error::Other(anyhow::anyhow!("Cannot convert register value for program counter to a 64-bit integeer value: {:?}", error)))?;
-            println!(
+            log::trace!(
                 "UNWIND: Will generate `StackFrame` for function at address (PC) {}",
                 frame_pc,
             );
@@ -939,9 +939,10 @@ impl DebugInfo {
                         // If we encountered INLINED functions (all `StackFrames`s in this Vec, except for the last one, which is the containing NON-INLINED function), these are simply added to the list of stack_frames we return.
                         #[allow(clippy::unwrap_used)]
                         let inlined_frame = cached_stack_frames.pop().unwrap(); // unwrap is safe while .len() > 1
-                        println!(
+                        log::trace!(
                             "UNWIND: Found inlined function - name={}, pc={}",
-                            inlined_frame.function_name, inlined_frame.pc
+                            inlined_frame.function_name,
+                            inlined_frame.pc
                         );
                         stack_frames.push(inlined_frame);
                     }
@@ -969,18 +970,18 @@ impl DebugInfo {
                 if check_return_address.is_max_value() || check_return_address.is_zero() {
                     // When we encounter the starting (after reset) return address, we've reached the bottom of the stack, so no more unwinding after this.
                     stack_frames.push(return_frame);
-                    println!("UNWIND: Stack unwind complete - Reached the 'Reset' value of the LR register.");
+                    log::trace!("UNWIND: Stack unwind complete - Reached the 'Reset' value of the LR register.");
                     break;
                 }
             } else {
                 // If the debug info rules result in a None return address, we cannot continue unwinding.
                 stack_frames.push(return_frame);
-                println!("UNWIND: Stack unwind complete - LR register value is 'None.");
+                log::trace!("UNWIND: Stack unwind complete - LR register value is 'None.");
                 break;
             }
 
             // PART 2: Setup the registers for the next iteration (a.k.a. unwind previous frame, a.k.a. "callee", in the call stack).
-            println!(
+            log::trace!(
                 "UNWIND - Preparing `StackFrameIterator` to unwind NON-INLINED function {:?} at {:?}",
                 return_frame.function_name,
                 return_frame.source_location
@@ -999,7 +1000,7 @@ impl DebugInfo {
                             match reg_val {
                                 Some(reg_val) => {
                                     let unwind_cfa = add_to_address(reg_val.try_into()?, *offset);
-                                    println!(
+                                    log::trace!(
                                         "UNWIND - CFA : {:#010x}\tRule: {:?}",
                                         unwind_cfa,
                                         unwind_info.cfa()
@@ -1044,7 +1045,7 @@ impl DebugInfo {
                     }
                 }
                 Err(error) => {
-                    println!("UNWIND: Stack unwind complete. No available debug info for program counter {}: {}", frame_pc, error);
+                    log::trace!("UNWIND: Stack unwind complete. No available debug info for program counter {}: {}", frame_pc, error);
                     stack_frames.push(return_frame);
                     break;
                 }
@@ -1347,7 +1348,7 @@ fn unwind_register(
     };
     debug_register.value = new_value;
 
-    println!(
+    log::trace!(
         "UNWIND - {:>10}: Caller: {}\tCallee: {}\tRule: {}",
         debug_register.get_register_name(),
         debug_register.value.unwrap_or_default(),

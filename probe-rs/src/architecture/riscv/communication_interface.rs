@@ -981,7 +981,7 @@ impl<'probe> RiscvCommunicationInterface {
         let mut dmcontrol = Dmcontrol(0);
         dmcontrol.set_haltreq(false);
         dmcontrol.set_resumereq(false);
-        dmcontrol.set_ackhavereset(true);
+        dmcontrol.set_ackhavereset(false);
         dmcontrol.set_dmactive(true);
         self.write_dm_register(dmcontrol)?;
 

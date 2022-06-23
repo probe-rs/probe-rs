@@ -28,12 +28,16 @@ pub mod sequences;
 /// A interface to operate RISC-V cores.
 pub struct Riscv32<'probe> {
     interface: &'probe mut RiscvCommunicationInterface,
+    state: &'probe mut RiscVState,
 }
 
 impl<'probe> Riscv32<'probe> {
     /// Create a new RISC-V interface.
-    pub fn new(interface: &'probe mut RiscvCommunicationInterface) -> Self {
-        Self { interface }
+    pub fn new(
+        interface: &'probe mut RiscvCommunicationInterface,
+        state: &'probe mut RiscVState,
+    ) -> Self {
+        Self { interface, state }
     }
 
     fn read_csr(&mut self, address: u16) -> Result<u32, RiscvError> {
@@ -96,9 +100,10 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
         // write 1 to the haltreq register, which is part
         // of the dmcontrol register
 
-        // read the current dmcontrol register
-        let current_dmcontrol: Dmcontrol = self.interface.read_dm_register()?;
-        log::debug!("{:?}", current_dmcontrol);
+        log::debug!(
+            "Before requesting halt, the Dmcontrol register value was: {:?}",
+            self.interface.read_dm_register::<Dmcontrol>()?
+        );
 
         let mut dmcontrol = Dmcontrol(0);
 
@@ -122,18 +127,23 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
     }
 
     fn run(&mut self) -> Result<(), crate::Error> {
-        // TODO: test if core halted?
-
+        // First check if we stopped on a user defined breakpoint, because this requires special handling before we can continue.
+        if self.status()? == CoreStatus::Halted(HaltReason::Breakpoint)
+            && self.hw_breakpoints_enabled()
+        {
+            self.enable_breakpoints(false).ok();
+            // Single step to get past the current PC that has a breakpoint.
+            self.step()?;
+            self.enable_breakpoints(true).ok();
+        }
         // set resume request
         let mut dmcontrol = Dmcontrol(0);
-        dmcontrol.set_dmactive(true);
         dmcontrol.set_resumereq(true);
-
+        dmcontrol.set_dmactive(true);
         self.interface.write_dm_register(dmcontrol)?;
 
         // check if request has been acknowleged
         let status: Dmstatus = self.interface.read_dm_register()?;
-
         if !status.allresumeack() {
             return Err(RiscvError::RequestNotAcknowledged.into());
         };
@@ -141,7 +151,6 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
         // clear resume request
         let mut dmcontrol = Dmcontrol(0);
         dmcontrol.set_dmactive(true);
-
         self.interface.write_dm_register(dmcontrol)?;
 
         Ok(())
@@ -285,9 +294,7 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
 
         // clear step request
         let mut dcsr = Dcsr(self.read_core_reg(RegisterId(0x7b0))?.try_into()?);
-
         dcsr.set_step(false);
-
         self.write_csr(0x7b0, dcsr.0)?;
 
         Ok(CoreInformation { pc: pc.try_into()? })
@@ -374,13 +381,48 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
         Ok(tselect_index)
     }
 
-    fn enable_breakpoints(&mut self, _state: bool) -> Result<(), crate::Error> {
-        // seems not needed on RISCV
+    fn enable_breakpoints(&mut self, state: bool) -> Result<(), crate::Error> {
+        // Loop through all triggers, and enable/disable them.
+        let tselect = 0x7a0;
+        let tdata1 = 0x7a1;
+
+        for bp_unit_index in 0..self.available_breakpoint_units()? as usize {
+            // Select the trigger.
+            self.write_csr(tselect, bp_unit_index as u32)?;
+
+            // Read the trigger "configuration" data.
+            let mut tdata_value = Mcontrol(self.read_csr(tdata1)?);
+
+            // Only modify the trigger if it is for an execution debug action in all modes(probe-rs enabled it) or no modes (we previously disabled it).
+            if tdata_value.type_() == 0b10
+                && tdata_value.action() == 1
+                && tdata_value.match_() == 0
+                && tdata_value.execute()
+                && ((tdata_value.m() && tdata_value.u()) || (!tdata_value.m() && !tdata_value.u()))
+            {
+                log::debug!(
+                    "Will modify breakpoint enabled={} for {}: {:?}",
+                    state,
+                    bp_unit_index,
+                    tdata_value
+                );
+                tdata_value.set_m(state);
+                tdata_value.set_s(state);
+                tdata_value.set_u(state);
+                self.write_csr(tdata1, tdata_value.0)?;
+            }
+        }
+
+        self.state.hw_breakpoints_enabled = state;
         Ok(())
     }
 
     fn set_hw_breakpoint(&mut self, bp_unit_index: usize, addr: u64) -> Result<(), crate::Error> {
         let addr = valid_32_address(addr)?;
+
+        if !self.hw_breakpoints_enabled() {
+            self.enable_breakpoints(true)?;
+        }
 
         // select requested trigger
         let tselect = 0x7a0;
@@ -412,7 +454,7 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
         instruction_breakpoint.set_match(0);
 
         instruction_breakpoint.set_m(true);
-        instruction_breakpoint.set_s(true);
+        // instruction_breakpoint.set_s(true); // Supervisore mode is only for systems running  Unix-like OS'es
         instruction_breakpoint.set_u(true);
 
         // Trigger when instruction is executed
@@ -446,9 +488,7 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
     }
 
     fn hw_breakpoints_enabled(&self) -> bool {
-        // No special enable on RISC
-
-        true
+        self.state.hw_breakpoints_enabled
     }
 
     fn architecture(&self) -> Architecture {
@@ -589,6 +629,21 @@ impl<'probe> MemoryInterface for Riscv32<'probe> {
     }
     fn flush(&mut self) -> Result<(), Error> {
         self.interface.flush()
+    }
+}
+
+#[derive(Debug)]
+/// Flags used to control the [`SpecificCoreState`] for RiscV architecture
+pub struct RiscVState {
+    /// A flag to remember whether we want to use hw_breakpoints during stepping of the core.
+    hw_breakpoints_enabled: bool,
+}
+
+impl RiscVState {
+    pub(crate) fn new() -> Self {
+        Self {
+            hw_breakpoints_enabled: false,
+        }
     }
 }
 
