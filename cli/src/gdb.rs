@@ -1,3 +1,4 @@
+use std::sync::Mutex;
 use std::time::Duration;
 
 use probe_rs_cli_util::common_options::ProbeOptions;
@@ -29,7 +30,9 @@ pub fn run_gdb_server(
         );
     }
 
-    if let Err(e) = probe_rs_gdb_server::run(session, instances.iter()) {
+    let session = Mutex::new(session);
+
+    if let Err(e) = probe_rs_gdb_server::run(&session, instances.iter()) {
         eprintln!("During the execution of GDB an error was encountered:");
         eprintln!("{:?}", e);
     }

@@ -5,7 +5,7 @@ use gdbstub::target::ext::base::multithread::{MultiThreadResume, MultiThreadSing
 
 impl MultiThreadResume for RuntimeTarget<'_> {
     fn resume(&mut self) -> Result<(), Self::Error> {
-        let mut session = self.session.borrow_mut();
+        let mut session = self.session.lock().unwrap();
 
         match self.resume_action {
             (_, ResumeAction::Resume) => {
