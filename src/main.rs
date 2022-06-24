@@ -275,8 +275,7 @@ fn extract_and_print_logs(
 
     print_separator()?;
 
-    let stdout = io::stdout();
-    let mut stdout = stdout.lock();
+    let mut stdout = io::stdout().lock();
     let mut read_buf = [0; 1024];
     let mut was_halted = false;
     while !exit.load(Ordering::Relaxed) {
