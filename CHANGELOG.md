@@ -6,6 +6,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/) and this p
 
 ## [Unreleased]
 
+- [#326] Make use of i/o locking being static since rust `1.61`.
 - [#321] CI: Add changelog-enforcer
 - [#320] Disable terminal colorization if `TERM=dumb` is set
 - [#319] Warn on target chip mismatch
@@ -13,6 +14,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/) and this p
 - [#314] Clarify documentation in README
 - [#293] Update snapshot tests to new TRACE output
 
+[#326]: https://github.com/knurling-rs/probe-run/pull/326
 [#321]: https://github.com/knurling-rs/probe-run/pull/321
 [#320]: https://github.com/knurling-rs/probe-run/pull/320
 [#319]: https://github.com/knurling-rs/probe-run/pull/319
