@@ -34,6 +34,8 @@ use probe_rs_cli_util::{
 
 use probe_rs_rtt::{Rtt, ScanRegion};
 
+use probe_rs_gdb_server::GdbInstanceConfiguration;
+
 use crate::rttui::channel::DataFormat;
 
 lazy_static::lazy_static! {
@@ -344,9 +346,9 @@ fn main_try() -> Result<()> {
                     Initialized { flash_layout } => {
                         let total_page_size: u32 =
                             flash_layout.pages().iter().map(|s| s.size()).sum();
-                        let total_sector_size: u32 =
+                        let total_sector_size: u64 =
                             flash_layout.sectors().iter().map(|s| s.size()).sum();
-                        let total_fill_size: u32 =
+                        let total_fill_size: u64 =
                             flash_layout.fills().iter().map(|s| s.size()).sum();
                         if let Some(fp) = fill_progress.as_ref() {
                             fp.set_length(total_fill_size as u64)
@@ -482,7 +484,11 @@ fn main_try() -> Result<()> {
                 "GDB stub".green().bold(),
                 gdb_connection_string.as_ref().unwrap(),
             ));
-            if let Err(e) = probe_rs_gdb_server::run(gdb_connection_string, &session) {
+            let instances = {
+                let session = session.lock().unwrap();
+                GdbInstanceConfiguration::from_session(&session, gdb_connection_string)
+            };
+            if let Err(e) = probe_rs_gdb_server::run(&session, instances.iter()) {
                 logging::eprintln("During the execution of GDB an error was encountered:");
                 logging::eprintln(format!("{:?}", e));
             }
