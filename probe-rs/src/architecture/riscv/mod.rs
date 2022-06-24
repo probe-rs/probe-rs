@@ -31,6 +31,28 @@ pub struct Riscv32<'probe> {
     state: &'probe mut RiscVState,
 }
 
+// Resume the core.
+fn resume_core(riscv32: &mut Riscv32) -> Result<(), crate::Error> {
+    // set resume request.
+    let mut dmcontrol = Dmcontrol(0);
+    dmcontrol.set_resumereq(true);
+    dmcontrol.set_dmactive(true);
+    riscv32.interface.write_dm_register(dmcontrol)?;
+
+    // check if request has been acknowleged.
+    let status: Dmstatus = riscv32.interface.read_dm_register()?;
+    if !status.allresumeack() {
+        return Err(RiscvError::RequestNotAcknowledged.into());
+    };
+
+    // clear resume request.
+    let mut dmcontrol = Dmcontrol(0);
+    dmcontrol.set_dmactive(true);
+    riscv32.interface.write_dm_register(dmcontrol)?;
+
+    Ok(())
+}
+
 impl<'probe> Riscv32<'probe> {
     /// Create a new RISC-V interface.
     pub fn new(
@@ -127,31 +149,11 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
     }
 
     fn run(&mut self) -> Result<(), crate::Error> {
-        // First check if we stopped on a user defined breakpoint, because this requires special handling before we can continue.
-        if self.status()? == CoreStatus::Halted(HaltReason::Breakpoint)
-            && self.hw_breakpoints_enabled()
-        {
-            self.enable_breakpoints(false).ok();
-            // Single step to get past the current PC that has a breakpoint.
-            self.step()?;
-            self.enable_breakpoints(true).ok();
-        }
-        // set resume request
-        let mut dmcontrol = Dmcontrol(0);
-        dmcontrol.set_resumereq(true);
-        dmcontrol.set_dmactive(true);
-        self.interface.write_dm_register(dmcontrol)?;
+        // Before we run, we always perform a single instruction step, to account for possible breakpoints that might get us stuck on the current instruction.
+        self.step()?;
 
-        // check if request has been acknowleged
-        let status: Dmstatus = self.interface.read_dm_register()?;
-        if !status.allresumeack() {
-            return Err(RiscvError::RequestNotAcknowledged.into());
-        };
-
-        // clear resume request
-        let mut dmcontrol = Dmcontrol(0);
-        dmcontrol.set_dmactive(true);
-        self.interface.write_dm_register(dmcontrol)?;
+        // resume the core.
+        resume_core(self)?;
 
         Ok(())
     }
@@ -280,14 +282,26 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
     }
 
     fn step(&mut self) -> Result<crate::core::CoreInformation, crate::Error> {
+        // First check if we stopped on a breakpoint, because this requires special handling before we can continue.
+        let was_breakpoint = if self.hw_breakpoints_enabled()
+            && self.status()? == CoreStatus::Halted(HaltReason::Breakpoint)
+        {
+            self.enable_breakpoints(false)?;
+            true
+        } else {
+            false
+        };
+
         let mut dcsr = Dcsr(self.read_core_reg(RegisterId(0x7b0))?.try_into()?);
-
+        // Set it up, so that the next `self.run()` will only do a single step
         dcsr.set_step(true);
-
+        // Disable any interrupts during single step.
+        dcsr.set_stepie(false);
+        dcsr.set_stopcount(true);
         self.write_csr(0x7b0, dcsr.0)?;
 
-        self.run()?;
-
+        // Now we can resume the core for the single step.
+        resume_core(self)?;
         self.wait_for_core_halted(Duration::from_millis(100))?;
 
         let pc = self.read_core_reg(RegisterId(0x7b1))?;
@@ -295,7 +309,15 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
         // clear step request
         let mut dcsr = Dcsr(self.read_core_reg(RegisterId(0x7b0))?.try_into()?);
         dcsr.set_step(false);
+        //Re-enable interrupts for single step.
+        dcsr.set_stepie(true);
+        dcsr.set_stopcount(false);
         self.write_csr(0x7b0, dcsr.0)?;
+
+        // Re-enable breakpoints before we continue.
+        if was_breakpoint {
+            self.enable_breakpoints(true)?;
+        }
 
         Ok(CoreInformation { pc: pc.try_into()? })
     }
@@ -382,6 +404,13 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
     }
 
     fn enable_breakpoints(&mut self, state: bool) -> Result<(), crate::Error> {
+        // let mut dcsr = Dcsr(self.read_core_reg(RegisterId(0x7b0))?.try_into()?);
+        // // Set the state for execution breakpoints.
+        // dcsr.set_ebreakm(state);
+        // dcsr.set_ebreaku(state);
+        // dcsr.set_ebreaks(state);
+        // self.write_csr(0x7b0, dcsr.0)?;
+
         // Loop through all triggers, and enable/disable them.
         let tselect = 0x7a0;
         let tdata1 = 0x7a1;
