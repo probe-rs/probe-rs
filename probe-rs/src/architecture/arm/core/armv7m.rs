@@ -502,7 +502,7 @@ impl FpRev1CompX {
     /// Get the correct register configuration which enables
     /// a hardware breakpoint at the given address.
     /// NOTE: Does not support a `replace` value of '11'
-    fn breakpoint_configuration(address: u32) -> Result<Self, Error> {
+    pub(crate) fn breakpoint_configuration(address: u32) -> Result<Self, Error> {
         let mut reg = FpRev1CompX::from(0);
 
         // The highest 3 bits of the address have to be zero, otherwise the breakpoint cannot
@@ -569,7 +569,7 @@ impl From<FpRev2CompX> for u32 {
 impl FpRev2CompX {
     /// Get the correct register configuration which enables
     /// a hardware breakpoint at the given address.
-    fn breakpoint_configuration(address: u32) -> Self {
+    pub(crate) fn breakpoint_configuration(address: u32) -> Self {
         let mut reg = FpRev2CompX::from(0);
 
         reg.set_bpaddr(address >> 1);
