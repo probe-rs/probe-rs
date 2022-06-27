@@ -9,6 +9,12 @@ use num_traits::Zero;
 pub(crate) type UnitIter =
     gimli::DebugInfoUnitHeadersIter<gimli::EndianReader<gimli::LittleEndian, std::rc::Rc<[u8]>>>;
 
+/// The result of `UnitInfo::evaluate_expression()` can be the value of a variable, or a memory location.
+pub(crate) enum ExpressionResult {
+    Value(VariableValue),
+    Location(VariableLocation),
+}
+
 pub(crate) struct UnitInfo<'debuginfo> {
     pub(crate) debug_info: &'debuginfo DebugInfo,
     pub(crate) unit: gimli::Unit<GimliReader, usize>,
@@ -193,8 +199,8 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
             Some(tree_node.entry().clone())
         };
 
+        // For variable attribute resolution, we need to resolve a few attributes in advance of looping through all the other ones.
         // Try to exact the name first, for easier debugging
-
         if let Some(name) = attributes_entry
             .as_ref()
             .map(|ae| ae.attr_value(gimli::DW_AT_name))
@@ -204,17 +210,71 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
             child_variable.name = VariableName::Named(extract_name(self.debug_info, name));
         }
 
-        // For variable attribute resolution, we need to resolve a few attributes in advance of looping through all the other ones.
-
         // We need to process the location attribute to ensure that location is known before we calculate type.
-        child_variable = self.extract_location(
+        match self.extract_location(
             tree_node,
-            parent_variable,
-            child_variable,
+            &parent_variable.memory_location,
             core,
             stack_frame_registers,
-            cache,
-        )?;
+        ) {
+            Ok(location) => match location {
+                // Any expected errors should be handled by one of the variants in the Ok() result.
+                ExpressionResult::Value(value_from_expression) => {
+                    match value_from_expression {
+                        VariableValue::Valid(value) => {
+                            // The ELF contained the actual value, not just a location to it.
+                            child_variable.memory_location = VariableLocation::Value;
+                            child_variable.set_value(VariableValue::Valid(value));
+                        }
+                        VariableValue::Error(error) => {
+                            child_variable.set_value(VariableValue::Error(error));
+                        }
+                        VariableValue::Empty => {
+                            child_variable.set_value(VariableValue::Empty);
+                        }
+                    }
+                }
+                ExpressionResult::Location(location_from_expression) => {
+                    match location_from_expression {
+                        VariableLocation::Unknown => {
+                            child_variable.memory_location = VariableLocation::Unknown;
+                        }
+                        VariableLocation::Unavailable => {
+                            child_variable.set_value(VariableValue::Error(
+                                "<value optimized away by compiler, out of scope, or dropped>"
+                                    .to_string(),
+                            ));
+                            child_variable.memory_location = VariableLocation::Unavailable;
+                        }
+                        VariableLocation::Address(memory_address) => {
+                            child_variable.memory_location =
+                                VariableLocation::Address(memory_address);
+                        }
+                        VariableLocation::Register(register_address) => {
+                            child_variable.memory_location =
+                                VariableLocation::Register(register_address);
+                        }
+                        VariableLocation::Value => {
+                            child_variable.memory_location = VariableLocation::Value;
+                        }
+                        VariableLocation::Error(error_message) => {
+                            child_variable.set_value(VariableValue::Error(error_message.clone()));
+                            child_variable.memory_location = VariableLocation::Error(error_message);
+                        }
+                        VariableLocation::Unsupported(detail_message) => {
+                            child_variable.set_value(VariableValue::Error(detail_message.clone()));
+                            child_variable.memory_location =
+                                VariableLocation::Unsupported(detail_message);
+                        }
+                    }
+                }
+            },
+            Err(debug_error) => {
+                // An Err() result indicates something happened that we have not accounted for, and therefore will propogate upwards to terminate the process in an ungraceful manner. This should be treated as a bug.
+                log::error!("Encounted an unexpected error while resolving the location for variable {:?}. Please report this as a bug", child_variable.name);
+                return Err(debug_error);
+            }
+        }
 
         if let Some(attributes_entry) = attributes_entry {
             let mut variable_attributes = attributes_entry.attrs();
@@ -226,8 +286,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                         // The child_variable.location is calculated with attribute gimli::DW_AT_type, to ensure it gets done before DW_AT_type is processed
                     }
                     gimli::DW_AT_name => {
-                        child_variable.name =
-                            VariableName::Named(extract_name(self.debug_info, attr.value()));
+                        // This was done before we started looping through attributes, so we can ignore it.
                     }
                     gimli::DW_AT_decl_file => {
                         if let Some((directory, file_name)) =
@@ -915,8 +974,6 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                     child_member_index as u64 * child_variable.byte_size as u64,
                                 );
 
-                                // TODO:
-
                                 if has_overflowed {
                                     return Err(DebugError::Other(anyhow::anyhow!(
                                         "Overflow calculating variable address"
@@ -1150,8 +1207,6 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                     child_member_index as u64 * child_variable.byte_size as u64,
                                 );
 
-                                // TODO:
-
                                 if has_overflowed {
                                     return Err(DebugError::Other(anyhow::anyhow!(
                                         "Overflow calculating variable address"
@@ -1263,20 +1318,18 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
             .map_err(|error| error.into())
     }
 
-    /// - Consumes the `child_variable`.
-    /// - Find the location using either DW_AT_location, or DW_AT_data_member_location, and store it in the Variable.
-    /// - Returns a clone of the most up-to-date `child_variable` in the cache.
-    ///
-    /// This will either set the memory location, or directly update the value of the variable, depending on the DWARF information.
+    /// - Find the location using either DW_AT_location, DW_AT_data_member_location, or DW_AT_frame_base attribute.
+    /// Return values are implemented as follows:
+    /// - Result<_, DebugError>: This happens when we encounter an error we did not expect, and will propogate upwards until the debugger request is failed. NOT GRACEFUL, and should be avoided.
+    /// - Result<ExpressionResult::Value(),_>:  The value is statically stored in the binary, and can be returned, and has no relevant memory location.
+    /// - Result<ExpressionResult::Location(),_>:  One of the variants of VariableLocation, and needs to be interpreted for handling the 'expected' errors we encounter during evaluation.
     pub(crate) fn extract_location(
         &self,
         node: &gimli::EntriesTreeNode<GimliReader>,
-        parent_variable: &Variable,
-        mut child_variable: Variable,
+        parent_location: &VariableLocation,
         core: &mut Core<'_>,
         stack_frame_registers: &registers::DebugRegisters,
-        cache: &mut VariableCache,
-    ) -> Result<Variable, DebugError> {
+    ) -> Result<ExpressionResult, DebugError> {
         let mut attrs = node.entry().attrs();
         while let Ok(Some(attr)) = attrs.next() {
             match attr.name() {
@@ -1284,29 +1337,18 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                 | gimli::DW_AT_data_member_location
                 | gimli::DW_AT_frame_base => match attr.value() {
                     gimli::AttributeValue::Exprloc(expression) => {
-                        if let Err(error) = self.evaluate_expression(
-                            core,
-                            &mut child_variable,
-                            expression,
-                            stack_frame_registers,
-                        ) {
-                            child_variable.set_value(VariableValue::Error(format!(
-                                "Error: Determining memory location for this variable: {:?}",
-                                &error
-                            )));
-                        }
+                        return self.evaluate_expression(core, expression, stack_frame_registers);
                     }
-                    gimli::AttributeValue::Udata(offset_from_parent) => {
-                        match &parent_variable.memory_location {
-                            VariableLocation::Address(address) => {
-                                child_variable.memory_location =
-                                    VariableLocation::Address(address + offset_from_parent)
-                            }
-                            _other => {
-                                child_variable.memory_location = VariableLocation::Unavailable;
-                            }
+                    gimli::AttributeValue::Udata(offset_from_parent) => match parent_location {
+                        VariableLocation::Address(address) => {
+                            return Ok(ExpressionResult::Location(VariableLocation::Address(
+                                address + offset_from_parent,
+                            )))
                         }
-                    }
+                        _other => {
+                            return Ok(ExpressionResult::Location(VariableLocation::Unavailable))
+                        }
+                    },
                     gimli::AttributeValue::LocationListsRef(location_list_offset) => {
                         match self.debug_info.locations_section.locations(
                             location_list_offset,
@@ -1326,8 +1368,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                     while let Some(location) = match locations.next() {
                                         Ok(location_lists_entry) => location_lists_entry,
                                         Err(error) => {
-                                            child_variable.set_value(VariableValue::Error(format!("Error: Iterating LocationLists for this variable: {:?}", &error)));
-                                            None
+                                            return Ok(ExpressionResult::Location(VariableLocation::Error(format!("Error: Iterating LocationLists for this variable: {:?}", &error))));
                                         }
                                     } {
                                         if program_counter
@@ -1339,40 +1380,31 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                             break;
                                         }
                                     }
-
                                     if let Some(valid_expression) = expression {
-                                        if let Err(error) = self.evaluate_expression(
+                                        return self.evaluate_expression(
                                             core,
-                                            &mut child_variable,
                                             valid_expression,
                                             stack_frame_registers,
-                                        ) {
-                                            child_variable.set_value(VariableValue::Error(format!("Error: Determining memory location for this variable: {:?}", &error)));
-                                        }
+                                        );
                                     } else {
-                                        child_variable.set_value(VariableValue::Error(
-                                            "<value out of scope - moved or dropped>".to_string(),
+                                        return Ok(ExpressionResult::Location(
+                                            VariableLocation::Unavailable,
                                         ));
                                     }
                                 } else {
-                                    child_variable.set_value(VariableValue::Error(
-                                            "Cannot determine variable location without a valid program counter.".to_string(),
-                                        ));
-                                };
+                                    return Ok(ExpressionResult::Location(VariableLocation::Error("Cannot determine variable location without a valid program counter.".to_string())));
+                                }
                             }
                             Err(error) => {
-                                child_variable.set_value(VariableValue::Error(format!(
-                                    "Error: Resolving variable Location: {:?}",
-                                    &error
-                                )));
+                                return Ok(ExpressionResult::Location(VariableLocation::Error(
+                                    format!("Error: Resolving variable Location: {:?}", &error),
+                                )))
                             }
-                        };
+                        }
                     }
                     other_attribute_value => {
-                        child_variable.set_value(VariableValue::Error(format!(
-                                "Unimplemented: extract_location() Could not extract location from: {:?}",
-                                other_attribute_value
-                            )));
+                        return Ok(ExpressionResult::Location(VariableLocation::Unsupported(
+                            format!( "Unimplemented: extract_location() Could not extract location from: {:?}", other_attribute_value))))
                     }
                 },
                 gimli::DW_AT_address_class => {
@@ -1380,17 +1412,17 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                         gimli::AttributeValue::AddressClass(address_class) => {
                             // Nothing to do in this case where it is zero
                             if address_class != gimli::DwAddr(0) {
-                                child_variable.set_value(VariableValue::Error(format!(
+                                return Ok(ExpressionResult::Location(VariableLocation::Unsupported(format!(
                                     "Unimplemented: extract_location() found unsupported DW_AT_address_class(gimli::DwAddr({:?}))",
                                     address_class
-                                )));
+                                ))))
                             }
                         }
                         other_attribute_value => {
-                            child_variable.set_value(VariableValue::Error(format!(
+                            return Ok(ExpressionResult::Location(VariableLocation::Unsupported(format!(
                                 "Unimplemented: extract_location() found invalid DW_AT_address_class: {:?}",
                                 other_attribute_value
-                            )));
+                            ))))
                         }
                     }
                 }
@@ -1399,99 +1431,91 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                 }
             }
         }
-
-        cache
-            .cache_variable(child_variable.parent_key, child_variable, core)
-            .map_err(|error| error.into())
+        // If we get here, we did not find a location attribute, then leave the value as Unknown.
+        Ok(ExpressionResult::Location(VariableLocation::Unknown))
     }
 
-    /// Evaluate a gimli::Expression as a valid memory location
+    /// Evaluate a gimli::Expression as a valid memory location.
+    /// Return values are implemented as follows:
+    /// - Result<_, DebugError>: This happens when we encounter an error we did not expect, and will propogate upwards until the debugger request is failed. NOT GRACEFUL, and should be avoided.
+    /// - Result<ExpressionResult::Value(),_>:  The value is statically stored in the binary, and can be returned, and has no relevant memory location.
+    /// - Result<ExpressionResult::Location(),_>:  One of the variants of VariableLocation, and needs to be interpreted for handling the 'expected' errors we encounter during evaluation.
     pub(crate) fn evaluate_expression(
         &self,
         core: &mut Core<'_>,
-        child_variable: &mut Variable,
         expression: gimli::Expression<GimliReader>,
         stack_frame_registers: &registers::DebugRegisters,
-    ) -> Result<(), DebugError> {
+    ) -> Result<ExpressionResult, DebugError> {
         let pieces = self.expression_to_piece(core, expression, stack_frame_registers)?;
         if pieces.is_empty() {
-            return Err(DebugError::Other(anyhow::anyhow!(
-                "Error: expr_to_piece() returned 0 results: {:?}",
-                pieces
-            )));
+            Ok(ExpressionResult::Location(VariableLocation::Error(
+                format!("Error: expr_to_piece() returned 0 results: {:?}", pieces),
+            )))
         } else if pieces.len() > 1 {
-            child_variable.set_value(VariableValue::Error(
+            Ok(ExpressionResult::Location(VariableLocation::Error(
                 "<unsupported memory implementation>".to_string(),
-            ));
-            child_variable.memory_location =
-                VariableLocation::Unsupported("<unsupported memory implementation>".to_string());
+            )))
         } else {
             match &pieces[0].location {
                 Location::Empty => {
                     // This means the value was optimized away.
-                    child_variable.set_value(VariableValue::Error(
-                        "<value optimized away by compiler>".to_string(),
-                    ));
-                    child_variable.memory_location = VariableLocation::Unavailable;
+                    Ok(ExpressionResult::Location(VariableLocation::Unavailable))
                 }
                 Location::Address { address } => {
                     if *address == u32::MAX as u64 {
-                        return Err(DebugError::Other(anyhow::anyhow!("BUG: Cannot resolve due to rust-lang issue https://github.com/rust-lang/rust/issues/32574".to_string())));
+                        Ok(ExpressionResult::Location(VariableLocation::Error("BUG: Cannot resolve due to rust-lang issue https://github.com/rust-lang/rust/issues/32574".to_string())))
                     } else {
-                        child_variable.memory_location = VariableLocation::Address(*address);
+                        Ok(ExpressionResult::Location(VariableLocation::Address(
+                            *address,
+                        )))
                     }
                 }
-                Location::Value { value } => {
-                    match value {
-                        gimli::Value::Generic(value) => {
-                            child_variable.set_value(VariableValue::Valid(value.to_string()));
-                        }
-                        gimli::Value::I8(value) => {
-                            child_variable.set_value(VariableValue::Valid(value.to_string()));
-                        }
-                        gimli::Value::U8(value) => {
-                            child_variable.set_value(VariableValue::Valid(value.to_string()));
-                        }
-                        gimli::Value::I16(value) => {
-                            child_variable.set_value(VariableValue::Valid(value.to_string()));
-                        }
-                        gimli::Value::U16(value) => {
-                            child_variable.set_value(VariableValue::Valid(value.to_string()));
-                        }
-                        gimli::Value::I32(value) => {
-                            child_variable.set_value(VariableValue::Valid(value.to_string()));
-                        }
-                        gimli::Value::U32(value) => {
-                            child_variable.set_value(VariableValue::Valid(value.to_string()));
-                        }
-                        gimli::Value::I64(value) => {
-                            child_variable.set_value(VariableValue::Valid(value.to_string()));
-                        }
-                        gimli::Value::U64(value) => {
-                            child_variable.set_value(VariableValue::Valid(value.to_string()));
-                        }
-                        gimli::Value::F32(value) => {
-                            child_variable.set_value(VariableValue::Valid(value.to_string()));
-                        }
-                        gimli::Value::F64(value) => {
-                            child_variable.set_value(VariableValue::Valid(value.to_string()));
-                        }
-                    };
-                    child_variable.memory_location = VariableLocation::Value;
-                }
-                Location::Register { register } => {
-                    child_variable.memory_location =
-                        VariableLocation::Register(register.0 as usize);
-                }
-                l => {
-                    return Err(DebugError::Other(anyhow::anyhow!(
+                Location::Value { value } => match value {
+                    gimli::Value::Generic(value) => Ok(ExpressionResult::Value(
+                        VariableValue::Valid(value.to_string()),
+                    )),
+                    gimli::Value::I8(value) => Ok(ExpressionResult::Value(VariableValue::Valid(
+                        value.to_string(),
+                    ))),
+                    gimli::Value::U8(value) => Ok(ExpressionResult::Value(VariableValue::Valid(
+                        value.to_string(),
+                    ))),
+                    gimli::Value::I16(value) => Ok(ExpressionResult::Value(VariableValue::Valid(
+                        value.to_string(),
+                    ))),
+                    gimli::Value::U16(value) => Ok(ExpressionResult::Value(VariableValue::Valid(
+                        value.to_string(),
+                    ))),
+                    gimli::Value::I32(value) => Ok(ExpressionResult::Value(VariableValue::Valid(
+                        value.to_string(),
+                    ))),
+                    gimli::Value::U32(value) => Ok(ExpressionResult::Value(VariableValue::Valid(
+                        value.to_string(),
+                    ))),
+                    gimli::Value::I64(value) => Ok(ExpressionResult::Value(VariableValue::Valid(
+                        value.to_string(),
+                    ))),
+                    gimli::Value::U64(value) => Ok(ExpressionResult::Value(VariableValue::Valid(
+                        value.to_string(),
+                    ))),
+                    gimli::Value::F32(value) => Ok(ExpressionResult::Value(VariableValue::Valid(
+                        value.to_string(),
+                    ))),
+                    gimli::Value::F64(value) => Ok(ExpressionResult::Value(VariableValue::Valid(
+                        value.to_string(),
+                    ))),
+                },
+                Location::Register { register } => Ok(ExpressionResult::Location(
+                    VariableLocation::Register(register.0 as usize),
+                )),
+                l => Ok(ExpressionResult::Location(VariableLocation::Error(
+                    format!(
                         "Unimplemented: extract_location() found a location type: {:?}",
                         l
-                    )));
-                }
+                    ),
+                ))),
             }
         }
-        Ok(())
     }
 
     /// Update a [Variable] location, given a gimli::Expression

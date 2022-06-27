@@ -702,7 +702,7 @@ impl DebugInfo {
     }
 
     /// Returns a populated (resolved) [`StackFrame`] struct.
-    /// This function will also populate the `DebugInfo::VariableCache` with in scope `Variable`s for each `StackFrame`
+    /// This function will also populate the `DebugInfo::VariableCache` with in scope `Variable`s for each `StackFrame`, while taking into account the appropriate strategy for lazy-loading of variables.
     pub(crate) fn get_stackframe_info(
         &self,
         core: &mut Core<'_>,
