@@ -72,7 +72,7 @@ fn get_cmsisdap_info(device: &Device<rusb::Context>) -> Option<DebugProbeInfo> {
     let config_descriptor = device.active_config_descriptor().ok()?;
     let mut cmsis_dap_interface = false;
     let mut hid_interface = None;
-    'interface_loop: for interface in config_descriptor.interfaces() {
+    for interface in config_descriptor.interfaces() {
         for descriptor in interface.descriptors() {
             let interface_desc = match handle.read_interface_string(language, &descriptor, timeout)
             {
@@ -93,7 +93,6 @@ fn get_cmsisdap_info(device: &Device<rusb::Context>) -> Option<DebugProbeInfo> {
                     tracing::trace!("    HID interface found");
                     hid_interface = Some(interface.number());
                 }
-                break 'interface_loop;
             }
         }
     }
