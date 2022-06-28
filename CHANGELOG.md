@@ -101,6 +101,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Debug: Part 2 of RISCV improvements (#1147).
   - Fix: Set breakpoints and step on RISCV. This needs more work but is at least partially usable now.
   - Fix: Variable values now resolve correctly. This fix also fixes variables when using the rustc flag `-Cforce-frame-pointers=off` on ARM.
+  - Fix: Allow unwinding past frames with no debug information (See Issue [#896](https://github.com/probe-rs/probe-rs/issues/896))
 
 ## [0.12.0]
 

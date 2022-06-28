@@ -188,6 +188,13 @@ impl DebugRegisters {
         })
     }
 
+    /// Get a mutable reference to the program counter.
+    pub fn get_program_counter_mut(&mut self) -> Option<&mut DebugRegister> {
+        self.0.iter_mut().find(|debug_register| {
+            debug_register.id == debug_register.register_file.program_counter().id
+        })
+    }
+
     /// Get the stack pointer.
     pub fn get_stack_pointer(&self) -> Option<&DebugRegister> {
         self.0.iter().find(|debug_register| {

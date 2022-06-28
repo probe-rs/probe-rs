@@ -1026,7 +1026,7 @@ impl DebugInfo {
                     };
 
                     // PART 2-c: Unwind registers for the "previous/calling" frame.
-                    // We sometimes need to keep a copy ofthe LR value to calculate the PC. For both ARM, and RISCV, The LR will be unwound before we PC, so we can reference it safely.
+                    // We sometimes need to keep a copy of the LR value to calculate the PC. For both ARM, and RISCV, The LR will be unwound before the PC, so we can reference it safely.
                     let mut unwound_return_address: Option<RegisterValue> = None;
                     for debug_register in
                         unwind_registers.0.iter_mut().filter(|platform_register| {
@@ -1040,7 +1040,7 @@ impl DebugInfo {
                         if unwind_register(
                             debug_register,
                             &callee_frame_registers,
-                            unwind_info,
+                            Some(unwind_info),
                             unwind_cfa,
                             &mut unwound_return_address,
                             core,
@@ -1053,9 +1053,43 @@ impl DebugInfo {
                     }
                 }
                 Err(error) => {
-                    log::trace!("UNWIND: Stack unwind complete. No available debug info for program counter {}: {}", frame_pc, error);
-                    stack_frames.push(return_frame);
-                    break;
+                    // We cannot do stack unwinding if we do not have debug info. However, there is one case where we can continue. When the following conditions are met:
+                    // 1. The current frame is the first frame in the stack, AND ...
+                    // 2. The frame registers have a valid return address/LR value.
+                    // If both these conditions are met, we can push the 'unknown function' to the list of stack frames, and use the LR value to calculate the PC for the calling frame.
+                    // The current logic will then use that PC to get the next frame's unwind info, and if that exists, will be able to continue unwinding.
+                    // If the calling frame has no debug info, then the unwindindg will end with that frame.
+                    if stack_frames.is_empty() {
+                        let callee_frame_registers = unwind_registers.clone();
+                        let mut unwound_return_address: Option<RegisterValue> =
+                            callee_frame_registers
+                                .get_return_address()
+                                .and_then(|lr| lr.value);
+                        if let Some(calling_pc) = unwind_registers.get_program_counter_mut() {
+                            if unwind_register(
+                                calling_pc,
+                                &callee_frame_registers,
+                                None,
+                                None,
+                                &mut unwound_return_address,
+                                core,
+                            )
+                            .is_break()
+                            {
+                                // We were not able to get a PC for the calling frame, so we cannot continue unwinding.
+                                stack_frames.push(return_frame);
+                                break 'unwind;
+                            } else {
+                                // The unwind registers were updated with the calling frame's PC, so we can continue unwinding.
+                                stack_frames.push(return_frame);
+                                continue 'unwind;
+                            };
+                        }
+                    } else {
+                        stack_frames.push(return_frame);
+                        log::trace!("UNWIND: Stack unwind complete. No available debug info for program counter {}: {}", frame_pc, error);
+                        break;
+                    }
                 }
             };
             stack_frames.push(return_frame);
@@ -1224,16 +1258,20 @@ fn unwind_register(
     debug_register: &mut super::DebugRegister,
     // The callee_frame_registers are used to lookup values and never updated.
     callee_frame_registers: &DebugRegisters,
-    unwind_info: &gimli::UnwindTableRow<DwarfReader, gimli::StoreOnHeap>,
+    unwind_info: Option<&gimli::UnwindTableRow<DwarfReader, gimli::StoreOnHeap>>,
     unwind_cfa: Option<u64>,
     unwound_return_address: &mut Option<RegisterValue>,
     core: &mut Core,
 ) -> ControlFlow<(), ()> {
     use gimli::read::RegisterRule::*;
+    // If we do not have unwind info, or there is no register rule, then use UnwindRule::Undefined.
     let register_rule = debug_register
         .dwarf_id
-        .map(|register_position| unwind_info.register(gimli::Register(register_position as u16)))
-        .unwrap_or_else(|| gimli::RegisterRule::Undefined);
+        .and_then(|register_position| {
+            unwind_info
+                .map(|unwind_info| unwind_info.register(gimli::Register(register_position as u16)))
+        })
+        .unwrap_or(gimli::RegisterRule::Undefined);
     let mut register_rule_string = format!("{:?}", register_rule);
     let new_value = match register_rule {
         Undefined => {
