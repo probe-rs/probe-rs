@@ -98,7 +98,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed an issue with ARMv7-a/v8-a where some register values might be corrupted. (#1131)
 - Fixed an issue where `probe-rs-cli`'s debug console didn't detect if the core is halted (#1131)
 - Fix GDB interface to require a Mutex to enable multi-threaded usage (#1144)
-- Debug: Part 2 of RISCV improvements.
+- Debug: Part 2 of RISCV improvements (#1147).
   - Fix: Set breakpoints and step on RISCV. This needs more work but is at least partially usable now.
   - Fix: Variable values now resolve correctly. This fix also fixes variables when using the rustc flag `-Cforce-frame-pointers=off` on ARM.
 

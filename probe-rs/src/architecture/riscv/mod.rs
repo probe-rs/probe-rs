@@ -404,13 +404,6 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
     }
 
     fn enable_breakpoints(&mut self, state: bool) -> Result<(), crate::Error> {
-        // let mut dcsr = Dcsr(self.read_core_reg(RegisterId(0x7b0))?.try_into()?);
-        // // Set the state for execution breakpoints.
-        // dcsr.set_ebreakm(state);
-        // dcsr.set_ebreaku(state);
-        // dcsr.set_ebreaks(state);
-        // self.write_csr(0x7b0, dcsr.0)?;
-
         // Loop through all triggers, and enable/disable them.
         let tselect = 0x7a0;
         let tdata1 = 0x7a1;
