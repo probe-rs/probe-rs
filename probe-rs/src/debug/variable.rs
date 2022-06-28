@@ -1057,9 +1057,13 @@ impl Value for String {
                         string_length = 200;
                     }
 
-                    let mut buff = vec![0u8; string_length];
-                    core.read(string_location, &mut buff)?;
-                    str_value = core::str::from_utf8(&buff)?.to_owned();
+                    if string_length.is_zero() {
+                        // A string with length 0 doesn't need to be read from memory.
+                    } else {
+                        let mut buff = vec![0u8; string_length];
+                        core.read(string_location, &mut buff)?;
+                        str_value = core::str::from_utf8(&buff)?.to_owned();
+                    }
                 }
             } else {
                 str_value = "Error: Failed to evaluate &str value".to_string();
