@@ -125,7 +125,7 @@ impl DebugInfo {
         let mut units = self.dwarf.units();
 
         while let Some(unit_info) = self.get_next_unit_info(&mut units) {
-            let mut functions = unit_info.get_function_dies(address, find_inlined)?;
+            let mut functions = unit_info.get_function_dies(address, None, find_inlined)?;
 
             // Use the last functions from the list, this is the function which most closely
             // corresponds to the PC in case of multiple inlined functions.
@@ -369,7 +369,7 @@ impl DebugInfo {
                                 // Recursive calls will sometimes need to use a return_address as a program_counter, in which case we skip this part.
                                 if return_address.is_some() {
                                     if let Ok(function_dies) =
-                                        program_unit.get_function_dies(program_counter, true)
+                                        program_unit.get_function_dies(program_counter, None, true)
                                     {
                                         for function in function_dies {
                                             if function.low_pc <= program_counter as u64
@@ -523,6 +523,7 @@ impl DebugInfo {
         core: &mut Core<'_>,
         parent_variable: &mut Variable,
         stack_frame_registers: &DebugRegisters,
+        frame_base: Option<u64>,
     ) -> Result<(), DebugError> {
         if !parent_variable.is_valid() {
             // Do nothing. The parent_variable.get_value() will already report back the debug_error value.
@@ -607,6 +608,7 @@ impl DebugInfo {
                                 referenced_variable,
                                 core,
                                 stack_frame_registers,
+                                frame_base,
                                 cache,
                             )?;
                         }
@@ -646,6 +648,7 @@ impl DebugInfo {
                             temporary_variable,
                             core,
                             stack_frame_registers,
+                            frame_base,
                             cache,
                         )?;
 
@@ -687,6 +690,7 @@ impl DebugInfo {
                             temporary_variable,
                             core,
                             stack_frame_registers,
+                            frame_base,
                             cache,
                         )?;
 
@@ -721,7 +725,8 @@ impl DebugInfo {
         let mut frames = Vec::new();
 
         while let Some(unit_info) = self.get_next_unit_info(&mut units) {
-            let functions = unit_info.get_function_dies(address, true)?;
+            let functions =
+                unit_info.get_function_dies(address, Some(&stack_frame_registers), true)?;
 
             if functions.is_empty() {
                 continue;
@@ -799,6 +804,7 @@ impl DebugInfo {
                         source_location: inlined_caller_source_location,
                         registers: stack_frame_registers.clone(),
                         pc: inlined_call_site,
+                        frame_base: function_die.frame_base,
                         is_inlined: function_die.is_inline(),
                         static_variables,
                         local_variables,
@@ -862,6 +868,7 @@ impl DebugInfo {
                     8 => RegisterValue::U64(address),
                     _ => RegisterValue::from(address),
                 },
+                frame_base: last_function.frame_base,
                 is_inlined: last_function.is_inline(),
                 static_variables,
                 local_variables,
@@ -881,6 +888,7 @@ impl DebugInfo {
                     8 => RegisterValue::U64(address),
                     _ => RegisterValue::from(address),
                 },
+                frame_base: None,
                 is_inlined: false,
                 static_variables: None,
                 local_variables: None,

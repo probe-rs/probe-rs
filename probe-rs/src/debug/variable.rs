@@ -250,8 +250,6 @@ pub enum VariableLocation {
     Unavailable,
     /// The variable can be found in memory, at this address.
     Address(u64),
-    /// The value of the variable can be found in this register.
-    Register(usize),
     /// The value of the variable is directly available.
     Value,
     /// There was an error evaluating the variable location.
@@ -275,10 +273,9 @@ impl VariableLocation {
     /// Check if the location is valid, ie. not an error, unsupported, or unavailable.
     pub fn valid(&self) -> bool {
         match self {
-            VariableLocation::Address(_)
-            | VariableLocation::Register(_)
-            | VariableLocation::Value
-            | VariableLocation::Unknown => true,
+            VariableLocation::Address(_) | VariableLocation::Value | VariableLocation::Unknown => {
+                true
+            }
             _other => false,
         }
     }
@@ -290,7 +287,6 @@ impl std::fmt::Display for VariableLocation {
             VariableLocation::Unknown => "<unknown value>".fmt(f),
             VariableLocation::Unavailable => "<value not available>".fmt(f),
             VariableLocation::Address(address) => write!(f, "{:#010X}", address),
-            VariableLocation::Register(register) => write!(f, "r{}", register),
             VariableLocation::Value => "<not applicable - statically stored value>".fmt(f),
             VariableLocation::Error(error) => error.fmt(f),
             VariableLocation::Unsupported(reason) => reason.fmt(f),

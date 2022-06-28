@@ -16,6 +16,11 @@ pub struct StackFrame {
     pub registers: registers::DebugRegisters,
     /// The program counter / address of the current instruction when this stack frame was created
     pub pc: RegisterValue,
+    /// The DWARF debug info defines a `DW_AT_frame_base` attribute which can be used to calculate the memory location of variables in a stack frame.
+    /// The rustc compiler, has a compile flag, `-C force-frame-pointers`, which when set to `on`, will usually result in this being a pointer to the register value of the platform frame pointer.
+    /// However, some isa's (e.g. RISCV) uses a default of `-C force-frame-pointers off` and will then use the stack pointer as the frame base address.
+    /// We store the frame_base of the relevant non-inlined parent function, to ensure correct calculation of the [`Variable::memory_location`] values.
+    pub frame_base: Option<u64>,
     /// Indicate if this stack frame belongs to an inlined function.
     pub is_inlined: bool,
     /// A cache of 'static' scoped variables for this stackframe

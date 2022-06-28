@@ -20,7 +20,7 @@ pub(crate) struct FunctionDie<'abbrev, 'unit, 'unit_info, 'debug_info> {
     /// The rustc compiler, has a compile flag, `-C force-frame-pointers`, which when set to `on`, will usually result in this being a pointer to the register value of the platform frame pointer.
     /// However, some isa's (e.g. RISCV) uses a default of `-C force-frame-pointers off` and will then use the stack pointer as the frame base address.
     /// We store the frame_base of the relevant non-inlined parent function, to ensure correct calculation of the [`Variable::memory_location`] values.
-    pub frame_base: u64,
+    pub frame_base: Option<u64>,
 }
 
 impl<'debugunit, 'abbrev, 'unit: 'debugunit, 'unit_info, 'debug_info>
@@ -39,7 +39,7 @@ impl<'debugunit, 'abbrev, 'unit: 'debugunit, 'unit_info, 'debug_info>
                 abstract_die: None,
                 low_pc: 0,
                 high_pc: 0,
-                frame_base: 0,
+                frame_base: None,
             }),
             other_tag => {
                 log::error!("FunctionDie has to has to have Tag DW_TAG_subprogram, but tag is {:?}. This is a bug, please report it.", other_tag.static_string());
@@ -62,7 +62,7 @@ impl<'debugunit, 'abbrev, 'unit: 'debugunit, 'unit_info, 'debug_info>
                 abstract_die: Some(abstract_die),
                 low_pc: 0,
                 high_pc: 0,
-                frame_base: 0,
+                frame_base: None,
             }),
             other_tag => {
                 log::error!("FunctionDie has to has to have Tag DW_TAG_inlined_subroutine, but tag is {:?}. This is a bug, please report it.", other_tag.static_string());

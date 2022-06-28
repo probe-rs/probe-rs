@@ -535,6 +535,7 @@ impl DebugCli {
                                         &mut cli_data.core,
                                         &mut locals,
                                         &current_frame.registers,
+                                        current_frame.frame_base,
                                     )
                                 {
                                     println!("Failed to cache local variables: {}", error);
