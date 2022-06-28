@@ -90,7 +90,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Debugger: Fix assumptions for ARM cores
   - GDB: Fix assumptions for ARM cores
 - Fixed access to Arm CoreSight components being completed through the wrong AP (#1114)
-- Debug: Additions to complete RISC-V and 64-bit support. (#1129)
+- Debug: Additions to complete RISCV and 64-bit support. (#1129)
   - probe_rs::debug::Registers uses new `core::RegisterId` and `core::RegisterValue` for consistent register handling.
   - RISCV `Disassembly` works correctly for 'compressed' (RV32C isa variants) instruction sets.
   - RISCV stack unwind improvements (stack frames and registers work, variables do not resolve correctly.)
@@ -98,6 +98,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed an issue with ARMv7-a/v8-a where some register values might be corrupted. (#1131)
 - Fixed an issue where `probe-rs-cli`'s debug console didn't detect if the core is halted (#1131)
 - Fix GDB interface to require a Mutex to enable multi-threaded usage (#1144)
+- Debug: Part 2 of RISCV improvements.
+  - Fix: Set breakpoints and step on RISCV. This needs more work but is at least partially usable now.
+  - Fix: Variable values now resolve correctly. This fix also fixes variables when using the rustc flag `-Cforce-frame-pointers=off` on ARM.
 
 ## [0.12.0]
 
