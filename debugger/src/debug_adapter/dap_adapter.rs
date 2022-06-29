@@ -513,6 +513,8 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         if let Some(request) = request {
             match target_core.core.reset() {
                 Ok(_) => {
+                    // TODO: Currently ignores the `reset_after_halt` setting, and just resets the core, and resumes.
+                    // TODO: For RISCV, we need to re-enable any breakpoints that were previously set, because the core reset 'forgets' them.
                     self.last_known_status = CoreStatus::Running;
                     let event_body = Some(ContinuedEventBody {
                         all_threads_continued: Some(false), // TODO: Implement multi-core logic here

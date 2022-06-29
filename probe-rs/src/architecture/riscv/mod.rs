@@ -159,60 +159,15 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
     }
 
     fn reset(&mut self) -> Result<(), crate::Error> {
-        log::debug!("Resetting core, setting hartreset bit");
-
-        let mut dmcontrol = Dmcontrol(0);
-        dmcontrol.set_dmactive(true);
-        dmcontrol.set_hartreset(true);
-
-        self.interface.write_dm_register(dmcontrol)?;
-
-        // Read back register to verify reset is supported
-        let readback: Dmcontrol = self.interface.read_dm_register()?;
-
-        if readback.hartreset() {
-            log::debug!("Clearing hartreset bit");
-            // Reset is performed by setting the bit high, and then low again
-            let mut dmcontrol = Dmcontrol(0);
-            dmcontrol.set_dmactive(true);
-            dmcontrol.set_hartreset(false);
-
-            self.interface.write_dm_register(dmcontrol)?;
-        } else {
-            // Hartreset is not supported, whole core needs to be reset
-            //
-            // TODO: Cache this
-            log::debug!("Hartreset bit not supported, using ndmreset");
-            let mut dmcontrol = Dmcontrol(0);
-            dmcontrol.set_dmactive(true);
-            dmcontrol.set_ndmreset(true);
-
-            self.interface.write_dm_register(dmcontrol)?;
-
-            log::debug!("Clearing ndmreset bit");
-            let mut dmcontrol = Dmcontrol(0);
-            dmcontrol.set_dmactive(true);
-            dmcontrol.set_ndmreset(false);
-
-            self.interface.write_dm_register(dmcontrol)?;
+        match self.reset_and_halt(Duration::from_millis(500)) {
+            Ok(_) => resume_core(self)?,
+            Err(error) => {
+                return Err(RiscvError::DebugProbe(crate::DebugProbeError::Other(
+                    anyhow::anyhow!("Error during reset : {:?}", error),
+                ))
+                .into());
+            }
         }
-
-        // check that cores have reset
-
-        let readback: Dmstatus = self.interface.read_dm_register()?;
-
-        if !readback.allhavereset() {
-            log::warn!("Dmstatue: {:?}", readback);
-            return Err(RiscvError::RequestNotAcknowledged.into());
-        }
-
-        // acknowledge the reset
-        let mut dmcontrol = Dmcontrol(0);
-        dmcontrol.set_dmactive(true);
-        dmcontrol.set_ackhavereset(true);
-
-        self.interface.write_dm_register(dmcontrol)?;
-
         Ok(())
     }
 
@@ -730,7 +685,7 @@ bitfield! {
     /// Located at address 0x11
     pub struct Dmstatus(u32);
     impl Debug;
-
+    dmerr, _: 26, 24;
     impebreak, _: 22;
     allhavereset, _: 19;
     anyhavereset, _: 18;
@@ -746,8 +701,6 @@ bitfield! {
     anyhalted, _: 8;
     authenticated, _: 7;
     authbusy, _: 6;
-    hasresethaltreq, _: 5;
-    confstrptrvalid, _: 4;
     version, _: 3, 0;
 }
 
