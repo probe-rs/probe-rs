@@ -99,9 +99,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed an issue where `probe-rs-cli`'s debug console didn't detect if the core is halted (#1131)
 - Fix GDB interface to require a Mutex to enable multi-threaded usage (#1144)
 - Debug: Part 2 of RISCV improvements (#1147).
-  - Fix: Set breakpoints and step on RISCV. This needs more work but is at least partially usable now.
   - Fix: Variable values now resolve correctly. This fix also fixes variables when using the rustc flag `-Cforce-frame-pointers=off` on ARM.
   - Fix: Allow unwinding past frames with no debug information (See Issue [#896](https://github.com/probe-rs/probe-rs/issues/896))
+  - Fix: Using `restart` request from VSCode now works for both states of `halt_after_rest`.
+  - Partial Fix: Set breakpoints and step on RISCV. Breakpoints work but stepping only works for some breakpoints. This will be addressed in a future PR.
 
 ## [0.12.0]
 

@@ -511,17 +511,71 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
 
         // Different code paths if we invoke this from a request, versus an internal function.
         if let Some(request) = request {
-            match target_core.core.reset() {
+            // Use reset_and_halt(), and then resume again afterwards, depending on the reset_after_halt flag.
+            match target_core.core.reset_and_halt(Duration::from_millis(500)) {
                 Ok(_) => {
-                    // TODO: Currently ignores the `reset_after_halt` setting, and just resets the core, and resumes.
-                    // TODO: For RISCV, we need to re-enable any breakpoints that were previously set, because the core reset 'forgets' them.
-                    self.last_known_status = CoreStatus::Running;
-                    let event_body = Some(ContinuedEventBody {
-                        all_threads_continued: Some(false), // TODO: Implement multi-core logic here
-                        thread_id: target_core.core.id() as i64,
-                    });
+                    // For RISCV, we need to re-enable any breakpoints that were previously set, because the core reset 'forgets' them.
+                    let saved_breakpoints = target_core
+                        .core_data
+                        .breakpoints
+                        .drain(..)
+                        .collect::<Vec<crate::debugger::session_data::ActiveBreakpoint>>();
+                    if target_core.core.architecture() == probe_rs::Architecture::Riscv {
+                        for breakpoint in saved_breakpoints {
+                            match target_core.set_breakpoint(
+                                breakpoint.breakpoint_address,
+                                breakpoint.breakpoint_type.clone(),
+                            ) {
+                                Ok(_) => {}
+                                Err(error) => {
+                                    //This will cause the debugger to show the user an error, but not stop the debugger.
+                                    log::error!(
+                                        "Failed to re-enable breakpoint {:?} after reset. {}",
+                                        breakpoint,
+                                        error
+                                    );
+                                }
+                            }
+                        }
+                    }
 
-                    self.send_event("continued", event_body)
+                    // Now that we have the breakpoints re-enabled, we can decide if it is appropriat to resume the core.
+                    if !self.halt_after_reset {
+                        match self.r#continue(target_core, request.clone()) {
+                            Ok(_) => {
+                                let event_body = Some(ContinuedEventBody {
+                                    all_threads_continued: Some(false), // TODO: Implement multi-core logic here
+                                    thread_id: target_core.core.id() as i64,
+                                });
+                                self.send_event("continued", event_body)?;
+                                self.send_response::<()>(request, Ok(None))
+                            }
+                            Err(error) => {
+                                return self.send_response::<()>(
+                                    request,
+                                    Err(DebuggerError::Other(anyhow!("{}", error))),
+                                )
+                            }
+                        }
+                    } else {
+                        let event_body = Some(StoppedEventBody {
+                            reason: "reset".to_owned(),
+                            description: Some(
+                                CoreStatus::Halted(HaltReason::External)
+                                    .short_long_status()
+                                    .1
+                                    .to_string(),
+                            ),
+                            thread_id: Some(target_core.core.id() as i64),
+                            preserve_focus_hint: None,
+                            text: None,
+                            all_threads_stopped: Some(false), // TODO: Implement multi-core logic here
+                            hit_breakpoint_ids: None,
+                        });
+                        self.send_event("stopped", event_body)?;
+                        self.last_known_status = CoreStatus::Halted(HaltReason::External);
+                        self.send_response::<()>(request, Ok(None))
+                    }
                 }
                 Err(error) => {
                     return self.send_response::<()>(
