@@ -1234,7 +1234,7 @@ impl DapAccess for StlinkArmDebug {
     }
 }
 
-impl<'probe> ArmProbeInterface for StlinkArmDebug {
+impl ArmProbeInterface for StlinkArmDebug {
     fn memory_interface(&mut self, access_port: MemoryAp) -> Result<Memory<'_>, ProbeRsError> {
         let interface = StLinkMemoryInterface { probe: self };
 

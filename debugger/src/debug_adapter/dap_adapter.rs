@@ -940,7 +940,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         target_core: &mut CoreHandle,
         request: Request,
     ) -> Result<()> {
-        let _status = match target_core.core.status() {
+        match target_core.core.status() {
             Ok(status) => {
                 if !status.is_halted() {
                     return self.send_response::<()>(
@@ -1303,7 +1303,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         read_pointer = if instruction_offset_as_bytes.is_negative() {
             read_pointer
                 .and_then(|rp| {
-                    rp.saturating_sub(instruction_offset_as_bytes.abs() as u64)
+                    rp.saturating_sub(instruction_offset_as_bytes.unsigned_abs())
                         .checked_div(4)
                 })
                 .map(|rp_memory_aligned| rp_memory_aligned * 4)
@@ -2083,7 +2083,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             "Progress reporting is not supported by client."
         );
 
-        let _ok = self.send_event(
+        self.send_event(
             "progressUpdate",
             Some(ProgressUpdateEventBody {
                 message: message.map(|v| v.into()),
