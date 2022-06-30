@@ -210,7 +210,7 @@ struct FakeArmInterface<S: ArmDebugState> {
     _state: S,
 }
 
-impl<'interface> FakeArmInterface<Uninitialized> {
+impl FakeArmInterface<Uninitialized> {
     pub(crate) fn new(probe: Box<FakeProbe>) -> Self {
         let state = Uninitialized {
             use_overrun_detect: false,

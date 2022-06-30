@@ -334,7 +334,7 @@ impl<S: ArmDebugState> SwdSequence for ArmCommunicationInterface<S> {
     }
 }
 
-impl<'interface> ArmCommunicationInterface<Uninitialized> {
+impl ArmCommunicationInterface<Uninitialized> {
     pub(crate) fn new(probe: Box<dyn DapProbe>, use_overrun_detect: bool) -> Self {
         let state = Uninitialized { use_overrun_detect };
 

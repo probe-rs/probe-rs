@@ -269,7 +269,7 @@ pub struct RiscvCommunicationInterface {
     state: RiscvCommunicationInterfaceState,
 }
 
-impl<'probe> RiscvCommunicationInterface {
+impl RiscvCommunicationInterface {
     /// Creates a new RISC-V communication interface with a given probe driver.
     pub fn new(probe: Box<dyn JTAGAccess>) -> Result<Self, (Box<dyn JTAGAccess>, DebugProbeError)> {
         let state = RiscvCommunicationInterfaceState::new();
