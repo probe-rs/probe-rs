@@ -59,7 +59,6 @@ serde_yaml = "0.8.11"
 static_assertions = "1.1.0"
 svg = "0.10.0"
 thiserror = "1.0.10"
-thousands = "0.2.0"
 
 # optional
 hexdump = { version = "0.1.0", optional = true }
