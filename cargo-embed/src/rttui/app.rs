@@ -373,7 +373,13 @@ impl App {
                             };
 
                             let name = format!("{}_channel{}.{}", self.logname, i, extension);
-                            let final_path = path.join(name);
+                            let sanitize_options = sanitize_filename::Options {
+                                replacement: "_",
+                                ..Default::default()
+                            };
+                            let sanitized_name =
+                                sanitize_filename::sanitize_with_options(name, sanitize_options);
+                            let final_path = path.join(sanitized_name);
 
                             match std::fs::File::create(&final_path) {
                                 Ok(mut file) => {
