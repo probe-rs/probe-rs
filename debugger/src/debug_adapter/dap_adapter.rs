@@ -16,7 +16,7 @@ use dap_types::*;
 use parse_int::parse;
 use probe_rs::{
     debug::{
-        registers::DebugRegisters, stepping_mode::SteppingMode, ColumnType, SourceLocation,
+        debug_step::SteppingMode, registers::DebugRegisters, ColumnType, SourceLocation,
         VariableName, VariableNodeType,
     },
     Architecture::Riscv,
@@ -709,63 +709,60 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                     Some(bp.column.unwrap_or(0) as u64 + 1)
                 };
 
-                let (verified_breakpoint, reason_msg) = if let Some(source_path) = source_path {
+                let (verified_breakpoint, breakpoint_source_location, reason_msg) = if let Some(
+                    source_path,
+                ) =
+                    source_path
+                {
                     match target_core.core_data.debug_info.get_breakpoint_location(
+                        &mut target_core.core,
                         source_path,
                         requested_breakpoint_line,
                         requested_breakpoint_column,
                     ) {
-                        Ok(valid_breakpoint_location) => {
-                            if let Some(breakpoint_address) =
-                                valid_breakpoint_location.first_halt_address
-                            {
+                        Ok((Some(valid_breakpoint_location), breakpoint_source_location)) => {
                                 match target_core.set_breakpoint(
-                                    breakpoint_address,
+                                    valid_breakpoint_location,
                                     BreakpointType::SourceBreakpoint(args.source.clone()),
                                 ) {
                                     Ok(_) => (
                                         Some(valid_breakpoint_location),
+                                        breakpoint_source_location,
                                         format!(
                                             "Source breakpoint at memory address: {:#010X}",
-                                            breakpoint_address
+                                            valid_breakpoint_location
                                         ),
                                     ),
                                     Err(err) => {
-                                        (None, format!("Warning: Could not set breakpoint at memory address: {:#010x}: {}", breakpoint_address, err))
+                                        (None, None, format!("Warning: Could not set breakpoint at memory address: {:#010x}: {}", valid_breakpoint_location, err))
                                     }
                                 }
-                            } else {
-                                (None, "Cannot set breakpoint here. Try reducing `opt-level` in `Cargo.toml`, or choose a different source location".to_string())
                             }
+                        Ok(_) => {
+                            (None, None, "Cannot set breakpoint here. Try reducing `opt-level` in `Cargo.toml`, or choose a different source location".to_string())
                         }
-                        Err(error) => (None, format!("Cannot set breakpoint here. Try reducing `opt-level` in `Cargo.toml`, or choose a different source location: {:?}", error)),
+                        Err(error) => (None, None, format!("Cannot set breakpoint here. Try reducing `opt-level` in `Cargo.toml`, or choose a different source location: {:?}", error)),
                     }
                 } else {
-                    (None, "No source path provided for set_breakpoints(). Please report this as a bug.".to_string())
+                    (None, None, "No source path provided for set_breakpoints(). Please report this as a bug.".to_string())
                 };
 
                 if let Some(verified_breakpoint) = verified_breakpoint {
                     created_breakpoints.push(Breakpoint {
-                        column: verified_breakpoint
-                            .first_halt_source_location
-                            .as_ref()
-                            .and_then(|sl| {
-                                sl.column.map(|col| match col {
-                                    ColumnType::LeftEdge => 0_i64,
-                                    ColumnType::Column(c) => c as i64,
-                                })
-                            }),
+                        column: breakpoint_source_location.as_ref().and_then(|sl| {
+                            sl.column.map(|col| match col {
+                                ColumnType::LeftEdge => 0_i64,
+                                ColumnType::Column(c) => c as i64,
+                            })
+                        }),
                         end_column: None,
                         end_line: None,
                         id: None,
-                        line: verified_breakpoint
-                            .first_halt_source_location
+                        line: breakpoint_source_location
                             .and_then(|sl| sl.line.map(|line| line as i64)),
                         message: Some(reason_msg),
                         source: None,
-                        instruction_reference: verified_breakpoint
-                            .first_halt_address
-                            .map(|address| format!("{:#010X}", address)),
+                        instruction_reference: Some(format!("{:#010X}", verified_breakpoint)),
                         offset: None,
                         verified: true,
                     });
@@ -1506,7 +1503,6 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                     assembly_lines.append(&mut result_instruction);
                 }
                 Err(error) => {
-                    println!("disasm returned error: {:?}", error);
                     return Err(DebuggerError::Other(anyhow!(error)));
                 }
             };
