@@ -26,6 +26,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
     ///
     /// If `stackframe_registers` is not `None`, then the function DIE's will have valid frame_base values calculated from the `DW_AT_frame_base` attribute.
     /// If `find_inlined` is `false`, then the result will contain a single [`FunctionDie`]
+    /// If `find_inlined` is `true`, then the result will contain a  [`Vec<FunctionDie>`], where the innermost (deepest in the stack) function die is the last entry in the Vec.
     pub(crate) fn get_function_dies(
         &self,
         address: u64,

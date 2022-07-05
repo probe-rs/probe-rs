@@ -10,14 +10,14 @@
 
 /// Debug information which is parsed from DWARF debugging information.
 pub mod debug_info;
+/// Stepping through a program during debug, at various granularities.
+pub mod debug_step;
 /// References to the DIE (debug information entry) of functions.
 pub mod function_die;
 /// Target Register definitions.
 pub mod registers;
 /// The stack frame information used while unwinding the stack from a specific program counter.
 pub mod stack_frame;
-/// Stepping granularity for stepping through a program during debug.
-pub mod stepping_mode;
 /// Information about a Unit in the debug information.
 pub mod unit_info;
 /// Variable information used during debug.

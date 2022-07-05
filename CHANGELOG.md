@@ -19,6 +19,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 * (#350) Flashing and debugging on STM32 chips using WFI instructions should now be stable (fixed in #1177)
 
+### Fixed
+
+- Debug: Improve logic for halt locations used by breakpoints and stepping. (#1156)
 
 ## [0.13.0]
 
@@ -126,6 +129,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fix nrf9160 target file so it can erase UICR section (#1151)
 - Fix connect under reset for CMSIS-DAP probes(#1159)
 - Fix double default algorithms for the stm32f7x line with 1MB flash (#1171)
+  - Partial Fix: Set breakpoints and step on RISCV. Breakpoints work but stepping only works for some breakpoints. This will be addressed in a future PR.
 
 ## [0.12.0]
 
