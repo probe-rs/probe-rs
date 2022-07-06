@@ -1515,9 +1515,9 @@ mod test {
                 } else {
                     JTAG_ACCESS_PORT_IR_VALUE
                 },
-                address: address,
+                address,
                 value: input_value,
-                read: read,
+                read,
                 result: response,
             };
 

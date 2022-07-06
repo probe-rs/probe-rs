@@ -60,7 +60,7 @@ impl<'a, T: RttChannel> Iterator for Iter<'a, T> {
 /// This struct is created by the [`Channels::drain`] method. See its documentation for more.
 pub struct Drain<T: RttChannel>(btree_map::IntoIter<usize, T>);
 
-impl<'a, T: RttChannel> Iterator for Drain<T> {
+impl<T: RttChannel> Iterator for Drain<T> {
     type Item = T;
 
     fn next(&mut self) -> Option<Self::Item> {

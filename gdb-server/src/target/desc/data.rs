@@ -1,5 +1,6 @@
 use itertools::Itertools;
 use probe_rs::{CoreType, InstructionSet, RegisterDescription, RegisterFile, RegisterId};
+use std::fmt::Write;
 
 /// A feature that will be sent to GDB
 struct GdbFeature {
@@ -95,20 +96,25 @@ impl TargetDescription {
         "#
         .to_owned();
 
-        target_description.push_str(&format!("<architecture>{}</architecture>", self.arch));
+        let _ = write!(
+            target_description,
+            "<architecture>{}</architecture>",
+            self.arch
+        );
 
         let mut reg_start = 0usize;
 
         for feature in self.features.iter() {
-            target_description.push_str(&format!("<feature name='{}'>", feature.name));
+            let _ = write!(target_description, "<feature name='{}'>", feature.name);
 
             for i in reg_start..reg_start + feature.reg_count {
                 let reg = &self.regs[i];
 
-                target_description.push_str(&format!(
+                let _ = write!(
+                    target_description,
                     "<reg name='{}' bitsize='{}' type='{}'/>",
                     reg.name, reg.size, reg._type
-                ));
+                );
             }
 
             reg_start += feature.reg_count;

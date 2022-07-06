@@ -68,7 +68,7 @@ impl SvdCache {
                         error,
                     ))),
                 };
-                let _ = debug_adapter.end_progress(progress_id)?;
+                debug_adapter.end_progress(progress_id)?;
                 svd_cache
             }
             Err(error) => Err(DebuggerError::Other(anyhow::anyhow!("{}", error))),

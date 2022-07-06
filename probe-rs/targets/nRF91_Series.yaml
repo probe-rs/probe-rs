@@ -23,6 +23,13 @@ variants:
           is_boot_memory: true
           cores:
             - main
+      - Nvm:
+          range:
+            start: 0xff8000
+            end: 0xff9000
+          is_boot_memory: true
+          cores:
+            - main
     flash_algorithms:
       - nrf91xx
       - nrf91xx_uicr

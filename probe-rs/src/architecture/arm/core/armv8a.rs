@@ -1160,7 +1160,7 @@ mod test {
             self.expected_ops.push(ExpectedMemoryOp {
                 read: true,
                 address: addr,
-                value: value,
+                value,
             });
         }
 
@@ -1168,7 +1168,7 @@ mod test {
             self.expected_ops.push(ExpectedMemoryOp {
                 read: false,
                 address: addr,
-                value: value,
+                value,
             });
         }
     }
@@ -1179,7 +1179,7 @@ mod test {
         }
 
         fn read_32(&mut self, _ap: MemoryAp, address: u64, data: &mut [u32]) -> Result<(), Error> {
-            if self.expected_ops.len() == 0 {
+            if self.expected_ops.is_empty() {
                 panic!(
                     "Received unexpected read_32 op: register {:#}",
                     address_to_reg_num(address)
@@ -1215,7 +1215,7 @@ mod test {
         }
 
         fn write_32(&mut self, _ap: MemoryAp, address: u64, data: &[u32]) -> Result<(), Error> {
-            if self.expected_ops.len() == 0 {
+            if self.expected_ops.is_empty() {
                 panic!(
                     "Received unexpected write_32 op: register {:#}",
                     address_to_reg_num(address)
