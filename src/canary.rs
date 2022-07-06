@@ -82,27 +82,21 @@ impl Canary {
         };
 
         log::debug!(
-            "{} bytes of stack available ({:#010X} ..= {:#010X}), using {} byte canary",
-            stack_available,
+            "{stack_available} bytes of stack available ({:#010X} ..= {:#010X}), using {size} byte canary",
             stack_info.range.start(),
             stack_info.range.end(),
-            size,
         );
 
         let size_kb = size as f64 / 1024.0;
         if measure_stack {
             // Painting 100KB or more takes a few seconds, so provide user feedback.
-            log::info!(
-                "painting {:.2} KiB of RAM for stack usage estimation",
-                size_kb
-            );
+            log::info!("painting {size_kb:.2} KiB of RAM for stack usage estimation");
         }
         let start = Instant::now();
         paint_stack(&mut core, stack_start, stack_start + size as u32)?;
         let seconds = start.elapsed().as_secs_f64();
         log::trace!(
-            "setting up canary took {:.3}s ({:.2} KiB/s)",
-            seconds,
+            "setting up canary took {seconds:.3}s ({:.2} KiB/s)",
             size_kb / seconds
         );
 
@@ -118,25 +112,21 @@ impl Canary {
     pub(crate) fn touched(self, core: &mut probe_rs::Core, elf: &Elf) -> anyhow::Result<bool> {
         let size_kb = self.size as f64 / 1024.0;
         if self.measure_stack {
-            log::info!(
-                "reading {:.2} KiB of RAM for stack usage estimation",
-                size_kb,
-            );
+            log::info!("reading {size_kb:.2} KiB of RAM for stack usage estimation");
         }
         let mut canary = vec![0; self.size];
         let start = Instant::now();
         core.read_8(self.address, &mut canary)?;
         let seconds = start.elapsed().as_secs_f64();
         log::trace!(
-            "reading canary took {:.3}s ({:.2} KiB/s)",
-            seconds,
+            "reading canary took {seconds:.3}s ({:.2} KiB/s)",
             size_kb / seconds
         );
 
         let min_stack_usage = match canary.iter().position(|b| *b != CANARY_VALUE) {
             Some(pos) => {
                 let touched_address = self.address + pos as u32;
-                log::debug!("canary was touched at {:#010X}", touched_address);
+                log::debug!("canary was touched at {touched_address:#010X}");
 
                 Some(elf.vector_table.initial_stack_pointer - touched_address)
             }
@@ -149,10 +139,7 @@ impl Canary {
             let avail_kb = self.stack_available as f64 / 1024.0;
             let pct = used_kb / avail_kb * 100.0;
             log::info!(
-                "program has used at least {:.2}/{:.2} KiB ({:.1}%) of stack space",
-                used_kb,
-                avail_kb,
-                pct,
+                "program has used at least {used_kb:.2}/{avail_kb:.2} KiB ({pct:.1}%) of stack space"
             );
 
             // Don't test for stack overflows if we're measuring stack usage.
@@ -164,10 +151,7 @@ impl Canary {
                     let avail_kb = self.stack_available as f64 / 1024.0;
                     let pct = used_kb / avail_kb * 100.0;
                     log::warn!(
-                        "program has used at least {:.2}/{:.2} KiB ({:.1}%) of stack space",
-                        used_kb,
-                        avail_kb,
-                        pct,
+                        "program has used at least {used_kb:.2}/{avail_kb:.2} KiB ({pct:.1}%) of stack space",
                     );
 
                     if self.data_below_stack {
