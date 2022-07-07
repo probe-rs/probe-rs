@@ -89,6 +89,26 @@ pub(crate) mod aarch32 {
         ret
     }
 
+    pub(crate) fn build_vmrs(reg_target: u16, ctrl_reg: u8) -> u32 {
+        let mut ret = 0b1110_1110_1111_0000_0000_1010_0001_0000;
+
+        ret |= (reg_target as u32) << 12;
+        ret |= (ctrl_reg as u32) << 16;
+
+        ret
+    }
+
+    pub(crate) fn build_vmov(op: u8, reg1: u16, reg2: u16, vreg: u16) -> u32 {
+        let mut ret = 0b1110_1100_0100_0000_0000_1011_0001_0000;
+
+        ret |= (op as u32) << 20;
+        ret |= (reg2 as u32) << 16;
+        ret |= (reg1 as u32) << 12;
+        ret |= vreg as u32;
+
+        ret
+    }
+
     #[cfg(test)]
     mod tests {
         use super::*;
@@ -148,12 +168,28 @@ pub(crate) mod aarch32 {
             // MRS r2, CPSR
             assert_eq!(0xE10F2000, instr);
         }
+
+        #[test]
+        fn gen_vmrs_instruction() {
+            let instr = build_vmrs(2, 0b0111);
+
+            // VMRS r2, MVFR0
+            assert_eq!(0xEEF72A10, instr);
+        }
+
+        #[test]
+        fn gen_vmov_instruction() {
+            let instr = build_vmov(1, 1, 2, 3);
+
+            // VMOV r1, r2, d3
+            assert_eq!(0xEC521B13, instr);
+        }
     }
 }
 
 pub(crate) mod thumb2 {
     // These are the same encoding in thumb2
-    pub(crate) use super::aarch32::{build_mcr, build_mrc};
+    pub(crate) use super::aarch32::{build_mcr, build_mrc, build_vmov, build_vmrs};
 
     pub(crate) fn build_ldr(reg_target: u16, reg_source: u16, imm: u8) -> u32 {
         let mut ret = 0b1111_1000_0101_0000_0000_1011_0000_0000;
@@ -264,6 +300,26 @@ pub(crate) mod aarch64 {
         ret
     }
 
+    pub(crate) fn build_ins_fp_to_gp(reg_target: u16, reg_source: u16, index: u16) -> u32 {
+        let mut ret = 0b0100_1110_0000_1000_0011_1100_0000_0000;
+
+        ret |= (index as u32) << 20;
+        ret |= (reg_source as u32) << 5;
+        ret |= reg_target as u32;
+
+        ret
+    }
+
+    pub(crate) fn build_ins_gp_to_fp(reg_target: u16, reg_source: u16, index: u16) -> u32 {
+        let mut ret = 0b0100_1110_0000_1000_0001_1100_0000_0000;
+
+        ret |= (index as u32) << 20;
+        ret |= (reg_source as u32) << 5;
+        ret |= reg_target as u32;
+
+        ret
+    }
+
     #[cfg(test)]
     mod tests {
         use super::*;
@@ -313,6 +369,22 @@ pub(crate) mod aarch64 {
 
             // STR w2, [x3], #4
             assert_eq!(0xB8004462, instr);
+        }
+
+        #[test]
+        fn gen_ins_gp_to_fp_instruction() {
+            let instr = build_ins_gp_to_fp(3, 2, 1);
+
+            // INS v3.d[1], x2
+            assert_eq!(0x4E181C43, instr);
+        }
+
+        #[test]
+        fn gen_ins_fp_to_gp_instruction() {
+            let instr = build_ins_fp_to_gp(3, 2, 1);
+
+            // MOV x3, v2.d[1]
+            assert_eq!(0x4E183C43, instr);
         }
     }
 }

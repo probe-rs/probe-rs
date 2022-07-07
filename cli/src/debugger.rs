@@ -12,6 +12,7 @@ use probe_rs::{
         debug_info::DebugInfo, registers::DebugRegisters, stack_frame::StackFrame, VariableName,
     },
     Core, CoreType, InstructionSet, MemoryInterface, RegisterDescription, RegisterId,
+    RegisterValue,
 };
 use std::fs::File;
 use std::{io::prelude::*, time::Duration};
@@ -481,14 +482,62 @@ impl DebugCli {
                 let iter = register_file.platform_registers().chain(psr_iter);
 
                 for register in iter {
-                    let value: u64 = cli_data.core.read_core_reg(register)?;
+                    let value: RegisterValue = cli_data.core.read_core_reg(register)?;
 
-                    println!(
-                        "{:10}: {:#0width$x}",
-                        register.name(),
-                        value,
-                        width = register.format_hex_width()
-                    );
+                    println!("{:10}: {:#}", register.name(), value);
+                }
+
+                Ok(CliState::Continue)
+            },
+        });
+
+        cli.add_command(Command {
+            name: "fp_regs",
+            help_text: "Show floating point register values",
+
+            function: |cli_data, _args| {
+                if !cli_data.core.fpu_support()? {
+                    println!("Floating point not supported");
+                } else {
+                    let register_file = cli_data.core.registers();
+
+                    if let Some(registers) = register_file.fpu_registers() {
+                        for register in registers {
+                            let value: RegisterValue = cli_data.core.read_core_reg(register)?;
+
+                            // Print out the register every way it can be interpretted.
+                            // For example, with a u128:
+                            // * Raw value as a u128
+                            // * Value cast as a f64
+                            // * Value cast as a f32
+                            println!("{:10}: {:#}", register.name(), value);
+
+                            if matches!(value, RegisterValue::U128(_) | RegisterValue::U64(_)) {
+                                let data: u128 = value.try_into()?;
+                                let bytes = (data as u64).to_le_bytes();
+                                let fp_data = f64::from_le_bytes(bytes);
+
+                                println!("{:>10}: {:#}", "[as f64]", fp_data);
+                            }
+
+                            if matches!(
+                                value,
+                                RegisterValue::U128(_)
+                                    | RegisterValue::U64(_)
+                                    | RegisterValue::U32(_)
+                            ) {
+                                let data: u128 = value.try_into()?;
+                                let bytes = (data as u32).to_le_bytes();
+                                let fp_data = f32::from_le_bytes(bytes);
+
+                                println!("{:>10}: {:#}", "[as f32]", fp_data);
+                            }
+
+                            println!();
+                        }
+                    } else {
+                        println!("Core has no floating point registers");
+                    }
                 }
 
                 Ok(CliState::Continue)

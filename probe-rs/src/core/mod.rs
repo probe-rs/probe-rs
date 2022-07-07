@@ -15,6 +15,7 @@ use crate::Target;
 use crate::{Error, Memory, MemoryInterface};
 use anyhow::{anyhow, Result};
 use std::cmp::Ordering;
+use std::convert::Infallible;
 use std::time::Duration;
 
 /// A memory mapped register, for instance ARM debug registers (DHCSR, etc).
@@ -126,6 +127,8 @@ pub enum RegisterValue {
     U32(u32),
     /// 64-bit unsigned integer
     U64(u64),
+    /// 128-bit unsigned integer, often used with SIMD / FP
+    U128(u128),
 }
 
 impl RegisterValue {
@@ -134,6 +137,7 @@ impl RegisterValue {
         match self {
             RegisterValue::U32(register_value) => *register_value == u32::MAX,
             RegisterValue::U64(register_value) => *register_value == u64::MAX,
+            RegisterValue::U128(register_value) => *register_value == u128::MAX,
         }
     }
 
@@ -142,6 +146,7 @@ impl RegisterValue {
         match self {
             RegisterValue::U32(register_value) => register_value.is_zero(),
             RegisterValue::U64(register_value) => register_value.is_zero(),
+            RegisterValue::U128(register_value) => register_value.is_zero(),
         }
     }
 }
@@ -156,12 +161,14 @@ impl Default for RegisterValue {
 impl PartialOrd for RegisterValue {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         let self_value = match self {
-            RegisterValue::U32(self_value) => *self_value as u64,
-            RegisterValue::U64(self_value) => *self_value,
+            RegisterValue::U32(self_value) => *self_value as u128,
+            RegisterValue::U64(self_value) => *self_value as u128,
+            RegisterValue::U128(self_value) => *self_value,
         };
         let other_value = match other {
-            RegisterValue::U32(other_value) => *other_value as u64,
-            RegisterValue::U64(other_value) => *other_value,
+            RegisterValue::U32(other_value) => *other_value as u128,
+            RegisterValue::U64(other_value) => *other_value as u128,
+            RegisterValue::U128(other_value) => *other_value,
         };
         self_value.partial_cmp(&other_value)
     }
@@ -170,12 +177,14 @@ impl PartialOrd for RegisterValue {
 impl PartialEq for RegisterValue {
     fn eq(&self, other: &Self) -> bool {
         let self_value = match self {
-            RegisterValue::U32(self_value) => *self_value as u64,
-            RegisterValue::U64(self_value) => *self_value,
+            RegisterValue::U32(self_value) => *self_value as u128,
+            RegisterValue::U64(self_value) => *self_value as u128,
+            RegisterValue::U128(self_value) => *self_value,
         };
         let other_value = match other {
-            RegisterValue::U32(other_value) => *other_value as u64,
-            RegisterValue::U64(other_value) => *other_value,
+            RegisterValue::U32(other_value) => *other_value as u128,
+            RegisterValue::U64(other_value) => *other_value as u128,
+            RegisterValue::U128(other_value) => *other_value,
         };
         self_value == other_value
     }
@@ -186,6 +195,7 @@ impl core::fmt::Display for RegisterValue {
         match self {
             RegisterValue::U32(register_value) => write!(f, "{:#010x}", register_value),
             RegisterValue::U64(register_value) => write!(f, "{:#018x}", register_value),
+            RegisterValue::U128(register_value) => write!(f, "{:#034x}", register_value),
         }
     }
 }
@@ -201,6 +211,12 @@ impl From<u64> for RegisterValue {
     }
 }
 
+impl From<u128> for RegisterValue {
+    fn from(val: u128) -> Self {
+        Self::U128(val)
+    }
+}
+
 impl TryInto<u32> for RegisterValue {
     type Error = crate::Error;
 
@@ -208,6 +224,9 @@ impl TryInto<u32> for RegisterValue {
         match self {
             Self::U32(v) => Ok(v),
             Self::U64(v) => v
+                .try_into()
+                .map_err(|_| crate::Error::Other(anyhow!("Value '{}' too large for u32", v))),
+            Self::U128(v) => v
                 .try_into()
                 .map_err(|_| crate::Error::Other(anyhow!("Value '{}' too large for u32", v))),
         }
@@ -221,7 +240,43 @@ impl TryInto<u64> for RegisterValue {
         match self {
             Self::U32(v) => Ok(v.into()),
             Self::U64(v) => Ok(v),
+            Self::U128(v) => v
+                .try_into()
+                .map_err(|_| crate::Error::Other(anyhow!("Value '{}' too large for u64", v))),
         }
+    }
+}
+
+impl TryInto<u128> for RegisterValue {
+    type Error = crate::Error;
+
+    fn try_into(self) -> Result<u128, Self::Error> {
+        match self {
+            Self::U32(v) => Ok(v.into()),
+            Self::U64(v) => Ok(v.into()),
+            Self::U128(v) => Ok(v),
+        }
+    }
+}
+
+/// Extension trait to support converting errors
+/// from TryInto calls into [probe_rs::Error]
+pub trait RegisterValueResultExt<T> {
+    /// Convert [Result<T,E>] into `Result<T, probe_rs::Error>`
+    fn into_crate_error(self) -> Result<T, Error>;
+}
+
+/// No translation conversion case
+impl<T> RegisterValueResultExt<T> for Result<T, Error> {
+    fn into_crate_error(self) -> Result<T, Error> {
+        self
+    }
+}
+
+/// Convert from Error = Infallible to Error = probe_rs::Error
+impl<T> RegisterValueResultExt<T> for Result<T, Infallible> {
+    fn into_crate_error(self) -> Result<T, Error> {
+        Ok(self.unwrap())
     }
 }
 
@@ -247,13 +302,13 @@ pub struct RegisterFile {
 
     pub(crate) psp: Option<&'static RegisterDescription>,
 
-    pub(crate) extra: Option<&'static RegisterDescription>,
-
     pub(crate) psr: Option<&'static RegisterDescription>,
 
     pub(crate) fp_status: Option<&'static RegisterDescription>,
 
     pub(crate) fp_registers: Option<&'static [RegisterDescription]>,
+
+    pub(crate) other: &'static [RegisterDescription],
 }
 
 impl RegisterFile {
@@ -339,17 +394,15 @@ impl RegisterFile {
         self.psr
     }
 
-    // ARM DDI 0403E.d (ID070218)
-    // C1.6.3 Debug Core Register Selector Register, DCRSR
-    // Bits[31:24] CONTROL.
-    // Bits[23:16] FAULTMASK.
-    // Bits[15:8]  BASEPRI.
-    // Bits[7:0]   PRIMASK.
-    // In each field, the valid bits are packed with leading zeros. For example,
-    // // FAULTMASK is always a single bit, DCRDR[16], and DCRDR[23:17] is 0b0000000.
-    // pub fn extra(&self) -> Option<&RegisterDescription> {
-    //     self.extra
-    // }
+    /// Other architecture specific registers
+    pub fn other(&self) -> impl Iterator<Item = &RegisterDescription> {
+        self.other.iter()
+    }
+
+    /// Find an architecture specific register by name
+    pub fn other_by_name(&self, name: &str) -> Option<&RegisterDescription> {
+        self.other.iter().find(|r| r.name == name)
+    }
 
     /// The fpu status register.
     pub fn fpscr(&self) -> Option<&RegisterDescription> {
@@ -753,16 +806,26 @@ impl<'probe> Core<'probe> {
 
     /// Read the value of a core register.
     ///
+    /// # Remarks
+    ///
+    /// `T` can be an unsigned interger type, such as [u32] or [u64], or
+    /// it can be [RegisterValue] to allow the caller to support arbitrary
+    /// length registers.
+    ///
+    /// To add support to convert to a custom type implement [TryInto<CustomType>]
+    /// for [RegisterValue]].
+    ///
     /// # Errors
     ///
     /// If `T` isn't large enough to hold the register value an error will be raised.
     pub fn read_core_reg<T>(&mut self, address: impl Into<RegisterId>) -> Result<T, error::Error>
     where
-        RegisterValue: TryInto<T, Error = error::Error>,
+        RegisterValue: TryInto<T>,
+        Result<T, <RegisterValue as TryInto<T>>::Error>: RegisterValueResultExt<T>,
     {
         let value = self.inner.read_core_reg(address.into())?;
 
-        value.try_into()
+        value.try_into().into_crate_error()
     }
 
     /// Write the value of a core register.

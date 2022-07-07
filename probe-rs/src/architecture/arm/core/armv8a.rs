@@ -15,10 +15,12 @@ use anyhow::Result;
 
 use super::armv8a_core_regs::AARCH64_REGISTER_FILE;
 use super::CortexAState;
-use super::AARCH32_COMMON_REGS;
+use super::AARCH32_FP_32_REGS;
 
 use super::instructions::aarch64;
-use super::instructions::thumb2::{build_ldr, build_mcr, build_mrc, build_str};
+use super::instructions::thumb2::{
+    build_ldr, build_mcr, build_mrc, build_str, build_vmov, build_vmrs,
+};
 
 use std::sync::Arc;
 use std::time::Duration;
@@ -87,6 +89,8 @@ impl<'probe> Armv8a<'probe> {
 
             state.current_state = core_state;
             state.is_64_bit = edscr.currently_64_bit();
+            // Always 32 FP regs for v8-a
+            state.fp_reg_count = Some(32);
         }
 
         let mut core = Self {
@@ -242,13 +246,14 @@ impl<'probe> Armv8a<'probe> {
             // Numbers match what GDB defines for aarch64
             self.state.register_cache = vec![None; 68];
         } else {
-            self.state.register_cache = vec![None; 17];
+            // 16 general purpose regs, CPSR, 32 FP registers, FPSR
+            self.state.register_cache = vec![None; 50];
         }
     }
 
     fn writeback_registers_aarch32(&mut self) -> Result<(), Error> {
         // Update SP, PC, CPSR first since they clobber the GP registeres
-        let writeback_iter = (15u16..=16).chain(0u16..=14);
+        let writeback_iter = (15u16..=16).chain(17u16..=48).chain(0u16..=14);
 
         for i in writeback_iter {
             if let Some((val, writeback)) = self.state.register_cache[i as usize] {
@@ -269,6 +274,22 @@ impl<'probe> Armv8a<'probe> {
                             let instruction = build_mrc(15, 3, 0, 4, 5, 1);
                             self.execute_instruction(instruction)?;
                         }
+                        17..=48 => {
+                            // Move value to r0, r1
+                            let value: u64 = val.try_into()?;
+                            let low_word = value as u32;
+                            let high_word = (value >> 32) as u32;
+
+                            let instruction = build_mrc(14, 0, 0, 0, 5, 0);
+                            self.execute_instruction_with_input_32(instruction, low_word)?;
+
+                            let instruction = build_mrc(14, 0, 1, 0, 5, 0);
+                            self.execute_instruction_with_input_32(instruction, high_word)?;
+
+                            // VMOV
+                            let instruction = build_vmov(0, 0, 1, i - 17);
+                            self.execute_instruction(instruction)?;
+                        }
                         _ => {
                             panic!("Logic missing for writeback of register {}", i);
                         }
@@ -281,8 +302,8 @@ impl<'probe> Armv8a<'probe> {
     }
 
     fn writeback_registers_aarch64(&mut self) -> Result<(), Error> {
-        // Update SP, PC, CPSR first since they clobber the GP registeres
-        let writeback_iter = (31u16..=33).chain(0u16..=30);
+        // Update SP, PC, CPSR, FP first since they clobber the GP registeres
+        let writeback_iter = (31u16..=33).chain(34u16..=65).chain(0u16..=30);
 
         for i in writeback_iter {
             if let Some((val, writeback)) = self.state.register_cache[i as usize] {
@@ -305,6 +326,23 @@ impl<'probe> Armv8a<'probe> {
 
                             // MSR DLR_EL0, X0
                             let instruction = aarch64::build_msr(3, 3, 4, 5, 1, 0);
+                            self.execute_instruction(instruction)?;
+                        }
+                        34..=65 => {
+                            let val: u128 = val.try_into()?;
+
+                            // Move lower word to r0
+                            self.set_reg_value(0, val as u64)?;
+
+                            // INS v<x>.d[0], x0
+                            let instruction = aarch64::build_ins_gp_to_fp(i - 34, 0, 0);
+                            self.execute_instruction(instruction)?;
+
+                            // Move upper word to r0
+                            self.set_reg_value(0, (val >> 64) as u64)?;
+
+                            // INS v<x>.d[0], x0
+                            let instruction = aarch64::build_ins_gp_to_fp(i - 34, 0, 1);
                             self.execute_instruction(instruction)?;
                         }
                         _ => {
@@ -418,6 +456,39 @@ impl<'probe> Armv8a<'probe> {
 
                 Ok(cpsr.into())
             }
+            17..=48 => {
+                // Access via r0, r1
+                self.prepare_for_clobber(0)?;
+                self.prepare_for_clobber(1)?;
+
+                // VMOV r0, r1, <reg>
+                let instruction = build_vmov(1, 0, 1, reg_num - 17);
+                self.execute_instruction(instruction)?;
+
+                // Read from r0
+                let instruction = build_mcr(14, 0, 0, 0, 5, 0);
+                let mut value = self.execute_instruction_with_result_32(instruction)? as u64;
+
+                // Read from r1
+                let instruction = build_mcr(14, 0, 1, 0, 5, 0);
+                value |= (self.execute_instruction_with_result_32(instruction)? as u64) << 32;
+
+                Ok(value.into())
+            }
+            49 => {
+                // Access via r0
+                self.prepare_for_clobber(0)?;
+
+                // VMRS r0, FPSCR
+                let instruction = build_vmrs(0, 1);
+                self.execute_instruction(instruction)?;
+
+                // Read from r0
+                let instruction = build_mcr(14, 0, 0, 0, 5, 0);
+                let value = self.execute_instruction_with_result_32(instruction)?;
+
+                Ok(value.into())
+            }
             _ => Err(Error::architecture_specific(
                 Armv8aError::InvalidRegisterNumber(reg_num, 32),
             )),
@@ -477,6 +548,28 @@ impl<'probe> Armv8a<'probe> {
                 let psr: u32 = self.execute_instruction_with_result_64(instruction)? as u32;
 
                 Ok(psr.into())
+            }
+            34..=65 => {
+                // v0-v31
+                self.prepare_for_clobber(0)?;
+
+                // MOV x0, v<x>.d[0]
+                let instruction = aarch64::build_ins_fp_to_gp(0, reg_num - 34, 0);
+                self.execute_instruction(instruction)?;
+
+                // Read from x0
+                let instruction = aarch64::build_msr(2, 3, 0, 4, 0, 0);
+                let mut value: u128 = self.execute_instruction_with_result_64(instruction)? as u128;
+
+                // MOV x0, v<x>.d[1]
+                let instruction = aarch64::build_ins_fp_to_gp(0, reg_num - 34, 1);
+                self.execute_instruction(instruction)?;
+
+                // Read from x0
+                let instruction = aarch64::build_msr(2, 3, 0, 4, 0, 0);
+                value |= (self.execute_instruction_with_result_64(instruction)? as u128) << 64;
+
+                Ok(value.into())
             }
             66 => {
                 // FPSR
@@ -900,7 +993,7 @@ impl<'probe> CoreInterface for Armv8a<'probe> {
         if self.state.is_64_bit {
             &AARCH64_REGISTER_FILE
         } else {
-            &AARCH32_COMMON_REGS
+            &AARCH32_FP_32_REGS
         }
     }
 
@@ -991,9 +1084,8 @@ impl<'probe> CoreInterface for Armv8a<'probe> {
     }
 
     fn fpu_support(&mut self) -> Result<bool, crate::error::Error> {
-        Err(crate::error::Error::Other(anyhow::anyhow!(
-            "Fpu detection not yet implemented"
-        )))
+        // Always available for v8-a
+        Ok(true)
     }
 
     fn on_session_stop(&mut self) -> Result<(), Error> {

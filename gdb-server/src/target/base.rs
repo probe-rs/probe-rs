@@ -27,7 +27,7 @@ impl MultiThreadBase for RuntimeTarget<'_> {
 
         for reg in self.target_desc.get_registers_for_main_group() {
             let bytesize = reg.size_in_bytes();
-            let mut value: u64 =
+            let mut value: u128 =
                 read_register_from_source(&mut core, reg.source()).into_target_result()?;
 
             for _ in 0..bytesize {
@@ -73,7 +73,7 @@ impl MultiThreadBase for RuntimeTarget<'_> {
 
             let mut value = 0;
             for (exp, ch) in str_value.iter().enumerate() {
-                value += (*ch as u64) << (8 * exp);
+                value += (*ch as u128) << (8 * exp);
             }
 
             write_register_from_source(&mut core, reg.source(), value).into_target_result()?;
@@ -148,7 +148,7 @@ impl SingleRegisterAccess<Tid> for RuntimeTarget<'_> {
         let reg = self.target_desc.get_register(reg_id.into());
         let bytesize = reg.size_in_bytes();
 
-        let mut value: u64 =
+        let mut value: u128 =
             read_register_from_source(&mut core, reg.source()).into_target_result()?;
 
         for i in 0..bytesize {
@@ -175,7 +175,7 @@ impl SingleRegisterAccess<Tid> for RuntimeTarget<'_> {
         let mut value = 0;
 
         for (exp, ch) in val.iter().enumerate().take(bytesize as usize) {
-            value += (*ch as u64) << (8 * exp);
+            value += (*ch as u128) << (8 * exp);
         }
 
         write_register_from_source(&mut core, reg.source(), value).into_target_result()?;
@@ -184,10 +184,10 @@ impl SingleRegisterAccess<Tid> for RuntimeTarget<'_> {
     }
 }
 
-fn read_register_from_source(core: &mut Core, source: GdbRegisterSource) -> Result<u64, Error> {
+fn read_register_from_source(core: &mut Core, source: GdbRegisterSource) -> Result<u128, Error> {
     match source {
         GdbRegisterSource::SingleRegister(id) => {
-            let val: u64 = core.read_core_reg(id)?;
+            let val: u128 = core.read_core_reg(id)?;
 
             Ok(val)
         }
@@ -196,8 +196,8 @@ fn read_register_from_source(core: &mut Core, source: GdbRegisterSource) -> Resu
             high,
             word_size,
         } => {
-            let mut val: u64 = core.read_core_reg(low)?;
-            let high_val: u64 = core.read_core_reg(high)?;
+            let mut val: u128 = core.read_core_reg(low)?;
+            let high_val: u128 = core.read_core_reg(high)?;
 
             val |= high_val << word_size;
 
@@ -209,7 +209,7 @@ fn read_register_from_source(core: &mut Core, source: GdbRegisterSource) -> Resu
 fn write_register_from_source(
     core: &mut Core,
     source: GdbRegisterSource,
-    value: u64,
+    value: u128,
 ) -> Result<(), Error> {
     match source {
         GdbRegisterSource::SingleRegister(id) => core.write_core_reg(id, value),
