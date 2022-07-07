@@ -250,49 +250,27 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
             Ok(location) => match location {
                 // Any expected errors should be handled by one of the variants in the Ok() result.
                 ExpressionResult::Value(value_from_expression) => {
-                    match value_from_expression {
-                        VariableValue::Valid(value) => {
-                            // The ELF contained the actual value, not just a location to it.
-                            child_variable.memory_location = VariableLocation::Value;
-                            child_variable.set_value(VariableValue::Valid(value));
-                        }
-                        VariableValue::Error(error) => {
-                            child_variable.set_value(VariableValue::Error(error));
-                        }
-                        VariableValue::Empty => {
-                            child_variable.set_value(VariableValue::Empty);
-                        }
+                    if let VariableValue::Valid(_) = &value_from_expression {
+                        // The ELF contained the actual value, not just a location to it.
+                        child_variable.memory_location = VariableLocation::Value;
                     }
+                    child_variable.set_value(value_from_expression);
                 }
                 ExpressionResult::Location(location_from_expression) => {
-                    match location_from_expression {
-                        VariableLocation::Unknown => {
-                            child_variable.memory_location = VariableLocation::Unknown;
-                        }
+                    match &location_from_expression {
                         VariableLocation::Unavailable => {
                             child_variable.set_value(VariableValue::Error(
                                 "<value optimized away by compiler, out of scope, or dropped>"
                                     .to_string(),
                             ));
-                            child_variable.memory_location = VariableLocation::Unavailable;
                         }
-                        VariableLocation::Address(memory_address) => {
-                            child_variable.memory_location =
-                                VariableLocation::Address(memory_address);
-                        }
-                        VariableLocation::Value => {
-                            child_variable.memory_location = VariableLocation::Value;
-                        }
-                        VariableLocation::Error(error_message) => {
+                        VariableLocation::Error(error_message)
+                        | VariableLocation::Unsupported(error_message) => {
                             child_variable.set_value(VariableValue::Error(error_message.clone()));
-                            child_variable.memory_location = VariableLocation::Error(error_message);
                         }
-                        VariableLocation::Unsupported(detail_message) => {
-                            child_variable.set_value(VariableValue::Error(detail_message.clone()));
-                            child_variable.memory_location =
-                                VariableLocation::Unsupported(detail_message);
-                        }
+                        _ => {}
                     }
+                    child_variable.memory_location = location_from_expression;
                 }
             },
             Err(debug_error) => {

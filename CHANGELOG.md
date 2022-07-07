@@ -91,19 +91,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Debugger: Fix assumptions for ARM cores
   - GDB: Fix assumptions for ARM cores
 - Fixed access to Arm CoreSight components being completed through the wrong AP (#1114)
-- Debug: Additions to complete RISCV and 64-bit support. (#1129)
+- Debug: Additions to complete RISC-V and 64-bit support. (#1129)
   - probe_rs::debug::Registers uses new `core::RegisterId` and `core::RegisterValue` for consistent register handling.
-  - RISCV `Disassembly` works correctly for 'compressed' (RV32C isa variants) instruction sets.
-  - RISCV stack unwind improvements (stack frames and registers work, variables do not resolve correctly.)
+  - RISC-V `Disassembly` works correctly for 'compressed' (RV32C isa variants) instruction sets.
+  - RISC-V stack unwind improvements (stack frames and registers work, variables do not resolve correctly.)
 - Fixed a possible endless recursion in the J-Link code, when no chip is connected. (#1123)
 - Fixed an issue with ARMv7-a/v8-a where some register values might be corrupted. (#1131)
 - Fixed an issue where `probe-rs-cli`'s debug console didn't detect if the core is halted (#1131)
 - Fix GDB interface to require a Mutex to enable multi-threaded usage (#1144)
-- Debug: RISCV improvements (#1147).
+- Debug: RISC-V improvements (#1147).
   - Fix: Variable values now resolve correctly. This fix also fixes variables when using the rustc flag `-Cforce-frame-pointers=off` on ARM.
   - Fix: Allow unwinding past frames with no debug information (See Issue [#896](https://github.com/probe-rs/probe-rs/issues/896))
   - Fix: Using `restart` request from VSCode now works for both states of `halt_after_rest`.
-  - Partial Fix: Set breakpoints and step on RISCV. Breakpoints work but stepping only works for some breakpoints. This will be addressed in a future PR.
+  - Partial Fix: Set breakpoints and step on RISC-V. Breakpoints work but stepping only works for some breakpoints. This will be addressed in a future PR.
 - Fix nrf9160 target file so it can erase UICR section (#1151)
 
 ## [0.12.0]
@@ -122,7 +122,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added support for flashing `bin` format binaries with the `probe-rs-cli download` command. (#774)
 - Improved number parsing on all the `probe-rs-cli` commands. They now all accept normal (`01234`), hex (`0x1234`), octal (`0o1234`) and binary (`0b1`) formats. (#774)
 - Added progress bars to the probe-rs-cli download command. (#776)
-- Improve reliability of communication with the RISCV debug module by recovering from busy errors in batch operations. (#802)
+- Improve reliability of communication with the RISC-V debug module by recovering from busy errors in batch operations. (#802)
 - Added optional ability to load fixed address flashing algorithms (non PIC). (#822)
 - Added target definition validation to make handling inside probe-rs easier by making some basic assumptions about the validity of the used `ChipFamily` without always checking again. (#848)
 - Added support for the built in JTAG on the ESP32C3 and other ESP32 devices (#863).
@@ -139,7 +139,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Enabled the generation of global timestamps and exception traces for ARM targets on `Session::setup_swv`.
 - Changed to `hidraw` for HID access on Linux. This should allow access to HID-based probes without udev rules (#737).
-- Support batching of FTDI commands and use it for RISCV (#717)
+- Support batching of FTDI commands and use it for RISC-V (#717)
 - Include the chip string for `NoRamDefined` in its error message
 - Improved handling of errors in CMSIS-DAP commands (#745).
 - Implemented RTT (String, BinaryLE, and Defmt) in `probe-rs-debugger` (#688).
@@ -195,19 +195,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Support for the `HNONSEC` bit in memory access. This now allows secure access on chips which support TrustZone (#465).
-- Support for RISCV chips which use the System Bus Access method for memory access when debugging (#527).
+- Support for RISC-V chips which use the System Bus Access method for memory access when debugging (#527).
 - Support for double buffering in the flash loader, which increased flashing speed (#107).
 - Determine location of debug components by parsing ROM table (#431).
 - Support for "flashing" data to RAM in the flash loader (#480).
 - Added FTDI C232HM-DDHSL-0 to comaptible USB list for FTDI backend (#485).
 - Added `--list-probes` and `-n`option to built-in GDB server binary (#486).
-- Added RISCV support to GDB server (#493).
+- Added RISC-V support to GDB server (#493).
 - Added `Session::target()` to access the target of a session (#497).
 - Support for target description in the GDB server (#498).
 - Support for register write commands in the GDB server (#510).
 - Added `get_target_voltage()` function to `DebugProbe`, which can be used to read the target voltage if the probe supports it (#533).
 - Added `do_chip_erase` flag to `DownloadOptions`, to allow using chip erase when flashing (#537).
-- riscv: Support for memory access using system bus (#527).
+- RISC-V: Support for memory access using system bus (#527).
 - Added a generic `read` function, which can be used for memory access with maximum speed, regardless of access width (#633).
 - Added an option to skip erasing the flash before programming (#628).
 - Added a new debugger for VS Code, using the [Debug Adapter Protocol](https://microsoft.github.io/debug-adapter-protocol/specification). The debugger can be found in the `probe-rs-debugger` crate (#620).
@@ -248,8 +248,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Renamed `FlashInfo` to `NvmInfo`
 - Renamed `FlashRegion` to `NvmRegion` and its `flash_info()` method to `nvm_info()`
 - Renamed `FlashError::NoSuitableFlash` to `FlashError::NoSuitableNvm`
-- The `into_arm_interface` and `into_riscv_interface` functions are replaced by the `try_into_arm_interface` and
-  `try_into_riscv_interface` functions, which return the `Probe` struct in the case of an error. This improves the
+- The `into_arm_interface` and `into_RISC-V_interface` functions are replaced by the `try_into_arm_interface` and
+  `try_into_RISC-V_interface` functions, which return the `Probe` struct in the case of an error. This improves the
   auto detection process (#524).
 - Improved SWD protocol handling for J-Link (#443, #539, #619).
 - Improved error handling for batched CMSIS-DAP commands (#445).
@@ -260,7 +260,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Cache value of CSW register to reduce number of SWD transfers (#471).
 - Use `erased_byte_value` from target description as default value in the flash loader (#475).
 - Added retry functionality for CMSIS-DAP probes (#462).
-- RISCV: Use abstract commands for CSR access for improved speed (#487).
+- RISC-V: Use abstract commands for CSR access for improved speed (#487).
 - The `download_file` and `download_file_with_options` functions now accept `AsRef<Path>` instead of `&Path`to be more convenient to use (#545, #579).
 - Use `itm-decode` to decode ITM packets instead of built-in decoder (#564).
 - Flash API Improvements: Data is now owned by the `FlashLoader`and `FlashBuilder` structs to simply the API, and the `FlashLoader::commit()` accepts the `DownloadOptions` struct instead of bool flags (#605).
@@ -287,11 +287,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed off-by-one errors when flashing chip with contiguous memory ranges (#574).
 - Ensure only ELF segments with type `PT_LOAD` are flashed (#582).
 - Fixed overflow in hex file loading, and ensure addresses are calculated correctly (#604).
-- RISCV: Fixed scanning for harts (#610).
-- RISCV: Fixed abstract command handling (#611).
+- RISC-V: Fixed scanning for harts (#610).
+- RISC-V: Fixed abstract command handling (#611).
 - Fixed a bus congestion issue where the chip is polled too often, leading to problems while flashing (#613).
 - The breakpoint address is now verified to ensure a breakpoint at the given address is actually possible (#626).
-- RISCV: Use correct address for access to `abstractauto`register (#511).
+- RISC-V: Use correct address for access to `abstractauto`register (#511).
 - The `--chip` argument now works without specifying the `--elf` argument (fix #517).
 - Fixed: Invalid "Unable to set hardware breakpoint", by removing breakpoint caching, instead querying core directly (#632)
 - Fix crash on unknown AP class. (#662).
@@ -320,7 +320,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added support for the EFM32PG12.
 - Added support for the MAX32665 & MAX32666.
 - Building probe-rs now works without rustfmt being present too (#423).
-- Added support for implicit ebreak in RISCV chips (#423, #430).
+- Added support for implicit ebreak in RISC-V chips (#423, #430).
 
 ### Changed
 
@@ -511,7 +511,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Flashing support for the STM32G0 series.
 - Flashing support for the STM32F0 series.
 - Flashing support for the STM32WB55 series.
-- Support for RISCV debugging using a Jlink debug probe.
+- Support for RISC-V debugging using a Jlink debug probe.
 - Support for SWD debugging using a Jlink debug probe.
 
 ### Changed

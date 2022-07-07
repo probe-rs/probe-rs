@@ -31,28 +31,6 @@ pub struct Riscv32<'probe> {
     state: &'probe mut RiscVState,
 }
 
-// Resume the core.
-fn resume_core(riscv32: &mut Riscv32) -> Result<(), crate::Error> {
-    // set resume request.
-    let mut dmcontrol = Dmcontrol(0);
-    dmcontrol.set_resumereq(true);
-    dmcontrol.set_dmactive(true);
-    riscv32.interface.write_dm_register(dmcontrol)?;
-
-    // check if request has been acknowleged.
-    let status: Dmstatus = riscv32.interface.read_dm_register()?;
-    if !status.allresumeack() {
-        return Err(RiscvError::RequestNotAcknowledged.into());
-    };
-
-    // clear resume request.
-    let mut dmcontrol = Dmcontrol(0);
-    dmcontrol.set_dmactive(true);
-    riscv32.interface.write_dm_register(dmcontrol)?;
-
-    Ok(())
-}
-
 impl<'probe> Riscv32<'probe> {
     /// Create a new RISC-V interface.
     pub fn new(
@@ -92,6 +70,28 @@ impl<'probe> Riscv32<'probe> {
             }
             other => other,
         }
+    }
+
+    // Resume the core.
+    fn resume_core(&mut self) -> Result<(), crate::Error> {
+        // set resume request.
+        let mut dmcontrol = Dmcontrol(0);
+        dmcontrol.set_resumereq(true);
+        dmcontrol.set_dmactive(true);
+        self.interface.write_dm_register(dmcontrol)?;
+
+        // check if request has been acknowleged.
+        let status: Dmstatus = self.interface.read_dm_register()?;
+        if !status.allresumeack() {
+            return Err(RiscvError::RequestNotAcknowledged.into());
+        };
+
+        // clear resume request.
+        let mut dmcontrol = Dmcontrol(0);
+        dmcontrol.set_dmactive(true);
+        self.interface.write_dm_register(dmcontrol)?;
+
+        Ok(())
     }
 }
 
@@ -153,14 +153,14 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
         self.step()?;
 
         // resume the core.
-        resume_core(self)?;
+        self.resume_core()?;
 
         Ok(())
     }
 
     fn reset(&mut self) -> Result<(), crate::Error> {
         match self.reset_and_halt(Duration::from_millis(500)) {
-            Ok(_) => resume_core(self)?,
+            Ok(_) => self.resume_core()?,
             Err(error) => {
                 return Err(RiscvError::DebugProbe(crate::DebugProbeError::Other(
                     anyhow::anyhow!("Error during reset : {:?}", error),
@@ -256,7 +256,7 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
         self.write_csr(0x7b0, dcsr.0)?;
 
         // Now we can resume the core for the single step.
-        resume_core(self)?;
+        self.resume_core()?;
         self.wait_for_core_halted(Duration::from_millis(100))?;
 
         let pc = self.read_core_reg(RegisterId(0x7b1))?;
@@ -431,7 +431,7 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
         instruction_breakpoint.set_match(0);
 
         instruction_breakpoint.set_m(true);
-        // instruction_breakpoint.set_s(true); // Supervisore mode is only for systems running  Unix-like OS'es
+
         instruction_breakpoint.set_u(true);
 
         // Trigger when instruction is executed
@@ -701,6 +701,8 @@ bitfield! {
     anyhalted, _: 8;
     authenticated, _: 7;
     authbusy, _: 6;
+    hasresethaltreq, _: 5;
+    confstrptrvalid, _: 4;
     version, _: 3, 0;
 }
 

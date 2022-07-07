@@ -191,6 +191,9 @@ pub struct RiscvCommunicationInterfaceState {
 
     supports_autoexec: bool,
 
+    /// Pointer to the configuration string
+    confstrptr: Option<u128>,
+
     /// Width of the hartsel register
     hartsellen: u8,
 
@@ -226,6 +229,8 @@ impl RiscvCommunicationInterfaceState {
             nscratch: 0,
 
             supports_autoexec: false,
+
+            confstrptr: None,
 
             // Assume maximum value, will be determined exactly alter.
             hartsellen: 20,
@@ -316,6 +321,21 @@ impl RiscvCommunicationInterface {
         }
 
         self.state.implicit_ebreak = status.impebreak();
+
+        // check if the configuration string pointer is valid, and retrieve it, if valid
+        self.state.confstrptr = if status.confstrptrvalid() {
+            let confstrptr_0: Confstrptr0 = self.read_dm_register()?;
+            let confstrptr_1: Confstrptr1 = self.read_dm_register()?;
+            let confstrptr_2: Confstrptr2 = self.read_dm_register()?;
+            let confstrptr_3: Confstrptr3 = self.read_dm_register()?;
+            let confstrptr = (u32::from(confstrptr_0) as u128)
+                | (u32::from(confstrptr_1) as u128) << 8
+                | (u32::from(confstrptr_2) as u128) << 16
+                | (u32::from(confstrptr_3) as u128) << 32;
+            Some(confstrptr)
+        } else {
+            None
+        };
 
         log::debug!("dmstatus: {:?}", status);
 

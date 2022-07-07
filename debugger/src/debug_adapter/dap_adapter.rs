@@ -1,6 +1,10 @@
 use crate::{
     debug_adapter::{dap_types, protocol::ProtocolAdapter},
-    debugger::{configuration::ConsoleLog, core_data::CoreHandle, session_data::BreakpointType},
+    debugger::{
+        configuration::ConsoleLog,
+        core_data::CoreHandle,
+        session_data::{ActiveBreakpoint, BreakpointType},
+    },
     DebuggerError,
 };
 use anyhow::{anyhow, Result};
@@ -15,6 +19,7 @@ use probe_rs::{
         registers::DebugRegisters, stepping_mode::SteppingMode, ColumnType, SourceLocation,
         VariableName, VariableNodeType,
     },
+    Architecture::Riscv,
     CoreStatus, CoreType, HaltReason, InstructionSet, MemoryInterface, RegisterValue,
 };
 use probe_rs_cli_util::rtt;
@@ -519,8 +524,8 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                         .core_data
                         .breakpoints
                         .drain(..)
-                        .collect::<Vec<crate::debugger::session_data::ActiveBreakpoint>>();
-                    if target_core.core.architecture() == probe_rs::Architecture::Riscv {
+                        .collect::<Vec<ActiveBreakpoint>>();
+                    if target_core.core.architecture() == Riscv {
                         for breakpoint in saved_breakpoints {
                             match target_core.set_breakpoint(
                                 breakpoint.breakpoint_address,
