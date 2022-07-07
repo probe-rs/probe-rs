@@ -1374,6 +1374,10 @@ fn unwind_register(
                                             -address_size,
                                         ),
                                     ))
+                                },
+                                RegisterValue::U128(_) => {
+                                    log::warn!("128 bit address space not supported");
+                                    None
                                 }
                             }
                         }

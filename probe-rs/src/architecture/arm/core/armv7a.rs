@@ -15,10 +15,11 @@ use crate::{Architecture, CoreInformation, CoreType, InstructionSet};
 use anyhow::Result;
 
 use super::instructions::aarch32::{
-    build_bx, build_ldc, build_mcr, build_mov, build_mrc, build_mrs, build_stc,
+    build_bx, build_ldc, build_mcr, build_mov, build_mrc, build_mrs, build_stc, build_vmov,
+    build_vmrs,
 };
 use super::CortexAState;
-use super::AARCH32_COMMON_REGS;
+use super::{AARCH32_COMMON_REGS, AARCH32_FP_16_REGS, AARCH32_FP_32_REGS};
 
 use std::mem::size_of;
 use std::sync::Arc;
@@ -81,18 +82,48 @@ impl<'probe> Armv7a<'probe> {
             };
 
             state.current_state = core_state;
-            state.register_cache = vec![None; 17];
-            state.initialize();
         }
 
-        Ok(Self {
+        let mut core = Self {
             memory,
             state,
             base_address,
             sequence,
             num_breakpoints: None,
             itr_enabled: false,
-        })
+        };
+
+        if !core.state.initialized() {
+            core.reset_register_cache();
+            core.read_fp_reg_count()?;
+            core.state.initialize();
+        }
+
+        Ok(core)
+    }
+
+    fn read_fp_reg_count(&mut self) -> Result<(), Error> {
+        if self.state.fp_reg_count.is_none()
+            && matches!(self.state.current_state, CoreStatus::Halted(_))
+        {
+            self.prepare_r0_for_clobber()?;
+
+            // VMRS r0, MVFR0
+            let instruction = build_vmrs(0, 0b0111);
+            self.execute_instruction(instruction)?;
+
+            // Read from r0
+            let instruction = build_mcr(14, 0, 0, 0, 5, 0);
+            let vmrs = self.execute_instruction_with_result(instruction)?;
+
+            self.state.fp_reg_count = Some(match vmrs & 0b111 {
+                0b001 => 16,
+                0b010 => 32,
+                _ => 0,
+            });
+        }
+
+        Ok(())
     }
 
     /// Execute an instruction
@@ -180,13 +211,15 @@ impl<'probe> Armv7a<'probe> {
     }
 
     fn reset_register_cache(&mut self) {
-        self.state.register_cache = vec![None; 17];
+        self.state.register_cache = vec![None; 51];
     }
 
     /// Sync any updated registers back to the core
     fn writeback_registers(&mut self) -> Result<(), Error> {
-        for i in 0..self.state.register_cache.len() {
-            if let Some((val, writeback)) = self.state.register_cache[i] {
+        let writeback_iter = (17u16..=48).chain(15u16..=16).chain(0u16..=14);
+
+        for i in writeback_iter {
+            if let Some((val, writeback)) = self.state.register_cache[i as usize] {
                 if writeback {
                     match i {
                         0..=14 => {
@@ -204,6 +237,22 @@ impl<'probe> Armv7a<'probe> {
                             let instruction = build_bx(0);
                             self.execute_instruction(instruction)?;
                         }
+                        17..=48 => {
+                            // Move value to r0, r1
+                            let value: u64 = val.try_into()?;
+                            let low_word = value as u32;
+                            let high_word = (value >> 32) as u32;
+
+                            let instruction = build_mrc(14, 0, 0, 0, 5, 0);
+                            self.execute_instruction_with_input(instruction, low_word)?;
+
+                            let instruction = build_mrc(14, 0, 1, 0, 5, 0);
+                            self.execute_instruction_with_input(instruction, high_word)?;
+
+                            // VMOV
+                            let instruction = build_vmov(0, 0, 1, i - 17);
+                            self.execute_instruction(instruction)?;
+                        }
                         _ => {
                             panic!("Logic missing for writeback of register {}", i);
                         }
@@ -219,12 +268,17 @@ impl<'probe> Armv7a<'probe> {
 
     /// Save r0 if needed before it gets clobbered by instruction execution
     fn prepare_r0_for_clobber(&mut self) -> Result<(), Error> {
-        if self.state.register_cache[0].is_none() {
-            // cache r0 since we're going to clobber it
-            let r0_val: u32 = self.read_core_reg(RegisterId(0))?.try_into()?;
+        self.prepare_for_clobber(0)
+    }
 
-            // Mark r0 as needing writeback
-            self.state.register_cache[0] = Some((r0_val.into(), true));
+    /// Save r<n> if needed before it gets clobbered by instruction execution
+    fn prepare_for_clobber(&mut self, reg: usize) -> Result<(), Error> {
+        if self.state.register_cache[reg].is_none() {
+            // cache reg since we're going to clobber it
+            let val: u32 = self.read_core_reg(RegisterId(reg as u16))?.try_into()?;
+
+            // Mark reg as needing writeback
+            self.state.register_cache[reg] = Some((val.into(), true));
         }
 
         Ok(())
@@ -433,13 +487,15 @@ impl<'probe> CoreInterface for Armv7a<'probe> {
         }
 
         // Generate instruction to extract register
-        let result = match reg_num {
+        let result: Result<RegisterValue, Error> = match reg_num {
             0..=14 => {
                 // r0-r14, valid
                 // MCR p14, 0, <Rd>, c0, c5, 0 ; Write DBGDTRTXint Register
                 let instruction = build_mcr(14, 0, reg_num, 0, 5, 0);
 
-                self.execute_instruction_with_result(instruction)
+                let val = self.execute_instruction_with_result(instruction)?;
+
+                Ok(val.into())
             }
             15 => {
                 // PC, must access via r0
@@ -454,7 +510,7 @@ impl<'probe> CoreInterface for Armv7a<'probe> {
                 let pra_plus_offset = self.execute_instruction_with_result(instruction)?;
 
                 // PC returned is PC + 8
-                Ok(pra_plus_offset - 8)
+                Ok((pra_plus_offset - 8).into())
             }
             16 => {
                 // CPSR, must access via r0
@@ -468,7 +524,67 @@ impl<'probe> CoreInterface for Armv7a<'probe> {
                 let instruction = build_mcr(14, 0, 0, 0, 5, 0);
                 let cpsr = self.execute_instruction_with_result(instruction)?;
 
-                Ok(cpsr)
+                Ok(cpsr.into())
+            }
+            17..=48 => {
+                // Access via r0, r1
+                self.prepare_for_clobber(0)?;
+                self.prepare_for_clobber(1)?;
+
+                // If FPEXC.EN = 0, then these registers aren't safe to access.  Read as zero
+                let fpexc: u32 = self.read_core_reg(50.into())?.try_into()?;
+                if (fpexc & (1 << 30)) == 0 {
+                    // Disabled
+                    return Ok(0u32.into());
+                }
+
+                // VMOV r0, r1, <reg>
+                let instruction = build_vmov(1, 0, 1, reg_num - 17);
+                self.execute_instruction(instruction)?;
+
+                // Read from r0
+                let instruction = build_mcr(14, 0, 0, 0, 5, 0);
+                let mut value = self.execute_instruction_with_result(instruction)? as u64;
+
+                // Read from r1
+                let instruction = build_mcr(14, 0, 1, 0, 5, 0);
+                value |= (self.execute_instruction_with_result(instruction)? as u64) << 32;
+
+                Ok(value.into())
+            }
+            49 => {
+                // Access via r0
+                self.prepare_for_clobber(0)?;
+
+                // If FPEXC.EN = 0, then these registers aren't safe to access.  Read as zero
+                let fpexc: u32 = self.read_core_reg(50.into())?.try_into()?;
+                if (fpexc & (1 << 30)) == 0 {
+                    // Disabled
+                    return Ok(0u32.into());
+                }
+
+                // VMRS r0, FPSCR
+                let instruction = build_vmrs(0, 1);
+                self.execute_instruction(instruction)?;
+
+                // Read from r0
+                let instruction = build_mcr(14, 0, 0, 0, 5, 0);
+                let value = self.execute_instruction_with_result(instruction)?;
+
+                Ok(value.into())
+            }
+            50 => {
+                // Access via r0
+                self.prepare_for_clobber(0)?;
+
+                // VMRS r0, FPEXC
+                let instruction = build_vmrs(0, 0b1000);
+                self.execute_instruction(instruction)?;
+
+                let instruction = build_mcr(14, 0, 0, 0, 5, 0);
+                let value = self.execute_instruction_with_result(instruction)?;
+
+                Ok(value.into())
             }
             _ => Err(Error::architecture_specific(
                 Armv7aError::InvalidRegisterNumber(reg_num),
@@ -476,16 +592,15 @@ impl<'probe> CoreInterface for Armv7a<'probe> {
         };
 
         if let Ok(value) = result {
-            self.state.register_cache[reg_num as usize] = Some((value.into(), false));
+            self.state.register_cache[reg_num as usize] = Some((value, false));
 
-            Ok(value.into())
+            Ok(value)
         } else {
             Err(result.err().unwrap())
         }
     }
 
     fn write_core_reg(&mut self, address: RegisterId, value: RegisterValue) -> Result<()> {
-        let value: u32 = value.try_into()?;
         let reg_num = address.0;
 
         if (reg_num as usize) >= self.state.register_cache.len() {
@@ -493,7 +608,7 @@ impl<'probe> CoreInterface for Armv7a<'probe> {
                 Error::architecture_specific(Armv7aError::InvalidRegisterNumber(reg_num)).into(),
             );
         }
-        self.state.register_cache[reg_num as usize] = Some((value.into(), true));
+        self.state.register_cache[reg_num as usize] = Some((value, true));
 
         Ok(())
     }
@@ -540,7 +655,11 @@ impl<'probe> CoreInterface for Armv7a<'probe> {
     }
 
     fn registers(&self) -> &'static RegisterFile {
-        &AARCH32_COMMON_REGS
+        match self.state.fp_reg_count {
+            Some(16) => &AARCH32_FP_16_REGS,
+            Some(32) => &AARCH32_FP_32_REGS,
+            _ => &AARCH32_COMMON_REGS,
+        }
     }
 
     fn clear_hw_breakpoint(&mut self, bp_unit_index: usize) -> Result<(), Error> {
@@ -586,6 +705,7 @@ impl<'probe> CoreInterface for Armv7a<'probe> {
             let reason = dbgdscr.halt_reason();
 
             self.state.current_state = CoreStatus::Halted(reason);
+            self.read_fp_reg_count()?;
 
             return Ok(CoreStatus::Halted(reason));
         }
@@ -860,7 +980,12 @@ mod test {
 
             let expected_op = self.expected_ops.remove(0);
 
-            assert_eq!(expected_op.read, false);
+            assert_eq!(
+                expected_op.read,
+                false,
+                "Read/write mismatch on register: {:#}",
+                address_to_reg_num(address)
+            );
             assert_eq!(
                 expected_op.address,
                 address,
@@ -968,6 +1093,19 @@ mod test {
         add_read_reg_expectations(probe, 0, value + 8);
     }
 
+    fn add_read_fp_count_expectations(probe: &mut MockProbe) {
+        let mut dbgdscr = Dbgdscr(0);
+        dbgdscr.set_instrcoml_l(true);
+        dbgdscr.set_txfull_l(true);
+
+        probe.expected_write(
+            Dbgitr::get_mmio_address(TEST_BASE_ADDRESS),
+            build_vmrs(0, 0b0111),
+        );
+        probe.expected_read(Dbgdscr::get_mmio_address(TEST_BASE_ADDRESS), dbgdscr.into());
+        add_read_reg_expectations(probe, 0, 0b010);
+    }
+
     fn add_read_cpsr_expectations(probe: &mut MockProbe, value: u32) {
         let mut dbgdscr = Dbgdscr(0);
         dbgdscr.set_instrcoml_l(true);
@@ -1020,6 +1158,9 @@ mod test {
 
         // Add expectations
         add_status_expectations(&mut probe, true);
+        add_enable_itr_expectations(&mut probe);
+        add_read_reg_expectations(&mut probe, 0, 0);
+        add_read_fp_count_expectations(&mut probe);
 
         let mock_mem = Memory::new(
             probe,
@@ -1045,6 +1186,9 @@ mod test {
 
         // Add expectations
         add_status_expectations(&mut probe, true);
+        add_enable_itr_expectations(&mut probe);
+        add_read_reg_expectations(&mut probe, 0, 0);
+        add_read_fp_count_expectations(&mut probe);
 
         let mut dbgdscr = Dbgdscr(0);
         dbgdscr.set_halted(false);
@@ -1081,6 +1225,9 @@ mod test {
 
         // Add expectations
         add_status_expectations(&mut probe, true);
+        add_enable_itr_expectations(&mut probe);
+        add_read_reg_expectations(&mut probe, 0, 0);
+        add_read_fp_count_expectations(&mut probe);
 
         let mut dbgdscr = Dbgdscr(0);
         dbgdscr.set_halted(false);
@@ -1118,6 +1265,9 @@ mod test {
 
         // Add expectations
         add_status_expectations(&mut probe, true);
+        add_enable_itr_expectations(&mut probe);
+        add_read_reg_expectations(&mut probe, 0, 0);
+        add_read_fp_count_expectations(&mut probe);
 
         let mut dbgdscr = Dbgdscr(0);
         dbgdscr.set_halted(false);
@@ -1150,10 +1300,14 @@ mod test {
 
         // Add expectations
         add_status_expectations(&mut probe, true);
+        add_enable_itr_expectations(&mut probe);
+        add_read_reg_expectations(&mut probe, 0, 0);
+        add_read_fp_count_expectations(&mut probe);
 
         let mut dbgdscr = Dbgdscr(0);
         dbgdscr.set_halted(true);
         probe.expected_read(Dbgdscr::get_mmio_address(TEST_BASE_ADDRESS), dbgdscr.into());
+        add_read_fp_count_expectations(&mut probe);
 
         let mock_mem = Memory::new(
             probe,
@@ -1187,9 +1341,9 @@ mod test {
 
         // Add expectations
         add_status_expectations(&mut probe, true);
-
-        // Read status, update ITR
         add_enable_itr_expectations(&mut probe);
+        add_read_reg_expectations(&mut probe, 0, 0);
+        add_read_fp_count_expectations(&mut probe);
 
         // Read register
         add_read_reg_expectations(&mut probe, 2, REG_VALUE);
@@ -1232,12 +1386,11 @@ mod test {
 
         // Add expectations
         add_status_expectations(&mut probe, true);
-
-        // Read status, update ITR
         add_enable_itr_expectations(&mut probe);
+        add_read_reg_expectations(&mut probe, 0, 0);
+        add_read_fp_count_expectations(&mut probe);
 
         // Read PC
-        add_read_reg_expectations(&mut probe, 0, 0);
         add_read_pc_expectations(&mut probe, REG_VALUE);
 
         let mock_mem = Memory::new(
@@ -1278,12 +1431,11 @@ mod test {
 
         // Add expectations
         add_status_expectations(&mut probe, true);
-
-        // Read status, update ITR
         add_enable_itr_expectations(&mut probe);
+        add_read_reg_expectations(&mut probe, 0, 0);
+        add_read_fp_count_expectations(&mut probe);
 
         // Read CPSR
-        add_read_reg_expectations(&mut probe, 0, 0);
         add_read_cpsr_expectations(&mut probe, REG_VALUE);
 
         let mock_mem = Memory::new(
@@ -1335,12 +1487,11 @@ mod test {
 
         // Read status
         add_status_expectations(&mut probe, true);
-
-        // Read status, update ITR
         add_enable_itr_expectations(&mut probe);
+        add_read_reg_expectations(&mut probe, 0, 0);
+        add_read_fp_count_expectations(&mut probe);
 
         // Read PC
-        add_read_reg_expectations(&mut probe, 0, 0);
         add_read_pc_expectations(&mut probe, REG_VALUE);
 
         let mock_mem = Memory::new(
@@ -1373,6 +1524,12 @@ mod test {
 
         // Add expectations
         add_status_expectations(&mut probe, true);
+        add_enable_itr_expectations(&mut probe);
+        add_read_reg_expectations(&mut probe, 0, 0);
+        add_read_fp_count_expectations(&mut probe);
+
+        // Writeback r0
+        add_set_r0_expectation(&mut probe, 0);
 
         // Write resume request
         let mut dbgdrcr = Dbgdrcr(0);
@@ -1412,6 +1569,9 @@ mod test {
 
         // Add expectations
         add_status_expectations(&mut probe, true);
+        add_enable_itr_expectations(&mut probe);
+        add_read_reg_expectations(&mut probe, 0, 0);
+        add_read_fp_count_expectations(&mut probe);
 
         // Read breakpoint count
         add_idr_expectations(&mut probe, BP_COUNT);
@@ -1445,6 +1605,9 @@ mod test {
 
         // Add expectations
         add_status_expectations(&mut probe, true);
+        add_enable_itr_expectations(&mut probe);
+        add_read_reg_expectations(&mut probe, 0, 0);
+        add_read_fp_count_expectations(&mut probe);
 
         // Read breakpoint count
         add_idr_expectations(&mut probe, BP_COUNT);
@@ -1496,6 +1659,9 @@ mod test {
 
         // Add expectations
         add_status_expectations(&mut probe, true);
+        add_enable_itr_expectations(&mut probe);
+        add_read_reg_expectations(&mut probe, 0, 0);
+        add_read_fp_count_expectations(&mut probe);
 
         // Update BP value and control
         let mut dbgbcr = Dbgbcr(0);
@@ -1536,6 +1702,9 @@ mod test {
 
         // Add expectations
         add_status_expectations(&mut probe, true);
+        add_enable_itr_expectations(&mut probe);
+        add_read_reg_expectations(&mut probe, 0, 0);
+        add_read_fp_count_expectations(&mut probe);
 
         // Update BP value and control
         probe.expected_write(Dbgbvr::get_mmio_address(TEST_BASE_ADDRESS), 0);
@@ -1571,9 +1740,10 @@ mod test {
         // Add expectations
         add_status_expectations(&mut probe, true);
         add_enable_itr_expectations(&mut probe);
+        add_read_reg_expectations(&mut probe, 0, 0);
+        add_read_fp_count_expectations(&mut probe);
 
         // Read memory
-        add_read_reg_expectations(&mut probe, 0, 0);
         add_read_memory_expectations(&mut probe, MEMORY_ADDRESS, MEMORY_VALUE);
 
         let mock_mem = Memory::new(
@@ -1607,9 +1777,10 @@ mod test {
         // Add expectations
         add_status_expectations(&mut probe, true);
         add_enable_itr_expectations(&mut probe);
+        add_read_reg_expectations(&mut probe, 0, 0);
+        add_read_fp_count_expectations(&mut probe);
 
         // Read memory
-        add_read_reg_expectations(&mut probe, 0, 0);
         add_read_memory_expectations(&mut probe, MEMORY_WORD_ADDRESS, MEMORY_VALUE);
 
         let mock_mem = Memory::new(

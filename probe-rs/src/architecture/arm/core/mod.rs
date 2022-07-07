@@ -127,6 +127,14 @@ pub(crate) mod register {
         _type: RegisterDataType::UnsignedInteger,
         size_in_bits: 32,
     };
+
+    pub const AARCH32_FPSCR: RegisterDescription = RegisterDescription {
+        name: "FPSCR",
+        _kind: RegisterKind::Fp,
+        id: RegisterId(49),
+        _type: RegisterDataType::UnsignedInteger,
+        size_in_bits: 32,
+    };
 }
 
 static ARM32_COMMON_REGS: RegisterFile = RegisterFile {
@@ -300,7 +308,7 @@ static ARM32_COMMON_REGS: RegisterFile = RegisterFile {
 
     msp: None,
     psp: None,
-    extra: None,
+    other: &[],
     psr: None,
 
     fp_status: None,
@@ -313,10 +321,362 @@ static AARCH32_COMMON_REGS: RegisterFile = RegisterFile {
     ..ARM32_COMMON_REGS
 };
 
+static AARCH32_FP_16_REGS: RegisterFile = RegisterFile {
+    fp_status: Some(&register::AARCH32_FPSCR),
+    fp_registers: Some(&[
+        RegisterDescription {
+            name: "D0",
+            _kind: RegisterKind::Fp,
+            id: RegisterId(17),
+            _type: RegisterDataType::FloatingPoint,
+            size_in_bits: 64,
+        },
+        RegisterDescription {
+            name: "D1",
+            _kind: RegisterKind::Fp,
+            id: RegisterId(18),
+            _type: RegisterDataType::FloatingPoint,
+            size_in_bits: 64,
+        },
+        RegisterDescription {
+            name: "D2",
+            _kind: RegisterKind::Fp,
+            id: RegisterId(19),
+            _type: RegisterDataType::FloatingPoint,
+            size_in_bits: 64,
+        },
+        RegisterDescription {
+            name: "D3",
+            _kind: RegisterKind::Fp,
+            id: RegisterId(20),
+            _type: RegisterDataType::FloatingPoint,
+            size_in_bits: 64,
+        },
+        RegisterDescription {
+            name: "D4",
+            _kind: RegisterKind::Fp,
+            id: RegisterId(21),
+            _type: RegisterDataType::FloatingPoint,
+            size_in_bits: 64,
+        },
+        RegisterDescription {
+            name: "D5",
+            _kind: RegisterKind::Fp,
+            id: RegisterId(22),
+            _type: RegisterDataType::FloatingPoint,
+            size_in_bits: 64,
+        },
+        RegisterDescription {
+            name: "D6",
+            _kind: RegisterKind::Fp,
+            id: RegisterId(23),
+            _type: RegisterDataType::FloatingPoint,
+            size_in_bits: 64,
+        },
+        RegisterDescription {
+            name: "D7",
+            _kind: RegisterKind::Fp,
+            id: RegisterId(24),
+            _type: RegisterDataType::FloatingPoint,
+            size_in_bits: 64,
+        },
+        RegisterDescription {
+            name: "D8",
+            _kind: RegisterKind::Fp,
+            id: RegisterId(25),
+            _type: RegisterDataType::FloatingPoint,
+            size_in_bits: 64,
+        },
+        RegisterDescription {
+            name: "D9",
+            _kind: RegisterKind::Fp,
+            id: RegisterId(26),
+            _type: RegisterDataType::FloatingPoint,
+            size_in_bits: 64,
+        },
+        RegisterDescription {
+            name: "D10",
+            _kind: RegisterKind::Fp,
+            id: RegisterId(27),
+            _type: RegisterDataType::FloatingPoint,
+            size_in_bits: 64,
+        },
+        RegisterDescription {
+            name: "D11",
+            _kind: RegisterKind::Fp,
+            id: RegisterId(28),
+            _type: RegisterDataType::FloatingPoint,
+            size_in_bits: 64,
+        },
+        RegisterDescription {
+            name: "D12",
+            _kind: RegisterKind::Fp,
+            id: RegisterId(29),
+            _type: RegisterDataType::FloatingPoint,
+            size_in_bits: 64,
+        },
+        RegisterDescription {
+            name: "D13",
+            _kind: RegisterKind::Fp,
+            id: RegisterId(30),
+            _type: RegisterDataType::FloatingPoint,
+            size_in_bits: 64,
+        },
+        RegisterDescription {
+            name: "D14",
+            _kind: RegisterKind::Fp,
+            id: RegisterId(31),
+            _type: RegisterDataType::FloatingPoint,
+            size_in_bits: 64,
+        },
+        RegisterDescription {
+            name: "D15",
+            _kind: RegisterKind::Fp,
+            id: RegisterId(32),
+            _type: RegisterDataType::FloatingPoint,
+            size_in_bits: 64,
+        },
+    ]),
+
+    ..AARCH32_COMMON_REGS
+};
+
+static AARCH32_FP_32_REGS: RegisterFile = RegisterFile {
+    fp_status: Some(&register::AARCH32_FPSCR),
+    fp_registers: Some(&[
+        RegisterDescription {
+            name: "D0",
+            _kind: RegisterKind::Fp,
+            id: RegisterId(17),
+            _type: RegisterDataType::FloatingPoint,
+            size_in_bits: 64,
+        },
+        RegisterDescription {
+            name: "D1",
+            _kind: RegisterKind::Fp,
+            id: RegisterId(18),
+            _type: RegisterDataType::FloatingPoint,
+            size_in_bits: 64,
+        },
+        RegisterDescription {
+            name: "D2",
+            _kind: RegisterKind::Fp,
+            id: RegisterId(19),
+            _type: RegisterDataType::FloatingPoint,
+            size_in_bits: 64,
+        },
+        RegisterDescription {
+            name: "D3",
+            _kind: RegisterKind::Fp,
+            id: RegisterId(20),
+            _type: RegisterDataType::FloatingPoint,
+            size_in_bits: 64,
+        },
+        RegisterDescription {
+            name: "D4",
+            _kind: RegisterKind::Fp,
+            id: RegisterId(21),
+            _type: RegisterDataType::FloatingPoint,
+            size_in_bits: 64,
+        },
+        RegisterDescription {
+            name: "D5",
+            _kind: RegisterKind::Fp,
+            id: RegisterId(22),
+            _type: RegisterDataType::FloatingPoint,
+            size_in_bits: 64,
+        },
+        RegisterDescription {
+            name: "D6",
+            _kind: RegisterKind::Fp,
+            id: RegisterId(23),
+            _type: RegisterDataType::FloatingPoint,
+            size_in_bits: 64,
+        },
+        RegisterDescription {
+            name: "D7",
+            _kind: RegisterKind::Fp,
+            id: RegisterId(24),
+            _type: RegisterDataType::FloatingPoint,
+            size_in_bits: 64,
+        },
+        RegisterDescription {
+            name: "D8",
+            _kind: RegisterKind::Fp,
+            id: RegisterId(25),
+            _type: RegisterDataType::FloatingPoint,
+            size_in_bits: 64,
+        },
+        RegisterDescription {
+            name: "D9",
+            _kind: RegisterKind::Fp,
+            id: RegisterId(26),
+            _type: RegisterDataType::FloatingPoint,
+            size_in_bits: 64,
+        },
+        RegisterDescription {
+            name: "D10",
+            _kind: RegisterKind::Fp,
+            id: RegisterId(27),
+            _type: RegisterDataType::FloatingPoint,
+            size_in_bits: 64,
+        },
+        RegisterDescription {
+            name: "D11",
+            _kind: RegisterKind::Fp,
+            id: RegisterId(28),
+            _type: RegisterDataType::FloatingPoint,
+            size_in_bits: 64,
+        },
+        RegisterDescription {
+            name: "D12",
+            _kind: RegisterKind::Fp,
+            id: RegisterId(29),
+            _type: RegisterDataType::FloatingPoint,
+            size_in_bits: 64,
+        },
+        RegisterDescription {
+            name: "D13",
+            _kind: RegisterKind::Fp,
+            id: RegisterId(30),
+            _type: RegisterDataType::FloatingPoint,
+            size_in_bits: 64,
+        },
+        RegisterDescription {
+            name: "D14",
+            _kind: RegisterKind::Fp,
+            id: RegisterId(31),
+            _type: RegisterDataType::FloatingPoint,
+            size_in_bits: 64,
+        },
+        RegisterDescription {
+            name: "D15",
+            _kind: RegisterKind::Fp,
+            id: RegisterId(32),
+            _type: RegisterDataType::FloatingPoint,
+            size_in_bits: 64,
+        },
+        RegisterDescription {
+            name: "D16",
+            _kind: RegisterKind::Fp,
+            id: RegisterId(33),
+            _type: RegisterDataType::FloatingPoint,
+            size_in_bits: 64,
+        },
+        RegisterDescription {
+            name: "D17",
+            _kind: RegisterKind::Fp,
+            id: RegisterId(34),
+            _type: RegisterDataType::FloatingPoint,
+            size_in_bits: 64,
+        },
+        RegisterDescription {
+            name: "D18",
+            _kind: RegisterKind::Fp,
+            id: RegisterId(35),
+            _type: RegisterDataType::FloatingPoint,
+            size_in_bits: 64,
+        },
+        RegisterDescription {
+            name: "D19",
+            _kind: RegisterKind::Fp,
+            id: RegisterId(36),
+            _type: RegisterDataType::FloatingPoint,
+            size_in_bits: 64,
+        },
+        RegisterDescription {
+            name: "D20",
+            _kind: RegisterKind::Fp,
+            id: RegisterId(37),
+            _type: RegisterDataType::FloatingPoint,
+            size_in_bits: 64,
+        },
+        RegisterDescription {
+            name: "D21",
+            _kind: RegisterKind::Fp,
+            id: RegisterId(38),
+            _type: RegisterDataType::FloatingPoint,
+            size_in_bits: 64,
+        },
+        RegisterDescription {
+            name: "D22",
+            _kind: RegisterKind::Fp,
+            id: RegisterId(39),
+            _type: RegisterDataType::FloatingPoint,
+            size_in_bits: 64,
+        },
+        RegisterDescription {
+            name: "D23",
+            _kind: RegisterKind::Fp,
+            id: RegisterId(40),
+            _type: RegisterDataType::FloatingPoint,
+            size_in_bits: 64,
+        },
+        RegisterDescription {
+            name: "D24",
+            _kind: RegisterKind::Fp,
+            id: RegisterId(41),
+            _type: RegisterDataType::FloatingPoint,
+            size_in_bits: 64,
+        },
+        RegisterDescription {
+            name: "D25",
+            _kind: RegisterKind::Fp,
+            id: RegisterId(42),
+            _type: RegisterDataType::FloatingPoint,
+            size_in_bits: 64,
+        },
+        RegisterDescription {
+            name: "D26",
+            _kind: RegisterKind::Fp,
+            id: RegisterId(43),
+            _type: RegisterDataType::FloatingPoint,
+            size_in_bits: 64,
+        },
+        RegisterDescription {
+            name: "D27",
+            _kind: RegisterKind::Fp,
+            id: RegisterId(44),
+            _type: RegisterDataType::FloatingPoint,
+            size_in_bits: 64,
+        },
+        RegisterDescription {
+            name: "D28",
+            _kind: RegisterKind::Fp,
+            id: RegisterId(45),
+            _type: RegisterDataType::FloatingPoint,
+            size_in_bits: 64,
+        },
+        RegisterDescription {
+            name: "D29",
+            _kind: RegisterKind::Fp,
+            id: RegisterId(46),
+            _type: RegisterDataType::FloatingPoint,
+            size_in_bits: 64,
+        },
+        RegisterDescription {
+            name: "D30",
+            _kind: RegisterKind::Fp,
+            id: RegisterId(47),
+            _type: RegisterDataType::FloatingPoint,
+            size_in_bits: 64,
+        },
+        RegisterDescription {
+            name: "D31",
+            _kind: RegisterKind::Fp,
+            id: RegisterId(48),
+            _type: RegisterDataType::FloatingPoint,
+            size_in_bits: 64,
+        },
+    ]),
+
+    ..AARCH32_COMMON_REGS
+};
+
 static CORTEX_M_COMMON_REGS: RegisterFile = RegisterFile {
     msp: Some(&register::MSP),
     psp: Some(&register::PSP),
-    extra: Some(&register::EXTRA),
+    other: &[register::EXTRA],
     psr: Some(&register::XPSR),
 
     ..ARM32_COMMON_REGS
@@ -666,6 +1026,9 @@ pub struct CortexAState {
     is_64_bit: bool,
 
     register_cache: Vec<Option<(RegisterValue, bool)>>,
+
+    // Number of floating point registers
+    fp_reg_count: Option<usize>,
 }
 
 impl CortexAState {
@@ -675,6 +1038,7 @@ impl CortexAState {
             current_state: CoreStatus::Unknown,
             is_64_bit: false,
             register_cache: vec![],
+            fp_reg_count: None,
         }
     }
 
