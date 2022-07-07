@@ -685,7 +685,6 @@ bitfield! {
     /// Located at address 0x11
     pub struct Dmstatus(u32);
     impl Debug;
-    dmerr, _: 26, 24;
     impebreak, _: 22;
     allhavereset, _: 19;
     anyhavereset, _: 18;
