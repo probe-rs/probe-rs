@@ -1,7 +1,4 @@
-use probe_rs::{
-    debug::{debug_info::DebugInfo, DebugError},
-    RegisterValue,
-};
+use probe_rs::debug::{debug_info::DebugInfo, DebugError};
 
 type TestResult = Result<(), DebugError>;
 
@@ -9,7 +6,7 @@ type TestResult = Result<(), DebugError>;
 fn function_name_of_inlined_function_1() -> TestResult {
     let di = DebugInfo::from_file("tests/inlined-function").unwrap();
 
-    let address = RegisterValue::U32(0x15e);
+    let address = 0x15e;
 
     let expected_name = "blink_on";
 
@@ -24,7 +21,7 @@ fn function_name_of_inlined_function_1() -> TestResult {
 fn name_of_function_containing_inlined_function_1() -> TestResult {
     let di = DebugInfo::from_file("tests/inlined-function").unwrap();
 
-    let address = RegisterValue::U32(0x15e);
+    let address = 0x15e;
 
     let expected_name = "__cortex_m_rt_main";
 
@@ -39,7 +36,7 @@ fn name_of_function_containing_inlined_function_1() -> TestResult {
 fn function_name_of_inlined_function_2() -> TestResult {
     let di = DebugInfo::from_file("tests/inlined-function").unwrap();
 
-    let address = RegisterValue::U32(0x154);
+    let address = 0x154;
 
     let expected_name = "__cortex_m_rt_main";
 
@@ -54,7 +51,7 @@ fn function_name_of_inlined_function_2() -> TestResult {
 fn name_of_function_containing_inlined_function_2() -> TestResult {
     let di = DebugInfo::from_file("tests/inlined-function").unwrap();
 
-    let address = RegisterValue::U32(0x154);
+    let address = 0x154;
 
     let expected_name = "__cortex_m_rt_main";
 
@@ -69,7 +66,7 @@ fn name_of_function_containing_inlined_function_2() -> TestResult {
 fn function_name_of_non_inlined_function() -> TestResult {
     let di = DebugInfo::from_file("tests/inlined-function").unwrap();
 
-    let address = RegisterValue::U32(0xf4);
+    let address = 0xf4;
 
     let expected_name = "blink_off";
 

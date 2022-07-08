@@ -1,6 +1,7 @@
 use super::{
     debug_info::*, extract_byte_size, extract_file, extract_line, extract_name,
-    function_die::FunctionDie, registers, variable::*, DebugError, SourceLocation, VariableCache,
+    function_die::FunctionDie, registers, variable::*, DebugError, DebugRegisters, SourceLocation,
+    VariableCache,
 };
 use crate::{core::Core, MemoryInterface, RegisterValue};
 use ::gimli::{Location, UnitOffset};
@@ -8,6 +9,12 @@ use num_traits::Zero;
 
 pub(crate) type UnitIter =
     gimli::DebugInfoUnitHeadersIter<gimli::EndianReader<gimli::LittleEndian, std::rc::Rc<[u8]>>>;
+
+/// The result of `UnitInfo::evaluate_expression()` can be the value of a variable, or a memory location.
+pub(crate) enum ExpressionResult {
+    Value(VariableValue),
+    Location(VariableLocation),
+}
 
 pub(crate) struct UnitInfo<'debuginfo> {
     pub(crate) debug_info: &'debuginfo DebugInfo,
@@ -17,30 +24,48 @@ pub(crate) struct UnitInfo<'debuginfo> {
 impl<'debuginfo> UnitInfo<'debuginfo> {
     /// Get the DIE for the function containing the given address.
     ///
+    /// If `stackframe_registers` is not `None`, then the function DIE's will have valid frame_base values calculated from the `DW_AT_frame_base` attribute.
     /// If `find_inlined` is `false`, then the result will contain a single [`FunctionDie`]
     pub(crate) fn get_function_dies(
         &self,
-        address: RegisterValue,
+        address: u64,
+        stackframe_registers: Option<&DebugRegisters>,
         find_inlined: bool,
     ) -> Result<Vec<FunctionDie>, DebugError> {
         log::trace!("Searching Function DIE for address {}", address);
 
         let mut entries_cursor = self.unit.entries();
-
         while let Ok(Some((_depth, current))) = entries_cursor.next_dfs() {
             if current.tag() == gimli::DW_TAG_subprogram {
                 let mut ranges = self.debug_info.dwarf.die_ranges(&self.unit, current)?;
 
                 while let Ok(Some(ranges)) = ranges.next() {
-                    if (RegisterValue::from(ranges.begin) <= address)
-                        && (address < RegisterValue::from(ranges.end))
-                    {
+                    if ranges.begin <= address && address < ranges.end {
                         // Check if we are actually in an inlined function
 
                         if let Some(mut die) = FunctionDie::new(current.clone(), self) {
                             die.low_pc = ranges.begin;
                             die.high_pc = ranges.end;
+                            // Extract the frame_base for this function DIE.
+                            if let Some(stackframe_registers) = stackframe_registers {
+                                if let Ok(ExpressionResult::Location(VariableLocation::Address(
+                                    address,
+                                ))) = self.extract_location(
+                                    current,
+                                    &VariableLocation::Unknown,
+                                    None,
+                                    stackframe_registers,
+                                    None,
+                                ) {
+                                    die.frame_base = Some(address);
+                                }
+                            } else {
+                                log::trace!(
+                                "No stackframe registers provided, skipping frame_base calculation for function DIE."
+                            );
+                            }
 
+                            let parent_frame_base = die.frame_base;
                             let mut functions = vec![die];
 
                             if find_inlined {
@@ -49,8 +74,11 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                     functions[0].function_name()
                                 );
 
-                                let inlined_functions =
-                                    self.find_inlined_functions(address, current.offset())?;
+                                let inlined_functions = self.find_inlined_functions(
+                                    address,
+                                    parent_frame_base,
+                                    current.offset(),
+                                )?;
 
                                 if inlined_functions.is_empty() {
                                     log::debug!("No inlined function found!");
@@ -80,7 +108,9 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
     /// given address.
     pub(crate) fn find_inlined_functions(
         &self,
-        address: RegisterValue,
+        address: u64,
+        // Inlined functions use the same frame_base as their containing function.
+        parent_frame_base: Option<u64>,
         offset: UnitOffset,
     ) -> Result<Vec<FunctionDie>, DebugError> {
         let mut current_depth = 0;
@@ -101,9 +131,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                     let mut ranges = self.debug_info.dwarf.die_ranges(&self.unit, current)?;
 
                     while let Ok(Some(ranges)) = ranges.next() {
-                        if (RegisterValue::from(ranges.begin) <= address)
-                            && (address < RegisterValue::from(ranges.end))
-                        {
+                        if ranges.begin <= address && address < ranges.end {
                             // Check if we are actually in an inlined function
 
                             // We don't have to search further up in the tree, if there are multiple inlined functions,
@@ -124,6 +152,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                             ) {
                                                 die.low_pc = ranges.begin;
                                                 die.high_pc = ranges.end;
+                                                die.frame_base = parent_frame_base;
 
                                                 functions.push(die);
                                             }
@@ -150,6 +179,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
     /// Recurse the ELF structure below the `tree_node`, and ...
     /// - Consumes the `child_variable`.
     /// - Returns a clone of the most up-to-date `child_variable` in the cache.
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn process_tree_node_attributes(
         &self,
         tree_node: &mut gimli::EntriesTreeNode<GimliReader>,
@@ -157,6 +187,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
         mut child_variable: Variable,
         core: &mut Core<'_>,
         stack_frame_registers: &registers::DebugRegisters,
+        frame_base: Option<u64>,
         cache: &mut VariableCache,
     ) -> Result<Variable, DebugError> {
         // Identify the parent.
@@ -197,8 +228,8 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
             Some(tree_node.entry().clone())
         };
 
+        // For variable attribute resolution, we need to resolve a few attributes in advance of looping through all the other ones.
         // Try to exact the name first, for easier debugging
-
         if let Some(name) = attributes_entry
             .as_ref()
             .map(|ae| ae.attr_value(gimli::DW_AT_name))
@@ -208,17 +239,46 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
             child_variable.name = VariableName::Named(extract_name(self.debug_info, name));
         }
 
-        // For variable attribute resolution, we need to resolve a few attributes in advance of looping through all the other ones.
-
         // We need to process the location attribute to ensure that location is known before we calculate type.
-        child_variable = self.extract_location(
-            tree_node,
-            parent_variable,
-            child_variable,
-            core,
+        match self.extract_location(
+            tree_node.entry(),
+            &parent_variable.memory_location,
+            Some(core),
             stack_frame_registers,
-            cache,
-        )?;
+            frame_base,
+        ) {
+            Ok(location) => match location {
+                // Any expected errors should be handled by one of the variants in the Ok() result.
+                ExpressionResult::Value(value_from_expression) => {
+                    if let VariableValue::Valid(_) = &value_from_expression {
+                        // The ELF contained the actual value, not just a location to it.
+                        child_variable.memory_location = VariableLocation::Value;
+                    }
+                    child_variable.set_value(value_from_expression);
+                }
+                ExpressionResult::Location(location_from_expression) => {
+                    match &location_from_expression {
+                        VariableLocation::Unavailable => {
+                            child_variable.set_value(VariableValue::Error(
+                                "<value optimized away by compiler, out of scope, or dropped>"
+                                    .to_string(),
+                            ));
+                        }
+                        VariableLocation::Error(error_message)
+                        | VariableLocation::Unsupported(error_message) => {
+                            child_variable.set_value(VariableValue::Error(error_message.clone()));
+                        }
+                        _ => {}
+                    }
+                    child_variable.memory_location = location_from_expression;
+                }
+            },
+            Err(debug_error) => {
+                // An Err() result indicates something happened that we have not accounted for, and therefore will propogate upwards to terminate the process in an ungraceful manner. This should be treated as a bug.
+                log::error!("Encounted an unexpected error while resolving the location for variable {:?}. Please report this as a bug", child_variable.name);
+                return Err(debug_error);
+            }
+        }
 
         if let Some(attributes_entry) = attributes_entry {
             let mut variable_attributes = attributes_entry.attrs();
@@ -230,8 +290,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                         // The child_variable.location is calculated with attribute gimli::DW_AT_type, to ensure it gets done before DW_AT_type is processed
                     }
                     gimli::DW_AT_name => {
-                        child_variable.name =
-                            VariableName::Named(extract_name(self.debug_info, attr.value()));
+                        // This was done before we started looping through attributes, so we can ignore it.
                     }
                     gimli::DW_AT_decl_file => {
                         if let Some((directory, file_name)) =
@@ -308,6 +367,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                     child_variable,
                                     core,
                                     stack_frame_registers,
+                                    frame_base,
                                     cache,
                                 )?;
                             }
@@ -380,6 +440,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                 discriminant_variable,
                                 core,
                                 stack_frame_registers,
+                                frame_base,
                                 cache,
                             )?;
                             if !discriminant_variable.is_valid() {
@@ -476,6 +537,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
         mut parent_variable: Variable,
         core: &mut Core<'_>,
         stack_frame_registers: &registers::DebugRegisters,
+        frame_base: Option<u64>,
         cache: &mut VariableCache,
     ) -> Result<Variable, DebugError> {
         if parent_variable.is_valid() {
@@ -517,7 +579,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                     let static_child_variable = cache.cache_variable(Some(namespace_variable.variable_key), Variable::new(
                                         self.unit.header.offset().as_debug_info_offset(),
                                         Some(namespace_child_node.entry().offset()),), core)?;
-                                    self.process_tree_node_attributes(&mut namespace_child_node, &mut namespace_variable, static_child_variable, core, stack_frame_registers, cache)?;
+                                    self.process_tree_node_attributes(&mut namespace_child_node, &mut namespace_variable, static_child_variable, core, stack_frame_registers, frame_base, cache)?;
                                 }
                                 gimli::DW_TAG_namespace => {
                                     // Recurse for additional namespace variables.
@@ -537,7 +599,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                     namespace_child_variable.type_name = VariableType::Namespace;
                                     namespace_child_variable.memory_location = VariableLocation::Unavailable;
                                     namespace_child_variable = cache.cache_variable(Some(namespace_variable.variable_key), namespace_child_variable, core)?;
-                                    namespace_child_variable = self.process_tree(namespace_child_node, namespace_child_variable, core, stack_frame_registers, cache, )?;
+                                    namespace_child_variable = self.process_tree(namespace_child_node, namespace_child_variable, core, stack_frame_registers, frame_base, cache, )?;
                                     if !cache.has_children(&namespace_child_variable)? {
                                         cache.remove_cache_entry(namespace_child_variable.variable_key)?;
                                     }
@@ -559,7 +621,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                         self.unit.header.offset().as_debug_info_offset(),
                         Some(child_node.entry().offset()),
                     ), core)?;
-                        child_variable = self.process_tree_node_attributes(&mut child_node, &mut parent_variable, child_variable, core, stack_frame_registers, cache,)?;
+                        child_variable = self.process_tree_node_attributes(&mut child_node, &mut parent_variable, child_variable, core, stack_frame_registers, frame_base, cache,)?;
 
                         // Do not keep or process PhantomData nodes, or variant parts that we have already used.
                         if child_variable.type_name.is_phantom_data()
@@ -568,7 +630,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                             cache.remove_cache_entry(child_variable.variable_key)?;
                         } else if child_variable.is_valid() {
                             // Recursively process each child.
-                            self.process_tree(child_node, child_variable, core, stack_frame_registers, cache, )?;
+                            self.process_tree(child_node, child_variable, core, stack_frame_registers, frame_base, cache, )?;
                         }
                     }
                     gimli::DW_TAG_variant_part => {
@@ -591,10 +653,10 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                         // - If there is a DW_AT_discr that has a value, then this is a reference to the member entry for the discriminant. This value will be resolved to match against the appropriate DW_TAG_variant.
                         // - TODO: The [DWARF] standard, 5.7.10, allows for a DW_AT_discr_list, but I have not seen that generated from RUST yet. 
                         parent_variable.role = VariantRole::VariantPart(u64::MAX);
-                        child_variable = self.process_tree_node_attributes(&mut child_node, &mut parent_variable, child_variable, core, stack_frame_registers, cache, )?;
+                        child_variable = self.process_tree_node_attributes(&mut child_node, &mut parent_variable, child_variable, core, stack_frame_registers, frame_base, cache, )?;
                         // At this point we have everything we need (It has updated the parent's `role`) from the child_variable, so elimnate it before we continue ...
                         cache.remove_cache_entry(child_variable.variable_key)?;
-                        parent_variable = self.process_tree(child_node, parent_variable, core, stack_frame_registers, cache)?;
+                        parent_variable = self.process_tree(child_node, parent_variable, core, stack_frame_registers, frame_base, cache)?;
                     }
                     gimli::DW_TAG_variant // variant is a child of a structure, and one of them should have a discriminant value to match the DW_TAG_variant_part 
                     => {
@@ -606,7 +668,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                 core
                             )?;
                             self.extract_variant_discriminant(&child_node, &mut child_variable)?;
-                            child_variable = self.process_tree_node_attributes(&mut child_node, &mut parent_variable, child_variable, core, stack_frame_registers, cache)?;
+                            child_variable = self.process_tree_node_attributes(&mut child_node, &mut parent_variable, child_variable, core, stack_frame_registers, frame_base, cache)?;
                             if child_variable.is_valid() {
                                 if let VariantRole::Variant(discriminant) = child_variable.role {
                                     // Only process the discriminant variants or when we eventually   encounter the default 
@@ -614,7 +676,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                         // Pass some key values through intermediate nodes to valid desccendants.
                                         child_variable.memory_location = parent_variable.memory_location.clone();
                                         // Recursively process each relevant child node.
-                                        child_variable = self.process_tree(child_node, child_variable, core, stack_frame_registers, cache)?;
+                                        child_variable = self.process_tree(child_node, child_variable, core, stack_frame_registers, frame_base, cache)?;
                                         if child_variable.is_valid() {
                                             // Eliminate intermediate DWARF nodes, but keep their children
                                             cache.adopt_grand_children(&parent_variable, &child_variable)?;
@@ -635,7 +697,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                         self.unit.header.offset().as_debug_info_offset(),
                         Some(child_node.entry().offset()),
                     ), core)?;
-                        range_variable = self.process_tree_node_attributes(&mut child_node, &mut parent_variable, range_variable, core, stack_frame_registers, cache)?;
+                        range_variable = self.process_tree_node_attributes(&mut child_node, &mut parent_variable, range_variable, core, stack_frame_registers, frame_base, cache)?;
                         // Determine if we should use the results ...
                         if range_variable.is_valid() {
                             // Pass the pertinent info up to the parent_variable.
@@ -701,7 +763,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                         if in_scope {
                             // This is IN scope.
                             // Recursively process each child, but pass the parent_variable, so that we don't create intermediate nodes for scope identifiers.
-                            parent_variable = self.process_tree(child_node, parent_variable, core, stack_frame_registers, cache)?;
+                            parent_variable = self.process_tree(child_node, parent_variable, core, stack_frame_registers, frame_base, cache)?;
                         } else {
                             parent_variable.set_value(VariableValue::Error("<lexical block no longer in scope>".to_string()));
                         }
@@ -784,6 +846,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
     /// This means both [`get_function_variables()`] and [`extract_type()`] will call the recursive [`process_tree()`] method to build an integrated `tree` of variables with types and values.
     /// - Consumes the `child_variable`.
     /// - Returns a clone of the most up-to-date `child_variable` in the cache.
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn extract_type(
         &self,
         node: gimli::EntriesTreeNode<GimliReader>,
@@ -791,6 +854,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
         mut child_variable: Variable,
         core: &mut Core<'_>,
         stack_frame_registers: &registers::DebugRegisters,
+        frame_base: Option<u64>,
         cache: &mut VariableCache,
     ) -> Result<Variable, DebugError> {
         let type_name = match node.entry().attr(gimli::DW_AT_name) {
@@ -878,6 +942,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                                     core,
                                                     &mut child_variable,
                                                     stack_frame_registers,
+                                                    frame_base,
                                                 )?;
                                             } else {
                                                 child_variable.variable_node_type =
@@ -919,8 +984,6 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                     child_member_index as u64 * child_variable.byte_size as u64,
                                 );
 
-                                // TODO:
-
                                 if has_overflowed {
                                     return Err(DebugError::Other(anyhow::anyhow!(
                                         "Overflow calculating variable address"
@@ -948,6 +1011,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                 child_variable,
                                 core,
                                 stack_frame_registers,
+                                frame_base,
                                 cache,
                             )?;
                         } else {
@@ -969,6 +1033,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                         child_variable,
                         core,
                         stack_frame_registers,
+                        frame_base,
                         cache,
                     )?;
                     if parent_variable.is_valid() && child_variable.is_valid() {
@@ -1032,6 +1097,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                                 subrange_variable,
                                                 core,
                                                 stack_frame_registers,
+                                                frame_base,
                                                 cache,
                                             )?;
                                             if child_variable.is_valid() {
@@ -1088,6 +1154,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                                                 array_member_variable,
                                                                 core,
                                                                 stack_frame_registers,
+                                                                frame_base,
                                                                 cache,
                                                             )?;
                                                         child_variable.type_name =
@@ -1113,6 +1180,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                                             array_member_variable,
                                                             core,
                                                             stack_frame_registers,
+                                                            frame_base,
                                                             cache,
                                                         )?;
                                                     }
@@ -1154,8 +1222,6 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                     child_member_index as u64 * child_variable.byte_size as u64,
                                 );
 
-                                // TODO:
-
                                 if has_overflowed {
                                     return Err(DebugError::Other(anyhow::anyhow!(
                                         "Overflow calculating variable address"
@@ -1178,6 +1244,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                         child_variable,
                         core,
                         stack_frame_registers,
+                        frame_base,
                         cache,
                     )?;
                     if child_variable.is_valid() && !cache.has_children(&child_variable)? {
@@ -1248,6 +1315,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                         child_variable,
                         core,
                         stack_frame_registers,
+                        frame_base,
                         cache,
                     )?;
                 }
@@ -1267,50 +1335,38 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
             .map_err(|error| error.into())
     }
 
-    /// - Consumes the `child_variable`.
-    /// - Find the location using either DW_AT_location, or DW_AT_data_member_location, and store it in the Variable.
-    /// - Returns a clone of the most up-to-date `child_variable` in the cache.
-    ///
-    /// This will either set the memory location, or directly update the value of the variable, depending on the DWARF information.
+    /// - Find the location using either DW_AT_location, DW_AT_data_member_location, or DW_AT_frame_base attribute.
+    /// Return values are implemented as follows:
+    /// - Result<_, DebugError>: This happens when we encounter an error we did not expect, and will propogate upwards until the debugger request is failed. NOT GRACEFUL, and should be avoided.
+    /// - Result<ExpressionResult::Value(),_>:  The value is statically stored in the binary, and can be returned, and has no relevant memory location.
+    /// - Result<ExpressionResult::Location(),_>:  One of the variants of VariableLocation, and needs to be interpreted for handling the 'expected' errors we encounter during evaluation.
     pub(crate) fn extract_location(
         &self,
-        node: &gimli::EntriesTreeNode<GimliReader>,
-        parent_variable: &Variable,
-        mut child_variable: Variable,
-        core: &mut Core<'_>,
+        node_die: &gimli::DebuggingInformationEntry<GimliReader>,
+        parent_location: &VariableLocation,
+        core: Option<&mut Core<'_>>,
         stack_frame_registers: &registers::DebugRegisters,
-        cache: &mut VariableCache,
-    ) -> Result<Variable, DebugError> {
-        let mut attrs = node.entry().attrs();
+        frame_base: Option<u64>,
+    ) -> Result<ExpressionResult, DebugError> {
+        let mut attrs = node_die.attrs();
         while let Ok(Some(attr)) = attrs.next() {
             match attr.name() {
                 gimli::DW_AT_location
                 | gimli::DW_AT_data_member_location
                 | gimli::DW_AT_frame_base => match attr.value() {
                     gimli::AttributeValue::Exprloc(expression) => {
-                        if let Err(error) = self.evaluate_expression(
-                            core,
-                            &mut child_variable,
-                            expression,
-                            stack_frame_registers,
-                        ) {
-                            child_variable.set_value(VariableValue::Error(format!(
-                                "Error: Determining memory location for this variable: {:?}",
-                                &error
-                            )));
-                        }
+                        return self.evaluate_expression(core, expression, stack_frame_registers, frame_base);
                     }
-                    gimli::AttributeValue::Udata(offset_from_parent) => {
-                        match &parent_variable.memory_location {
-                            VariableLocation::Address(address) => {
-                                child_variable.memory_location =
-                                    VariableLocation::Address(address + offset_from_parent)
-                            }
-                            _other => {
-                                child_variable.memory_location = VariableLocation::Unavailable;
-                            }
+                    gimli::AttributeValue::Udata(offset_from_parent) => match parent_location {
+                        VariableLocation::Address(address) => {
+                            return Ok(ExpressionResult::Location(VariableLocation::Address(
+                                address + offset_from_parent,
+                            )))
                         }
-                    }
+                        _other => {
+                            return Ok(ExpressionResult::Location(VariableLocation::Unavailable))
+                        }
+                    },
                     gimli::AttributeValue::LocationListsRef(location_list_offset) => {
                         match self.debug_info.locations_section.locations(
                             location_list_offset,
@@ -1330,8 +1386,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                     while let Some(location) = match locations.next() {
                                         Ok(location_lists_entry) => location_lists_entry,
                                         Err(error) => {
-                                            child_variable.set_value(VariableValue::Error(format!("Error: Iterating LocationLists for this variable: {:?}", &error)));
-                                            None
+                                            return Ok(ExpressionResult::Location(VariableLocation::Error(format!("Error: Iterating LocationLists for this variable: {:?}", &error))));
                                         }
                                     } {
                                         if program_counter
@@ -1343,40 +1398,32 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                             break;
                                         }
                                     }
-
                                     if let Some(valid_expression) = expression {
-                                        if let Err(error) = self.evaluate_expression(
+                                        return self.evaluate_expression(
                                             core,
-                                            &mut child_variable,
                                             valid_expression,
                                             stack_frame_registers,
-                                        ) {
-                                            child_variable.set_value(VariableValue::Error(format!("Error: Determining memory location for this variable: {:?}", &error)));
-                                        }
+                                            frame_base,
+                                        );
                                     } else {
-                                        child_variable.set_value(VariableValue::Error(
-                                            "<value out of scope - moved or dropped>".to_string(),
+                                        return Ok(ExpressionResult::Location(
+                                            VariableLocation::Unavailable,
                                         ));
                                     }
                                 } else {
-                                    child_variable.set_value(VariableValue::Error(
-                                            "Cannot determine variable location without a valid program counter.".to_string(),
-                                        ));
-                                };
+                                    return Ok(ExpressionResult::Location(VariableLocation::Error("Cannot determine variable location without a valid program counter.".to_string())));
+                                }
                             }
                             Err(error) => {
-                                child_variable.set_value(VariableValue::Error(format!(
-                                    "Error: Resolving variable Location: {:?}",
-                                    &error
-                                )));
+                                return Ok(ExpressionResult::Location(VariableLocation::Error(
+                                    format!("Error: Resolving variable Location: {:?}", &error),
+                                )))
                             }
-                        };
+                        }
                     }
                     other_attribute_value => {
-                        child_variable.set_value(VariableValue::Error(format!(
-                                "Unimplemented: extract_location() Could not extract location from: {:?}",
-                                other_attribute_value
-                            )));
+                        return Ok(ExpressionResult::Location(VariableLocation::Unsupported(
+                            format!( "Unimplemented: extract_location() Could not extract location from: {:?}", other_attribute_value))))
                     }
                 },
                 gimli::DW_AT_address_class => {
@@ -1384,17 +1431,17 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                         gimli::AttributeValue::AddressClass(address_class) => {
                             // Nothing to do in this case where it is zero
                             if address_class != gimli::DwAddr(0) {
-                                child_variable.set_value(VariableValue::Error(format!(
+                                return Ok(ExpressionResult::Location(VariableLocation::Unsupported(format!(
                                     "Unimplemented: extract_location() found unsupported DW_AT_address_class(gimli::DwAddr({:?}))",
                                     address_class
-                                )));
+                                ))))
                             }
                         }
                         other_attribute_value => {
-                            child_variable.set_value(VariableValue::Error(format!(
+                            return Ok(ExpressionResult::Location(VariableLocation::Unsupported(format!(
                                 "Unimplemented: extract_location() found invalid DW_AT_address_class: {:?}",
                                 other_attribute_value
-                            )));
+                            ))))
                         }
                     }
                 }
@@ -1403,119 +1450,123 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                 }
             }
         }
-
-        cache
-            .cache_variable(child_variable.parent_key, child_variable, core)
-            .map_err(|error| error.into())
+        // If we get here, we did not find a location attribute, then leave the value as Unknown.
+        Ok(ExpressionResult::Location(VariableLocation::Unknown))
     }
 
-    /// Evaluate a gimli::Expression as a valid memory location
+    /// Evaluate a gimli::Expression as a valid memory location.
+    /// Return values are implemented as follows:
+    /// - Result<_, DebugError>: This happens when we encounter an error we did not expect, and will propogate upwards until the debugger request is failed. NOT GRACEFUL, and should be avoided.
+    /// - Result<ExpressionResult::Value(),_>:  The value is statically stored in the binary, and can be returned, and has no relevant memory location.
+    /// - Result<ExpressionResult::Location(),_>:  One of the variants of VariableLocation, and needs to be interpreted for handling the 'expected' errors we encounter during evaluation.
     pub(crate) fn evaluate_expression(
         &self,
-        core: &mut Core<'_>,
-        child_variable: &mut Variable,
+        core: Option<&mut Core<'_>>,
         expression: gimli::Expression<GimliReader>,
         stack_frame_registers: &registers::DebugRegisters,
-    ) -> Result<(), DebugError> {
-        let pieces = self.expression_to_piece(core, expression, stack_frame_registers)?;
+        frame_base: Option<u64>,
+    ) -> Result<ExpressionResult, DebugError> {
+        let pieces =
+            self.expression_to_piece(core, expression, stack_frame_registers, frame_base)?;
         if pieces.is_empty() {
-            return Err(DebugError::Other(anyhow::anyhow!(
-                "Error: expr_to_piece() returned 0 results: {:?}",
-                pieces
-            )));
+            Ok(ExpressionResult::Location(VariableLocation::Error(
+                format!("Error: expr_to_piece() returned 0 results: {:?}", pieces),
+            )))
         } else if pieces.len() > 1 {
-            child_variable.set_value(VariableValue::Error(
+            Ok(ExpressionResult::Location(VariableLocation::Error(
                 "<unsupported memory implementation>".to_string(),
-            ));
-            child_variable.memory_location =
-                VariableLocation::Unsupported("<unsupported memory implementation>".to_string());
+            )))
         } else {
             match &pieces[0].location {
                 Location::Empty => {
                     // This means the value was optimized away.
-                    child_variable.set_value(VariableValue::Error(
-                        "<value optimized away by compiler>".to_string(),
-                    ));
-                    child_variable.memory_location = VariableLocation::Unavailable;
+                    Ok(ExpressionResult::Location(VariableLocation::Unavailable))
                 }
                 Location::Address { address } => {
                     if *address == u32::MAX as u64 {
-                        return Err(DebugError::Other(anyhow::anyhow!("BUG: Cannot resolve due to rust-lang issue https://github.com/rust-lang/rust/issues/32574".to_string())));
+                        Ok(ExpressionResult::Location(VariableLocation::Error("BUG: Cannot resolve due to rust-lang issue https://github.com/rust-lang/rust/issues/32574".to_string())))
                     } else {
-                        child_variable.memory_location = VariableLocation::Address(*address);
+                        Ok(ExpressionResult::Location(VariableLocation::Address(
+                            *address,
+                        )))
                     }
                 }
-                Location::Value { value } => {
-                    match value {
-                        gimli::Value::Generic(value) => {
-                            child_variable.set_value(VariableValue::Valid(value.to_string()));
-                        }
-                        gimli::Value::I8(value) => {
-                            child_variable.set_value(VariableValue::Valid(value.to_string()));
-                        }
-                        gimli::Value::U8(value) => {
-                            child_variable.set_value(VariableValue::Valid(value.to_string()));
-                        }
-                        gimli::Value::I16(value) => {
-                            child_variable.set_value(VariableValue::Valid(value.to_string()));
-                        }
-                        gimli::Value::U16(value) => {
-                            child_variable.set_value(VariableValue::Valid(value.to_string()));
-                        }
-                        gimli::Value::I32(value) => {
-                            child_variable.set_value(VariableValue::Valid(value.to_string()));
-                        }
-                        gimli::Value::U32(value) => {
-                            child_variable.set_value(VariableValue::Valid(value.to_string()));
-                        }
-                        gimli::Value::I64(value) => {
-                            child_variable.set_value(VariableValue::Valid(value.to_string()));
-                        }
-                        gimli::Value::U64(value) => {
-                            child_variable.set_value(VariableValue::Valid(value.to_string()));
-                        }
-                        gimli::Value::F32(value) => {
-                            child_variable.set_value(VariableValue::Valid(value.to_string()));
-                        }
-                        gimli::Value::F64(value) => {
-                            child_variable.set_value(VariableValue::Valid(value.to_string()));
-                        }
-                    };
-                    child_variable.memory_location = VariableLocation::Value;
-                }
+                Location::Value { value } => match value {
+                    gimli::Value::Generic(value) => Ok(ExpressionResult::Value(
+                        VariableValue::Valid(value.to_string()),
+                    )),
+                    gimli::Value::I8(value) => Ok(ExpressionResult::Value(VariableValue::Valid(
+                        value.to_string(),
+                    ))),
+                    gimli::Value::U8(value) => Ok(ExpressionResult::Value(VariableValue::Valid(
+                        value.to_string(),
+                    ))),
+                    gimli::Value::I16(value) => Ok(ExpressionResult::Value(VariableValue::Valid(
+                        value.to_string(),
+                    ))),
+                    gimli::Value::U16(value) => Ok(ExpressionResult::Value(VariableValue::Valid(
+                        value.to_string(),
+                    ))),
+                    gimli::Value::I32(value) => Ok(ExpressionResult::Value(VariableValue::Valid(
+                        value.to_string(),
+                    ))),
+                    gimli::Value::U32(value) => Ok(ExpressionResult::Value(VariableValue::Valid(
+                        value.to_string(),
+                    ))),
+                    gimli::Value::I64(value) => Ok(ExpressionResult::Value(VariableValue::Valid(
+                        value.to_string(),
+                    ))),
+                    gimli::Value::U64(value) => Ok(ExpressionResult::Value(VariableValue::Valid(
+                        value.to_string(),
+                    ))),
+                    gimli::Value::F32(value) => Ok(ExpressionResult::Value(VariableValue::Valid(
+                        value.to_string(),
+                    ))),
+                    gimli::Value::F64(value) => Ok(ExpressionResult::Value(VariableValue::Valid(
+                        value.to_string(),
+                    ))),
+                },
                 Location::Register { register } => {
-                    child_variable.memory_location =
-                        VariableLocation::Register(register.0 as usize);
+                    if let Some(address) = stack_frame_registers
+                        .get_register_by_dwarf_id(register.0)
+                        .and_then(|register| register.value)
+                    {
+                        match address.try_into() {
+                            Ok(location) => Ok(ExpressionResult::Location(
+                                VariableLocation::Address(location),
+                            )),
+                            Err(error) => Ok(ExpressionResult::Location(
+                                VariableLocation::Error(format!(
+                                    "Error: Cannot convert register value to location address: {:?}",
+                                    error
+                                )),
+                            )),
+                        }
+                    } else {
+                        Ok(ExpressionResult::Location(VariableLocation::Error(
+                            format!("Error: Cannot resolve register: {:?}", register),
+                        )))
+                    }
                 }
-                l => {
-                    return Err(DebugError::Other(anyhow::anyhow!(
+                l => Ok(ExpressionResult::Location(VariableLocation::Error(
+                    format!(
                         "Unimplemented: extract_location() found a location type: {:?}",
                         l
-                    )));
-                }
+                    ),
+                ))),
             }
         }
-        Ok(())
     }
 
     /// Update a [Variable] location, given a gimli::Expression
     pub(crate) fn expression_to_piece(
         &self,
-        core: &mut Core<'_>,
+        mut core: Option<&mut Core<'_>>,
         expression: gimli::Expression<GimliReader>,
         stack_frame_registers: &registers::DebugRegisters,
+        frame_base: Option<u64>,
     ) -> Result<Vec<gimli::Piece<GimliReader, usize>>, DebugError> {
         let mut evaluation = expression.evaluation(self.unit.encoding());
-        let frame_base = if let Some(frame_base) = stack_frame_registers
-            .get_frame_pointer()
-            .and_then(|reg| reg.value)
-        {
-            frame_base
-        } else {
-            return Err(DebugError::Other(anyhow::anyhow!(
-                "Cannot unwind `Variable` location without a valid CFA (canonical frame address)"
-            )));
-        };
         // go for evaluation
         let mut result = evaluation.evaluate()?;
 
@@ -1526,32 +1577,44 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                 Complete => break,
                 RequiresMemory { address, size, .. } => {
                     let mut buff = vec![0u8; size as usize];
-                    core.read(address, &mut buff).map_err(|_| {
+                    if let Some(core) = core.as_mut() {
+                        core.read(address, &mut buff).map_err(|_| {
                         DebugError::Other(anyhow::anyhow!("Unexpected error while reading debug expressions from target memory. Please report this as a bug."))
                     })?;
-                    match size {
-                        1 => evaluation.resume_with_memory(gimli::Value::U8(buff[0]))?,
-                        2 => {
-                            let val = (u16::from(buff[0]) << 8) | (u16::from(buff[1]) as u16);
-                            evaluation.resume_with_memory(gimli::Value::U16(val))?
+                        match size {
+                            1 => evaluation.resume_with_memory(gimli::Value::U8(buff[0]))?,
+                            2 => {
+                                let val = (u16::from(buff[0]) << 8) | (u16::from(buff[1]) as u16);
+                                evaluation.resume_with_memory(gimli::Value::U16(val))?
+                            }
+                            4 => {
+                                let val = (u32::from(buff[0]) << 24)
+                                    | (u32::from(buff[1]) << 16)
+                                    | (u32::from(buff[2]) << 8)
+                                    | u32::from(buff[3]);
+                                evaluation.resume_with_memory(gimli::Value::U32(val))?
+                            }
+                            x => {
+                                todo!(
+                                    "Requested memory with size {}, which is not supported yet.",
+                                    x
+                                );
+                            }
                         }
-                        4 => {
-                            let val = (u32::from(buff[0]) << 24)
-                                | (u32::from(buff[1]) << 16)
-                                | (u32::from(buff[2]) << 8)
-                                | u32::from(buff[3]);
-                            evaluation.resume_with_memory(gimli::Value::U32(val))?
-                        }
-                        x => {
-                            todo!(
-                                "Requested memory with size {}, which is not supported yet.",
-                                x
-                            );
-                        }
+                    } else {
+                        return Err(DebugError::Other(anyhow::anyhow!(
+                            "Cannot unwind `Variable` location without a valid reference to the core."
+                        )));
                     }
                 }
                 RequiresFrameBase => {
-                    match evaluation.resume_with_frame_base(frame_base.try_into()?) {
+                    let frame_base = if let Some(frame_base) = frame_base {
+                        frame_base
+                    } else {
+                        return Err(DebugError::Other(anyhow::anyhow!("Cannot unwind `Variable` location without a valid frame base address.)")));
+                    };
+
+                    match evaluation.resume_with_frame_base(frame_base) {
                         Ok(evaluation_result) => evaluation_result,
                         Err(error) => {
                             return Err(DebugError::Other(anyhow::anyhow!(

@@ -6,7 +6,7 @@ use crate::{
 /// The group name of a register.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum RegisterGroup {
-    /// Core / CPU Registers
+    /// Core / CPU Registers. Using the term `Base` rather than `platform`, because that is what the DWARF spec calls these registers.
     Base,
     /// Argument Register
     Argument,
@@ -177,6 +177,13 @@ impl DebugRegisters {
     /// Get the program counter.
     pub fn get_program_counter(&self) -> Option<&DebugRegister> {
         self.0.iter().find(|debug_register| {
+            debug_register.id == debug_register.register_file.program_counter().id
+        })
+    }
+
+    /// Get a mutable reference to the program counter.
+    pub fn get_program_counter_mut(&mut self) -> Option<&mut DebugRegister> {
+        self.0.iter_mut().find(|debug_register| {
             debug_register.id == debug_register.register_file.program_counter().id
         })
     }

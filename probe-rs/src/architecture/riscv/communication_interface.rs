@@ -328,12 +328,10 @@ impl RiscvCommunicationInterface {
             let confstrptr_1: Confstrptr1 = self.read_dm_register()?;
             let confstrptr_2: Confstrptr2 = self.read_dm_register()?;
             let confstrptr_3: Confstrptr3 = self.read_dm_register()?;
-
             let confstrptr = (u32::from(confstrptr_0) as u128)
                 | (u32::from(confstrptr_1) as u128) << 8
                 | (u32::from(confstrptr_2) as u128) << 16
                 | (u32::from(confstrptr_3) as u128) << 32;
-
             Some(confstrptr)
         } else {
             None
@@ -981,7 +979,7 @@ impl RiscvCommunicationInterface {
         let mut dmcontrol = Dmcontrol(0);
         dmcontrol.set_haltreq(false);
         dmcontrol.set_resumereq(false);
-        dmcontrol.set_ackhavereset(true);
+        dmcontrol.set_ackhavereset(false);
         dmcontrol.set_dmactive(true);
         self.write_dm_register(dmcontrol)?;
 

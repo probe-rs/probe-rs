@@ -250,8 +250,6 @@ pub enum VariableLocation {
     Unavailable,
     /// The variable can be found in memory, at this address.
     Address(u64),
-    /// The value of the variable can be found in this register.
-    Register(usize),
     /// The value of the variable is directly available.
     Value,
     /// There was an error evaluating the variable location.
@@ -275,10 +273,9 @@ impl VariableLocation {
     /// Check if the location is valid, ie. not an error, unsupported, or unavailable.
     pub fn valid(&self) -> bool {
         match self {
-            VariableLocation::Address(_)
-            | VariableLocation::Register(_)
-            | VariableLocation::Value
-            | VariableLocation::Unknown => true,
+            VariableLocation::Address(_) | VariableLocation::Value | VariableLocation::Unknown => {
+                true
+            }
             _other => false,
         }
     }
@@ -290,7 +287,6 @@ impl std::fmt::Display for VariableLocation {
             VariableLocation::Unknown => "<unknown value>".fmt(f),
             VariableLocation::Unavailable => "<value not available>".fmt(f),
             VariableLocation::Address(address) => write!(f, "{:#010X}", address),
-            VariableLocation::Register(register) => write!(f, "r{}", register),
             VariableLocation::Value => "<not applicable - statically stored value>".fmt(f),
             VariableLocation::Error(error) => error.fmt(f),
             VariableLocation::Unsupported(reason) => reason.fmt(f),
@@ -1061,9 +1057,13 @@ impl Value for String {
                         string_length = 200;
                     }
 
-                    let mut buff = vec![0u8; string_length];
-                    core.read(string_location, &mut buff)?;
-                    str_value = core::str::from_utf8(&buff)?.to_owned();
+                    if string_length.is_zero() {
+                        // A string with length 0 doesn't need to be read from memory.
+                    } else {
+                        let mut buff = vec![0u8; string_length];
+                        core.read(string_location, &mut buff)?;
+                        str_value = core::str::from_utf8(&buff)?.to_owned();
+                    }
                 }
             } else {
                 str_value = "Error: Failed to evaluate &str value".to_string();

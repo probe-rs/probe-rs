@@ -1,5 +1,6 @@
 pub(crate) mod communication_interface;
 
+use crate::architecture::riscv::RiscVState;
 use crate::{CoreType, InstructionSet};
 pub use communication_interface::CommunicationInterface;
 use num_traits::Zero;
@@ -613,7 +614,7 @@ pub enum SpecificCoreState {
     /// The state of an ARMv8-M core.
     Armv8m(CortexMState),
     /// The state of an RISC-V core.
-    Riscv,
+    Riscv(RiscVState),
 }
 
 impl SpecificCoreState {
@@ -625,7 +626,7 @@ impl SpecificCoreState {
             CoreType::Armv7em => SpecificCoreState::Armv7m(CortexMState::new()),
             CoreType::Armv8a => SpecificCoreState::Armv8a(CortexAState::new()),
             CoreType::Armv8m => SpecificCoreState::Armv8m(CortexMState::new()),
-            CoreType::Riscv => SpecificCoreState::Riscv,
+            CoreType::Riscv => SpecificCoreState::Riscv(RiscVState::new()),
         }
     }
 
@@ -637,7 +638,7 @@ impl SpecificCoreState {
             SpecificCoreState::Armv7em(_) => CoreType::Armv7em,
             SpecificCoreState::Armv8a(_) => CoreType::Armv8a,
             SpecificCoreState::Armv8m(_) => CoreType::Armv8m,
-            SpecificCoreState::Riscv => CoreType::Riscv,
+            SpecificCoreState::Riscv(_) => CoreType::Riscv,
         }
     }
 
@@ -706,14 +707,15 @@ impl SpecificCoreState {
     }
 
     pub(crate) fn attach_riscv<'probe>(
-        &self,
+        &'probe mut self,
         state: &'probe mut CoreState,
         interface: &'probe mut RiscvCommunicationInterface,
     ) -> Result<Core<'probe>, Error> {
         Ok(match self {
-            SpecificCoreState::Riscv => {
-                Core::new(crate::architecture::riscv::Riscv32::new(interface), state)
-            }
+            SpecificCoreState::Riscv(s) => Core::new(
+                crate::architecture::riscv::Riscv32::new(interface, s),
+                state,
+            ),
             _ => {
                 return Err(Error::UnableToOpenProbe(
                     "Core architecture and Probe mismatch.",

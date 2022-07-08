@@ -1,6 +1,10 @@
 use crate::{
     debug_adapter::{dap_types, protocol::ProtocolAdapter},
-    debugger::{configuration::ConsoleLog, core_data::CoreHandle, session_data::BreakpointType},
+    debugger::{
+        configuration::ConsoleLog,
+        core_data::CoreHandle,
+        session_data::{ActiveBreakpoint, BreakpointType},
+    },
     DebuggerError,
 };
 use anyhow::{anyhow, Result};
@@ -9,13 +13,13 @@ use capstone::{
     arch::riscv::ArchMode as riscvArchMode, prelude::*, Capstone, Endian,
 };
 use dap_types::*;
-use num_traits::Zero;
 use parse_int::parse;
 use probe_rs::{
     debug::{
         registers::DebugRegisters, stepping_mode::SteppingMode, ColumnType, SourceLocation,
         VariableName, VariableNodeType,
     },
+    Architecture::Riscv,
     CoreStatus, CoreType, HaltReason, InstructionSet, MemoryInterface, RegisterValue,
 };
 use probe_rs_cli_util::rtt;
@@ -512,15 +516,71 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
 
         // Different code paths if we invoke this from a request, versus an internal function.
         if let Some(request) = request {
-            match target_core.core.reset() {
+            // Use reset_and_halt(), and then resume again afterwards, depending on the reset_after_halt flag.
+            match target_core.core.reset_and_halt(Duration::from_millis(500)) {
                 Ok(_) => {
-                    self.last_known_status = CoreStatus::Running;
-                    let event_body = Some(ContinuedEventBody {
-                        all_threads_continued: Some(false), // TODO: Implement multi-core logic here
-                        thread_id: target_core.core.id() as i64,
-                    });
+                    // For RISCV, we need to re-enable any breakpoints that were previously set, because the core reset 'forgets' them.
+                    let saved_breakpoints = target_core
+                        .core_data
+                        .breakpoints
+                        .drain(..)
+                        .collect::<Vec<ActiveBreakpoint>>();
+                    if target_core.core.architecture() == Riscv {
+                        for breakpoint in saved_breakpoints {
+                            match target_core.set_breakpoint(
+                                breakpoint.breakpoint_address,
+                                breakpoint.breakpoint_type.clone(),
+                            ) {
+                                Ok(_) => {}
+                                Err(error) => {
+                                    //This will cause the debugger to show the user an error, but not stop the debugger.
+                                    log::error!(
+                                        "Failed to re-enable breakpoint {:?} after reset. {}",
+                                        breakpoint,
+                                        error
+                                    );
+                                }
+                            }
+                        }
+                    }
 
-                    self.send_event("continued", event_body)
+                    // Now that we have the breakpoints re-enabled, we can decide if it is appropriat to resume the core.
+                    if !self.halt_after_reset {
+                        match self.r#continue(target_core, request.clone()) {
+                            Ok(_) => {
+                                let event_body = Some(ContinuedEventBody {
+                                    all_threads_continued: Some(false), // TODO: Implement multi-core logic here
+                                    thread_id: target_core.core.id() as i64,
+                                });
+                                self.send_event("continued", event_body)?;
+                                self.send_response::<()>(request, Ok(None))
+                            }
+                            Err(error) => {
+                                return self.send_response::<()>(
+                                    request,
+                                    Err(DebuggerError::Other(anyhow!("{}", error))),
+                                )
+                            }
+                        }
+                    } else {
+                        let event_body = Some(StoppedEventBody {
+                            reason: "reset".to_owned(),
+                            description: Some(
+                                CoreStatus::Halted(HaltReason::External)
+                                    .short_long_status()
+                                    .1
+                                    .to_string(),
+                            ),
+                            thread_id: Some(target_core.core.id() as i64),
+                            preserve_focus_hint: None,
+                            text: None,
+                            all_threads_stopped: Some(false), // TODO: Implement multi-core logic here
+                            hit_breakpoint_ids: None,
+                        });
+                        self.send_event("stopped", event_body)?;
+                        self.last_known_status = CoreStatus::Halted(HaltReason::External);
+                        self.send_response::<()>(request, Ok(None))
+                    }
                 }
                 Err(error) => {
                     return self.send_response::<()>(
@@ -797,7 +857,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                         match target_core
                             .core_data
                             .debug_info
-                            .get_source_location(memory_reference.into())
+                            .get_source_location(memory_reference)
                         {
                             Some(source_location) => {
                                 breakpoint_response.source = get_dap_source(&source_location);
@@ -1230,7 +1290,8 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         // The EXACT number of instructions to return in the result.
         instruction_count: i64,
     ) -> Result<Vec<dap_types::DisassembledInstruction>, DebuggerError> {
-        let cs = match target_core.core.instruction_set()? {
+        let target_instruction_set = target_core.core.instruction_set()?;
+        let mut cs = match target_instruction_set {
             InstructionSet::Thumb2 => {
                 let mut capstone_builder = Capstone::new()
                     .arm()
@@ -1262,9 +1323,10 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                 .build(),
         }
         .map_err(|err| anyhow!("Error creating capstone: {:?}", err))?;
+        let _ = cs.set_skipdata(true);
 
         // Adjust instruction offset as required for variable length instruction sets.
-        let instruction_offset_as_bytes = match target_core.core.instruction_set()? {
+        let instruction_offset_as_bytes = match target_instruction_set {
             InstructionSet::Thumb2 | InstructionSet::RV32 => {
                 // Since we cannot guarantee the size of individual instructions, let's assume we will read the 120% of the requested number of 16-bit instructions.
                 (instruction_offset
@@ -1372,22 +1434,9 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                 }
             }
 
-            match cs.disasm_count(&code_buffer, instruction_pointer as u64, 1) {
+            match cs.disasm_all(&code_buffer, instruction_pointer as u64) {
                 Ok(instructions) => {
-                    if instructions.len().is_zero() {
-                        match target_core.core.instruction_set()? {
-                            InstructionSet::Thumb2 | InstructionSet::RV32 => {
-                                //Special handling for variable length instructions.
-                                if code_buffer.len() == 2 {
-                                    // It is possible the last instruction was 2 bytes and the next needs 4 bytes, so read more bytes and try again.
-                                    read_more_bytes = true;
-                                    continue;
-                                }
-                            }
-                            InstructionSet::A32 | InstructionSet::A64 => {
-                                // Nothing special required here.
-                            }
-                        }
+                    if num_traits::Zero::is_zero(&instructions.len()) {
                         // The capstone library sometimes returns an empty result set, instead of an Err. Catch it here or else we risk an infinte loop looking for a valid instruction.
                         return Err(DebuggerError::Other(anyhow::anyhow!(
                             "Disassembly encountered unsupported instructions at memory reference {:#010x?}",
@@ -1400,7 +1449,9 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                         .map(|instruction| {
                             // Before processing, update the code buffer appropriately
                             code_buffer = code_buffer.split_at(instruction.len() as usize).1.to_vec();
-                            read_more_bytes = code_buffer.is_empty();
+
+                            // Variable width instruction sets my not use the full `code_buffer`, so we need to read ahead, to ensure we have enough code in the buffer to disassemble the 'widest' of instructions in the instruction set.
+                            read_more_bytes = code_buffer.len() < target_instruction_set.get_maximum_instruction_size() as usize;
 
                             // Move the instruction_pointer for the next read.
                             instruction_pointer += instruction.len() as u64;
@@ -1415,7 +1466,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                             if let Some(current_source_location) = target_core
                                 .core_data
                                 .debug_info
-                                .get_source_location(instruction.address().into()) {
+                                .get_source_location(instruction.address()) {
                                 if let Some(previous_source_location) = stored_source_location.clone() {
                                     if current_source_location != previous_source_location {
                                         location = get_dap_source(&current_source_location);
@@ -1610,6 +1661,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             let mut parent_variable: Option<probe_rs::debug::Variable> = None;
             let mut variable_cache: Option<&mut probe_rs::debug::VariableCache> = None;
             let mut stack_frame_registers: Option<&DebugRegisters> = None;
+            let mut frame_base: Option<u64> = None;
             for stack_frame in target_core.core_data.stack_frames.iter_mut() {
                 if let Some(search_cache) = &mut stack_frame.local_variables {
                     if let Some(search_variable) =
@@ -1618,6 +1670,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                         parent_variable = Some(search_variable);
                         variable_cache = Some(search_cache);
                         stack_frame_registers = Some(&stack_frame.registers);
+                        frame_base = stack_frame.frame_base;
                         break;
                     }
                 }
@@ -1628,6 +1681,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                         parent_variable = Some(search_variable);
                         variable_cache = Some(search_cache);
                         stack_frame_registers = Some(&stack_frame.registers);
+                        frame_base = stack_frame.frame_base;
                         break;
                     }
                 }
@@ -1673,9 +1727,10 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                                 &mut target_core.core,
                                 parent_variable,
                                 stack_frame_registers,
+                                frame_base,
                             )?;
                         } else {
-                            log::error!("Could not cache deferred child variables for variable: {}. No register data available.", parent_variable.name );
+                            log::error!("Could not cache deferred child variables for variable: {}. No register data available.", parent_variable.name);
                         }
                     }
                 }

@@ -14,7 +14,7 @@ use probe_rs::{
 use std::env::set_current_dir;
 
 /// The supported breakpoint types
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum BreakpointType {
     InstructionBreakpoint,
     SourceBreakpoint(Source),

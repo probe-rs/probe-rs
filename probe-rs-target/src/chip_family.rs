@@ -87,7 +87,7 @@ pub enum InstructionSet {
 }
 
 impl InstructionSet {
-    /// Set the minimum instruction size in bytes.
+    /// Get the minimum instruction size in bytes.
     pub fn get_minimum_instruction_size(&self) -> u8 {
         match self {
             InstructionSet::Thumb2 => {
@@ -101,6 +101,15 @@ impl InstructionSet {
                 // TODO: Need an impl of RV32 and RV32C to properly differentiate this, then we don't need to assume.
                 2
             }
+        }
+    }
+    /// Get the maximum instruction size in bytes.
+    pub fn get_maximum_instruction_size(&self) -> u8 {
+        match self {
+            InstructionSet::Thumb2 => 4,
+            InstructionSet::A32 => 4,
+            InstructionSet::A64 => 4,
+            InstructionSet::RV32 => 4,
         }
     }
 }
