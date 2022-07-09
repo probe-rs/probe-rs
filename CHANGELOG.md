@@ -40,6 +40,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added FPU register reading support for cortex-m cores
 - Added support for Huada Semiconductor HC32F005 MCUs.
 - Added FPU register support for Cortex-A cores (#1154)
+- GDB now reports the core name in `info threads` (#1158)
 
 ### Changed
 
