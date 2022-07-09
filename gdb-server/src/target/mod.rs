@@ -3,7 +3,9 @@ mod breakpoints;
 mod desc;
 mod monitor;
 mod resume;
+mod thread;
 mod traits;
+mod utils;
 
 use super::arch::RuntimeArch;
 use gdbstub::stub::state_machine::GdbStubStateMachine;

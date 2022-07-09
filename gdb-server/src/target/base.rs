@@ -7,6 +7,7 @@ use gdbstub::target::ext::base::multithread::MultiThreadBase;
 use gdbstub::target::ext::base::multithread::MultiThreadResumeOps;
 use gdbstub::target::ext::base::single_register_access::SingleRegisterAccess;
 use gdbstub::target::ext::base::single_register_access::SingleRegisterAccessOps;
+use gdbstub::target::ext::thread_extra_info::ThreadExtraInfoOps;
 use gdbstub::target::TargetError;
 use probe_rs::{Core, Error, MemoryInterface};
 
@@ -131,6 +132,10 @@ impl MultiThreadBase for RuntimeTarget<'_> {
     }
 
     fn support_single_register_access(&mut self) -> Option<SingleRegisterAccessOps<'_, Tid, Self>> {
+        Some(self)
+    }
+
+    fn support_thread_extra_info(&mut self) -> Option<ThreadExtraInfoOps<'_, Self>> {
         Some(self)
     }
 }

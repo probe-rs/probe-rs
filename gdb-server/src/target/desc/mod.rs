@@ -1,4 +1,5 @@
 use super::{GdbErrorExt, RuntimeTarget};
+use crate::target::utils::copy_range_to_buf;
 
 mod data;
 
@@ -14,23 +15,6 @@ use probe_rs::config::MemoryRegion;
 use probe_rs::{CoreType, Session};
 
 pub(crate) use data::{GdbRegisterSource, TargetDescription};
-
-fn copy_to_buf(data: &[u8], buf: &mut [u8]) -> usize {
-    let len = data.len();
-    let buf = &mut buf[..len];
-    buf.copy_from_slice(data);
-    len
-}
-
-fn copy_range_to_buf(data: &[u8], offset: u64, length: usize, buf: &mut [u8]) -> usize {
-    let offset = match usize::try_from(offset) {
-        Ok(v) => v,
-        Err(_) => return 0,
-    };
-    let len = data.len();
-    let data = &data[len.min(offset)..len.min(offset + length)];
-    copy_to_buf(data, buf)
-}
 
 impl TargetDescriptionXmlOverride for RuntimeTarget<'_> {
     fn target_description_xml(
