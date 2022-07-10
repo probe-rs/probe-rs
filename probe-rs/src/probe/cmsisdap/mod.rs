@@ -57,6 +57,7 @@ pub struct CmsisDap {
     swo_buffer_size: Option<usize>,
     swo_active: bool,
     swo_streaming: bool,
+    connected: bool,
 
     /// Speed in kHz
     speed_khz: u32,
@@ -111,6 +112,7 @@ impl CmsisDap {
             swo_buffer_size,
             swo_active: false,
             swo_streaming: false,
+            connected: false,
             speed_khz: 1_000,
             batch: Vec::new(),
         })
@@ -379,6 +381,36 @@ impl CmsisDap {
             None => Ok(Vec::new()),
         }
     }
+
+    fn connect_if_needed(&mut self) -> Result<(), DebugProbeError> {
+        if self.connected {
+            return Ok(());
+        }
+
+        let protocol = if let Some(protocol) = self.protocol {
+            match protocol {
+                WireProtocol::Swd => ConnectRequest::Swd,
+                WireProtocol::Jtag => ConnectRequest::Jtag,
+            }
+        } else {
+            ConnectRequest::DefaultPort
+        };
+
+        let used_protocol = commands::send_command(&mut self.device, protocol)
+            .map_err(CmsisDapError::from)
+            .and_then(|v| match v {
+                ConnectResponse::SuccessfulInitForSWD => Ok(WireProtocol::Swd),
+                ConnectResponse::SuccessfulInitForJTAG => Ok(WireProtocol::Jtag),
+                ConnectResponse::InitFailed => Err(CmsisDapError::ErrorResponse),
+            })?;
+
+        // Store the actually used protocol, to handle cases where the default protocol is used.
+        log::info!("Using protocol {}", used_protocol);
+        self.protocol = Some(used_protocol);
+        self.connected = true;
+
+        Ok(())
+    }
 }
 
 impl DebugProbe for CmsisDap {
@@ -418,26 +450,8 @@ impl DebugProbe for CmsisDap {
     fn attach(&mut self) -> Result<(), DebugProbeError> {
         log::debug!("Attaching to target system (clock = {}kHz)", self.speed_khz);
 
-        let protocol = if let Some(protocol) = self.protocol {
-            match protocol {
-                WireProtocol::Swd => ConnectRequest::Swd,
-                WireProtocol::Jtag => ConnectRequest::Jtag,
-            }
-        } else {
-            ConnectRequest::DefaultPort
-        };
-
-        let used_protocol = commands::send_command(&mut self.device, protocol)
-            .map_err(CmsisDapError::from)
-            .and_then(|v| match v {
-                ConnectResponse::SuccessfulInitForSWD => Ok(WireProtocol::Swd),
-                ConnectResponse::SuccessfulInitForJTAG => Ok(WireProtocol::Jtag),
-                ConnectResponse::InitFailed => Err(CmsisDapError::ErrorResponse),
-            })?;
-
-        // Store the actually used protocol, to handle cases where the default protocol is used.
-        log::info!("Using protocol {}", used_protocol);
-        self.protocol = Some(used_protocol);
+        // Run connect sequence (may already be done earlier via swj operations)
+        self.connect_if_needed()?;
 
         // Set speed after connecting as it can be reset during protocol selection
         self.set_speed(self.speed_khz)?;
@@ -471,6 +485,8 @@ impl DebugProbe for CmsisDap {
         // Tell probe we are disconnected so it can turn off its LED.
         let _: Result<HostStatusResponse, _> =
             commands::send_command(&mut self.device, HostStatusRequest::connected(false));
+
+        self.connected = false;
 
         match response {
             DisconnectResponse(Status::DAPOk) => Ok(()),
@@ -709,6 +725,8 @@ impl RawDapAccess for CmsisDap {
     }
 
     fn swj_sequence(&mut self, bit_len: u8, bits: u64) -> Result<(), DebugProbeError> {
+        self.connect_if_needed()?;
+
         let data = bits.to_le_bytes();
 
         self.send_swj_sequences(SequenceRequest::new(&data, bit_len)?)?;
@@ -722,6 +740,8 @@ impl RawDapAccess for CmsisDap {
         pin_select: u32,
         pin_wait: u32,
     ) -> Result<u32, DebugProbeError> {
+        self.connect_if_needed()?;
+
         let request = SWJPinsRequest::from_raw_values(pin_out as u8, pin_select as u8, pin_wait);
 
         let Pins(response) = commands::send_command(&mut self.device, request)?;
