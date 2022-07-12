@@ -43,6 +43,18 @@ impl Nrf for Nrf5340 {
             .collect()
     }
 
+    fn is_core_unlocked(
+        &self,
+        arm_interface: &mut ArmCommunicationInterface<Initialized>,
+        ahb_ap_address: ApAddress,
+        _ctrl_ap_address: ApAddress,
+    ) -> Result<bool, crate::Error> {
+        let csw: CSW = arm_interface
+            .read_raw_ap_register(ahb_ap_address, 0x00)?
+            .into();
+        Ok(csw.DeviceEn != 0)
+    }
+
     fn has_network_core(&self) -> bool {
         true
     }
@@ -62,7 +74,7 @@ impl Nrf for Nrf9160 {
     fn core_aps(&self, interface: &mut Memory) -> Vec<(ApAddress, ApAddress)> {
         let ap_address = interface.get_ap();
 
-        let core_aps = [(0, 2)];
+        let core_aps = [(0, 4)];
 
         core_aps
             .into_iter()
@@ -81,6 +93,16 @@ impl Nrf for Nrf9160 {
             .collect()
     }
 
+    fn is_core_unlocked(
+        &self,
+        arm_interface: &mut ArmCommunicationInterface<Initialized>,
+        _ahb_ap_address: ApAddress,
+        ctrl_ap_address: ApAddress,
+    ) -> Result<bool, crate::Error> {
+        let approtect_status = arm_interface.read_raw_ap_register(ctrl_ap_address, 0x00C)?;
+        Ok(approtect_status != 0)
+    }
+
     fn has_network_core(&self) -> bool {
         false
     }
@@ -89,6 +111,14 @@ impl Nrf for Nrf9160 {
 trait Nrf: Sync + Send {
     /// Returns the ahb_ap and ctrl_ap of every core
     fn core_aps(&self, memory: &mut Memory) -> Vec<(ApAddress, ApAddress)>;
+
+    /// Returns true when the core is unlocked and false when it is locked.
+    fn is_core_unlocked(
+        &self,
+        arm_interface: &mut ArmCommunicationInterface<Initialized>,
+        ahb_ap_address: ApAddress,
+        ctrl_ap_address: ApAddress,
+    ) -> Result<bool, crate::Error>;
 
     /// Returns true if a network core is present
     fn has_network_core(&self) -> bool;
@@ -99,16 +129,6 @@ const ERASEALLSTATUS: u8 = 0x08;
 
 const APPLICATION_RESET_S_NETWORK_FORCEOFF_REGISTER: u32 = 0x50005614;
 const RELEASE_FORCEOFF: u32 = 0;
-
-/// Returns true when the core is unlocked and false when it is locked.
-/// The `ap_address` must be of the ahb ap of the core.
-fn is_core_unlocked(
-    arm_interface: &mut ArmCommunicationInterface<Initialized>,
-    ap_address: ApAddress,
-) -> Result<bool, crate::Error> {
-    let csw: CSW = arm_interface.read_raw_ap_register(ap_address, 0x00)?.into();
-    Ok(csw.DeviceEn != 0)
-}
 
 /// Unlocks the core by performing an erase all procedure.
 /// The `ap_address` must be of the ctrl ap of the core.
@@ -150,7 +170,11 @@ impl<T: Nrf> ArmDebugSequence for T {
             self.core_aps(&mut interface).iter().copied().enumerate()
         {
             log::info!("Checking if core {} is unlocked", core_index);
-            if is_core_unlocked(interface.get_arm_interface()?, core_ahb_ap_address)? {
+            if self.is_core_unlocked(
+                interface.get_arm_interface()?,
+                core_ahb_ap_address,
+                core_ctrl_ap_address,
+            )? {
                 log::info!("Core {} is already unlocked", core_index);
                 continue;
             }
@@ -165,7 +189,11 @@ impl<T: Nrf> ArmDebugSequence for T {
                 permissions,
             )?;
 
-            if !is_core_unlocked(interface.get_arm_interface()?, core_ahb_ap_address)? {
+            if !self.is_core_unlocked(
+                interface.get_arm_interface()?,
+                core_ahb_ap_address,
+                core_ctrl_ap_address,
+            )? {
                 return Err(crate::Error::ArchitectureSpecific(
                     format!("Could not unlock core {}", core_index).into(),
                 ));
