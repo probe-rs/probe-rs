@@ -5,6 +5,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.13.0]
+
 ### Added
 
 - Added an option to disable use of double-buffering when downloading flash (#1030, #883)
@@ -132,6 +134,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - debugger: Show progress notification while device is being flashed. (#871, #884)
 - Add optional ability to load fixed address flashing algorithms (non PIC). (#822)
 - Added `probe-rs-cli run` command, to flash and run a binary showing RTT output.
+- Added a new USB VID for ST-Link V3 without Mass Storage. (#1070)
 
 ### Removed
 
@@ -164,6 +167,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Breaking change: `probe-rs-debugger` and the associated [VSCode extension PR #21](https://github.com/probe-rs/vscode/pull/21) now uses camelCase for all `launch.json` properties (#885)
 - Publicly export `core::RegisterFile` type.
 - The trait surface for DAP/AP/DP access was cleaned up and more clarity around the access level of the API was added by properly putting `Raw` or not in the name.
+- `target-gen` now deduplicates flash algorithms when generating target files. (#1010)
 
 ### Fixed
 
@@ -585,7 +589,8 @@ Initial release on crates.io
 - Working basic flash downloader with nRF51.
 - Introduce cargo-flash which can automatically build & flash the target elf file.
 
-[unreleased]: https://github.com/probe-rs/probe-rs/compare/0.12.0...master
+[unreleased]: https://github.com/probe-rs/probe-rs/compare/0.13.0...master
+[0.13.0]: https://github.com/probe-rs/probe-rs/compare/0.12.0...0.13.0
 [0.12.0]: https://github.com/probe-rs/probe-rs/compare/0.11.0...0.12.0
 [0.11.0]: https://github.com/probe-rs/probe-rs/compare/v0.10.1...0.11.0
 [0.11.0-alpha.1]: https://github.com/probe-rs/probe-rs/compare/v0.10.1...0.11.0-alpha.1

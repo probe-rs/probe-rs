@@ -1,6 +1,6 @@
 [package]
 name = "gdb-server"
-version = "0.12.0"
+version = "0.13.0"
 authors = ["Noah Hüsser <yatekii@yatekii.ch>", "Dominik Boehi <dominik.boehi@gmail.ch>"]
 edition = "2021"
 description = "A gdb stub implementation for on chip debugging and flashing of ARM chips."
@@ -20,7 +20,7 @@ path = "src/lib.rs"
 ftdi = ["probe-rs/ftdi"]
 
 [dependencies]
-probe-rs = { path = "../probe-rs", version = "0.12.0" }
+probe-rs = { path = "../probe-rs", version = "0.13.0" }
 log = "0.4.0"
 anyhow = "1.0.31"
 itertools = "0.10.3"

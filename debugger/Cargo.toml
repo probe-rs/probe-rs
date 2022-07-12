@@ -1,6 +1,6 @@
 [package]
 name = "probe-rs-debugger"
-version = "0.12.0"
+version = "0.13.0"
 authors = [
     "Noah Hüsser <yatekii@yatekii.ch>",
     "Dominik Boehi <dominik.boehi@gmail.ch>",
@@ -20,8 +20,8 @@ license = "MIT OR Apache-2.0"
 ftdi = ["probe-rs/ftdi"]
 
 [dependencies]
-probe-rs = { version = "0.12.0", path = "../probe-rs" }
-probe-rs-cli-util = { version = "0.12.0", path = "../probe-rs-cli-util" }
+probe-rs = { version = "0.13.0", path = "../probe-rs" }
+probe-rs-cli-util = { version = "0.13.0", path = "../probe-rs-cli-util" }
 
 env_logger = "0.9.0"
 log = "0.4.6"

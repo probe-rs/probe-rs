@@ -1,6 +1,6 @@
 [package]
 name = "probe-rs-target"
-version = "0.12.0"
+version = "0.13.0"
 edition = "2021"
 description = "Target description schema for probe-rs."
 documentation = "https://docs.rs/probe-rs/"
