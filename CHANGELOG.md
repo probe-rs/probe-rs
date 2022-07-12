@@ -109,6 +109,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Partial Fix: Set breakpoints and step on RISC-V. Breakpoints work but stepping only works for some breakpoints. This will be addressed in a future PR.
 - Fix nrf9160 target file so it can erase UICR section (#1151)
 - Fix connect under reset for CMSIS-DAP probes(#1159)
+- Fix double default algorithms for the stm32f7x line with 1MB flash (#1171)
 
 ## [0.12.0]
 
