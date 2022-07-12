@@ -60,7 +60,7 @@ pub(crate) fn target(core: &mut Core, elf: &Elf, active_ram_region: &Option<RamR
             pc,
             &elf.vector_table,
             &mut output,
-            sp.into(),
+            sp,
             active_ram_region,
         ) {
             output.outcome = outcome;
