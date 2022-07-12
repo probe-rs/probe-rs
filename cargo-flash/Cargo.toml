@@ -1,6 +1,6 @@
 [package]
 name = "cargo-flash"
-version = "0.12.1"
+version = "0.13.0"
 authors = [
     "Noah Hüsser <yatekii@yatekii.ch>",
     "Dominik Boehi <dominik.boehi@gmail.com>",
@@ -24,8 +24,8 @@ sentry = ["probe-rs-cli-util/sentry"]
 env_logger = "0.9.0"
 lazy_static = "1.4.0"
 colored = "2.0.0"
-probe-rs = { version = "0.12.0", git = "https://github.com/probe-rs/probe-rs" }
-probe-rs-cli-util = { version = "0.12.0", git = "https://github.com/probe-rs/probe-rs", default-features = false, features = [
+probe-rs = { version = "0.13.0", git = "https://github.com/probe-rs/probe-rs" }
+probe-rs-cli-util = { version = "0.13.0", git = "https://github.com/probe-rs/probe-rs", default-features = false, features = [
     "anyhow",
 ] }
 git-version = "0.3.5"
