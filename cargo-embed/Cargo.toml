@@ -1,6 +1,6 @@
 [package]
 name = "cargo-embed"
-version = "0.12.0"
+version = "0.13.0"
 authors = ["Noah Hüsser <yatekii@yatekii.ch>"]
 edition = "2018"
 description = "A utility to develop software for embedded ARM and RISC-V cores."
@@ -18,10 +18,12 @@ ftdi = ["probe-rs/ftdi"]
 sentry = ["probe-rs-cli-util/sentry"]
 
 [dependencies]
-probe-rs = { version = "0.12.0", git = "https://github.com/probe-rs/probe-rs" }
-gdb-server = { version = "0.12.0", git = "https://github.com/probe-rs/probe-rs"  }
-probe-rs-cli-util = { version = "0.12.0", git = "https://github.com/probe-rs/probe-rs", default-features = false, features=["anyhow"] }
-probe-rs-rtt = { version = "0.12.0", git = "https://github.com/probe-rs/probe-rs" }
+probe-rs = { version = "0.13.0", git = "https://github.com/probe-rs/probe-rs" }
+gdb-server = { version = "0.13.0", git = "https://github.com/probe-rs/probe-rs" }
+probe-rs-cli-util = { version = "0.13.0", git = "https://github.com/probe-rs/probe-rs", default-features = false, features = [
+    "anyhow",
+] }
+probe-rs-rtt = { version = "0.13.0", git = "https://github.com/probe-rs/probe-rs" }
 
 git-version = "0.3.5"
 env_logger = "0.9.0"
