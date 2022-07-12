@@ -1,12 +1,12 @@
 [package]
 name = "rtthost"
-version = "0.12.0"
+version = "0.13.0"
 edition = "2021"
 license = "MIT"
 authors = ["Matti Virkkunen <mvirkkunen@gmail.com>"]
 
 [dependencies]
 pretty_env_logger = "0.4.0"
-probe-rs = { version = "0.12.0", path = "../probe-rs" }
-probe-rs-rtt = { version = "0.12.0", path = "../rtt" }
+probe-rs = { version = "0.13.0", path = "../probe-rs" }
+probe-rs-rtt = { version = "0.13.0", path = "../rtt" }
 clap = { version = "3.0", features = ["derive"] }

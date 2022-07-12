@@ -1,6 +1,6 @@
 [package]
 name = "target-gen"
-version = "0.12.0"
+version = "0.13.0"
 authors = ["Noah Huesser <yatekii@yatekii.ch>"]
 edition = "2018"
 description = "A cli tool to create new target files for probe-rs ot of CMSIS-Packs."
@@ -15,8 +15,8 @@ license = "MIT OR Apache-2.0"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-probe-rs = { path = "../probe-rs", version = "0.12.0", default-features = false }
-probe-rs-target = { path = "../probe-rs-target", version = "0.12.0", default-features = false }
+probe-rs = { path = "../probe-rs", version = "0.13.0", default-features = false }
+probe-rs-target = { path = "../probe-rs-target", version = "0.13.0", default-features = false }
 cmsis-pack = { version = "0.6.0" }
 
 # , path = "../cmsis-pack-manager/rust/cmsis-pack"

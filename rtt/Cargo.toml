@@ -1,7 +1,7 @@
 [package]
 name = "probe-rs-rtt"
 description = "Host side implementation of the RTT (Real-Time Transfer) I/O protocol over probe-rs"
-version = "0.12.0"
+version = "0.13.0"
 edition = "2021"
 readme = "../README.md"
 keywords = ["embedded", "debugging", "rtt"]
@@ -11,7 +11,7 @@ repository = "https://github.com/probe-rs/probe-rs"
 
 [dependencies]
 log = "0.4.8"
-probe-rs = { version = "0.12.0", path = "../probe-rs" }
+probe-rs = { version = "0.13.0", path = "../probe-rs" }
 scroll = "0.10.1"
 serde = { version = "1.0", features = ["derive"] }
 thiserror = "1.0.11"
