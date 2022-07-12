@@ -19,7 +19,7 @@ license = "MIT OR Apache-2.0"
 default = ["anyhow"]
 
 [dependencies]
-probe-rs-rtt = { path = "../rtt" }
+probe-rs-rtt = { version = "0.13.0", path = "../rtt" }
 probe-rs = { version = "0.13.0", path = "../probe-rs" }
 
 thiserror = "1.0"
