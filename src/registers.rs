@@ -1,11 +1,11 @@
 use std::collections::{btree_map, BTreeMap};
 
 use gimli::{read::CfaRule, EndianSlice, LittleEndian, Register, RegisterRule};
-use probe_rs::{Core, CoreRegisterAddress, MemoryInterface};
+use probe_rs::{Core, MemoryInterface, RegisterId};
 
-pub const LR: CoreRegisterAddress = CoreRegisterAddress(14);
-pub const PC: CoreRegisterAddress = CoreRegisterAddress(15);
-pub const SP: CoreRegisterAddress = CoreRegisterAddress(13);
+pub const LR: RegisterId = RegisterId(14);
+pub const PC: RegisterId = RegisterId(15);
+pub const SP: RegisterId = RegisterId(13);
 
 pub const LR_END: u32 = 0xFFFF_FFFF;
 
@@ -23,14 +23,14 @@ impl<'c, 'probe> Registers<'c, 'probe> {
         Self { cache, core }
     }
 
-    pub fn get(&mut self, reg: CoreRegisterAddress) -> anyhow::Result<u32> {
+    pub fn get(&mut self, reg: RegisterId) -> anyhow::Result<u32> {
         Ok(match self.cache.entry(reg.0) {
             btree_map::Entry::Occupied(entry) => *entry.get(),
             btree_map::Entry::Vacant(entry) => *entry.insert(self.core.read_core_reg(reg)?),
         })
     }
 
-    pub fn insert(&mut self, reg: CoreRegisterAddress, val: u32) {
+    pub fn insert(&mut self, reg: RegisterId, val: u32) {
         self.cache.insert(reg.0, val);
     }
 
@@ -44,7 +44,7 @@ impl<'c, 'probe> Registers<'c, 'probe> {
     ) -> anyhow::Result</* cfa_changed: */ bool> {
         match rule {
             CfaRule::RegisterAndOffset { register, offset } => {
-                let cfa = (i64::from(self.get(gimli2probe(register))?) + offset) as u32;
+                let cfa = (i64::from(self.get(gimli2probe(register))?) + offset) as u32; // wrapping_add_signed
                 let old_cfa = self.cache.get(&SP.0);
                 let changed = old_cfa != Some(&cfa);
                 if changed {
@@ -67,7 +67,7 @@ impl<'c, 'probe> Registers<'c, 'probe> {
             RegisterRule::Offset(offset) => {
                 let cfa = self.get(SP)?;
                 let addr = (cfa as i64 + offset) as u32;
-                let value = self.core.read_word_32(addr)?;
+                let value = self.core.read_word_32(addr.into())?;
                 log::trace!(
                     "update reg={:?}, rule={:?}, abs={:#010x} -> value={:#010x}",
                     reg,
@@ -84,6 +84,6 @@ impl<'c, 'probe> Registers<'c, 'probe> {
     }
 }
 
-fn gimli2probe(reg: &Register) -> CoreRegisterAddress {
-    CoreRegisterAddress(reg.0)
+fn gimli2probe(reg: &Register) -> RegisterId {
+    RegisterId(reg.0)
 }

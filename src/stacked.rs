@@ -64,7 +64,7 @@ impl Stacked {
             return Ok(None);
         }
 
-        core.read_32(start, registers)?;
+        core.read_32(start.into(), registers)?;
 
         Ok(Some(Stacked {
             lr: registers[0],

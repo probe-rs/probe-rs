@@ -14,6 +14,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/) and this p
 - [#317] Clarify "can't determine stack overflow" error message
 - [#314] Clarify documentation in README
 - [#293] Update snapshot tests to new TRACE output
+- Update probe-rs to 0.13.0 (does not yet implement 64-bit support)
 
 [#328]: https://github.com/knurling-rs/probe-run/pull/328
 [#326]: https://github.com/knurling-rs/probe-run/pull/326

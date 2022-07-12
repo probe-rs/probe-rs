@@ -1,6 +1,6 @@
 use std::time::Instant;
 
-use probe_rs::{Core, MemoryInterface, Session};
+use probe_rs::{Core, MemoryInterface, RegisterValue, Session};
 
 use crate::{registers::PC, Elf, TargetInfo, TIMEOUT};
 
@@ -116,7 +116,7 @@ impl Canary {
         }
         let mut canary = vec![0; self.size];
         let start = Instant::now();
-        core.read_8(self.address, &mut canary)?;
+        core.read_8(self.address.into(), &mut canary)?;
         let seconds = start.elapsed().as_secs_f64();
         log::trace!(
             "reading canary took {seconds:.3}s ({:.2} KiB/s)",
@@ -195,10 +195,13 @@ fn paint_stack(core: &mut Core, start: u32, end: u32) -> Result<(), probe_rs::Er
 
     // write subroutine to RAM
     // NOTE: add `SUBROUTINE_LENGTH` to `start`, to avoid the subroutine overwriting itself
-    core.write_8(start, &subroutine(start + SUBROUTINE_LENGTH as u32, end))?;
+    core.write_8(
+        start.into(),
+        &subroutine(start + SUBROUTINE_LENGTH as u32, end),
+    )?;
 
     // store current PC and set PC to beginning of subroutine
-    let previous_pc = core.read_core_reg(PC)?;
+    let previous_pc: RegisterValue = core.read_core_reg(PC)?;
     core.write_core_reg(PC, start)?;
 
     // execute the subroutine and wait for it to finish
@@ -206,7 +209,7 @@ fn paint_stack(core: &mut Core, start: u32, end: u32) -> Result<(), probe_rs::Er
     core.wait_for_core_halted(TIMEOUT)?;
 
     // overwrite subroutine
-    core.write_8(start, &[CANARY_VALUE; SUBROUTINE_LENGTH])?;
+    core.write_8(start.into(), &[CANARY_VALUE; SUBROUTINE_LENGTH])?;
 
     // reset PC to where it was before
     core.write_core_reg(PC, previous_pc)?;

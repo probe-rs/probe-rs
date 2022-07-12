@@ -200,8 +200,8 @@ fn extract_symbols(elf: &ObjectFile) -> anyhow::Result<Symbols> {
         main_fn_address.ok_or_else(|| anyhow!("`main` symbol not found"))?;
 
     Ok(Symbols {
-        rtt_buffer_address,
+        rtt_buffer_address: rtt_buffer_address.map(|v| v.into()),
         program_uses_heap,
-        main_fn_address: main_function_address,
+        main_fn_address: main_function_address.into(),
     })
 }
