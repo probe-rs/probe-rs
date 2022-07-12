@@ -9,9 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Update to latest probe-rs
-
 ### Fixed
+
+## [0.13.0]
+
+### Changed
+
+- Update to probe-rs 0.13.0.
 
 ## [0.12.0]
 
@@ -43,7 +47,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Updated to probe-rs 0.10.0. Please consult its own changelog for new features and fixes.
 - Added logging to sentry.io. This is 100% OPT-IN! You will be asked only if an unhandled error or panic occurs, and only if you give consent, data is transmitted. If you do not trust us either way, you can disable the `sentry` feature when you install the crate. The completely anonymous data can be investigated on sentry.io by anyone who likes to see it. Unfortunately sentry.io does not feature public orgs yet, so please reach out to @Yatekii to be added.
-Sentry helps us track down tricky issues that only occur in very specific cases. It is very much appreciated if you log upcoming errors this way (#125)!
+  Sentry helps us track down tricky issues that only occur in very specific cases. It is very much appreciated if you log upcoming errors this way (#125)!
 - Added printing of the git hash cargo-embed was compiled with and the current package version (#116).
 
 ### Changed
@@ -69,14 +73,14 @@ Sentry helps us track down tricky issues that only occur in very specific cases.
 
 - The config supports a new section called `reset`. It controls whether the target is reset. Default config:
 
-    ```toml
-    [default.reset]
-    # Whether or not the target should be reset.
-    # When flashing is enabled as well, the target will be reset after flashing.
-    enabled = true
-    # Whether or not the target should be halted after reset.
-    halt_afterwards = false
-    ```
+  ```toml
+  [default.reset]
+  # Whether or not the target should be reset.
+  # When flashing is enabled as well, the target will be reset after flashing.
+  enabled = true
+  # Whether or not the target should be halted after reset.
+  halt_afterwards = false
+  ```
 
   This way, you can add a `cargo embed` target that allows resetting and
   optionally halting without flashing. Useful for debugging.
@@ -104,36 +108,35 @@ Sentry helps us track down tricky issues that only occur in very specific cases.
 
 - Add Windows support with the help of crossterm instead of termion.
 - Introduced deriveable configs. With deriveable configs it is possible to create multible configs and derive parts of a config from another.
-An example is this config:
+  An example is this config:
 
-    ```toml
-    [rtt.rtt]
-    enabled = true
+      ```toml
+      [rtt.rtt]
+      enabled = true
 
-    [rtt.gdb]
-    enabled = false
+      [rtt.gdb]
+      enabled = false
 
-    [gdb.rtt]
-    enabled = false
+      [gdb.rtt]
+      enabled = false
 
-    [gdb.gdb]
-    enabled = true
-    ```
+      [gdb.gdb]
+      enabled = true
+      ```
 
-    This creates a config which has three configs:
-    - The default one with the prefix "default" as found in [default.toml](src/config/default.toml)
-    - A config with the prefix "rtt" which inherits from "default" implicitely (use general.derives = "prefix" to derive from a specific config) which has RTT enabled but GDB disabled.
-    - A config with the prefix "gdb" which inherits from "default" implicitely (use general.derives = "prefix" to derive from a specific config) which has GDB enabled but RTT disabled.
-    To use a specific config, call `cargo-embed prefix`.
-    NOTE: This is a congig breaking change! You must update your `Embed.toml` configs!
-
+      This creates a config which has three configs:
+      - The default one with the prefix "default" as found in [default.toml](src/config/default.toml)
+      - A config with the prefix "rtt" which inherits from "default" implicitely (use general.derives = "prefix" to derive from a specific config) which has RTT enabled but GDB disabled.
+      - A config with the prefix "gdb" which inherits from "default" implicitely (use general.derives = "prefix" to derive from a specific config) which has GDB enabled but RTT disabled.
+      To use a specific config, call `cargo-embed prefix`.
+      NOTE: This is a congig breaking change! You must update your `Embed.toml` configs!
 
 ### Changed
 
 - The `probe.probe_selector` property is now split into three properties:
-    - usb_vid
-    - usb_pid
-    - serial
+  - usb_vid
+  - usb_pid
+  - serial
 - The `RUST_LOG` environment variable can now override the log level set in the config.
 - Improved errors by a large margin by properly displaying the stacked errors with the help of anyhow.
 
@@ -171,9 +174,11 @@ An example is this config:
 - Added host timestamps to the RTT printouts.
 
 ## [0.6.0]
+
 - Initial release
 
-[Unreleased]: https://github.com/probe-rs/cargo-embed/compare/v0.12.0..master
+[unreleased]: https://github.com/probe-rs/cargo-embed/compare/v0.13.0...master
+[0.13.0]: https://github.com/probe-rs/cargo-embed/releases/tag/v0.12.0..v0.13.0
 [0.12.0]: https://github.com/probe-rs/cargo-embed/releases/tag/v0.11.0..v0.12.0
 [0.11.0]: https://github.com/probe-rs/cargo-embed/releases/tag/v0.10.1..v0.11.0
 [0.10.1]: https://github.com/probe-rs/cargo-embed/releases/tag/v0.10.0..v0.10.1
