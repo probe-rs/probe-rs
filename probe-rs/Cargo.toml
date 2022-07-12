@@ -30,7 +30,7 @@ ftdi-vendored = ["libftdi1-sys/vendored", "libftdi1-sys/libusb1-sys"]
 anyhow = "1.0.31"
 base64 = "0.13.0"
 bincode = "1.3.2"
-bitfield = "0.13.2"
+bitfield = "0.14.0"
 bitvec = "1.0"
 enum-primitive-derive = "0.2.1"
 gimli = { version = "0.26.1", default-features = false, features = [
