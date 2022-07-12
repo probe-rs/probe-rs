@@ -21,7 +21,7 @@ fn main() -> Result<()> {
         .unwrap();
 
     // This is an example on how to do a "recover" operation (erase+unlock a locked chip)
-    // on an nRF52840 target.
+    // on an nRF5340 target.
 
     const APP_MEM: ApAddress = ApAddress {
         ap: 0,
