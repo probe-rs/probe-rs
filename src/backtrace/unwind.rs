@@ -56,13 +56,9 @@ pub(crate) fn target(core: &mut Core, elf: &Elf, active_ram_region: &Option<RamR
     let mut registers = Registers::new(lr, sp, core);
 
     loop {
-        if let Some(outcome) = check_hard_fault(
-            pc,
-            &elf.vector_table,
-            &mut output,
-            sp,
-            active_ram_region,
-        ) {
+        if let Some(outcome) =
+            check_hard_fault(pc, &elf.vector_table, &mut output, sp, active_ram_region)
+        {
             output.outcome = outcome;
         }
 
