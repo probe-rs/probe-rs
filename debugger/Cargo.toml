@@ -32,7 +32,7 @@ thiserror = "1.0"
 anyhow = "1.0.34"
 parse_int = "0.6.0"
 num-traits = "0.2.14"
-bitfield = "0.13.2"
+bitfield = "0.14.0"
 serde_json = "^1.0"
 serde = { version = "^1.0", features = ["derive"] }
 schemafy = "^0.6"
