@@ -72,14 +72,14 @@ fn check_processor_target_compatability(cores: &[Core], elf_path: &Path) {
                 || target == "thumbv8m.main-none-eabi"
                 || target == "thumbv8m.main-none-eabihf"
         }
+        CoreType::Armv8a => {
+            log::warn!("Unsupported architecture ({core_type:?}");
+            return;
+        }
         // NOTE(return) Since we do not get any info about instruction
         // set support from probe-rs we do not know which compilation
         // targets fit.
         CoreType::Riscv => return,
-        _ => {
-            log::warn!("Unsupported architecture ({core_type:?}");
-            return;
-        }
     };
 
     if matches {
@@ -88,13 +88,15 @@ fn check_processor_target_compatability(cores: &[Core], elf_path: &Path) {
     let recommendation = match core_type {
         CoreType::Armv6m => "must be 'thumbv6m-none-eabi'",
         CoreType::Armv7m => "should be 'thumbv7m-none-eabi'",
+        CoreType::Armv7a => "should be 'thumbv7a-none-eabi'",
         CoreType::Armv7em => {
             "should be 'thumbv7em-none-eabi' (no FPU) or 'thumbv7em-none-eabihf' (with FPU)"
         }
         CoreType::Armv8m => {
             "should be 'thumbv8m.base-none-eabi' (M23), 'thumbv8m.main-none-eabi' (M33 no FPU), or 'thumbv8m.main-none-eabihf' (M33 with FPU)"
         }
-        _ => unreachable!(),
+        CoreType::Armv8a => unreachable!(),
+        CoreType::Riscv => unreachable!(),
     };
     log::warn!("Compilation target ({target}) and core type ({core_type:?}) do not match. Your compilation target {recommendation}.");
 }
