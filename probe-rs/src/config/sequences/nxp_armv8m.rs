@@ -248,11 +248,14 @@ impl ArmDebugSequence for LPC55Sxx {
         let mut timeout = true;
 
         while start.elapsed() < Duration::from_micros(50_0000) {
-            let dhcsr = Dhcsr(interface.read_word_32(Dhcsr::get_mmio_address())?);
+            if let Ok(v) = interface.read_word_32(Dhcsr::get_mmio_address()) {
+                let dhcsr = Dhcsr(v);
 
-            if !dhcsr.s_reset_st() {
-                timeout = false;
-                break;
+                // Wait until the S_RESET_ST bit is cleared on a read
+                if !dhcsr.s_reset_st() {
+                    timeout = false;
+                    break;
+                }
             }
         }
 
@@ -288,11 +291,14 @@ fn wait_for_stop_after_reset(memory: &mut dyn ArmProbe) -> Result<(), ArmError> 
     tracing::info!("Polling for reset");
 
     while start.elapsed() < Duration::from_micros(50_0000) {
-        let dhcsr = Dhcsr(memory.read_word_32(Dhcsr::get_mmio_address())?);
+        if let Ok(v) = memory.read_word_32(Dhcsr::get_mmio_address()) {
+            let dhcsr = Dhcsr(v);
 
-        if !dhcsr.s_reset_st() {
-            timeout = false;
-            break;
+            // Wait until the S_RESET_ST bit is cleared on a read
+            if !dhcsr.s_reset_st() {
+                timeout = false;
+                break;
+            }
         }
     }
 
