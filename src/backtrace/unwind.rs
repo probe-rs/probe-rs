@@ -114,7 +114,10 @@ pub(crate) fn target(core: &mut Core, elf: &Elf, active_ram_region: &Option<RamR
             let sp = unwrap_or_return_output!(registers.get(registers::SP));
             let ram_bounds = active_ram_region
                 .as_ref()
-                .map(|ram_region| ram_region.range.clone())
+                .map(|ram_region| {
+                    ram_region.range.start.try_into().unwrap_or(u32::MAX)
+                        ..ram_region.range.end.try_into().unwrap_or(u32::MAX)
+                })
                 .unwrap_or(cortexm::VALID_RAM_ADDRESS);
             let stacked = if let Some(stacked) =
                 unwrap_or_return_output!(Stacked::read(registers.core, sp, fpu, ram_bounds))
@@ -195,7 +198,7 @@ fn overflowed_stack(sp: u32, active_ram_region: &Option<RamRegion>) -> bool {
         // NOTE stack is full descending; meaning the stack pointer can be
         // `ORIGIN(RAM) + LENGTH(RAM)`
         let range = active_ram_region.range.start..=active_ram_region.range.end;
-        !range.contains(&sp)
+        !range.contains(&sp.into())
     } else {
         log::warn!("no RAM region appears to contain the stack; probe-run can't determine if this was a stack overflow");
         false

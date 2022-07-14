@@ -6,6 +6,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/) and this p
 
 ## [Unreleased]
 
+- [#329] Update probe-rs to 0.13.0 (does not yet implement 64-bit support)
 - [#328] Simplify, by capturing identifiers in logging macros
 - [#326] Make use of i/o locking being static since rust `1.61`.
 - [#321] CI: Add changelog-enforcer
@@ -15,6 +16,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/) and this p
 - [#314] Clarify documentation in README
 - [#293] Update snapshot tests to new TRACE output
 
+[#329]: https://github.com/knurling-rs/probe-run/pull/329
 [#328]: https://github.com/knurling-rs/probe-run/pull/328
 [#326]: https://github.com/knurling-rs/probe-run/pull/326
 [#321]: https://github.com/knurling-rs/probe-run/pull/321

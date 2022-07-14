@@ -71,9 +71,14 @@ fn check_processor_target_compatability(cores: &[Core], elf_path: &Path) {
                 || target == "thumbv8m.main-none-eabi"
                 || target == "thumbv8m.main-none-eabihf"
         }
-        CoreType::Riscv => return, // NOTE(return) Since we do not get any info about instruction
-                                   // set support from probe-rs we do not know which compilation
-                                   // targets fit.
+        CoreType::Armv7a | CoreType::Armv8a => {
+            log::warn!("Unsupported architecture ({core_type:?}");
+            return;
+        }
+        // NOTE(return) Since we do not get any info about instruction
+        // set support from probe-rs we do not know which compilation
+        // targets fit.
+        CoreType::Riscv => return,
     };
 
     if matches {
@@ -88,6 +93,7 @@ fn check_processor_target_compatability(cores: &[Core], elf_path: &Path) {
         CoreType::Armv8m => {
             "should be 'thumbv8m.base-none-eabi' (M23), 'thumbv8m.main-none-eabi' (M33 no FPU), or 'thumbv8m.main-none-eabihf' (M33 with FPU)"
         }
+        CoreType::Armv7a | CoreType::Armv8a => unreachable!(),
         CoreType::Riscv => unreachable!(),
     };
     log::warn!("Compilation target ({target}) and core type ({core_type:?}) do not match. Your compilation target {recommendation}.");
@@ -105,7 +111,7 @@ fn extract_active_ram_region(
                 // NOTE stack is full descending; meaning the stack pointer can be
                 // `ORIGIN(RAM) + LENGTH(RAM)`
                 let inclusive_range = ram_region.range.start..=ram_region.range.end;
-                if inclusive_range.contains(&initial_stack_pointer) {
+                if inclusive_range.contains(&initial_stack_pointer.into()) {
                     log::debug!(
                         "RAM region: 0x{:08X}-0x{:08X}",
                         ram_region.range.start,
@@ -121,7 +127,7 @@ fn extract_active_ram_region(
         .cloned()
 }
 
-fn extract_stack_info(elf: &Elf, ram_range: &Range<u32>) -> Option<StackInfo> {
+fn extract_stack_info(elf: &Elf, ram_range: &Range<u64>) -> Option<StackInfo> {
     // How does it work?
     // - the upper end of the stack is the initial SP, minus one
     // - the lower end of the stack is the highest address any section in the elf file uses, plus one
@@ -129,7 +135,8 @@ fn extract_stack_info(elf: &Elf, ram_range: &Range<u32>) -> Option<StackInfo> {
     let initial_stack_pointer = elf.vector_table.initial_stack_pointer;
 
     // SP points one word (4-byte) past the end of the stack.
-    let mut stack_range = ram_range.start..=initial_stack_pointer - 4;
+    let mut stack_range =
+        ram_range.start.try_into().unwrap_or(u32::MAX)..=initial_stack_pointer - 4;
 
     for section in elf.sections() {
         let size: u32 = section.size().try_into().expect("expected 32-bit ELF");
@@ -142,7 +149,7 @@ fn extract_stack_info(elf: &Elf, ram_range: &Range<u32>) -> Option<StackInfo> {
         let section_range = lowest_address..=highest_address;
         let name = section.name().unwrap_or("<unknown>");
 
-        if ram_range.contains(section_range.end()) {
+        if ram_range.contains(&(*section_range.end() as u64)) {
             log::debug!("section `{}` is in RAM at {:#010X?}", name, section_range);
 
             if section_range.contains(stack_range.end()) {
@@ -159,7 +166,7 @@ fn extract_stack_info(elf: &Elf, ram_range: &Range<u32>) -> Option<StackInfo> {
 
     log::debug!("valid SP range: {:#010X?}", stack_range);
     Some(StackInfo {
-        data_below_stack: *stack_range.start() > ram_range.start,
+        data_below_stack: *stack_range.start() as u64 > ram_range.start,
         range: stack_range,
     })
 }

@@ -27,7 +27,7 @@ use probe_rs::{
     flashing::{self, Format},
     Core,
     DebugProbeError::ProbeSpecific,
-    MemoryInterface as _, Session,
+    MemoryInterface as _, Permissions, Session,
 };
 use probe_rs_rtt::{Rtt, ScanRegion, UpChannel};
 use signal_hook::consts::signal;
@@ -63,9 +63,9 @@ fn run_target_program(elf_path: &Path, chip_name: &str, opts: &cli::Opts) -> any
 
     let probe_target = target_info.probe_target.clone();
     let mut sess = if opts.connect_under_reset {
-        probe.attach_under_reset(probe_target)?
+        probe.attach_under_reset(probe_target, Permissions::default())?
     } else {
-        let probe_attach = probe.attach(probe_target);
+        let probe_attach = probe.attach(probe_target, Permissions::default());
         if let Err(probe_rs::Error::Probe(ProbeSpecific(e))) = &probe_attach {
             // FIXME Using `to_string().contains(...)` is a workaround as the concrete type
             // of `e` is not public and therefore does not allow downcasting.
@@ -187,7 +187,7 @@ fn start_program(sess: &mut Session, elf: &Elf) -> anyhow::Result<()> {
     let mut core = sess.core(0)?;
 
     log::debug!("starting device");
-    if core.get_available_breakpoint_units()? == 0 {
+    if core.available_breakpoint_units()? == 0 {
         if elf.rtt_buffer_address().is_some() {
             bail!("RTT not supported on device without HW breakpoints");
         } else {
@@ -199,7 +199,7 @@ fn start_program(sess: &mut Session, elf: &Elf) -> anyhow::Result<()> {
         set_rtt_to_blocking(&mut core, elf.main_fn_address(), rtt_buffer_address)?
     }
 
-    core.set_hw_breakpoint(cortexm::clear_thumb_bit(elf.vector_table.hard_fault))?;
+    core.set_hw_breakpoint(cortexm::clear_thumb_bit(elf.vector_table.hard_fault).into())?;
     core.run()?;
 
     Ok(())
@@ -212,7 +212,7 @@ fn set_rtt_to_blocking(
     rtt_buffer_address: u32,
 ) -> anyhow::Result<()> {
     // set and wait for a hardware breakpoint at the beginning of `fn main()`
-    core.set_hw_breakpoint(main_fn_address)?;
+    core.set_hw_breakpoint(main_fn_address.into())?;
     core.run()?;
     core.wait_for_core_halted(Duration::from_secs(5))?;
 
@@ -222,16 +222,16 @@ fn set_rtt_to_blocking(
 
     // read flags
     let channel_flags = &mut [0];
-    core.read_32(rtt_buffer_address, channel_flags)?;
+    core.read_32(rtt_buffer_address.into(), channel_flags)?;
     // modify flags to blocking
     const MODE_MASK: u32 = 0b11;
     const MODE_BLOCK_IF_FULL: u32 = 0b10;
     let modified_channel_flags = (channel_flags[0] & !MODE_MASK) | MODE_BLOCK_IF_FULL;
     // write flags back
-    core.write_word_32(rtt_buffer_address, modified_channel_flags)?;
+    core.write_word_32(rtt_buffer_address.into(), modified_channel_flags)?;
 
     // clear the breakpoint we set before
-    core.clear_hw_breakpoint(main_fn_address)?;
+    core.clear_hw_breakpoint(main_fn_address.into())?;
 
     Ok(())
 }

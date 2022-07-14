@@ -11,7 +11,7 @@ dependencies = [
  "cpp_demangle",
  "fallible-iterator",
  "gimli",
- "object",
+ "object 0.27.1",
  "rustc-demangle",
 ]
 
@@ -79,9 +79,9 @@ dependencies = [
 
 [[package]]
 name = "bitfield"
-version = "0.13.2"
+version = "0.14.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "46afbd2983a5d5a7bd740ccb198caf5b82f45c40c09c0eed36052d91cb92e719"
+checksum = "2d7e60934ceec538daadb9d8432424ed043a904d8e0243f3c6446bce549a46ac"
 
 [[package]]
 name = "bitflags"
@@ -91,9 +91,9 @@ checksum = "bef38d45163c2f1dde094a7dfd33ccf595c92905c8f8f4fdc18d06fb1037718a"
 
 [[package]]
 name = "bitvec"
-version = "0.22.3"
+version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5237f00a8c86130a0cc317830e558b966dd7850d48a953d998c813f01a41b527"
+checksum = "1489fcb93a5bb47da0462ca93ad252ad6af2145cce58d10d46a83931ba9f016b"
 dependencies = [
  "funty",
  "radium",
@@ -213,7 +213,7 @@ dependencies = [
  "difference",
  "gimli",
  "log",
- "object",
+ "object 0.27.1",
  "ryu",
  "serde",
  "serde_json",
@@ -310,9 +310,9 @@ dependencies = [
 
 [[package]]
 name = "funty"
-version = "1.2.0"
+version = "2.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1847abb9cb65d566acd5942e94aea9c8f547ad02c98e1649326fc0e8910b8b1e"
+checksum = "e6d5a32815ae3f33302d95fdcb2ce17862f8c65363dcfd29360480ba1001fc9c"
 
 [[package]]
 name = "getrandom"
@@ -440,9 +440,9 @@ checksum = "b71991ff56294aa922b450139ee08b3bfc70982c6b2c7562771375cf73542dd4"
 
 [[package]]
 name = "jaylink"
-version = "0.2.0"
+version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3f58b72b6aa9d25083b8c19d292fe015a936185fa200d15e225e1524a18222e9"
+checksum = "2d891935e08397d85684c1d3c88b6a0a6941c6e15e9f04a1ae9e30079f0b0df0"
 dependencies = [
  "bitflags",
  "byteorder",
@@ -473,9 +473,9 @@ checksum = "fbe5e23404da5b4f555ef85ebed98fb4083e55a00c317800bc2a50ede9f3d219"
 
 [[package]]
 name = "libusb1-sys"
-version = "0.5.0"
+version = "0.6.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e22e89d08bbe6816c6c5d446203b859eba35b8fa94bf1b7edb2f6d25d43f023f"
+checksum = "6dfab089105aa85a3b492b421bd90d55e6257f00f8447cc3873c44f8206809ce"
 dependencies = [
  "cc",
  "libc",
@@ -576,6 +576,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "object"
+version = "0.29.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "21158b2c33aa6d4561f1c0a6ea283ca92bc54802a93b263e910746d679a7eb53"
+dependencies = [
+ "memchr",
+]
+
+[[package]]
 name = "once_cell"
 version = "1.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -645,9 +654,9 @@ dependencies = [
 
 [[package]]
 name = "probe-rs"
-version = "0.12.0"
+version = "0.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "232e7f2912aba17bef48f84f9d90bfc9e6c1d8c90959fcf1451ccb3a68819ee7"
+checksum = "03a92904dbd29f6af1f7bd6d22dac82569aa4b03bcbfc54441b7c76f7114ea79"
 dependencies = [
  "anyhow",
  "base64",
@@ -662,36 +671,36 @@ dependencies = [
  "jep106",
  "log",
  "num-traits",
- "object",
+ "object 0.29.0",
  "once_cell",
  "probe-rs-target",
  "rusb",
- "scroll",
+ "scroll 0.11.0",
  "serde",
  "serde_yaml",
  "static_assertions",
  "svg",
  "thiserror",
- "thousands",
 ]
 
 [[package]]
 name = "probe-rs-rtt"
-version = "0.12.0"
+version = "0.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "17a9f49ddd5fa2f079961debbea5f93e4fc168bf89223a0407aa9de60eed8d51"
+checksum = "68a97f5a269ac492bc911663aab10817225792fa69c18a85e567c090e0308ed4"
 dependencies = [
  "log",
  "probe-rs",
- "scroll",
+ "scroll 0.10.2",
+ "serde",
  "thiserror",
 ]
 
 [[package]]
 name = "probe-rs-target"
-version = "0.12.0"
+version = "0.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0f9610234697e695947df2f7b0cd71d4e4e2fe2fea13df90bdc44bb65e0ef16f"
+checksum = "4a024d514369dbabfdb7f476a8a16376b3aabf139454fdba5df012686a68430b"
 dependencies = [
  "base64",
  "jep106",
@@ -712,7 +721,7 @@ dependencies = [
  "insta",
  "log",
  "nix",
- "object",
+ "object 0.27.1",
  "os_pipe",
  "pretty_assertions",
  "probe-rs",
@@ -773,9 +782,9 @@ dependencies = [
 
 [[package]]
 name = "radium"
-version = "0.6.2"
+version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "643f8f41a8ebc4c5dc4515c82bb8abd397b527fc20fd681b7c011c2aee5d44fb"
+checksum = "dc33ff2d4973d518d823d61aa239014831e521c75da58e3df4840d3f47749d09"
 
 [[package]]
 name = "redox_syscall"
@@ -811,9 +820,9 @@ dependencies = [
 
 [[package]]
 name = "rusb"
-version = "0.8.1"
+version = "0.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d9a5084628cc5be77b1c750b3e5ee0cc519d2f2491b3f06b78b3aac3328b00ad"
+checksum = "703aa035c21c589b34fb5136b12e68fc8dcf7ea46486861381361dd8ebf5cee0"
 dependencies = [
  "libc",
  "libusb1-sys",
@@ -851,6 +860,12 @@ name = "scroll"
 version = "0.10.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fda28d4b4830b807a8b43f7b0e6b5df875311b3e7621d84577188c175b6ec1ec"
+
+[[package]]
+name = "scroll"
+version = "0.11.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "04c565b551bafbef4157586fa379538366e4385d42082f255bfd96e4fe8519da"
 
 [[package]]
 name = "semver"
@@ -1059,12 +1074,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "thousands"
-version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3bf63baf9f5039dadc247375c29eb13706706cfde997d0330d05aa63a77d8820"
-
-[[package]]
 name = "unicode-segmentation"
 version = "1.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1136,9 +1145,9 @@ checksum = "712e227841d057c1ee1cd2fb22fa7e5a5461ae8e48fa2ca79ec42cfc1931183f"
 
 [[package]]
 name = "wyz"
-version = "0.4.0"
+version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "129e027ad65ce1453680623c3fb5163cbf7107bfe1aa32257e7d0e63f9ced188"
+checksum = "30b31594f29d27036c383b53b59ed3476874d518f0efb151b27a4c275141390e"
 dependencies = [
  "tap",
 ]
