@@ -634,7 +634,7 @@ pub enum DebugProbeType {
 }
 
 /// Gathers some information about a debug probe which was found during a scan.
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub struct DebugProbeInfo {
     /// The name of the debug probe.
     pub identifier: String,
