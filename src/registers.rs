@@ -44,7 +44,8 @@ impl<'c, 'probe> Registers<'c, 'probe> {
     ) -> anyhow::Result</* cfa_changed: */ bool> {
         match rule {
             CfaRule::RegisterAndOffset { register, offset } => {
-                let cfa = (i64::from(self.get(gimli2probe(register))?) + offset) as u32; // wrapping_add_signed
+                // Could be simplified when wrapping_add_signed becomes stable
+                let cfa = (i64::from(self.get(gimli2probe(register))?) + offset) as u32;
                 let old_cfa = self.cache.get(&SP.0);
                 let changed = old_cfa != Some(&cfa);
                 if changed {
