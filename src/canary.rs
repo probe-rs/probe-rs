@@ -174,7 +174,7 @@ fn round_up(n: u32, k: u32) -> u32 {
     if rem == 0 {
         n
     } else {
-        n + 4 - rem
+        n + k - rem
     }
 }
 
