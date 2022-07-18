@@ -43,7 +43,7 @@ jobs:
           override: true
 
       - name: Cache Dependencies
-        uses: Swatinem/rust-cache@v1.4.0
+        uses: Swatinem/rust-cache@v2.0.0
 
       - name: cargo check for probe-rs, --no-default-features
         uses: actions-rs/cargo@v1.0.3
@@ -92,7 +92,7 @@ jobs:
           target: thumbv7m-none-eabi
 
       - name: Cache Dependencies
-        uses: Swatinem/rust-cache@v1.4.0
+        uses: Swatinem/rust-cache@v2.0.0
 
       - name: Run cargo test
         uses: actions-rs/cargo@v1.0.3
@@ -149,7 +149,7 @@ jobs:
         run: rustup component add clippy
 
       - name: Cache Dependencies
-        uses: Swatinem/rust-cache@v1.4.0
+        uses: Swatinem/rust-cache@v2.0.0
 
       - name: Run cargo clippy
         uses: actions-rs/clippy-check@v1.0.7
