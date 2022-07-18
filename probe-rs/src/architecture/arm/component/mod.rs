@@ -16,6 +16,21 @@ pub use swo::Swo;
 pub use tpiu::Tpiu;
 pub use trace_funnel::TraceFunnel;
 
+/// Specifies the data sink (destination) for trace data.
+pub enum TraceSink {
+    /// Trace data should be sent to the SWO peripheral.
+    ///
+    /// # Note
+    /// On some architectures, there is no distinction between SWO and TPIU.
+    Swo(SwoConfig),
+
+    /// Trace data should be sent to the TPIU peripheral.
+    Tpiu(SwoConfig),
+
+    /// Trace data should be sent to the embedded trace buffer for software-based trace collection.
+    Etb,
+}
+
 /// An error when operating a core ROM table component occurred.
 #[derive(thiserror::Error, Debug)]
 pub enum ComponentError {
@@ -90,57 +105,51 @@ fn find_component(
 /// Sets up all the SWV components.
 ///
 /// Expects to be given a list of all ROM table `components` as the second argument.
-pub(crate) fn setup_swv(
+pub(crate) fn setup_tracing(
     interface: &mut Box<dyn ArmProbeInterface>,
     components: &[CoresightComponent],
-    config: &SwoConfig,
+    sink: TraceSink,
 ) -> Result<(), Error> {
-    // Perform vendor-specific SWV setup
-    setup_swv_vendor(interface, components, config)?;
+    // Configure the trace destination.
+    match sink {
+        TraceSink::Tpiu(config) => {
+            // Configure TPIU
+            let mut tpiu = Tpiu::new(interface, find_component(components, PeripheralType::Tpiu)?);
 
-    // Configure TPIU
-    let mut tpiu = Tpiu::new(interface, find_component(components, PeripheralType::Tpiu)?);
+            tpiu.set_port_size(1)?;
+            let prescaler = (config.tpiu_clk() / config.baud()) - 1;
+            tpiu.set_prescaler(prescaler)?;
+            match config.mode() {
+                SwoMode::Manchester => tpiu.set_pin_protocol(1)?,
+                SwoMode::Uart => tpiu.set_pin_protocol(2)?,
+            }
 
-    tpiu.set_port_size(1)?;
-    let prescaler = (config.tpiu_clk() / config.baud()) - 1;
-    tpiu.set_prescaler(prescaler)?;
-    match config.mode() {
-        SwoMode::Manchester => tpiu.set_pin_protocol(1)?,
-        SwoMode::Uart => tpiu.set_pin_protocol(2)?,
-    }
-
-    // Formatter: TrigIn enabled, bypass optional
-    if config.tpiu_continuous_formatting() {
-        // Set EnFCont for continuous formatting even over SWO.
-        tpiu.set_formatter(0x102)?;
-    } else {
-        // Clear EnFCont to only pass through raw ITM/DWT data.
-        tpiu.set_formatter(0x100)?;
-    }
-
-    // Configure SWO - it may not be present in some architectures, as the TPIU may drive SWO.
-    if let Ok(component) = find_component(components, PeripheralType::Swo) {
-        let mut swo = Swo::new(interface, component);
-        swo.unlock()?;
-
-        swo.set_prescaler(prescaler)?;
-
-        match config.mode() {
-            SwoMode::Manchester => swo.set_pin_protocol(1)?,
-            SwoMode::Uart => swo.set_pin_protocol(2)?,
+            // Formatter: TrigIn enabled, bypass optional
+            if config.tpiu_continuous_formatting() {
+                // Set EnFCont for continuous formatting even over SWO.
+                tpiu.set_formatter(0x102)?;
+            } else {
+                // Clear EnFCont to only pass through raw ITM/DWT data.
+                tpiu.set_formatter(0x100)?;
+            }
         }
-    } else {
-        log::warn!("SWO component not found - assuming TPIU-only configuration");
-    }
 
-    // Enable all ports of any trace funnels found.
-    for trace_funnel in components
-        .iter()
-        .filter_map(|comp| comp.find_component(PeripheralType::TraceFunnel))
-    {
-        let mut funnel = TraceFunnel::new(interface, trace_funnel);
-        funnel.unlock()?;
-        funnel.enable_port(0xFF)?;
+        TraceSink::Swo(config) => {
+            let mut swo = Swo::new(interface, find_component(components, PeripheralType::Swo)?);
+            swo.unlock()?;
+
+            let prescaler = (config.tpiu_clk() / config.baud()) - 1;
+            swo.set_prescaler(prescaler)?;
+
+            match config.mode() {
+                SwoMode::Manchester => swo.set_pin_protocol(1)?,
+                SwoMode::Uart => swo.set_pin_protocol(2)?,
+            }
+        }
+
+        TraceSink::Etb => {
+            // TODO: Configure the ETB buffer.
+        }
     }
 
     // Configure ITM
@@ -152,62 +161,6 @@ pub(crate) fn setup_swv(
     let mut dwt = Dwt::new(interface, find_component(components, PeripheralType::Dwt)?);
     dwt.enable()?;
     dwt.enable_exception_trace()?;
-
-    // TODO: Replace flush
-    //interface.flush()
-    Ok(())
-}
-
-/// Sets up all vendor specific bit of all the SWV components.
-///
-/// Expects to be given a list of all ROM table `components` as the second argument.
-fn setup_swv_vendor(
-    interface: &mut Box<dyn ArmProbeInterface>,
-    components: &[CoresightComponent],
-    config: &SwoConfig,
-) -> Result<(), Error> {
-    if components.is_empty() {
-        return Err(Error::architecture_specific(RomTableError::NoComponents));
-    }
-
-    for component in components.iter() {
-        let mut memory = interface.memory_interface(component.ap)?;
-
-        match component.component.id().peripheral_id().jep106() {
-            Some(id) if id == jep106::JEP106Code::new(0x00, 0x20) => {
-                // STMicroelectronics:
-                // STM32 parts need TRACE_IOEN set to 1 and TRACE_MODE set to 00.
-                log::debug!("STMicroelectronics part detected, configuring DBGMCU");
-                const DBGMCU: u64 = 0xE004_2004;
-                let mut dbgmcu = memory.read_word_32(DBGMCU)?;
-                dbgmcu |= 1 << 5;
-                dbgmcu &= !(0b00 << 6);
-                return memory.write_word_32(DBGMCU, dbgmcu);
-            }
-            Some(id) if id == jep106::JEP106Code::new(0x02, 0x44) => {
-                // Nordic VLSI ASA
-                log::debug!("Nordic part detected, configuring CLOCK TRACECONFIG");
-                const CLOCK_TRACECONFIG: u64 = 0x4000_055C;
-                let mut traceconfig: u32 = 0;
-                traceconfig |= match config.tpiu_clk() {
-                    4_000_000 => 3,
-                    8_000_000 => 2,
-                    16_000_000 => 1,
-                    32_000_000 => 0,
-                    tpiu_clk => {
-                        let e = ComponentError::NordicUnsupportedTPUICLKValue(tpiu_clk);
-                        log::error!("{:?}", e);
-                        return Err(Error::architecture_specific(e));
-                    }
-                };
-                traceconfig |= 1 << 16; // tracemux : serial = 1
-                return memory.write_word_32(CLOCK_TRACECONFIG, traceconfig);
-            }
-            _ => {
-                continue;
-            }
-        }
-    }
 
     Ok(())
 }

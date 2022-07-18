@@ -1,10 +1,13 @@
-//! Sequences for STM32 devices
+//! Sequences for STM32H7 devices
 
 use std::sync::Arc;
 
 use super::ArmDebugSequence;
 use crate::{
-    architecture::arm::{ap::MemoryAp, ApAddress, ArmProbeInterface, DpAddress},
+    architecture::arm::{
+        ap::MemoryAp, component::TraceSink, memory::CoresightComponent, ApAddress,
+        ArmProbeInterface, DpAddress,
+    },
     Memory,
 };
 
@@ -35,9 +38,6 @@ impl Stm32h7 {
         // CoreSight components in these power domains at all times.
         control.enable_d1_clock(enable);
         control.enable_d3_clock(enable);
-
-        // The TRACECK has to be enabled to communicate with the TPIU.
-        control.enable_traceck(enable);
 
         // Configure debug connection in all power modes.
         control.enable_standby_debug(enable);
@@ -120,6 +120,28 @@ impl ArmDebugSequence for Stm32h7 {
 
         let mut memory = interface.memory_interface(ap)?;
         self.enable_debug_components(&mut memory, false)?;
+
+        Ok(())
+    }
+
+    fn trace_start(
+        &self,
+        interface: &mut Box<dyn ArmProbeInterface>,
+        _components: &[CoresightComponent],
+        _sink: &TraceSink,
+    ) -> Result<(), crate::Error> {
+        let ap = MemoryAp::new(ApAddress {
+            dp: DpAddress::Default,
+            ap: 2,
+        });
+
+        let mut memory = interface.memory_interface(ap)?;
+        let mut control = dbgmcu::Control::read(&mut memory)?;
+
+        // The TRACECK has to be enabled to communicate with the TPIU.
+        control.enable_traceck(true);
+
+        control.write(&mut memory)?;
 
         Ok(())
     }

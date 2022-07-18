@@ -1,8 +1,10 @@
 //! Debug sequences to operate special requirements ARM targets.
 
+pub mod nrf52;
 pub mod nrf53;
 pub mod nxp;
-pub mod stm32;
+pub mod stm32f_series;
+pub mod stm32h7;
 
 use std::{
     sync::Arc,
@@ -22,7 +24,9 @@ use crate::{
 use super::{
     ap::{AccessPortError, MemoryAp},
     communication_interface::{DapProbe, Initialized},
+    component::{TraceFunnel, TraceSink},
     dp::{Abort, Ctrl, DpAccess, Select, DPIDR},
+    memory::romtable::{CoresightComponent, PeripheralType},
     ArmCommunicationInterface, DpAddress, Pins, PortType, Register,
 };
 
@@ -626,6 +630,35 @@ pub trait ArmDebugSequence: Send + Sync {
                 core_type
             ),
         }
+    }
+
+    /// Enable target trace capture.
+    ///
+    /// # Note
+    /// This function is responsible for configuring any of the CoreSight link components, such as
+    /// trace funnels, to route trace data to the specified trace sink.
+    ///
+    /// This is based on the `TraceStart` function from the [ARM SVD Debug Description].
+    /// [ARM SVD Debug Description]: http://www.keil.com/pack/doc/cmsis/Pack/html/debug_description.html#resetCatchClear
+    fn trace_start(
+        &self,
+        interface: &mut Box<dyn ArmProbeInterface>,
+        components: &[CoresightComponent],
+        _sink: &TraceSink,
+    ) -> Result<(), crate::Error> {
+        // As a default implementation, enable all of the slave port inputs of any trace funnels
+        // found. This should enable _all_ sinks simultaneously. Device-specific implementations
+        // can be written to properly configure the specified sink.
+        for trace_funnel in components
+            .iter()
+            .filter_map(|comp| comp.find_component(PeripheralType::TraceFunnel))
+        {
+            let mut funnel = TraceFunnel::new(interface, trace_funnel);
+            funnel.unlock()?;
+            funnel.enable_port(0xFF)?;
+        }
+
+        Ok(())
     }
 
     /// Executes a system-wide reset without debug domain (or warm-reset that preserves debug connection) via software mechanisms,
