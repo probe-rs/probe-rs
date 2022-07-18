@@ -1,6 +1,7 @@
 //! Types and functions for interacting with CoreSight Components
 
 mod dwt;
+mod etm;
 mod itm;
 mod swo;
 mod tpiu;
@@ -11,6 +12,7 @@ use crate::architecture::arm::core::armv6m::Demcr;
 use crate::architecture::arm::{ArmProbeInterface, SwoConfig, SwoMode};
 use crate::{Core, Error, MemoryInterface, MemoryMappedRegister};
 pub use dwt::Dwt;
+pub use etm::EmbeddedTraceMemoryController;
 pub use itm::Itm;
 pub use swo::Swo;
 pub use tpiu::Tpiu;
@@ -148,7 +150,20 @@ pub(crate) fn setup_tracing(
         }
 
         TraceSink::Etb => {
-            // TODO: Configure the ETB buffer.
+            let mut etm = EmbeddedTraceMemoryController::new(
+                interface,
+                find_component(components, PeripheralType::Etb)?,
+            );
+
+            // Clear out the ETM FIFO before initiating the capture.
+            etm.disable_capture()?;
+            while !etm.ready()? {}
+
+            // Configure the ETM controller for software-polled mode, as we will read out data
+            // using the debug interface.
+            etm.set_mode(etm::Mode::Software)?;
+
+            etm.enable_capture()?;
         }
     }
 
