@@ -3,6 +3,7 @@
 mod dwt;
 mod itm;
 mod swo;
+mod tmc;
 mod tpiu;
 mod trace_funnel;
 
@@ -10,11 +11,29 @@ use super::memory::romtable::{CoresightComponent, PeripheralType, RomTableError}
 use crate::architecture::arm::core::armv6m::Demcr;
 use crate::architecture::arm::{ArmProbeInterface, SwoConfig, SwoMode};
 use crate::{Core, Error, MemoryInterface, MemoryMappedRegister};
+
 pub use dwt::Dwt;
 pub use itm::Itm;
 pub use swo::Swo;
+pub use tmc::TraceMemoryController;
 pub use tpiu::Tpiu;
 pub use trace_funnel::TraceFunnel;
+
+/// Specifies the data sink (destination) for trace data.
+#[derive(Debug, Copy, Clone)]
+pub enum TraceSink {
+    /// Trace data should be sent to the SWO peripheral.
+    ///
+    /// # Note
+    /// On some architectures, there is no distinction between SWO and TPIU.
+    Swo(SwoConfig),
+
+    /// Trace data should be sent to the TPIU peripheral.
+    Tpiu(SwoConfig),
+
+    /// Trace data should be sent to the embedded trace buffer for software-based trace collection.
+    TraceMemory,
+}
 
 /// An error when operating a core ROM table component occurred.
 #[derive(thiserror::Error, Debug)]
@@ -90,126 +109,151 @@ fn find_component(
 /// Sets up all the SWV components.
 ///
 /// Expects to be given a list of all ROM table `components` as the second argument.
-pub(crate) fn setup_swv(
+pub(crate) fn setup_tracing(
     interface: &mut Box<dyn ArmProbeInterface>,
     components: &[CoresightComponent],
-    config: &SwoConfig,
+    sink: &TraceSink,
 ) -> Result<(), Error> {
-    // Perform vendor-specific SWV setup
-    setup_swv_vendor(interface, components, config)?;
-
-    // Configure TPIU
-    let mut tpiu = Tpiu::new(interface, find_component(components, PeripheralType::Tpiu)?);
-
-    tpiu.set_port_size(1)?;
-    let prescaler = (config.tpiu_clk() / config.baud()) - 1;
-    tpiu.set_prescaler(prescaler)?;
-    match config.mode() {
-        SwoMode::Manchester => tpiu.set_pin_protocol(1)?,
-        SwoMode::Uart => tpiu.set_pin_protocol(2)?,
-    }
-
-    // Formatter: TrigIn enabled, bypass optional
-    if config.tpiu_continuous_formatting() {
-        // Set EnFCont for continuous formatting even over SWO.
-        tpiu.set_formatter(0x102)?;
-    } else {
-        // Clear EnFCont to only pass through raw ITM/DWT data.
-        tpiu.set_formatter(0x100)?;
-    }
-
-    // Configure SWO - it may not be present in some architectures, as the TPIU may drive SWO.
-    if let Ok(component) = find_component(components, PeripheralType::Swo) {
-        let mut swo = Swo::new(interface, component);
-        swo.unlock()?;
-
-        swo.set_prescaler(prescaler)?;
-
-        match config.mode() {
-            SwoMode::Manchester => swo.set_pin_protocol(1)?,
-            SwoMode::Uart => swo.set_pin_protocol(2)?,
-        }
-    } else {
-        log::warn!("SWO component not found - assuming TPIU-only configuration");
-    }
-
-    // Enable all ports of any trace funnels found.
-    for trace_funnel in components
-        .iter()
-        .filter_map(|comp| comp.find_component(PeripheralType::TraceFunnel))
-    {
-        let mut funnel = TraceFunnel::new(interface, trace_funnel);
-        funnel.unlock()?;
-        funnel.enable_port(0xFF)?;
-    }
+    // Configure DWT
+    let mut dwt = Dwt::new(interface, find_component(components, PeripheralType::Dwt)?);
+    dwt.enable()?;
+    dwt.enable_exception_trace()?;
 
     // Configure ITM
     let mut itm = Itm::new(interface, find_component(components, PeripheralType::Itm)?);
     itm.unlock()?;
     itm.tx_enable()?;
 
-    // Configure DWT
-    let mut dwt = Dwt::new(interface, find_component(components, PeripheralType::Dwt)?);
-    dwt.enable()?;
-    dwt.enable_exception_trace()?;
+    // Configure the trace destination.
+    match sink {
+        TraceSink::Tpiu(config) => {
+            // Configure TPIU
+            let mut tpiu = Tpiu::new(interface, find_component(components, PeripheralType::Tpiu)?);
 
-    // TODO: Replace flush
-    //interface.flush()
-    Ok(())
-}
-
-/// Sets up all vendor specific bit of all the SWV components.
-///
-/// Expects to be given a list of all ROM table `components` as the second argument.
-fn setup_swv_vendor(
-    interface: &mut Box<dyn ArmProbeInterface>,
-    components: &[CoresightComponent],
-    config: &SwoConfig,
-) -> Result<(), Error> {
-    if components.is_empty() {
-        return Err(Error::architecture_specific(RomTableError::NoComponents));
-    }
-
-    for component in components.iter() {
-        let mut memory = interface.memory_interface(component.ap)?;
-
-        match component.component.id().peripheral_id().jep106() {
-            Some(id) if id == jep106::JEP106Code::new(0x00, 0x20) => {
-                // STMicroelectronics:
-                // STM32 parts need TRACE_IOEN set to 1 and TRACE_MODE set to 00.
-                log::debug!("STMicroelectronics part detected, configuring DBGMCU");
-                const DBGMCU: u64 = 0xE004_2004;
-                let mut dbgmcu = memory.read_word_32(DBGMCU)?;
-                dbgmcu |= 1 << 5;
-                dbgmcu &= !(0b00 << 6);
-                return memory.write_word_32(DBGMCU, dbgmcu);
+            tpiu.set_port_size(1)?;
+            let prescaler = (config.tpiu_clk() / config.baud()) - 1;
+            tpiu.set_prescaler(prescaler)?;
+            match config.mode() {
+                SwoMode::Manchester => tpiu.set_pin_protocol(1)?,
+                SwoMode::Uart => tpiu.set_pin_protocol(2)?,
             }
-            Some(id) if id == jep106::JEP106Code::new(0x02, 0x44) => {
-                // Nordic VLSI ASA
-                log::debug!("Nordic part detected, configuring CLOCK TRACECONFIG");
-                const CLOCK_TRACECONFIG: u64 = 0x4000_055C;
-                let mut traceconfig: u32 = 0;
-                traceconfig |= match config.tpiu_clk() {
-                    4_000_000 => 3,
-                    8_000_000 => 2,
-                    16_000_000 => 1,
-                    32_000_000 => 0,
-                    tpiu_clk => {
-                        let e = ComponentError::NordicUnsupportedTPUICLKValue(tpiu_clk);
-                        log::error!("{:?}", e);
-                        return Err(Error::architecture_specific(e));
-                    }
-                };
-                traceconfig |= 1 << 16; // tracemux : serial = 1
-                return memory.write_word_32(CLOCK_TRACECONFIG, traceconfig);
+
+            // Formatter: TrigIn enabled, bypass optional
+            if config.tpiu_continuous_formatting() {
+                // Set EnFCont for continuous formatting even over SWO.
+                tpiu.set_formatter(0x102)?;
+            } else {
+                // Clear EnFCont to only pass through raw ITM/DWT data.
+                tpiu.set_formatter(0x100)?;
             }
-            _ => {
-                continue;
+        }
+
+        TraceSink::Swo(config) => {
+            let mut swo = Swo::new(interface, find_component(components, PeripheralType::Swo)?);
+            swo.unlock()?;
+
+            let prescaler = (config.tpiu_clk() / config.baud()) - 1;
+            swo.set_prescaler(prescaler)?;
+
+            match config.mode() {
+                SwoMode::Manchester => swo.set_pin_protocol(1)?,
+                SwoMode::Uart => swo.set_pin_protocol(2)?,
             }
+        }
+
+        TraceSink::TraceMemory => {
+            let mut tmc = TraceMemoryController::new(
+                interface,
+                find_component(components, PeripheralType::Tmc)?,
+            );
+
+            // Clear out the TMC FIFO before initiating the capture.
+            tmc.disable_capture()?;
+            while !tmc.ready()? {}
+
+            // Configure the TMC for software-polled mode, as we will read out data using the debug
+            // interface.
+            tmc.set_mode(tmc::Mode::Software)?;
+
+            tmc.enable_capture()?;
         }
     }
 
     Ok(())
+}
+
+/// Read trace data from internal trace memory
+///
+/// # Args
+/// * `interface` - The interface with the debug probe.
+/// * `components` - The CoreSight debug components identified in the system.
+///
+/// # Note
+/// This function will read any available trace data in trace memory without blocking. At most,
+/// this function will read as much data as can fit in the FIFO - if the FIFO continues to be
+/// filled while trace data is being extracted, this function can be called again to return that
+/// data.
+///
+/// # Returns
+/// All data stored in trace memory, with an upper bound at the size of internal trace memory.
+pub(crate) fn read_trace_memory(
+    interface: &mut Box<dyn ArmProbeInterface>,
+    components: &[CoresightComponent],
+) -> Result<Vec<u8>, Error> {
+    let mut tmc =
+        TraceMemoryController::new(interface, find_component(components, PeripheralType::Tmc)?);
+
+    let fifo_size = tmc.fifo_size()?;
+
+    // This sequence is taken from "CoreSight Trace memory Controller Technical Reference Manual"
+    // Section 2.2.2 "Software FIFO Mode". Without following this procedure, the trace data does
+    // not properly stop even after disabling capture.
+
+    // Read all of the data from the ETM into a vector for further processing.
+    let mut etf_trace: Vec<u8> = Vec::new();
+    loop {
+        match tmc.read()? {
+            Some(data) => etf_trace.extend_from_slice(&data.to_le_bytes()),
+            None => {
+                // If there's nothing available in the FIFO, we can only break out of reading if we
+                // have an integer number of formatted frames, which are 16 bytes each.
+                if (etf_trace.len() % 16) == 0 {
+                    break;
+                }
+            }
+        }
+
+        // If the FIFO is being filled faster than we can read it, break out after reading a
+        // maximum number of frames.
+        let frame_boundary = (etf_trace.len() % 16) == 0;
+
+        if frame_boundary && etf_trace.len() >= fifo_size as usize {
+            break;
+        }
+    }
+
+    // The TMC formats data into frames, as it contains trace data from multiple data sources. We
+    // need to deserialize the frames and pull out only the data source of interest. For now, all
+    // we care about is the ITM data.
+
+    let mut id = 0.into();
+    let mut itm_trace = Vec::new();
+
+    // Process each formatted frame and extract the multiplexed trace data.
+    for frame_buffer in etf_trace.chunks_exact(16) {
+        let mut frame = tmc::Frame::new(frame_buffer, id);
+        for (id, data) in &mut frame {
+            match id.into() {
+                // ITM ATID, see Itm::tx_enable()
+                13 => itm_trace.push(data),
+                0 => (),
+                id => log::warn!("Unexpected trace source ATID {id}: {data}, ignoring"),
+            }
+        }
+        id = frame.id();
+    }
+
+    Ok(itm_trace)
 }
 
 /// Configures DWT trace unit `unit` to begin tracing `address`.

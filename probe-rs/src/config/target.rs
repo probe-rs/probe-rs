@@ -2,10 +2,8 @@ use probe_rs_target::{Architecture, ChipFamily};
 
 use super::{Core, MemoryRegion, RawFlashAlgorithm, RegistryError, TargetDescriptionSource};
 use crate::architecture::arm::sequences::{
-    nrf::{Nrf5340, Nrf9160},
-    nxp::LPC55S69,
-    stm32::Stm32h7,
-    ArmDebugSequence,
+    nrf52::Nrf52, nrf53::Nrf5340, nrf91::Nrf9160, nxp::LPC55S69, stm32f_series::Stm32fSeries,
+    stm32h7::Stm32h7, ArmDebugSequence,
 };
 use crate::architecture::riscv::sequences::esp32c3::ESP32C3;
 use crate::architecture::riscv::sequences::{DefaultRiscvSequence, RiscvDebugSequence};
@@ -101,12 +99,21 @@ impl Target {
         } else if chip.name.starts_with("nRF5340") {
             log::warn!("Using custom sequence for nRF5340");
             debug_sequence = DebugSequence::Arm(Nrf5340::create());
+        } else if chip.name.starts_with("nRF52") {
+            log::warn!("Using custom sequence for nRF52");
+            debug_sequence = DebugSequence::Arm(Nrf52::create());
         } else if chip.name.starts_with("nRF9160") {
             log::warn!("Using custom sequence for nRF9160");
             debug_sequence = DebugSequence::Arm(Nrf9160::create());
         } else if chip.name.starts_with("STM32H7") {
             log::warn!("Using custom sequence for STM32H7");
             debug_sequence = DebugSequence::Arm(Stm32h7::create());
+        } else if chip.name.starts_with("STM32F2")
+            || chip.name.starts_with("STM32F4")
+            || chip.name.starts_with("STM32F7")
+        {
+            log::warn!("Using custom sequence for STM32F2/4/7");
+            debug_sequence = DebugSequence::Arm(Stm32fSeries::create());
         }
 
         Ok(Target {

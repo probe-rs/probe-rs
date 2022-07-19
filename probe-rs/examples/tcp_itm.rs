@@ -1,4 +1,4 @@
-use probe_rs::architecture::arm::swo::SwoConfig;
+use probe_rs::architecture::arm::{component::TraceSink, swo::SwoConfig};
 use probe_rs::{Error, Permissions};
 
 use itm_decode::{Decoder, DecoderOptions, TracePacket};
@@ -28,7 +28,7 @@ fn main() -> Result<(), Error> {
         .set_baud(2_000_000)
         .set_continuous_formatting(false);
 
-    session.setup_swv(0, &cfg)?;
+    session.setup_tracing(0, TraceSink::Swo(cfg))?;
 
     let mut timestamp: f64 = 0.0;
 
@@ -39,7 +39,7 @@ fn main() -> Result<(), Error> {
     println!("Starting SWO trace ...");
 
     loop {
-        let bytes = session.read_swo()?;
+        let bytes = session.read_trace_data()?;
 
         decoder.push(&bytes);
         while let Ok(Some(packet)) = decoder.pull() {

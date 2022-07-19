@@ -688,6 +688,7 @@ impl PeripheralID {
             ("ARM Ltd", 0x923, 0x11, 0x0000) => Some(PartInfo::new("Cortex-M3 TPIU", PeripheralType::Tpiu)),
             ("ARM Ltd", 0x924, 0x13, 0x0000) => Some(PartInfo::new("Cortex-M3 ETM", PeripheralType::Etm)),
             ("ARM Ltd", 0x925, 0x13, 0x0000) => Some(PartInfo::new("Cortex-M4 ETM", PeripheralType::Etm)),
+            ("ARM Ltd", 0x961, _, 0x0000) => Some(PartInfo::new("CoreSight TMC", PeripheralType::Tmc)),
             ("ARM Ltd", 0x962, 0x00, 0x0000) => Some(PartInfo::new("CoreSight STM", PeripheralType::Stm)),
             ("ARM Ltd", 0x963, 0x63, 0x0a63) => Some(PartInfo::new("CoreSight STM", PeripheralType::Stm)),
             ("ARM Ltd", 0x975, 0x13, 0x4a13) => Some(PartInfo::new("Cortex-M7 ETM", PeripheralType::Etm)),
@@ -770,10 +771,12 @@ pub enum PeripheralType {
     Swo,
     /// CoreSight Trace funnel
     TraceFunnel,
-    /// Unknown
+    /// System Trace Macrocell
     Stm,
-    /// Unknown
+    /// Timestamp Generator
     Tsgen,
+    /// Trace Memory Controller
+    Tmc,
 }
 
 impl std::fmt::Display for PeripheralType {
@@ -792,6 +795,7 @@ impl std::fmt::Display for PeripheralType {
             PeripheralType::Stm => write!(f, "Stm (System Trace Macrocell)"),
             PeripheralType::TraceFunnel => write!(f, "Trace Funnel"),
             PeripheralType::Tsgen => write!(f, "Tsgen (Time Stamp Generator)"),
+            PeripheralType::Tmc => write!(f, "Tmc (Trace Memory Controller)"),
         }
     }
 }

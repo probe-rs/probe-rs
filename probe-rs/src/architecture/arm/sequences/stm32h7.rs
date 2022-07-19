@@ -1,12 +1,37 @@
-//! Sequences for STM32 devices
+//! Sequences for STM32H7 devices
 
 use std::sync::Arc;
 
 use super::ArmDebugSequence;
 use crate::{
-    architecture::arm::{ap::MemoryAp, ApAddress, ArmProbeInterface, DpAddress},
-    Memory,
+    architecture::arm::{
+        ap::MemoryAp,
+        component::{TraceFunnel, TraceSink},
+        memory::{romtable::RomTableError, CoresightComponent, PeripheralType},
+        ApAddress, ArmProbeInterface, DpAddress,
+    },
+    Error, Memory,
 };
+
+// Base address of the trace funnel that directs trace data to the SWO peripheral.
+const SWTF_BASE_ADDRESS: u64 = 0xE00E_4000;
+
+// Base address of the trace funnel that directs trace data to the TPIU and ETF
+const CSTF_BASE_ADDRESS: u64 = 0xE00F_3000;
+
+/// Specifier for which trace funnel to access.
+///
+/// # Note
+/// The values of the enum are equivalent to the base addresses of the trace funnels.
+#[repr(u64)]
+#[derive(Copy, Clone, Debug)]
+enum TraceFunnelId {
+    /// The funnel feeding the SWO peripheral.
+    SerialWire = SWTF_BASE_ADDRESS,
+
+    /// The funnel feeding the TPIU and ETF.
+    CoreSight = CSTF_BASE_ADDRESS,
+}
 
 /// Marker struct indicating initialization sequencing for STM32H7 family parts.
 pub struct Stm32h7 {}
@@ -89,6 +114,34 @@ mod dbgmcu {
     }
 }
 
+/// Get the Coresight component associated with one of the trace funnels.
+///
+/// # Args
+/// * `components` - All of the coresight components discovered on the device.
+/// * `trace_funnel` - The ID of the desired trace funnel.
+///
+/// # Returns
+/// The coresight component representing the desired trace funnel.
+fn find_trace_funnel(
+    components: &[CoresightComponent],
+    trace_funnel: TraceFunnelId,
+) -> Result<&CoresightComponent, Error> {
+    components
+        .iter()
+        .find_map(|comp| {
+            comp.iter().find(|component| {
+                let id = component.component.id();
+                id.peripheral_id().is_of_type(PeripheralType::TraceFunnel)
+                    && id.component_address() == trace_funnel as u64
+            })
+        })
+        .ok_or_else(|| {
+            Error::architecture_specific(RomTableError::ComponentNotFound(
+                PeripheralType::TraceFunnel,
+            ))
+        })
+}
+
 impl ArmDebugSequence for Stm32h7 {
     fn debug_device_unlock(
         &self,
@@ -120,6 +173,43 @@ impl ArmDebugSequence for Stm32h7 {
 
         let mut memory = interface.memory_interface(ap)?;
         self.enable_debug_components(&mut memory, false)?;
+
+        Ok(())
+    }
+
+    fn trace_start(
+        &self,
+        interface: &mut Box<dyn ArmProbeInterface>,
+        components: &[CoresightComponent],
+        sink: &TraceSink,
+    ) -> Result<(), crate::Error> {
+        log::warn!("Enabling tracing for STM32H7");
+
+        // Configure the two trace funnels in the H7 debug system to route trace data to the
+        // appropriate destination. The CSTF feeds the TPIU and ETF peripherals.
+        let mut cstf = TraceFunnel::new(
+            interface,
+            find_trace_funnel(components, TraceFunnelId::CoreSight)?,
+        );
+        cstf.unlock()?;
+        match sink {
+            TraceSink::Swo(_) => cstf.enable_port(0b00)?,
+            TraceSink::Tpiu(_) | TraceSink::TraceMemory => cstf.enable_port(0b10)?,
+        }
+
+        // The SWTF needs to be configured to route traffic to SWO. When not in use, it needs to be
+        // disabled so that the SWO peripheral does not propogate buffer overflows through the
+        // trace bus via busy signalling.
+        let mut swtf = TraceFunnel::new(
+            interface,
+            find_trace_funnel(components, TraceFunnelId::SerialWire)?,
+        );
+        swtf.unlock()?;
+        if matches!(sink, TraceSink::Swo(_)) {
+            swtf.enable_port(0b01)?;
+        } else {
+            swtf.enable_port(0b00)?;
+        }
 
         Ok(())
     }

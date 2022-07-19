@@ -7,8 +7,9 @@ use crate::{
         arm::{
             ap::{GenericAp, MemoryAp},
             communication_interface::{ArmProbeInterface, MemoryApInformation},
+            component::TraceSink,
             memory::{Component, CoresightComponent},
-            ApInformation, SwoConfig, SwoReader,
+            ApInformation, SwoReader,
         },
         riscv::communication_interface::RiscvCommunicationInterface,
     },
@@ -41,6 +42,7 @@ pub struct Session {
     target: Target,
     interface: ArchitectureInterface,
     cores: Vec<(SpecificCoreState, CoreState)>,
+    configured_trace_sink: Option<TraceSink>,
 }
 
 enum ArchitectureInterface {
@@ -229,6 +231,7 @@ impl Session {
                         target,
                         interface: ArchitectureInterface::Arm(interface),
                         cores,
+                        configured_trace_sink: None,
                     };
 
                     {
@@ -259,6 +262,7 @@ impl Session {
                         target,
                         interface: ArchitectureInterface::Arm(interface),
                         cores,
+                        configured_trace_sink: None,
                     }
                 };
 
@@ -284,6 +288,7 @@ impl Session {
                     target,
                     interface: ArchitectureInterface::Riscv(Box::new(interface)),
                     cores,
+                    configured_trace_sink: None,
                 };
 
                 {
@@ -351,13 +356,32 @@ impl Session {
         self.interface.attach(core, core_state, &self.target)
     }
 
-    /// Read available data from the SWO interface without waiting.
+    /// Read available trace data from the specified data sink.
     ///
     /// This method is only supported for ARM-based targets, and will
     /// return [Error::ArchitectureRequired] otherwise.
-    pub fn read_swo(&mut self) -> Result<Vec<u8>, Error> {
-        let interface = self.get_arm_interface()?;
-        interface.read_swo()
+    pub fn read_trace_data(&mut self) -> Result<Vec<u8>, Error> {
+        let sink = self
+            .configured_trace_sink
+            .as_ref()
+            .ok_or(anyhow!("Tracing has not been configured"))?;
+
+        match sink {
+            TraceSink::Swo(_) => {
+                let interface = self.get_arm_interface()?;
+                interface.read_swo()
+            }
+
+            TraceSink::Tpiu(_) => {
+                panic!("Probe-rs does not yet support reading parallel trace ports");
+            }
+
+            TraceSink::TraceMemory => {
+                let components = self.get_arm_components()?;
+                let interface = self.get_arm_interface()?;
+                crate::architecture::arm::component::read_trace_memory(interface, &components)
+            }
+        }
     }
 
     /// Returns an implementation of [std::io::Read] that wraps [SwoAccess::read_swo].
@@ -453,23 +477,45 @@ impl Session {
     }
 
     /// Configure the target and probe for serial wire view (SWV) tracing.
-    pub fn setup_swv(&mut self, core_index: usize, config: &SwoConfig) -> Result<(), Error> {
-        // Configure SWO on the probe
-        {
-            let interface = self.get_arm_interface()?;
-            interface.enable_swo(config)?;
-        }
-
+    pub fn setup_tracing(
+        &mut self,
+        core_index: usize,
+        destination: TraceSink,
+    ) -> Result<(), Error> {
         // Enable tracing on the target
         {
             let mut core = self.core(core_index)?;
             crate::architecture::arm::component::enable_tracing(&mut core)?;
         }
 
-        // Configure SWV on the target
+        let sequence_handle = match &self.target.debug_sequence {
+            DebugSequence::Arm(sequence) => sequence.clone(),
+            DebugSequence::Riscv(_) => {
+                panic!("Mismatch between architecture and sequence type!")
+            }
+        };
+
         let components = self.get_arm_components()?;
         let interface = self.get_arm_interface()?;
-        crate::architecture::arm::component::setup_swv(interface, &components, config)
+
+        // Configure SWO on the probe when the trace sink is configured for a serial output. Note
+        // that on some architectures, the TPIU is configured to drive SWO.
+        match destination {
+            TraceSink::Swo(ref config) => {
+                interface.enable_swo(config)?;
+            }
+            TraceSink::Tpiu(ref config) => {
+                interface.enable_swo(config)?;
+            }
+            TraceSink::TraceMemory => {}
+        }
+
+        sequence_handle.trace_start(interface, &components, &destination)?;
+        crate::architecture::arm::component::setup_tracing(interface, &components, &destination)?;
+
+        self.configured_trace_sink.replace(destination);
+
+        Ok(())
     }
 
     /// Configure the target to stop emitting SWV trace data.
