@@ -473,6 +473,12 @@ impl Session {
         core_index: usize,
         destination: &TraceSink,
     ) -> Result<(), Error> {
+        // Enable tracing on the target
+        {
+            let mut core = self.core(core_index)?;
+            crate::architecture::arm::component::enable_tracing(&mut core)?;
+        }
+
         let sequence_handle = match &self.target.debug_sequence {
             DebugSequence::Arm(sequence) => sequence.clone(),
             DebugSequence::Riscv(_) => {
@@ -480,37 +486,25 @@ impl Session {
             }
         };
 
-        // Call target-specific trace setup hooks
-        {
-            let components = self.get_arm_components()?;
-            let interface = self.get_arm_interface()?;
-            sequence_handle.trace_start(interface, &components, destination)?;
-        }
+        let components = self.get_arm_components()?;
+        let interface = self.get_arm_interface()?;
 
         // Configure SWO on the probe when the trace sink is configured for a serial output. Note
         // that on some architectures, the TPIU is configured to drive SWO.
         match destination {
             TraceSink::Swo(config) => {
-                let interface = self.get_arm_interface()?;
-                interface.enable_swo(&config)?;
+                interface.enable_swo(config)?;
             }
             TraceSink::Tpiu(config) => {
-                let interface = self.get_arm_interface()?;
-                interface.enable_swo(&config)?;
+                interface.enable_swo(config)?;
             }
-            _ => {}
+            TraceSink::TraceMemory => {}
         }
 
-        // Enable tracing on the target
-        {
-            let mut core = self.core(core_index)?;
-            crate::architecture::arm::component::enable_tracing(&mut core)?;
-        }
+        sequence_handle.trace_start(interface, &components, destination)?;
+        crate::architecture::arm::component::setup_tracing(interface, &components, destination)?;
 
-        // Configure tracing on the target
-        let components = self.get_arm_components()?;
-        let interface = self.get_arm_interface()?;
-        crate::architecture::arm::component::setup_tracing(interface, &components, destination)
+        Ok(())
     }
 
     /// Configure the target to stop emitting SWV trace data.

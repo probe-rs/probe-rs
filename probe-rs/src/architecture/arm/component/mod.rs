@@ -115,6 +115,16 @@ pub(crate) fn setup_tracing(
     components: &[CoresightComponent],
     sink: &TraceSink,
 ) -> Result<(), Error> {
+    // Configure DWT
+    let mut dwt = Dwt::new(interface, find_component(components, PeripheralType::Dwt)?);
+    dwt.enable()?;
+    dwt.enable_exception_trace()?;
+
+    // Configure ITM
+    let mut itm = Itm::new(interface, find_component(components, PeripheralType::Itm)?);
+    itm.unlock()?;
+    itm.tx_enable()?;
+
     // Configure the trace destination.
     match sink {
         TraceSink::Tpiu(config) => {
@@ -170,16 +180,6 @@ pub(crate) fn setup_tracing(
         }
     }
 
-    // Configure ITM
-    let mut itm = Itm::new(interface, find_component(components, PeripheralType::Itm)?);
-    itm.unlock()?;
-    itm.tx_enable()?;
-
-    // Configure DWT
-    let mut dwt = Dwt::new(interface, find_component(components, PeripheralType::Dwt)?);
-    dwt.enable()?;
-    dwt.enable_exception_trace()?;
-
     Ok(())
 }
 
@@ -188,11 +188,14 @@ pub(crate) fn read_trace_memory(
     components: &[CoresightComponent],
 ) -> Result<Vec<u8>, Error> {
     let mut tmc =
-        TraceMemoryController::new(interface, find_component(components, PeripheralType::Etb)?);
+        TraceMemoryController::new(interface, find_component(components, PeripheralType::Tmc)?);
 
     // TODO: In the future, it may be possible to dynamically read from trace memory
     // without waiting for the FIFO to fill first.
-    while !tmc.full()? {}
+    let fifo_size = tmc.fifo_size()?;
+    while !tmc.full()? {
+        log::info!("TMC FIFO Level: {} of {fifo_size}", tmc.fill_level()?)
+    }
 
     // This sequence is taken from "CoreSight Trace memory Controller Technical Reference Manual"
     // Section 2.2.2 "Software FIFO Mode". Without following this procedure, the trace data does
@@ -225,6 +228,8 @@ pub(crate) fn read_trace_memory(
     let mut id = 0.into();
     let mut frame_buffer = [0u8; 16];
 
+    let mut itm_trace = Vec::new();
+
     loop {
         match etf_trace.read_exact(&mut frame_buffer) {
             Err(e) if e.kind() == std::io::ErrorKind::UnexpectedEof => break,
@@ -236,9 +241,7 @@ pub(crate) fn read_trace_memory(
         for (id, data) in &mut frame {
             match id.into() {
                 // ITM ATID, see Itm::tx_enable()
-                13 => etf_trace
-                    .write_all(&[data])
-                    .map_err(|e| anyhow!("Failed to write ETF trace data: {e}"))?,
+                13 => itm_trace.push(data),
                 0 => (),
                 id => log::warn!("Unexpected trace source ATID {id}: {data}, ignoring"),
             }
@@ -246,7 +249,7 @@ pub(crate) fn read_trace_memory(
         id = frame.id();
     }
 
-    Ok(etf_trace.into_inner())
+    Ok(itm_trace)
 }
 
 /// Configures DWT trace unit `unit` to begin tracing `address`.

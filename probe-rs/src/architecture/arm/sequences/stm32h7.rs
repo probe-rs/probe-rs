@@ -13,11 +13,11 @@ use crate::{
     Error, Memory,
 };
 
-// Base address of the trace funnel that directs trace data to the TPIU and ETF
-const CSTF_BASE_ADDRESS: u64 = 0xE00F_3000;
-
 // Base address of the trace funnel that directs trace data to the SWO peripheral.
 const SWTF_BASE_ADDRESS: u64 = 0xE00E_4000;
+
+// Base address of the trace funnel that directs trace data to the TPIU and ETF
+const CSTF_BASE_ADDRESS: u64 = 0xE00F_3000;
 
 /// Specifier for which trace funnel to access.
 ///
@@ -60,6 +60,9 @@ impl Stm32h7 {
         // CoreSight components in these power domains at all times.
         control.enable_d1_clock(enable);
         control.enable_d3_clock(enable);
+
+        // The TRACECK has to be enabled to communicate with the TPIU.
+        control.enable_traceck(enable);
 
         // Configure debug connection in all power modes.
         control.enable_standby_debug(enable);
@@ -180,19 +183,7 @@ impl ArmDebugSequence for Stm32h7 {
         components: &[CoresightComponent],
         sink: &TraceSink,
     ) -> Result<(), crate::Error> {
-        // Debug components are accessed on AP2 for the debug interface.
-        let ap = MemoryAp::new(ApAddress {
-            dp: DpAddress::Default,
-            ap: 2,
-        });
-
-        // The TRACECK has to be enabled to communicate with the TPIU.
-        {
-            let mut memory = interface.memory_interface(ap)?;
-            let mut control = dbgmcu::Control::read(&mut memory)?;
-            control.enable_traceck(true);
-            control.write(&mut memory)?;
-        }
+        log::warn!("Enabling tracing for STM32H7");
 
         // Configure the two trace funnels in the H7 debug system to route trace data to the
         // appropriate destination. The CSTF feeds the TPIU and ETF peripherals.
@@ -203,8 +194,7 @@ impl ArmDebugSequence for Stm32h7 {
         cstf.unlock()?;
         match sink {
             TraceSink::Swo(_) => cstf.enable_port(0b00)?,
-            TraceSink::Tpiu(_) => cstf.enable_port(0b01)?,
-            TraceSink::TraceMemory => cstf.enable_port(0b10)?,
+            TraceSink::Tpiu(_) | TraceSink::TraceMemory => cstf.enable_port(0b10)?,
         }
 
         // The SWTF needs to be configured to route traffic to SWO. When not in use, it needs to be
