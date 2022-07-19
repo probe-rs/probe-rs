@@ -5,6 +5,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+[Added]
+
+- Added PartialEq Trait to the struct DebugProbeInfo. (#1173)
+
+
 ## [0.13.0]
 
 ### Added
@@ -43,6 +48,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added support for Huada Semiconductor HC32F005 MCUs.
 - Added FPU register support for Cortex-A cores (#1154)
 - GDB now reports the core name in `info threads` (#1158)
+- Added a recover sequence for the nRF9160
 
 ### Changed
 
@@ -109,6 +115,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Partial Fix: Set breakpoints and step on RISC-V. Breakpoints work but stepping only works for some breakpoints. This will be addressed in a future PR.
 - Fix nrf9160 target file so it can erase UICR section (#1151)
 - Fix connect under reset for CMSIS-DAP probes(#1159)
+- Fix double default algorithms for the stm32f7x line with 1MB flash (#1171)
 
 ## [0.12.0]
 

@@ -1,7 +1,9 @@
 //! Debug sequences to operate special requirements ARM targets.
 
+mod nrf;
 pub mod nrf52;
 pub mod nrf53;
+pub mod nrf91;
 pub mod nxp;
 pub mod stm32f_series;
 pub mod stm32h7;
