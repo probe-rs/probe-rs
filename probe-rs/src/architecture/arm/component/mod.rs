@@ -11,6 +11,9 @@ use super::memory::romtable::{CoresightComponent, PeripheralType, RomTableError}
 use crate::architecture::arm::core::armv6m::Demcr;
 use crate::architecture::arm::{ArmProbeInterface, SwoConfig, SwoMode};
 use crate::{Core, Error, MemoryInterface, MemoryMappedRegister};
+use anyhow::anyhow;
+use std::io::{Read, Seek, Write};
+
 pub use dwt::Dwt;
 pub use etm::EmbeddedTraceMemoryController;
 pub use itm::Itm;
@@ -110,7 +113,7 @@ fn find_component(
 pub(crate) fn setup_tracing(
     interface: &mut Box<dyn ArmProbeInterface>,
     components: &[CoresightComponent],
-    sink: TraceSink,
+    sink: &TraceSink,
 ) -> Result<(), Error> {
     // Configure the trace destination.
     match sink {
@@ -178,6 +181,74 @@ pub(crate) fn setup_tracing(
     dwt.enable_exception_trace()?;
 
     Ok(())
+}
+
+pub(crate) fn read_trace_memory(
+    interface: &mut Box<dyn ArmProbeInterface>,
+    components: &[CoresightComponent],
+) -> Result<Vec<u8>, Error> {
+    let mut etm = EmbeddedTraceMemoryController::new(
+        interface,
+        find_component(components, PeripheralType::Etb)?,
+    );
+
+    // TODO: In the future, it may be possible to dynamically read from trace memory
+    // without waiting for the FIFO to fill first.
+    while !etm.full()? {}
+
+    // This sequence is taken from "CoreSight Trace memory Controller Technical Reference Manual"
+    // Section 2.2.2 "Software FIFO Mode". Without following this procedure, the trace data does
+    // not properly stop even after disabling capture.
+    etm.stop_on_flush(true)?;
+    etm.manual_flush()?;
+
+    // Read all of the data from the ETM into a vector for further processing.
+    let mut etf_trace = std::io::Cursor::new(vec![0; etm.fifo_size()? as usize + 128]);
+    loop {
+        if let Some(data) = etm.read()? {
+            etf_trace
+                .write_all(&data.to_le_bytes())
+                .map_err(|e| anyhow!("Failed to write ETM data buffer: {e}"))?;
+        } else if etm.ready()? {
+            break;
+        }
+    }
+
+    assert!(etm.empty()?);
+    etm.disable_capture()?;
+
+    // The ETM formats data into frames, as it contains trace data from multiple data sources. We
+    // need to deserialize the frames and pull out only the data source of interest. For now, all
+    // we care about is the ITM data.
+    etf_trace
+        .rewind()
+        .map_err(|e| anyhow!("Failed to rewind ETF trace data: {e}"))?;
+
+    let mut id = 0.into();
+    let mut frame_buffer = [0u8; 16];
+
+    loop {
+        match etf_trace.read_exact(&mut frame_buffer) {
+            Err(e) if e.kind() == std::io::ErrorKind::UnexpectedEof => break,
+            other => other,
+        }
+        .map_err(|e| anyhow!("Failed to read ETF trace data: {e}"))?;
+
+        let mut frame = etm::Frame::new(&frame_buffer, id);
+        for (id, data) in &mut frame {
+            match id.into() {
+                // ITM ATID, see Itm::tx_enable()
+                13 => etf_trace
+                    .write_all(&[data])
+                    .map_err(|e| anyhow!("Failed to write ETF trace data: {e}"))?,
+                0 => (),
+                id => log::warn!("Unexpected trace source ATID {id}: {data}, ignoring"),
+            }
+        }
+        id = frame.id();
+    }
+
+    Ok(etf_trace.into_inner())
 }
 
 /// Configures DWT trace unit `unit` to begin tracing `address`.

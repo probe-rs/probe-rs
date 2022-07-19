@@ -352,13 +352,27 @@ impl Session {
         self.interface.attach(core, core_state, &self.target)
     }
 
-    /// Read available data from the SWO interface without waiting.
+    /// Read available trace data from the specified data sink.
     ///
     /// This method is only supported for ARM-based targets, and will
     /// return [Error::ArchitectureRequired] otherwise.
-    pub fn read_swo(&mut self) -> Result<Vec<u8>, Error> {
-        let interface = self.get_arm_interface()?;
-        interface.read_swo()
+    pub fn read_trace_data(&mut self, sink: &TraceSink) -> Result<Vec<u8>, Error> {
+        match sink {
+            TraceSink::Swo(_) => {
+                let interface = self.get_arm_interface()?;
+                interface.read_swo()
+            }
+
+            TraceSink::Tpiu(_) => {
+                panic!("Probe-rs does not yet support reading parallel trace ports");
+            }
+
+            TraceSink::Etb => {
+                let components = self.get_arm_components()?;
+                let interface = self.get_arm_interface()?;
+                crate::architecture::arm::component::read_trace_memory(interface, &components)
+            }
+        }
     }
 
     /// Returns an implementation of [std::io::Read] that wraps [SwoAccess::read_swo].
@@ -457,7 +471,7 @@ impl Session {
     pub fn setup_tracing(
         &mut self,
         core_index: usize,
-        destination: TraceSink,
+        destination: &TraceSink,
     ) -> Result<(), Error> {
         let sequence_handle = match &self.target.debug_sequence {
             DebugSequence::Arm(sequence) => sequence.clone(),
@@ -470,7 +484,7 @@ impl Session {
         {
             let components = self.get_arm_components()?;
             let interface = self.get_arm_interface()?;
-            sequence_handle.trace_start(interface, &components, &destination)?;
+            sequence_handle.trace_start(interface, &components, destination)?;
         }
 
         // Configure SWO on the probe when the trace sink is configured for a serial output. Note
