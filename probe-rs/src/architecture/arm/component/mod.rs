@@ -182,6 +182,20 @@ pub(crate) fn setup_tracing(
     Ok(())
 }
 
+/// Read trace data from internal trace memory
+///
+/// # Args
+/// * `interface` - The interface with the debug probe.
+/// * `components` - The CoreSight debug components identified in the system.
+///
+/// # Note
+/// This function will read any available trace data in trace memory without blocking. At most,
+/// this function will read as much data as can fit in the FIFO - if the FIFO continues to be
+/// filled while trace data is being extracted, this function can be called again to return that
+/// data.
+///
+/// # Returns
+/// All data stored in trace memory, with an upper bound at the size of internal trace memory.
 pub(crate) fn read_trace_memory(
     interface: &mut Box<dyn ArmProbeInterface>,
     components: &[CoresightComponent],
@@ -189,31 +203,34 @@ pub(crate) fn read_trace_memory(
     let mut tmc =
         TraceMemoryController::new(interface, find_component(components, PeripheralType::Tmc)?);
 
-    // TODO: In the future, it may be possible to dynamically read from trace memory
-    // without waiting for the FIFO to fill first.
     let fifo_size = tmc.fifo_size()?;
-    while !tmc.full()? {
-        log::info!("TMC FIFO Level: {} of {fifo_size}", tmc.fill_level()?)
-    }
 
     // This sequence is taken from "CoreSight Trace memory Controller Technical Reference Manual"
     // Section 2.2.2 "Software FIFO Mode". Without following this procedure, the trace data does
     // not properly stop even after disabling capture.
-    tmc.stop_on_flush(true)?;
-    tmc.manual_flush()?;
 
     // Read all of the data from the ETM into a vector for further processing.
     let mut etf_trace: Vec<u8> = Vec::new();
     loop {
-        if let Some(data) = tmc.read()? {
-            etf_trace.extend_from_slice(&data.to_le_bytes())
-        } else if tmc.ready()? {
+        match tmc.read()? {
+            Some(data) => etf_trace.extend_from_slice(&data.to_le_bytes()),
+            None => {
+                // If there's nothing available in the FIFO, we can only break out of reading if we
+                // have an integer number of formatted frames, which are 16 bytes each.
+                if (etf_trace.len() % 16) == 0 {
+                    break;
+                }
+            }
+        }
+
+        // If the FIFO is being filled faster than we can read it, break out after reading a
+        // maximum number of frames.
+        let frame_boundary = (etf_trace.len() % 16) == 0;
+
+        if frame_boundary && etf_trace.len() >= fifo_size as usize {
             break;
         }
     }
-
-    assert!(tmc.empty()?);
-    tmc.disable_capture()?;
 
     // The TMC formats data into frames, as it contains trace data from multiple data sources. We
     // need to deserialize the frames and pull out only the data source of interest. For now, all
