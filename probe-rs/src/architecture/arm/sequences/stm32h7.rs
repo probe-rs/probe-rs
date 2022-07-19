@@ -204,7 +204,7 @@ impl ArmDebugSequence for Stm32h7 {
         match sink {
             TraceSink::Swo(_) => cstf.enable_port(0b00)?,
             TraceSink::Tpiu(_) => cstf.enable_port(0b01)?,
-            TraceSink::Etb => cstf.enable_port(0b10)?,
+            TraceSink::TraceMemory => cstf.enable_port(0b10)?,
         }
 
         // The SWTF needs to be configured to route traffic to SWO. When not in use, it needs to be

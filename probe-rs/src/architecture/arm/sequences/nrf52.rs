@@ -17,7 +17,7 @@ pub enum ComponentError {
 
     /// Nordic chips do not have an embedded trace buffer.
     #[error("nRF52 devices do not have a trace buffer")]
-    NordicNoEtb,
+    NordicNoTraceMem,
 }
 
 /// Marker struct indicating initialization sequencing for nRF52 family parts.
@@ -73,9 +73,11 @@ impl ArmDebugSequence for Nrf52 {
         sink: &TraceSink,
     ) -> Result<(), crate::Error> {
         let tpiu_clock = match sink {
-            TraceSink::Etb => {
+            TraceSink::TraceMemory => {
                 log::error!("nRF52 does not have a trace buffer");
-                return Err(Error::architecture_specific(ComponentError::NordicNoEtb));
+                return Err(Error::architecture_specific(
+                    ComponentError::NordicNoTraceMem,
+                ));
             }
 
             TraceSink::Tpiu(config) => config.tpiu_clk(),

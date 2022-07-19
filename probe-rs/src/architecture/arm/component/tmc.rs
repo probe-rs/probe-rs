@@ -1,4 +1,4 @@
-//! Module for interacting with the Embedded Trace Memory Controller
+//! Module for interacting with the embedded Trace Memory Controller (TMC)
 //!
 //! The embedded trace memory controller exposes a means of buffering and storing trace data in
 //! on-device SRAM for extraction either via the TPIU or via the debug interface.
@@ -33,12 +33,12 @@ pub enum Mode {
 }
 
 /// The embedded trace memory controller.
-pub struct EmbeddedTraceMemoryController<'a> {
+pub struct TraceMemoryController<'a> {
     component: &'a CoresightComponent,
     interface: &'a mut Box<dyn ArmProbeInterface>,
 }
 
-impl<'a> EmbeddedTraceMemoryController<'a> {
+impl<'a> TraceMemoryController<'a> {
     /// Construct a new embedded trace fifo controller.
     pub fn new(
         interface: &'a mut Box<dyn ArmProbeInterface>,

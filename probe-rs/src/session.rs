@@ -367,7 +367,7 @@ impl Session {
                 panic!("Probe-rs does not yet support reading parallel trace ports");
             }
 
-            TraceSink::Etb => {
+            TraceSink::TraceMemory => {
                 let components = self.get_arm_components()?;
                 let interface = self.get_arm_interface()?;
                 crate::architecture::arm::component::read_trace_memory(interface, &components)

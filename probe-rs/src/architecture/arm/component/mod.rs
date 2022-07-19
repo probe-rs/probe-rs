@@ -1,9 +1,9 @@
 //! Types and functions for interacting with CoreSight Components
 
 mod dwt;
-mod etm;
 mod itm;
 mod swo;
+mod tmc;
 mod tpiu;
 mod trace_funnel;
 
@@ -15,9 +15,9 @@ use anyhow::anyhow;
 use std::io::{Read, Seek, Write};
 
 pub use dwt::Dwt;
-pub use etm::EmbeddedTraceMemoryController;
 pub use itm::Itm;
 pub use swo::Swo;
+pub use tmc::TraceMemoryController;
 pub use tpiu::Tpiu;
 pub use trace_funnel::TraceFunnel;
 
@@ -33,7 +33,7 @@ pub enum TraceSink {
     Tpiu(SwoConfig),
 
     /// Trace data should be sent to the embedded trace buffer for software-based trace collection.
-    Etb,
+    TraceMemory,
 }
 
 /// An error when operating a core ROM table component occurred.
@@ -152,21 +152,21 @@ pub(crate) fn setup_tracing(
             }
         }
 
-        TraceSink::Etb => {
-            let mut etm = EmbeddedTraceMemoryController::new(
+        TraceSink::TraceMemory => {
+            let mut tmc = TraceMemoryController::new(
                 interface,
-                find_component(components, PeripheralType::Etb)?,
+                find_component(components, PeripheralType::Tmc)?,
             );
 
-            // Clear out the ETM FIFO before initiating the capture.
-            etm.disable_capture()?;
-            while !etm.ready()? {}
+            // Clear out the TMC FIFO before initiating the capture.
+            tmc.disable_capture()?;
+            while !tmc.ready()? {}
 
-            // Configure the ETM controller for software-polled mode, as we will read out data
-            // using the debug interface.
-            etm.set_mode(etm::Mode::Software)?;
+            // Configure the TMC for software-polled mode, as we will read out data using the debug
+            // interface.
+            tmc.set_mode(tmc::Mode::Software)?;
 
-            etm.enable_capture()?;
+            tmc.enable_capture()?;
         }
     }
 
@@ -187,37 +187,35 @@ pub(crate) fn read_trace_memory(
     interface: &mut Box<dyn ArmProbeInterface>,
     components: &[CoresightComponent],
 ) -> Result<Vec<u8>, Error> {
-    let mut etm = EmbeddedTraceMemoryController::new(
-        interface,
-        find_component(components, PeripheralType::Etb)?,
-    );
+    let mut tmc =
+        TraceMemoryController::new(interface, find_component(components, PeripheralType::Etb)?);
 
     // TODO: In the future, it may be possible to dynamically read from trace memory
     // without waiting for the FIFO to fill first.
-    while !etm.full()? {}
+    while !tmc.full()? {}
 
     // This sequence is taken from "CoreSight Trace memory Controller Technical Reference Manual"
     // Section 2.2.2 "Software FIFO Mode". Without following this procedure, the trace data does
     // not properly stop even after disabling capture.
-    etm.stop_on_flush(true)?;
-    etm.manual_flush()?;
+    tmc.stop_on_flush(true)?;
+    tmc.manual_flush()?;
 
     // Read all of the data from the ETM into a vector for further processing.
-    let mut etf_trace = std::io::Cursor::new(vec![0; etm.fifo_size()? as usize + 128]);
+    let mut etf_trace = std::io::Cursor::new(vec![0; tmc.fifo_size()? as usize + 128]);
     loop {
-        if let Some(data) = etm.read()? {
+        if let Some(data) = tmc.read()? {
             etf_trace
                 .write_all(&data.to_le_bytes())
-                .map_err(|e| anyhow!("Failed to write ETM data buffer: {e}"))?;
-        } else if etm.ready()? {
+                .map_err(|e| anyhow!("Failed to write TMC data buffer: {e}"))?;
+        } else if tmc.ready()? {
             break;
         }
     }
 
-    assert!(etm.empty()?);
-    etm.disable_capture()?;
+    assert!(tmc.empty()?);
+    tmc.disable_capture()?;
 
-    // The ETM formats data into frames, as it contains trace data from multiple data sources. We
+    // The TMC formats data into frames, as it contains trace data from multiple data sources. We
     // need to deserialize the frames and pull out only the data source of interest. For now, all
     // we care about is the ITM data.
     etf_trace
@@ -234,7 +232,7 @@ pub(crate) fn read_trace_memory(
         }
         .map_err(|e| anyhow!("Failed to read ETF trace data: {e}"))?;
 
-        let mut frame = etm::Frame::new(&frame_buffer, id);
+        let mut frame = tmc::Frame::new(&frame_buffer, id);
         for (id, data) in &mut frame {
             match id.into() {
                 // ITM ATID, see Itm::tx_enable()
