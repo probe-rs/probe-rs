@@ -264,13 +264,14 @@ impl From<Id> for u8 {
 /// reads source ID and bytes from it.
 #[derive(Copy, Clone, Debug)]
 pub struct Frame<'a> {
-    data: &'a [u8; 16],
+    data: &'a [u8],
     idx: usize,
     id: Id,
 }
 
 impl<'a> Frame<'a> {
-    pub fn new(data: &'a [u8; 16], id: Id) -> Self {
+    pub fn new(data: &'a [u8], id: Id) -> Self {
+        assert!(data.len() == 16);
         Self { data, id, idx: 0 }
     }
 

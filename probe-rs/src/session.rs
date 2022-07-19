@@ -42,6 +42,7 @@ pub struct Session {
     target: Target,
     interface: ArchitectureInterface,
     cores: Vec<(SpecificCoreState, CoreState)>,
+    configured_trace_sink: Option<TraceSink>,
 }
 
 enum ArchitectureInterface {
@@ -230,6 +231,7 @@ impl Session {
                         target,
                         interface: ArchitectureInterface::Arm(interface),
                         cores,
+                        configured_trace_sink: None,
                     };
 
                     {
@@ -260,6 +262,7 @@ impl Session {
                         target,
                         interface: ArchitectureInterface::Arm(interface),
                         cores,
+                        configured_trace_sink: None,
                     }
                 };
 
@@ -285,6 +288,7 @@ impl Session {
                     target,
                     interface: ArchitectureInterface::Riscv(Box::new(interface)),
                     cores,
+                    configured_trace_sink: None,
                 };
 
                 {
@@ -356,7 +360,12 @@ impl Session {
     ///
     /// This method is only supported for ARM-based targets, and will
     /// return [Error::ArchitectureRequired] otherwise.
-    pub fn read_trace_data(&mut self, sink: &TraceSink) -> Result<Vec<u8>, Error> {
+    pub fn read_trace_data(&mut self) -> Result<Vec<u8>, Error> {
+        let sink = self
+            .configured_trace_sink
+            .as_ref()
+            .ok_or(anyhow!("Tracing has not been configured"))?;
+
         match sink {
             TraceSink::Swo(_) => {
                 let interface = self.get_arm_interface()?;
@@ -471,7 +480,7 @@ impl Session {
     pub fn setup_tracing(
         &mut self,
         core_index: usize,
-        destination: &TraceSink,
+        destination: TraceSink,
     ) -> Result<(), Error> {
         // Enable tracing on the target
         {
@@ -492,17 +501,19 @@ impl Session {
         // Configure SWO on the probe when the trace sink is configured for a serial output. Note
         // that on some architectures, the TPIU is configured to drive SWO.
         match destination {
-            TraceSink::Swo(config) => {
+            TraceSink::Swo(ref config) => {
                 interface.enable_swo(config)?;
             }
-            TraceSink::Tpiu(config) => {
+            TraceSink::Tpiu(ref config) => {
                 interface.enable_swo(config)?;
             }
             TraceSink::TraceMemory => {}
         }
 
-        sequence_handle.trace_start(interface, &components, destination)?;
-        crate::architecture::arm::component::setup_tracing(interface, &components, destination)?;
+        sequence_handle.trace_start(interface, &components, &destination)?;
+        crate::architecture::arm::component::setup_tracing(interface, &components, &destination)?;
+
+        self.configured_trace_sink.replace(destination);
 
         Ok(())
     }

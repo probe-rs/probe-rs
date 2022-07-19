@@ -28,9 +28,7 @@ fn main() -> Result<(), Error> {
         .set_baud(2_000_000)
         .set_continuous_formatting(false);
 
-    let sink = TraceSink::Swo(cfg);
-
-    session.setup_tracing(0, &sink)?;
+    session.setup_tracing(0, TraceSink::Swo(cfg))?;
 
     let mut timestamp: f64 = 0.0;
 
@@ -41,7 +39,7 @@ fn main() -> Result<(), Error> {
     println!("Starting SWO trace ...");
 
     loop {
-        let bytes = session.read_trace_data(&sink)?;
+        let bytes = session.read_trace_data()?;
 
         decoder.push(&bytes);
         while let Ok(Some(packet)) = decoder.pull() {

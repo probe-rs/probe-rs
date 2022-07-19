@@ -11,8 +11,6 @@ use super::memory::romtable::{CoresightComponent, PeripheralType, RomTableError}
 use crate::architecture::arm::core::armv6m::Demcr;
 use crate::architecture::arm::{ArmProbeInterface, SwoConfig, SwoMode};
 use crate::{Core, Error, MemoryInterface, MemoryMappedRegister};
-use anyhow::anyhow;
-use std::io::{Read, Seek, Write};
 
 pub use dwt::Dwt;
 pub use itm::Itm;
@@ -22,6 +20,7 @@ pub use tpiu::Tpiu;
 pub use trace_funnel::TraceFunnel;
 
 /// Specifies the data sink (destination) for trace data.
+#[derive(Debug, Copy, Clone)]
 pub enum TraceSink {
     /// Trace data should be sent to the SWO peripheral.
     ///
@@ -204,12 +203,10 @@ pub(crate) fn read_trace_memory(
     tmc.manual_flush()?;
 
     // Read all of the data from the ETM into a vector for further processing.
-    let mut etf_trace = std::io::Cursor::new(vec![0; tmc.fifo_size()? as usize + 128]);
+    let mut etf_trace: Vec<u8> = Vec::new();
     loop {
         if let Some(data) = tmc.read()? {
-            etf_trace
-                .write_all(&data.to_le_bytes())
-                .map_err(|e| anyhow!("Failed to write TMC data buffer: {e}"))?;
+            etf_trace.extend_from_slice(&data.to_le_bytes())
         } else if tmc.ready()? {
             break;
         }
@@ -221,23 +218,13 @@ pub(crate) fn read_trace_memory(
     // The TMC formats data into frames, as it contains trace data from multiple data sources. We
     // need to deserialize the frames and pull out only the data source of interest. For now, all
     // we care about is the ITM data.
-    etf_trace
-        .rewind()
-        .map_err(|e| anyhow!("Failed to rewind ETF trace data: {e}"))?;
 
     let mut id = 0.into();
-    let mut frame_buffer = [0u8; 16];
-
     let mut itm_trace = Vec::new();
 
-    loop {
-        match etf_trace.read_exact(&mut frame_buffer) {
-            Err(e) if e.kind() == std::io::ErrorKind::UnexpectedEof => break,
-            other => other,
-        }
-        .map_err(|e| anyhow!("Failed to read ETF trace data: {e}"))?;
-
-        let mut frame = tmc::Frame::new(&frame_buffer, id);
+    // Process each formatted frame and extract the multiplexed trace data.
+    for frame_buffer in etf_trace.chunks_exact(16) {
+        let mut frame = tmc::Frame::new(frame_buffer, id);
         for (id, data) in &mut frame {
             match id.into() {
                 // ITM ATID, see Itm::tx_enable()
