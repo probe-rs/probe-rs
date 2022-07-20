@@ -169,6 +169,7 @@ impl Canary {
     }
 }
 
+/// Rounds up to the next multiple of `k` that is greater or equal to `n`.
 fn round_up(n: u32, k: u32) -> u32 {
     let rem = n % k;
     if rem == 0 {
