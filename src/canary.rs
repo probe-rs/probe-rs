@@ -217,13 +217,13 @@ macro_rules! assert_subroutine {
 ///
 /// ```armasm
 /// 000200ec <paint>:
-///    200ec:	4288      	cmp	r0,	r1
-///    200ee:	d801      	bhi.n	200f4 <end>
-///    200f0:	c004      	stmia	r0!, {r2}
-///    200f2:	e7fb      	b.n 	200ec <paint>
+///    200ec:    4288    cmp      r0, r1
+///    200ee:    d801    bhi.n    200f4 <end>
+///    200f0:    c004    stmia    r0!, {r2}
+///    200f2:    e7fb    b.n      200ec <paint>
 ///
 /// 000200f4 <end>:
-///    200f4:	be00      	bkpt	0x0000
+///    200f4:    be00    bkpt     0x0000
 /// ```
 ///
 /// ### Register-parameter-mapping
@@ -260,13 +260,13 @@ mod paint_subroutine {
 
     const SUBROUTINE: [u8; 12] = [
         // <paint>
-        0x88, 0x42, // cmp	r0, r1
-        0x01, 0xd8, // bhi.n	200f4 <end>
-        0x04, 0xc0, // stmia	r0!, {r2}
-        0xfb, 0xe7, // b.n	200ec <paint>
+        0x88, 0x42, // cmp      r0, r1
+        0x01, 0xd8, // bhi.n    200f4 <end>
+        0x04, 0xc0, // stmia    r0!, {r2}
+        0xfb, 0xe7, // b.n      200ec <paint>
         // <end>
-        0x00, 0xbe, // bkpt    0x0000
-        0x00, 0xbe, // bkpt    0x0000 (padding instruction)
+        0x00, 0xbe, // bkpt     0x0000
+        0x00, 0xbe, // bkpt     0x0000 (padding instruction)
     ];
 }
 
