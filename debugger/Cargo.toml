@@ -39,7 +39,7 @@ schemafy = "^0.6"
 chrono = { version = "0.4", features = ["serde"] }
 goblin = "0.5.1"
 base64 = "0.13"
-svd-parser = { version = "0.13.4", features = ["expand"] }
+svd-parser = { version = "0.14.0", features = ["expand"] }
 
 
 [dev-dependencies]
