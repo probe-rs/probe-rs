@@ -6,7 +6,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/) and this p
 
 ## [Unreleased]
 
-- [#xxx] Refactor stack painting
+- [#331] Refactor stack painting
 - [#330] Fix `fn round_up`
 - [#329] Update probe-rs to 0.13.0 (does not yet implement 64-bit support)
 - [#328] Simplify, by capturing identifiers in logging macros
@@ -18,7 +18,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/) and this p
 - [#314] Clarify documentation in README
 - [#293] Update snapshot tests to new TRACE output
 
-[#xxx]: https://github.com/knurling-rs/probe-run/pull/xxx
+[#331]: https://github.com/knurling-rs/probe-run/pull/331
 [#329]: https://github.com/knurling-rs/probe-run/pull/329
 [#328]: https://github.com/knurling-rs/probe-run/pull/328
 [#326]: https://github.com/knurling-rs/probe-run/pull/326
