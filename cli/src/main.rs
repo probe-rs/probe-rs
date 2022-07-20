@@ -3,10 +3,12 @@ mod debugger;
 mod gdb;
 mod info;
 mod run;
+mod trace;
 
 use debugger::CliState;
 
 use probe_rs::{
+    architecture::arm::component::TraceSink,
     debug::debug_info::DebugInfo,
     flashing::{erase_all, BinOptions, FileDownloadError, Format},
     MemoryInterface, Probe,
@@ -162,6 +164,17 @@ enum Cli {
         #[structopt(parse(try_from_str = parse_u64))]
         loc: u64,
     },
+    /// Configure and monitor ITM trace packets from the target.
+    #[structopt(name = "itm")]
+    Itm {
+        #[structopt(flatten)]
+        shared: CoreOptions,
+
+        #[structopt(flatten)]
+        common: ProbeOptions,
+
+        // TODO: Allow specifying trace sink
+    },
     #[clap(subcommand)]
     Chip(Chip),
 }
@@ -182,7 +195,7 @@ enum Chip {
 
 /// Shared options for core selection, shared between commands
 #[derive(clap::StructOpt)]
-struct CoreOptions {
+pub(crate) struct CoreOptions {
     #[structopt(long, default_value = "0")]
     core: usize,
 }
@@ -246,6 +259,10 @@ fn main() -> Result<()> {
             common,
             loc,
         } => trace_u32_on_target(&shared, &common, loc),
+        Cli::Itm {
+            shared,
+            common
+        } => trace::itm_trace(&shared, &common, TraceSink::TraceMemory),
         Cli::Chip(Chip::List) => print_families(io::stdout()).map_err(Into::into),
         Cli::Chip(Chip::Info { name }) => print_chip_info(name, io::stdout()),
     }
