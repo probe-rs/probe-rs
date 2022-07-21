@@ -52,6 +52,7 @@ If you've enabled rtt (see [Configuration](#configuration)) the RTT UI will appe
 | `Enter` | Send the pending input |
 | `PgUp` | Scroll up |
 | `PgDn` | Scroll Down |
+| `^l` | Clear current tab |
 
 ## Configuration
 

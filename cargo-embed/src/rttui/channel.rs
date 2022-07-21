@@ -112,6 +112,12 @@ impl ChannelState {
         self.scroll_offset = value;
     }
 
+    pub fn clear(&mut self) {
+        self.scroll_offset = 0;
+        self.data = Vec::new();
+        self.messages = Vec::new();
+    }
+
     pub fn data(&self) -> &Vec<u8> {
         &self.data
     }

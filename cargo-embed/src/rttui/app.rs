@@ -428,6 +428,10 @@ impl App {
                     }
                     true
                 }
+                KeyCode::Char('l') if event.modifiers.contains(KeyModifiers::CONTROL) => {
+                    self.current_tab_mut().clear();
+                    false
+                }
                 KeyCode::F(n) => {
                     let n = n as usize - 1;
                     if n < self.tabs.len() {
