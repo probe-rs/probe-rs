@@ -4,7 +4,9 @@ use probe_rs::{Core, MemoryInterface, RegisterId, Session};
 
 use crate::{registers::PC, Elf, TargetInfo, TIMEOUT};
 
+/// Canary value
 const CANARY_U8: u8 = 0xAA;
+/// Canary value
 const CANARY_U32: u32 = u32::from_le_bytes([CANARY_U8, CANARY_U8, CANARY_U8, CANARY_U8]);
 
 /// (Location of) the stack canary
@@ -194,7 +196,7 @@ macro_rules! assert_subroutine {
     };
 }
 
-/// Write [`CANARY_U32`] to the stack.
+/// Paint-stack subroutine.
 ///
 /// ### Corresponds to following rust code
 ///
@@ -230,7 +232,7 @@ macro_rules! assert_subroutine {
 mod paint_subroutine {
     use super::*;
 
-    /// Execute the subroutine.
+    /// Write [`CANARY_U32`] to the stack.
     ///
     /// ## Assumptions
     /// - Expects the [`Core`] to be halted and will leave it halted when the function
@@ -263,7 +265,7 @@ mod paint_subroutine {
     ];
 }
 
-/// Search for lowest touched address in memory.
+/// Measure-stack subroutine.
 ///
 /// ### Corresponds to following rust code
 ///
@@ -315,11 +317,10 @@ mod paint_subroutine {
 mod measure_subroutine {
     use super::*;
 
-    /// Execute the subroutine.
+    /// Search for lowest touched address in memory.
     ///
-    /// The returned `Option<u32>` is None, if the memory is untouched. Otherwise it
-    /// gives the position of the first (lowest) 4-byte-word which isn't the same as
-    /// the pattern anymore.
+    /// The returned `Option<u32>` is `None`, if the memory is untouched. Otherwise it
+    /// gives the position of the lowest byte which isn't equal to the pattern anymore.
     ///
     /// ## Assumptions
     /// - Expects the [`Core`] to be halted and will leave it halted when the function
@@ -333,27 +334,47 @@ mod measure_subroutine {
         assert_subroutine!(low_addr, stack_size, self::SUBROUTINE.len() as u32);
 
         // use probe to search through the memory the subroutine will be written to
-        let mut buf = [0; self::SUBROUTINE.len()];
-        core.read_8(low_addr as u64, &mut buf)?;
-        match buf.iter().position(|b| *b != CANARY_U8) {
-            // if we find a touched value, we return early
-            Some(pos) => return Ok(Some(pos as u32)),
-            // otherwise we continue
-            None => {}
+        match self::search_with_probe(core, low_addr)? {
+            a @ Some(_) => return Ok(a), // if we find a touched value, return early ...
+            None => {}                   // ... otherwise we continue
         }
 
         // prepare subroutine
-        let _ = super::prepare_subroutine(core, low_addr, stack_size, self::SUBROUTINE)?;
+        super::prepare_subroutine(core, low_addr, stack_size, self::SUBROUTINE)?;
 
         // execute the subroutine and wait for it to finish
         core.run()?;
         core.wait_for_core_halted(TIMEOUT)?;
 
         // read out and return the result
-        match core.read_core_reg(RegisterId(0))? {
-            0 => Ok(None),
-            n => Ok(Some(n)),
+        self::get_result(core)
+    }
+
+    fn search_with_probe(core: &mut Core, low_addr: u32) -> Result<Option<u32>, probe_rs::Error> {
+        let mut buf = [0; self::SUBROUTINE.len()];
+        core.read_8(low_addr as u64, &mut buf)?;
+        match buf.iter().position(|b| *b != CANARY_U8) {
+            Some(pos) => Ok(Some(pos as u32)),
+            None => Ok(None),
         }
+    }
+
+    fn get_result(core: &mut Core) -> Result<Option<u32>, probe_rs::Error> {
+        // get the address of the lowest touched 4-byte-word
+        let word_addr = match core.read_core_reg(RegisterId(0))? {
+            0 => return Ok(None),
+            n => n,
+        };
+
+        // take a closer look at word, to get address of lowest touched byte
+        let offset = core
+            .read_word_32(word_addr as u64)?
+            .to_le_bytes()
+            .into_iter()
+            .position(|b| b != CANARY_U8)
+            .unwrap();
+
+        Ok(Some(word_addr + offset as u32))
     }
 
     const SUBROUTINE: [u8; 20] = [
