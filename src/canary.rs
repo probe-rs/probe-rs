@@ -353,7 +353,7 @@ mod measure_subroutine {
         // read out and return the result
         match core.read_core_reg(RegisterId(0))? {
             0 => Ok(None),
-            n => Ok(Some(n - low_addr)),
+            n => Ok(Some(n)),
         }
     }
 
