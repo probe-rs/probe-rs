@@ -904,6 +904,7 @@ impl DebugInfo {
     /// given a source file, a line and optionally a column.
     pub fn get_breakpoint_location(
         &self,
+        core: &mut Core<'_>,
         path: &Path,
         line: u64,
         column: Option<u64>,
