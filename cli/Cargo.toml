@@ -34,3 +34,4 @@ parse_int = "0.6.0"
 num-traits = "0.2.14"
 bitfield = "0.14.0"
 jep106 = "0.2.6"
+itm-decode = { version = "0.6", default-features = false }
