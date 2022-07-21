@@ -116,8 +116,7 @@ impl Canary {
             log::info!("reading {size_kb:.2} KiB of RAM for stack usage estimation");
         }
         let start = Instant::now();
-        let touched_address =
-            measure_subroutine::execute(core, self.address as u64, self.size as u64)?;
+        let touched_address = measure_subroutine::execute(core, self.address, self.size as u32)?;
         let seconds = start.elapsed().as_secs_f64();
         log::trace!(
             "reading canary took {seconds:.3}s ({:.2} KiB/s)",
@@ -273,15 +272,12 @@ mod paint_subroutine {
 /// unsafe fn measure(mut low_addr: u32, high_addr: u32, pattern: u32) -> u32 {
 ///     let mut result = 0;
 ///
-///     loop {
-///         if low_addr >= high_addr {
-///             break;
-///         } else if (low_addr as *const u32).read() != pattern {
+///     while low_addr < high_addr {
+///         if (low_addr as *const u32).read() != pattern {
 ///             result = low_addr;
 ///             break;
 ///         } else {
 ///             low_addr += 4;
-///             continue;
 ///         }
 ///     }
 ///
@@ -291,21 +287,22 @@ mod paint_subroutine {
 ///
 /// ### Generated assembly
 ///
-/// The assembly is generated from abothes rust code, using the jorge-hack. The labels
-/// `<end>` and `<no_result>` got manually inserted for readability.
+/// The assembly is generated from aboves rust code, using the jorge-hack.
 ///
 /// ```armasm
 /// 000200ec <measure>:
 ///     200ec:    4288    cmp      r0, r1
-///     200ee:    d204    bcs.n    200fa <no_result>
+///     200ee:    d204    bcs.n    200fa <measure+0xe>
 ///     200f0:    6803    ldr      r3, [r0, #0]
 ///     200f2:    4293    cmp      r3, r2
-///     200f4:    d102    bne.n    200fc <end>
+///     200f4:    d102    bne.n    200fc <measure+0x10>
 ///     200f6:    1d00    adds     r0, r0, #4
 ///     200f8:    e7f8    b.n      200ec <measure>
-/// 000200fa <no_result>:
+///
+/// 000200fa <measure+0xe>:
 ///     200fa:    2000    movs     r0, #0
-/// 000200fc <end>:
+///
+/// 000200fc <measure+0x10>:
 ///     200fc:    be00    bkpt     0x0000
 /// //                    ^^^^ this was `bx lr`
 /// ```
@@ -331,18 +328,17 @@ mod measure_subroutine {
     /// - `low_addr` and `size` need to be 4-byte-aligned.
     pub fn execute(
         core: &mut Core,
-        low_addr: u64,
-        stack_size: u64,
-    ) -> Result<Option<u64>, probe_rs::Error> {
-        assert_subroutine!(low_addr, stack_size, self::SUBROUTINE.len() as u64);
+        low_addr: u32,
+        stack_size: u32,
+    ) -> Result<Option<u32>, probe_rs::Error> {
+        assert_subroutine!(low_addr, stack_size, self::SUBROUTINE.len() as u32);
 
         // use probe to search through the memory the subroutine will be written to
-        // NOTE: SUBROUTINE.len() is always a multiple of 4, therefore we can divide by 4 here
         let mut buf = [0; self::SUBROUTINE.len()];
-        core.read_8(low_addr, &mut buf)?;
+        core.read_8(low_addr as u64, &mut buf)?;
         match buf.iter().position(|b| *b != CANARY_U8) {
             // if we find a touched value, we return early
-            Some(pos) => return Ok(Some(pos as u64)),
+            Some(pos) => return Ok(Some(pos as u32)),
             // otherwise continue
             None => {}
         }
@@ -362,19 +358,16 @@ mod measure_subroutine {
     }
 
     const SUBROUTINE: [u8; 20] = [
-        // <measure>
-        0x88, 0x42, // cmp     r0, r1
-        0x04, 0xd2, // bcs.n   200fa <no_result>
-        0x03, 0x68, // ldr     r3, [r0, #0]
-        0x93, 0x42, // cmp     r3, r2
-        0x02, 0xd1, // bne.n   200fc <end>
-        0x00, 0x1d, // adds    r0, r0, #4
-        0xf8, 0xe7, // b.n     200ec <measure>
-        // <no_result>
-        0x00, 0x20, // movs    r0, #0
-        // <end>
-        0x00, 0xbe, // bkpt    0x0000
-        0x00, 0xbe, // bkpt    0x0000 (padding instruction)
+        0x88, 0x42, // cmp      r0, r1
+        0x04, 0xd2, // bcs.n    200fa <measure+0xe>
+        0x03, 0x68, // ldr      r3, [r0, #0]
+        0x93, 0x42, // cmp      r3, r2
+        0x02, 0xd1, // bne.n    200fc <measure+0x10>
+        0x00, 0x1d, // adds     r0, r0, #4
+        0xf8, 0xe7, // b.n      200ec <measure>
+        0x00, 0x20, // movs     r0, #0
+        0x00, 0xbe, // bkpt     0x0000
+        0x00, 0xbe, // bkpt     0x0000 (padding instruction)
     ];
 }
 
@@ -395,6 +388,7 @@ fn prepare_subroutine<const N: usize>(
     // calculate highest address of stack
     let high_addr = low_addr + stack_size;
 
+    // set the registers
     // NOTE: add `subroutine_size` to `low_addr`, to avoid the subroutine overwriting itself
     core.write_core_reg(RegisterId(0), low_addr + subroutine_size)?;
     core.write_core_reg(RegisterId(1), high_addr)?;
