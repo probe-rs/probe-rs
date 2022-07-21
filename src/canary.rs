@@ -319,8 +319,7 @@ mod measure_subroutine {
     ///
     /// The returned `Option<u32>` is None, if the memory is untouched. Otherwise it
     /// gives the position of the first (lowest) 4-byte-word which isn't the same as
-    /// the pattern anymore. Because we are searching for 4-byte-words, the returned
-    /// `u32` will always be a multiple of 4.
+    /// the pattern anymore.
     ///
     /// ## Assumptions
     /// - Expects the [`Core`] to be halted and will leave it halted when the function
@@ -339,7 +338,7 @@ mod measure_subroutine {
         match buf.iter().position(|b| *b != CANARY_U8) {
             // if we find a touched value, we return early
             Some(pos) => return Ok(Some(pos as u32)),
-            // otherwise continue
+            // otherwise we continue
             None => {}
         }
 
