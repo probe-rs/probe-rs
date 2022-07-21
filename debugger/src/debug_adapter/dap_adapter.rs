@@ -715,7 +715,6 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                     source_path
                 {
                     match target_core.core_data.debug_info.get_breakpoint_location(
-                        &mut target_core.core,
                         source_path,
                         requested_breakpoint_line,
                         requested_breakpoint_column,
