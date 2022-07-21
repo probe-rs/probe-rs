@@ -10,6 +10,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/) and this p
 - [#330] Fix `fn round_up`
 - [#329] Update probe-rs to 0.13.0 (does not yet implement 64-bit support)
 - [#328] Simplify, by capturing identifiers in logging macros
+- [#327] Optimize stack usage measuring
 - [#326] Make use of i/o locking being static since rust `1.61`.
 - [#321] CI: Add changelog-enforcer
 - [#320] Disable terminal colorization if `TERM=dumb` is set
@@ -22,6 +23,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/) and this p
 [#330]: https://github.com/knurling-rs/probe-run/pull/330
 [#329]: https://github.com/knurling-rs/probe-run/pull/329
 [#328]: https://github.com/knurling-rs/probe-run/pull/328
+[#327]: https://github.com/knurling-rs/probe-run/pull/327
 [#326]: https://github.com/knurling-rs/probe-run/pull/326
 [#321]: https://github.com/knurling-rs/probe-run/pull/321
 [#320]: https://github.com/knurling-rs/probe-run/pull/320
