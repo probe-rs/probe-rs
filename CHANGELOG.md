@@ -19,6 +19,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/) and this p
 - [#293] Update snapshot tests to new TRACE output
 
 [#331]: https://github.com/knurling-rs/probe-run/pull/331
+[#330]: https://github.com/knurling-rs/probe-run/pull/330
 [#329]: https://github.com/knurling-rs/probe-run/pull/329
 [#328]: https://github.com/knurling-rs/probe-run/pull/328
 [#326]: https://github.com/knurling-rs/probe-run/pull/326
