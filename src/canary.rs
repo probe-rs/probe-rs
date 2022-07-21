@@ -214,9 +214,9 @@ macro_rules! assert_subroutine {
 /// ```armasm
 /// 000200ec <paint>:
 ///    200ec:    4288    cmp      r0, r1
-///    200ee:    d801    bhi.n    200f4 <paint+0x8>
+///    200ee:    d801    bhi.n    #6 <paint+0x8>
 ///    200f0:    c004    stmia    r0!, {r2}
-///    200f2:    e7fb    b.n      200ec <paint>
+///    200f2:    e7fb    b.n      #0xfffffffa <paint>
 ///
 /// 000200f4 <paint+0x8>:
 ///    200f4:    be00    bkpt     0x0000
@@ -255,9 +255,9 @@ mod paint_subroutine {
 
     const SUBROUTINE: [u8; 12] = [
         0x88, 0x42, // cmp      r0, r1
-        0x01, 0xd8, // bhi.n    200f4 <paint+0x8>
+        0x01, 0xd8, // bhi.n    #6 <paint+0x8>
         0x04, 0xc0, // stmia    r0!, {r2}
-        0xfb, 0xe7, // b.n      200ec <paint>
+        0xfb, 0xe7, // b.n      #0xfffffffa <paint>
         0x00, 0xbe, // bkpt     0x0000
         0x00, 0xbe, // bkpt     0x0000 (padding instruction)
     ];
@@ -292,12 +292,12 @@ mod paint_subroutine {
 /// ```armasm
 /// 000200ec <measure>:
 ///     200ec:    4288    cmp      r0, r1
-///     200ee:    d204    bcs.n    200fa <measure+0xe>
+///     200ee:    d204    bcs.n    #0xc <measure+0xe>
 ///     200f0:    6803    ldr      r3, [r0, #0]
 ///     200f2:    4293    cmp      r3, r2
-///     200f4:    d102    bne.n    200fc <measure+0x10>
+///     200f4:    d102    bne.n    #8 <measure+0x10>
 ///     200f6:    1d00    adds     r0, r0, #4
-///     200f8:    e7f8    b.n      200ec <measure>
+///     200f8:    e7f8    b.n      #0xfffffff8 <measure>
 ///
 /// 000200fa <measure+0xe>:
 ///     200fa:    2000    movs     r0, #0
@@ -358,12 +358,12 @@ mod measure_subroutine {
 
     const SUBROUTINE: [u8; 20] = [
         0x88, 0x42, // cmp      r0, r1
-        0x04, 0xd2, // bcs.n    200fa <measure+0xe>
+        0x04, 0xd2, // bcs.n    #0xc <measure+0xe>
         0x03, 0x68, // ldr      r3, [r0, #0]
         0x93, 0x42, // cmp      r3, r2
-        0x02, 0xd1, // bne.n    200fc <measure+0x10>
+        0x02, 0xd1, // bne.n    #8 <measure+0x10>
         0x00, 0x1d, // adds     r0, r0, #4
-        0xf8, 0xe7, // b.n      200ec <measure>
+        0xf8, 0xe7, // b.n      #0xfffffff8 <measure>
         0x00, 0x20, // movs     r0, #0
         0x00, 0xbe, // bkpt     0x0000
         0x00, 0xbe, // bkpt     0x0000 (padding instruction)
