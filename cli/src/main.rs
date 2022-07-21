@@ -173,6 +173,8 @@ enum Cli {
         #[structopt(flatten)]
         common: ProbeOptions,
 
+        #[structopt(parse(try_from_str = parse_u64))]
+        duration_ms: u64,
         // TODO: Allow specifying trace sink
     },
     #[clap(subcommand)]
@@ -261,8 +263,14 @@ fn main() -> Result<()> {
         } => trace_u32_on_target(&shared, &common, loc),
         Cli::Itm {
             shared,
-            common
-        } => trace::itm_trace(&shared, &common, TraceSink::TraceMemory),
+            common,
+            duration_ms,
+        } => trace::itm_trace(
+            &shared,
+            &common,
+            TraceSink::TraceMemory,
+            std::time::Duration::from_millis(duration_ms),
+        ),
         Cli::Chip(Chip::List) => print_families(io::stdout()).map_err(Into::into),
         Cli::Chip(Chip::Info { name }) => print_chip_info(name, io::stdout()),
     }
