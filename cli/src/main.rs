@@ -8,7 +8,7 @@ mod trace;
 use debugger::CliState;
 
 use probe_rs::{
-    architecture::arm::component::TraceSink,
+    architecture::arm::{component::TraceSink, swo::SwoConfig},
     debug::debug_info::DebugInfo,
     flashing::{erase_all, BinOptions, FileDownloadError, Format},
     MemoryInterface, Probe,
@@ -175,7 +175,9 @@ enum Cli {
 
         #[structopt(parse(try_from_str = parse_u64))]
         duration_ms: u64,
-        // TODO: Allow specifying trace sink
+
+        #[clap(subcommand)]
+        source: ItmSource,
     },
     #[clap(subcommand)]
     Chip(Chip),
@@ -200,6 +202,24 @@ enum Chip {
 pub(crate) struct CoreOptions {
     #[structopt(long, default_value = "0")]
     core: usize,
+}
+
+#[derive(clap::Subcommand)]
+pub(crate) enum ItmSource {
+    /// Direct ITM data to internal trace memory for extraction.
+    /// Note: Not all targets support trace memory.
+    #[clap(name = "memory")]
+    TraceMemory,
+
+    /// Direct ITM traffic out the TRACESWO pin for reception by the probe.
+    #[clap(name = "swo")]
+    Swo {
+        /// The speed of the clock feeding the TPIU/SWO module in Hz.
+        clk: u32,
+
+        /// The desired baud rate of the SWO output.
+        baud: u32,
+    },
 }
 
 fn main() -> Result<()> {
@@ -265,12 +285,19 @@ fn main() -> Result<()> {
             shared,
             common,
             duration_ms,
-        } => trace::itm_trace(
-            &shared,
-            &common,
-            TraceSink::TraceMemory,
-            std::time::Duration::from_millis(duration_ms),
-        ),
+            source,
+        } => {
+            let sink = match source {
+                ItmSource::TraceMemory => TraceSink::TraceMemory,
+                ItmSource::Swo { clk, baud } => TraceSink::Swo(SwoConfig::new(clk).set_baud(baud)),
+            };
+            trace::itm_trace(
+                &shared,
+                &common,
+                sink,
+                std::time::Duration::from_millis(duration_ms),
+            )
+        }
         Cli::Chip(Chip::List) => print_families(io::stdout()).map_err(Into::into),
         Cli::Chip(Chip::Info { name }) => print_chip_info(name, io::stdout()),
     }
