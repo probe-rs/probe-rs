@@ -364,7 +364,7 @@ impl Session {
         let sink = self
             .configured_trace_sink
             .as_ref()
-            .ok_or(anyhow!("Tracing has not been configured"))?;
+            .ok_or_else(|| anyhow!("Tracing has not been configured"))?;
 
         match sink {
             TraceSink::Swo(_) => {
