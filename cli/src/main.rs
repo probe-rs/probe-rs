@@ -176,6 +176,9 @@ enum Cli {
         #[structopt(parse(try_from_str = parse_u64))]
         duration_ms: u64,
 
+        #[structopt(long)]
+        output_file: Option<String>,
+
         #[clap(subcommand)]
         source: ItmSource,
     },
@@ -286,6 +289,7 @@ fn main() -> Result<()> {
             common,
             duration_ms,
             source,
+            output_file,
         } => {
             let sink = match source {
                 ItmSource::TraceMemory => TraceSink::TraceMemory,
@@ -296,6 +300,7 @@ fn main() -> Result<()> {
                 &common,
                 sink,
                 std::time::Duration::from_millis(duration_ms),
+                output_file,
             )
         }
         Cli::Chip(Chip::List) => print_families(io::stdout()).map_err(Into::into),
