@@ -904,7 +904,6 @@ impl DebugInfo {
     /// given a source file, a line and optionally a column.
     pub fn get_breakpoint_location(
         &self,
-        core: &mut Core<'_>,
         path: &Path,
         line: u64,
         column: Option<u64>,
@@ -946,7 +945,7 @@ impl DebugInfo {
                                     // The first match of the file and row will be used a the locator address to select valid breakpoint location.
                                     // - The result will include a new source location, so that the debugger knows where the actual breakpoint was placed.
                                     return SteppingMode::BreakPoint.get_halt_location(
-                                        core,
+                                        None,
                                         self,
                                         row.address(),
                                         None,

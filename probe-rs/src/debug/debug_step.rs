@@ -66,11 +66,15 @@ impl SteppingMode {
                     return Ok((core_status, program_counter));
                 }
                 SteppingMode::BreakPoint | SteppingMode::IntoStatement => {
-                    self.get_halt_location(core, debug_info, program_counter, None)
+                    self.get_halt_location(None, debug_info, program_counter, None)
                 }
-                SteppingMode::OverStatement | SteppingMode::OutOfStatement => {
-                    self.get_halt_location(core, debug_info, program_counter, Some(return_address))
-                }
+                SteppingMode::OverStatement | SteppingMode::OutOfStatement => self
+                    .get_halt_location(
+                        Some(core),
+                        debug_info,
+                        program_counter,
+                        Some(return_address),
+                    ),
             } {
                 Ok((post_step_target_address, _)) => {
                     target_address = post_step_target_address;
@@ -194,7 +198,8 @@ impl SteppingMode {
     /// NOTE about errors returned: Sometimes the target program_counter is at a location where the debug_info program row data does not contain valid statements for halt points, and we will return a DebugError::NoValidHaltLocation . In this case, we recommend the consumer of this API step the core to the next instruction and try again, with a resasonable retry limit. All other error kinds are should be treated as non recoverable errors.
     pub(crate) fn get_halt_location(
         &self,
-        core: &mut Core<'_>,
+        // The core is not required when we are only looking for the next valid breakpoint ( `SteppingMode::Breakpoint` ).
+        core: Option<&mut Core<'_>>,
         debug_info: &DebugInfo,
         program_counter: u64,
         return_address: Option<u64>,
@@ -222,19 +227,23 @@ impl SteppingMode {
                         && function.high_pc > program_counter as u64
                     {
                         if function.is_inline() {
-                            // Step_out_address for inlined functions, is the first available breakpoint address after the last statement in the inline function.
-                            let (_, next_instruction_address) =
-                                step_to_address(program_counter..=function.high_pc, core)?;
-                            return SteppingMode::BreakPoint.get_halt_location(
-                                core,
-                                debug_info,
-                                next_instruction_address,
-                                None,
-                            );
+                            if let Some(core) = core {
+                                // Step_out_address for inlined functions, is the first available breakpoint address after the last statement in the inline function.
+                                let (_, next_instruction_address) =
+                                    step_to_address(program_counter..=function.high_pc, core)?;
+                                return SteppingMode::BreakPoint.get_halt_location(
+                                    None,
+                                    debug_info,
+                                    next_instruction_address,
+                                    None,
+                                );
+                            } else {
+                                return Err(DebugError::Other(anyhow::anyhow!("Require a valid `probe_rs::Core::core` to step. Please report this as a bug.")));
+                            }
                         } else if let Some(return_address) = return_address {
                             // Step_out_address for non-inlined functions is the first available breakpoint address after the return address.
                             return SteppingMode::BreakPoint.get_halt_location(
-                                core,
+                                None,
                                 debug_info,
                                 return_address,
                                 None,
@@ -327,11 +336,20 @@ impl SteppingMode {
                     //   - And then step one more time,
                     //   - And then determine the `first_halt_address` at that location.
                     if let Some(prior_row_address) = prior_row_address {
-                        step_to_address(program_counter..=prior_row_address, core)?;
-                        let next_instruction_address = core.step()?.pc;
-                        next_statement_address = SteppingMode::BreakPoint
-                            .get_halt_location(core, debug_info, next_instruction_address, None)?
-                            .0;
+                        if let Some(core) = core {
+                            step_to_address(program_counter..=prior_row_address, core)?;
+                            let next_instruction_address = core.step()?.pc;
+                            next_statement_address = SteppingMode::BreakPoint
+                                .get_halt_location(
+                                    None,
+                                    debug_info,
+                                    next_instruction_address,
+                                    None,
+                                )?
+                                .0;
+                        } else {
+                            return Err(DebugError::Other(anyhow::anyhow!("Require a valid `probe_rs::Core::core` to step. Please report this as a bug.")));
+                        }
                     }
                     // If the value is still None, this function will exit with an Err().
                     break;
@@ -366,24 +384,31 @@ impl SteppingMode {
                     Some(next_statement_address),
                 ) = (first_breakpoint_address, next_statement_address)
                 {
-                    let next_pc =
-                        step_to_address(first_breakpoint_address..=next_statement_address, core)?.1;
-                    if next_pc == next_statement_address {
-                        // We have reached the next_statement_address, so we can conclude there was no branching calls in this sequence.
-                        log::warn!("Stepping into next statement, but no branching calls found. Stepped to next available statement.");
-                        next_pc
-                    } else {
-                        // We have reached a location that is not in the current sequence, so we can conclude there was a branching call in this sequence.
-                        // We will halt at the first valid breakpoint address after this point.
-                        if let (Some(next_valid_halt_address), _) = SteppingMode::BreakPoint
-                            .get_halt_location(core, debug_info, next_pc, None)?
-                        {
-                            log::debug!("Stepping into next statement, and a branching call was found. Stepping to next valid halt address: {:#010x}.", next_valid_halt_address);
-                            next_valid_halt_address
-                        } else {
-                            log::debug!("Stepping into next statement, and a branching call was found, but no next valid halt address. Halted at  {:#010x}.", next_pc);
+                    if let Some(core) = core {
+                        let next_pc = step_to_address(
+                            first_breakpoint_address..=next_statement_address,
+                            core,
+                        )?
+                        .1;
+                        if next_pc == next_statement_address {
+                            // We have reached the next_statement_address, so we can conclude there was no branching calls in this sequence.
+                            log::warn!("Stepping into next statement, but no branching calls found. Stepped to next available statement.");
                             next_pc
+                        } else {
+                            // We have reached a location that is not in the current sequence, so we can conclude there was a branching call in this sequence.
+                            // We will halt at the first valid breakpoint address after this point.
+                            if let (Some(next_valid_halt_address), _) = SteppingMode::BreakPoint
+                                .get_halt_location(None, debug_info, next_pc, None)?
+                            {
+                                log::debug!("Stepping into next statement, and a branching call was found. Stepping to next valid halt address: {:#010x}.", next_valid_halt_address);
+                                next_valid_halt_address
+                            } else {
+                                log::debug!("Stepping into next statement, and a branching call was found, but no next valid halt address. Halted at  {:#010x}.", next_pc);
+                                next_pc
+                            }
                         }
+                    } else {
+                        return Err(DebugError::Other(anyhow::anyhow!("Require a valid `probe_rs::Core::core` to step. Please report this as a bug.")));
                     }
                 } else {
                     // Our technique requires a valid first_breakpoint_address AND a valid next_statement_address be computed before we can do this.
