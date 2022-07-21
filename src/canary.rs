@@ -30,11 +30,11 @@ const CANARY_U32: u32 = u32::from_le_bytes([CANARY_U8, CANARY_U8, CANARY_U8, CAN
 /// +--------+ -> lowest RAM address
 /// ```
 ///
-/// The whole canary is initialized to `CANARY_VALUE` before the target program is started.
+/// The whole canary is initialized to `CANARY_U8` before the target program is started.
 /// The canary size is 10% of the available stack space or 1 KiB, whichever is smallest.
 ///
 /// When the programs ends (due to panic or breakpoint) the integrity of the canary is checked. If it was
-/// "touched" (any of its bytes != `CANARY_VALUE`) then that is considered to be a *potential* stack
+/// "touched" (any of its bytes != `CANARY_U8`) then that is considered to be a *potential* stack
 /// overflow.
 #[derive(Clone, Copy)]
 pub(crate) struct Canary {
@@ -94,7 +94,7 @@ impl Canary {
             log::info!("painting {size_kb:.2} KiB of RAM for stack usage estimation");
         }
         let start = Instant::now();
-        paint_subroutine::execute(&mut core, stack_start as u64, size as u64)?;
+        paint_subroutine::execute(&mut core, stack_start, size as u32)?;
         let seconds = start.elapsed().as_secs_f64();
         log::trace!(
             "setting up canary took {seconds:.3}s ({:.2} KiB/s)",
@@ -197,7 +197,7 @@ macro_rules! assert_subroutine {
     };
 }
 
-/// Write [`CANARY_VALUE`] to the stack.
+/// Write [`CANARY_U32`] to the stack.
 ///
 /// ### Corresponds to following rust code
 ///
@@ -239,8 +239,8 @@ mod paint_subroutine {
     /// - Expects the [`Core`] to be halted and will leave it halted when the function
     /// returns.
     /// - `low_addr` and `size` need to be 4-byte-aligned.
-    pub fn execute(core: &mut Core, low_addr: u64, stack_size: u64) -> Result<(), probe_rs::Error> {
-        assert_subroutine!(low_addr, stack_size, self::SUBROUTINE.len() as u64);
+    pub fn execute(core: &mut Core, low_addr: u32, stack_size: u32) -> Result<(), probe_rs::Error> {
+        assert_subroutine!(low_addr, stack_size, self::SUBROUTINE.len() as u32);
 
         // prepare subroutine
         let previous_pc = super::prepare_subroutine(core, low_addr, stack_size, self::SUBROUTINE)?;
@@ -250,8 +250,7 @@ mod paint_subroutine {
         core.wait_for_core_halted(TIMEOUT)?;
 
         // overwrite subroutine
-        // NOTE: SUBROUTINE.len() must be a multiple of 4, therefore we can safely divide by 4 here
-        core.write_32(low_addr, &[CANARY_U32; self::SUBROUTINE.len() / 4])?;
+        core.write_8(low_addr as u64, &[CANARY_U8; self::SUBROUTINE.len()])?;
 
         // reset PC to where it was before
         core.write_core_reg(PC, previous_pc)
@@ -275,11 +274,11 @@ mod paint_subroutine {
 /// `low_addr` and `high_addr` need to be 4-byte-aligned.
 fn prepare_subroutine<const N: usize>(
     core: &mut Core,
-    low_addr: u64,
-    stack_size: u64,
+    low_addr: u32,
+    stack_size: u32,
     subroutine: [u8; N],
 ) -> Result<u32, probe_rs::Error> {
-    let subroutine_size = N as u64;
+    let subroutine_size = N as u32;
 
     // calculate highest address of stack
     let high_addr = low_addr + stack_size;
@@ -290,7 +289,7 @@ fn prepare_subroutine<const N: usize>(
     core.write_core_reg(RegisterId(2), CANARY_U32)?;
 
     // write subroutine to stack
-    core.write_8(low_addr, &subroutine)?;
+    core.write_8(low_addr as u64, &subroutine)?;
 
     // store current PC and set PC to beginning of subroutine
     let previous_pc = core.read_core_reg(PC)?;
