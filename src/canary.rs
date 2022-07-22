@@ -400,7 +400,7 @@ fn execute_subroutine<const N: usize>(
     core.write_8(low_addr as u64, &subroutine)?;
 
     // store current PC and set PC to beginning of subroutine
-    let previous_pc: u32 = core.read_core_reg(PC)?;
+    let previous_pc = core.read_core_reg(PC)?;
     core.write_core_reg(PC, low_addr)?;
 
     // execute the subroutine and wait for it to finish
@@ -408,7 +408,7 @@ fn execute_subroutine<const N: usize>(
     core.wait_for_core_halted(TIMEOUT)?;
 
     // reset PC to where it was before
-    core.write_core_reg(PC, previous_pc)?;
+    core.write_core_reg::<u32>(PC, previous_pc)?;
 
     Ok(())
 }
