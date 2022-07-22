@@ -340,11 +340,14 @@ mod measure_subroutine {
         }
 
         // prepare subroutine
-        super::prepare_subroutine(core, low_addr, stack_size, self::SUBROUTINE)?;
+        let previous_pc = super::prepare_subroutine(core, low_addr, stack_size, self::SUBROUTINE)?;
 
         // execute the subroutine and wait for it to finish
         core.run()?;
         core.wait_for_core_halted(TIMEOUT)?;
+
+        // reset PC to where it was before
+        core.write_core_reg(PC, previous_pc)?;
 
         // read out and return the result
         self::get_result(core)
