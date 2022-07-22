@@ -240,19 +240,13 @@ mod paint_subroutine {
     /// - `low_addr` and `size` need to be 4-byte-aligned.
     pub fn execute(core: &mut Core, low_addr: u32, stack_size: u32) -> Result<(), probe_rs::Error> {
         assert_subroutine!(low_addr, stack_size, self::SUBROUTINE.len() as u32);
+        super::execute_subroutine(core, low_addr, stack_size, self::SUBROUTINE)?;
+        self::overwrite_subroutine(core, low_addr)?;
+        Ok(())
+    }
 
-        // prepare subroutine
-        let previous_pc = super::prepare_subroutine(core, low_addr, stack_size, self::SUBROUTINE)?;
-
-        // execute subroutine and wait for it to finish
-        core.run()?;
-        core.wait_for_core_halted(TIMEOUT)?;
-
-        // overwrite subroutine
-        core.write_8(low_addr as u64, &[CANARY_U8; self::SUBROUTINE.len()])?;
-
-        // reset PC to where it was before
-        core.write_core_reg(PC, previous_pc)
+    fn overwrite_subroutine(core: &mut Core, low_addr: u32) -> Result<(), probe_rs::Error> {
+        core.write_8(low_addr as u64, &[CANARY_U8; self::SUBROUTINE.len()])
     }
 
     const SUBROUTINE: [u8; 12] = [
@@ -335,21 +329,11 @@ mod measure_subroutine {
 
         // use probe to search through the memory the subroutine will be written to
         match self::search_with_probe(core, low_addr)? {
-            a @ Some(_) => return Ok(a), // if we find a touched value, return early ...
-            None => {}                   // ... otherwise we continue
+            addr @ Some(_) => return Ok(addr), // if we find a touched value, return early ...
+            None => {}                         // ... otherwise we continue
         }
 
-        // prepare subroutine
-        let previous_pc = super::prepare_subroutine(core, low_addr, stack_size, self::SUBROUTINE)?;
-
-        // execute the subroutine and wait for it to finish
-        core.run()?;
-        core.wait_for_core_halted(TIMEOUT)?;
-
-        // reset PC to where it was before
-        core.write_core_reg(PC, previous_pc)?;
-
-        // read out and return the result
+        super::execute_subroutine(core, low_addr, stack_size, self::SUBROUTINE)?;
         self::get_result(core)
     }
 
@@ -394,21 +378,16 @@ mod measure_subroutine {
     ];
 }
 
-/// Prepare target to execute subroutine.
-///
-/// After calling this function, the program counter will be at the beginning of
-/// the subroutine.
+/// Execute subroutine.
 ///
 /// `low_addr` and `high_addr` need to be 4-byte-aligned.
-fn prepare_subroutine<const N: usize>(
+fn execute_subroutine<const N: usize>(
     core: &mut Core,
     low_addr: u32,
     stack_size: u32,
     subroutine: [u8; N],
-) -> Result<u32, probe_rs::Error> {
+) -> Result<(), probe_rs::Error> {
     let subroutine_size = N as u32;
-
-    // calculate highest address of stack
     let high_addr = low_addr + stack_size;
 
     // set the registers
@@ -421,8 +400,15 @@ fn prepare_subroutine<const N: usize>(
     core.write_8(low_addr as u64, &subroutine)?;
 
     // store current PC and set PC to beginning of subroutine
-    let previous_pc = core.read_core_reg(PC)?;
+    let previous_pc: u32 = core.read_core_reg(PC)?;
     core.write_core_reg(PC, low_addr)?;
 
-    Ok(previous_pc)
+    // execute the subroutine and wait for it to finish
+    core.run()?;
+    core.wait_for_core_halted(TIMEOUT)?;
+
+    // reset PC to where it was before
+    core.write_core_reg(PC, previous_pc)?;
+
+    Ok(())
 }
