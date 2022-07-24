@@ -16,6 +16,7 @@ const NARADR_DDREXEC: u8 = 0x46;
 const NARADR_DIR0EXEC: u8 = 0x47;
 
 const XDM_REGISTER_WIDTH: u32 = 32;
+const XDM_ADDRESS_REGISTER_WIDTH: u32 = 8;
 
 const PWRCTL_JTAGDEBUGUSE: u8 = 1 << 7;
 const PWRCTL_DEBUGRESET: u8 = 1 << 6;
@@ -40,6 +41,42 @@ enum PowerDevice {
     PowerControl = 0x08,
     /// Power status
     PowerStat = 0x09,
+}
+
+#[derive(thiserror::Error, Debug)]
+pub enum XdmStatus {
+    Ok,
+    Busy,
+    Error
+}
+
+#[derive(thiserror::Error, Debug)]
+pub enum Error {
+    InvalidStatus
+}
+
+impl XdmStatus {
+    fn parse(byte: u8) -> Result<XdmStatus, XtensaError> {
+        let byte = byte & 0b00000011;
+        Ok(match byte {
+            0 => XdmStatus::Ok,
+            1 => XdmStatus::Error,
+            2 => XdmStatus::Busy,
+            _ => return Err(XtensaError::XdmError(Error::InvalidStatus))
+        })
+    }
+}
+
+impl core::fmt::Display for XdmStatus {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        writeln!(f, "{:?}", self)
+    }
+}
+
+impl core::fmt::Display for Error {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        writeln!(f, "{:?}", self)
+    }
 }
 
 #[derive(Debug)]
@@ -84,8 +121,6 @@ impl Xdm {
             return Err((x.free(), e.into()));
         }
 
-        std::thread::sleep(std::time::Duration::from_secs(1));
-
         // enable the debug module
         if let Err(e) = x.dbg_write(NARADR_DCRSET, 1) {
             return Err((x.free(), e.into()));
@@ -97,6 +132,10 @@ impl Xdm {
             Err(e) => return Err((x.free(), e.into())),
         };
 
+        if device_id == 0 || device_id == !0 {
+            return Err((x.free(), DebugProbeError::TargetNotFound.into()));
+        }
+
         let status = x.status().unwrap();
         log::info!("DSR: {:032b}", status);
 
@@ -107,54 +146,50 @@ impl Xdm {
     }
 
     /// Perform an access to a register
-    fn dbg_read(&mut self, address: u8) -> Result<u32, DebugProbeError> {
+    fn dbg_read(&mut self, address: u8) -> Result<u32, XtensaError> {
         let regdata = (address << 1) | 0;
 
-        // TODO check response for error
-        let res = self.probe.write_register(DEBUG_ADDR, &[regdata], 8)?;
-        log::info!("dbg_read setup response: {:?}", res);
+        let res = XdmStatus::parse(self.probe.write_register(DEBUG_ADDR, &[regdata], XDM_ADDRESS_REGISTER_WIDTH)?[0])?;
+        log::info!("read setup response: {:?}", res);
 
         let res = self.probe.read_register(DEBUG_ADDR, XDM_REGISTER_WIDTH)?;
 
-        log::info!("dbg_read response: {:?}", res);
+        log::trace!("dbg_read response: {:?}", res);
 
         Ok(u32::from_le_bytes((&res[..]).try_into().unwrap()))
     }
 
     /// Perform an access to a register
-    fn dbg_write(&mut self, address: u8, value: u32) -> Result<u32, DebugProbeError> {
+    fn dbg_write(&mut self, address: u8, value: u32) -> Result<u32, XtensaError> {
         let regdata = (address << 1) | 1;
 
-        // TODO check error in response
-        let res = self.probe.write_register(DEBUG_ADDR, &[regdata], 8)?;
+        let res = XdmStatus::parse(self.probe.write_register(DEBUG_ADDR, &[regdata], XDM_ADDRESS_REGISTER_WIDTH)?[0])?;
         log::info!("write setup response: {:?}", res);
 
         let res =
             self.probe
                 .write_register(DEBUG_ADDR, &value.to_le_bytes()[..], XDM_REGISTER_WIDTH)?;
 
-        log::info!("dbg_write response: {:?}", res);
+        log::trace!("dbg_write response: {:?}", res);
 
         Ok(u32::from_le_bytes((&res[..]).try_into().unwrap()))
     }
 
-    fn pwr_write(&mut self, dev: PowerDevice, value: u8) -> Result<u8, DebugProbeError> {
-        let res = self.probe.write_register(dev as u32, &[value], 8)?;
-
+    fn pwr_write(&mut self, dev: PowerDevice, value: u8) -> Result<XdmStatus, XtensaError> {
+        let res = XdmStatus::parse(self.probe.write_register(dev as u32, &[value], XDM_ADDRESS_REGISTER_WIDTH)?[0])?;
         log::info!("pwr_write response: {:?}", res);
 
-        Ok(res[0])
+        Ok(res)
     }
 
-    fn pwr_read(&mut self, dev: PowerDevice) -> Result<u8, DebugProbeError> {
-        let res = self.probe.read_register(dev as u32, 8)?;
+    fn pwr_read(&mut self, dev: PowerDevice) -> Result<XdmStatus, XtensaError> {
+        let res = XdmStatus::parse(self.probe.read_register(dev as u32, XDM_ADDRESS_REGISTER_WIDTH)?[0])?;
+        log::info!("pwr_read response: {:?}", res);
 
-        log::info!("pwr_write response: {:?}", res);
-
-        Ok(res[0])
+        Ok(res)
     }
 
-    fn status(&mut self) -> Result<u32, DebugProbeError> {
+    fn status(&mut self) -> Result<u32, XtensaError> {
         self.dbg_read(NARADR_DSR)
     }
 

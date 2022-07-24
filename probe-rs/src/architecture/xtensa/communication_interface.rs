@@ -2,7 +2,7 @@
 
 use crate::{DebugProbeError, probe::JTAGAccess};
 
-use super::xdm::Xdm;
+use super::xdm::{Xdm, Error as XdmError};
 
 /// Possible Xtensa errors
 #[derive(thiserror::Error, Debug)]
@@ -10,6 +10,9 @@ pub enum XtensaError {
     /// An error originating from the DebugProbe
     #[error("Debug Probe Error")]
     DebugProbe(#[from] DebugProbeError),
+    /// Xtensa debug module error
+    #[error("Xtensa debug module error")]
+    XdmError(XdmError),
 }
 
 /// A interface that implements controls for RISC-V cores.
