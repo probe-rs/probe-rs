@@ -398,7 +398,7 @@ mod measure_subroutine {
     ];
 }
 
-/// Execute subroutine.
+/// Prepare and run subroutine. Also clean up afterwards.
 ///
 /// # How?
 ///
