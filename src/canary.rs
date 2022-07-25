@@ -340,7 +340,7 @@ mod measure_subroutine {
     fn search_with_probe(core: &mut Core, low_addr: u32) -> Result<Option<u32>, probe_rs::Error> {
         let mut buf = [0; self::SUBROUTINE.len()];
         core.read_8(low_addr as u64, &mut buf)?;
-        match buf.iter().position(|b| *b != CANARY_U8) {
+        match buf.into_iter().position(|b| b != CANARY_U8) {
             Some(pos) => Ok(Some(low_addr + pos as u32)),
             None => Ok(None),
         }
