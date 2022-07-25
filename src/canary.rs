@@ -112,6 +112,7 @@ impl Canary {
         }))
     }
 
+    /// Detect if the stack canary was touched.
     pub(crate) fn touched(self, core: &mut probe_rs::Core, elf: &Elf) -> anyhow::Result<bool> {
         let size_kb = self.size as f64 / 1024.0;
         if self.measure_stack {
@@ -198,7 +199,9 @@ macro_rules! assert_subroutine {
 
 /// Paint-stack subroutine.
 ///
-/// ### Corresponds to following rust code
+/// # Rust
+///
+/// Corresponds to following rust code:
 ///
 /// ```rust
 /// unsafe fn paint(low_addr: u32, high_addr: u32, pattern: u32) {
@@ -209,9 +212,9 @@ macro_rules! assert_subroutine {
 /// }
 /// ```  
 ///
-/// ### Generated assembly
+/// # Assembly
 ///
-/// The assembly is generated from aboves rust code, using the jorge-hack.
+/// The assembly is generated from aboves rust code, using the jorge-hack:
 ///
 /// ```armasm
 /// 000200ec <paint>:
@@ -223,21 +226,22 @@ macro_rules! assert_subroutine {
 /// 000200f4 <paint+0x8>:
 ///    200f4:    be00    bkpt     0x0000
 /// ```
-///
-/// ### Register-parameter-mapping
-///
-/// - r0: low_addr
-/// - r1: high_addr
-/// - r2: pattern
 mod paint_subroutine {
     use super::*;
 
-    /// Write [`CANARY_U32`] to the stack.
+    /// Write the carnary value to the stack.
     ///
-    /// ## Assumptions
+    /// # Safety
+    ///
     /// - Expects the [`Core`] to be halted and will leave it halted when the function
     /// returns.
     /// - `low_addr` and `size` need to be 4-byte-aligned.
+    ///
+    /// # How?
+    ///
+    /// We place the subroutine inside the memory we want to paint. The subroutine
+    /// paints the whole memory, except of itself. After the subroutine finishes
+    /// executing we overwrite the subroutine using the probe.
     pub fn execute(core: &mut Core, low_addr: u32, stack_size: u32) -> Result<(), probe_rs::Error> {
         assert_subroutine!(low_addr, stack_size, self::SUBROUTINE.len() as u32);
         super::execute_subroutine(core, low_addr, stack_size, self::SUBROUTINE)?;
@@ -245,6 +249,9 @@ mod paint_subroutine {
         Ok(())
     }
 
+    /// Overwrite the subroutine with the canary value.
+    ///
+    /// Happens after the subroutine finishes.
     fn overwrite_subroutine(core: &mut Core, low_addr: u32) -> Result<(), probe_rs::Error> {
         core.write_8(low_addr as u64, &[CANARY_U8; self::SUBROUTINE.len()])
     }
@@ -261,7 +268,9 @@ mod paint_subroutine {
 
 /// Measure-stack subroutine.
 ///
-/// ### Corresponds to following rust code
+/// # Rust
+///
+/// Corresponds to following rust code;
 ///
 /// ```rust
 /// #[export_name = "measure"]
@@ -281,7 +290,7 @@ mod paint_subroutine {
 /// }
 /// ```
 ///
-/// ### Generated assembly
+/// # Assembly
 ///
 /// The assembly is generated from aboves rust code, using the jorge-hack.
 ///
@@ -302,24 +311,29 @@ mod paint_subroutine {
 ///     200fc:    be00    bkpt     0x0000
 /// //                    ^^^^ this was `bx lr`
 /// ```
-///
-/// ### Register-parameter-mapping
-///
-/// - r0: low_addr, and return value
-/// - r1: high_addr
-/// - r2: pattern
 mod measure_subroutine {
     use super::*;
 
-    /// Search for lowest touched address in memory.
+    /// Search for lowest touched byte in memory.
     ///
     /// The returned `Option<u32>` is `None`, if the memory is untouched. Otherwise it
     /// gives the position of the lowest byte which isn't equal to the pattern anymore.
     ///
-    /// ## Assumptions
+    /// # Safety
+    ///
     /// - Expects the [`Core`] to be halted and will leave it halted when the function
     /// returns.
     /// - `low_addr` and `size` need to be 4-byte-aligned.
+    ///
+    /// # How?
+    ///
+    /// Before we place the subroutine in the memory, we search through the memory we
+    /// want to place the subroutine to check if the stack usage got that far. If we
+    /// find a touched byte we return it. Otherwise we place the subroutine in this
+    /// memory region and execute it. After the subroutine finishes we read out the
+    /// address of the lowest touched 4-byte-word from the register r0. If r0 is `0`
+    /// we return `None`. Otherwise we process it to get the address of the lowest
+    /// byte, not only 4-byte-word.
     pub fn execute(
         core: &mut Core,
         low_addr: u32,
@@ -337,6 +351,9 @@ mod measure_subroutine {
         self::get_result(core)
     }
 
+    /// Searches though memory byte by byte using the SWD/JTAG probe.
+    ///
+    /// Happens before we place the subroutine in memory.
     fn search_with_probe(core: &mut Core, low_addr: u32) -> Result<Option<u32>, probe_rs::Error> {
         let mut buf = [0; self::SUBROUTINE.len()];
         core.read_8(low_addr as u64, &mut buf)?;
@@ -346,6 +363,9 @@ mod measure_subroutine {
         }
     }
 
+    /// Read out result from register r0 and process it to get lowest touched byte.
+    ///
+    /// Happens after the subroutine finishes.
     fn get_result(core: &mut Core) -> Result<Option<u32>, probe_rs::Error> {
         // get the address of the lowest touched 4-byte-word
         let word_addr = match core.read_core_reg(RegisterId(0))? {
@@ -380,7 +400,19 @@ mod measure_subroutine {
 
 /// Execute subroutine.
 ///
-/// `low_addr` and `high_addr` need to be 4-byte-aligned.
+/// # How?
+///
+/// We place the parameters in the registers (see table below), place the subroutien
+/// in memory, set the program counter to the beginning of the subroutine, execute
+/// the subroutine and reset the program counter afterwards.
+///
+/// ## Register-parameter-mapping
+///
+/// | register | paramter                  |
+/// | :------: | :------------------------ |
+/// | `r0`     | `low_addr` + return value |
+/// | `r1`     | `high_addr`               |
+/// | `r2`     | `pattern`                 |
 fn execute_subroutine<const N: usize>(
     core: &mut Core,
     low_addr: u32,
