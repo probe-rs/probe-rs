@@ -92,29 +92,22 @@ pub(crate) enum Outcome {
     HardFault,
     Ok,
     StackOverflow,
-    CtrlC, // control-c was pressed
+    /// Control-C was pressed
+    CtrlC,
 }
 
 impl Outcome {
     pub(crate) fn log(&self) {
         match self {
-            Outcome::StackOverflow => {
-                log::error!("the program has overflowed its stack");
-            }
-            Outcome::HardFault => {
-                log::error!("the program panicked");
-            }
-            Outcome::Ok => {
-                log::info!("device halted without error");
-            }
-            Outcome::CtrlC => {
-                log::info!("device halted by user");
-            }
+            Outcome::StackOverflow => log::error!("the program has overflowed its stack"),
+            Outcome::HardFault => log::error!("the program panicked"),
+            Outcome::Ok => log::info!("device halted without error"),
+            Outcome::CtrlC => log::info!("device halted by user"),
         }
     }
 }
 
-/// Converts `Outcome` to an exit code.
+// Convert `Outcome` to an exit code.
 impl From<Outcome> for i32 {
     fn from(outcome: Outcome) -> i32 {
         match outcome {
