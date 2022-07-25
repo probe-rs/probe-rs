@@ -13,19 +13,19 @@ expression: run_result.output
 (HOST) DEBUG opened probe
 (HOST) DEBUG started session
 (HOST) INFO  flashing program (2 pages / 8.00 KiB)
-(HOST) DEBUG Erased sector of size 4096 bytes in 138 ms
-(HOST) DEBUG Erased sector of size 4096 bytes in 108 ms
-(HOST) DEBUG Programmed page of size 4096 bytes in 82 ms
-(HOST) DEBUG Programmed page of size 4096 bytes in 71 ms
+(HOST) DEBUG Erased sector of size 4096 bytes in 139 ms
+(HOST) DEBUG Erased sector of size 4096 bytes in 104 ms
+(HOST) DEBUG Programmed page of size 4096 bytes in 106 ms
+(HOST) DEBUG Programmed page of size 4096 bytes in 72 ms
 (HOST) INFO  success!
 (HOST) DEBUG 261060 bytes of stack available (0x20000000 ..= 0x2003FBC4), using 1024 byte canary
-(HOST) TRACE setting up canary took 0.019s (53.36 KiB/s)
+(HOST) TRACE setting up canary took 0.019s (51.62 KiB/s)
 (HOST) DEBUG starting device
 (HOST) DEBUG Successfully attached RTT
 ────────────────────────────────────────────────────────────────────────────────
 ERROR panicked at 'explicit panic'
 ────────────────────────────────────────────────────────────────────────────────
-(HOST) TRACE reading canary took 0.013s (78.04 KiB/s)
+(HOST) TRACE reading canary took 0.013s (76.51 KiB/s)
 (HOST) DEBUG stack canary intact
 (HOST) TRACE 0x000015b0: found FDE for 0x000015b0 .. 0x000015c4 at offset 6432
 (HOST) TRACE uwt row for pc 0x000015b0: UnwindTableRow { start_address: 5552, end_address: 5572, saved_args_size: 0, cfa: RegisterAndOffset { register: Register(13), offset: 0 }, registers: RegisterRuleMap { rules: [] } }
