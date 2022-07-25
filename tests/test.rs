@@ -179,6 +179,7 @@ fn stack_overflow_can_suppress_backtrace() {
     let run_result = run("--chip nRF52840_xxAA tests/test_elfs/overflow-rzcobs --backtrace=never");
 
     assert_eq!(false, run_result.exit_status.success());
+    insta::assert_snapshot!(run_result.output);
 }
 
 #[test]
