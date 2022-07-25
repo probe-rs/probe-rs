@@ -106,6 +106,42 @@ fn find_component(
         })
 }
 
+/// Configure the Trace Port Interface Unit
+///
+/// # Note
+/// This configures the TPIU in serial wire mode.
+///
+/// # Args
+/// * `interface` - The interface with the probe.
+/// * `component` - The TPIU CoreSight component found.
+/// * `config` - The SWO pin configuration to use.
+fn configure_tpiu(
+    interface: &mut Box<dyn ArmProbeInterface>,
+    component: &CoresightComponent,
+    config: &SwoConfig,
+) -> Result<(), Error> {
+    let mut tpiu = Tpiu::new(interface, component);
+
+    tpiu.set_port_size(1)?;
+    let prescaler = (config.tpiu_clk() / config.baud()) - 1;
+    tpiu.set_prescaler(prescaler)?;
+    match config.mode() {
+        SwoMode::Manchester => tpiu.set_pin_protocol(1)?,
+        SwoMode::Uart => tpiu.set_pin_protocol(2)?,
+    }
+
+    // Formatter: TrigIn enabled, bypass optional
+    if config.tpiu_continuous_formatting() {
+        // Set EnFCont for continuous formatting even over SWO.
+        tpiu.set_formatter(0x102)?;
+    } else {
+        // Clear EnFCont to only pass through raw ITM/DWT data.
+        tpiu.set_formatter(0x100)?;
+    }
+
+    Ok(())
+}
+
 /// Sets up all the SWV components.
 ///
 /// Expects to be given a list of all ROM table `components` as the second argument.
@@ -127,25 +163,11 @@ pub(crate) fn setup_tracing(
     // Configure the trace destination.
     match sink {
         TraceSink::Tpiu(config) => {
-            // Configure TPIU
-            let mut tpiu = Tpiu::new(interface, find_component(components, PeripheralType::Tpiu)?);
-
-            tpiu.set_port_size(1)?;
-            let prescaler = (config.tpiu_clk() / config.baud()) - 1;
-            tpiu.set_prescaler(prescaler)?;
-            match config.mode() {
-                SwoMode::Manchester => tpiu.set_pin_protocol(1)?,
-                SwoMode::Uart => tpiu.set_pin_protocol(2)?,
-            }
-
-            // Formatter: TrigIn enabled, bypass optional
-            if config.tpiu_continuous_formatting() {
-                // Set EnFCont for continuous formatting even over SWO.
-                tpiu.set_formatter(0x102)?;
-            } else {
-                // Clear EnFCont to only pass through raw ITM/DWT data.
-                tpiu.set_formatter(0x100)?;
-            }
+            configure_tpiu(
+                interface,
+                find_component(components, PeripheralType::Tpiu)?,
+                config,
+            )?;
         }
 
         TraceSink::Swo(config) => {
@@ -163,25 +185,11 @@ pub(crate) fn setup_tracing(
             } else {
                 // For Cortex-M4, the SWO and the TPIU are combined. If we don't find a SWO
                 // peripheral, use the TPIU instead.
-                let mut tpiu =
-                    Tpiu::new(interface, find_component(components, PeripheralType::Tpiu)?);
-
-                tpiu.set_port_size(1)?;
-                let prescaler = (config.tpiu_clk() / config.baud()) - 1;
-                tpiu.set_prescaler(prescaler)?;
-                match config.mode() {
-                    SwoMode::Manchester => tpiu.set_pin_protocol(1)?,
-                    SwoMode::Uart => tpiu.set_pin_protocol(2)?,
-                }
-
-                // Formatter: TrigIn enabled, bypass optional
-                if config.tpiu_continuous_formatting() {
-                    // Set EnFCont for continuous formatting even over SWO.
-                    tpiu.set_formatter(0x102)?;
-                } else {
-                    // Clear EnFCont to only pass through raw ITM/DWT data.
-                    tpiu.set_formatter(0x100)?;
-                }
+                configure_tpiu(
+                    interface,
+                    find_component(components, PeripheralType::Tpiu)?,
+                    config,
+                )?;
             }
         }
 
