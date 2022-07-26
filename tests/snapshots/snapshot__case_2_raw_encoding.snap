@@ -1,12 +1,12 @@
 ---
-source: tests/test.rs
+source: tests/snapshot.rs
 expression: run_result.output
 
 ---
 (HOST) INFO  flashing program (2 pages / 8.00 KiB)
 (HOST) INFO  success!
 ────────────────────────────────────────────────────────────────────────────────
-ERROR panicked at 'explicit panic'
+INFO  Hello, world!
 ────────────────────────────────────────────────────────────────────────────────
-(HOST) ERROR the program panicked
+(HOST) INFO  device halted without error
 

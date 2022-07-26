@@ -1,5 +1,5 @@
 ---
-source: tests/test.rs
+source: tests/snapshot.rs
 expression: run_result.output
 
 ---
@@ -14,5 +14,9 @@ INFO  ack(m=10, n=6, SP=20017ae8)
 INFO  ack(m=10, n=5, SP=2000fac0)
 INFO  ack(m=10, n=4, SP=20007a98)
 ────────────────────────────────────────────────────────────────────────────────
+stack backtrace:
+   0: HardFaultTrampoline
+      <exception entry>
+(HOST) WARN  call stack was corrupted; unwinding could not be completed
 (HOST) ERROR the program has overflowed its stack
 
