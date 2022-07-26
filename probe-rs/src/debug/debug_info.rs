@@ -4,7 +4,7 @@ use super::{
 };
 use crate::{
     core::Core,
-    debug::{debug_step::SteppingMode, registers},
+    debug::{registers, SteppingMode},
     MemoryInterface, RegisterValue,
 };
 use ::gimli::{FileEntry, LineProgramHeader, UnwindContext};

@@ -16,8 +16,7 @@ use dap_types::*;
 use parse_int::parse;
 use probe_rs::{
     debug::{
-        debug_step::SteppingMode, registers::DebugRegisters, ColumnType, SourceLocation,
-        VariableName, VariableNodeType,
+        ColumnType, DebugRegisters, SourceLocation, SteppingMode, VariableName, VariableNodeType,
     },
     Architecture::Riscv,
     CoreStatus, CoreType, HaltReason, InstructionSet, MemoryInterface, RegisterValue,
