@@ -214,7 +214,7 @@ macro_rules! assert_subroutine {
 ///
 /// # Assembly
 ///
-/// The assembly is generated from the Rust function `fn measure()` above, using the
+/// The assembly is generated from the Rust function `fn paint()` above, using the
 /// jorge-hack.
 ///
 /// ```armasm
