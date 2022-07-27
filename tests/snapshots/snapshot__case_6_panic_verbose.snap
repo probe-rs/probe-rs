@@ -1,31 +1,31 @@
 ---
-source: tests/test.rs
+source: tests/snapshot.rs
 expression: run_result.output
 
 ---
 (HOST) DEBUG vector table: VectorTable { initial_stack_pointer: 2003fbc8, hard_fault: 15b1 }
 (HOST) DEBUG RAM region: 0x20000000-0x2003FFFF
-(HOST) DEBUG section `.data` is in RAM at 0x2003FBC8 ..= 0x2003FBF7
-(HOST) DEBUG section `.bss` is in RAM at 0x2003FBF8 ..= 0x2003FBFF
-(HOST) DEBUG section `.uninit` is in RAM at 0x2003FC00 ..= 0x2003FFFF
-(HOST) DEBUG valid SP range: 0x20000000 ..= 0x2003FBC7
+(HOST) DEBUG section `.data` is in RAM at 0x2003FBC8..=0x2003FBF7
+(HOST) DEBUG section `.bss` is in RAM at 0x2003FBF8..=0x2003FBFF
+(HOST) DEBUG section `.uninit` is in RAM at 0x2003FC00..=0x2003FFFF
+(HOST) DEBUG valid SP range: 0x20000000..=0x2003FBC4
 (HOST) DEBUG found 1 probes
 (HOST) DEBUG opened probe
 (HOST) DEBUG started session
 (HOST) INFO  flashing program (2 pages / 8.00 KiB)
-(HOST) DEBUG Erased sector of size 4096 bytes in 149 ms
-(HOST) DEBUG Erased sector of size 4096 bytes in 113 ms
-(HOST) DEBUG Programmed page of size 4096 bytes in 96 ms
-(HOST) DEBUG Programmed page of size 4096 bytes in 80 ms
+(HOST) DEBUG Erased sector of size 4096 bytes in 144 ms
+(HOST) DEBUG Erased sector of size 4096 bytes in 109 ms
+(HOST) DEBUG Programmed page of size 4096 bytes in 79 ms
+(HOST) DEBUG Programmed page of size 4096 bytes in 71 ms
 (HOST) INFO  success!
-(HOST) DEBUG 261062 bytes of stack available (0x20000000 ..= 0x2003FBC7), using 1024 byte canary
-(HOST) TRACE setting up canary took 0.011s (91.54 KiB/s)
+(HOST) DEBUG 261060 bytes of stack available (0x20000000 ..= 0x2003FBC4), using 1024 byte canary
+(HOST) TRACE setting up canary took 0.020s (49.74 KiB/s)
 (HOST) DEBUG starting device
 (HOST) DEBUG Successfully attached RTT
 ────────────────────────────────────────────────────────────────────────────────
 ERROR panicked at 'explicit panic'
 ────────────────────────────────────────────────────────────────────────────────
-(HOST) TRACE reading canary took 0.010s (95.49 KiB/s)
+(HOST) TRACE reading canary took 0.010s (104.18 KiB/s)
 (HOST) DEBUG stack canary intact
 (HOST) TRACE 0x000015b0: found FDE for 0x000015b0 .. 0x000015c4 at offset 6432
 (HOST) TRACE uwt row for pc 0x000015b0: UnwindTableRow { start_address: 5552, end_address: 5572, saved_args_size: 0, cfa: RegisterAndOffset { register: Register(13), offset: 0 }, registers: RegisterRuleMap { rules: [] } }

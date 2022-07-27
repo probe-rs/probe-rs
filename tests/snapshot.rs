@@ -1,9 +1,11 @@
-use os_pipe::pipe;
-use serial_test::serial;
 use std::{
     io::Read,
     process::{Command, ExitStatus},
 };
+
+use os_pipe::pipe;
+use rstest::rstest;
+use serial_test::serial;
 
 struct RunResult {
     exit_status: ExitStatus,
@@ -60,13 +62,13 @@ fn run_and_terminate(args: &str, timeout_s: u64) -> RunResult {
 fn run_command(args: &str) -> (os_pipe::PipeReader, std::process::Child) {
     // add prefix to run this repository's version of `probe-run` and
     // remove user-dependent registry and rustc information from backtrace paths
-    let complete_command = format!("run -- {} --shorten-paths", args);
+    let cmd = format!("run -- --chip nRF52840_xxAA tests/test_elfs/{args} --shorten-paths");
 
     let (reader, writer) = pipe().unwrap();
     let writer_clone = writer.try_clone().unwrap();
 
     let handle = Command::new("cargo")
-        .args(complete_command.split(" "))
+        .args(cmd.split(" "))
         // capture stderr and stdout while preserving line order
         .stdout(writer)
         .stderr(writer_clone)
@@ -93,103 +95,30 @@ fn truncate_output(probe_run_output: String) -> String {
         .collect()
 }
 
-#[test]
+#[rstest]
+#[case::successful_run_has_no_backtrace("hello-rzcobs", true)]
+#[case::raw_encoding("hello-raw", true)]
+#[case::successful_run_can_enforce_backtrace("hello-rzcobs --backtrace=always", true)]
+#[case::stack_overflow_is_reported_as_such("overflow-rzcobs", false)]
+#[case::panic_is_reported_as_such("panic-rzcobs", false)]
+// FIXME: Filter out timing related number
+#[case::panic_verbose("panic-rzcobs --verbose", false)]
+#[case::unsuccessful_run_can_suppress_backtrace("panic-rzcobs --backtrace=never", false)]
+#[case::stack_overflow_can_suppress_backtrace("overflow-rzcobs --backtrace=never", false)]
 #[serial]
-// this test should not be run by default, as it requires the target hardware to be present
-#[ignore]
-fn successful_run_has_no_backtrace() {
-    let run_result = run("--chip nRF52840_xxAA tests/test_elfs/hello-rzcobs");
-
-    assert_eq!(true, run_result.exit_status.success());
+#[ignore = "requires the target hardware to be present"]
+fn snapshot_test(#[case] args: &str, #[case] success: bool) {
+    let run_result = run(args);
+    assert_eq!(success, run_result.exit_status.success());
     insta::assert_snapshot!(run_result.output);
 }
 
 #[test]
 #[serial]
-// this test should not be run by default, as it requires the target hardware to be present
-#[ignore]
-fn raw_encoding() {
-    let run_result = run("--chip nRF52840_xxAA tests/test_elfs/hello-raw");
-
-    assert_eq!(true, run_result.exit_status.success());
-    insta::assert_snapshot!(run_result.output);
-}
-
-#[test]
-#[serial]
-// this test should not be run by default, as it requires the target hardware to be present
-#[ignore]
-fn successful_run_can_enforce_backtrace() {
-    let run_result = run("--chip nRF52840_xxAA tests/test_elfs/hello-rzcobs --backtrace=always");
-
-    assert_eq!(true, run_result.exit_status.success());
-    insta::assert_snapshot!(run_result.output);
-}
-
-#[test]
-#[serial]
-// this test should not be run by default, as it requires the target hardware to be present
-#[ignore]
-fn stack_overflow_is_reported_as_such() {
-    let run_result = run("--chip nRF52840_xxAA tests/test_elfs/overflow-rzcobs");
-
-    assert_eq!(false, run_result.exit_status.success());
-    insta::assert_snapshot!(run_result.output);
-}
-
-#[test]
-#[serial]
-// this test should not be run by default, as it requires the target hardware to be present
-#[ignore]
-fn panic_is_reported_as_such() {
-    let run_result = run("--chip nRF52840_xxAA tests/test_elfs/panic-rzcobs");
-
-    assert_eq!(false, run_result.exit_status.success());
-    insta::assert_snapshot!(run_result.output);
-}
-
-#[test]
-#[serial]
-// this test should not be run by default, as it requires the target hardware to be present
-#[ignore]
-fn panic_verbose() {
-    // record current verbose backtrace to catch deviations
-    let run_result = run("--chip nRF52840_xxAA tests/test_elfs/panic-rzcobs --verbose");
-
-    assert_eq!(false, run_result.exit_status.success());
-    insta::assert_snapshot!(run_result.output);
-}
-
-#[test]
-#[serial]
-// this test should not be run by default, as it requires the target hardware to be present
-#[ignore]
-fn unsuccessful_run_can_suppress_backtrace() {
-    let run_result = run("--chip nRF52840_xxAA tests/test_elfs/panic-rzcobs --backtrace=never");
-
-    assert_eq!(false, run_result.exit_status.success());
-    insta::assert_snapshot!(run_result.output);
-}
-
-#[test]
-#[serial]
-// this test should not be run by default, as it requires the target hardware to be present
-#[ignore]
-fn stack_overflow_can_suppress_backtrace() {
-    let run_result = run("--chip nRF52840_xxAA tests/test_elfs/overflow-rzcobs --backtrace=never");
-
-    assert_eq!(false, run_result.exit_status.success());
-}
-
-#[test]
-#[serial]
-// this test should not be run by default, as it requires the target hardware to be present
-#[ignore]
+#[ignore = "requires the target hardware to be present"]
 #[cfg(target_family = "unix")]
 fn ctrl_c_by_user_is_reported_as_such() {
-    let run_result =
-        run_and_terminate("--chip nRF52840_xxAA tests/test_elfs/silent-loop-rzcobs", 5);
-
+    let run_result = run_and_terminate("silent-loop-rzcobs", 5);
     assert_eq!(false, run_result.exit_status.success());
     insta::assert_snapshot!(run_result.output);
 }

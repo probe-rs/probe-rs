@@ -1,17 +1,22 @@
 ---
-source: tests/test.rs
+source: tests/snapshot.rs
 expression: run_result.output
 
 ---
 (HOST) INFO  flashing program (2 pages / 8.00 KiB)
 (HOST) INFO  success!
 ────────────────────────────────────────────────────────────────────────────────
+INFO  ack(m=10, n=10, SP=20037b88)
+INFO  ack(m=10, n=9, SP=2002fb60)
+INFO  ack(m=10, n=8, SP=20027b38)
+INFO  ack(m=10, n=7, SP=2001fb10)
+INFO  ack(m=10, n=6, SP=20017ae8)
+INFO  ack(m=10, n=5, SP=2000fac0)
+INFO  ack(m=10, n=4, SP=20007a98)
 ────────────────────────────────────────────────────────────────────────────────
 stack backtrace:
-   0: main
-   1: ResetTrampoline
-        at [cortex-m-rt-0.6.14]/src/lib.rs:547:26
-   2: Reset
-        at [cortex-m-rt-0.6.14]/src/lib.rs:550:13
-(HOST) INFO  device halted by user
+   0: HardFaultTrampoline
+      <exception entry>
+(HOST) WARN  call stack was corrupted; unwinding could not be completed
+(HOST) ERROR the program has overflowed its stack
 

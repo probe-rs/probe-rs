@@ -1,5 +1,5 @@
 ---
-source: tests/test.rs
+source: tests/snapshot.rs
 expression: run_result.output
 
 ---

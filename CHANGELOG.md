@@ -6,6 +6,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/) and this p
 
 ## [Unreleased]
 
+- [#334] Simplify snapshot tests
 - [#333] Clean up `enum Outcome`
 - [#331] Refactor stack painting
 - [#330] Fix `fn round_up`
@@ -19,6 +20,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/) and this p
 - [#314] Clarify documentation in README
 - [#293] Update snapshot tests to new TRACE output
 
+[#334]: https://github.com/knurling-rs/probe-run/pull/334
 [#333]: https://github.com/knurling-rs/probe-run/pull/333
 [#331]: https://github.com/knurling-rs/probe-run/pull/331
 [#330]: https://github.com/knurling-rs/probe-run/pull/330
