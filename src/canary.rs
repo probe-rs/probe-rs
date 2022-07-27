@@ -297,3 +297,22 @@ fn prepare_subroutine<const N: usize>(
 
     Ok(previous_pc)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    use rstest::rstest;
+
+    #[rstest]
+    #[case(2, 4, 4)]
+    #[case(4, 4, 4)]
+    #[case(6, 4, 8)]
+    #[case(8, 4, 8)]
+    #[case::odd(5, 3, 6)]
+    #[should_panic]
+    #[case::div_zero(4, 0, 0)]
+    fn test_round_up(#[case] n: u32, #[case] k: u32, #[case] res: u32) {
+        assert_eq!(round_up(n, k), res);
+    }
+}
