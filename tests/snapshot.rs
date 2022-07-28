@@ -101,7 +101,7 @@ fn truncate_output(probe_run_output: String) -> String {
 #[case::successful_run_can_enforce_backtrace("hello-rzcobs --backtrace=always", true)]
 #[case::stack_overflow_is_reported_as_such("overflow-rzcobs", false)]
 #[case::panic_is_reported_as_such("panic-rzcobs", false)]
-// FIXME: Filter out timing related number
+#[should_panic] // FIXME: see https://github.com/knurling-rs/probe-run/issues/336
 #[case::panic_verbose("panic-rzcobs --verbose", false)]
 #[case::unsuccessful_run_can_suppress_backtrace("panic-rzcobs --backtrace=never", false)]
 #[case::stack_overflow_can_suppress_backtrace("overflow-rzcobs --backtrace=never", false)]
