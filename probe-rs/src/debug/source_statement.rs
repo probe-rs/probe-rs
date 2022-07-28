@@ -8,6 +8,15 @@ use std::{
     ops::RangeInclusive,
 };
 
+#[derive(Clone, Copy)]
+/// A private struct to help with the implementation of `SourceStatement`.
+struct PriorRow {
+    address: u64,
+    file_index: u64,
+    line: Option<NonZeroU64>,
+    column: ColumnType,
+}
+
 /// Keep track of all the source statements required to satisfy the operations of [`SteppingMode`].
 /// These source statements may extend beyond the boundaries of a single [`gimli::LineSequence`]
 pub struct SourceStatements {
@@ -40,13 +49,6 @@ impl SourceStatements {
             get_program_info_at_pc(debug_info, program_unit, program_counter)?;
         let mut sequence_rows = complete_line_program.resume_from(&active_sequence);
         let mut prologue_completed = false;
-        #[derive(Clone, Copy)]
-        struct PriorRow {
-            address: u64,
-            file_index: u64,
-            line: Option<NonZeroU64>,
-            column: ColumnType,
-        }
         let mut prior_row_in_sequence: Option<PriorRow> = None;
         let mut current_address_range_start = None;
         while let Ok(Some((program_header, row))) = sequence_rows.next_row() {
@@ -71,7 +73,8 @@ impl SourceStatements {
             {
                 // If we are in breakpoint mode, we can get out of here as soon as we find the first valid haltpoint.
                 source_statements.add(SourceStatement {
-                    high_pc: active_sequence.end,
+                    sequence_high_pc: active_sequence.end,
+                    statement_high_pc: row.address(),
                     halt_ranges: vec![row.address()..=row.address()],
                     file_index: row.file_index(),
                     line: row.line(),
@@ -94,7 +97,8 @@ impl SourceStatements {
                 {
                     // We need to close off the "current" source statement.
                     source_statements.add(SourceStatement {
-                        high_pc: active_sequence.end,
+                        sequence_high_pc: active_sequence.end,
+                        statement_high_pc: row.address(),
                         halt_ranges: vec![address_range_start..=prior_row.address],
                         file_index: prior_row.file_index,
                         line: prior_row.line,
@@ -110,23 +114,25 @@ impl SourceStatements {
                 current_address_range_start = Some(row.address());
             }
 
-            // Store this, so we use it to determine end of statement ranges.
-            // There are cases where the line is None, when it should be the same as the previous row.
-            // If we don't "fix" this, we end up with situations where debuggers like gdb will "confusingly" jump to the top of the file while stepping.
-            let mut partial_of_current_row = PriorRow {
-                address: row.address(),
-                file_index: row.file_index(),
-                line: row.line(),
-                column: row.column(),
-            };
-            if partial_of_current_row.line.is_none() {
-                if let Some(prior_row_in_sequence) = prior_row_in_sequence {
-                    if prior_row_in_sequence.file_index == partial_of_current_row.file_index {
-                        partial_of_current_row.line = prior_row_in_sequence.line;
+            if row.is_stmt() {
+                // Store this, so we use it to determine end of statement ranges.
+                // There are cases where the line is None, when it should be the same as the previous row.
+                // If we don't "fix" this, we end up with situations where debuggers like gdb will "confusingly" jump to the top of the file while stepping.
+                let mut partial_of_current_row = PriorRow {
+                    address: row.address(),
+                    file_index: row.file_index(),
+                    line: row.line(),
+                    column: row.column(),
+                };
+                if partial_of_current_row.line.is_none() {
+                    if let Some(prior_row_in_sequence) = prior_row_in_sequence {
+                        if prior_row_in_sequence.file_index == partial_of_current_row.file_index {
+                            partial_of_current_row.line = prior_row_in_sequence.line;
+                        }
                     }
                 }
+                prior_row_in_sequence = Some(partial_of_current_row);
             }
-            prior_row_in_sequence = Some(partial_of_current_row);
         }
 
         if source_statements.len().is_zero() {
@@ -151,8 +157,8 @@ impl SourceStatements {
         if let Some(source_statement) =
             self.get_mut(statement.file_index, statement.line, statement.column)
         {
-            if statement.high_pc > source_statement.high_pc {
-                source_statement.high_pc = statement.high_pc;
+            if statement.statement_high_pc > source_statement.statement_high_pc {
+                source_statement.statement_high_pc = statement.statement_high_pc;
             }
             source_statement
                 .halt_ranges
@@ -186,17 +192,24 @@ impl SourceStatements {
 
 /// Keep track of the boundaries of a source statement inside [`gimli::LineSequence`].
 /// The `file_index`, `line` and `column` fields from a [`gimli::LineRow`] are used to identify the source statement UNIQUELY in a sequence.
+/// Terminology note:
+/// - An `instruction` maps to a single machine instruction on target.
+/// - A `row` (a [`gimli::LineRow`]) describes the role of an `instruction` in the context of a `sequence`.
+/// - A `source_statement` is a range of rows where the addresses of the machine instructions are increasing, but not necessarily contiguous.
+/// - A `sequence` is a series of contiguous `rows`/`instructions`(may contain multiple `source_statement`'s).
 pub(crate) struct SourceStatement {
     /// The first addresss of the statement where row.is_stmt() is true.
     pub(crate) file_index: u64,
     pub(crate) line: Option<NonZeroU64>,
     pub(crate) column: ColumnType,
-    /// The `high_pc` is the first address after the last address of the statement.
-    high_pc: u64,
     /// All the addresses of valid halt_addresses in the statements of the active sequence.
     /// The `start` is the first address of the sequence, and the `end` is the last valid halt address of the sequence.
     /// These ranges are sorted and deduplicated (i.e. no overlapping ranges).
     pub(crate) halt_ranges: Vec<RangeInclusive<u64>>,
+    /// The `statement_high_pc` is the address of the first row after the end of the source statement.
+    pub(crate) statement_high_pc: u64,
+    /// The `sequence_high_pc` is the address of the first byte after the end of a sequence.
+    pub(crate) sequence_high_pc: u64,
 }
 
 impl Debug for SourceStatement {
@@ -222,6 +235,11 @@ impl Debug for SourceStatement {
                 address_range.end()
             )?;
         }
+        write!(
+            f,
+            " --> statement_high_pc={:#010x}, sequence_high_pc={:#010x}",
+            self.statement_high_pc, self.sequence_high_pc
+        )?;
         Ok(())
     }
 }
@@ -231,20 +249,22 @@ impl SourceStatement {
         file_index: u64,
         line: Option<NonZeroU64>,
         column: ColumnType,
-        high_pc: u64,
+        sequence_high_pc: u64,
+        statement_high_pc: u64,
     ) -> Self {
         Self {
             file_index,
             line,
             column,
-            high_pc,
+            sequence_high_pc,
+            statement_high_pc,
             halt_ranges: Vec::new(),
         }
     }
 
     /// Return the first valid halt address of the statement that is greater than or equal to `address`.
-    pub(crate) fn get_halt_address(&self, address: u64) -> Option<u64> {
-        if (self.low_pc()..self.high_pc()).contains(&address) {
+    pub(crate) fn get_first_halt_address(&self, address: u64) -> Option<u64> {
+        if (self.low_pc()..self.sequence_high_pc).contains(&address) {
             self.halt_ranges
                 .iter()
                 .find(|r| r.contains(&address))
@@ -262,23 +282,14 @@ impl SourceStatement {
             None
         }
     }
-    /// Return (if any) a valid halt_range that qualifies as:
-    /// - Lies between the low_pc and high_pc of the statement addresses
-    /// - Is the range that either contains, or immediately follows the given address (ei.. there are no earlier ranges that cover this address)
-    /// NOTE: The result range my have a start() that is less than the given address.
-    pub(crate) fn get_halt_range(&self, address: u64) -> Option<&RangeInclusive<u64>> {
-        self.get_halt_address(address).and_then(|halt_address| {
-            self.halt_ranges
-                .iter()
-                .rev()
-                .find(|r| r.contains(&halt_address))
-        })
-    }
 
-    /// Get the high_pc of this source_statement.
-    /// This value is maintained in SourceStatements::add()
-    pub(crate) fn high_pc(&self) -> u64 {
-        self.high_pc
+    /// Return the statement_high_pc and sequence_high_pc of the statement that contains the `address`.
+    pub(crate) fn get_statement_end_points(&self, address: u64) -> Option<(u64, u64)> {
+        if (self.low_pc()..self.statement_high_pc).contains(&address) {
+            Some((self.statement_high_pc, self.sequence_high_pc))
+        } else {
+            None
+        }
     }
 
     /// Get the low_pc of this source_statement.

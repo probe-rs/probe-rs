@@ -943,6 +943,10 @@ impl DebugInfo {
                             if let Some(cur_line) = row.line() {
                                 if cur_line.get() == line {
                                     // The first match of the file and row will be used a the locator address to select valid breakpoint location.
+
+                                    // UPDATE: If there is an exact column match, we should check if the location will support a breakpoint.
+                                    // If not, it is probably a branching instruction, and we should check if the destination will support a breakpoint.
+                                    // If it does, use the exact location.
                                     // - The result will include a new source location, so that the debugger knows where the actual breakpoint was placed.
                                     return SteppingMode::BreakPoint.get_halt_location(
                                         None,

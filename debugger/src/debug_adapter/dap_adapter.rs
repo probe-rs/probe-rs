@@ -698,9 +698,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                     // If the debug client uses 0 based numbering, then we bump the number by 1
                     bp.line as u64 + 1
                 };
-                let requested_breakpoint_column = if self.columns_start_at_1
-                    && (bp.column.is_none() || bp.column.unwrap_or(0) == 0)
-                {
+                let requested_breakpoint_column = if self.columns_start_at_1 {
                     // If the debug client uses 1 based numbering, then we can use it as is.
                     Some(bp.column.unwrap_or(1) as u64)
                 } else {
