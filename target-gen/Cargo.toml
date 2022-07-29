@@ -24,7 +24,7 @@ cmsis-pack = { version = "0.6.0" }
 
 goblin = "0.5.1"
 scroll = "0.11.0"
-serde_yaml = "0.8.23"
+serde_yaml = "0.9.0"
 log = "0.4.16"
 zip = "0.6.2"
 clap = { version = "3.1", features = ["derive"] }
