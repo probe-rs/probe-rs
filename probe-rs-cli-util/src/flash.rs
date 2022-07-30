@@ -4,6 +4,7 @@ use crate::{
     logging,
 };
 
+use std::time::Duration;
 use std::{path::Path, sync::Arc, time::Instant};
 
 use colored::Colorize;
@@ -36,11 +37,11 @@ pub fn run_flash_download(
         let style = ProgressStyle::default_bar()
                     .tick_chars("⠁⠁⠉⠙⠚⠒⠂⠂⠒⠲⠴⠤⠄⠄⠤⠠⠠⠤⠦⠖⠒⠐⠐⠒⠓⠋⠉⠈⠈✔")
                     .progress_chars("##-")
-                    .template("{msg:.green.bold} {spinner} [{elapsed_precise}] [{wide_bar}] {bytes:>8}/{total_bytes:>8} @ {bytes_per_sec:>10} (eta {eta:3})");
+                    .template("{msg:.green.bold} {spinner} [{elapsed_precise}] [{wide_bar}] {bytes:>8}/{total_bytes:>8} @ {bytes_per_sec:>10} (eta {eta:3})").expect("Error in progress bar creation. This is a bug, please report it.");
 
         // Create a new progress bar for the fill progress if filling is enabled.
         let fill_progress = if opt.restore_unwritten {
-            let fill_progress = Arc::new(multi_progress.add(ProgressBar::new(0)));
+            let fill_progress = multi_progress.add(ProgressBar::new(0));
             fill_progress.set_style(style.clone());
             fill_progress.set_message("     Reading flash  ");
             Some(fill_progress)
@@ -85,16 +86,16 @@ pub fn run_flash_download(
                         .map(|path| visualizer.write_svg(path));
                 }
                 StartedProgramming => {
-                    program_progress.enable_steady_tick(100);
+                    program_progress.enable_steady_tick(Duration::from_millis(100));
                     program_progress.reset_elapsed();
                 }
                 StartedErasing => {
-                    erase_progress.enable_steady_tick(100);
+                    erase_progress.enable_steady_tick(Duration::from_millis(100));
                     erase_progress.reset_elapsed();
                 }
                 StartedFilling => {
                     if let Some(fp) = fill_progress.as_ref() {
-                        fp.enable_steady_tick(100)
+                        fp.enable_steady_tick(Duration::from_millis(100))
                     };
                     if let Some(fp) = fill_progress.as_ref() {
                         fp.reset_elapsed()
@@ -137,13 +138,6 @@ pub fn run_flash_download(
             }
         });
 
-        // Make the multi progresses print.
-        // indicatif requires this in a separate thread as this join is a blocking op,
-        // but is required for printing multiprogress.
-        let progress_thread_handle = std::thread::spawn(move || {
-            multi_progress.join().unwrap();
-        });
-
         download_option.progress = Some(&progress);
 
         loader.commit(session, download_option).map_err(|error| {
@@ -154,9 +148,6 @@ pub fn run_flash_download(
                 path: path.to_path_buf(),
             }
         })?;
-
-        // We don't care if we cannot join this thread.
-        let _ = progress_thread_handle.join();
     } else {
         loader.commit(session, download_option).map_err(|error| {
             OperationError::FlashingFailed {
