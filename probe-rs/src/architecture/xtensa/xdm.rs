@@ -1,5 +1,7 @@
 #![allow(unused)] // FIXME remove after testing
 
+use std::fmt::Debug;
+
 use crate::{
     probe::{JTAGAccess, JtagWriteCommand},
     DebugProbeError,
@@ -43,16 +45,28 @@ enum PowerDevice {
     PowerStat = 0x09,
 }
 
-#[derive(thiserror::Error, Debug)]
+#[derive(thiserror::Error, Debug, Copy, Clone)]
 pub enum XdmStatus {
     Ok,
     Busy,
-    Error
+    Error,
+}
+
+impl XdmStatus {
+    pub fn is_ok(&self) -> Result<(), Error> {
+        match self {
+            XdmStatus::Ok => Ok(()),
+            other => Err(Error::XdmError(Some(*self)))
+        }
+    }
 }
 
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
-    InvalidStatus
+    XdmError(Option<XdmStatus>),
+    ExecExeception,
+    ExecBusy,
+    ExecOverrun,
 }
 
 impl XdmStatus {
@@ -62,7 +76,7 @@ impl XdmStatus {
             0 => XdmStatus::Ok,
             1 => XdmStatus::Error,
             2 => XdmStatus::Busy,
-            _ => return Err(XtensaError::XdmError(Error::InvalidStatus))
+            _ => return Err(XtensaError::XdmError(Error::XdmError(None))),
         })
     }
 }
@@ -137,7 +151,7 @@ impl Xdm {
         }
 
         let status = x.status().unwrap();
-        log::info!("DSR: {:032b}", status);
+        log::info!("DSR: {:?}", status);
 
         log::info!("Found Xtensa device with OCDID: 0x{:08X}", device_id);
         x.device_id = device_id;
@@ -149,11 +163,12 @@ impl Xdm {
     fn dbg_read(&mut self, address: u8) -> Result<u32, XtensaError> {
         let regdata = (address << 1) | 0;
 
-        let res = XdmStatus::parse(self.probe.write_register(DEBUG_ADDR, &[regdata], XDM_ADDRESS_REGISTER_WIDTH)?[0])?;
-        log::info!("read setup response: {:?}", res);
+        XdmStatus::parse(
+            self.probe
+                .write_register(DEBUG_ADDR, &[regdata], XDM_ADDRESS_REGISTER_WIDTH)?[0],
+        )?.is_ok()?;
 
         let res = self.probe.read_register(DEBUG_ADDR, XDM_REGISTER_WIDTH)?;
-
         log::trace!("dbg_read response: {:?}", res);
 
         Ok(u32::from_le_bytes((&res[..]).try_into().unwrap()))
@@ -163,8 +178,10 @@ impl Xdm {
     fn dbg_write(&mut self, address: u8, value: u32) -> Result<u32, XtensaError> {
         let regdata = (address << 1) | 1;
 
-        let res = XdmStatus::parse(self.probe.write_register(DEBUG_ADDR, &[regdata], XDM_ADDRESS_REGISTER_WIDTH)?[0])?;
-        log::info!("write setup response: {:?}", res);
+        XdmStatus::parse(
+            self.probe
+                .write_register(DEBUG_ADDR, &[regdata], XDM_ADDRESS_REGISTER_WIDTH)?[0],
+        )?.is_ok()?;
 
         let res =
             self.probe
@@ -176,21 +193,28 @@ impl Xdm {
     }
 
     fn pwr_write(&mut self, dev: PowerDevice, value: u8) -> Result<XdmStatus, XtensaError> {
-        let res = XdmStatus::parse(self.probe.write_register(dev as u32, &[value], XDM_ADDRESS_REGISTER_WIDTH)?[0])?;
+        let res = XdmStatus::parse(
+            self.probe
+                .write_register(dev as u32, &[value], XDM_ADDRESS_REGISTER_WIDTH)?[0],
+        )?;
         log::info!("pwr_write response: {:?}", res);
 
         Ok(res)
     }
 
     fn pwr_read(&mut self, dev: PowerDevice) -> Result<XdmStatus, XtensaError> {
-        let res = XdmStatus::parse(self.probe.read_register(dev as u32, XDM_ADDRESS_REGISTER_WIDTH)?[0])?;
+        let res = XdmStatus::parse(
+            self.probe
+                .read_register(dev as u32, XDM_ADDRESS_REGISTER_WIDTH)?[0],
+        )?;
         log::info!("pwr_read response: {:?}", res);
 
         Ok(res)
     }
 
-    fn status(&mut self) -> Result<u32, XtensaError> {
-        self.dbg_read(NARADR_DSR)
+    // TODO convert u32 into struct
+    fn status(&mut self) -> Result<DebugStatus, XtensaError> {
+        Ok(DebugStatus::new(self.dbg_read(NARADR_DSR)?))
     }
 
     fn free(self) -> Box<dyn JTAGAccess> {
@@ -204,5 +228,59 @@ impl From<XtensaError> for crate::Error {
             XtensaError::DebugProbe(e) => e.into(),
             other => crate::Error::ArchitectureSpecific(Box::new(other)),
         }
+    }
+}
+
+impl From<Error> for XtensaError {
+    fn from(e: Error) -> Self {
+        XtensaError::XdmError(e)
+    }
+}
+
+#[derive(Copy, Clone)]
+pub struct DebugStatus(u32);
+
+impl DebugStatus {
+    pub const OCDDSR_EXECDONE: u32 = (1 << 0);
+    pub const OCDDSR_EXECEXCEPTION: u32 = (1 << 1);
+    pub const OCDDSR_EXECBUSY: u32 = (1 << 2);
+    pub const OCDDSR_EXECOVERRUN: u32 = (1 << 3);
+    pub const OCDDSR_STOPPED: u32 = (1 << 4);
+    pub const OCDDSR_COREWROTEDDR: u32 = (1 << 10);
+    pub const OCDDSR_COREREADDDR: u32 = (1 << 11);
+    pub const OCDDSR_HOSTWROTEDDR: u32 = (1 << 14);
+    pub const OCDDSR_HOSTREADDDR: u32 = (1 << 15);
+    pub const OCDDSR_DEBUGPENDBREAK: u32 = (1 << 16);
+    pub const OCDDSR_DEBUGPENDHOST: u32 = (1 << 17);
+    pub const OCDDSR_DEBUGPENDTRAX: u32 = (1 << 18);
+    pub const OCDDSR_DEBUGINTBREAK: u32 = (1 << 20);
+    pub const OCDDSR_DEBUGINTHOST: u32 = (1 << 21);
+    pub const OCDDSR_DEBUGINTTRAX: u32 = (1 << 22);
+    pub const OCDDSR_RUNSTALLTOGGLE: u32 = (1 << 23);
+    pub const OCDDSR_RUNSTALLSAMPLE: u32 = (1 << 24);
+    pub const OCDDSR_BREACKOUTACKITI: u32 = (1 << 25);
+    pub const OCDDSR_BREAKINITI: u32 = (1 << 26);
+    pub const OCDDSR_DBGMODPOWERON: u32 = (1 << 31);
+
+    pub fn new(status: u32) -> Self {
+        Self(status)
+    }
+
+    pub fn is_ok(&self) -> Result<(), Error> {
+        Err(if self.0 & Self::OCDDSR_EXECEXCEPTION == 1 {
+            Error::ExecExeception
+        } else if self.0 & Self::OCDDSR_EXECBUSY == 1 {
+            Error::ExecBusy
+        } else if self.0 & Self::OCDDSR_EXECOVERRUN == 1 {
+            Error::ExecOverrun
+        } else {
+            return Ok(())
+        })
+    }
+}
+
+impl Debug for DebugStatus {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "DSR: {:032b}", self.0)
     }
 }
