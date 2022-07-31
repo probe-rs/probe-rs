@@ -67,6 +67,7 @@ pub enum Error {
     ExecExeception,
     ExecBusy,
     ExecOverrun,
+    XdmPoweredOff
 }
 
 impl XdmStatus {
@@ -152,6 +153,8 @@ impl Xdm {
 
         let status = x.status().unwrap();
         log::info!("DSR: {:?}", status);
+        status.is_ok().unwrap();
+        // TODO check status and clear bits if required
 
         log::info!("Found Xtensa device with OCDID: 0x{:08X}", device_id);
         x.device_id = device_id;
@@ -197,7 +200,7 @@ impl Xdm {
             self.probe
                 .write_register(dev as u32, &[value], XDM_ADDRESS_REGISTER_WIDTH)?[0],
         )?;
-        log::info!("pwr_write response: {:?}", res);
+        log::trace!("pwr_write response: {:?}", res);
 
         Ok(res)
     }
@@ -207,12 +210,11 @@ impl Xdm {
             self.probe
                 .read_register(dev as u32, XDM_ADDRESS_REGISTER_WIDTH)?[0],
         )?;
-        log::info!("pwr_read response: {:?}", res);
+        log::trace!("pwr_read response: {:?}", res);
 
         Ok(res)
     }
 
-    // TODO convert u32 into struct
     fn status(&mut self) -> Result<DebugStatus, XtensaError> {
         Ok(DebugStatus::new(self.dbg_read(NARADR_DSR)?))
     }
@@ -273,6 +275,8 @@ impl DebugStatus {
             Error::ExecBusy
         } else if self.0 & Self::OCDDSR_EXECOVERRUN == 1 {
             Error::ExecOverrun
+        } else if self.0 & Self::OCDDSR_DBGMODPOWERON == 0 { // should always be set to one
+            Error::XdmPoweredOff
         } else {
             return Ok(())
         })
