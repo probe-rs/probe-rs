@@ -946,36 +946,38 @@ impl DebugInfo {
                                     // 1. If there is an exact column match, we will use the low_pc of the statement at that column and line.
                                     // 2. If there is no exact column match, we use the first available statement in the line.
                                     if let Some((halt_address, halt_location)) =
-                                        SourceStatements::new(
-                                            self,
-                                            &unit_header,
-                                            row.address(),
-                                            &SteppingMode::OutOfStatement,
-                                        )?
-                                        .statements
-                                        .iter()
-                                        .find(|statement| {
-                                            statement.line == Some(cur_line)
-                                                && column
-                                                    .and_then(NonZeroU64::new)
-                                                    .map(ColumnType::Column)
-                                                    .map_or(false, |col| col == statement.column)
-                                        })
-                                        .and_then(|statement| {
-                                            SteppingMode::BreakPoint
-                                                .get_halt_location(
-                                                    None,
-                                                    self,
-                                                    statement.low_pc(),
-                                                    None,
-                                                )
-                                                .ok()
-                                        })
-                                        .or_else(|| {
-                                            SteppingMode::BreakPoint
-                                                .get_halt_location(None, self, row.address(), None)
-                                                .ok()
-                                        })
+                                        SourceStatements::new(self, &unit_header, row.address())?
+                                            .statements
+                                            .iter()
+                                            .find(|statement| {
+                                                statement.line == Some(cur_line)
+                                                    && column
+                                                        .and_then(NonZeroU64::new)
+                                                        .map(ColumnType::Column)
+                                                        .map_or(false, |col| {
+                                                            col == statement.column
+                                                        })
+                                            })
+                                            .and_then(|statement| {
+                                                SteppingMode::BreakPoint
+                                                    .get_halt_location(
+                                                        None,
+                                                        self,
+                                                        statement.low_pc(),
+                                                        None,
+                                                    )
+                                                    .ok()
+                                            })
+                                            .or_else(|| {
+                                                SteppingMode::BreakPoint
+                                                    .get_halt_location(
+                                                        None,
+                                                        self,
+                                                        row.address(),
+                                                        None,
+                                                    )
+                                                    .ok()
+                                            })
                                     {
                                         return Ok((halt_address, halt_location));
                                     }

@@ -1,24 +1,11 @@
-use crate::debug::source_statement;
-
-use super::{unit_info::UnitInfo, DebugError, DebugInfo, SteppingMode};
+use super::{unit_info::UnitInfo, DebugError, DebugInfo};
 use gimli::{ColumnType, LineSequence};
 use num_traits::Zero;
 use std::{
-    cmp::Ordering,
     fmt::{Debug, Formatter},
-    iter::zip,
     num::NonZeroU64,
-    ops::{Range, RangeBounds, RangeInclusive},
+    ops::Range,
 };
-
-#[derive(Clone, Copy)]
-/// A private struct to help with the implementation of `SourceStatement`.
-struct PriorRow {
-    address: u64,
-    file_index: u64,
-    line: Option<NonZeroU64>,
-    column: ColumnType,
-}
 
 /// Keep track of all the source statements required to satisfy the operations of [`SteppingMode`].
 
@@ -43,7 +30,6 @@ impl SourceStatements {
         debug_info: &DebugInfo,
         program_unit: &UnitInfo,
         program_counter: u64,
-        stepping_mode: &SteppingMode,
     ) -> Result<Self, DebugError> {
         let mut source_statements = SourceStatements {
             statements: Vec::new(),
@@ -53,7 +39,7 @@ impl SourceStatements {
         let mut sequence_rows = complete_line_program.resume_from(&active_sequence);
         let mut prologue_completed = false;
         let mut source_statement: Option<SourceStatement> = None;
-        while let Ok(Some((program_header, row))) = sequence_rows.next_row() {
+        while let Ok(Some((_, row))) = sequence_rows.next_row() {
             // Don't do anything until we are at least at the prologue_end() of a function.
             if row.prologue_end() {
                 prologue_completed = true;
@@ -64,10 +50,10 @@ impl SourceStatements {
             }
 
             // Notes about the process of building the source statement:
-            // 1. Start a new (and close off the previous) source statement, when we encounterend of sequence OR change of file, line or column
-            // 2. The starting range of the first source statement will always be greater than or equal to the program_counter. This is because it does not make sense to retun a haltpoint before the PC.
+            // 1. Start a new (and close off the previous) source statement, when we encounter end of sequence OR change of file/line/column.
+            // 2. The starting range of the first source statement will always be greater than or equal to the program_counter.
             // 3. The values in the `source_statement` are only updated before we exit the current iteration of the loop, so that we can retroactively close off and store the source statement that belongs to previous `rows`.
-            // 4. The debug_info sometimes has a `None` value for the `row.line` that was started in the previous row, in which case we need to carry the previous row `line` number forward.
+            // 4. The debug_info sometimes has a `None` value for the `row.line` that was started in the previous row, in which case we need to carry the previous row `line` number forward. GDB ignores this fact, and it shows up during debug as stepping to the top of the file (line 0) unexpectedly.
 
             // Once past the prologue, we start taking into account the role of the `program_counter`.
             if row.address() < program_counter {
@@ -78,40 +64,12 @@ impl SourceStatements {
                 source_statement = Some(SourceStatement::from(row));
             }
 
-            // match row.address().cmp(&program_counter) {
-            //     Ordering::Greater => {
-            //         // Do not update the `source_statement` so that we can retroactively close off the previous row data.
-            //     }
-            //     Ordering::Less => {
-            //         // Keep track of data belong to the prior row.
-            //         source_statement = Some(SourceStatement::from(row));
-            //         continue;
-            //     }
-            //     Ordering::Equal => {
-            //         if row.line().is_none()
-            //         source_statement = Some(SourceStatement::from(row));
-            //     }
-            // }
-
             if let Some(source_row) = source_statement.as_mut() {
                 if row.line().is_some() && source_row.line.is_none() {
                     source_row.line = row.line();
                 }
                 source_row.address_range = source_row.low_pc()..row.address();
 
-                // if matches!(stepping_mode, SteppingMode::BreakPoint) && !row.end_sequence() {
-                //     // If we are in breakpoint mode, we can get out of here as soon as we find the first valid haltpoint.
-                //     source_row.address_range = source_row.low_pc()..row.address();
-                //     source_row.sequence_high_pc = active_sequence.end;
-                //     source_statements.add(source_row.clone());
-                //     log::trace!(
-                //         "Source statements for pc={}\n{:?}",
-                //         program_counter,
-                //         source_statements
-                //     );
-                //     return Ok(source_statements);
-                // } else {
-                // If we are starting a new address range, then we need to close previous one.
                 if row.end_sequence()
                     || (row.is_stmt() && row.address() > source_row.low_pc())
                     || !(row.file_index() == source_row.file_index
@@ -123,16 +81,11 @@ impl SourceStatements {
                     source_statements.add(source_row.clone());
 
                     if row.end_sequence() {
+                        // If we hit the end of the sequence, we can get out of here.
                         break;
                     }
-                    // Reset the source statement to the current row.
                     source_statement = Some(SourceStatement::from(row));
                 }
-                // else {
-                //     // Update the current source statement with the new row.
-                //     source_row.address_range = source_row.low_pc()..row.address();
-                // }
-                // }
             }
         }
 
@@ -147,47 +100,13 @@ impl SourceStatements {
                 program_counter,
                 source_statements
             );
-            // source_statements
-            // .statements
-            // .sort_by_key(|statement| (statement.file_index, statement.line, statement.column));
             Ok(source_statements)
         }
     }
 
     /// Add a new source statement to the list.
-    /// If this is a `is_stmt=false`, and a `is_stmt=true` already exists for the same file/line/column, then the latter will be updated with the new address_range.
-    /// The `SourceStatement::address_ranges` will be sorted and deduplicated.
-    pub(crate) fn add(&mut self, mut statement: SourceStatement) {
-        // if !statement.is_stmt {
-        //     if let Some(source_statement) =
-        //         self.get_mut(statement.file_index, statement.line, statement.column)
-        //     {
-        //         if statement.high_pc() > source_statement.high_pc() {
-        //             source_statement.high_pc() = statement.high_pc();
-        //         }
-        //         source_statement
-        //             .halt_ranges
-        //             .append(&mut statement.halt_ranges);
-        //         source_statement
-        //             .halt_ranges
-        //             .sort_by_key(|range| (*range.start(), *range.end()));
-        //         source_statement.halt_ranges.dedup();
-        //         return;
-        //     }
-        // }
+    pub(crate) fn add(&mut self, statement: SourceStatement) {
         self.statements.push(statement);
-    }
-
-    /// Get the source statement by file/line/column if the `is_stmnt=true`.
-    pub(crate) fn get_mut(
-        &mut self,
-        file_index: u64,
-        line: Option<NonZeroU64>,
-        column: ColumnType,
-    ) -> Option<&mut SourceStatement> {
-        self.statements.iter_mut().find(|s| {
-            s.is_stmt == true && s.file_index == file_index && s.line == line && s.column == column
-        })
     }
 
     /// Get the number of source statements in the list.
@@ -250,43 +169,11 @@ impl SourceStatement {
         } else {
             None
         }
-        // if self.address_range.contains(address) {}
-        // if (self.low_pc()..self.sequence_high_pc).contains(&address) {
-        //     self.halt_ranges
-        //         .iter()
-        //         .find(|r| r.contains(&address))
-        //         // If the range contains the target address, then it is a statement and therefore a valid halt address.
-        //         .map(|_| address)
-        //         // If not, then find the first statement address after the target address.
-        //         .or_else(|| {
-        //             zip(self.halt_ranges.iter(), self.halt_ranges.iter().skip(1))
-        //                 .find(|(current_range, next_range)| {
-        //                     (current_range.end()..=next_range.start()).contains(&&address)
-        //                 })
-        //                 .map(|(_, next_range)| *next_range.start())
-        //         })
-        // } else {
-        //     None
-        // }
-    }
-
-    /// Return the statement_high_pc and sequence_high_pc of the statement that contains the `address`.
-    pub(crate) fn get_statement_end_points(&self, address: u64) -> Option<(u64, u64)> {
-        if (self.low_pc()..self.high_pc()).contains(&address) {
-            Some((self.high_pc(), self.sequence_high_pc))
-        } else {
-            None
-        }
     }
 
     /// Get the low_pc of this source_statement.
     pub(crate) fn low_pc(&self) -> u64 {
         self.address_range.start
-    }
-
-    /// Get the high_pc of this source_statement.
-    pub(crate) fn high_pc(&self) -> u64 {
-        self.address_range.end
     }
 }
 

@@ -3,14 +3,11 @@
 
 use super::{
     debug_info::DebugInfo,
-    source_statement::{SourceStatement, SourceStatements},
-    unit_info::UnitInfo,
+    source_statement::SourceStatements,
     {DebugError, SourceLocation},
 };
 use crate::{core::Core, CoreStatus, DebugProbeError, HaltReason};
-use gimli::{ColumnType, LineSequence};
-use num_traits::Zero;
-use std::{num::NonZeroU64, ops::RangeInclusive, time::Duration};
+use std::{ops::RangeInclusive, time::Duration};
 
 /// Stepping granularity for stepping through a program during debug.
 #[derive(Clone, Debug)]
@@ -181,8 +178,7 @@ impl SteppingMode {
             SteppingMode::BreakPoint => {
                 // Find the first_breakpoint_address
                 for source_statement in
-                    SourceStatements::new(debug_info, &program_unit, program_counter, self)?
-                        .statements
+                    SourceStatements::new(debug_info, &program_unit, program_counter)?.statements
                 {
                     if let Some(halt_address) =
                         source_statement.get_first_halt_address(program_counter)
@@ -229,58 +225,30 @@ impl SteppingMode {
             SteppingMode::OverStatement => {
                 // Find the next_statement_address
                 // - The instructions in a source statement are not necessarily contiguous in the sequence, and the next_statement_address may be affected by conditonal branching at runtime.
-                // - Therefore, in order to find the correct next_statement_address, we need to:
-                //    --  Run the processor to the last known address in the source statement.
-                //    --  Step the processor one more time to get to the beginning of the next source statement.
-                //    --  Get the get_first_halt_address().
+                // - Therefore, in order to find the correct next_statement_address, we iterate through the source statements, and :
+                //    -- Find the starting address of the next `statement` in the source statements.
+                //    -- If there is one, it means the step over target is in the current sequence, so we get the get_first_halt_address() for this next statement.
+                //    -- Otherwise the step over target is the same as the step out target.
                 let source_statements =
-                    SourceStatements::new(debug_info, &program_unit, program_counter, self)?;
-                for source_statement in source_statements.statements.iter().rev() {
-                    if let Some((statement_high_pc, sequence_high_pc)) =
-                        source_statement.get_statement_end_points(program_counter)
-                    {
-                        if statement_high_pc < sequence_high_pc {
-                            // Stepping past this statement will keep us inside the sequence.
-                            return SteppingMode::BreakPoint.get_halt_location(
-                                None,
-                                debug_info,
-                                statement_high_pc,
-                                None,
-                            );
-                        } else if let Some(return_address) = return_address {
-                            // Stepping past this statement will step us out of the sequence.
-                            return SteppingMode::OutOfStatement.get_halt_location(
-                                None,
-                                debug_info,
-                                return_address,
-                                None,
-                            );
-                        };
-
-                        // if let Some(core) = core.as_deref_mut() {
-                        //     let (core_status, new_pc) =
-                        //         run_to_address(program_counter, halt_address, core)?;
-                        //     match core_status {
-                        //             CoreStatus::Halted(halt_reason) => if matches!(halt_reason, HaltReason::Breakpoint) && new_pc == halt_address{
-                        //                 // We have reached the target pc for the last valid halt adddress in the current statement.
-                        //                 let next_instruction_address = core.step()?.pc;
-                        //                 return SteppingMode::BreakPoint
-                        //                     .get_halt_location(
-                        //                         None,
-                        //                         debug_info,
-                        //                         next_instruction_address,
-                        //                         None,
-                        //                     );
-                        //             } else {
-                        //                 // The core halted at a different address than the last valid halt address, or for a different reason.
-                        //                 return Err(DebugError::Other(anyhow::anyhow!("The core halted during a step request (reason: {:?} at address {:#010x}) before reaching the destination address ({:#010x}) in a `step` request.", halt_reason, new_pc, halt_address)));
-                        //             },
-                        //             other_status => return Err(DebugError::Other(anyhow::anyhow!("The core failed to halt during a `step` request, and returned status: {:?}.", other_status))),
-                        //     }
-                        // } else {
-                        //     return Err(DebugError::Other(anyhow::anyhow!("Require a valid `probe_rs::Core::core` to step. Please report this as a bug.")));
-                        // }
-                    }
+                    SourceStatements::new(debug_info, &program_unit, program_counter)?.statements;
+                let mut source_statements_iter = source_statements.iter();
+                if let Some((target_address, target_location)) = source_statements_iter
+                    .find(|source_statement| {
+                        source_statement.address_range.contains(&program_counter)
+                    })
+                    .and_then(|_| source_statements_iter.next())
+                    .and_then(|next_line| {
+                        SteppingMode::BreakPoint
+                            .get_halt_location(None, debug_info, next_line.low_pc(), None)
+                            .ok()
+                    })
+                    .or_else(|| {
+                        SteppingMode::OutOfStatement
+                            .get_halt_location(None, debug_info, program_counter, return_address)
+                            .ok()
+                    })
+                {
+                    return Ok((target_address, target_location));
                 }
             }
             SteppingMode::IntoStatement => {}
@@ -304,7 +272,6 @@ impl SteppingMode {
                         } else if function.low_pc <= program_counter as u64
                             && function.high_pc > program_counter as u64
                         {
-                            let this_function = function;
                             if function.is_inline() {
                                 if let Some(core) = core {
                                     // Step_out_address for inlined functions, is the first available breakpoint address after the last statement in the inline function.
@@ -321,15 +288,12 @@ impl SteppingMode {
                                 }
                             } else if let Some(return_address) = return_address {
                                 // TODO: This should be step over the  upper range value of the last statement in the function
-                                let this_function = function;
-                                // for source_statement in
                                 println!(
                                     "Step Out target: non-inline function, stepping over\n{:?}",
                                     SourceStatements::new(
                                         debug_info,
                                         &program_unit,
                                         return_address,
-                                        self,
                                     )?
                                 );
                                 // Step_out_address for non-inlined functions is the first available breakpoint address after the return address.
