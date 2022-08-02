@@ -4,11 +4,11 @@ use super::{
 };
 use crate::{
     core::Core,
-    debug::{registers, SteppingMode},
+    debug::{registers, source_statement::SourceStatements, SteppingMode},
     MemoryInterface, RegisterValue,
 };
 use ::gimli::{FileEntry, LineProgramHeader, UnwindContext};
-use gimli::{BaseAddresses, DebugFrame, UnwindSection};
+use gimli::{BaseAddresses, ColumnType, DebugFrame, UnwindSection};
 use object::read::{Object, ObjectSection};
 use probe_rs_target::InstructionSet;
 use registers::RegisterGroup;
@@ -919,14 +919,14 @@ impl DebugInfo {
 
         let mut unit_iter = self.dwarf.units();
 
-        while let Some(unit_header) = unit_iter.next()? {
-            let unit = self.dwarf.unit(unit_header)?;
+        while let Some(unit_header) = self.get_next_unit_info(&mut unit_iter) {
+            let unit = &unit_header.unit;
 
             if let Some(ref line_program) = unit.line_program {
                 let header = line_program.header();
 
                 for file_name in header.file_names() {
-                    let combined_path = self.get_path(&unit, header, file_name);
+                    let combined_path = self.get_path(unit, header, file_name);
 
                     if combined_path.map(|p| p == path).unwrap_or(false) {
                         let mut rows = line_program.clone().rows();
@@ -934,7 +934,7 @@ impl DebugInfo {
                         while let Some((header, row)) = rows.next_row()? {
                             let row_path = row
                                 .file(header)
-                                .and_then(|file_entry| self.get_path(&unit, header, file_entry));
+                                .and_then(|file_entry| self.get_path(unit, header, file_entry));
 
                             if row_path.map(|p| p != path).unwrap_or(true) {
                                 continue;
@@ -942,18 +942,43 @@ impl DebugInfo {
 
                             if let Some(cur_line) = row.line() {
                                 if cur_line.get() == line {
-                                    // The first match of the file and row will be used a the locator address to select valid breakpoint location.
-
-                                    // UPDATE: If there is an exact column match, we should check if the location will support a breakpoint.
-                                    // If not, it is probably a branching instruction, and we should check if the destination will support a breakpoint.
-                                    // If it does, use the exact location.
-                                    // - The result will include a new source location, so that the debugger knows where the actual breakpoint was placed.
-                                    return SteppingMode::BreakPoint.get_halt_location(
-                                        None,
-                                        self,
-                                        row.address(),
-                                        None,
-                                    );
+                                    // The first match of the file and row will be used to build the SourceStatements, and then:
+                                    // 1. If there is an exact column match, we will use the low_pc of the statement at that column and line.
+                                    // 2. If there is no exact column match, we use the first available statement in the line.
+                                    if let Some((halt_address, halt_location)) =
+                                        SourceStatements::new(
+                                            self,
+                                            &unit_header,
+                                            row.address(),
+                                            &SteppingMode::OutOfStatement,
+                                        )?
+                                        .statements
+                                        .iter()
+                                        .find(|statement| {
+                                            statement.line == Some(cur_line)
+                                                && column
+                                                    .and_then(NonZeroU64::new)
+                                                    .map(ColumnType::Column)
+                                                    .map_or(false, |col| col == statement.column)
+                                        })
+                                        .and_then(|statement| {
+                                            SteppingMode::BreakPoint
+                                                .get_halt_location(
+                                                    None,
+                                                    self,
+                                                    statement.low_pc(),
+                                                    None,
+                                                )
+                                                .ok()
+                                        })
+                                        .or_else(|| {
+                                            SteppingMode::BreakPoint
+                                                .get_halt_location(None, self, row.address(), None)
+                                                .ok()
+                                        })
+                                    {
+                                        return Ok((halt_address, halt_location));
+                                    }
                                 }
                             }
                         }
