@@ -31,7 +31,7 @@ log = { version = "0.4.17", features = ["serde"] }
 lazy_static = "1.4.0"
 colored = "2.0.0"
 serde = { version = "1.0", features = ["derive"] }
-serde_json = { version = "1.0.82" }
+serde_json = { version = "1.0.83" }
 figment = { version = "0.10", features = ["toml", "json", "yaml", "env"] }
 chrono = "0.4"
 crossterm = "<= 0.24.1"
