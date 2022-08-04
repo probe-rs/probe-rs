@@ -16,7 +16,7 @@ keywords = ["embedded"]
 license = "MIT OR Apache-2.0"
 
 [features]
-default = ["builtin-targets", "vendored-libusb"]
+default = ["builtin-targets"]
 
 vendored-libusb = ["rusb/vendored"]
 
