@@ -40,10 +40,25 @@ impl SourceStatements {
         let mut prologue_completed = false;
         let mut source_statement: Option<SourceStatement> = None;
         while let Ok(Some((_, row))) = sequence_rows.next_row() {
+            if let Some(source_row) = source_statement.as_mut() {
+                if source_row.line.is_none()
+                    && row.line().is_some()
+                    && row.file_index() == source_row.file_index
+                    && row.column() == source_row.column
+                {
+                    // Workaround the line number issue (it is recorded as None in the DWARF when for debug purposes, it makes more sense to be the same as the previous line).
+                    source_row.line = row.line();
+                }
+            } else {
+                // Start tracking the source statement using this row.
+                source_statement = Some(SourceStatement::from(row));
+            }
+
             // Don't do anything until we are at least at the prologue_end() of a function.
             if row.prologue_end() {
                 prologue_completed = true;
             }
+
             if !prologue_completed {
                 log_row_eval(&active_sequence, program_counter, row, "  inside prologue>");
                 continue;
@@ -55,20 +70,9 @@ impl SourceStatements {
             // 3. The values in the `source_statement` are only updated before we exit the current iteration of the loop, so that we can retroactively close off and store the source statement that belongs to previous `rows`.
             // 4. The debug_info sometimes has a `None` value for the `row.line` that was started in the previous row, in which case we need to carry the previous row `line` number forward. GDB ignores this fact, and it shows up during debug as stepping to the top of the file (line 0) unexpectedly.
 
-            // Once past the prologue, we start taking into account the role of the `program_counter`.
-            if row.address() < program_counter {
-                // Keep track of data belong to the prior row.
-                source_statement = Some(SourceStatement::from(row));
-                continue;
-            } else if source_statement.is_none() {
-                source_statement = Some(SourceStatement::from(row));
-            }
-
             if let Some(source_row) = source_statement.as_mut() {
-                if row.line().is_some() && source_row.line.is_none() {
-                    source_row.line = row.line();
-                }
-                source_row.address_range = source_row.low_pc()..row.address();
+                // Update the instruction_range.end value.
+                source_row.instruction_range = source_row.low_pc()..row.address();
 
                 if row.end_sequence()
                     || (row.is_stmt() && row.address() > source_row.low_pc())
@@ -76,15 +80,20 @@ impl SourceStatements {
                         && (row.line() == source_row.line || row.line().is_none())
                         && row.column() == source_row.column)
                 {
-                    // We need to close off the "current" source statement.
-                    source_row.sequence_high_pc = active_sequence.end;
-                    source_statements.add(source_row.clone());
+                    if source_row.low_pc() >= program_counter {
+                        // We need to close off the "current" source statement and add it to the list.
+                        source_row.sequence_range = program_counter..active_sequence.end;
+                        source_statements.add(source_row.clone());
+                    }
 
                     if row.end_sequence() {
                         // If we hit the end of the sequence, we can get out of here.
                         break;
                     }
                     source_statement = Some(SourceStatement::from(row));
+                } else if row.address() == program_counter {
+                    // If we encounter the program_counter after the prologue, then we need to use this address as the low_pc, or else we run the risk of setting a breakpoint before the current program counter.
+                    source_row.instruction_range = row.address()..row.address();
                 }
             }
         }
@@ -95,10 +104,9 @@ impl SourceStatements {
                 pc_at_error: program_counter,
             })
         } else {
-            log::trace!(
-                "Source statements for pc={}\n{:?}",
-                program_counter,
-                source_statements
+            println!(
+                "Source statements for pc={:#010x}\n{:?}",
+                program_counter, source_statements
             );
             Ok(source_statements)
         }
@@ -131,18 +139,20 @@ pub(crate) struct SourceStatement {
     pub(crate) file_index: u64,
     pub(crate) line: Option<NonZeroU64>,
     pub(crate) column: ColumnType,
-    /// All the addresses associated with a source statement.
-    /// The `start` is the first address of the sequence, and the `end` is the address of the row of the next the sequence, i.e. not part of this statement.
-    pub(crate) address_range: Range<u64>,
-    /// The `sequence_high_pc` is the address of the first byte after the end of a sequence.
-    pub(crate) sequence_high_pc: u64,
+    /// The range of instruction addresses associated with a source statement.
+    /// The `address_range.start` is the address of the first instruction which is greater than or equal to the program_counter and not inside the prologue.
+    /// The `address_range.end` is the address of the row of the next the sequence, i.e. not part of this statement.
+    pub(crate) instruction_range: Range<u64>,
+    /// The `sequence_range.start` is the address of the program counter for which this sequence is valid, and allows us to identify target source statements where the program counter lies inside the prologue.
+    /// The `sequence_range.end` is the address of the first byte after the end of a sequence, and allows us to identify when stepping over a source statement would result in leaving a sequence.
+    pub(crate) sequence_range: Range<u64>,
 }
 
 impl Debug for SourceStatement {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "Statement={:05} on line={:04}  col={:05}  f={:02}, Range: {:#010x}-{:#010x} --> sequence_high_pc={:#010x}",
+            "\tStatement={:05} on line={:04}  col={:05}  f={:02}, Range: {:#010x}-{:#010x} --> Sequence Range: {:#010x}-{:#010x}",
             &self.is_stmt,
             match &self.line {
                 Some(line) => line.get(),
@@ -153,9 +163,10 @@ impl Debug for SourceStatement {
                 gimli::ColumnType::Column(column) => column.get(),
             },
             &self.file_index,
-            &self.address_range.start,
-            &self.address_range.end,
-            &self.sequence_high_pc
+            &self.instruction_range.start,
+            &self.instruction_range.end,
+            &self.sequence_range.start,
+            &self.sequence_range.end,
         )?;
         Ok(())
     }
@@ -164,7 +175,9 @@ impl Debug for SourceStatement {
 impl SourceStatement {
     /// Return the first valid halt address of the statement that is greater than or equal to `address`.
     pub(crate) fn get_first_halt_address(&self, address: u64) -> Option<u64> {
-        if self.address_range.start == address || self.address_range.contains(&address) {
+        if self.instruction_range.start == address
+            || (self.sequence_range.start..self.instruction_range.end).contains(&address)
+        {
             Some(self.low_pc())
         } else {
             None
@@ -173,7 +186,7 @@ impl SourceStatement {
 
     /// Get the low_pc of this source_statement.
     pub(crate) fn low_pc(&self) -> u64 {
-        self.address_range.start
+        self.instruction_range.start
     }
 }
 
@@ -184,8 +197,8 @@ impl From<&gimli::LineRow> for SourceStatement {
             file_index: line_row.file_index(),
             line: line_row.line(),
             column: line_row.column(),
-            address_range: line_row.address()..line_row.address(),
-            sequence_high_pc: line_row.address(),
+            instruction_range: line_row.address()..line_row.address(),
+            sequence_range: line_row.address()..line_row.address(),
         }
     }
 }

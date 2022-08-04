@@ -4,7 +4,7 @@ use super::{
 };
 use crate::{
     core::Core,
-    debug::{registers, source_statement::SourceStatements, SteppingMode},
+    debug::{registers, source_statement::SourceStatements},
     MemoryInterface, RegisterValue,
 };
 use ::gimli::{FileEntry, LineProgramHeader, UnwindContext};
@@ -945,38 +945,98 @@ impl DebugInfo {
                                     // The first match of the file and row will be used to build the SourceStatements, and then:
                                     // 1. If there is an exact column match, we will use the low_pc of the statement at that column and line.
                                     // 2. If there is no exact column match, we use the first available statement in the line.
-                                    if let Some((halt_address, halt_location)) =
+                                    let source_statements =
                                         SourceStatements::new(self, &unit_header, row.address())?
-                                            .statements
-                                            .iter()
-                                            .find(|statement| {
-                                                statement.line == Some(cur_line)
-                                                    && column
-                                                        .and_then(NonZeroU64::new)
-                                                        .map(ColumnType::Column)
-                                                        .map_or(false, |col| {
-                                                            col == statement.column
+                                            .statements;
+                                    if let Some((halt_address, halt_location)) = source_statements
+                                        .iter()
+                                        .find(|statement| {
+                                            statement.line == Some(cur_line)
+                                                && column
+                                                    .and_then(NonZeroU64::new)
+                                                    .map(ColumnType::Column)
+                                                    .map_or(false, |col| col == statement.column)
+                                        })
+                                        .map(|source_statement| {
+                                            (
+                                                Some(source_statement.low_pc()),
+                                                line_program
+                                                    .header()
+                                                    .file(source_statement.file_index)
+                                                    .and_then(|file_entry| {
+                                                        self.find_file_and_directory(
+                                                            &unit_header.unit,
+                                                            line_program.header(),
+                                                            file_entry,
+                                                        )
+                                                        .map(|(file, directory)| SourceLocation {
+                                                            line: source_statement
+                                                                .line
+                                                                .map(std::num::NonZeroU64::get),
+                                                            column: Some(
+                                                                source_statement.column.into(),
+                                                            ),
+                                                            file,
+                                                            directory,
+                                                            low_pc: Some(
+                                                                source_statement.low_pc() as u32
+                                                            ),
+                                                            high_pc: Some(
+                                                                source_statement
+                                                                    .instruction_range
+                                                                    .end
+                                                                    as u32,
+                                                            ),
                                                         })
-                                            })
-                                            .and_then(|statement| {
-                                                SteppingMode::BreakPoint
-                                                    .get_halt_location(
-                                                        None,
-                                                        self,
-                                                        statement.low_pc(),
-                                                        None,
-                                                    )
-                                                    .ok()
-                                            })
-                                            .or_else(|| {
-                                                SteppingMode::BreakPoint
-                                                    .get_halt_location(
-                                                        None,
-                                                        self,
-                                                        row.address(),
-                                                        None,
-                                                    )
-                                                    .ok()
+                                                    }),
+                                            )
+                                        })
+                                    {
+                                        return Ok((halt_address, halt_location));
+                                    } else if let Some((halt_address, halt_location)) =
+                                        source_statements
+                                            .iter()
+                                            .find(|statement| statement.line == Some(cur_line))
+                                            .map(|source_statement| {
+                                                (
+                                                    Some(source_statement.low_pc()),
+                                                    line_program
+                                                        .header()
+                                                        .file(source_statement.file_index)
+                                                        .and_then(|file_entry| {
+                                                            self.find_file_and_directory(
+                                                                &unit_header.unit,
+                                                                line_program.header(),
+                                                                file_entry,
+                                                            )
+                                                            .map(|(file, directory)| {
+                                                                SourceLocation {
+                                                                    line: source_statement
+                                                                        .line
+                                                                        .map(
+                                                                        std::num::NonZeroU64::get,
+                                                                    ),
+                                                                    column: Some(
+                                                                        source_statement
+                                                                            .column
+                                                                            .into(),
+                                                                    ),
+                                                                    file,
+                                                                    directory,
+                                                                    low_pc: Some(
+                                                                        source_statement.low_pc()
+                                                                            as u32,
+                                                                    ),
+                                                                    high_pc: Some(
+                                                                        source_statement
+                                                                            .instruction_range
+                                                                            .end
+                                                                            as u32,
+                                                                    ),
+                                                                }
+                                                            })
+                                                        }),
+                                                )
                                             })
                                     {
                                         return Ok((halt_address, halt_location));
