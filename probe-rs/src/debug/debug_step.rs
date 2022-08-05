@@ -51,6 +51,7 @@ impl SteppingMode {
                 )))
             }
         };
+        let origin_program_counter = program_counter;
         let mut return_address = core.read_core_reg(core.registers().return_address())?;
 
         // Sometimes the target program_counter is at a location where the debug_info program row data does not contain valid statements for halt points.
@@ -111,7 +112,7 @@ impl SteppingMode {
 
         (core_status, program_counter) = match target_address {
             Some(target_address) => {
-                println!(
+                log::debug!(
                     "Preparing to step ({:20?}): \n\tfrom: {:?} @ {:#010X} \n\t  to: {:?} @ {:#010X}",
                     self,
                     debug_info
@@ -121,7 +122,7 @@ impl SteppingMode {
                             source_location.line,
                             source_location.column
                         )),
-                    program_counter,
+                    origin_program_counter,
                     debug_info
                         .get_source_location(target_address)
                         .map(|source_location| (
@@ -183,9 +184,10 @@ impl SteppingMode {
                     if let Some(halt_address) =
                         source_statement.get_first_halt_address(program_counter)
                     {
-                        println!(
+                        log::debug!(
                             "Found first breakpoint {:#010x} for address: {:#010x}",
-                            halt_address, program_counter
+                            halt_address,
+                            program_counter
                         );
                         // We have a good first halt address.
                         let first_breakpoint_address = Some(halt_address);
@@ -238,11 +240,17 @@ impl SteppingMode {
                             .instruction_range
                             .contains(&program_counter)
                     })
-                    .and_then(|_| source_statements_iter.next())
-                    .and_then(|next_line| {
-                        SteppingMode::BreakPoint
-                            .get_halt_location(None, debug_info, next_line.low_pc(), None)
-                            .ok()
+                    .and_then(|_| {
+                        if source_statements.len() == 1 {
+                            // Force a SteppingMode::OutOfStatement below.
+                            None
+                        } else {
+                            source_statements_iter.next().and_then(|next_line| {
+                                SteppingMode::BreakPoint
+                                    .get_halt_location(None, debug_info, next_line.low_pc(), None)
+                                    .ok()
+                            })
+                        }
                     })
                     .or_else(|| {
                         SteppingMode::OutOfStatement
@@ -280,15 +288,20 @@ impl SteppingMode {
                         let (core_status, new_pc) = step_to_address(inclusive_range, core)?;
                         if new_pc == current_source_statement.instruction_range.end {
                             // We have halted at the address after the current statement, so we can conclude there was no branching calls in this sequence.
-                            println!("Stepping into next statement, but no branching calls found. Stepped to next available statement.");
+                            log::debug!("Stepping into next statement, but no branching calls found. Stepped to next available statement.");
                         } else if new_pc < current_source_statement.instruction_range.end
                             && matches!(core_status, CoreStatus::Halted(HaltReason::Breakpoint))
                         {
                             // We have halted at a PC that is within the current statement, so there must be another breakpoint.
-                            println!("Stepping into next statement, but encountered a breakpoint.");
+                            log::debug!(
+                                "Stepping into next statement, but encountered a breakpoint."
+                            );
                         } else {
                             // We have reached a location that is not in the current statement range (branch instruction or breakpoint in an interrupt handler).
-                            println!("Stepping into next statement at address: {:#010x}.", new_pc);
+                            log::debug!(
+                                "Stepping into next statement at address: {:#010x}.",
+                                new_pc
+                            );
                         }
 
                         return SteppingMode::BreakPoint
@@ -316,8 +329,8 @@ impl SteppingMode {
                         } else if function.low_pc <= program_counter as u64
                             && function.high_pc > program_counter as u64
                         {
-                            if function.is_inline() {
-                                if let Some(core) = core {
+                            if let Some(core) = core {
+                                if function.is_inline() {
                                     // Step_out_address for inlined functions, is the first available breakpoint address after the last statement in the inline function.
                                     let (_, next_instruction_address) =
                                         run_to_address(program_counter, function.high_pc, core)?;
@@ -327,26 +340,21 @@ impl SteppingMode {
                                         next_instruction_address,
                                         None,
                                     );
-                                } else {
-                                    return Err(DebugError::Other(anyhow::anyhow!("Require a valid `probe_rs::Core::core` to step. Please report this as a bug.")));
-                                }
-                            } else if let Some(return_address) = return_address {
-                                // TODO: This should be step over the  upper range value of the last statement in the function
-                                println!(
-                                    "Step Out target: non-inline function, stepping over\n{:?}",
-                                    SourceStatements::new(
+                                } else if let Some(return_address) = return_address {
+                                    log::debug!(
+                                        "Step Out target: non-inline function, stepping over return address: {:#010x}",
+                                            return_address
+                                    );
+                                    // Step_out_address for non-inlined functions is the first available breakpoint address after the return address.
+                                    return SteppingMode::BreakPoint.get_halt_location(
+                                        None,
                                         debug_info,
-                                        &program_unit,
                                         return_address,
-                                    )?
-                                );
-                                // Step_out_address for non-inlined functions is the first available breakpoint address after the return address.
-                                return SteppingMode::BreakPoint.get_halt_location(
-                                    None,
-                                    debug_info,
-                                    return_address,
-                                    None,
-                                );
+                                        None,
+                                    );
+                                }
+                            } else {
+                                return Err(DebugError::Other(anyhow::anyhow!("Require a valid `probe_rs::Core::core` to step. Please report this as a bug.")));
                             }
                         }
                     }

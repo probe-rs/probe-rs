@@ -62,6 +62,8 @@ impl SourceStatements {
             if !prologue_completed {
                 log_row_eval(&active_sequence, program_counter, row, "  inside prologue>");
                 continue;
+            } else {
+                log_row_eval(&active_sequence, program_counter, row, "  after prologue>");
             }
 
             // Notes about the process of building the source statement:
@@ -104,9 +106,10 @@ impl SourceStatements {
                 pc_at_error: program_counter,
             })
         } else {
-            println!(
+            log::trace!(
                 "Source statements for pc={:#010x}\n{:?}",
-                program_counter, source_statements
+                program_counter,
+                source_statements
             );
             Ok(source_statements)
         }
