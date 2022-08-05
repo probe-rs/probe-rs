@@ -5,18 +5,18 @@ variants:
       - name: main
         type: armv7em
         core_access_options:
-          Arm:
+          !Arm
             ap: 0x0
             psel: 0x0
     memory_map:
-      - Ram:
+      - !Ram
           range:
             start: 0x20000000
             end: 0x20020000
           is_boot_memory: false
           cores:
             - main
-      - Nvm:
+      - !Nvm
           range:
             start: 0x400000
             end: 0x500000
@@ -30,18 +30,18 @@ variants:
       - name: main
         type: armv7em
         core_access_options:
-          Arm:
+          !Arm
             ap: 0x0
             psel: 0x0
     memory_map:
-      - Ram:
+      - !Ram
           range:
             start: 0x20000000
             end: 0x20020000
           is_boot_memory: false
           cores:
             - main
-      - Nvm:
+      - !Nvm
           range:
             start: 0x400000
             end: 0x500000
@@ -55,18 +55,18 @@ variants:
       - name: main
         type: armv7em
         core_access_options:
-          Arm:
+          !Arm
             ap: 0x0
             psel: 0x0
     memory_map:
-      - Ram:
+      - !Ram
           range:
             start: 0x20000000
             end: 0x20020000
           is_boot_memory: false
           cores:
             - main
-      - Nvm:
+      - !Nvm
           range:
             start: 0x400000
             end: 0x480000
@@ -80,18 +80,18 @@ variants:
       - name: main
         type: armv7em
         core_access_options:
-          Arm:
+          !Arm
             ap: 0x0
             psel: 0x0
     memory_map:
-      - Ram:
+      - !Ram
           range:
             start: 0x20000000
             end: 0x20020000
           is_boot_memory: false
           cores:
             - main
-      - Nvm:
+      - !Nvm
           range:
             start: 0x400000
             end: 0x480000
@@ -105,18 +105,18 @@ variants:
       - name: main
         type: armv7em
         core_access_options:
-          Arm:
+          !Arm
             ap: 0x0
             psel: 0x0
     memory_map:
-      - Ram:
+      - !Ram
           range:
             start: 0x20000000
             end: 0x20008000
           is_boot_memory: false
           cores:
             - main
-      - Nvm:
+      - !Nvm
           range:
             start: 0x0
             end: 0x20000
@@ -130,18 +130,18 @@ variants:
       - name: main
         type: armv7em
         core_access_options:
-          Arm:
+          !Arm
             ap: 0x0
             psel: 0x0
     memory_map:
-      - Ram:
+      - !Ram
           range:
             start: 0x20000000
             end: 0x20008000
           is_boot_memory: false
           cores:
             - main
-      - Nvm:
+      - !Nvm
           range:
             start: 0x0
             end: 0x20000
@@ -155,18 +155,18 @@ variants:
       - name: main
         type: armv7em
         core_access_options:
-          Arm:
+          !Arm
             ap: 0x0
             psel: 0x0
     memory_map:
-      - Ram:
+      - !Ram
           range:
             start: 0x20000000
             end: 0x20008000
           is_boot_memory: false
           cores:
             - main
-      - Nvm:
+      - !Nvm
           range:
             start: 0x0
             end: 0x20000
@@ -180,18 +180,18 @@ variants:
       - name: main
         type: armv7em
         core_access_options:
-          Arm:
+          !Arm
             ap: 0x0
             psel: 0x0
     memory_map:
-      - Ram:
+      - !Ram
           range:
             start: 0x20000000
             end: 0x20008000
           is_boot_memory: false
           cores:
             - main
-      - Nvm:
+      - !Nvm
           range:
             start: 0x0
             end: 0x40000
@@ -205,18 +205,18 @@ variants:
       - name: main
         type: armv7em
         core_access_options:
-          Arm:
+          !Arm
             ap: 0x0
             psel: 0x0
     memory_map:
-      - Ram:
+      - !Ram
           range:
             start: 0x20000000
             end: 0x20008000
           is_boot_memory: false
           cores:
             - main
-      - Nvm:
+      - !Nvm
           range:
             start: 0x0
             end: 0x40000
@@ -230,18 +230,18 @@ variants:
       - name: main
         type: armv7em
         core_access_options:
-          Arm:
+          !Arm
             ap: 0x0
             psel: 0x0
     memory_map:
-      - Ram:
+      - !Ram
           range:
             start: 0x20000000
             end: 0x20008000
           is_boot_memory: false
           cores:
             - main
-      - Nvm:
+      - !Nvm
           range:
             start: 0x0
             end: 0x40000
@@ -255,18 +255,18 @@ variants:
       - name: main
         type: armv7em
         core_access_options:
-          Arm:
+          !Arm
             ap: 0x0
             psel: 0x0
     memory_map:
-      - Ram:
+      - !Ram
           range:
             start: 0x20000000
             end: 0x20010000
           is_boot_memory: false
           cores:
             - main
-      - Nvm:
+      - !Nvm
           range:
             start: 0x0
             end: 0x80000
@@ -280,18 +280,18 @@ variants:
       - name: main
         type: armv7em
         core_access_options:
-          Arm:
+          !Arm
             ap: 0x0
             psel: 0x0
     memory_map:
-      - Ram:
+      - !Ram
           range:
             start: 0x20000000
             end: 0x20010000
           is_boot_memory: false
           cores:
             - main
-      - Nvm:
+      - !Nvm
           range:
             start: 0x0
             end: 0x80000
@@ -305,18 +305,18 @@ variants:
       - name: main
         type: armv7em
         core_access_options:
-          Arm:
+          !Arm
             ap: 0x0
             psel: 0x0
     memory_map:
-      - Ram:
+      - !Ram
           range:
             start: 0x20000000
             end: 0x20010000
           is_boot_memory: false
           cores:
             - main
-      - Nvm:
+      - !Nvm
           range:
             start: 0x0
             end: 0x80000
@@ -330,18 +330,18 @@ variants:
       - name: main
         type: armv7em
         core_access_options:
-          Arm:
+          !Arm
             ap: 0x0
             psel: 0x0
     memory_map:
-      - Ram:
+      - !Ram
           range:
             start: 0x20000000
             end: 0x20008000
           is_boot_memory: false
           cores:
             - main
-      - Nvm:
+      - !Nvm
           range:
             start: 0x0
             end: 0x20000
@@ -355,18 +355,18 @@ variants:
       - name: main
         type: armv7em
         core_access_options:
-          Arm:
+          !Arm
             ap: 0x0
             psel: 0x0
     memory_map:
-      - Ram:
+      - !Ram
           range:
             start: 0x20000000
             end: 0x20008000
           is_boot_memory: false
           cores:
             - main
-      - Nvm:
+      - !Nvm
           range:
             start: 0x0
             end: 0x20000
@@ -380,18 +380,18 @@ variants:
       - name: main
         type: armv7em
         core_access_options:
-          Arm:
+          !Arm
             ap: 0x0
             psel: 0x0
     memory_map:
-      - Ram:
+      - !Ram
           range:
             start: 0x20000000
             end: 0x20008000
           is_boot_memory: false
           cores:
             - main
-      - Nvm:
+      - !Nvm
           range:
             start: 0x0
             end: 0x20000
@@ -405,18 +405,18 @@ variants:
       - name: main
         type: armv7em
         core_access_options:
-          Arm:
+          !Arm
             ap: 0x0
             psel: 0x0
     memory_map:
-      - Ram:
+      - !Ram
           range:
             start: 0x20000000
             end: 0x20008000
           is_boot_memory: false
           cores:
             - main
-      - Nvm:
+      - !Nvm
           range:
             start: 0x0
             end: 0x40000
@@ -430,18 +430,18 @@ variants:
       - name: main
         type: armv7em
         core_access_options:
-          Arm:
+          !Arm
             ap: 0x0
             psel: 0x0
     memory_map:
-      - Ram:
+      - !Ram
           range:
             start: 0x20000000
             end: 0x20008000
           is_boot_memory: false
           cores:
             - main
-      - Nvm:
+      - !Nvm
           range:
             start: 0x0
             end: 0x40000
@@ -455,18 +455,18 @@ variants:
       - name: main
         type: armv7em
         core_access_options:
-          Arm:
+          !Arm
             ap: 0x0
             psel: 0x0
     memory_map:
-      - Ram:
+      - !Ram
           range:
             start: 0x20000000
             end: 0x20008000
           is_boot_memory: false
           cores:
             - main
-      - Nvm:
+      - !Nvm
           range:
             start: 0x0
             end: 0x40000
@@ -480,18 +480,18 @@ variants:
       - name: main
         type: armv7em
         core_access_options:
-          Arm:
+          !Arm
             ap: 0x0
             psel: 0x0
     memory_map:
-      - Ram:
+      - !Ram
           range:
             start: 0x20000000
             end: 0x20010000
           is_boot_memory: false
           cores:
             - main
-      - Nvm:
+      - !Nvm
           range:
             start: 0x0
             end: 0x80000
@@ -505,18 +505,18 @@ variants:
       - name: main
         type: armv7em
         core_access_options:
-          Arm:
+          !Arm
             ap: 0x0
             psel: 0x0
     memory_map:
-      - Ram:
+      - !Ram
           range:
             start: 0x20000000
             end: 0x20010000
           is_boot_memory: false
           cores:
             - main
-      - Nvm:
+      - !Nvm
           range:
             start: 0x0
             end: 0x80000
@@ -530,18 +530,18 @@ variants:
       - name: main
         type: armv7em
         core_access_options:
-          Arm:
+          !Arm
             ap: 0x0
             psel: 0x0
     memory_map:
-      - Ram:
+      - !Ram
           range:
             start: 0x20000000
             end: 0x20010000
           is_boot_memory: false
           cores:
             - main
-      - Nvm:
+      - !Nvm
           range:
             start: 0x0
             end: 0x80000
@@ -555,18 +555,18 @@ variants:
       - name: main
         type: armv7em
         core_access_options:
-          Arm:
+          !Arm
             ap: 0x0
             psel: 0x0
     memory_map:
-      - Ram:
+      - !Ram
           range:
             start: 0x20000000
             end: 0x20014000
           is_boot_memory: false
           cores:
             - main
-      - Nvm:
+      - !Nvm
           range:
             start: 0x400000
             end: 0x500000
@@ -580,18 +580,18 @@ variants:
       - name: main
         type: armv7em
         core_access_options:
-          Arm:
+          !Arm
             ap: 0x0
             psel: 0x0
     memory_map:
-      - Ram:
+      - !Ram
           range:
             start: 0x20000000
             end: 0x20014000
           is_boot_memory: false
           cores:
             - main
-      - Nvm:
+      - !Nvm
           range:
             start: 0x400000
             end: 0x500000
@@ -605,18 +605,18 @@ variants:
       - name: main
         type: armv7em
         core_access_options:
-          Arm:
+          !Arm
             ap: 0x0
             psel: 0x0
     memory_map:
-      - Ram:
+      - !Ram
           range:
             start: 0x20000000
             end: 0x20010000
           is_boot_memory: false
           cores:
             - main
-      - Nvm:
+      - !Nvm
           range:
             start: 0x400000
             end: 0x480000
@@ -630,18 +630,18 @@ variants:
       - name: main
         type: armv7em
         core_access_options:
-          Arm:
+          !Arm
             ap: 0x0
             psel: 0x0
     memory_map:
-      - Ram:
+      - !Ram
           range:
             start: 0x20000000
             end: 0x20010000
           is_boot_memory: false
           cores:
             - main
-      - Nvm:
+      - !Nvm
           range:
             start: 0x400000
             end: 0x480000
@@ -655,18 +655,18 @@ variants:
       - name: main
         type: armv7em
         core_access_options:
-          Arm:
+          !Arm
             ap: 0x0
             psel: 0x0
     memory_map:
-      - Ram:
+      - !Ram
           range:
             start: 0x20000000
             end: 0x20010000
           is_boot_memory: false
           cores:
             - main
-      - Nvm:
+      - !Nvm
           range:
             start: 0x400000
             end: 0x480000
@@ -680,18 +680,18 @@ variants:
       - name: main
         type: armv7em
         core_access_options:
-          Arm:
+          !Arm
             ap: 0x0
             psel: 0x0
     memory_map:
-      - Ram:
+      - !Ram
           range:
             start: 0x20000000
             end: 0x20020000
           is_boot_memory: false
           cores:
             - main
-      - Nvm:
+      - !Nvm
           range:
             start: 0x400000
             end: 0x500000
@@ -706,18 +706,18 @@ variants:
       - name: main
         type: armv7em
         core_access_options:
-          Arm:
+          !Arm
             ap: 0x0
             psel: 0x0
     memory_map:
-      - Ram:
+      - !Ram
           range:
             start: 0x20000000
             end: 0x20020000
           is_boot_memory: false
           cores:
             - main
-      - Nvm:
+      - !Nvm
           range:
             start: 0x400000
             end: 0x500000
@@ -732,18 +732,18 @@ variants:
       - name: main
         type: armv7em
         core_access_options:
-          Arm:
+          !Arm
             ap: 0x0
             psel: 0x0
     memory_map:
-      - Ram:
+      - !Ram
           range:
             start: 0x20000000
             end: 0x20010000
           is_boot_memory: false
           cores:
             - main
-      - Nvm:
+      - !Nvm
           range:
             start: 0x400000
             end: 0x420000
@@ -758,18 +758,18 @@ variants:
       - name: main
         type: armv7em
         core_access_options:
-          Arm:
+          !Arm
             ap: 0x0
             psel: 0x0
     memory_map:
-      - Ram:
+      - !Ram
           range:
             start: 0x20000000
             end: 0x20010000
           is_boot_memory: false
           cores:
             - main
-      - Nvm:
+      - !Nvm
           range:
             start: 0x400000
             end: 0x420000
@@ -784,18 +784,18 @@ variants:
       - name: main
         type: armv7em
         core_access_options:
-          Arm:
+          !Arm
             ap: 0x0
             psel: 0x0
     memory_map:
-      - Ram:
+      - !Ram
           range:
             start: 0x20000000
             end: 0x20010000
           is_boot_memory: false
           cores:
             - main
-      - Nvm:
+      - !Nvm
           range:
             start: 0x400000
             end: 0x420000
@@ -810,18 +810,18 @@ variants:
       - name: main
         type: armv7em
         core_access_options:
-          Arm:
+          !Arm
             ap: 0x0
             psel: 0x0
     memory_map:
-      - Ram:
+      - !Ram
           range:
             start: 0x20000000
             end: 0x20010000
           is_boot_memory: false
           cores:
             - main
-      - Nvm:
+      - !Nvm
           range:
             start: 0x400000
             end: 0x440000
@@ -836,18 +836,18 @@ variants:
       - name: main
         type: armv7em
         core_access_options:
-          Arm:
+          !Arm
             ap: 0x0
             psel: 0x0
     memory_map:
-      - Ram:
+      - !Ram
           range:
             start: 0x20000000
             end: 0x20010000
           is_boot_memory: false
           cores:
             - main
-      - Nvm:
+      - !Nvm
           range:
             start: 0x400000
             end: 0x440000
@@ -862,18 +862,18 @@ variants:
       - name: main
         type: armv7em
         core_access_options:
-          Arm:
+          !Arm
             ap: 0x0
             psel: 0x0
     memory_map:
-      - Ram:
+      - !Ram
           range:
             start: 0x20000000
             end: 0x20010000
           is_boot_memory: false
           cores:
             - main
-      - Nvm:
+      - !Nvm
           range:
             start: 0x400000
             end: 0x440000
@@ -888,18 +888,18 @@ variants:
       - name: main
         type: armv7em
         core_access_options:
-          Arm:
+          !Arm
             ap: 0x0
             psel: 0x0
     memory_map:
-      - Ram:
+      - !Ram
           range:
             start: 0x20000000
             end: 0x20020000
           is_boot_memory: false
           cores:
             - main
-      - Nvm:
+      - !Nvm
           range:
             start: 0x400000
             end: 0x480000
@@ -914,18 +914,18 @@ variants:
       - name: main
         type: armv7em
         core_access_options:
-          Arm:
+          !Arm
             ap: 0x0
             psel: 0x0
     memory_map:
-      - Ram:
+      - !Ram
           range:
             start: 0x20000000
             end: 0x20020000
           is_boot_memory: false
           cores:
             - main
-      - Nvm:
+      - !Nvm
           range:
             start: 0x400000
             end: 0x480000
@@ -940,18 +940,18 @@ variants:
       - name: main
         type: armv7em
         core_access_options:
-          Arm:
+          !Arm
             ap: 0x0
             psel: 0x0
     memory_map:
-      - Ram:
+      - !Ram
           range:
             start: 0x20000000
             end: 0x20028000
           is_boot_memory: false
           cores:
             - main
-      - Nvm:
+      - !Nvm
           range:
             start: 0x400000
             end: 0x500000
@@ -966,18 +966,18 @@ variants:
       - name: main
         type: armv7em
         core_access_options:
-          Arm:
+          !Arm
             ap: 0x0
             psel: 0x0
     memory_map:
-      - Ram:
+      - !Ram
           range:
             start: 0x20000000
             end: 0x20028000
           is_boot_memory: false
           cores:
             - main
-      - Nvm:
+      - !Nvm
           range:
             start: 0x400000
             end: 0x500000
@@ -992,18 +992,18 @@ variants:
       - name: main
         type: armv7em
         core_access_options:
-          Arm:
+          !Arm
             ap: 0x0
             psel: 0x0
     memory_map:
-      - Ram:
+      - !Ram
           range:
             start: 0x20000000
             end: 0x20028000
           is_boot_memory: false
           cores:
             - main
-      - Nvm:
+      - !Nvm
           range:
             start: 0x400000
             end: 0x500000
@@ -1018,18 +1018,18 @@ variants:
       - name: main
         type: armv7em
         core_access_options:
-          Arm:
+          !Arm
             ap: 0x0
             psel: 0x0
     memory_map:
-      - Ram:
+      - !Ram
           range:
             start: 0x20000000
             end: 0x20028000
           is_boot_memory: false
           cores:
             - main
-      - Nvm:
+      - !Nvm
           range:
             start: 0x400000
             end: 0x500000
@@ -1044,18 +1044,18 @@ variants:
       - name: main
         type: armv7em
         core_access_options:
-          Arm:
+          !Arm
             ap: 0x0
             psel: 0x0
     memory_map:
-      - Ram:
+      - !Ram
           range:
             start: 0x20000000
             end: 0x20028000
           is_boot_memory: false
           cores:
             - main
-      - Nvm:
+      - !Nvm
           range:
             start: 0x400000
             end: 0x600000
@@ -1070,18 +1070,18 @@ variants:
       - name: main
         type: armv7em
         core_access_options:
-          Arm:
+          !Arm
             ap: 0x0
             psel: 0x0
     memory_map:
-      - Ram:
+      - !Ram
           range:
             start: 0x20000000
             end: 0x20028000
           is_boot_memory: false
           cores:
             - main
-      - Nvm:
+      - !Nvm
           range:
             start: 0x400000
             end: 0x600000
@@ -1096,18 +1096,18 @@ variants:
       - name: main
         type: armv7em
         core_access_options:
-          Arm:
+          !Arm
             ap: 0x0
             psel: 0x0
     memory_map:
-      - Ram:
+      - !Ram
           range:
             start: 0x20000000
             end: 0x20028000
           is_boot_memory: false
           cores:
             - main
-      - Nvm:
+      - !Nvm
           range:
             start: 0x400000
             end: 0x600000

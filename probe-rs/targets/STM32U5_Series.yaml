@@ -8,18 +8,18 @@ variants:
       - name: main
         type: armv8m
         core_access_options:
-          Arm:
+          !Arm
             ap: 0
             psel: 0
     memory_map:
-      - Ram:
+      - !Ram
           range:
             start: 536870912
             end: 537133056
           is_boot_memory: false
           cores:
             - main
-      - Nvm:
+      - !Nvm
           range:
             start: 134217728
             end: 135266304
@@ -36,18 +36,18 @@ variants:
       - name: main
         type: armv8m
         core_access_options:
-          Arm:
+          !Arm
             ap: 0
             psel: 0
     memory_map:
-      - Ram:
+      - !Ram
           range:
             start: 536870912
             end: 537133056
           is_boot_memory: false
           cores:
             - main
-      - Nvm:
+      - !Nvm
           range:
             start: 134217728
             end: 135266304
@@ -64,18 +64,18 @@ variants:
       - name: main
         type: armv8m
         core_access_options:
-          Arm:
+          !Arm
             ap: 0
             psel: 0
     memory_map:
-      - Ram:
+      - !Ram
           range:
             start: 536870912
             end: 537133056
           is_boot_memory: false
           cores:
             - main
-      - Nvm:
+      - !Nvm
           range:
             start: 134217728
             end: 136314880
@@ -92,18 +92,18 @@ variants:
       - name: main
         type: armv8m
         core_access_options:
-          Arm:
+          !Arm
             ap: 0
             psel: 0
     memory_map:
-      - Ram:
+      - !Ram
           range:
             start: 536870912
             end: 537133056
           is_boot_memory: false
           cores:
             - main
-      - Nvm:
+      - !Nvm
           range:
             start: 134217728
             end: 136314880
@@ -120,18 +120,18 @@ variants:
       - name: main
         type: armv8m
         core_access_options:
-          Arm:
+          !Arm
             ap: 0
             psel: 0
     memory_map:
-      - Ram:
+      - !Ram
           range:
             start: 536870912
             end: 537133056
           is_boot_memory: false
           cores:
             - main
-      - Nvm:
+      - !Nvm
           range:
             start: 134217728
             end: 135266304
@@ -148,18 +148,18 @@ variants:
       - name: main
         type: armv8m
         core_access_options:
-          Arm:
+          !Arm
             ap: 0
             psel: 0
     memory_map:
-      - Ram:
+      - !Ram
           range:
             start: 536870912
             end: 537133056
           is_boot_memory: false
           cores:
             - main
-      - Nvm:
+      - !Nvm
           range:
             start: 134217728
             end: 135266304
@@ -176,18 +176,18 @@ variants:
       - name: main
         type: armv8m
         core_access_options:
-          Arm:
+          !Arm
             ap: 0
             psel: 0
     memory_map:
-      - Ram:
+      - !Ram
           range:
             start: 536870912
             end: 537133056
           is_boot_memory: false
           cores:
             - main
-      - Nvm:
+      - !Nvm
           range:
             start: 134217728
             end: 135266304
@@ -204,18 +204,18 @@ variants:
       - name: main
         type: armv8m
         core_access_options:
-          Arm:
+          !Arm
             ap: 0
             psel: 0
     memory_map:
-      - Ram:
+      - !Ram
           range:
             start: 536870912
             end: 537133056
           is_boot_memory: false
           cores:
             - main
-      - Nvm:
+      - !Nvm
           range:
             start: 134217728
             end: 135266304
@@ -232,18 +232,18 @@ variants:
       - name: main
         type: armv8m
         core_access_options:
-          Arm:
+          !Arm
             ap: 0
             psel: 0
     memory_map:
-      - Ram:
+      - !Ram
           range:
             start: 536870912
             end: 537133056
           is_boot_memory: false
           cores:
             - main
-      - Nvm:
+      - !Nvm
           range:
             start: 134217728
             end: 136314880
@@ -260,18 +260,18 @@ variants:
       - name: main
         type: armv8m
         core_access_options:
-          Arm:
+          !Arm
             ap: 0
             psel: 0
     memory_map:
-      - Ram:
+      - !Ram
           range:
             start: 536870912
             end: 537133056
           is_boot_memory: false
           cores:
             - main
-      - Nvm:
+      - !Nvm
           range:
             start: 134217728
             end: 136314880
@@ -288,18 +288,18 @@ variants:
       - name: main
         type: armv8m
         core_access_options:
-          Arm:
+          !Arm
             ap: 0
             psel: 0
     memory_map:
-      - Ram:
+      - !Ram
           range:
             start: 536870912
             end: 537133056
           is_boot_memory: false
           cores:
             - main
-      - Nvm:
+      - !Nvm
           range:
             start: 134217728
             end: 136314880
@@ -316,18 +316,18 @@ variants:
       - name: main
         type: armv8m
         core_access_options:
-          Arm:
+          !Arm
             ap: 0
             psel: 0
     memory_map:
-      - Ram:
+      - !Ram
           range:
             start: 536870912
             end: 537133056
           is_boot_memory: false
           cores:
             - main
-      - Nvm:
+      - !Nvm
           range:
             start: 134217728
             end: 136314880
@@ -344,18 +344,18 @@ variants:
       - name: main
         type: armv8m
         core_access_options:
-          Arm:
+          !Arm
             ap: 0
             psel: 0
     memory_map:
-      - Ram:
+      - !Ram
           range:
             start: 536870912
             end: 537133056
           is_boot_memory: false
           cores:
             - main
-      - Nvm:
+      - !Nvm
           range:
             start: 134217728
             end: 135266304
@@ -372,18 +372,18 @@ variants:
       - name: main
         type: armv8m
         core_access_options:
-          Arm:
+          !Arm
             ap: 0
             psel: 0
     memory_map:
-      - Ram:
+      - !Ram
           range:
             start: 536870912
             end: 537133056
           is_boot_memory: false
           cores:
             - main
-      - Nvm:
+      - !Nvm
           range:
             start: 134217728
             end: 136314880
@@ -400,18 +400,18 @@ variants:
       - name: main
         type: armv8m
         core_access_options:
-          Arm:
+          !Arm
             ap: 0
             psel: 0
     memory_map:
-      - Ram:
+      - !Ram
           range:
             start: 536870912
             end: 537133056
           is_boot_memory: false
           cores:
             - main
-      - Nvm:
+      - !Nvm
           range:
             start: 134217728
             end: 135266304
@@ -428,18 +428,18 @@ variants:
       - name: main
         type: armv8m
         core_access_options:
-          Arm:
+          !Arm
             ap: 0
             psel: 0
     memory_map:
-      - Ram:
+      - !Ram
           range:
             start: 536870912
             end: 537133056
           is_boot_memory: false
           cores:
             - main
-      - Nvm:
+      - !Nvm
           range:
             start: 134217728
             end: 135266304
@@ -456,18 +456,18 @@ variants:
       - name: main
         type: armv8m
         core_access_options:
-          Arm:
+          !Arm
             ap: 0
             psel: 0
     memory_map:
-      - Ram:
+      - !Ram
           range:
             start: 536870912
             end: 537133056
           is_boot_memory: false
           cores:
             - main
-      - Nvm:
+      - !Nvm
           range:
             start: 134217728
             end: 136314880
@@ -484,18 +484,18 @@ variants:
       - name: main
         type: armv8m
         core_access_options:
-          Arm:
+          !Arm
             ap: 0
             psel: 0
     memory_map:
-      - Ram:
+      - !Ram
           range:
             start: 536870912
             end: 537133056
           is_boot_memory: false
           cores:
             - main
-      - Nvm:
+      - !Nvm
           range:
             start: 134217728
             end: 136314880
@@ -512,18 +512,18 @@ variants:
       - name: main
         type: armv8m
         core_access_options:
-          Arm:
+          !Arm
             ap: 0
             psel: 0
     memory_map:
-      - Ram:
+      - !Ram
           range:
             start: 536870912
             end: 537133056
           is_boot_memory: false
           cores:
             - main
-      - Nvm:
+      - !Nvm
           range:
             start: 134217728
             end: 135266304
@@ -540,18 +540,18 @@ variants:
       - name: main
         type: armv8m
         core_access_options:
-          Arm:
+          !Arm
             ap: 0
             psel: 0
     memory_map:
-      - Ram:
+      - !Ram
           range:
             start: 536870912
             end: 537133056
           is_boot_memory: false
           cores:
             - main
-      - Nvm:
+      - !Nvm
           range:
             start: 134217728
             end: 135266304
@@ -568,18 +568,18 @@ variants:
       - name: main
         type: armv8m
         core_access_options:
-          Arm:
+          !Arm
             ap: 0
             psel: 0
     memory_map:
-      - Ram:
+      - !Ram
           range:
             start: 536870912
             end: 537133056
           is_boot_memory: false
           cores:
             - main
-      - Nvm:
+      - !Nvm
           range:
             start: 134217728
             end: 136314880
@@ -596,18 +596,18 @@ variants:
       - name: main
         type: armv8m
         core_access_options:
-          Arm:
+          !Arm
             ap: 0
             psel: 0
     memory_map:
-      - Ram:
+      - !Ram
           range:
             start: 536870912
             end: 537133056
           is_boot_memory: false
           cores:
             - main
-      - Nvm:
+      - !Nvm
           range:
             start: 134217728
             end: 136314880
@@ -624,18 +624,18 @@ variants:
       - name: main
         type: armv8m
         core_access_options:
-          Arm:
+          !Arm
             ap: 0
             psel: 0
     memory_map:
-      - Ram:
+      - !Ram
           range:
             start: 536870912
             end: 537133056
           is_boot_memory: false
           cores:
             - main
-      - Nvm:
+      - !Nvm
           range:
             start: 134217728
             end: 135266304
@@ -652,18 +652,18 @@ variants:
       - name: main
         type: armv8m
         core_access_options:
-          Arm:
+          !Arm
             ap: 0
             psel: 0
     memory_map:
-      - Ram:
+      - !Ram
           range:
             start: 536870912
             end: 537133056
           is_boot_memory: false
           cores:
             - main
-      - Nvm:
+      - !Nvm
           range:
             start: 134217728
             end: 135266304
@@ -680,18 +680,18 @@ variants:
       - name: main
         type: armv8m
         core_access_options:
-          Arm:
+          !Arm
             ap: 0
             psel: 0
     memory_map:
-      - Ram:
+      - !Ram
           range:
             start: 536870912
             end: 537133056
           is_boot_memory: false
           cores:
             - main
-      - Nvm:
+      - !Nvm
           range:
             start: 134217728
             end: 136314880
@@ -708,18 +708,18 @@ variants:
       - name: main
         type: armv8m
         core_access_options:
-          Arm:
+          !Arm
             ap: 0
             psel: 0
     memory_map:
-      - Ram:
+      - !Ram
           range:
             start: 536870912
             end: 537133056
           is_boot_memory: false
           cores:
             - main
-      - Nvm:
+      - !Nvm
           range:
             start: 134217728
             end: 136314880
@@ -736,18 +736,18 @@ variants:
       - name: main
         type: armv8m
         core_access_options:
-          Arm:
+          !Arm
             ap: 0
             psel: 0
     memory_map:
-      - Ram:
+      - !Ram
           range:
             start: 536870912
             end: 537133056
           is_boot_memory: false
           cores:
             - main
-      - Nvm:
+      - !Nvm
           range:
             start: 134217728
             end: 135266304
@@ -764,18 +764,18 @@ variants:
       - name: main
         type: armv8m
         core_access_options:
-          Arm:
+          !Arm
             ap: 0
             psel: 0
     memory_map:
-      - Ram:
+      - !Ram
           range:
             start: 536870912
             end: 537133056
           is_boot_memory: false
           cores:
             - main
-      - Nvm:
+      - !Nvm
           range:
             start: 134217728
             end: 135266304
@@ -792,18 +792,18 @@ variants:
       - name: main
         type: armv8m
         core_access_options:
-          Arm:
+          !Arm
             ap: 0
             psel: 0
     memory_map:
-      - Ram:
+      - !Ram
           range:
             start: 536870912
             end: 537133056
           is_boot_memory: false
           cores:
             - main
-      - Nvm:
+      - !Nvm
           range:
             start: 134217728
             end: 136314880
@@ -820,18 +820,18 @@ variants:
       - name: main
         type: armv8m
         core_access_options:
-          Arm:
+          !Arm
             ap: 0
             psel: 0
     memory_map:
-      - Ram:
+      - !Ram
           range:
             start: 536870912
             end: 537133056
           is_boot_memory: false
           cores:
             - main
-      - Nvm:
+      - !Nvm
           range:
             start: 134217728
             end: 136314880
@@ -848,18 +848,18 @@ variants:
       - name: main
         type: armv8m
         core_access_options:
-          Arm:
+          !Arm
             ap: 0
             psel: 0
     memory_map:
-      - Ram:
+      - !Ram
           range:
             start: 536870912
             end: 537133056
           is_boot_memory: false
           cores:
             - main
-      - Nvm:
+      - !Nvm
           range:
             start: 134217728
             end: 136314880
@@ -876,18 +876,18 @@ variants:
       - name: main
         type: armv8m
         core_access_options:
-          Arm:
+          !Arm
             ap: 0
             psel: 0
     memory_map:
-      - Ram:
+      - !Ram
           range:
             start: 536870912
             end: 537133056
           is_boot_memory: false
           cores:
             - main
-      - Nvm:
+      - !Nvm
           range:
             start: 134217728
             end: 136314880
@@ -904,18 +904,18 @@ variants:
       - name: main
         type: armv8m
         core_access_options:
-          Arm:
+          !Arm
             ap: 0
             psel: 0
     memory_map:
-      - Ram:
+      - !Ram
           range:
             start: 536870912
             end: 537133056
           is_boot_memory: false
           cores:
             - main
-      - Nvm:
+      - !Nvm
           range:
             start: 134217728
             end: 136314880
@@ -932,18 +932,18 @@ variants:
       - name: main
         type: armv8m
         core_access_options:
-          Arm:
+          !Arm
             ap: 0
             psel: 0
     memory_map:
-      - Ram:
+      - !Ram
           range:
             start: 536870912
             end: 537133056
           is_boot_memory: false
           cores:
             - main
-      - Nvm:
+      - !Nvm
           range:
             start: 134217728
             end: 136314880
@@ -960,18 +960,18 @@ variants:
       - name: main
         type: armv8m
         core_access_options:
-          Arm:
+          !Arm
             ap: 0
             psel: 0
     memory_map:
-      - Ram:
+      - !Ram
           range:
             start: 536870912
             end: 537133056
           is_boot_memory: false
           cores:
             - main
-      - Nvm:
+      - !Nvm
           range:
             start: 134217728
             end: 136314880
@@ -988,18 +988,18 @@ variants:
       - name: main
         type: armv8m
         core_access_options:
-          Arm:
+          !Arm
             ap: 0
             psel: 0
     memory_map:
-      - Ram:
+      - !Ram
           range:
             start: 536870912
             end: 537133056
           is_boot_memory: false
           cores:
             - main
-      - Nvm:
+      - !Nvm
           range:
             start: 134217728
             end: 136314880
@@ -1016,18 +1016,18 @@ variants:
       - name: main
         type: armv8m
         core_access_options:
-          Arm:
+          !Arm
             ap: 0
             psel: 0
     memory_map:
-      - Ram:
+      - !Ram
           range:
             start: 536870912
             end: 537133056
           is_boot_memory: false
           cores:
             - main
-      - Nvm:
+      - !Nvm
           range:
             start: 134217728
             end: 136314880
@@ -1044,18 +1044,18 @@ variants:
       - name: main
         type: armv8m
         core_access_options:
-          Arm:
+          !Arm
             ap: 0
             psel: 0
     memory_map:
-      - Ram:
+      - !Ram
           range:
             start: 536870912
             end: 537133056
           is_boot_memory: false
           cores:
             - main
-      - Nvm:
+      - !Nvm
           range:
             start: 134217728
             end: 136314880
@@ -1072,18 +1072,18 @@ variants:
       - name: main
         type: armv8m
         core_access_options:
-          Arm:
+          !Arm
             ap: 0
             psel: 0
     memory_map:
-      - Ram:
+      - !Ram
           range:
             start: 536870912
             end: 537133056
           is_boot_memory: false
           cores:
             - main
-      - Nvm:
+      - !Nvm
           range:
             start: 134217728
             end: 136314880
@@ -1100,18 +1100,18 @@ variants:
       - name: main
         type: armv8m
         core_access_options:
-          Arm:
+          !Arm
             ap: 0
             psel: 0
     memory_map:
-      - Ram:
+      - !Ram
           range:
             start: 536870912
             end: 537133056
           is_boot_memory: false
           cores:
             - main
-      - Nvm:
+      - !Nvm
           range:
             start: 134217728
             end: 136314880
@@ -1128,18 +1128,18 @@ variants:
       - name: main
         type: armv8m
         core_access_options:
-          Arm:
+          !Arm
             ap: 0
             psel: 0
     memory_map:
-      - Ram:
+      - !Ram
           range:
             start: 536870912
             end: 537133056
           is_boot_memory: false
           cores:
             - main
-      - Nvm:
+      - !Nvm
           range:
             start: 134217728
             end: 136314880
@@ -1156,18 +1156,18 @@ variants:
       - name: main
         type: armv8m
         core_access_options:
-          Arm:
+          !Arm
             ap: 0
             psel: 0
     memory_map:
-      - Ram:
+      - !Ram
           range:
             start: 536870912
             end: 537133056
           is_boot_memory: false
           cores:
             - main
-      - Nvm:
+      - !Nvm
           range:
             start: 134217728
             end: 136314880
@@ -1184,18 +1184,18 @@ variants:
       - name: main
         type: armv8m
         core_access_options:
-          Arm:
+          !Arm
             ap: 0
             psel: 0
     memory_map:
-      - Ram:
+      - !Ram
           range:
             start: 536870912
             end: 537133056
           is_boot_memory: false
           cores:
             - main
-      - Nvm:
+      - !Nvm
           range:
             start: 134217728
             end: 136314880
@@ -1212,18 +1212,18 @@ variants:
       - name: main
         type: armv8m
         core_access_options:
-          Arm:
+          !Arm
             ap: 0
             psel: 0
     memory_map:
-      - Ram:
+      - !Ram
           range:
             start: 536870912
             end: 537133056
           is_boot_memory: false
           cores:
             - main
-      - Nvm:
+      - !Nvm
           range:
             start: 134217728
             end: 136314880
@@ -1240,18 +1240,18 @@ variants:
       - name: main
         type: armv8m
         core_access_options:
-          Arm:
+          !Arm
             ap: 0
             psel: 0
     memory_map:
-      - Ram:
+      - !Ram
           range:
             start: 536870912
             end: 537133056
           is_boot_memory: false
           cores:
             - main
-      - Nvm:
+      - !Nvm
           range:
             start: 134217728
             end: 136314880
