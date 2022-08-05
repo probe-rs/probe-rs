@@ -488,7 +488,7 @@ fn debug(shared_options: &CoreOptions, common: &ProbeOptions, exe: Option<PathBu
 
     let mut cli_data = debugger::CliData::new(core, di)?;
 
-    let mut rl = Editor::<()>::new();
+    let mut rl = Editor::<()>::new()?;
 
     loop {
         cli_data.print_state()?;
