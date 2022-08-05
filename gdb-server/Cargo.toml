@@ -17,10 +17,15 @@ name = "probe_rs_gdb_server"
 path = "src/lib.rs"
 
 [features]
+default = ["builtin-targets", "vendored-libusb"]
+
+vendored-libusb = ["probe-rs/vendored-libusb"]
+builtin-targets = ["probe-rs/builtin-targets"]
 ftdi = ["probe-rs/ftdi"]
+ftdi-vendored = ["probe-rs/ftdi-vendored"]
 
 [dependencies]
-probe-rs = { path = "../probe-rs", version = "0.13.0" }
+probe-rs = { path = "../probe-rs", version = "0.13.0", default-features = false }
 log = "0.4.0"
 anyhow = "1.0.31"
 itertools = "0.10.3"

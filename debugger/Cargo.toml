@@ -17,7 +17,12 @@ keywords = ["embedded"]
 license = "MIT OR Apache-2.0"
 
 [features]
+default = ["builtin-targets", "vendored-libusb"]
+
+vendored-libusb = ["probe-rs/vendored-libusb"]
+builtin-targets = ["probe-rs/builtin-targets"]
 ftdi = ["probe-rs/ftdi"]
+ftdi-vendored = ["probe-rs/ftdi-vendored"]
 
 [dependencies]
 probe-rs = { version = "0.13.0", path = "../probe-rs" }

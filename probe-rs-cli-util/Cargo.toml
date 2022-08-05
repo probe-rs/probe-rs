@@ -16,11 +16,16 @@ keywords = ["embedded"]
 license = "MIT OR Apache-2.0"
 
 [features]
-default = ["anyhow"]
+default = ["anyhow", "builtin-targets", "vendored-libusb"]
+
+vendored-libusb = ["probe-rs/vendored-libusb", "probe-rs-rtt/vendored-libusb"]
+builtin-targets = ["probe-rs/builtin-targets", "probe-rs-rtt/builtin-targets"]
+ftdi = ["probe-rs/ftdi", "probe-rs-rtt/ftdi"]
+ftdi-vendored = ["probe-rs/ftdi-vendored", "probe-rs-rtt/ftdi-vendored"]
 
 [dependencies]
-probe-rs-rtt = { version = "0.13.0", path = "../rtt" }
-probe-rs = { version = "0.13.0", path = "../probe-rs" }
+probe-rs-rtt = { version = "0.13.0", path = "../rtt", default-features = false }
+probe-rs = { version = "0.13.0", path = "../probe-rs", default-features = false }
 
 thiserror = "1.0"
 anyhow = { version = "1.0", optional = true }
