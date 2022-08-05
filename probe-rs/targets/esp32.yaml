@@ -8,23 +8,23 @@ variants:
       - name: main
         type: riscv
         core_access_options:
-          Riscv: {}
+          !Riscv {}
     memory_map:
-      - Nvm:
+      - !Nvm
           range:
             start: 0
             end: 67108864
           is_boot_memory: true
           cores:
             - main
-      - Ram:
+      - !Ram
           range:
             start: 1077411840
             end: 1077805056
           is_boot_memory: false
           cores:
             - main
-      - Ram:
+      - !Ram
           range:
             start: 1070071808
             end: 1070137344
