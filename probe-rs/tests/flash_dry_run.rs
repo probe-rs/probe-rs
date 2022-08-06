@@ -24,7 +24,7 @@ fn flash_dry_run_stm32wb55ccux() {
         .expect("Failed to flash in dry run mode.");
 }
 
-/// A chip where the flash algorithm's range is less than the NVM range.
+/// A chip where the flash algorithm's range could be less than the NVM range.
 #[test]
 fn flash_dry_run_mimxrt1010() {
     let probe = Probe::from_specific_probe(Box::new(FakeProbe::new()));

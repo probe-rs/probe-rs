@@ -17,7 +17,7 @@ variants:
           name: FlexSPI2
           range:
             start: 0x70000000
-            end:   0x7F000000
+            end:   0x70400000
           is_boot_memory: true
           cores:
             - main
