@@ -7,6 +7,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/) and this p
 ## [Unreleased]
 
 
+- [#339] Simplify `fn round_up`
 - [#337] Clean snapshot tests
 - [#335] Add unit tests for `fn round_up`
 - [#334] Simplify snapshot tests
@@ -23,6 +24,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/) and this p
 - [#314] Clarify documentation in README
 - [#293] Update snapshot tests to new TRACE output
 
+[#339]: https://github.com/knurling-rs/probe-run/pull/339
 [#337]: https://github.com/knurling-rs/probe-run/pull/337
 [#335]: https://github.com/knurling-rs/probe-run/pull/335
 [#334]: https://github.com/knurling-rs/probe-run/pull/334
