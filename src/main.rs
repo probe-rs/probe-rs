@@ -126,6 +126,7 @@ fn run_target_program(elf_path: &Path, chip_name: &str, opts: &cli::Opts) -> any
         let mut options = flashing::DownloadOptions::default();
         options.dry_run = false;
         options.progress = Some(&fp);
+        options.disable_double_buffering = opts.disable_double_buffering;
 
         flashing::download_file_with_options(&mut sess, elf_path, Format::Elf, options)?;
         log::info!("success!");

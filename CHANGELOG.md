@@ -23,6 +23,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/) and this p
 - [#319] Warn on target chip mismatch
 - [#317] Clarify "can't determine stack overflow" error message
 - [#314] Clarify documentation in README
+- [#305] Add option to disable double buffering while loading firmware
 - [#293] Update snapshot tests to new TRACE output
 
 [#339]: https://github.com/knurling-rs/probe-run/pull/339
@@ -41,6 +42,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/) and this p
 [#319]: https://github.com/knurling-rs/probe-run/pull/319
 [#317]: https://github.com/knurling-rs/probe-run/pull/317
 [#314]: https://github.com/knurling-rs/probe-run/pull/314
+[#305]: https://github.com/knurling-rs/probe-run/pull/305
 [#293]: https://github.com/knurling-rs/probe-run/pull/293
 
 ## [v0.3.3] - 2022-03-14
