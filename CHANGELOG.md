@@ -7,6 +7,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/) and this p
 ## [Unreleased]
 
 
+- [#xxx] Release `probe-run 0.3.4`
 - [#339] Simplify `fn round_up`
 - [#337] Clean snapshot tests
 - [#335] Add unit tests for `fn round_up`
@@ -26,6 +27,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/) and this p
 - [#305] Add option to disable double buffering while loading firmware
 - [#293] Update snapshot tests to new TRACE output
 
+[#xxx]: https://github.com/knurling-rs/probe-run/pull/xxx
 [#339]: https://github.com/knurling-rs/probe-run/pull/339
 [#337]: https://github.com/knurling-rs/probe-run/pull/337
 [#335]: https://github.com/knurling-rs/probe-run/pull/335
