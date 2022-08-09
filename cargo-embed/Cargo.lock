@@ -366,9 +366,9 @@ dependencies = [
 
 [[package]]
 name = "defmt-decoder"
-version = "0.3.2"
+version = "0.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f619a4bf5d95e044c1746bafd0552cd1de7b041dc361d506cfa6d9831f47c8b6"
+checksum = "3d1405280032c1be7fcad411f7ba7b24de9dcea89fd77ae043dae1b2b9dd1254"
 dependencies = [
  "anyhow",
  "byteorder",
@@ -379,7 +379,7 @@ dependencies = [
  "difference",
  "gimli",
  "log",
- "object 0.27.1",
+ "object 0.29.0",
  "ryu",
  "serde",
  "serde_json",
