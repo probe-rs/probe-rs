@@ -60,6 +60,8 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/) and this p
 
 - [#311] fixed "probe-run does not work with some programs that have less than 10 KiB of stack space _unless_ `--measure-stack` is available"
 
+[#311]: https://github.com/knurling-rs/probe-run/pull/311
+
 ## [v0.3.2] - 2022-03-10 - YANKED
 
 - [#303] Don't bail, but only warn if using `--no-flash` with `defmt`
@@ -80,7 +82,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/) and this p
 [#295]: https://github.com/knurling-rs/probe-run/pull/295
 [#294]: https://github.com/knurling-rs/probe-run/pull/294
 
-# [v0.3.1] - 2021-11-26
+## [v0.3.1] - 2021-11-26
 
 - [#287]: unwind: skip FDEs with initial address of 0
 - [#286]: Update dependencies
@@ -431,8 +433,8 @@ Initial release
 [v0.3.2]: https://github.com/knurling-rs/probe-run/compare/v0.3.1...v0.3.2
 [v0.3.1]: https://github.com/knurling-rs/probe-run/compare/v0.3.0...v0.3.1
 [v0.3.0]: https://github.com/knurling-rs/probe-run/compare/v0.2.5...v0.3.0
-[v0.2.4]: https://github.com/knurling-rs/probe-run/compare/v0.2.4...v0.2.5
-[v0.2.3]: https://github.com/knurling-rs/probe-run/compare/v0.2.3...v0.2.4
+[v0.2.5]: https://github.com/knurling-rs/probe-run/compare/v0.2.4...v0.2.5
+[v0.2.4]: https://github.com/knurling-rs/probe-run/compare/v0.2.3...v0.2.4
 [v0.2.3]: https://github.com/knurling-rs/probe-run/compare/v0.2.2...v0.2.3
 [v0.2.2]: https://github.com/knurling-rs/probe-run/compare/v0.2.1...v0.2.2
 [v0.2.1]: https://github.com/knurling-rs/probe-run/compare/v0.2.0...v0.2.1
