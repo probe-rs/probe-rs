@@ -13,21 +13,21 @@ use probe_rs::{
 
 use crate::elf::Elf;
 
-pub(crate) struct TargetInfo {
-    pub(crate) probe_target: probe_rs::Target,
+pub struct TargetInfo {
+    pub probe_target: probe_rs::Target,
     /// RAM region that contains the call stack
-    pub(crate) active_ram_region: Option<RamRegion>,
-    pub(crate) stack_info: Option<StackInfo>,
+    pub active_ram_region: Option<RamRegion>,
+    pub stack_info: Option<StackInfo>,
 }
 
-pub(crate) struct StackInfo {
+pub struct StackInfo {
     /// Valid values of the stack pointer (that don't collide with other data).
-    pub(crate) range: RangeInclusive<u32>,
-    pub(crate) data_below_stack: bool,
+    pub range: RangeInclusive<u32>,
+    pub data_below_stack: bool,
 }
 
 impl TargetInfo {
-    pub(crate) fn new(chip: &str, elf: &Elf) -> anyhow::Result<Self> {
+    pub fn new(chip: &str, elf: &Elf) -> anyhow::Result<Self> {
         let probe_target = probe_rs::config::get_target_by_name(chip)?;
         check_processor_target_compatability(&probe_target.cores, elf.elf_path);
 

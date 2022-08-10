@@ -4,13 +4,13 @@ use colored::Colorize as _;
 
 /// Representation of a rust-lang/rust repo path
 #[derive(Debug, PartialEq)]
-pub(crate) enum Path<'p> {
+pub enum Path<'p> {
     One52(One52Path<'p>),
     Verbatim(&'p StdPath),
 }
 
 impl<'p> Path<'p> {
-    pub(crate) fn from_std_path(path: &'p StdPath) -> Self {
+    pub fn from_std_path(path: &'p StdPath) -> Self {
         if let Some(path) = One52Path::from_std_path(path) {
             Path::One52(path)
         } else {
@@ -18,14 +18,14 @@ impl<'p> Path<'p> {
         }
     }
 
-    pub(crate) fn format(&self) -> String {
+    pub fn format(&self) -> String {
         match self {
             Path::One52(path) => path.format(),
             Path::Verbatim(path) => path.display().to_string(),
         }
     }
 
-    pub(crate) fn format_highlight(&self) -> String {
+    pub fn format_highlight(&self) -> String {
         match self {
             Path::One52(path) => path.format_highlight(),
             Path::Verbatim(path) => path.display().to_string(),
@@ -35,10 +35,10 @@ impl<'p> Path<'p> {
 
 /// rust-lang/repo path format as of 1.52 e.g. "library/core/src/panic.rs"
 #[derive(Debug, PartialEq)]
-pub(crate) struct One52Path<'p> {
-    pub(crate) library: &'p str,
-    pub(crate) crate_name: &'p str,
-    pub(crate) path: &'p StdPath,
+pub struct One52Path<'p> {
+    pub library: &'p str,
+    pub crate_name: &'p str,
+    pub path: &'p StdPath,
 }
 
 impl<'p> One52Path<'p> {

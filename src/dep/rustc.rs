@@ -5,13 +5,13 @@ use colored::Colorize;
 use super::rust_repo;
 
 #[derive(Debug, PartialEq)]
-pub(crate) struct Path<'p> {
+pub struct Path<'p> {
     rustc_prefix: PathBuf,
     rust_repo_path: rust_repo::Path<'p>,
 }
 
 impl<'p> Path<'p> {
-    pub(crate) fn from_std_path(path: &'p StdPath) -> Option<Self> {
+    pub fn from_std_path(path: &'p StdPath) -> Option<Self> {
         if !path.is_absolute() {
             return None;
         }
@@ -43,7 +43,7 @@ impl<'p> Path<'p> {
         })
     }
 
-    pub(crate) fn format_short(&self) -> String {
+    pub fn format_short(&self) -> String {
         format!(
             "[rust]{}{}",
             path::MAIN_SEPARATOR,
@@ -51,7 +51,7 @@ impl<'p> Path<'p> {
         )
     }
 
-    pub(crate) fn format_highlight(&self) -> String {
+    pub fn format_highlight(&self) -> String {
         format!(
             "{}{}{}",
             self.rustc_prefix.display().to_string().dimmed(),

@@ -3,13 +3,13 @@ use std::borrow::Cow;
 use colored::Colorize;
 
 #[derive(Debug, PartialEq)]
-pub(crate) enum Toolchain<'p> {
+pub enum Toolchain<'p> {
     One52(One52<'p>),
     Verbatim(&'p str),
 }
 
 impl<'p> Toolchain<'p> {
-    pub(crate) fn from_str(input: &str) -> Toolchain {
+    pub fn from_str(input: &str) -> Toolchain {
         if let Some(toolchain) = One52::from_str(input) {
             Toolchain::One52(toolchain)
         } else {
@@ -17,14 +17,14 @@ impl<'p> Toolchain<'p> {
         }
     }
 
-    pub(crate) fn format_highlight(&self) -> Cow<str> {
+    pub fn format_highlight(&self) -> Cow<str> {
         match self {
             Toolchain::One52(toolchain) => toolchain.format_highlight().into(),
             Toolchain::Verbatim(toolchain) => Cow::Borrowed(toolchain),
         }
     }
 
-    pub(crate) fn format_short(&self) -> Cow<str> {
+    pub fn format_short(&self) -> Cow<str> {
         match self {
             Toolchain::One52(toolchain) => toolchain.format_short(),
             Toolchain::Verbatim(toolchain) => Cow::Borrowed(toolchain),
@@ -33,9 +33,9 @@ impl<'p> Toolchain<'p> {
 }
 
 #[derive(Debug, PartialEq)]
-pub(crate) struct One52<'p> {
-    pub(crate) channel: Channel<'p>,
-    pub(crate) host: &'p str,
+pub struct One52<'p> {
+    pub channel: Channel<'p>,
+    pub host: &'p str,
 }
 
 impl<'p> One52<'p> {
@@ -114,7 +114,7 @@ impl<'p> One52<'p> {
 }
 
 #[derive(Debug, PartialEq)]
-pub(crate) enum Channel<'p> {
+pub enum Channel<'p> {
     Beta,
     Nightly { date: Option<&'p str> },
     Stable,

@@ -3,14 +3,14 @@ use std::path::{self, Component, Path as StdPath, PathBuf};
 use colored::Colorize as _;
 
 #[derive(Debug, PartialEq)]
-pub(crate) struct Path<'p> {
+pub struct Path<'p> {
     registry_prefix: PathBuf,
     crate_name_version: &'p str,
     path: &'p StdPath,
 }
 
 impl<'p> Path<'p> {
-    pub(crate) fn from_std_path(path: &'p StdPath) -> Option<Self> {
+    pub fn from_std_path(path: &'p StdPath) -> Option<Self> {
         if !path.is_absolute() {
             return None;
         }
@@ -49,7 +49,7 @@ impl<'p> Path<'p> {
         })
     }
 
-    pub(crate) fn format_short(&self) -> String {
+    pub fn format_short(&self) -> String {
         format!(
             "[{}]{}{}",
             self.crate_name_version,
@@ -58,7 +58,7 @@ impl<'p> Path<'p> {
         )
     }
 
-    pub(crate) fn format_highlight(&self) -> String {
+    pub fn format_highlight(&self) -> String {
         format!(
             "{}{sep}{}{sep}{}",
             self.registry_prefix.display().to_string().dimmed(),

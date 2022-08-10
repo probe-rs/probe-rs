@@ -27,7 +27,7 @@ fn missing_debug_info(pc: u32) -> String {
 ///
 /// This returns as much info as could be collected, even if the collection is interrupted by an error.
 /// If an error occurred during processing, it is stored in `Output::processing_error`.
-pub(crate) fn target(core: &mut Core, elf: &Elf, active_ram_region: &Option<RamRegion>) -> Output {
+pub fn target(core: &mut Core, elf: &Elf, active_ram_region: &Option<RamRegion>) -> Output {
     let mut output = Output {
         corrupted: true,
         outcome: Outcome::Ok,
@@ -171,24 +171,24 @@ fn check_hard_fault(
 
 #[derive(Debug)]
 pub struct Output {
-    pub(crate) corrupted: bool,
-    pub(crate) outcome: Outcome,
-    pub(crate) raw_frames: Vec<RawFrame>,
+    pub corrupted: bool,
+    pub outcome: Outcome,
+    pub raw_frames: Vec<RawFrame>,
     /// Will be `Some` if an error occured while putting together the output.
     /// `outcome` and `raw_frames` will contain all info collected until the error occurred.
-    pub(crate) processing_error: Option<anyhow::Error>,
+    pub processing_error: Option<anyhow::Error>,
 }
 
 /// Backtrace frame prior to 'symbolication'
 #[derive(Debug)]
-pub(crate) enum RawFrame {
+pub enum RawFrame {
     Subroutine { pc: u32 },
     Exception,
 }
 
 impl RawFrame {
     /// Returns `true` if the raw_frame is [`Exception`].
-    pub(crate) fn is_exception(&self) -> bool {
+    pub fn is_exception(&self) -> bool {
         matches!(self, Self::Exception)
     }
 }

@@ -9,7 +9,7 @@ use super::rust_repo;
 mod toolchain;
 
 #[derive(Debug, PartialEq)]
-pub(crate) struct Path<'p> {
+pub struct Path<'p> {
     rustup_prefix: PathBuf,
     toolchain: Toolchain<'p>,
     rust_std_prefix: PathBuf,
@@ -17,7 +17,7 @@ pub(crate) struct Path<'p> {
 }
 
 impl<'p> Path<'p> {
-    pub(crate) fn from_std_path(path: &'p StdPath) -> Option<Self> {
+    pub fn from_std_path(path: &'p StdPath) -> Option<Self> {
         if !path.is_absolute() {
             return None;
         }
@@ -59,7 +59,7 @@ impl<'p> Path<'p> {
         })
     }
 
-    pub(crate) fn format_short(&self) -> String {
+    pub fn format_short(&self) -> String {
         format!(
             "[{}]{}{}",
             self.toolchain.format_short(),
@@ -68,7 +68,7 @@ impl<'p> Path<'p> {
         )
     }
 
-    pub(crate) fn format_highlight(&self) -> String {
+    pub fn format_highlight(&self) -> String {
         format!(
             "{}{sep}{}{sep}{}{sep}{}",
             self.rustup_prefix.display().to_string().dimmed(),

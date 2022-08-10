@@ -4,7 +4,7 @@ use probe_rs::{Core, MemoryInterface};
 
 /// Registers stacked on exception entry.
 #[derive(Debug)]
-pub(crate) struct Stacked {
+pub struct Stacked {
     // also pushed onto the stack but we don't need to read them
     // r0: u32,
     // r1: u32,
