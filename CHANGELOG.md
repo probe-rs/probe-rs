@@ -6,9 +6,11 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/) and this p
 
 ## [Unreleased]
 
-- [#xxx] Mark `v0.3.4` as released in `CHANGELOG.md`
+- [#344] Replace `pub(crate)` with `pub`
+- [#343] Mark `v0.3.4` as released in `CHANGELOG.md`
 
-[#xxx]: https://github.com/knurling-rs/probe-run/pull/xxx
+[#344]: https://github.com/knurling-rs/probe-run/pull/344
+[#343]: https://github.com/knurling-rs/probe-run/pull/343
 
 ## [v0.3.4] - 2022-08-10
 
