@@ -919,7 +919,7 @@ dependencies = [
 [[package]]
 name = "serial_test"
 version = "0.8.0"
-source = "git+https://github.com/palfrey/serial_test?branch=optional-async#0fb75d622b156a34163e8085532f91ed2ef05bad"
+source = "git+https://github.com/palfrey/serial_test#1b008677a558df324dfadaa275a2c13906558888"
 dependencies = [
  "dashmap",
  "lazy_static",
@@ -930,7 +930,7 @@ dependencies = [
 [[package]]
 name = "serial_test_derive"
 version = "0.8.0"
-source = "git+https://github.com/palfrey/serial_test?branch=optional-async#0fb75d622b156a34163e8085532f91ed2ef05bad"
+source = "git+https://github.com/palfrey/serial_test#1b008677a558df324dfadaa275a2c13906558888"
 dependencies = [
  "proc-macro-error",
  "proc-macro2",
