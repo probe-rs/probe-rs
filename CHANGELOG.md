@@ -9,17 +9,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Added PartialEq Trait to the struct DebugProbeInfo. (#1173)
 - Added support for configuring trace data destinations (#1177)
-    * Tracing on M4 architectures utilize the TPIU for all hardware tracing (#1182)
+  - Tracing on M4 architectures utilize the TPIU for all hardware tracing (#1182)
 - ITM tracing can now be completed using the probe-rs CLI (#1180)
 - Added support for MIMXRT10xx targets (#1174)
+- Added support for in-line (column specific) breakpoints where multiple statements (potential breakpoints) are on the same line of source code. (#1156)
 
 ### Changed
+
 - SWV vendor configuration has been refactored into sequences and trace functions have been renamed:
-    * `Session::setup_swv` has been renamed to `Session::setup_tracing`
-    * `Session::read_swo` has been renamed to `Session::read_trace_data`
+  - `Session::setup_swv` has been renamed to `Session::setup_tracing`
+  - `Session::read_swo` has been renamed to `Session::read_trace_data`
 
 ### Fixed
-* (#350) Flashing and debugging on STM32 chips using WFI instructions should now be stable (fixed in #1177)
+
+- (#350) Flashing and debugging on STM32 chips using WFI instructions should now be stable (fixed in #1177)
 
 ### Fixed
 
@@ -131,7 +134,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fix nrf9160 target file so it can erase UICR section (#1151)
 - Fix connect under reset for CMSIS-DAP probes(#1159)
 - Fix double default algorithms for the stm32f7x line with 1MB flash (#1171)
-  - Partial Fix: Set breakpoints and step on RISCV. Breakpoints work but stepping only works for some breakpoints. This will be addressed in a future PR.
 
 ## [0.12.0]
 
