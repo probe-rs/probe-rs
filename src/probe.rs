@@ -9,7 +9,7 @@ const NO_PROBE_FOUND_ERR: &str = "no probe was found.\n
 Common reasons for this are faulty cables or missing permissions.
 For detailed instructions, visit: https://github.com/knurling-rs/probe-run/tree/2f138c3#troubleshooting";
 
-pub(crate) fn open(opts: &cli::Opts) -> Result<Probe, anyhow::Error> {
+pub fn open(opts: &cli::Opts) -> Result<Probe, anyhow::Error> {
     let all_probes = Probe::list_all();
     let filtered_probes = if let Some(probe_opt) = opts.probe.as_deref() {
         let selector = probe_opt.parse()?;
@@ -39,7 +39,7 @@ pub(crate) fn open(opts: &cli::Opts) -> Result<Probe, anyhow::Error> {
     Ok(probe)
 }
 
-pub(crate) fn print(probes: &[DebugProbeInfo]) {
+pub fn print(probes: &[DebugProbeInfo]) {
     if !probes.is_empty() {
         println!("the following probes were found:");
         probes

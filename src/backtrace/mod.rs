@@ -10,7 +10,7 @@ mod symbolicate;
 mod unwind;
 
 #[derive(PartialEq, Eq)]
-pub(crate) enum BacktraceOptions {
+pub enum BacktraceOptions {
     Auto,
     Never,
     Always,
@@ -27,17 +27,17 @@ impl From<&String> for BacktraceOptions {
     }
 }
 
-pub(crate) struct Settings<'p> {
-    pub(crate) current_dir: &'p Path,
-    pub(crate) backtrace: BacktraceOptions,
-    pub(crate) panic_present: bool,
-    pub(crate) backtrace_limit: u32,
-    pub(crate) shorten_paths: bool,
-    pub(crate) include_addresses: bool,
+pub struct Settings<'p> {
+    pub current_dir: &'p Path,
+    pub backtrace: BacktraceOptions,
+    pub panic_present: bool,
+    pub backtrace_limit: u32,
+    pub shorten_paths: bool,
+    pub include_addresses: bool,
 }
 
 /// (virtually) unwinds the target's program and prints its backtrace
-pub(crate) fn print(
+pub fn print(
     core: &mut Core,
     elf: &Elf,
     active_ram_region: &Option<RamRegion>,
@@ -88,7 +88,7 @@ pub(crate) fn print(
 
 /// Target program outcome
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub(crate) enum Outcome {
+pub enum Outcome {
     HardFault,
     Ok,
     StackOverflow,
@@ -97,7 +97,7 @@ pub(crate) enum Outcome {
 }
 
 impl Outcome {
-    pub(crate) fn log(&self) {
+    pub fn log(&self) {
         match self {
             Outcome::StackOverflow => log::error!("the program has overflowed its stack"),
             Outcome::HardFault => log::error!("the program panicked"),

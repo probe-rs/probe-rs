@@ -14,7 +14,7 @@ const EXIT_SUCCESS: i32 = 0;
 /// A Cargo runner for microcontrollers.
 #[derive(StructOpt)]
 #[structopt(name = "probe-run", setting = AppSettings::TrailingVarArg)]
-pub(crate) struct Opts {
+pub struct Opts {
     /// List supported chips and exit.
     #[structopt(long)]
     list_chips: bool,
@@ -29,15 +29,15 @@ pub(crate) struct Opts {
 
     /// Path to chip description file, in YAML format.
     #[structopt(long)]
-    pub(crate) chip_description_path: Option<PathBuf>,
+    pub chip_description_path: Option<PathBuf>,
 
     /// The probe to use (eg. `VID:PID`, `VID:PID:Serial`, or just `Serial`).
     #[structopt(long, env = "PROBE_RUN_PROBE")]
-    pub(crate) probe: Option<String>,
+    pub probe: Option<String>,
 
     /// The probe clock frequency in kHz
     #[structopt(long)]
-    pub(crate) speed: Option<u32>,
+    pub speed: Option<u32>,
 
     /// Path to an ELF firmware file.
     #[structopt(name = "ELF", parse(from_os_str), required_unless_one(&["list-chips", "list-probes", "version"]))]
@@ -45,15 +45,15 @@ pub(crate) struct Opts {
 
     /// Skip writing the application binary to flash.
     #[structopt(long, conflicts_with = "defmt")]
-    pub(crate) no_flash: bool,
+    pub no_flash: bool,
 
     /// Connect to device when NRST is pressed.
     #[structopt(long)]
-    pub(crate) connect_under_reset: bool,
+    pub connect_under_reset: bool,
 
     /// Enable more verbose output.
     #[structopt(short, long, parse(from_occurrences))]
-    pub(crate) verbose: u32,
+    pub verbose: u32,
 
     /// Prints version information
     #[structopt(short = "V", long)]
@@ -61,33 +61,33 @@ pub(crate) struct Opts {
 
     /// Disable or enable backtrace (auto in case of panic or stack overflow).
     #[structopt(long, default_value = "auto")]
-    pub(crate) backtrace: String,
+    pub backtrace: String,
 
     /// Configure the number of lines to print before a backtrace gets cut off
     #[structopt(long, default_value = "50")]
-    pub(crate) backtrace_limit: u32,
+    pub backtrace_limit: u32,
 
     /// Whether to shorten paths (e.g. to crates.io dependencies) in backtraces and defmt logs
     #[structopt(long)]
-    pub(crate) shorten_paths: bool,
+    pub shorten_paths: bool,
 
     /// Whether to measure the program's stack consumption.
     #[structopt(long)]
-    pub(crate) measure_stack: bool,
+    pub measure_stack: bool,
 
     #[structopt(long)]
-    pub(crate) json: bool,
+    pub json: bool,
 
     /// Disable use of double buffering while downloading flash
     #[structopt(long = "disable-double-buffering")]
-    pub(crate) disable_double_buffering: bool,
+    pub disable_double_buffering: bool,
 
     /// Arguments passed after the ELF file path are discarded
     #[structopt(name = "REST")]
     _rest: Vec<String>,
 }
 
-pub(crate) fn handle_arguments() -> anyhow::Result<i32> {
+pub fn handle_arguments() -> anyhow::Result<i32> {
     let opts: Opts = Opts::from_args();
     let verbose = opts.verbose;
 

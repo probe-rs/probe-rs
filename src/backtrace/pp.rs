@@ -13,7 +13,7 @@ use crate::dep;
 use super::{symbolicate::Frame, Settings};
 
 /// Pretty prints processed backtrace frames up to `backtrace_limit`
-pub(crate) fn backtrace(frames: &[Frame], settings: &Settings) -> io::Result<()> {
+pub fn backtrace(frames: &[Frame], settings: &Settings) -> io::Result<()> {
     let mut stderr = io::stderr().lock();
     writeln!(stderr, "{}", "stack backtrace:".dimmed())?;
 

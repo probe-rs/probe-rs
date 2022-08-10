@@ -14,7 +14,7 @@ use crate::{cortexm, elf::Elf};
 
 use super::unwind::RawFrame;
 
-pub(crate) fn frames(raw_frames: &[RawFrame], current_dir: &Path, elf: &Elf) -> Vec<Frame> {
+pub fn frames(raw_frames: &[RawFrame], current_dir: &Path, elf: &Elf) -> Vec<Frame> {
     let mut frames = vec![];
 
     let symtab = elf.symbol_map();
@@ -43,17 +43,17 @@ pub(crate) fn frames(raw_frames: &[RawFrame], current_dir: &Path, elf: &Elf) -> 
 
 /// Processed frame
 #[derive(Debug)]
-pub(crate) enum Frame {
+pub enum Frame {
     Exception,
     Subroutine(Subroutine),
 }
 
 /// "Symbolicated" and de-inlined subroutine frame
 #[derive(Debug)]
-pub(crate) struct Subroutine {
-    pub(crate) name: Option<String>,
-    pub(crate) pc: u32,
-    pub(crate) location: Option<Location>,
+pub struct Subroutine {
+    pub name: Option<String>,
+    pub pc: u32,
+    pub location: Option<Location>,
 }
 
 type A2lContext = addr2line::Context<EndianReader<RunTimeEndian, Rc<[u8]>>>;
@@ -168,9 +168,9 @@ fn name_from_symtab(pc: u32, symtab: &SymbolMap<SymbolMapName>) -> Option<String
 }
 
 #[derive(Debug)]
-pub(crate) struct Location {
-    pub(crate) column: Option<u32>,
-    pub(crate) path_is_relative: bool,
-    pub(crate) line: u32,
-    pub(crate) path: PathBuf,
+pub struct Location {
+    pub column: Option<u32>,
+    pub path_is_relative: bool,
+    pub line: u32,
+    pub path: PathBuf,
 }

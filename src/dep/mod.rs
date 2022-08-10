@@ -11,7 +11,7 @@ mod rust_std;
 mod rustc;
 
 #[derive(Debug, PartialEq)]
-pub(crate) enum Path<'p> {
+pub enum Path<'p> {
     Cratesio(cratesio::Path<'p>),
     /// Path into `rust-std` component
     RustStd(rust_std::Path<'p>),
@@ -21,7 +21,7 @@ pub(crate) enum Path<'p> {
 }
 
 impl<'p> Path<'p> {
-    pub(crate) fn from_std_path(path: &'p StdPath) -> Self {
+    pub fn from_std_path(path: &'p StdPath) -> Self {
         if let Some(rust_std) = rust_std::Path::from_std_path(path) {
             Self::RustStd(rust_std)
         } else if let Some(rustc) = rustc::Path::from_std_path(path) {
@@ -33,7 +33,7 @@ impl<'p> Path<'p> {
         }
     }
 
-    pub(crate) fn format_short(&self) -> String {
+    pub fn format_short(&self) -> String {
         match self {
             Path::Cratesio(cratesio) => cratesio.format_short(),
             Path::RustStd(rust_std) => rust_std.format_short(),
@@ -42,7 +42,7 @@ impl<'p> Path<'p> {
         }
     }
 
-    pub(crate) fn format_highlight(&self) -> String {
+    pub fn format_highlight(&self) -> String {
         match self {
             Path::Cratesio(cratesio) => cratesio.format_highlight(),
             Path::RustStd(rust_std) => rust_std.format_highlight(),
