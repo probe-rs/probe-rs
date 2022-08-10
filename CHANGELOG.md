@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/) and this p
 
 ## [Unreleased]
 
+- [#xxx] Mark `v0.3.4` as released in `CHANGELOG.md`
+
+[#xxx]: https://github.com/knurling-rs/probe-run/pull/xxx
+
+## [v0.3.4] - 2022-08-10
 
 - [#342] Release `probe-run 0.3.4`
 - [#339] Simplify `fn round_up`
@@ -418,7 +423,8 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/) and this p
 
 Initial release
 
-[Unreleased]: https://github.com/knurling-rs/probe-run/compare/v0.3.3...main
+[Unreleased]: https://github.com/knurling-rs/probe-run/compare/v0.3.4...main
+[v0.3.4]: https://github.com/knurling-rs/probe-run/compare/v0.3.3...v0.3.4
 [v0.3.3]: https://github.com/knurling-rs/probe-run/compare/v0.3.2...v0.3.3
 [v0.3.2]: https://github.com/knurling-rs/probe-run/compare/v0.3.1...v0.3.2
 [v0.3.1]: https://github.com/knurling-rs/probe-run/compare/v0.3.0...v0.3.1
