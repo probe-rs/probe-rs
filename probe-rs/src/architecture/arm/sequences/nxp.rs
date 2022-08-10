@@ -10,6 +10,7 @@ use crate::{
     architecture::arm::{
         ap::{ApAccess, GenericAp, IDR},
         communication_interface::Initialized,
+        core::armv7m::{Aircr, Demcr, Dhcsr},
         dp::{Abort, Ctrl, DpAccess, Select, DPIDR},
         ApAddress, ArmCommunicationInterface, DapAccess, DpAddress,
     },
@@ -102,8 +103,6 @@ impl ArmDebugSequence for LPC55S69 {
         _core_type: crate::CoreType,
         _debug_base: Option<u64>,
     ) -> Result<(), crate::Error> {
-        use crate::architecture::arm::core::armv7m::{Demcr, Dhcsr};
-
         let mut reset_vector = 0xffff_ffff;
         let mut demcr = Demcr(interface.read_word_32(Demcr::ADDRESS)?);
 
@@ -181,8 +180,6 @@ impl ArmDebugSequence for LPC55S69 {
         _core_type: crate::CoreType,
         _debug_base: Option<u64>,
     ) -> Result<(), crate::Error> {
-        use crate::architecture::arm::core::armv7m::Demcr;
-
         interface.write_word_32(0xE000_2008, 0x0)?;
         interface.write_word_32(0xE000_2000, 0x2)?;
 
@@ -199,8 +196,6 @@ impl ArmDebugSequence for LPC55S69 {
         _core_type: crate::CoreType,
         _debug_base: Option<u64>,
     ) -> Result<(), crate::Error> {
-        use crate::architecture::arm::core::armv7m::Aircr;
-
         let mut aircr = Aircr(0);
         aircr.vectkey();
         aircr.set_sysresetreq(true);
@@ -223,7 +218,6 @@ impl ArmDebugSequence for LPC55S69 {
 }
 
 fn wait_for_stop_after_reset(memory: &mut crate::Memory) -> Result<(), crate::Error> {
-    use crate::architecture::arm::core::armv7m::Dhcsr;
     log::info!("Wait for stop after reset");
 
     thread::sleep(Duration::from_millis(10));
@@ -303,4 +297,67 @@ fn enable_debug_mailbox(
 
     log::info!("LPC55xx connect srcipt end");
     Ok(())
+}
+
+/// Debug sequences for MIMXRT10xx MCUs.
+///
+/// In its current form, it uses no custom debug sequences. Instead, it ensures a reliable
+/// reset sequence.
+///
+/// # On custom reset catch
+///
+/// Some tools use a custom reset catch that looks at the program image, finds the
+/// reset vector, then places a breakpoint on that reset vector. This implementation
+/// isn't doing that. That would be necessary if we don't control the kind of reset
+/// that's happening. Since we're definitely using a SYSRESETREQ, we can rely on the
+/// normal reset catch.
+///
+/// If the design changes such that the kind of reset isn't in our control, we'll
+/// need to handle those cases.
+pub struct MIMXRT10xx(());
+
+impl MIMXRT10xx {
+    /// Create a sequence handle for the MIMXRT10xx.
+    pub fn create() -> Arc<dyn ArmDebugSequence> {
+        Arc::new(Self(()))
+    }
+
+    /// Runtime validation of core type.
+    fn check_core_type(&self, core_type: crate::CoreType) -> Result<(), crate::Error> {
+        const EXPECTED: crate::CoreType = crate::CoreType::Armv7em;
+        if core_type != EXPECTED {
+            log::warn!(
+                "MIMXRT10xx core type supplied as {core_type:?}, but the actual core is a {EXPECTED:?}"
+            );
+            // Not an issue right now. Warning because it's curious.
+        }
+        Ok(())
+    }
+}
+
+impl ArmDebugSequence for MIMXRT10xx {
+    fn reset_system(
+        &self,
+        interface: &mut crate::Memory,
+        core_type: crate::CoreType,
+        _: Option<u64>,
+    ) -> Result<(), crate::Error> {
+        self.check_core_type(core_type)?;
+
+        let mut aircr = Aircr(0);
+        aircr.vectkey();
+        aircr.set_sysresetreq(true);
+
+        // Reset happens very quickly, and takes a bit. Ignore write and flush
+        // errors that will occur due to the reset reaction.
+        interface.write_word_32(Aircr::ADDRESS, aircr.into()).ok();
+        interface.flush().ok();
+
+        // Wait for the reset to finish...
+        std::thread::sleep(Duration::from_millis(100));
+
+        // Clear the status bit. This read shouldn't fail.
+        interface.read_word_32(Dhcsr::ADDRESS)?;
+        Ok(())
+    }
 }

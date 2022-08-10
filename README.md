@@ -49,7 +49,7 @@ We are implementing [Microsoft DAP](https://microsoft.github.io/debug-adapter-pr
 ### Halting the attached chip
 
 ```rust
-use probe_rs::Probe;
+use probe_rs::{Permissions, Probe};
 
 fn main() -> Result<(), probe_rs::Error> {
     // Get a list of all available debug probes.
@@ -59,7 +59,7 @@ fn main() -> Result<(), probe_rs::Error> {
     let probe = probes[0].open()?;
 
     // Attach to a chip.
-    let mut session = probe.attach("nRF52840_xxAA")?;
+    let mut session = probe.attach("nRF52840_xxAA", Permissions::default())?;
 
     // Select a core.
     let mut core = session.core(0)?;
@@ -74,11 +74,11 @@ fn main() -> Result<(), probe_rs::Error> {
 ### Reading from RAM
 
 ```rust
-use probe_rs::{MemoryInterface, Session};
+use probe_rs::{MemoryInterface, Permissions, Session};
 
 fn main() -> Result<(), probe_rs::Error> {
     // Attach to a chip.
-    let mut session = Session::auto_attach("nRF52840_xxAA")?;
+    let mut session = Session::auto_attach("nRF52840_xxAA", Permissions::default())?;
 
     // Select a core.
     let mut core = session.core(0)?;

@@ -9,7 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Added PartialEq Trait to the struct DebugProbeInfo. (#1173)
 - Added support for configuring trace data destinations (#1177)
+    * Tracing on M4 architectures utilize the TPIU for all hardware tracing (#1182)
 - ITM tracing can now be completed using the probe-rs CLI (#1180)
+- Added support for MIMXRT10xx targets (#1174)
 
 ### Changed
 - SWV vendor configuration has been refactored into sequences and trace functions have been renamed:

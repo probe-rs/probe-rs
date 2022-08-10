@@ -8,13 +8,13 @@ variants:
       - name: main
         type: armv6m
         core_access_options:
-          Arm:
+          !Arm
             ap: 0
             psel: 0
             debug_base: ~
             cti_base: ~
     memory_map:
-      - Ram:
+      - !Ram
           name: ~
           range:
             start: 536870912
@@ -22,7 +22,7 @@ variants:
           is_boot_memory: false
           cores:
             - main
-      - Nvm:
+      - !Nvm
           name: ~
           range:
             start: 0
@@ -38,13 +38,13 @@ variants:
       - name: main
         type: armv6m
         core_access_options:
-          Arm:
+          !Arm
             ap: 0
             psel: 0
             debug_base: ~
             cti_base: ~
     memory_map:
-      - Ram:
+      - !Ram
           name: ~
           range:
             start: 536870912
@@ -52,7 +52,7 @@ variants:
           is_boot_memory: false
           cores:
             - main
-      - Nvm:
+      - !Nvm
           name: ~
           range:
             start: 0
