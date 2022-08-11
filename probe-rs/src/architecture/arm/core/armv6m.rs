@@ -295,7 +295,7 @@ impl BpCompx {
         } else if bp_val.bp_match() == 0b10 {
             Ok((bp_val.comp() << 2) | 0x2)
         } else {
-            return Err(Error::ArchitectureSpecific(Box::new(DebugProbeError::Other(anyhow::anyhow!("Unsupported breakpoint comparator value {:#08x} for HW breakpoint. Breakpoint must be on half-word boundaries", bp_val.0)))));
+            Err(Error::ArchitectureSpecific(Box::new(DebugProbeError::Other(anyhow::anyhow!("Unsupported breakpoint comparator value {:#08x} for HW breakpoint. Breakpoint must be on half-word boundaries", bp_val.0)))))
         }
     }
 }

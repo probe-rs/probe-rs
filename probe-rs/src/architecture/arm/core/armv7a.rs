@@ -1616,11 +1616,8 @@ mod test {
         probe.expected_read(Dbgbvr::get_mmio_address(TEST_BASE_ADDRESS), BP1 as u32);
         probe.expected_read(Dbgbcr::get_mmio_address(TEST_BASE_ADDRESS), 1);
 
-        probe.expected_read(
-            Dbgbvr::get_mmio_address(TEST_BASE_ADDRESS) + (1 * 4),
-            BP2 as u32,
-        );
-        probe.expected_read(Dbgbcr::get_mmio_address(TEST_BASE_ADDRESS) + (1 * 4), 1);
+        probe.expected_read(Dbgbvr::get_mmio_address(TEST_BASE_ADDRESS) + 4, BP2 as u32);
+        probe.expected_read(Dbgbcr::get_mmio_address(TEST_BASE_ADDRESS) + 4, 1);
 
         probe.expected_read(Dbgbvr::get_mmio_address(TEST_BASE_ADDRESS) + (2 * 4), 0);
         probe.expected_read(Dbgbcr::get_mmio_address(TEST_BASE_ADDRESS) + (2 * 4), 0);

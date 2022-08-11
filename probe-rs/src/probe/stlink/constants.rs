@@ -69,7 +69,7 @@ pub mod commands {
 }
 
 /// STLink status codes and messages.
-#[derive(Debug, Copy, Clone, PartialEq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum Status {
     JtagOk,
     JtagUnknownError,
@@ -142,7 +142,7 @@ impl From<u8> for Status {
 }
 
 /// Map from SWD frequency in Hertz to delay loop count.
-#[derive(Debug, Copy, Clone, PartialEq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum SwdFrequencyToDelayCount {
     Hz4600000 = 0,
     Hz1800000 = 1, // Default
@@ -207,7 +207,7 @@ impl SwdFrequencyToDelayCount {
 }
 
 /// Map from JTAG frequency in Hertz to frequency divider.
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum JTagFrequencyToDivider {
     Hz18000000 = 2,
     Hz9000000 = 4,

@@ -34,7 +34,7 @@ pub struct CoreInformation {
 }
 
 /// The type of data stored in a register
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum RegisterDataType {
     /// Unsigned integer data
     UnsignedInteger,
@@ -975,7 +975,7 @@ impl<'probe> Core<'probe> {
 }
 
 /// The id of a breakpoint.
-#[derive(Debug, Copy, Clone, PartialEq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct BreakpointId(usize);
 
 impl BreakpointId {
@@ -986,7 +986,7 @@ impl BreakpointId {
 }
 
 /// The status of the core.
-#[derive(Debug, PartialEq, Copy, Clone)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum CoreStatus {
     /// The core is currently running.
     Running,
@@ -1008,7 +1008,7 @@ impl CoreStatus {
 }
 
 /// The reason why a core was halted.
-#[derive(Debug, PartialEq, Copy, Clone)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum HaltReason {
     /// Multiple reasons for a halt.
     ///
