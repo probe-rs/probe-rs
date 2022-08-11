@@ -219,12 +219,14 @@ impl Rtt {
             }
 
             for offset in 0..(mem.len() - Self::MIN_SIZE) {
-                if let Some(rtt) = Rtt::from(
+                if let Some(Some(rtt)) = Rtt::from(
                     core,
                     memory_map,
                     range.start + offset as u32,
                     Some(&mem[offset..]),
-                )? {
+                )
+                .ok()
+                {
                     instances.push(rtt);
 
                     if instances.len() >= 5 {

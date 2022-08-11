@@ -125,7 +125,7 @@ impl AbstractCommandErrorKind {
 ///
 /// The version of the debug module can be read from the version field of the `dmstatus`
 /// register.
-#[derive(Debug, Copy, Clone, PartialEq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum DebugModuleVersion {
     /// There is no debug module present.
     NoModule,
@@ -1998,7 +1998,7 @@ impl From<Sbcs> for u32 {
 
 bitfield! {
     /// Abstract Command Autoexec (see 3.12.8)
-    #[derive(Copy, Clone, PartialEq)]
+    #[derive(Copy, Clone, PartialEq, Eq)]
     pub struct Abstractauto(u32);
     impl Debug;
     /// When a bit in this field is 1, read or write accesses to the corresponding progbuf word cause

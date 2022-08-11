@@ -745,7 +745,7 @@ impl std::fmt::Display for PartInfo {
 
 /// The type of peripheral as read by the romtable parser
 #[non_exhaustive]
-#[derive(Debug, Copy, Clone, PartialEq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum PeripheralType {
     /// Trace Port Interface Unit
     ///

@@ -1,7 +1,7 @@
 use crate::{DebugProbe, DebugProbeError};
 
 /// The type of port we are using.
-#[derive(Debug, PartialEq, Clone, Copy)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum PortType {
     /// Debug Port (e.g. SWD or JTAG)
     DebugPort,
@@ -40,7 +40,7 @@ pub enum DpAddress {
 }
 
 /// Access port address.
-#[derive(Debug, PartialEq, Clone, Copy)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub struct ApAddress {
     /// The address of the debug port this access port belongs to.
     pub dp: DpAddress,

@@ -215,7 +215,7 @@ impl Session {
                     }
                 }
 
-                let session = if attach_method == AttachMethod::UnderReset {
+                if attach_method == AttachMethod::UnderReset {
                     {
                         let mut memory_interface = interface.memory_interface(default_memory_ap)?;
                         // we need to halt the chip here
@@ -264,9 +264,7 @@ impl Session {
                         cores,
                         configured_trace_sink: None,
                     }
-                };
-
-                session
+                }
             }
             Architecture::Riscv => {
                 // TODO: Handle attach under reset

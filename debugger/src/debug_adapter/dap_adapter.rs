@@ -554,12 +554,10 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                                 self.send_event("continued", event_body)?;
                                 self.send_response::<()>(request, Ok(None))
                             }
-                            Err(error) => {
-                                return self.send_response::<()>(
-                                    request,
-                                    Err(DebuggerError::Other(anyhow!("{}", error))),
-                                )
-                            }
+                            Err(error) => self.send_response::<()>(
+                                request,
+                                Err(DebuggerError::Other(anyhow!("{}", error))),
+                            ),
                         }
                     } else {
                         let event_body = Some(StoppedEventBody {
@@ -581,12 +579,8 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                         self.send_response::<()>(request, Ok(None))
                     }
                 }
-                Err(error) => {
-                    return self.send_response::<()>(
-                        request,
-                        Err(DebuggerError::Other(anyhow!("{}", error))),
-                    );
-                }
+                Err(error) => self
+                    .send_response::<()>(request, Err(DebuggerError::Other(anyhow!("{}", error)))),
             }
         } else {
             // The DAP Client will always do a `reset_and_halt`, and then will consider `halt_after_reset` value after the `configuration_done` request.
@@ -619,13 +613,12 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                 }
                 Err(error) => {
                     if let Some(request) = request {
-                        return self.send_response::<()>(
+                        self.send_response::<()>(
                             request,
                             Err(DebuggerError::Other(anyhow!("{}", error))),
-                        );
+                        )
                     } else {
-                        return self
-                            .send_error_response(&DebuggerError::Other(anyhow!("{}", error)));
+                        self.send_error_response(&DebuggerError::Other(anyhow!("{}", error)))
                     }
                 }
             }

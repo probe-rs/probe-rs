@@ -23,7 +23,7 @@ use std::{
 };
 
 /// An error with the DAP protocol occurred.
-#[derive(Debug, thiserror::Error, Clone, PartialEq)]
+#[derive(Debug, thiserror::Error, Clone, PartialEq, Eq)]
 pub enum DapError {
     /// An error occurred during SWD communication.
     #[error("An error occurred in the SWD communication between probe and device.")]

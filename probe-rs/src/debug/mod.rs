@@ -81,7 +81,7 @@ pub enum DebugError {
 }
 
 /// A copy of [`gimli::ColumnType`] which uses [`u64`] instead of [`NonZeroU64`].
-#[derive(Debug, Copy, Clone, PartialEq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum ColumnType {
     /// The `LeftEdge` means that the statement begins at the start of the new line.
     LeftEdge,
@@ -105,7 +105,7 @@ pub fn get_sequential_key() -> i64 {
 }
 
 /// A specific location in source code.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct SourceLocation {
     /// The line number in the source file with zero based indexing.
     pub line: Option<u64>,
