@@ -37,7 +37,7 @@ chrono = "0.4"
 crossterm = "<= 0.24.1"
 goblin = "0.5.3"
 tui = { version = "0.18.0", default-features = false, features = ["crossterm"] }
-anyhow = "1.0.60"
+anyhow = "1.0.61"
 textwrap = "0.15.0"
 defmt-decoder = { version = "0.3.3", features = ["unstable"] }
 sanitize-filename = "0.4"
