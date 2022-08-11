@@ -623,7 +623,6 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                         Some(child_node.entry().offset()),
                     ), core)?;
                         child_variable = self.process_tree_node_attributes(&mut child_node, &mut parent_variable, child_variable, core, stack_frame_registers, frame_base, cache,)?;
-
                         // Do not keep or process PhantomData nodes, or variant parts that we have already used.
                         if child_variable.type_name.is_phantom_data()
                             ||  child_variable.name == VariableName::Artifical
@@ -766,7 +765,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                             // Recursively process each child, but pass the parent_variable, so that we don't create intermediate nodes for scope identifiers.
                             parent_variable = self.process_tree(child_node, parent_variable, core, stack_frame_registers, frame_base, cache)?;
                         } else {
-                            parent_variable.set_value(VariableValue::Error("<lexical block no longer in scope>".to_string()));
+                            // This lexical block is NOT in scope, but other children of this parent may well be in scope, so do NOT invalidate the parent_variable.
                         }
                     }
                     gimli::DW_TAG_template_type_parameter => {
