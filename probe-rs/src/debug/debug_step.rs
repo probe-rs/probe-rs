@@ -1,6 +1,3 @@
-// Honestly, I have no idea why this is needed, but without it, there is a clippy warning on a variable called `next_statement_address`
-#![allow(unused_assignments)]
-
 use super::{
     debug_info::DebugInfo,
     source_statement::SourceStatements,
@@ -383,7 +380,13 @@ fn run_to_address(
     target_address: u64,
     core: &mut Core,
 ) -> Result<(CoreStatus, u64), DebugError> {
-    Ok(if target_address <= program_counter as u64 {
+    Ok(if target_address < program_counter as u64 {
+        // We are not able to calculate a step_out_address. Notify the user to try something else.
+        return Err(DebugError::NoValidHaltLocation {
+            message: "Unable to determine target address for this step request. Please try a different form of stepping.".to_string(),
+            pc_at_error: program_counter as u64,
+        });
+    } else if target_address == program_counter as u64 {
         // No need to step further. e.g. For inline functions we have already stepped to the best available target address..
         (
             core.status()?,
