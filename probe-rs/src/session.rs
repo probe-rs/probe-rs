@@ -215,7 +215,7 @@ impl Session {
                     }
                 }
 
-                let session = if attach_method == AttachMethod::UnderReset {
+                if attach_method == AttachMethod::UnderReset {
                     {
                         let mut memory_interface = interface.memory_interface(default_memory_ap)?;
                         // we need to halt the chip here
@@ -264,9 +264,7 @@ impl Session {
                         cores,
                         configured_trace_sink: None,
                     }
-                };
-
-                session
+                }
             }
             Architecture::Riscv => {
                 // TODO: Handle attach under reset
@@ -364,7 +362,7 @@ impl Session {
         let sink = self
             .configured_trace_sink
             .as_ref()
-            .ok_or(anyhow!("Tracing has not been configured"))?;
+            .ok_or_else(|| anyhow!("Tracing has not been configured"))?;
 
         match sink {
             TraceSink::Swo(_) => {

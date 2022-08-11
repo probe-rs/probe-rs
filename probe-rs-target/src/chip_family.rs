@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 ///
 /// This is used for diagnostics, when
 /// an error related to a target description occurs.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum TargetDescriptionSource {
     /// The target description is a generic target description,
     /// which just describes a core type (e.g. M4), without any
@@ -55,7 +55,7 @@ impl CoreType {
 }
 
 /// The architecture family of a specific [`CoreType`].
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Architecture {
     /// An ARM core of one of the specific types [`CoreType::Armv6m`], [`CoreType::Armv7m`], [`CoreType::Armv7em`] or [`CoreType::Armv8m`]
     Arm,
@@ -74,7 +74,7 @@ impl CoreType {
 }
 
 /// Instruction set used by a core
-#[derive(Debug, Copy, Clone, PartialEq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum InstructionSet {
     /// ARM Thumb 2 instruction set
     Thumb2,

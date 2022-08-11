@@ -54,7 +54,7 @@ fn default_include_location() -> bool {
     true
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum DataFormat {
     String,
     BinaryLE,

@@ -520,7 +520,7 @@ impl DpRegister for RdBuff {
 }
 
 /// Specifies if pushed-find operations are implemented or not.
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum MinDpSupport {
     /// Pushed-find operations are **not** implemented.
     NotImplemented,
@@ -539,7 +539,7 @@ impl From<bool> for MinDpSupport {
 }
 
 /// The version of the debug port.
-#[derive(Debug, PartialEq, Copy, Clone)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum DebugPortVersion {
     /// Version 0 (not common)
     DPv0,

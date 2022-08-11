@@ -205,7 +205,7 @@ impl Request for TransferRequest {
 }
 
 #[allow(clippy::enum_variant_names)]
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum Ack {
     /// TODO: ??????????????????????? Docs are weird?
     /// OK (for SWD protocol), OK or FAULT (for JTAG protocol),

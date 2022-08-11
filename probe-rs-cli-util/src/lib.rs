@@ -46,7 +46,7 @@ pub struct Metadata {
     pub chip: Option<String>,
 }
 
-#[derive(Clone, Debug, PartialEq, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize)]
 pub struct Meta {
     pub chip: Option<String>,
 }

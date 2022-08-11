@@ -1603,7 +1603,7 @@ mod test {
             data: &[u8],
             len: u32,
         ) -> Result<Vec<u8>, DebugProbeError> {
-            let jtag_value = parse_jtag_response(&data[..5].to_vec());
+            let jtag_value = parse_jtag_response(&data[..5]);
 
             // Always 35 bit transfers
             assert_eq!(len, JTAG_DR_BIT_LENGTH);

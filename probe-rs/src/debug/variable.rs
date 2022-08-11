@@ -24,7 +24,7 @@ impl Default for VariantRole {
 /// A [Variable] will have either a valid value, or some reason why a value could not be constructed.
 /// - If we encounter expected errors, they will be displayed to the user as defined below.
 /// - If we encounter unexpected errors, they will be treated as proper errors and will propogated to the calling process as an `Err()`
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum VariableValue {
     /// A valid value of this variable
     Valid(String),
@@ -70,7 +70,7 @@ impl VariableValue {
 }
 
 /// The type of variable we have at hand.
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub enum VariableName {
     /// Top-level variable for static variables, child of a stack frame variable, and holds all the static scoped variables which are directly visible to the compile unit of the frame.
     StaticScopeRoot,
@@ -116,7 +116,7 @@ impl std::fmt::Display for VariableName {
 
 /// Encode the nature of the Debug Information Entry in a way that we can resolve child nodes of a [Variable]
 /// The rules for 'lazy loading'/deferred recursion of [Variable] children are described under each of the enum values.
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub enum VariableNodeType {
     /// For pointer values, their referenced variables are found at an [gimli::UnitOffset] in the [DebugInfo].
     /// - Rule: Pointers to `struct` variables WILL NOT BE recursed, because  this may lead to infinite loops/stack overflows in `struct`s that self-reference.
@@ -168,7 +168,7 @@ impl Default for VariableNodeType {
 }
 
 /// The variants of VariableType allows us to streamline the conditional logic that requires specific handling depending on the nature of the variable.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum VariableType {
     /// A variable with a Rust base datatype.
     Base(String),
@@ -242,7 +242,7 @@ impl std::fmt::Display for VariableType {
 }
 
 /// Location of a variable
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum VariableLocation {
     /// Location of the variable is not known. This means that it has not been evaluated yet.
     Unknown,
@@ -304,7 +304,7 @@ impl Default for VariableLocation {
 ///
 /// Any modifications to the `Variable` value will be transient (lost when it goes out of scope),
 /// unless it is updated through one of the available methods on `VariableCache`.
-#[derive(Debug, Default, Clone, PartialEq)]
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct Variable {
     /// Every variable must have a unique key value assigned to it. The value will be zero until it is stored in VariableCache, at which time its value will be set to the same as the VariableCache::variable_cache_key
     pub variable_key: i64,

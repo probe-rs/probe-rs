@@ -49,7 +49,7 @@ pub struct GenericRegion {
 
 /// Holds information about a specific, individual flash
 /// sector.
-#[derive(Debug, Copy, Clone, PartialEq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct SectorInfo {
     /// Base address of the flash sector
     pub base_address: u64,

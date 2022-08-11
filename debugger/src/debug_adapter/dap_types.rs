@@ -1,3 +1,6 @@
+// Ignore clippy warning in the `schemafy!` output
+#![allow(clippy::derive_partial_eq_without_eq)]
+
 // use crate::dap_types2 as debugserver_types;
 use crate::DebuggerError;
 use num_traits::Num;
@@ -28,7 +31,7 @@ pub struct QuitRequest {
 
 /// Custom [`RttWindowOpened`] request, so that VSCode can confirm once a specific RTT channel's window has opened.
 /// `probe-rs-debugger` will delay polling RTT channels until the data window has opened. This ensure no RTT data is lost on the client.
-#[derive(Clone, PartialEq, Debug, Deserialize, Serialize)]
+#[derive(Clone, PartialEq, Eq, Debug, Deserialize, Serialize)]
 pub struct RttWindowOpened {
     /// Object containing arguments for the command.
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -43,7 +46,7 @@ pub struct RttWindowOpened {
     pub type_: String,
 }
 ///  Arguments for [`RttWindowOpened`] request.
-#[derive(Clone, PartialEq, Debug, Default, Deserialize, Serialize)]
+#[derive(Clone, PartialEq, Eq, Debug, Default, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RttWindowOpenedArguments {
     /// The RTT channel number.
@@ -51,7 +54,7 @@ pub struct RttWindowOpenedArguments {
     pub window_is_open: bool,
 }
 
-#[derive(Clone, PartialEq, Debug, Deserialize, Serialize)]
+#[derive(Clone, PartialEq, Eq, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RttChannelEventBody {
     pub channel_number: usize,
@@ -59,7 +62,7 @@ pub struct RttChannelEventBody {
     pub data_format: rtt::DataFormat,
 }
 
-#[derive(Clone, PartialEq, Debug, Deserialize, Serialize)]
+#[derive(Clone, PartialEq, Eq, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RttDataEventBody {
     pub channel_number: usize,
@@ -67,7 +70,7 @@ pub struct RttDataEventBody {
     pub data: String,
 }
 
-#[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
+#[derive(Clone, PartialEq, Eq, Debug, Serialize, Deserialize)]
 #[serde(rename_all(serialize = "lowercase", deserialize = "PascalCase"))]
 pub enum MessageSeverity {
     Information,
@@ -75,7 +78,7 @@ pub enum MessageSeverity {
     Error,
 }
 
-#[derive(Clone, PartialEq, Debug, Deserialize, Serialize)]
+#[derive(Clone, PartialEq, Eq, Debug, Deserialize, Serialize)]
 pub struct ShowMessageEventBody {
     pub severity: MessageSeverity,
     pub message: String,

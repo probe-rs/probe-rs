@@ -35,7 +35,7 @@ const LOW_TARGET_VOLTAGE_WARNING_THRESHOLD: f32 = 1.4;
 /// The protocol that is to be used by the probe when communicating with the target.
 ///
 /// For ARM select `Swd` and for RISC-V select `Jtag`.
-#[derive(Copy, Clone, PartialEq, Debug, serde::Serialize, serde::Deserialize)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug, serde::Serialize, serde::Deserialize)]
 pub enum WireProtocol {
     /// Serial Wire Debug is ARMs proprietary standard for communicating with ARM cores.
     /// You can find specifics in the [`ARM Debug Interface v5.2`](https://developer.arm.com/documentation/ihi0031/f/?lang=en) specification.
@@ -619,7 +619,7 @@ pub trait DebugProbe: Send + fmt::Debug {
 }
 
 /// Denotes the type of a given [`DebugProbe`].
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DebugProbeType {
     /// CMSIS-DAP
     CmsisDap,
@@ -634,7 +634,7 @@ pub enum DebugProbeType {
 }
 
 /// Gathers some information about a debug probe which was found during a scan.
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct DebugProbeInfo {
     /// The name of the debug probe.
     pub identifier: String,
@@ -885,7 +885,7 @@ pub enum CommandResult {
 }
 
 /// The method that should be used for attaching.
-#[derive(PartialEq, Debug, Copy, Clone)]
+#[derive(PartialEq, Eq, Debug, Copy, Clone)]
 pub enum AttachMethod {
     /// Attach normally with no special behavior.
     Normal,

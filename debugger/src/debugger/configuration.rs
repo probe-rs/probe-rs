@@ -197,7 +197,7 @@ fn default_console_log() -> Option<ConsoleLog> {
 }
 
 /// The level of information to be logged to the debugger console. The DAP Client will set appropriate RUST_LOG env for 'launch' configurations,  and will pass the rust log output to the client debug console.
-#[derive(Copy, Clone, PartialEq, Debug, serde::Serialize, serde::Deserialize)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug, serde::Serialize, serde::Deserialize)]
 pub enum ConsoleLog {
     Error,
     Warn,
