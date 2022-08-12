@@ -37,4 +37,4 @@ os_pipe = "1.0"
 pretty_assertions = "1"
 rstest = { version = "0.15", default-features = false }
 nix = "0.24"
-serial_test = { version = "0.8", default-features = false, git = "https://github.com/palfrey/serial_test" }
+serial_test = { version = "0.9", default-features = false }
