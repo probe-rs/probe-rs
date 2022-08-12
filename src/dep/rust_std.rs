@@ -8,7 +8,7 @@ use super::rust_repo;
 
 mod toolchain;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Eq, PartialEq)]
 pub struct Path<'p> {
     rustup_prefix: PathBuf,
     toolchain: Toolchain<'p>,
