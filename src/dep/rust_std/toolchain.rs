@@ -2,7 +2,7 @@ use std::borrow::Cow;
 
 use colored::Colorize;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Eq, PartialEq)]
 pub enum Toolchain<'p> {
     One52(One52<'p>),
     Verbatim(&'p str),
@@ -32,7 +32,7 @@ impl<'p> Toolchain<'p> {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Eq, PartialEq)]
 pub struct One52<'p> {
     pub channel: Channel<'p>,
     pub host: &'p str,
@@ -113,7 +113,7 @@ impl<'p> One52<'p> {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Eq, PartialEq)]
 pub enum Channel<'p> {
     Beta,
     Nightly { date: Option<&'p str> },

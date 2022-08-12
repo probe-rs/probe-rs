@@ -10,7 +10,7 @@ mod rust_repo;
 mod rust_std;
 mod rustc;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Eq, PartialEq)]
 pub enum Path<'p> {
     Cratesio(cratesio::Path<'p>),
     /// Path into `rust-std` component

@@ -2,7 +2,7 @@ use std::path::{self, Component, Path as StdPath, PathBuf};
 
 use colored::Colorize as _;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Eq, PartialEq)]
 pub struct Path<'p> {
     registry_prefix: PathBuf,
     crate_name_version: &'p str,

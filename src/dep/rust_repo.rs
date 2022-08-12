@@ -3,7 +3,7 @@ use std::path::{self, Path as StdPath};
 use colored::Colorize as _;
 
 /// Representation of a rust-lang/rust repo path
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Eq, PartialEq)]
 pub enum Path<'p> {
     One52(One52Path<'p>),
     Verbatim(&'p StdPath),
@@ -34,7 +34,7 @@ impl<'p> Path<'p> {
 }
 
 /// rust-lang/repo path format as of 1.52 e.g. "library/core/src/panic.rs"
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Eq, PartialEq)]
 pub struct One52Path<'p> {
     pub library: &'p str,
     pub crate_name: &'p str,

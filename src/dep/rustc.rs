@@ -4,7 +4,7 @@ use colored::Colorize;
 
 use super::rust_repo;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Eq, PartialEq)]
 pub struct Path<'p> {
     rustc_prefix: PathBuf,
     rust_repo_path: rust_repo::Path<'p>,
