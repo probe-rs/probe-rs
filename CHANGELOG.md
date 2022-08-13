@@ -12,7 +12,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     * Tracing on M4 architectures utilize the TPIU for all hardware tracing (#1182)
 - ITM tracing can now be completed using the probe-rs CLI (#1180)
 - Added support for MIMXRT10xx targets (#1174)
-- Added support for MSP432P4XX targets (#1201)
 - Added support for JTAG commands via CMSIS-DAP protocol
 
 ### Changed
