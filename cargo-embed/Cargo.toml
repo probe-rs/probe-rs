@@ -35,7 +35,7 @@ serde_json = { version = "1.0.83" }
 figment = { version = "0.10", features = ["toml", "json", "yaml", "env"] }
 chrono = "0.4"
 crossterm = "<= 0.25.1"
-goblin = "0.5.3"
+goblin = "0.5.4"
 tui = { version = "0.19.0", default-features = false, features = ["crossterm"] }
 anyhow = "1.0.61"
 textwrap = "0.15.0"
