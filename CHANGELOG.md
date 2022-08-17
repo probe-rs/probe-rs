@@ -9,19 +9,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Added PartialEq Trait to the struct DebugProbeInfo. (#1173)
 - Added support for configuring trace data destinations (#1177)
-    * Tracing on M4 architectures utilize the TPIU for all hardware tracing (#1182)
+  - Tracing on M4 architectures utilize the TPIU for all hardware tracing (#1182)
 - ITM tracing can now be completed using the probe-rs CLI (#1180)
 - Added support for MIMXRT10xx targets (#1174)
 - Added support for MSP432P4XX targets (#1201)
 
 ### Changed
+
 - SWV vendor configuration has been refactored into sequences and trace functions have been renamed:
-    * `Session::setup_swv` has been renamed to `Session::setup_tracing`
-    * `Session::read_swo` has been renamed to `Session::read_trace_data`
+  - `Session::setup_swv` has been renamed to `Session::setup_tracing`
+  - `Session::read_swo` has been renamed to `Session::read_trace_data`
 
 ### Fixed
-* (#350) Flashing and debugging on STM32 chips using WFI instructions should now be stable (fixed in #1177)
-* Fixed rtthost --scan-region to properly support memory range scannig. (#1192)
+
+- (#350) Flashing and debugging on STM32 chips using WFI instructions should now be stable (fixed in #1177)
+- Fixed rtthost --scan-region to properly support memory range scannig. (#1192)
+- Added missing memory regions for ESP32.yaml file, to fix RTT Channel name issue. (#1207)
 
 ## [0.13.0]
 
