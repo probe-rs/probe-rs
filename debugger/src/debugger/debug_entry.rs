@@ -162,7 +162,18 @@ impl Debugger {
                 }
             }
             Some(request) => {
-                // First, attach to the core.
+                // Always poll the core first, so that we know what its status is, and can read RTT data, etc. before handling the next requeest.
+                if debug_adapter.last_known_status != CoreStatus::Unknown {
+                    if let Some(new_status) = session_data
+                        .poll_cores(&self.config, debug_adapter)?
+                        .first()
+                        .cloned()
+                    {
+                        debug_adapter.last_known_status = new_status;
+                    }
+                }
+
+                // Attach to the core. so that we have the handle available for processing the request.
                 // TODO: This only works for a single core, so until it can be redesigned, will use the first one configured.
                 let mut target_core = if let Some(target_core_config) =
                     self.config.core_configs.first_mut()
