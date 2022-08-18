@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Tracing on M4 architectures utilize the TPIU for all hardware tracing (#1182)
 - ITM tracing can now be completed using the probe-rs CLI (#1180)
 - Added support for MIMXRT10xx targets (#1174)
+- Added support for in-line (column specific) breakpoints where multiple statements (potential breakpoints) are on the same line of source code. (#1156)
 - Added support for MSP432P4XX targets (#1201)
 
 ### Changed
@@ -25,6 +26,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - (#350) Flashing and debugging on STM32 chips using WFI instructions should now be stable (fixed in #1177)
 - Fixed rtthost --scan-region to properly support memory range scannig. (#1192)
 - Added missing memory regions for ESP32.yaml file, to fix RTT Channel name issue. (#1207)
+- Debug: Improve logic for halt locations used by breakpoints and stepping. (#1156)
+- Debug: Some in-scope variables are excluded from stack_trace. (#1156)
 
 ## [0.13.0]
 
