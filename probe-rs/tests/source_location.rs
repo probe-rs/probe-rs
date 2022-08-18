@@ -32,7 +32,7 @@ fn breakpoint_location_absolute() {
             Some(*addr),
             di.get_breakpoint_location(path, *line, col)
                 .expect("Failed to find breakpoint location.")
-                .first_halt_address,
+                .0,
             "Addresses do not match for data path={:?}, line={:?}, col={:?}",
             &path,
             line,
@@ -62,7 +62,7 @@ fn breakpoint_location_inexact() {
             Some(*addr),
             di.get_breakpoint_location(path, *line, col)
                 .expect("Failed to find valid breakpoint locations.")
-                .first_halt_address,
+                .0,
             "Addresses do not match for data path={:?}, line={:?}, col={:?}",
             &path,
             line,
