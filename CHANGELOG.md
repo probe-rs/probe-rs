@@ -27,6 +27,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Debug: Improve logic for halt locations used by breakpoints and stepping. (#1156)
 - Debug: Some in-scope variables are excluded from stack_trace. (#1156)
 - Fixed rtthost --scan-region to properly support memory range scannig. (#1192)
+- Debug: Ensure RTT buffer on target is reported to DAP client in 'timely' manner. (#1208)
+- Debug: Provide unique default names on DAP client, when multiple RTT Channels have no configured name. (#1208)
 
 ## [0.13.0]
 
