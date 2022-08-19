@@ -36,6 +36,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Debug: Enable stepping or running past a BKPT (Arm) or EBREAK (Risc-V) instruction (# ).
 - Debug: Enable stepping or running past a BKPT (Arm) or EBREAK (Risc-V) instruction (#1211).
 - Debug: Enable stepping or running past a BKPT (Arm) or EBREAK (Risc-V) instruction (# ).
+- Debug: Enable stepping or running past a BKPT (Arm) or EBREAK (Risc-V) instruction (#1211).
 
 ## [0.13.0]
 
