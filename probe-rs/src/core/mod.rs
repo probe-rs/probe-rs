@@ -132,6 +132,48 @@ pub enum RegisterValue {
 }
 
 impl RegisterValue {
+    /// A helper function to add a fixed number of bytes to a register value.
+    pub fn add_bytes(&mut self, bytes: usize) -> Result<(), Error> {
+        match self {
+            RegisterValue::U32(value) => {
+                if let Some(reg_val) = value.checked_add(bytes as u32) {
+                    *value = reg_val;
+                    Ok(())
+                } else {
+                    Err(Error::Other(anyhow!(
+                        "Overflow error: Attempting to add {} bytes to Register value {}",
+                        bytes,
+                        self
+                    )))
+                }
+            }
+            RegisterValue::U64(value) => {
+                if let Some(reg_val) = value.checked_add(bytes as u64) {
+                    *value = reg_val;
+                    Ok(())
+                } else {
+                    Err(Error::Other(anyhow!(
+                        "Overflow error: Attempting to add {} bytes to Register value {}",
+                        bytes,
+                        self
+                    )))
+                }
+            }
+            RegisterValue::U128(value) => {
+                if let Some(reg_val) = value.checked_add(bytes as u128) {
+                    *value = reg_val;
+                    Ok(())
+                } else {
+                    Err(Error::Other(anyhow!(
+                        "Overflow error: Attempting to add {} bytes to Register value {}",
+                        bytes,
+                        self
+                    )))
+                }
+            }
+        }
+    }
+
     /// A helper function to determine if the contained register value is equal to the maximum value that can be stored in that datatype.
     pub fn is_max_value(&self) -> bool {
         match self {
@@ -199,6 +241,7 @@ impl core::fmt::Display for RegisterValue {
         }
     }
 }
+
 impl From<u32> for RegisterValue {
     fn from(val: u32) -> Self {
         Self::U32(val)
