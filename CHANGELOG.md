@@ -35,6 +35,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fix maximum addressable Flash size in ESP32.yaml file, to be 16Mb (was 64Mb). (#1209)
 - Debug: Enable stepping or running past a BKPT (Arm) or EBREAK (Risc-V) instruction (# ).
 - Debug: Enable stepping or running past a BKPT (Arm) or EBREAK (Risc-V) instruction (#1211).
+- Debug: Enable stepping or running past a BKPT (Arm) or EBREAK (Risc-V) instruction (# ).
 
 ## [0.13.0]
 
