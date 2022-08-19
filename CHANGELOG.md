@@ -29,6 +29,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed rtthost --scan-region to properly support memory range scannig. (#1192)
 - Debug: Ensure RTT buffer on target is reported to DAP client in 'timely' manner. (#1208)
 - Debug: Provide unique default names on DAP client, when multiple RTT Channels have no configured name. (#1208)
+- Debug: Enable stepping or running past a BKPT (Arm) or EBREAK (Risc-V) instruction (# ).
 
 ## [0.13.0]
 
