@@ -833,8 +833,13 @@ impl<'probe> CoreInterface for Armv7m<'probe> {
 
         // Re-enable breakpoints before we continue.
         if was_breakpoint {
-            if pc_before_step == pc_after_step {
-                log::debug!("Encountered a breakpoint instruction at @ {}. We need to manually advance the program counter to the next instruction.", pc_after_step);
+            // If we were stopped on a software breakpoint, then we need to manually advance the PC, or else we will be stuck here forever.
+            if pc_before_step == pc_after_step
+                && !self
+                    .hw_breakpoints()?
+                    .contains(&pc_before_step.try_into().ok())
+            {
+                log::debug!("Encountered a breakpoint instruction @ {}. We need to manually advance the program counter to the next instruction.", pc_after_step);
                 // Advance the program counter by the architecture specific byte size of the BKPT instruction.
                 pc_after_step.add_bytes(2)?;
                 self.write_core_reg(register::PC.id, pc_after_step)?;
