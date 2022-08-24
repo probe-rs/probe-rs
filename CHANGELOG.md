@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - SWV vendor configuration has been refactored into sequences and trace functions have been renamed:
   - `Session::setup_swv` has been renamed to `Session::setup_tracing`
   - `Session::read_swo` has been renamed to `Session::read_trace_data`
+- RTT: When a channel format is `defmt`, automatically set the channel mode to `BlockingIfFull` on attach. (Enhancement request #1161)
 
 ### Fixed
 

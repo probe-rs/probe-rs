@@ -7,7 +7,7 @@ use crate::{
 };
 use anyhow::Result;
 use probe_rs::{debug::debug_info::DebugInfo, Core};
-use probe_rs_cli_util::rtt;
+use probe_rs_cli_util::rtt::{self, ChannelMode, DataFormat};
 
 /// [CoreData] is used to cache data needed by the debugger, on a per-core basis.
 pub struct CoreData {
@@ -58,6 +58,10 @@ impl<'p> CoreHandle<'p> {
             Ok(target_rtt) => {
                 for any_channel in target_rtt.active_channels.iter() {
                     if let Some(up_channel) = &any_channel.up_channel {
+                        if any_channel.data_format == DataFormat::Defmt {
+                            // For defmt, we set the channel to be blocking when full.
+                            up_channel.set_mode(&mut self.core, ChannelMode::BlockIfFull)?;
+                        }
                         debugger_rtt_channels.push(debug_rtt::DebuggerRttChannel {
                             channel_number: up_channel.number(),
                             // This value will eventually be set to true by a VSCode client request "rttWindowOpened"
