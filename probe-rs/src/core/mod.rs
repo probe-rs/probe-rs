@@ -493,8 +493,11 @@ pub trait CoreInterface: MemoryInterface {
     /// Returns `true` if hwardware breakpoints are enabled, `false` otherwise.
     fn hw_breakpoints_enabled(&self) -> bool;
 
-    /// Configure the debug module to ensure software breakpoints will enter Debug Mode.
-    fn debug_on_sw_breakpoint(&mut self, enabled: bool) -> Result<(), error::Error>;
+    /// Configure the target to ensure software breakpoints will enter Debug Mode.
+    fn debug_on_sw_breakpoint(&mut self, _enabled: bool) -> Result<(), error::Error> {
+        // This default will have override methods for architectures that require special behavior, e.g. RISV-V.
+        Ok(())
+    }
 
     /// Get the `Architecture` of the Core.
     fn architecture(&self) -> Architecture;

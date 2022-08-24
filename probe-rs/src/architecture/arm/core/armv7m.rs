@@ -1008,11 +1008,6 @@ impl<'probe> CoreInterface for Armv7m<'probe> {
     fn fpu_support(&mut self) -> Result<bool, crate::error::Error> {
         Ok(self.state.fp_present)
     }
-
-    fn debug_on_sw_breakpoint(&mut self, _enabled: bool) -> Result<(), crate::error::Error> {
-        // This architecture doesn't require any specific configuration to enable this.
-        Ok(())
-    }
 }
 
 impl<'probe> MemoryInterface for Armv7m<'probe> {

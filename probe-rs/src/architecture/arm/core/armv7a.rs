@@ -757,11 +757,6 @@ impl<'probe> CoreInterface for Armv7a<'probe> {
             Ok(())
         }
     }
-
-    fn debug_on_sw_breakpoint(&mut self, _enabled: bool) -> Result<(), crate::error::Error> {
-        // This architecture doesn't require any specific configuration to enable this.
-        Ok(())
-    }
 }
 
 impl<'probe> MemoryInterface for Armv7a<'probe> {
