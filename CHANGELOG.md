@@ -24,11 +24,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - (#350) Flashing and debugging on STM32 chips using WFI instructions should now be stable (fixed in #1177)
+- Fixed rtthost --scan-region to properly support memory range scannig. (#1192)
 - Debug: Improve logic for halt locations used by breakpoints and stepping. (#1156)
 - Debug: Some in-scope variables are excluded from stack_trace. (#1156)
-- Fixed rtthost --scan-region to properly support memory range scannig. (#1192)
 - Debug: Ensure RTT buffer on target is reported to DAP client in 'timely' manner. (#1208)
 - Debug: Provide unique default names on DAP client, when multiple RTT Channels have no configured name. (#1208)
+- Added missing memory regions for ESP32.yaml file, to fix RTT Channel name issue. (#1209)
+- Fix maximum addressable Flash size in ESP32.yaml file, to be 16Mb (was 64Mb). (#1209)
 
 ## [0.13.0]
 
