@@ -4,6 +4,7 @@ use chrono::Local;
 use num_traits::Zero;
 use probe_rs::config::MemoryRegion;
 use probe_rs::Core;
+pub use probe_rs_rtt::ChannelMode;
 use probe_rs_rtt::{DownChannel, Rtt, ScanRegion, UpChannel};
 use serde::Deserialize;
 use std::collections::HashMap;
