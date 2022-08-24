@@ -6,10 +6,12 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/) and this p
 
 ## [Unreleased]
 
+- [#349] Add `PROBE_RUN_SPEED` env variable
 - [#345] Update dev-dependency `serial_test`
 - [#344] Replace `pub(crate)` with `pub`
 - [#343] Mark `v0.3.4` as released in `CHANGELOG.md`
 
+[#349]: https://github.com/knurling-rs/probe-run/pull/349
 [#345]: https://github.com/knurling-rs/probe-run/pull/345
 [#344]: https://github.com/knurling-rs/probe-run/pull/344
 [#343]: https://github.com/knurling-rs/probe-run/pull/343

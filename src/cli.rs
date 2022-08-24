@@ -36,7 +36,7 @@ pub struct Opts {
     pub probe: Option<String>,
 
     /// The probe clock frequency in kHz
-    #[structopt(long)]
+    #[structopt(long, env = "PROBE_RUN_SPEED")]
     pub speed: Option<u32>,
 
     /// Path to an ELF firmware file.
