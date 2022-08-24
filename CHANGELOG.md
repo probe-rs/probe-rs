@@ -30,6 +30,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Debug: Ensure RTT buffer on target is reported to DAP client in 'timely' manner. (#1208)
 - Debug: Provide unique default names on DAP client, when multiple RTT Channels have no configured name. (#1208)
 - Added missing memory regions for ESP32.yaml file, to fix RTT Channel name issue. (#1209)
+- Fix maximum addressable Flash size in ESP32.yaml file, to be 16Mb (was 64Mb). (#1209)
 
 ## [0.13.0]
 
