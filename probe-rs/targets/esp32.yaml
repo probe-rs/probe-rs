@@ -10,9 +10,9 @@ variants:
         core_access_options: !Riscv {}
     memory_map: # From ESP32-C3 Technical Reference Manual, Table 3.2/3.3 Internal/External Memory Address Mapping
       - !Nvm
-        range:
+        range: #16 Mb Max addressable Flash size
           start: 0x0
-          end: 0x04000000
+          end: 0x01000000
         is_boot_memory: true
         cores:
           - main
@@ -51,7 +51,7 @@ flash_algorithms:
     description: A flash loader for the esp32c3.
     default: true
     instructions: QREGxjcFOUADRQUHGcEBRS2glwDH/+eAoHCBRZcAx//ngIAUlwDH/+eAwBEZ5QFFtwU5QAVGI4jFBrJAQQGCgDGBFwPH/2cAYw4XA8f/ZwBjDRN3NgABxxMFoAqCgK6GsoU2hhcDx/9nAIMMAUWCgAAAAAA=
-    load_address: 0x40390000
+    load_address: 0x40390000 # See discussion at https://github.com/probe-rs/probe-rs/pull/1209/#issuecomment-1218430338
     pc_init: 0
     pc_uninit: 108
     pc_program_page: 82
@@ -59,9 +59,9 @@ flash_algorithms:
     pc_erase_all: 74
     data_section_offset: 116
     flash_properties:
-      address_range:
+      address_range: #16 Mb Max addressable Flash size
         start: 0x0
-        end: 0x04000000
+        end: 0x1000000
       page_size: 2048
       erased_byte_value: 255
       program_page_timeout: 1000
