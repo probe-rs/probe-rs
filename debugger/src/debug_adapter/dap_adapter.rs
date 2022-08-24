@@ -518,7 +518,10 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             // Use reset_and_halt(), and then resume again afterwards, depending on the reset_after_halt flag.
             match target_core.core.reset_and_halt(Duration::from_millis(500)) {
                 Ok(_) => {
-                    // For RISCV, we need to re-enable any breakpoints that were previously set, because the core reset 'forgets' them.
+                    // Ensure ebreak enters debug mode, this is necessary for soft breakpoints to work on architectures like RISC-V.
+                    target_core.core.debug_on_sw_breakpoint(true)?;
+
+                    // For RISC-V, we need to re-enable any breakpoints that were previously set, because the core reset 'forgets' them.
                     let saved_breakpoints = target_core
                         .core_data
                         .breakpoints
@@ -587,6 +590,9 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             // Otherwise the probe will run past the `main()` before the DAP Client has had a chance to set breakpoints in `main()`.
             match target_core.core.reset_and_halt(Duration::from_millis(500)) {
                 Ok(_) => {
+                    // Ensure ebreak enters debug mode, this is necessary for soft breakpoints to work on architectures like RISC-V.
+                    target_core.core.debug_on_sw_breakpoint(true)?;
+
                     if let Some(request) = request {
                         return self.send_response::<()>(request, Ok(None));
                     }

@@ -829,7 +829,10 @@ impl Debugger {
                     // Immediately after attaching, halt the core, so that we can finish initalization without bumping into user code.
                     // Depending on supplied `config`, the core will be restarted at the end of initialization in the `configuration_done` request.
                     match halt_core(&mut target_core.core) {
-                        Ok(_) => {}
+                        Ok(_) => {
+                            // Ensure ebreak enters debug mode, this is necessary for soft breakpoints to work on architectures like RISC-V.
+                            target_core.core.debug_on_sw_breakpoint(true)?;
+                        }
                         Err(error) => {
                             debug_adapter.send_error_response(&error)?;
                             return Err(error);

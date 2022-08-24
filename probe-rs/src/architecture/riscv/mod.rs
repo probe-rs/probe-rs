@@ -562,6 +562,16 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
             "Fpu detection not yet implemented"
         )))
     }
+
+    fn debug_on_sw_breakpoint(&mut self, enabled: bool) -> Result<(), crate::error::Error> {
+        let mut dcsr = Dcsr(self.read_core_reg(RegisterId(0x7b0))?.try_into()?);
+
+        dcsr.set_ebreakm(enabled);
+        dcsr.set_ebreaks(enabled);
+        dcsr.set_ebreaku(enabled);
+
+        self.write_csr(0x7b0, dcsr.0).map_err(|e| e.into())
+    }
 }
 
 impl<'probe> MemoryInterface for Riscv32<'probe> {
