@@ -87,137 +87,93 @@ impl Debugger {
         match request {
             None => {
                 // If there are no requests, we poll target cores for status, which includes handling RTT data.
+                // TODO: Currently, debug_adapter.last_known_status only applies to the first core. Needs multi-core implementation.
                 match debug_adapter.last_known_status {
                     CoreStatus::Unknown => {
                         // Don't do anything until we know VSCode's startup sequence is complete, and changes this to either Halted or Running.
                         Ok(DebuggerStatus::ContinueSession)
                     }
                     CoreStatus::Halted(_) => {
-                        // We check for RTT data the first time we have entered halted status, to ensure the buffers are drained.
-                        // After that, for as long as we remain in halted state, we don't need to check RTT again.
-                        // TODO: This only works for a single core, so until it can be redesigned, will use the first one configured.
-                        let check_rtt = if let Some(target_core_config) =
-                            self.config.core_configs.first_mut()
-                        {
-                            if let Ok(mut core_handle) =
-                                session_data.attach_core(target_core_config.core_index)
-                            {
-                                match core_handle.core.status() {
-                                    Ok(new_status) => new_status != debug_adapter.last_known_status,
-                                    Err(error) => {
-                                        let error = DebuggerError::ProbeRs(error);
-                                        let _ = debug_adapter.send_error_response(&error);
-                                        return Err(error);
-                                    }
-                                }
-                            } else {
-                                return Err(DebuggerError::Other(anyhow!(
-                                    "Unable to connect to target core"
-                                )));
-                            }
-                        } else {
-                            return Err(DebuggerError::Other(anyhow!(
-                                "Cannot continue unless one target core configuration is defined."
-                            )));
-                        };
-                        if check_rtt {
-                            session_data.poll_rtt(&self.config, debug_adapter);
-                        } else {
-                            // No need to poll the target status if we know it is halted and waiting for us to do something.
-                            thread::sleep(Duration::from_millis(50)); // Small delay to reduce fast looping costs on the client
-                        }
+                        // If the probe is known to be halted, then we don't need to poll it.
+                        // Small delay to reduce fast looping costs.
+                        thread::sleep(Duration::from_millis(50));
                         Ok(DebuggerStatus::ContinueSession)
                     }
                     _other => {
-                        let received_rtt_data = session_data.poll_rtt(&self.config, debug_adapter);
-
-                        // Check and update the core status.
-                        // TODO: This only works for a single core, so until it can be redesigned, will use the first one configured.
-                        let mut target_core = if let Some(target_core_config) =
-                            self.config.core_configs.first_mut()
-                        {
-                            if let Ok(core_handle) =
-                                session_data.attach_core(target_core_config.core_index)
-                            {
-                                core_handle
+                        if let (core_id, Some(new_status)) = (
+                            0_usize,
+                            session_data
+                                .poll_cores(&self.config, debug_adapter)?
+                                .first()
+                                .cloned(),
+                        ) {
+                            if new_status == debug_adapter.last_known_status {
+                                return Ok(DebuggerStatus::ContinueSession);
                             } else {
-                                return Err(DebuggerError::Other(anyhow!(
-                                    "Unable to connect to target core"
-                                )));
-                            }
-                        } else {
-                            return Err(DebuggerError::Other(anyhow!(
-                                "Cannot continue unless one target core configuration is defined."
-                            )));
-                        };
+                                debug_adapter.last_known_status = new_status;
+                                match new_status {
+                                    CoreStatus::Running | CoreStatus::Sleeping => {
+                                        let event_body = Some(ContinuedEventBody {
+                                            all_threads_continued: Some(true),
+                                            thread_id: core_id as i64,
+                                        });
+                                        debug_adapter.send_event("continued", event_body)?;
+                                    }
+                                    CoreStatus::Halted(_) => {
+                                        let event_body = Some(StoppedEventBody {
+                                            reason: new_status.short_long_status().0.to_owned(),
+                                            description: Some(
+                                                new_status.short_long_status().1.to_owned(),
+                                            ),
+                                            thread_id: Some(core_id as i64),
+                                            preserve_focus_hint: Some(false),
+                                            text: None,
+                                            all_threads_stopped: Some(true),
+                                            hit_breakpoint_ids: None,
+                                        });
+                                        debug_adapter.send_event("stopped", event_body)?;
+                                    }
+                                    CoreStatus::LockedUp => {
+                                        debug_adapter.show_message(
+                                            MessageSeverity::Error,
+                                            new_status.short_long_status().1.to_owned(),
+                                        );
+                                        return Err(DebuggerError::Other(anyhow!(new_status
+                                            .short_long_status()
+                                            .1
+                                            .to_owned())));
+                                    }
+                                    CoreStatus::Unknown => {
+                                        debug_adapter.send_error_response(
+                                            &DebuggerError::Other(anyhow!(
+                                                "Unknown Device status reveived from Probe-rs"
+                                            )),
+                                        )?;
 
-                        let new_status = match target_core.core.status() {
-                            Ok(new_status) => new_status,
-                            Err(error) => {
-                                let error = DebuggerError::ProbeRs(error);
-                                let _ = debug_adapter.send_error_response(&error);
-                                return Err(error);
-                            }
-                        };
-
-                        // Only sleep (nap for a short duration) IF the probe's status hasn't changed AND there was no RTT data in the last poll.
-                        // Otherwise loop again to keep things flowing as fast as possible.
-                        // The justification is that any client side CPU used to keep polling is a small price to pay for maximum throughput of debug requests and RTT from the probe.
-                        if received_rtt_data && new_status == debug_adapter.last_known_status {
-                            return Ok(DebuggerStatus::ContinueSession);
-                        } else if new_status == debug_adapter.last_known_status {
-                            thread::sleep(Duration::from_millis(50)); // Small delay to reduce fast looping costs.
-                            return Ok(DebuggerStatus::ContinueSession);
-                        } else {
-                            debug_adapter.last_known_status = new_status;
-                        };
-
-                        match new_status {
-                            CoreStatus::Running | CoreStatus::Sleeping => {
-                                let event_body = Some(ContinuedEventBody {
-                                    all_threads_continued: Some(true),
-                                    thread_id: target_core.core.id() as i64,
-                                });
-                                debug_adapter.send_event("continued", event_body)?;
-                            }
-                            CoreStatus::Halted(_) => {
-                                let event_body = Some(StoppedEventBody {
-                                    reason: new_status.short_long_status().0.to_owned(),
-                                    description: Some(new_status.short_long_status().1.to_owned()),
-                                    thread_id: Some(target_core.core.id() as i64),
-                                    preserve_focus_hint: Some(false),
-                                    text: None,
-                                    all_threads_stopped: Some(true),
-                                    hit_breakpoint_ids: None,
-                                });
-                                debug_adapter.send_event("stopped", event_body)?;
-                            }
-                            CoreStatus::LockedUp => {
-                                debug_adapter.show_message(
-                                    MessageSeverity::Error,
-                                    new_status.short_long_status().1.to_owned(),
-                                );
-                                return Err(DebuggerError::Other(anyhow!(new_status
-                                    .short_long_status()
-                                    .1
-                                    .to_owned())));
-                            }
-                            CoreStatus::Unknown => {
-                                debug_adapter.send_error_response(&DebuggerError::Other(
-                                    anyhow!("Unknown Device status reveived from Probe-rs"),
-                                ))?;
-
-                                return Err(DebuggerError::Other(anyhow!(
-                                    "Unknown Device status reveived from Probe-rs"
-                                )));
-                            }
-                        };
+                                        return Err(DebuggerError::Other(anyhow!(
+                                            "Unknown Device status reveived from Probe-rs"
+                                        )));
+                                    }
+                                };
+                            };
+                        }
                         Ok(DebuggerStatus::ContinueSession)
                     }
                 }
             }
             Some(request) => {
-                // First, attach to the core.
+                // Always poll the core first, so that we know what its status is, and can read RTT data, etc. before handling the next requeest.
+                if debug_adapter.last_known_status != CoreStatus::Unknown {
+                    if let Some(new_status) = session_data
+                        .poll_cores(&self.config, debug_adapter)?
+                        .first()
+                        .cloned()
+                    {
+                        debug_adapter.last_known_status = new_status;
+                    }
+                }
+
+                // Attach to the core. so that we have the handle available for processing the request.
                 // TODO: This only works for a single core, so until it can be redesigned, will use the first one configured.
                 let mut target_core = if let Some(target_core_config) =
                     self.config.core_configs.first_mut()

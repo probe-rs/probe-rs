@@ -138,16 +138,6 @@ impl RttActiveChannel {
                 ..Default::default() // Will set intelligent defaults below ...
             },
         };
-        let name = up_channel
-            .as_ref()
-            .and_then(|up| up.name().map(Into::into))
-            .or_else(|| {
-                down_channel
-                    .as_ref()
-                    .and_then(|down| down.name().map(Into::into))
-            })
-            .or_else(|| full_config.clone().channel_name)
-            .unwrap_or_else(|| "Unnamed RTT channel".to_string());
         let buffer_size: usize = up_channel
             .as_ref()
             .map(|up| up.buffer_size())
@@ -172,6 +162,22 @@ impl RttActiveChannel {
         } else {
             (full_config.data_format, false)
         };
+        let name = up_channel
+            .as_ref()
+            .and_then(|up| up.name().map(Into::into))
+            .or_else(|| {
+                down_channel
+                    .as_ref()
+                    .and_then(|down| down.name().map(Into::into))
+            })
+            .or_else(|| full_config.clone().channel_name)
+            .unwrap_or_else(|| {
+                format!(
+                    "Unnamed {:?} RTT channel - {}",
+                    data_format,
+                    full_config.channel_number.unwrap_or(0)
+                )
+            });
         Self {
             up_channel,
             down_channel,
