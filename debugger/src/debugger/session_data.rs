@@ -11,7 +11,7 @@ use probe_rs::{
     config::TargetSelector, debug::debug_info::DebugInfo, CoreStatus, DebugProbeError, Permissions,
     Probe, ProbeCreationError, Session,
 };
-use std::env::set_current_dir;
+use std::{env::set_current_dir, thread, time::Duration};
 
 /// The supported breakpoint types
 #[derive(Clone, Debug, PartialEq)]
@@ -203,55 +203,92 @@ impl SessionData {
         }
     }
 
-    /// Check all target cores to ensure they have a configured and initialized RTT connections and if they do, process the RTT data.
-    /// Return true if at least one channel on one core had data in the buffer.
-    pub(crate) fn poll_rtt<P: ProtocolAdapter>(
+    /// The target has no way of notifying the debug adapater when things changes, so we have to constantly poll it to determine:
+    /// - Whether the target is running, and what its actual status is.
+    /// - Whether the target has data in its RTT buffers that we need to read and pass to the client.
+    ///
+    /// To optimize this polling process while also optimizing the reading of RTT data, we apply a couple of principles:
+    /// 1. Sleep (nap for a short duration) between polling the target, but:
+    /// - Only sleep IF the probe's status hasn't changed AND there was no RTT data in the last poll.
+    /// - Otherwise move on without delay, to keep things flowing as fast as possible.
+    /// - The justification is that any client side CPU used to keep polling is a small price to pay for maximum throughput of debug requests and RTT from the probe.
+    /// 2. Check all target cores to ensure they have a configured and initialized RTT connections and if they do, process the RTT data.
+    /// - To keep things efficient, the polling of RTT data is done only when we expect there to be data available.
+    /// - We check for RTT only when the core has an RTT connection configured, and one of the following is true:
+    ///   - While the core is NOT halted, because core processing can generate new data at any time.
+    ///   - The first time we have entered halted status, to ensure the buffers are drained. After that, for as long as we remain in halted state, we don't need to check RTT again.
+
+    /// Return a Vec of [`CoreStatus`] (one entry per core) after this process has completed.
+    pub(crate) fn poll_cores<P: ProtocolAdapter>(
         &mut self,
         session_config: &SessionConfig,
         debug_adapter: &mut DebugAdapter<P>,
-    ) -> bool {
-        let mut at_least_one_channel_had_data = false;
+    ) -> Result<Vec<CoreStatus>, DebuggerError> {
+        let mut no_delay_required = false;
+        let mut status_of_cores: Vec<CoreStatus> = vec![];
+        let target_memory_map = &self.session.target().memory_map.clone();
         for core_config in session_config.core_configs.iter() {
-            if core_config.rtt_config.enabled {
-                let target_memory_map = self.session.target().memory_map.clone();
-                if let Ok(mut target_core) = self.attach_core(core_config.core_index) {
-                    if let Some(core_rtt) = &mut target_core.core_data.rtt_connection {
-                        // We should poll the target for rtt data.
-                        at_least_one_channel_had_data |=
-                            core_rtt.process_rtt_data(debug_adapter, &mut target_core.core);
-                    } else {
-                        // We have not yet reached the point in the target application where the RTT buffers are initialized, so let's check again.
-                        if debug_adapter.last_known_status != CoreStatus::Unknown
-                        // Do not attempt this until we have processed the MSDAP request for "configurationDone" ...
+            if let Ok(mut target_core) = self.attach_core(core_config.core_index) {
+                match target_core.core.status() {
+                    Ok(new_status) => {
+                        // If appropriate, check for RTT data.
+                        if core_config.rtt_config.enabled
+                            && ((matches!(new_status, CoreStatus::Halted(_))
+                                && new_status != debug_adapter.last_known_status)
+                                || !matches!(new_status, CoreStatus::Halted(_)))
                         {
-                            #[allow(clippy::unwrap_used)]
-                            match target_core.attach_to_rtt(
-                                debug_adapter,
-                                &target_memory_map,
-                                core_config.program_binary.as_ref().unwrap(),
-                                &core_config.rtt_config,
-                            ) {
-                                Ok(_) => {
-                                    // Nothing else to do.
-                                }
-                                Err(error) => {
-                                    debug_adapter
-                                        .send_error_response(&DebuggerError::Other(error))
-                                        .ok();
+                            if let Some(core_rtt) = &mut target_core.core_data.rtt_connection {
+                                // We should poll the target for rtt data.
+                                no_delay_required |=
+                                    core_rtt.process_rtt_data(debug_adapter, &mut target_core.core);
+                            } else {
+                                // We have not yet reached the point in the target application where the RTT buffers are initialized, so let's check again.
+                                if debug_adapter.last_known_status != CoreStatus::Unknown
+                                // Do not attempt this until we have processed the MSDAP request for "configurationDone" ...
+                                {
+                                    #[allow(clippy::unwrap_used)]
+                                    match target_core.attach_to_rtt(
+                                        debug_adapter,
+                                        target_memory_map,
+                                        core_config.program_binary.as_ref().unwrap(),
+                                        &core_config.rtt_config,
+                                    ) {
+                                        Ok(_) => {
+                                            // Nothing else to do.
+                                        }
+                                        Err(error) => {
+                                            debug_adapter
+                                                .send_error_response(&DebuggerError::Other(error))
+                                                .ok();
+                                        }
+                                    }
                                 }
                             }
                         }
+
+                        // Do we need to enforce a delay between polls?
+                        no_delay_required |= new_status != debug_adapter.last_known_status;
+
+                        status_of_cores.push(new_status);
                     }
-                } else {
-                    log::debug!(
-                        "Failed to attach to target core #{}. Cannot poll for RTT data.",
-                        core_config.core_index
-                    );
+                    Err(error) => {
+                        let error = DebuggerError::ProbeRs(error);
+                        let _ = debug_adapter.send_error_response(&error);
+                        return Err(error);
+                    }
                 }
             } else {
-                // No RTT configured.
+                log::debug!(
+                    "Failed to attach to target core #{}. Cannot poll for RTT data.",
+                    core_config.core_index
+                );
             }
         }
-        at_least_one_channel_had_data
+
+        if !no_delay_required {
+            thread::sleep(Duration::from_millis(50)); // Small delay to reduce fast looping costs.
+        };
+
+        Ok(status_of_cores)
     }
 }
