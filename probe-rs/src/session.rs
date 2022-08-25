@@ -576,6 +576,13 @@ impl Drop for Session {
             log::warn!("Could not clear all hardware breakpoints: {:?}", err);
         }
 
+        if let Err(err) = { 0..self.cores.len() }.try_for_each(|i| {
+            self.core(i)
+                .and_then(|mut core| core.debug_on_sw_breakpoint(false))
+        }) {
+            log::warn!("Could not reset software breakpoint behaviour: {:?}", err);
+        }
+
         if let Err(err) = { 0..self.cores.len() }
             .try_for_each(|i| self.core(i).and_then(|mut core| core.on_session_stop()))
         {

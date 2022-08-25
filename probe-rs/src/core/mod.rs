@@ -493,6 +493,12 @@ pub trait CoreInterface: MemoryInterface {
     /// Returns `true` if hwardware breakpoints are enabled, `false` otherwise.
     fn hw_breakpoints_enabled(&self) -> bool;
 
+    /// Configure the target to ensure software breakpoints will enter Debug Mode.
+    fn debug_on_sw_breakpoint(&mut self, _enabled: bool) -> Result<(), error::Error> {
+        // This default will have override methods for architectures that require special behavior, e.g. RISV-V.
+        Ok(())
+    }
+
     /// Get the `Architecture` of the Core.
     fn architecture(&self) -> Architecture;
 
@@ -848,6 +854,11 @@ impl<'probe> Core<'probe> {
     /// Enables breakpoints on this core. If a breakpoint is set, it will halt as soon as it is hit.
     fn enable_breakpoints(&mut self, state: bool) -> Result<(), error::Error> {
         self.inner.enable_breakpoints(state)
+    }
+
+    /// Configure the debug module to ensure software breakpoints will enter Debug Mode.
+    pub fn debug_on_sw_breakpoint(&mut self, enabled: bool) -> Result<(), error::Error> {
+        self.inner.debug_on_sw_breakpoint(enabled)
     }
 
     /// Returns a list of all the registers of this core.
