@@ -796,6 +796,7 @@ impl<'probe> CoreInterface for Armv7m<'probe> {
 
     fn step(&mut self) -> Result<CoreInformation, Error> {
         // First check if we stopped on a breakpoint, because this requires special handling before we can continue.
+        let pc_before_step = self.read_core_reg(register::PC.id)?;
         let was_breakpoint =
             if self.state.current_state == CoreStatus::Halted(HaltReason::Breakpoint) {
                 self.enable_breakpoints(false)?;
@@ -826,6 +827,9 @@ impl<'probe> CoreInterface for Armv7m<'probe> {
         self.memory.flush()?;
 
         self.wait_for_core_halted(Duration::from_millis(100))?;
+
+        // Try to read the new program counter.
+        let mut pc_after_step = self.read_core_reg(register::PC.id)?;
 
         // Re-enable breakpoints before we continue.
         if was_breakpoint {
