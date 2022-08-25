@@ -796,14 +796,16 @@ impl<'probe> CoreInterface for Armv7m<'probe> {
 
     fn step(&mut self) -> Result<CoreInformation, Error> {
         // First check if we stopped on a breakpoint, because this requires special handling before we can continue.
-        let pc_before_step = self.read_core_reg(register::PC.id)?;
-        let was_breakpoint =
-            if self.state.current_state == CoreStatus::Halted(HaltReason::Breakpoint) {
-                self.enable_breakpoints(false)?;
-                true
-            } else {
-                false
-            };
+        let pc_before_step = self.read_core_reg(self.registers().program_counter().id)?;
+        let was_breakpoint = if matches!(
+            self.state.current_state,
+            CoreStatus::Halted(HaltReason::Breakpoint(_))
+        ) {
+            self.enable_breakpoints(false)?;
+            true
+        } else {
+            false
+        };
 
         let mut dhcsr = Dhcsr(self.memory.read_word_32(Dhcsr::ADDRESS)?);
 
@@ -829,7 +831,7 @@ impl<'probe> CoreInterface for Armv7m<'probe> {
         self.wait_for_core_halted(Duration::from_millis(100))?;
 
         // Try to read the new program counter.
-        let mut pc_after_step = self.read_core_reg(register::PC.id)?;
+        let mut pc_after_step = self.read_core_reg(self.registers().program_counter().id)?;
 
         // Re-enable breakpoints before we continue.
         if was_breakpoint {
@@ -842,7 +844,7 @@ impl<'probe> CoreInterface for Armv7m<'probe> {
                 log::debug!("Encountered a breakpoint instruction @ {}. We need to manually advance the program counter to the next instruction.", pc_after_step);
                 // Advance the program counter by the architecture specific byte size of the BKPT instruction.
                 pc_after_step.add_bytes(2)?;
-                self.write_core_reg(register::PC.id, pc_after_step)?;
+                self.write_core_reg(self.registers().program_counter().id, pc_after_step)?;
             }
             self.enable_breakpoints(true)?;
         }

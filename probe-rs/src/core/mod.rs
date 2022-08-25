@@ -1061,6 +1061,17 @@ impl CoreStatus {
     }
 }
 
+/// When the core halts due to a breakpoint request, some architectures will allow us to distinguish between a software and hardware breakpoint.
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
+pub enum BreakpointCause {
+    /// We encountered a hardware breakpoint.
+    Hardware,
+    /// We encountered a software breakpoint instruction.
+    Software,
+    /// We were not able to distinguish if this was a hardware or software breakpoint.
+    Unknown,
+}
+
 /// The reason why a core was halted.
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum HaltReason {
@@ -1070,9 +1081,8 @@ pub enum HaltReason {
     /// step ends up on a breakpoint, after which both breakpoint and step / request
     /// are set.
     Multiple,
-    /// Core halted due to a breakpoint, either
-    /// a *soft* or a *hard* breakpoint.
-    Breakpoint,
+    /// Core halted due to a breakpoint. The cause is `Unknown` if we cannot distinguish between a hardware and software breakpoint.
+    Breakpoint(BreakpointCause),
     /// Core halted due to an exception, e.g. an
     /// an interrupt.
     Exception,

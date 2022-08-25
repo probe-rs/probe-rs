@@ -2,7 +2,7 @@
 
 #![allow(clippy::inconsistent_digit_grouping)]
 
-use crate::core::Architecture;
+use crate::core::{Architecture, BreakpointCause};
 use crate::{CoreInterface, CoreType, InstructionSet};
 use anyhow::{anyhow, Result};
 use communication_interface::{
@@ -237,15 +237,29 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
     }
 
     fn step(&mut self) -> Result<crate::core::CoreInformation, crate::Error> {
-        // First check if we stopped on a breakpoint, because this requires special handling before we can continue.
-        let was_breakpoint = if self.hw_breakpoints_enabled()
-            && self.status()? == CoreStatus::Halted(HaltReason::Breakpoint)
+        let halt_reason = self.status()?;
+        if matches!(
+            halt_reason,
+            CoreStatus::Halted(HaltReason::Breakpoint(BreakpointCause::Software))
+        ) && self.state.hw_breakpoints_enabled
         {
+            // If we are halted on a software breakpoint AND we have passed the flashing operation, we can skip the single step and manually advance the dpc.
+            let mut debug_pc = self.read_core_reg(RegisterId(0x7b1))?;
+            // Advance the dpc by the size of the EBREAK (c.ebreak) instruction.
+            // TODO: The riscv- "c"/compressed variant uses a 2 byte instruction length for c.ebreak. We need to differentiate between different riscv- variants to make this fool proof.
+            debug_pc.add_bytes(2)?;
+
+            self.write_core_reg(RegisterId(0x7b1), debug_pc)?;
+            return Ok(CoreInformation {
+                pc: debug_pc.try_into()?,
+            });
+        } else if matches!(
+            halt_reason,
+            CoreStatus::Halted(HaltReason::Breakpoint(BreakpointCause::Hardware))
+        ) {
+            // If we are halted on a hardware breakpoint.
             self.enable_breakpoints(false)?;
-            true
-        } else {
-            false
-        };
+        }
 
         let mut dcsr = Dcsr(self.read_core_reg(RegisterId(0x7b0))?.try_into()?);
         // Set it up, so that the next `self.run()` will only do a single step
@@ -270,7 +284,11 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
         self.write_csr(0x7b0, dcsr.0)?;
 
         // Re-enable breakpoints before we continue.
-        if was_breakpoint {
+        if matches!(
+            halt_reason,
+            CoreStatus::Halted(HaltReason::Breakpoint(BreakpointCause::Hardware))
+        ) {
+            // If we are halted on a hardware breakpoint.
             self.enable_breakpoints(true)?;
         }
 
@@ -492,9 +510,9 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
 
             let reason = match dcsr.cause() {
                 // An ebreak instruction was hit
-                1 => HaltReason::Breakpoint,
+                1 => HaltReason::Breakpoint(BreakpointCause::Software),
                 // Trigger module caused halt
-                2 => HaltReason::Breakpoint,
+                2 => HaltReason::Breakpoint(BreakpointCause::Hardware),
                 // Debugger requested a halt
                 3 => HaltReason::Request,
                 // Core halted after single step
@@ -743,7 +761,7 @@ bitfield! {
         stepie, set_stepie: 11;
         stopcount, set_stopcount: 10;
         stoptime, set_stoptime: 9;
-        cause, _: 8, 6;
+        cause, set_cause: 8, 6;
         mprven, set_mprven: 4;
         nmip, _: 3;
         step, set_step: 2;

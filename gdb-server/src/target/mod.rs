@@ -9,7 +9,7 @@ mod utils;
 
 use super::arch::RuntimeArch;
 use gdbstub::stub::state_machine::GdbStubStateMachine;
-use probe_rs::{CoreStatus, Error, HaltReason, Session};
+use probe_rs::{BreakpointCause, CoreStatus, Error, HaltReason, Session};
 
 use std::net::{SocketAddr, TcpListener, TcpStream};
 use std::num::NonZeroUsize;
@@ -170,7 +170,9 @@ impl<'a> RuntimeTarget<'a> {
                                 if let CoreStatus::Halted(reason) = status {
                                     let tid = NonZeroUsize::new(i + 1).unwrap();
                                     stop_reason = Some(match reason {
-                                        HaltReason::Breakpoint => {
+                                        HaltReason::Breakpoint(BreakpointCause::Hardware)
+                                        | HaltReason::Breakpoint(BreakpointCause::Unknown) => {
+                                            // Some architectures do not allow us to distinguish between hardware and software breakpoints, so we just treat `Unknown` as hardware breakpoints.
                                             MultiThreadStopReason::HwBreak(tid)
                                         }
                                         HaltReason::Step => MultiThreadStopReason::DoneStep,

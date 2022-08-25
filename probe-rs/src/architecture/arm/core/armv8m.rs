@@ -180,14 +180,16 @@ impl<'probe> CoreInterface for Armv8m<'probe> {
 
     fn step(&mut self) -> Result<CoreInformation, Error> {
         // First check if we stopped on a breakpoint, because this requires special handling before we can continue.
-        let was_breakpoint =
-            if self.state.current_state == CoreStatus::Halted(HaltReason::Breakpoint) {
-                log::debug!("Core was halted on breakpoint, disabling breakpoints");
-                self.enable_breakpoints(false)?;
-                true
-            } else {
-                false
-            };
+        let pc_before_step = self.read_core_reg(self.registers().program_counter().id)?;
+        let was_breakpoint = if matches!(
+            self.state.current_state,
+            CoreStatus::Halted(HaltReason::Breakpoint(_))
+        ) {
+            self.enable_breakpoints(false)?;
+            true
+        } else {
+            false
+        };
 
         let mut value = Dhcsr(0);
         // Leave halted state.
@@ -203,17 +205,27 @@ impl<'probe> CoreInterface for Armv8m<'probe> {
 
         self.wait_for_core_halted(Duration::from_millis(100))?;
 
+        // Try to read the new program counter.
+        let mut pc_after_step = self.read_core_reg(self.registers().program_counter().id)?;
+
         // Re-enable breakpoints before we continue.
         if was_breakpoint {
+            // If we were stopped on a software breakpoint, then we need to manually advance the PC, or else we will be stuck here forever.
+            if pc_before_step == pc_after_step
+                && !self
+                    .hw_breakpoints()?
+                    .contains(&pc_before_step.try_into().ok())
+            {
+                log::debug!("Encountered a breakpoint instruction @ {}. We need to manually advance the program counter to the next instruction.", pc_after_step);
+                // Advance the program counter by the architecture specific byte size of the BKPT instruction.
+                pc_after_step.add_bytes(2)?;
+                self.write_core_reg(self.registers().program_counter().id, pc_after_step)?;
+            }
             self.enable_breakpoints(true)?;
         }
 
-        // try to read the program counter
-        let pc_value = self.read_core_reg(register::PC.id)?;
-
-        // get pc
         Ok(CoreInformation {
-            pc: pc_value.try_into()?,
+            pc: pc_after_step.try_into()?,
         })
     }
 
