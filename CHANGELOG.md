@@ -9,19 +9,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Added PartialEq Trait to the struct DebugProbeInfo. (#1173)
 - Added support for configuring trace data destinations (#1177)
-    * Tracing on M4 architectures utilize the TPIU for all hardware tracing (#1182)
+  - Tracing on M4 architectures utilize the TPIU for all hardware tracing (#1182)
 - ITM tracing can now be completed using the probe-rs CLI (#1180)
 - Added support for MIMXRT10xx targets (#1174)
 - Added support for JTAG commands via CMSIS-DAP protocol
+- Added support for in-line (column specific) breakpoints where multiple statements (potential breakpoints) are on the same line of source code. (#1156)
+- Added support for MSP432P4XX targets (#1201)
 
 ### Changed
+
 - SWV vendor configuration has been refactored into sequences and trace functions have been renamed:
-    * `Session::setup_swv` has been renamed to `Session::setup_tracing`
-    * `Session::read_swo` has been renamed to `Session::read_trace_data`
+  - `Session::setup_swv` has been renamed to `Session::setup_tracing`
+  - `Session::read_swo` has been renamed to `Session::read_trace_data`
+- `probe-rs-debugger` RISC-V `ebreak` instruction will enter Debug Mode (#1213)
+- RTT: When a channel format is `defmt`, automatically set the channel mode to `BlockingIfFull` on attach. (Enhancement request #1161)
 
 ### Fixed
-* (#350) Flashing and debugging on STM32 chips using WFI instructions should now be stable (fixed in #1177)
-* Fixed rtthost --scan-region to properly support memory range scannig. (#1192)
+
+- (#350) Flashing and debugging on STM32 chips using WFI instructions should now be stable (fixed in #1177)
+- Fixed rtthost --scan-region to properly support memory range scannig. (#1192)
+- Debug: Improve logic for halt locations used by breakpoints and stepping. (#1156)
+- Debug: Some in-scope variables are excluded from stack_trace. (#1156)
+- Debug: Ensure RTT buffer on target is reported to DAP client in 'timely' manner. (#1208)
+- Debug: Provide unique default names on DAP client, when multiple RTT Channels have no configured name. (#1208)
+- Added missing memory regions for ESP32.yaml file, to fix RTT Channel name issue. (#1209)
+- Fix maximum addressable Flash size in ESP32.yaml file, to be 16Mb (was 64Mb). (#1209)
 
 ## [0.13.0]
 

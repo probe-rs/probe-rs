@@ -5,11 +5,7 @@ use super::{
 };
 use crate::config::NvmRegion;
 use crate::memory::MemoryInterface;
-use crate::{
-    core::{Architecture, RegisterFile},
-    session::Session,
-    Core, InstructionSet, RegisterId,
-};
+use crate::{core::RegisterFile, session::Session, Core, InstructionSet};
 use std::{fmt::Debug, time::Duration};
 
 pub(super) trait Operation {
@@ -630,15 +626,8 @@ impl<'probe, O: Operation> ActiveFlasher<'probe, O> {
             }
         }
 
-        if self.core.architecture() == Architecture::Riscv {
-            // Ensure ebreak enters debug mode, this is necessary for soft breakpoints to work.
-            let dcsr: u32 = self.core.read_core_reg(RegisterId::from(0x7b0))?;
-
-            self.core.write_core_reg(
-                RegisterId::from(0x7b0),
-                dcsr | (1 << 15) | (1 << 13) | (1 << 12),
-            )?;
-        }
+        // Ensure RISC-V `ebreak` instruction enters debug mode, this is necessary for soft breakpoints to work.
+        self.core.debug_on_sw_breakpoint(true)?;
 
         // Resume target operation.
         self.core.run()?;
