@@ -15,7 +15,7 @@ use crate::{
             general::info::{CapabilitiesCommand, PacketCountCommand, SWOTraceBufferSizeCommand},
             CmsisDapError,
         },
-        BatchCommand,
+        BatchCommand, JtagWriteCommand,
     },
     DebugProbe, DebugProbeError, DebugProbeSelector, Error as ProbeRsError, WireProtocol,
 };
@@ -44,6 +44,8 @@ use commands::{
 };
 
 use std::time::Duration;
+
+use self::commands::jtag;
 
 pub struct CmsisDap {
     pub device: CmsisDapDevice,
@@ -462,7 +464,13 @@ impl DebugProbe for CmsisDap {
             match_retry: 0,
         })?;
 
-        self.configure_swd(swd::configure::ConfigureRequest {})?;
+        match self.active_protocol() {
+            Some(WireProtocol::Jtag) => {}
+            Some(WireProtocol::Swd) => {
+                self.configure_swd(swd::configure::ConfigureRequest {})?;
+            }
+            None => todo!(),
+        }
 
         // Tell the probe we are connected so it can turn on an LED.
         let _: Result<HostStatusResponse, _> =
