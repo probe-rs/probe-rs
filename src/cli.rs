@@ -85,6 +85,10 @@ pub struct Opts {
     /// Arguments passed after the ELF file path are discarded
     #[structopt(name = "REST")]
     _rest: Vec<String>,
+
+    /// Verifies the written program.
+    #[structopt(long)]
+    pub verify: bool,
 }
 
 pub fn handle_arguments() -> anyhow::Result<i32> {
