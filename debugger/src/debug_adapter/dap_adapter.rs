@@ -1312,6 +1312,11 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                 .riscv()
                 .mode(riscvArchMode::RiscV32)
                 .endian(Endian::Little)
+                .build(),
+            InstructionSet::RV32C => Capstone::new()
+                .riscv()
+                .mode(riscvArchMode::RiscV32)
+                .endian(Endian::Little)
                 .extra_mode(std::iter::once(
                     capstone::arch::riscv::ArchExtraMode::RiscVC,
                 ))
@@ -1322,7 +1327,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
 
         // Adjust instruction offset as required for variable length instruction sets.
         let instruction_offset_as_bytes = match target_instruction_set {
-            InstructionSet::Thumb2 | InstructionSet::RV32 => {
+            InstructionSet::Thumb2 | InstructionSet::RV32C => {
                 // Since we cannot guarantee the size of individual instructions, let's assume we will read the 120% of the requested number of 16-bit instructions.
                 (instruction_offset
                     * target_core
@@ -1332,7 +1337,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                     / 4
                     * 5
             }
-            InstructionSet::A32 | InstructionSet::A64 => {
+            InstructionSet::A32 | InstructionSet::A64 | InstructionSet::RV32 => {
                 instruction_offset
                     * target_core
                         .core

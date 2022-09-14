@@ -245,9 +245,12 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
         {
             // If we are halted on a software breakpoint AND we have passed the flashing operation, we can skip the single step and manually advance the dpc.
             let mut debug_pc = self.read_core_reg(RegisterId(0x7b1))?;
-            // Advance the dpc by the size of the EBREAK (c.ebreak) instruction.
-            // TODO: The riscv- "c"/compressed variant uses a 2 byte instruction length for c.ebreak. We need to differentiate between different riscv- variants to make this fool proof.
-            debug_pc.incremenet_address(2)?;
+            // Advance the dpc by the size of the EBREAK (ebreak or c.ebreak) instruction.
+            if matches!(self.instruction_set()?, InstructionSet::RV32C) {
+                debug_pc.incremenet_address(2)?;
+            } else {
+                debug_pc.incremenet_address(4)?;
+            }
 
             self.write_core_reg(RegisterId(0x7b1), debug_pc)?;
             return Ok(CoreInformation {
@@ -350,8 +353,9 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
                     // An exception means we have to read tdata1 to discover the type
                     let tdata_val = self.read_csr(tdata1)?;
 
-                    // TODO: Proper handle xlen
-                    let xlen = 32;
+                    // Read the mxl field from the misa register (see RISC-V Privileged Spec, 3.1.1)
+                    let misa_value = Misa(self.read_csr(0x301)?);
+                    let xlen = u32::pow(2, misa_value.mxl() + 4);
 
                     let trigger_type = tdata_val >> (xlen - 4);
 
@@ -495,7 +499,14 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
     }
 
     fn instruction_set(&mut self) -> Result<InstructionSet, Error> {
-        Ok(InstructionSet::RV32)
+        let misa_value = Misa(self.read_csr(0x301)?);
+
+        // Check if the Bit at position 2 (signifies letter C, for compressed) is set.
+        if misa_value.extensions() & (1 << 2) != 0 {
+            Ok(InstructionSet::RV32C)
+        } else {
+            Ok(InstructionSet::RV32)
+        }
     }
 
     fn status(&mut self) -> Result<crate::core::CoreStatus, crate::Error> {
@@ -876,4 +887,15 @@ bitfield! {
     execute, set_execute: 2;
     store, set_store: 1;
     load, set_load: 0;
+}
+
+bitfield! {
+    /// Isa and Extensions (see RISC-V Privileged Spec, 3.1.1)
+    pub struct Misa(u32);
+    impl Debug;
+
+    /// Machine XLEN
+    mxl, _: 31, 30;
+    /// Standard RISC-V extensions
+    extensions, _: 25, 0;
 }
