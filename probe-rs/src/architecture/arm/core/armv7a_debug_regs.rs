@@ -2,7 +2,7 @@
 use bitfield::bitfield;
 use std::mem::size_of;
 
-use crate::HaltReason;
+use crate::{core::BreakpointCause, HaltReason};
 
 /// A debug register that is accessible to the external debugger
 pub trait Armv7DebugRegister {
@@ -235,11 +235,11 @@ impl Dbgdscr {
                 // Halt request from debugger
                 0b0000 => HaltReason::Request,
                 // Breakpoint debug event
-                0b0001 => HaltReason::Breakpoint,
+                0b0001 => HaltReason::Breakpoint(BreakpointCause::Hardware),
                 // Async watchpoint debug event
                 0b0010 => HaltReason::Watchpoint,
                 // BKPT instruction
-                0b0011 => HaltReason::Breakpoint,
+                0b0011 => HaltReason::Breakpoint(BreakpointCause::Software),
                 // External halt request
                 0b0100 => HaltReason::External,
                 // Vector catch
@@ -247,7 +247,7 @@ impl Dbgdscr {
                 // OS Unlock vector catch
                 0b1000 => HaltReason::Exception,
                 // Sync watchpoint debug event
-                0b1010 => HaltReason::Breakpoint,
+                0b1010 => HaltReason::Watchpoint,
                 // All other values are reserved
                 _ => HaltReason::Unknown,
             }

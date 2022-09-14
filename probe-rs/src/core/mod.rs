@@ -132,6 +132,48 @@ pub enum RegisterValue {
 }
 
 impl RegisterValue {
+    /// A helper function to increment an address by a fixed number of bytes.
+    pub fn incremenet_address(&mut self, bytes: usize) -> Result<(), Error> {
+        match self {
+            RegisterValue::U32(value) => {
+                if let Some(reg_val) = value.checked_add(bytes as u32) {
+                    *value = reg_val;
+                    Ok(())
+                } else {
+                    Err(Error::Other(anyhow!(
+                        "Overflow error: Attempting to add {} bytes to Register value {}",
+                        bytes,
+                        self
+                    )))
+                }
+            }
+            RegisterValue::U64(value) => {
+                if let Some(reg_val) = value.checked_add(bytes as u64) {
+                    *value = reg_val;
+                    Ok(())
+                } else {
+                    Err(Error::Other(anyhow!(
+                        "Overflow error: Attempting to add {} bytes to Register value {}",
+                        bytes,
+                        self
+                    )))
+                }
+            }
+            RegisterValue::U128(value) => {
+                if let Some(reg_val) = value.checked_add(bytes as u128) {
+                    *value = reg_val;
+                    Ok(())
+                } else {
+                    Err(Error::Other(anyhow!(
+                        "Overflow error: Attempting to add {} bytes to Register value {}",
+                        bytes,
+                        self
+                    )))
+                }
+            }
+        }
+    }
+
     /// A helper function to determine if the contained register value is equal to the maximum value that can be stored in that datatype.
     pub fn is_max_value(&self) -> bool {
         match self {
@@ -199,6 +241,7 @@ impl core::fmt::Display for RegisterValue {
         }
     }
 }
+
 impl From<u32> for RegisterValue {
     fn from(val: u32) -> Self {
         Self::U32(val)
@@ -1018,6 +1061,17 @@ impl CoreStatus {
     }
 }
 
+/// When the core halts due to a breakpoint request, some architectures will allow us to distinguish between a software and hardware breakpoint.
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
+pub enum BreakpointCause {
+    /// We encountered a hardware breakpoint.
+    Hardware,
+    /// We encountered a software breakpoint instruction.
+    Software,
+    /// We were not able to distinguish if this was a hardware or software breakpoint.
+    Unknown,
+}
+
 /// The reason why a core was halted.
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum HaltReason {
@@ -1027,9 +1081,8 @@ pub enum HaltReason {
     /// step ends up on a breakpoint, after which both breakpoint and step / request
     /// are set.
     Multiple,
-    /// Core halted due to a breakpoint, either
-    /// a *soft* or a *hard* breakpoint.
-    Breakpoint,
+    /// Core halted due to a breakpoint. The cause is `Unknown` if we cannot distinguish between a hardware and software breakpoint.
+    Breakpoint(BreakpointCause),
     /// Core halted due to an exception, e.g. an
     /// an interrupt.
     Exception,

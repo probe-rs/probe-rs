@@ -21,7 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - SWV vendor configuration has been refactored into sequences and trace functions have been renamed:
   - `Session::setup_swv` has been renamed to `Session::setup_tracing`
   - `Session::read_swo` has been renamed to `Session::read_trace_data`
-- `probe-rs-debugger` RISC-V `ebreak` instruction will enter Debug Mode (#1213)
+- `probe-rs-debugger`: RISC-V `ebreak` instruction will enter Debug Mode (#1213)
 - RTT: When a channel format is `defmt`, automatically set the channel mode to `BlockingIfFull` on attach. (Enhancement request #1161)
 
 ### Fixed
@@ -34,6 +34,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Debug: Provide unique default names on DAP client, when multiple RTT Channels have no configured name. (#1208)
 - Added missing memory regions for ESP32.yaml file, to fix RTT Channel name issue. (#1209)
 - Fix maximum addressable Flash size in ESP32.yaml file, to be 16Mb (was 64Mb). (#1209)
+- Debug: Enable stepping or running past a BKPT (Arm Cortex-M) or EBREAK (RISC-V) instruction (#1211).
 
 ## [0.13.0]
 

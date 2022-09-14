@@ -2,8 +2,8 @@ use std::time::Duration;
 
 use anyhow::Result;
 use probe_rs::{
-    config::MemoryRegion, Architecture, Core, CoreStatus, DebugProbeError, Error, HaltReason,
-    MemoryInterface,
+    config::MemoryRegion, Architecture, BreakpointCause, Core, CoreStatus, DebugProbeError, Error,
+    HaltReason, MemoryInterface,
 };
 
 const TEST_CODE: &[u8] = include_bytes!("test_arm.bin");
@@ -83,7 +83,11 @@ pub fn test_stepping(core: &mut Core, memory_regions: &[MemoryRegion]) -> Result
 
     let core_status = core.status()?;
 
-    assert_eq!(core_status, CoreStatus::Halted(HaltReason::Breakpoint));
+    assert!(matches!(
+        core_status,
+        CoreStatus::Halted(HaltReason::Breakpoint(BreakpointCause::Hardware))
+            | CoreStatus::Halted(HaltReason::Breakpoint(BreakpointCause::Unknown))
+    ));
 
     let pc: u64 = core.read_core_reg(registers.program_counter())?;
 
@@ -122,7 +126,11 @@ pub fn test_stepping(core: &mut Core, memory_regions: &[MemoryRegion]) -> Result
 
     let core_status = core.status()?;
 
-    assert_eq!(core_status, CoreStatus::Halted(HaltReason::Breakpoint));
+    assert!(matches!(
+        core_status,
+        CoreStatus::Halted(HaltReason::Breakpoint(BreakpointCause::Hardware))
+            | CoreStatus::Halted(HaltReason::Breakpoint(BreakpointCause::Unknown))
+    ));
 
     let pc: u64 = core.read_core_reg(registers.program_counter())?;
 

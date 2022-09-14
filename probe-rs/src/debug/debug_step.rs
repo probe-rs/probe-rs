@@ -287,7 +287,7 @@ impl SteppingMode {
                             // We have halted at the address after the current statement, so we can conclude there was no branching calls in this sequence.
                             log::debug!("Stepping into next statement, but no branching calls found. Stepped to next available statement.");
                         } else if new_pc < current_source_statement.instruction_range.end
-                            && matches!(core_status, CoreStatus::Halted(HaltReason::Breakpoint))
+                            && matches!(core_status, CoreStatus::Halted(HaltReason::Breakpoint(_)))
                         {
                             // We have halted at a PC that is within the current statement, so there must be another breakpoint.
                             log::debug!(
@@ -442,7 +442,7 @@ fn step_to_address(
         match core.status()? {
             CoreStatus::Halted(halt_reason) => match halt_reason {
                 HaltReason::Step | HaltReason::Request => continue,
-                HaltReason::Breakpoint => {
+                HaltReason::Breakpoint(_) => {
                     log::debug!(
                         "Encountered a breakpoint before the target address ({:#010x}) was reached.",
                         target_address_range.end()

@@ -909,7 +909,10 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                         // Make sure the DAP Client and the DAP Server are in sync with the status of the core.
                         if core_status.is_halted() {
                             if self.halt_after_reset
-                                || core_status == CoreStatus::Halted(HaltReason::Breakpoint)
+                                || matches!(
+                                    core_status,
+                                    CoreStatus::Halted(HaltReason::Breakpoint(_))
+                                )
                             {
                                 let event_body = Some(StoppedEventBody {
                                     reason: core_status.short_long_status().0.to_owned(),
@@ -2226,7 +2229,7 @@ impl DapStatus for CoreStatus {
                 "Core is in LOCKUP status - encountered an unrecoverable exception",
             ),
             CoreStatus::Halted(halt_reason) => match halt_reason {
-                HaltReason::Breakpoint => (
+                HaltReason::Breakpoint(_) => (
                     "breakpoint",
                     "Core halted due to a breakpoint (software or hardware)",
                 ),
