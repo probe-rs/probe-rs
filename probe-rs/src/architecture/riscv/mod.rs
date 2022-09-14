@@ -247,7 +247,7 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
             let mut debug_pc = self.read_core_reg(RegisterId(0x7b1))?;
             // Advance the dpc by the size of the EBREAK (c.ebreak) instruction.
             // TODO: The riscv- "c"/compressed variant uses a 2 byte instruction length for c.ebreak. We need to differentiate between different riscv- variants to make this fool proof.
-            debug_pc.add_bytes(2)?;
+            debug_pc.incremenet_address(2)?;
 
             self.write_core_reg(RegisterId(0x7b1), debug_pc)?;
             return Ok(CoreInformation {

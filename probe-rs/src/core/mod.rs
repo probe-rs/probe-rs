@@ -132,8 +132,8 @@ pub enum RegisterValue {
 }
 
 impl RegisterValue {
-    /// A helper function to add a fixed number of bytes to a register value.
-    pub fn add_bytes(&mut self, bytes: usize) -> Result<(), Error> {
+    /// A helper function to increment an address by a fixed number of bytes.
+    pub fn incremenet_address(&mut self, bytes: usize) -> Result<(), Error> {
         match self {
             RegisterValue::U32(value) => {
                 if let Some(reg_val) = value.checked_add(bytes as u32) {
