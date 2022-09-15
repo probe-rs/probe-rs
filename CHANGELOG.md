@@ -103,6 +103,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Updated gdb-server to use gdbstub internally (#1125)
 - gdb-server now uses all cores on a target (#1125)
 - gdb-server now supports floating point registers (#1133)
+- Debug: Correctly handle compressed vs non-compressed instructions sets for RISC-V. (#1224)
 
 ### Fixed
 

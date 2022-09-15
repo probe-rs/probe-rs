@@ -94,6 +94,14 @@ impl DebugCli {
                         .mode(riscvArchMode::RiscV32)
                         .endian(Endian::Little)
                         .build(),
+                    InstructionSet::RV32C => Capstone::new()
+                        .riscv()
+                        .mode(riscvArchMode::RiscV32)
+                        .endian(Endian::Little)
+                        .extra_mode(std::iter::once(
+                            capstone::arch::riscv::ArchExtraMode::RiscVC,
+                        ))
+                        .build(),
                 }
                 .map_err(|err| anyhow!("Error creating capstone: {:?}", err))?;
 

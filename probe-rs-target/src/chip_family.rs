@@ -82,8 +82,10 @@ pub enum InstructionSet {
     A32,
     /// ARM A64 (aarch64) instruction set
     A64,
-    /// RISC-V 32-bit instruction set
+    /// RISC-V 32-bit uncompressed instruction sets (RV32) - covers all ISA variants that use 32-bit instructions.
     RV32,
+    /// RISC-V 32-bit compressed instruction sets (RV32C) - covers all ISA variants that allow compressed 16-bit instructions.
+    RV32C,
 }
 
 impl InstructionSet {
@@ -96,21 +98,13 @@ impl InstructionSet {
             }
             InstructionSet::A32 => 4,
             InstructionSet::A64 => 4,
-            InstructionSet::RV32 => {
-                // Assume that we are using the RV32C (compressed) instruction set.
-                // TODO: Need an impl of RV32 and RV32C to properly differentiate this, then we don't need to assume.
-                2
-            }
+            InstructionSet::RV32 => 4,
+            InstructionSet::RV32C => 2,
         }
     }
-    /// Get the maximum instruction size in bytes.
+    /// Get the maximum instruction size in bytes. All supported architectures have a maximum instruction size of 4 bytes.
     pub fn get_maximum_instruction_size(&self) -> u8 {
-        match self {
-            InstructionSet::Thumb2 => 4,
-            InstructionSet::A32 => 4,
-            InstructionSet::A64 => 4,
-            InstructionSet::RV32 => 4,
-        }
+        4
     }
 }
 
