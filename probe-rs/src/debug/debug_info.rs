@@ -15,6 +15,7 @@ use registers::RegisterGroup;
 use std::{
     borrow,
     cmp::Ordering,
+    convert::TryInto,
     num::NonZeroU64,
     ops::ControlFlow,
     path::{Path, PathBuf},
@@ -809,6 +810,13 @@ impl DebugInfo {
                                 .and_then(|register| register.value);
                             match reg_val {
                                 Some(reg_val) => {
+                                    if reg_val.is_zero() {
+                                        // If we encounter this rule for CFA, it implies the scenario depends on a FP/frame pointer to continue successfully.
+                                        // Therefore, if reg_val is zero (i.e. FP is zero), then we do not have enough information to determine the CFA by rule.
+                                        stack_frames.push(return_frame);
+                                        log::trace!("UNWIND: Stack unwind complete - The FP register value unwound to a value of zero.");
+                                        break;
+                                    }
                                     let unwind_cfa = add_to_address(reg_val.try_into()?, *offset);
                                     log::trace!(
                                         "UNWIND - CFA : {:#010x}\tRule: {:?}",
@@ -1273,7 +1281,8 @@ fn unwind_register(
                     }
                     Err(error) => {
                         log::error!(
-                            "UNWIND: Failed to read from address {} ({} bytes): {}",
+                            "UNWIND: Failed to read value for register {} from address {} ({} bytes): {}",
+                            debug_register.name,
                             RegisterValue::from(previous_frame_register_address),
                             4,
                             error
