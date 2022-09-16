@@ -1,6 +1,6 @@
 [package]
 name = "probe-rs"
-version = "0.13.0"
+version = "0.13.1"
 authors = [
     "Noah Hüsser <yatekii@yatekii.ch>",
     "Dominik Boehi <dominik.boehi@gmail.ch>",
