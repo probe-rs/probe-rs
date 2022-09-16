@@ -86,26 +86,33 @@ pub struct InnerTransferResponse {
 }
 
 impl InnerTransferResponse {
-    fn from_bytes(req: &InnerTransferRequest, buffer: &[u8]) -> Result<(Self, usize), SendError> {
+    fn from_bytes(
+        req: &InnerTransferRequest,
+        ack: Ack,
+        buffer: &[u8],
+    ) -> Result<(Self, usize), SendError> {
         let mut resp = Self {
             td_timestamp: None,
             data: None,
         };
 
         let mut offset = 0;
-        if req.td_timestamp_request {
-            if buffer.len() < offset + 4 {
-                return Err(SendError::NotEnoughData);
+        // Only expect response data if the transfer was successful
+        if let Ack::Ok = ack {
+            if req.td_timestamp_request {
+                if buffer.len() < offset + 4 {
+                    return Err(SendError::NotEnoughData);
+                }
+                resp.td_timestamp = Some(buffer.pread_with(offset, LE).unwrap());
+                offset += 4;
             }
-            resp.td_timestamp = Some(buffer.pread_with(offset, LE).unwrap());
-            offset += 4;
-        }
-        if req.RnW == RW::R {
-            if buffer.len() < offset + 4 {
-                return Err(SendError::NotEnoughData);
+            if req.RnW == RW::R {
+                if buffer.len() < offset + 4 {
+                    return Err(SendError::NotEnoughData);
+                }
+                resp.data = Some(buffer.pread_with(offset, LE).unwrap());
+                offset += 4;
             }
-            resp.data = Some(buffer.pread_with(offset, LE).unwrap());
-            offset += 4;
         }
 
         Ok((resp, offset))
@@ -189,9 +196,17 @@ impl Request for TransferRequest {
 
         buffer = &buffer[2..];
         let mut transfers = Vec::new();
-        for i in 0..transfer_count as usize {
+        let xfer_count_and_ack = (0..transfer_count).map(|i| {
+            if i + 1 == transfer_count {
+                (i as usize, last_transfer_response.ack.clone())
+            } else {
+                (i as usize, Ack::Ok)
+            }
+        });
+
+        for (i, ack) in xfer_count_and_ack {
             let req = &self.transfers[i];
-            let (resp, len) = InnerTransferResponse::from_bytes(req, buffer)?;
+            let (resp, len) = InnerTransferResponse::from_bytes(req, ack, buffer)?;
             transfers.push(resp);
             buffer = &buffer[len..];
         }
@@ -205,7 +220,7 @@ impl Request for TransferRequest {
 }
 
 #[allow(clippy::enum_variant_names)]
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub enum Ack {
     /// TODO: ??????????????????????? Docs are weird?
     /// OK (for SWD protocol), OK or FAULT (for JTAG protocol),

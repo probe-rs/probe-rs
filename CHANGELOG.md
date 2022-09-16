@@ -35,6 +35,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added missing memory regions for ESP32.yaml file, to fix RTT Channel name issue. (#1209)
 - Fix maximum addressable Flash size in ESP32.yaml file, to be 16Mb (was 64Mb). (#1209)
 - Debug: Enable stepping or running past a BKPT (Arm Cortex-M) or EBREAK (RISC-V) instruction (#1211).
+- (#1058) Non-successful DAP Transfer requests no longer require response data to be present.
 
 ## [0.13.0]
 
