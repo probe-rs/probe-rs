@@ -37,6 +37,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Debug: Enable stepping or running past a BKPT (Arm Cortex-M) or EBREAK (RISC-V) instruction (#1211).
 - (#1058) Non-successful DAP Transfer requests no longer require response data to be present.
 - Debug: Gracefully handle stack unwind when CFA rule references a FP with value of zero. (#1226)
+- Debugger: Improve core status checking during launch.(#1228)
 
 ## [0.13.0]
 
