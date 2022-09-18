@@ -19,11 +19,12 @@ use probe_rs::{
         ColumnType, DebugRegisters, SourceLocation, SteppingMode, VariableName, VariableNodeType,
     },
     Architecture::Riscv,
-    CoreStatus, CoreType, HaltReason, InstructionSet, MemoryInterface, RegisterValue,
+    CoreStatus, CoreType, DebugProbeError, Error, HaltReason, InstructionSet, MemoryInterface,
+    RegisterValue,
 };
 use probe_rs_cli_util::rtt;
 use serde::{de::DeserializeOwned, Serialize};
-use std::{convert::TryInto, path::Path, str, string::ToString, thread, time::Duration};
+use std::{convert::TryInto, path::Path, str, string::ToString, time::Duration};
 
 /// Progress ID used for progress reporting when the debug adapter protocol is used.
 type ProgressId = i64;
@@ -500,7 +501,9 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         request: Option<Request>,
     ) -> Result<()> {
         match target_core.core.halt(Duration::from_millis(500)) {
-            Ok(_) => {}
+            Ok(_) => {
+                self.last_known_status = CoreStatus::Unknown;
+            }
             Err(error) => {
                 if let Some(request) = request {
                     return self.send_response::<()>(
@@ -1804,10 +1807,33 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                         })),
                     )?;
                 }
+
                 // We have to consider the fact that sometimes the `run()` is successfull,
                 // but "immediately" afterwards, the MCU hits a breakpoint or exception.
                 // So we have to check the status again to be sure.
-                thread::sleep(Duration::from_millis(100)); // Small delay to make sure the MCU hits user breakpoints early in `main()`.
+                match if target_core.core_data.breakpoints.is_empty() {
+                    target_core
+                        .core
+                        .wait_for_core_halted(Duration::from_millis(200))
+                } else {
+                    // Use slightly longer timeout when we know there breakpoints configured.
+                    target_core
+                        .core
+                        .wait_for_core_halted(Duration::from_millis(500))
+                } {
+                    Ok(_) => {
+                        // The core has halted, so we can proceed.
+                    }
+                    Err(wait_error) => {
+                        if matches!(wait_error, Error::Probe(DebugProbeError::Timeout)) {
+                            // The core is still running.
+                        } else {
+                            // Some other error occured, so we have to send an error response.
+                            return Err(wait_error.into());
+                        }
+                    }
+                }
+
                 let core_status = match target_core.core.status() {
                     Ok(new_status) => match new_status {
                         CoreStatus::Halted(_) => {
