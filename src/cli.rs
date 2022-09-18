@@ -82,13 +82,13 @@ pub struct Opts {
     #[structopt(long = "disable-double-buffering")]
     pub disable_double_buffering: bool,
 
-    /// Arguments passed after the ELF file path are discarded
-    #[structopt(name = "REST")]
-    _rest: Vec<String>,
-
     /// Verifies the written program.
     #[structopt(long)]
     pub verify: bool,
+
+    /// Arguments passed after the ELF file path are discarded
+    #[structopt(name = "REST")]
+    _rest: Vec<String>,
 }
 
 pub fn handle_arguments() -> anyhow::Result<i32> {

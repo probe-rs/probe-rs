@@ -10,6 +10,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/) and this p
 - [#345] Update dev-dependency `serial_test`
 - [#344] Replace `pub(crate)` with `pub`
 - [#343] Mark `v0.3.4` as released in `CHANGELOG.md`
+- [#353] add option to verify written flash
 
 [#349]: https://github.com/knurling-rs/probe-run/pull/349
 [#345]: https://github.com/knurling-rs/probe-run/pull/345
