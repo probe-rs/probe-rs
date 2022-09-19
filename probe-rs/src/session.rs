@@ -176,11 +176,29 @@ impl Session {
                 let mut interface = interface.initialize(sequence_handle.clone())?;
 
                 // Enable debug mode
-                sequence_handle.debug_device_unlock(
+                let unlock_res = sequence_handle.debug_device_unlock(
                     &mut interface,
                     default_memory_ap,
                     &permissions,
-                )?;
+                );
+
+                match unlock_res {
+                    Ok(()) => (),
+                    // In case this happens after unlock. Try to re-attach the probe once.
+                    Err(crate::Error::Probe(crate::DebugProbeError::ReAttachRequired)) => {
+                        log::debug!("Re-attaching Probe");
+                        let mut probe = interface.close();
+                        probe.detach()?;
+                        probe.attach_to_unspecified()?;
+
+                        let arm_interface =
+                            probe.try_into_arm_interface().map_err(|(_, err)| err)?;
+                        interface = arm_interface.initialize(sequence_handle.clone())?;
+
+                        log::debug!("Probe re-attached");
+                    }
+                    Err(e) => return Err(e),
+                }
 
                 {
                     // For each core, setup debugging
