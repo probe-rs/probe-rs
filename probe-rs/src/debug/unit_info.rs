@@ -913,15 +913,22 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                             // The default behaviour is to defer the processing of child types.
                                             child_variable.variable_node_type =
                                                 VariableNodeType::ReferenceOffset(unit_ref);
-                                            if let VariableType::Pointer(Some(name)) =
+                                            if let VariableType::Pointer(optional_name) =
                                                 &child_variable.type_name
                                             {
-                                                if name.starts_with("*const")
-                                                    || name.starts_with("*mut")
+                                                #[allow(clippy::unwrap_used)]
+                                                // Use of `unwrap` below is safe because we first check for `is_none()`.
+                                                if optional_name.is_none()
+                                                    || optional_name
+                                                        .as_ref()
+                                                        .unwrap()
+                                                        .starts_with("*const")
+                                                    || optional_name
+                                                        .as_ref()
+                                                        .unwrap()
+                                                        .starts_with("*mut")
                                                 {
                                                     // Resolve the children of this variable, because they contain essential information required to resolve the value
-                                                    child_variable.variable_node_type =
-                                                        VariableNodeType::RecurseToBaseType;
                                                     self.debug_info.cache_deferred_variables(
                                                         cache,
                                                         core,
@@ -929,12 +936,8 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                                         stack_frame_registers,
                                                         frame_base,
                                                     )?;
-                                                    child_variable.variable_node_type =
-                                                        VariableNodeType::ReferenceOffset(unit_ref);
                                                 }
                                             } else {
-                                                // Recent changes in RUST have removed the intermediate DW_AT_name for the type of tje `data_ptr` child of `&str` variables.
-                                                // Resolve the children of this variable, because they contain essential information required to resolve the length of `&str`
                                                 self.debug_info.cache_deferred_variables(
                                                     cache,
                                                     core,
