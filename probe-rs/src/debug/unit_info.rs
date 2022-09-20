@@ -910,18 +910,18 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                 Some(data_type_attribute) => {
                                     match data_type_attribute.value() {
                                         gimli::AttributeValue::UnitRef(unit_ref) => {
+                                            // The default behaviour is to defer the processing of child types.
+                                            child_variable.variable_node_type =
+                                                VariableNodeType::ReferenceOffset(unit_ref);
                                             if let VariableType::Pointer(Some(name)) =
                                                 &child_variable.type_name
                                             {
-                                                // The default behaviour is to defer the processing of child types.
-                                                child_variable.variable_node_type =
-                                                    VariableNodeType::ReferenceOffset(unit_ref);
                                                 if name.starts_with("*const")
                                                     || name.starts_with("*mut")
                                                 {
                                                     // Resolve the children of this variable, because they contain essential information required to resolve the value
                                                     child_variable.variable_node_type =
-                                                        VariableNodeType::ReferenceOffset(unit_ref);
+                                                        VariableNodeType::RecurseToBaseType;
                                                     self.debug_info.cache_deferred_variables(
                                                         cache,
                                                         core,
@@ -929,7 +929,19 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                                         stack_frame_registers,
                                                         frame_base,
                                                     )?;
+                                                    child_variable.variable_node_type =
+                                                        VariableNodeType::ReferenceOffset(unit_ref);
                                                 }
+                                            } else {
+                                                // Recent changes in RUST have removed the intermediate DW_AT_name for the type of tje `data_ptr` child of `&str` variables.
+                                                // Resolve the children of this variable, because they contain essential information required to resolve the length of `&str`
+                                                self.debug_info.cache_deferred_variables(
+                                                    cache,
+                                                    core,
+                                                    &mut child_variable,
+                                                    stack_frame_registers,
+                                                    frame_base,
+                                                )?;
                                             }
                                         }
                                         other_attribute_value => {
@@ -998,6 +1010,9 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                 || name.starts_with("Ok")
                                 || name.starts_with("Err")
                             {
+                                let temp_node_type = child_variable.variable_node_type;
+                                child_variable.variable_node_type =
+                                    VariableNodeType::RecurseToBaseType;
                                 child_variable = self.process_tree(
                                     node,
                                     child_variable,
@@ -1006,6 +1021,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                     frame_base,
                                     cache,
                                 )?;
+                                child_variable.variable_node_type = temp_node_type;
                             }
                         }
                     } else {
