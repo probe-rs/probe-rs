@@ -732,4 +732,27 @@ pub trait ArmDebugSequence: Send + Sync {
         // Empty by default
         Ok(())
     }
+
+    /// Return the Debug Erase Sequence implementation if it exists
+    fn debug_erase_sequence(&self) -> Option<Arc<dyn DebugEraseSequence>> {
+        None
+    }
+}
+
+/// Chip-Erase Handling via the Device's Debug Interface
+pub trait DebugEraseSequence: Send + Sync {
+    /// Perform Chip-Erase by vendor specific means.
+    ///
+    /// Some devices provide custom methods for mass erasing the entire flash area and even reset
+    /// other non-volatile chip state to its default setting.
+    ///
+    /// # Errors
+    /// May fail if the device is e.g. permanently locked or due to communication issues with the device.
+    /// Some devices require the probe to be disconnected and re-attached after a successful chip-erase in
+    /// which case it will return `Error::Probe(DebugProbeError::ReAttachRequired)`
+    fn erase_all(&self, _interface: &mut Box<dyn ArmProbeInterface>) -> Result<(), crate::Error> {
+        Err(crate::Error::Probe(DebugProbeError::NotImplemented(
+            "Debug erase sequence is not available on this device",
+        )))
+    }
 }
