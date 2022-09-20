@@ -145,6 +145,10 @@ pub enum DebugProbeError {
     /// Check the wiring before continuing.
     #[error("Failed to find the target or attach to the target")]
     TargetNotFound,
+    /// Performing certain operations (e.g device unlock or Chip-Erase) can leave the device in a state
+    /// that requires a probe re-attach to resolve.
+    #[error("Probe and device internal state mismatch. A probe re-attach is required")]
+    ReAttachRequired,
     /// The variant of the function you called is not yet implemented.
     /// This can happen if some debug probe has some unimplemented functionality for a specific protocol or architecture.
     #[error("Some functionality was not implemented yet: {0}")]

@@ -15,6 +15,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added support for in-line (column specific) breakpoints where multiple statements (potential breakpoints) are on the same line of source code. (#1156)
 - Added support for MSP432P4XX targets (#1201)
 - Added support for Microchip SAMDA1
+- Added Probe re-attach handling when needed after `debug_device_unlock`
+- Added Custom ArmDebugSequence for ATSAM D5x/E5x devices
 
 ### Changed
 
