@@ -10,19 +10,19 @@ use anyhow::Result;
 bitfield! {
     /// Device Service Unit Control Register, DSU - CTRL
     #[derive(Copy, Clone)]
-    struct DsuCtrl(u8);
+    pub struct DsuCtrl(u8);
     impl Debug;
-    // Chip-Erase
-    // Writing a '0' to this bit has no effect.
-    // Writing a '1' to this bit starts the Chip-Erase operation.
+    /// Chip-Erase
+    /// Writing a '0' to this bit has no effect.
+    /// Writing a '1' to this bit starts the Chip-Erase operation.
     pub _, set_ce: 4;
-    // Memory Built-In Self-Test
-    // Writing a '0' to this bit has no effect.
-    // Writing a '1' to this bit starts the memory BIST algorithm.
+    /// Memory Built-In Self-Test
+    /// Writing a '0' to this bit has no effect.
+    /// Writing a '1' to this bit starts the memory BIST algorithm.
     pub _, set_mbist: 3;
-    // 32-bit Cyclic Redundancy Check
-    // Writing a '0' to this bit has no effect.
-    // Writing a '1' to this bit starts the cyclic redundancy check algorithm.
+    /// 32-bit Cyclic Redundancy Check
+    /// Writing a '0' to this bit has no effect.
+    /// Writing a '1' to this bit starts the cyclic redundancy check algorithm.
     pub _, set_crc: 2;
     /// Software Reset
     /// Writing a '0' to this bit has no effect.
@@ -31,7 +31,8 @@ bitfield! {
 }
 
 impl DsuCtrl {
-    const ADDRESS: u64 = 0x4100_2100;
+    /// The DSU CTRL register address
+    pub const ADDRESS: u64 = 0x4100_2100;
 }
 
 impl From<u8> for DsuCtrl {
@@ -49,36 +50,36 @@ impl From<DsuCtrl> for u8 {
 bitfield! {
     /// Device Service Unit Control Register, DSU - CTRL
     #[derive(Copy, Clone)]
-    struct DsuStatusA(u8);
+    pub struct DsuStatusA(u8);
     impl Debug;
-    // Protection Error
-    // Writing a '0' to this bit has no effect.
-    // Writing a '1' to this bit clears the Protection Error bit.
-    // This bit is set when a command that is not allowed in Protected state is issued.
+    /// Protection Error
+    /// Writing a '0' to this bit has no effect.
+    /// Writing a '1' to this bit clears the Protection Error bit.
+    /// This bit is set when a command that is not allowed in Protected state is issued.
     pub perr, set_perr: 4;
 
-    // Failure
-    // Writing a '0' to this bit has no effect.
-    // Writing a '1' to this bit clears the Failure bit.
-    // This bit is set when a DSU operation failure is detected.
+    /// Failure
+    /// Writing a '0' to this bit has no effect.
+    /// Writing a '1' to this bit clears the Failure bit.
+    /// This bit is set when a DSU operation failure is detected.
     pub fail, set_fail: 3;
 
-    // Bus Error
-    // Writing a '0' to this bit has no effect.
-    // Writing a '1' to this bit clears the Bus Error bit.
-    // This bit is set when a bus error is detected.
+    /// Bus Error
+    /// Writing a '0' to this bit has no effect.
+    /// Writing a '1' to this bit clears the Bus Error bit.
+    /// This bit is set when a bus error is detected.
     pub berr, set_berr: 2;
 
-    // CPU Reset Phase Extension
-    // Writing a '0' to this bit has no effect.
-    // Writing a '1' to this bit clears the CPU Reset Phase Extension bit.
-    // This bit is set when a debug adapter Cold-Plugging is detected, which extends the CPU Reset phase.
+    /// CPU Reset Phase Extension
+    /// Writing a '0' to this bit has no effect.
+    /// Writing a '1' to this bit clears the CPU Reset Phase Extension bit.
+    /// This bit is set when a debug adapter Cold-Plugging is detected, which extends the CPU Reset phase.
     pub crstext, set_crstext: 1;
 
-    // Done
-    // Writing a '0' to this bit has no effect.
-    // Writing a '1' to this bit clears the Done bit.
-    // This bit is set when a DSU operation is completed.
+    /// Done
+    /// Writing a '0' to this bit has no effect.
+    /// Writing a '1' to this bit clears the Done bit.
+    /// This bit is set when a DSU operation is completed.
     pub done, set_done: 0;
 }
 
@@ -95,39 +96,40 @@ impl From<DsuStatusA> for u8 {
 }
 
 impl DsuStatusA {
-    const ADDRESS: u64 = 0x4100_2101;
+    /// The DSU STATUSA register address
+    pub const ADDRESS: u64 = 0x4100_2101;
 }
 
 bitfield! {
     /// Device Service Unit Control Register, DSU - CTRL
     #[derive(Copy, Clone)]
-    struct DsuStatusB(u8);
+    pub struct DsuStatusB(u8);
     impl Debug;
 
-    // Chip Erase Locked
-    // This bit is set when Chip Erase is locked.
-    // This bit is cleared when Chip Erase is unlocked.
+    /// Chip Erase Locked
+    /// This bit is set when Chip Erase is locked.
+    /// This bit is cleared when Chip Erase is unlocked.
     pub celck, _: 5;
-    // Hot-Plugging Enable
-    // This bit is set when Hot-Plugging is enabled.
-    // This bit is cleared when Hot-Plugging is disabled. This is the case when the SWCLK function is changed.
-    // Only a power-reset or a external reset can set it again.
+    /// Hot-Plugging Enable
+    /// This bit is set when Hot-Plugging is enabled.
+    /// This bit is cleared when Hot-Plugging is disabled. This is the case when the SWCLK function is changed.
+    /// Only a power-reset or a external reset can set it again.
     pub hpe, _: 4;
-    // Debug Communication Channel 1 Dirty
-    // This bit is set when DCC is written.
-    // This bit is cleared when DCC is read.
+    /// Debug Communication Channel 1 Dirty
+    /// This bit is set when DCC is written.
+    /// This bit is cleared when DCC is read.
     pub dccd1, _: 3;
-    // Debug Communication Channel 0 Dirty
-    // This bit is set when DCC is written.
-    // This bit is cleared when DCC is read.
+    /// Debug Communication Channel 0 Dirty
+    /// This bit is set when DCC is written.
+    /// This bit is cleared when DCC is read.
     pub dccd0, _: 2;
-    // Debugger Present
-    // This bit is set when a debugger probe is detected.
-    // This bit is never cleared.
+    /// Debugger Present
+    /// This bit is set when a debugger probe is detected.
+    /// This bit is never cleared.
     pub dbgpres, _: 1;
-    // Protected
-    // This bit is set at power-up when the device is protected.
-    // This bit is never cleared.
+    /// Protected
+    /// This bit is set at power-up when the device is protected.
+    /// This bit is never cleared.
     pub prot, _: 0;
 
 }
@@ -145,7 +147,8 @@ impl From<DsuStatusB> for u8 {
 }
 
 impl DsuStatusB {
-    const ADDRESS: u64 = 0x4100_2102;
+    /// The DSU STATUSB register address
+    pub const ADDRESS: u64 = 0x4100_2102;
 }
 
 /// A wrapper for different types that can perform SWD Commands (SWJ_Pins SWJ_Sequence)
@@ -182,12 +185,15 @@ impl AtSAME5x {
 
     /// Perform a Chip-Erase operation
     ///
+    /// Issue a Chip-Erase command to the device provided that `permission` grants `erase-all`.
+    ///
     /// # Errors
     /// This operation can fail due to insufficient permissions, or if Chip-Erase Lock is
     /// enabled (this lock can only be released from within the device firmare).
     /// After a successful Chip-Erase a `DebugProbeError::ReAttachRequired` is returned
     /// to signal that a re-connect is needed for the DSU to start operating in unlocked mode.
     pub fn erase_all(&self, memory: &mut Memory, permissions: &Permissions) -> Result<(), Error> {
+        let dsu_status_a = DsuStatusA::from(memory.read_word_8(DsuStatusA::ADDRESS)?);
         let dsu_status_b = DsuStatusB::from(memory.read_word_8(DsuStatusB::ADDRESS)?);
 
         match (dsu_status_b.celck(), dsu_status_b.prot(), permissions.erase_all()) {
@@ -198,7 +204,7 @@ impl AtSAME5x {
             )),
             (false, true, Err(_)) => Err(Error::MissingPermissions(
                 "Device is locked. A Chip-Erase operation is required to unlock. \
-                            Re-run with '--connect-under-reset --allow-erase-all' to perform Chip-Erase."
+                            Re-run with granting the 'erase-all' permission and connecting under reset"
                     .into(),
             )),
             (false, false, Err(e)) => Err(e),
@@ -217,7 +223,12 @@ impl AtSAME5x {
             let current_dsu_statusa = DsuStatusA::from(memory.read_word_8(DsuStatusA::ADDRESS)?);
             if current_dsu_statusa.done() {
                 log::info!("Chip-Erase complete");
-                self.reset_hardware_with_extension(memory.get_arm_interface()?)?;
+                // If the device was in Reset Extension when we started put it back into Reset Extension
+                if dsu_status_a.crstext() {
+                    self.reset_hardware_with_extension(memory.get_arm_interface()?)?;
+                } else {
+                    self.reset_hardware(memory.get_arm_interface()?)?;
+                }
 
                 // We need to reconnect to target to finalize the unlock.
                 // Signal ReAttachRequired so that the session will try to re-connect
