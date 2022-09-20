@@ -186,7 +186,7 @@ impl Session {
                     Ok(()) => (),
                     // In case this happens after unlock. Try to re-attach the probe once.
                     Err(crate::Error::Probe(crate::DebugProbeError::ReAttachRequired)) => {
-                        log::debug!("Re-attaching Probe");
+                        log::debug!("Re-attaching to the Probe");
                         let mut probe = interface.close();
                         probe.detach()?;
                         probe.attach_to_unspecified()?;
@@ -195,7 +195,7 @@ impl Session {
                             probe.try_into_arm_interface().map_err(|(_, err)| err)?;
                         interface = arm_interface.initialize(sequence_handle.clone())?;
 
-                        log::debug!("Probe re-attached");
+                        log::debug!("The probe was re-attached");
                     }
                     Err(e) => return Err(e),
                 }

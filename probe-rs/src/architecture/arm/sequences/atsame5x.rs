@@ -370,7 +370,7 @@ impl ArmDebugSequence for AtSAME5x {
         let dsu_status_b = DsuStatusB::from(memory.read_word_8(DsuStatusB::ADDRESS)?);
 
         if dsu_status_b.prot() {
-            log::warn!("device is locked, unlocking..");
+            log::warn!("The Device is locked, unlocking..");
             self.erase_all(&mut memory, permissions)
         } else {
             Ok(())
