@@ -38,6 +38,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - (#1058) Non-successful DAP Transfer requests no longer require response data to be present.
 - Debug: Gracefully handle stack unwind when CFA rule references a FP with value of zero. (#1226)
 - Debugger: Improve core status checking during launch.(#1228)
+- Debugger: Prevent stack overflows when expanding "static" section in probe-rs-debugger. (#1231)
 
 ## [0.13.0]
 

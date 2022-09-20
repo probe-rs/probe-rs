@@ -33,7 +33,7 @@ pub use self::{
 };
 use crate::{core::Core, MemoryInterface};
 use gimli::DebuggingInformationEntry;
-use num_traits::Zero;
+
 use std::{
     io,
     path::PathBuf,
@@ -296,15 +296,10 @@ pub(crate) fn _print_all_attributes(
                                 .unwrap()
                         }
                         RequiresRelocatedAddress(address_index) => {
-                            if address_index.is_zero() {
-                                // This is a rust-lang bug for statics ... https://github.com/rust-lang/rust/issues/32574;
-                                evaluation.resume_with_relocated_address(u64::MAX).unwrap()
-                            } else {
-                                // Use the address_index as an offset from 0, so just pass it into the next step.
-                                evaluation
-                                    .resume_with_relocated_address(address_index)
-                                    .unwrap()
-                            }
+                            // Use the address_index as an offset from 0, so just pass it into the next step.
+                            evaluation
+                                .resume_with_relocated_address(address_index)
+                                .unwrap()
                         }
                         x => {
                             println!("print_all_attributes {:?}", x);

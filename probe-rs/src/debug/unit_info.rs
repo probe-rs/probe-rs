@@ -869,27 +869,6 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
         };
 
         if child_variable.is_valid() {
-            match &child_variable.type_name {
-                VariableType::Struct(type_name)
-                    if type_name.starts_with("&str")
-                        || type_name.starts_with("Option")
-                        || type_name.starts_with("Some")
-                        || type_name.starts_with("Result")
-                        || type_name.starts_with("Ok")
-                        || type_name.starts_with("Err") =>
-                {
-                    // In some cases, it really simplifies the UX if we can auto resolve the children and derive a value that is visible at first glance to the user.
-                    child_variable.variable_node_type = VariableNodeType::RecurseToBaseType;
-                }
-                VariableType::Pointer(Some(name))
-                    if name.starts_with("*const") || name.starts_with("*mut") =>
-                {
-                    // In some cases, it really simplifies the UX if we can auto resolve the children and derive a value that is visible at first glance to the user.
-                    child_variable.variable_node_type = VariableNodeType::RecurseToBaseType;
-                }
-                _ => (),
-            }
-
             child_variable.byte_size = extract_byte_size(self.debug_info, node.entry());
 
             match node.entry().tag() {
@@ -931,12 +910,34 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                 Some(data_type_attribute) => {
                                     match data_type_attribute.value() {
                                         gimli::AttributeValue::UnitRef(unit_ref) => {
-                                            if child_variable.variable_node_type
-                                                == VariableNodeType::RecurseToBaseType
+                                            // The default behaviour is to defer the processing of child types.
+                                            child_variable.variable_node_type =
+                                                VariableNodeType::ReferenceOffset(unit_ref);
+                                            if let VariableType::Pointer(optional_name) =
+                                                &child_variable.type_name
                                             {
-                                                // Resolve the children of this variable, because they contain essential information required to resolve the value
-                                                child_variable.variable_node_type =
-                                                    VariableNodeType::ReferenceOffset(unit_ref);
+                                                #[allow(clippy::unwrap_used)]
+                                                // Use of `unwrap` below is safe because we first check for `is_none()`.
+                                                if optional_name.is_none()
+                                                    || optional_name
+                                                        .as_ref()
+                                                        .unwrap()
+                                                        .starts_with("*const")
+                                                    || optional_name
+                                                        .as_ref()
+                                                        .unwrap()
+                                                        .starts_with("*mut")
+                                                {
+                                                    // Resolve the children of this variable, because they contain essential information required to resolve the value
+                                                    self.debug_info.cache_deferred_variables(
+                                                        cache,
+                                                        core,
+                                                        &mut child_variable,
+                                                        stack_frame_registers,
+                                                        frame_base,
+                                                    )?;
+                                                }
+                                            } else {
                                                 self.debug_info.cache_deferred_variables(
                                                     cache,
                                                     core,
@@ -944,9 +945,6 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                                     stack_frame_registers,
                                                     frame_base,
                                                 )?;
-                                            } else {
-                                                child_variable.variable_node_type =
-                                                    VariableNodeType::ReferenceOffset(unit_ref);
                                             }
                                         }
                                         other_attribute_value => {
@@ -1003,21 +1001,31 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                         VariableType::Struct(type_name.unwrap_or_else(|| "<unnamed>".to_string()));
 
                     if child_variable.memory_location != VariableLocation::Unavailable {
-                        if child_variable.variable_node_type == VariableNodeType::RecurseToBaseType
-                        {
-                            // In some cases, it really simplifies the UX if we can auto resolve the children and dreive a value that is visible at first glance to the user.
-                            child_variable = self.process_tree(
-                                node,
-                                child_variable,
-                                core,
-                                stack_frame_registers,
-                                frame_base,
-                                cache,
-                            )?;
-                        } else {
-                            // Defer the processing of child types.
+                        if let VariableType::Struct(name) = &child_variable.type_name {
+                            // The default behaviour is to defer the processing of child types.
                             child_variable.variable_node_type =
                                 VariableNodeType::TypeOffset(node.entry().offset());
+                            // In some cases, it really simplifies the UX if we can auto resolve the children and dreive a value that is visible at first glance to the user.
+                            if name.starts_with("&str")
+                                || name.starts_with("Option")
+                                || name.starts_with("Some")
+                                || name.starts_with("Result")
+                                || name.starts_with("Ok")
+                                || name.starts_with("Err")
+                            {
+                                let temp_node_type = child_variable.variable_node_type;
+                                child_variable.variable_node_type =
+                                    VariableNodeType::RecurseToBaseType;
+                                child_variable = self.process_tree(
+                                    node,
+                                    child_variable,
+                                    core,
+                                    stack_frame_registers,
+                                    frame_base,
+                                    cache,
+                                )?;
+                                child_variable.variable_node_type = temp_node_type;
+                            }
                         }
                     } else {
                         // If something is already broken, then do nothing ...
@@ -1483,8 +1491,8 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                     Ok(ExpressionResult::Location(VariableLocation::Unavailable))
                 }
                 Location::Address { address } => {
-                    if *address == u32::MAX as u64 {
-                        Ok(ExpressionResult::Location(VariableLocation::Error("BUG: Cannot resolve due to rust-lang issue https://github.com/rust-lang/rust/issues/32574".to_string())))
+                    if address.is_zero() {
+                        Ok(ExpressionResult::Location(VariableLocation::Error("The value of this variable has been optimized out of the debug info, by the compiler.".to_string())))
                     } else {
                         Ok(ExpressionResult::Location(VariableLocation::Address(
                             *address,
@@ -1652,13 +1660,8 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                     evaluation.resume_with_register(gimli::Value::Generic(raw_value.try_into()?))?
                 }
                 RequiresRelocatedAddress(address_index) => {
-                    if address_index.is_zero() {
-                        // This is a rust-lang bug for statics ... https://github.com/rust-lang/rust/issues/32574.
-                        evaluation.resume_with_relocated_address(u64::MAX)?
-                    } else {
-                        // The address_index as an offset from 0, so just pass it into the next step.
-                        evaluation.resume_with_relocated_address(address_index)?
-                    }
+                    // The address_index as an offset from 0, so just pass it into the next step.
+                    evaluation.resume_with_relocated_address(address_index)?
                 }
                 unimplemented_expression => {
                     return Err(DebugError::Other(anyhow::anyhow!(
