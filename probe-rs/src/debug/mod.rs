@@ -33,7 +33,7 @@ pub use self::{
 };
 use crate::{core::Core, MemoryInterface};
 use gimli::DebuggingInformationEntry;
-use num_traits::Zero;
+
 use std::{
     io,
     path::PathBuf,
