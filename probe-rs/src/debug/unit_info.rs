@@ -1491,8 +1491,8 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                     Ok(ExpressionResult::Location(VariableLocation::Unavailable))
                 }
                 Location::Address { address } => {
-                    if *address == u32::MAX as u64 {
-                        Ok(ExpressionResult::Location(VariableLocation::Error("BUG: Cannot resolve due to rust-lang issue https://github.com/rust-lang/rust/issues/32574".to_string())))
+                    if address.is_zero() {
+                        Ok(ExpressionResult::Location(VariableLocation::Error("The value of this variable has been optimized out of the debug info, by the compiler.".to_string())))
                     } else {
                         Ok(ExpressionResult::Location(VariableLocation::Address(
                             *address,
@@ -1660,13 +1660,8 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                     evaluation.resume_with_register(gimli::Value::Generic(raw_value.try_into()?))?
                 }
                 RequiresRelocatedAddress(address_index) => {
-                    if address_index.is_zero() {
-                        // This is a rust-lang bug for statics ... https://github.com/rust-lang/rust/issues/32574.
-                        evaluation.resume_with_relocated_address(u64::MAX)?
-                    } else {
-                        // The address_index as an offset from 0, so just pass it into the next step.
-                        evaluation.resume_with_relocated_address(address_index)?
-                    }
+                    // The address_index as an offset from 0, so just pass it into the next step.
+                    evaluation.resume_with_relocated_address(address_index)?
                 }
                 unimplemented_expression => {
                     return Err(DebugError::Other(anyhow::anyhow!(
