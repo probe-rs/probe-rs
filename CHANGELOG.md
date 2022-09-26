@@ -41,6 +41,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Debug: Gracefully handle stack unwind when CFA rule references a FP with value of zero. (#1226)
 - Debugger: Improve core status checking during launch.(#1228)
 - Debugger: Prevent stack overflows when expanding "static" section in probe-rs-debugger. (#1231)
+- RTT: Prevent panicking in `probe-rs-cli-util/src/rtt/rs` when defmt stream decoding provides invalid frame index. (#1236)
 
 ## [0.13.0]
 
