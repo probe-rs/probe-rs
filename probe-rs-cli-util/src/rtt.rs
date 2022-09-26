@@ -256,14 +256,11 @@ impl RttActiveChannel {
                             DataFormat::Defmt => {
                                 match defmt_state {
                                     Some((table, locs)) => {
-
                                         let mut stream_decoder = table.new_stream_decoder();
                                         stream_decoder.received(&self.rtt_buffer.0[..bytes_read]);
                                         while let Ok(frame) = stream_decoder.decode()
                                         {
-                                            // NOTE(`[]` indexing) all indices in `table` have already been
-                                            // verified to exist in the `locs` map.
-                                            let loc = locs.as_ref().map(|locs| &locs[&frame.index()]);
+                                            let loc = locs.as_ref().and_then(|locs| locs.get(&frame.index()) );
                                             writeln!(formatted_data, "{}", frame.display(false)).map_or_else(|err| log::error!("Failed to format RTT data - {:?}", err), |r|r);
                                             if self.show_location {
                                                 if let Some(loc) = loc {
@@ -280,6 +277,8 @@ impl RttActiveChannel {
                                                         relpath.display(),
                                                         loc.line
                                                     ).map_or_else(|err| log::error!("Failed to format RTT data - {:?}", err), |r|r);
+                                                } else {
+                                                    writeln!(formatted_data, "└─ <invalid location: defmt frame-index: {}>", frame.index()).map_or_else(|err| log::error!("Failed to format RTT data - {:?}", err), |r|r);
                                                 }
                                             }
                                         }
