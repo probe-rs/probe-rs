@@ -1,6 +1,7 @@
 use crate::*;
 use anyhow::{anyhow, Result};
 use chrono::Local;
+use defmt_decoder::DecodeError;
 use num_traits::Zero;
 use probe_rs::config::MemoryRegion;
 use probe_rs::Core;
@@ -224,15 +225,17 @@ impl RttActiveChannel {
     }
 
     /// Retrieves available data from the channel and if available, returns `Some(channel_number:String, formatted_data:String)`.
+    /// If no data is available, or we encounter a recoverable error, it returns `None` value fore `formatted_data`.
+    /// Non-recoverable errors are propagated to the caller.
     pub fn get_rtt_data(
         &mut self,
         core: &mut Core,
         defmt_state: Option<&(defmt_decoder::Table, Option<defmt_decoder::Locations>)>,
-    ) -> Option<(String, String)> {
+    ) -> Result<Option<(String, String)>, anyhow::Error> {
         self
             .poll_rtt(core)
             .map(|bytes_read| {
-                (
+                Ok((
                     self.number().unwrap_or(0).to_string(), // If the Channel doesn't have a number, then send the output to channel 0
                     {
                         let mut formatted_data = String::new();
@@ -258,28 +261,42 @@ impl RttActiveChannel {
                                     Some((table, locs)) => {
                                         let mut stream_decoder = table.new_stream_decoder();
                                         stream_decoder.received(&self.rtt_buffer.0[..bytes_read]);
-                                        while let Ok(frame) = stream_decoder.decode()
-                                        {
-                                            let loc = locs.as_ref().and_then(|locs| locs.get(&frame.index()) );
-                                            writeln!(formatted_data, "{}", frame.display(false)).map_or_else(|err| log::error!("Failed to format RTT data - {:?}", err), |r|r);
-                                            if self.show_location {
-                                                if let Some(loc) = loc {
-                                                    let relpath = if let Ok(relpath) =
-                                                        loc.file.strip_prefix(&std::env::current_dir().unwrap())
-                                                    {
-                                                        relpath
-                                                    } else {
-                                                        // not relative; use full path
-                                                        &loc.file
-                                                    };
-                                                    writeln!(formatted_data,
-                                                        "└─ {}:{}",
-                                                        relpath.display(),
-                                                        loc.line
-                                                    ).map_or_else(|err| log::error!("Failed to format RTT data - {:?}", err), |r|r);
-                                                } else {
-                                                    writeln!(formatted_data, "└─ <invalid location: defmt frame-index: {}>", frame.index()).map_or_else(|err| log::error!("Failed to format RTT data - {:?}", err), |r|r);
-                                                }
+                                        loop {
+                                            match stream_decoder.decode() {
+                                                Ok(frame) => {
+                                                    let loc = locs.as_ref().and_then(|locs| locs.get(&frame.index()) );
+                                                    writeln!(formatted_data, "{}", frame.display(false)).map_or_else(|err| log::error!("Failed to format RTT data - {:?}", err), |r|r);
+                                                    if self.show_location {
+                                                        if let Some(loc) = loc {
+                                                            let relpath = if let Ok(relpath) =
+                                                                loc.file.strip_prefix(&std::env::current_dir().unwrap())
+                                                            {
+                                                                relpath
+                                                            } else {
+                                                                // not relative; use full path
+                                                                &loc.file
+                                                            };
+                                                            writeln!(formatted_data,
+                                                                "└─ {}:{}",
+                                                                relpath.display(),
+                                                                loc.line
+                                                            ).map_or_else(|err| log::error!("Failed to format RTT data - {:?}", err), |r|r);
+                                                        } else {
+                                                            writeln!(formatted_data, "└─ <invalid location: defmt frame-index: {}>", frame.index()).map_or_else(|err| log::error!("Failed to format RTT data - {:?}", err), |r|r);
+                                                        }
+                                                    }
+                                                    continue;
+                                                },
+                                                Err(DecodeError::UnexpectedEof) => break,
+                                                Err(DecodeError::Malformed) => match table.encoding().can_recover() {
+                                                    // If recovery is impossible, break out of here and propagate the error.
+                                                    false => {
+                                                        return Err(anyhow!("Unrecoverable error while decoding Defmt data and some data may have been lost: {:?}", DecodeError::Malformed));
+                                                    },
+                                                    // If recovery is possible, skip the current frame and continue with new data.
+                                                    true => continue,
+                                                },
+
                                             }
                                         }
                                     }
@@ -292,8 +309,8 @@ impl RttActiveChannel {
                         };
                         formatted_data
                     }
-                )
-            })
+                ))
+            }).transpose()
     }
 
     pub fn _push_rtt(&mut self, core: &mut Core) {
@@ -412,12 +429,34 @@ impl RttActiveTarget {
     }
 
     /// Polls the RTT target on all channels and returns available data.
+    /// Errors on any channel will be ignored and the data (even if incomplete) from the other channels will be returned.
+    // NOTE: Keeping this signature and "ignore errors" behaviour for backwards compatibility.
     pub fn poll_rtt(&mut self, core: &mut Core) -> HashMap<String, String> {
         let defmt_state = self.defmt_state.as_ref();
         self.active_channels
             .iter_mut()
-            .filter_map(|active_channel| active_channel.get_rtt_data(core, defmt_state))
+            .filter_map(|active_channel| {
+                active_channel
+                    .get_rtt_data(core, defmt_state)
+                    .unwrap_or_default()
+            })
             .collect::<HashMap<_, _>>()
+    }
+
+    /// Polls the RTT target on all channels and returns available data.
+    /// An error on any channel will return an error instead of incomplete data.
+    pub fn poll_rtt_fallible(
+        &mut self,
+        core: &mut Core,
+    ) -> Result<HashMap<String, String>, anyhow::Error> {
+        let defmt_state = self.defmt_state.as_ref();
+        let mut data = HashMap::new();
+        for channel in self.active_channels.iter_mut() {
+            if let Some((channel, formatted_data)) = channel.get_rtt_data(core, defmt_state)? {
+                data.insert(channel, formatted_data);
+            }
+        }
+        Ok(data)
     }
 
     // pub fn push_rtt(&mut self) {
