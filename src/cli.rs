@@ -44,7 +44,11 @@ pub struct Opts {
     elf: Option<PathBuf>,
 
     /// Skip writing the application binary to flash.
-    #[structopt(long, conflicts_with = "disable-double-buffering", conflicts_with = "verify")]
+    #[structopt(
+        long,
+        conflicts_with = "disable-double-buffering",
+        conflicts_with = "verify"
+    )]
     pub no_flash: bool,
 
     /// Connect to device when NRST is pressed.
