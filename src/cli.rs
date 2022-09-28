@@ -44,7 +44,11 @@ pub struct Opts {
     elf: Option<PathBuf>,
 
     /// Skip writing the application binary to flash.
-    #[structopt(long, conflicts_with = "defmt")]
+    #[structopt(
+        long,
+        conflicts_with = "disable-double-buffering",
+        conflicts_with = "verify"
+    )]
     pub no_flash: bool,
 
     /// Connect to device when NRST is pressed.
@@ -81,6 +85,10 @@ pub struct Opts {
     /// Disable use of double buffering while downloading flash
     #[structopt(long = "disable-double-buffering")]
     pub disable_double_buffering: bool,
+
+    /// Verifies the written program.
+    #[structopt(long)]
+    pub verify: bool,
 
     /// Arguments passed after the ELF file path are discarded
     #[structopt(name = "REST")]
