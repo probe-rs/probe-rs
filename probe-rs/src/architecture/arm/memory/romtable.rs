@@ -494,17 +494,13 @@ impl CoresightComponent {
 
     /// Finds the first component with the given peripheral type
     pub fn find_component(&self, peripheral_type: PeripheralType) -> Option<&CoresightComponent> {
-        for component in self.iter() {
-            if component
+        self.iter().find(|&component| {
+            component
                 .component
                 .id()
                 .peripheral_id
                 .is_of_type(peripheral_type)
-            {
-                return Some(component);
-            }
-        }
-        None
+        })
     }
 
     /// Turns this component into a component iterator which iterates all its children recursively.
