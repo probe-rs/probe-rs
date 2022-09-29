@@ -1,10 +1,10 @@
 use std::path::PathBuf;
 
+use clap::{ArgAction, Parser};
 use defmt_decoder::DEFMT_VERSION;
 use git_version::git_version;
 use log::Level;
 use probe_rs::Probe;
-use structopt::{clap::AppSettings, StructOpt};
 
 use crate::probe;
 
@@ -12,91 +12,91 @@ use crate::probe;
 const EXIT_SUCCESS: i32 = 0;
 
 /// A Cargo runner for microcontrollers.
-#[derive(StructOpt)]
-#[structopt(name = "probe-run", setting = AppSettings::TrailingVarArg)]
+#[derive(Parser)]
+#[command(name = "probe-run")]
 pub struct Opts {
     /// List supported chips and exit.
-    #[structopt(long)]
+    #[arg(long)]
     list_chips: bool,
 
     /// Lists all the connected probes and exit.
-    #[structopt(long)]
+    #[arg(long)]
     list_probes: bool,
 
     /// The chip to program.
-    #[structopt(long, required_unless_one(&["list-chips", "list-probes", "version"]), env = "PROBE_RUN_CHIP")]
+    #[arg(long, required_unless_present_any(&["list_chips", "list_probes", "version"]), env = "PROBE_RUN_CHIP")]
     chip: Option<String>,
 
     /// Path to chip description file, in YAML format.
-    #[structopt(long)]
+    #[arg(long)]
     pub chip_description_path: Option<PathBuf>,
 
     /// The probe to use (eg. `VID:PID`, `VID:PID:Serial`, or just `Serial`).
-    #[structopt(long, env = "PROBE_RUN_PROBE")]
+    #[arg(long, env = "PROBE_RUN_PROBE")]
     pub probe: Option<String>,
 
     /// The probe clock frequency in kHz
-    #[structopt(long, env = "PROBE_RUN_SPEED")]
+    #[arg(long, env = "PROBE_RUN_SPEED")]
     pub speed: Option<u32>,
 
     /// Path to an ELF firmware file.
-    #[structopt(name = "ELF", parse(from_os_str), required_unless_one(&["list-chips", "list-probes", "version"]))]
+    #[arg(name = "ELF", required_unless_present_any(&["list_chips", "list_probes", "version"]))]
     elf: Option<PathBuf>,
 
     /// Skip writing the application binary to flash.
-    #[structopt(
+    #[arg(
         long,
-        conflicts_with = "disable-double-buffering",
+        conflicts_with = "disable_double_buffering",
         conflicts_with = "verify"
     )]
     pub no_flash: bool,
 
     /// Connect to device when NRST is pressed.
-    #[structopt(long)]
+    #[arg(long)]
     pub connect_under_reset: bool,
 
     /// Enable more verbose output.
-    #[structopt(short, long, parse(from_occurrences))]
-    pub verbose: u32,
+    #[arg(short, long, action = ArgAction::Count)]
+    pub verbose: u8,
 
     /// Prints version information
-    #[structopt(short = "V", long)]
+    #[arg(short = 'V', long)]
     version: bool,
 
     /// Disable or enable backtrace (auto in case of panic or stack overflow).
-    #[structopt(long, default_value = "auto")]
+    #[arg(long, default_value = "auto")]
     pub backtrace: String,
 
     /// Configure the number of lines to print before a backtrace gets cut off
-    #[structopt(long, default_value = "50")]
+    #[arg(long, default_value = "50")]
     pub backtrace_limit: u32,
 
     /// Whether to shorten paths (e.g. to crates.io dependencies) in backtraces and defmt logs
-    #[structopt(long)]
+    #[arg(long)]
     pub shorten_paths: bool,
 
     /// Whether to measure the program's stack consumption.
-    #[structopt(long)]
+    #[arg(long)]
     pub measure_stack: bool,
 
-    #[structopt(long)]
+    #[arg(long)]
     pub json: bool,
 
     /// Disable use of double buffering while downloading flash
-    #[structopt(long = "disable-double-buffering")]
+    #[arg(long)]
     pub disable_double_buffering: bool,
 
     /// Verifies the written program.
-    #[structopt(long)]
+    #[arg(long)]
     pub verify: bool,
 
     /// Arguments passed after the ELF file path are discarded
-    #[structopt(name = "REST")]
+    #[arg(name = "REST", trailing_var_arg = true)]
     _rest: Vec<String>,
 }
 
 pub fn handle_arguments() -> anyhow::Result<i32> {
-    let opts: Opts = Opts::from_args();
+    let opts = Opts::parse();
     let verbose = opts.verbose;
 
     defmt_decoder::log::init_logger(verbose >= 1, opts.json, move |metadata| {
