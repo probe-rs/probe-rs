@@ -774,7 +774,7 @@ fn parse_swd_response(response: &[bool], direction: TransferDirection) -> Result
 
     let read_value_offset = ack_offset + 3;
 
-    let register_val: Vec<bool> = (&response[read_value_offset..read_value_offset + 32]).to_owned();
+    let register_val: Vec<bool> = response[read_value_offset..read_value_offset + 32].to_owned();
 
     let parity_bit = response[read_value_offset + 32];
 

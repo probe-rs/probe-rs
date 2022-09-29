@@ -25,6 +25,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `Session::read_swo` has been renamed to `Session::read_trace_data`
 - `probe-rs-debugger`: RISC-V `ebreak` instruction will enter Debug Mode (#1213)
 - RTT: When a channel format is `defmt`, automatically set the channel mode to `BlockingIfFull` on attach. (Enhancement request #1161)
+- RTT: Report data decode errors when channel format is `defmt`. (#1243)
+  - Note: This is a breaking API change for `probe_rs_cli::rtt::RttActiveChannel::get_rtt_data()`. To mitigate the impact of this change:
+    - `probe_rs_cli::rtt::RttActiveTarget::poll_rtt()` will maintain the original signature and behaviour of ignoring errors from `defmt` until deprecated in 0.14.0.
+    - The new `probe_rs_cli::rtt::RttActiveTarget::poll_rtt_fallible()` will propagate errors from `get_rtt_data()` on any of the active channels.
 
 ### Fixed
 

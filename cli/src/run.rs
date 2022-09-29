@@ -63,7 +63,7 @@ pub fn run(
     if let Some(rtta) = &mut rtta {
         let mut stdout = std::io::stdout();
         loop {
-            for (_ch, data) in rtta.poll_rtt(&mut core) {
+            for (_ch, data) in rtta.poll_rtt_fallible(&mut core)? {
                 stdout.write_all(data.as_bytes()).unwrap();
             }
         }

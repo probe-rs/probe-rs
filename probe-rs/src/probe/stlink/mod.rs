@@ -286,8 +286,8 @@ impl DebugProbe for StLink<StLinkUsbDevice> {
             .write(&[commands::GET_TARGET_VOLTAGE], &[], &mut buf, TIMEOUT)
             .and_then(|_| {
                 // The next two unwraps are safe!
-                let a0 = (&buf[0..4]).pread_with::<u32>(0, LE).unwrap();
-                let a1 = (&buf[4..8]).pread_with::<u32>(0, LE).unwrap();
+                let a0 = buf[0..4].pread_with::<u32>(0, LE).unwrap();
+                let a1 = buf[4..8].pread_with::<u32>(0, LE).unwrap();
                 if a0 != 0 {
                     Ok(Some(2. * (a1 as f32) * 1.2 / (a0 as f32)))
                 } else {
@@ -422,7 +422,7 @@ impl<D: StLinkUsb> StLink<D> {
         self.device
             .write(&[commands::GET_VERSION], &[], &mut buf, TIMEOUT)
             .map(|_| {
-                let version: u16 = (&buf[0..2]).pread_with(0, BE).unwrap();
+                let version: u16 = buf[0..2].pread_with(0, BE).unwrap();
                 self.hw_version = (version >> HW_VERSION_SHIFT) as u8 & HW_VERSION_MASK;
                 self.jtag_version = (version >> JTAG_VERSION_SHIFT) as u8 & JTAG_VERSION_MASK;
             })?;
@@ -442,7 +442,7 @@ impl<D: StLinkUsb> StLink<D> {
             self.device
                 .write(&[commands::GET_VERSION_EXT], &[], &mut buf, TIMEOUT)
                 .map(|_| {
-                    let version: u8 = (&buf[2..3]).pread_with(0, LE).unwrap();
+                    let version: u8 = buf[2..3].pread_with(0, LE).unwrap();
                     self.jtag_version = version;
                 })?;
         }
@@ -575,7 +575,7 @@ impl<D: StLinkUsb> StLink<D> {
             TIMEOUT,
         )?;
 
-        let mut values = (&buf)
+        let mut values = buf
             .chunks(4)
             .map(|chunk| chunk.pread_with::<u32>(0, LE).unwrap())
             .collect::<Vec<u32>>();
@@ -774,7 +774,7 @@ impl<D: StLinkUsb> StLink<D> {
         let mut buf = [0; 8];
         self.send_jtag_command(cmd, &[], &mut buf, TIMEOUT)?;
         // Unwrap is ok!
-        Ok((&buf[4..8]).pread_with(0, LE).unwrap())
+        Ok(buf[4..8].pread_with(0, LE).unwrap())
     }
 
     /// Writes a value to the DAP register on the specified port and address.
