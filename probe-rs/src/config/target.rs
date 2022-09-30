@@ -6,7 +6,7 @@ use crate::architecture::arm::sequences::{
     nrf52::Nrf52,
     nrf53::Nrf5340,
     nrf91::Nrf9160,
-    nxp::{MIMXRT10xx, LPC55S69},
+    nxp::{MIMXRT10xx, MIMXRT11xx, LPC55S69},
     stm32f_series::Stm32fSeries,
     stm32h7::Stm32h7,
     ArmDebugSequence,
@@ -97,6 +97,9 @@ impl Target {
         if chip.name.starts_with("MIMXRT10") {
             tracing::warn!("Using custom sequence for MIMXRT10xx");
             debug_sequence = DebugSequence::Arm(MIMXRT10xx::create());
+        } else if chip.name.starts_with("MIMXRT11") {
+            tracing::warn!("Using custom sequence for MIMXRT11xx");
+            debug_sequence = DebugSequence::Arm(MIMXRT11xx::create());
         } else if chip.name.starts_with("LPC55S16") || chip.name.starts_with("LPC55S69") {
             tracing::warn!("Using custom sequence for LPC55S16/LPC55S69");
             debug_sequence = DebugSequence::Arm(LPC55S69::create());
