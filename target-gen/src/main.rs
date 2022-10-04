@@ -6,7 +6,7 @@ pub mod parser;
 
 use std::{
     fs::{create_dir, File, OpenOptions},
-    io::Write,
+    io::{BufRead, Write},
     path::{Path, PathBuf},
 };
 
@@ -42,6 +42,8 @@ enum TargetGen {
         output_dir: PathBuf,
     },
     /// Generates all the target descriptions from the entries listed in the ARM root VIDX/PIDX at <https://www.keil.com/pack/Keil.pidx>.
+    /// This will only generate target descriptions for chip families that are already supported by probe-rs, to avoid generating a lot of unsupportable chip families.
+    /// Please use the `pack` subcommand to generate target descriptions for other chip families.
     Arm {
         #[clap(
             name = "OUTPUT",
@@ -149,8 +151,7 @@ fn cmd_elf(
         }
 
         let target_description = File::create(&target_description_file)?;
-
-        serde_yaml::to_writer(&target_description, &family)?;
+        serialize_to_yaml_file(&family, &target_description)?;
     } else {
         // Create a complete target specification, with place holder values
         let algorithm_name = algorithm.name.clone();
@@ -192,12 +193,10 @@ fn cmd_elf(
             source: BuiltIn,
         };
 
-        let serialized = serde_yaml::to_string(&chip_family)?;
-
         match output {
             Some(output) => {
                 // Ensure we don't overwrite an existing file
-                let mut file = OpenOptions::new()
+                let file = OpenOptions::new()
                     .write(true)
                     .create_new(true)
                     .open(&output)
@@ -205,10 +204,9 @@ fn cmd_elf(
                         "Failed to create target file '{}'.",
                         output.display()
                     ))?;
-
-                file.write_all(serialized.as_bytes())?;
+                serialize_to_yaml_file(&chip_family, &file)?;
             }
-            None => println!("{}", serialized),
+            None => println!("{}", serde_yaml::to_string(&chip_family)?),
         }
     }
 
@@ -253,10 +251,11 @@ fn cmd_pack(input: &Path, out_dir: &Path) -> Result<()> {
     let mut generated_files = Vec::with_capacity(families.len());
 
     for family in &families {
-        let path = out_dir.join(family.name.clone() + ".yaml");
+        let path = out_dir.join(family.name.clone().replace(' ', "_") + ".yaml");
         let file = std::fs::File::create(&path)
             .context(format!("Failed to create file '{}'.", path.display()))?;
-        serde_yaml::to_writer(file, &family)?;
+
+        serialize_to_yaml_file(family, &file)?;
 
         generated_files.push(path);
     }
@@ -268,6 +267,31 @@ fn cmd_pack(input: &Path, out_dir: &Path) -> Result<()> {
     }
 
     Ok(())
+}
+
+/// Some optimizations to improve the readability of the `serde_yaml` output:
+/// - If `Option<T>` is `None`, it is serialized as `null` ... we want to omit it.
+/// - If `Vec<T>` is empty, it is serialized as `[]` ... we want to omit it.
+/// - `serde_yaml` serializes hex formatted integers as single quoted strings, e.g. '0x1234' ... we need to remove the single quotes so that it round-trips properly.
+fn serialize_to_yaml_file(family: &ChipFamily, file: &File) -> Result<(), anyhow::Error> {
+    let yaml_string = serde_yaml::to_string(&family)?;
+    let mut reader = std::io::BufReader::new(yaml_string.as_bytes());
+    let mut reader_line = String::new();
+    let mut writer = std::io::BufWriter::new(file);
+    Ok(while reader.read_line(&mut reader_line)? > 0 {
+        if reader_line.ends_with(": null\n") || reader_line.ends_with(": []\n") {
+            // Skip the line
+        } else if (reader_line.contains("'0x") || reader_line.contains("'0X"))
+            && reader_line.ends_with("'\n")
+        {
+            reader_line = reader_line.replace("'", "");
+            writer.write(reader_line.as_bytes())?;
+            // Remove the single quotes
+        } else {
+            writer.write(reader_line.as_bytes())?;
+        }
+        reader_line.clear();
+    })
 }
 
 /// Handle the arm subcommand.
@@ -287,10 +311,10 @@ fn cmd_arm(out_dir: &Path) -> Result<()> {
     let mut generated_files = Vec::with_capacity(families.len());
 
     for family in &families {
-        let path = out_dir.join(family.name.clone() + ".yaml");
+        let path = out_dir.join(family.name.clone().replace(' ', "_") + ".yaml");
         let file = std::fs::File::create(&path)
             .context(format!("Failed to create file '{}'.", path.display()))?;
-        serde_yaml::to_writer(file, &family)?;
+        serialize_to_yaml_file(&family, &file)?;
 
         generated_files.push(path);
     }

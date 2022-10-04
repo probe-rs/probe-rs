@@ -118,16 +118,11 @@ pub struct ChipFamily {
     /// E.g. `nRF52832`.
     pub name: String,
     /// The JEP106 code of the manufacturer.
-    #[cfg_attr(
-        not(feature = "bincode"),
-        serde(skip_serializing_if = "Option::is_none")
-    )]
     pub manufacturer: Option<JEP106Code>,
     /// This vector holds all the variants of the family.
     pub variants: Vec<Chip>,
     /// This vector holds all available algorithms.
     pub flash_algorithms: Vec<RawFlashAlgorithm>,
-
     #[serde(skip, default = "default_source")]
     /// Source of the target description, used for diagnostics
     pub source: TargetDescriptionSource,

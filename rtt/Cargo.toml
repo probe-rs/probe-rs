@@ -13,5 +13,5 @@ repository = "https://github.com/probe-rs/probe-rs"
 log = "0.4.8"
 probe-rs = { version = "0.13.0", path = "../probe-rs" }
 scroll = "0.10.1"
-serde = { version = "1.0", features = ["derive"] }
+serde = { version = "1", features = ["derive"] }
 thiserror = "1.0.11"

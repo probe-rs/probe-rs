@@ -114,8 +114,13 @@ impl Registry {
     fn from_builtin_families() -> Self {
         const BUILTIN_TARGETS: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/targets.bincode"));
 
-        let mut families: Vec<ChipFamily> = bincode::deserialize(BUILTIN_TARGETS)
-            .expect("Failed to deserialize builtin targets. This is a bug.");
+        let mut families: Vec<ChipFamily> = match bincode::deserialize(BUILTIN_TARGETS) {
+            Ok(families) => families,
+            Err(err) => panic!(
+                "Failed to deserialize builtin targets. This is a bug : {:?}",
+                err
+            ),
+        };
 
         add_generic_targets(&mut families);
 

@@ -121,6 +121,64 @@
                 "debug",
             ],
             "cwd": "${workspaceFolder}/debugger"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "target-gen Update supported ARM target definitions",
+            "cwd": "${workspaceFolder}/target-gen",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=target-gen",
+                    "--package=target-gen"
+                ],
+                "filter": {
+                    "name": "target-gen",
+                    "kind": "bin"
+                }
+            },
+            "args": [
+                "arm",
+                "${env:TMPDIR}target-gen"
+            ],
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "target-gen Generate target yaml from single PDSC file",
+            "cwd": "${workspaceFolder}/target-gen",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=target-gen",
+                    "--package=target-gen"
+                ],
+                "filter": {
+                    "name": "target-gen",
+                    "kind": "bin"
+                }
+            },
+            "args": [
+                "pack",
+                "${input:packFile}",
+                "${input:yamlFile}"
+            ],
+        },
+    ],
+    "inputs": [
+        {
+            "id": "packFile",
+            "type": "promptString",
+            "description": "Please enter the path to Pack file or the unzipped Pack directory.",
+            "default": "${workspaceFolder}/../pack_files/Keil.STM32H7xx_DFP.2.7.0.pack"
+            // "default": "${workspaceFolder}/../pack_files/NXP.LPC55S69_DFP.15.0.0.pack"
+        },
+        {
+            "id": "yamlFile",
+            "type": "promptString",
+            "description": "Please enter the path to the output directory for yaml files.",
+            "default": "${workspaceFolder}/probe-rs/targets"
         }
     ]
 }

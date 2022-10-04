@@ -1,7 +1,6 @@
 use super::memory::MemoryRegion;
-use crate::CoreType;
+use crate::{serialize::hex_option, CoreType};
 use serde::{Deserialize, Serialize};
-
 /// A single chip variant.
 ///
 /// This describes an exact chip variant, including the cores, flash and memory size. For example,
@@ -14,12 +13,9 @@ pub struct Chip {
     pub name: String,
     /// The `PART` register of the chip.
     /// This value can be determined via the `cli info` command.
-    #[cfg_attr(
-        not(feature = "bincode"),
-        serde(skip_serializing_if = "Option::is_none")
-    )]
     pub part: Option<u16>,
     /// The cores available on the chip.
+    #[serde(default)]
     pub cores: Vec<Core>,
     /// The memory regions available on the chip.
     pub memory_map: Vec<MemoryRegion>,
@@ -29,6 +25,7 @@ pub struct Chip {
     /// [`ChipFamily::flash_algorithms`] field.
     ///
     /// [`ChipFamily::flash_algorithms`]: crate::ChipFamily::flash_algorithms
+    #[serde(default)]
     pub flash_algorithms: Vec<String>,
 }
 
@@ -84,9 +81,11 @@ pub struct ArmCoreAccessOptions {
     pub psel: u32,
     /// The base address of the debug registers for the core.
     /// Required for Cortex-A, optional for Cortex-M
+    #[serde(serialize_with = "hex_option")]
     pub debug_base: Option<u64>,
     /// The base address of the cross trigger interface (CTI) for the core.
     /// Required in ARMv8-A
+    #[serde(serialize_with = "hex_option")]
     pub cti_base: Option<u64>,
 }
 

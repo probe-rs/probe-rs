@@ -1,5 +1,5 @@
 use super::flash_properties::FlashProperties;
-
+use crate::serialize::{hex_option, hex_u_int};
 use serde::{Deserialize, Serialize};
 
 /// The raw flash algorithm is the description of a flash algorithm,
@@ -21,22 +21,30 @@ pub struct RawFlashAlgorithm {
     #[serde(serialize_with = "serialize")]
     pub instructions: Vec<u8>,
     /// Address to load algo into RAM. Optional.
+    #[serde(serialize_with = "hex_option")]
     pub load_address: Option<u64>,
     /// Address of the `Init()` entry point. Optional.
+    #[serde(serialize_with = "hex_option")]
     pub pc_init: Option<u64>,
     /// Address of the `UnInit()` entry point. Optional.
+    #[serde(serialize_with = "hex_option")]
     pub pc_uninit: Option<u64>,
     /// Address of the `ProgramPage()` entry point.
+    #[serde(serialize_with = "hex_u_int")]
     pub pc_program_page: u64,
     /// Address of the `EraseSector()` entry point.
+    #[serde(serialize_with = "hex_u_int")]
     pub pc_erase_sector: u64,
     /// Address of the `EraseAll()` entry point. Optional.
+    #[serde(serialize_with = "hex_option")]
     pub pc_erase_all: Option<u64>,
     /// The offset from the start of RAM to the data section.
+    #[serde(serialize_with = "hex_u_int")]
     pub data_section_offset: u64,
     /// The properties of the flash on the device.
     pub flash_properties: FlashProperties,
     /// List of cores that can use this algorithm
+    #[serde(default)]
     pub cores: Vec<String>,
 }
 
