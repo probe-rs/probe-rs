@@ -91,7 +91,7 @@ pub struct Opts {
     pub verify: bool,
 
     /// Arguments passed after the ELF file path are discarded
-    #[arg(name = "REST", trailing_var_arg = true)]
+    #[arg(name = "REST", trailing_var_arg = true, hide = true)]
     _rest: Vec<String>,
 }
 
