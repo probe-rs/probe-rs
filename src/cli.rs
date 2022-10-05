@@ -24,7 +24,7 @@ pub struct Opts {
     list_probes: bool,
 
     /// The chip to program.
-    #[arg(long, required_unless_present_any(HELPER), env = "PROBE_RUN_CHIP")]
+    #[arg(long, required = true, conflicts_with_all = HELPER, env = "PROBE_RUN_CHIP")]
     chip: Option<String>,
 
     /// Path to chip description file, in YAML format.
@@ -40,7 +40,7 @@ pub struct Opts {
     pub speed: Option<u32>,
 
     /// Path to an ELF firmware file.
-    #[arg(required_unless_present_any(HELPER))]
+    #[arg(required = true, conflicts_with_all = HELPER)]
     elf: Option<PathBuf>,
 
     /// Skip writing the application binary to flash.
@@ -91,7 +91,7 @@ pub struct Opts {
     pub verify: bool,
 
     /// Arguments passed after the ELF file path are discarded
-    #[arg(name = "REST", trailing_var_arg = true, hide = true)]
+    #[arg(allow_hyphen_values = true, hide = true, trailing_var_arg = true)]
     _rest: Vec<String>,
 }
 
