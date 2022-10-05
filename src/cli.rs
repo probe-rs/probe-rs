@@ -24,7 +24,7 @@ pub struct Opts {
     list_probes: bool,
 
     /// The chip to program.
-    #[arg(long, required_unless_present_any(&["list_chips", "list_probes", "version"]), env = "PROBE_RUN_CHIP")]
+    #[arg(long, required_unless_present_any(HELPER), env = "PROBE_RUN_CHIP")]
     chip: Option<String>,
 
     /// Path to chip description file, in YAML format.
@@ -40,7 +40,7 @@ pub struct Opts {
     pub speed: Option<u32>,
 
     /// Path to an ELF firmware file.
-    #[arg(name = "ELF", required_unless_present_any(&["list_chips", "list_probes", "version"]))]
+    #[arg(required_unless_present_any(HELPER))]
     elf: Option<PathBuf>,
 
     /// Skip writing the application binary to flash.
@@ -94,6 +94,9 @@ pub struct Opts {
     #[arg(name = "REST", trailing_var_arg = true)]
     _rest: Vec<String>,
 }
+
+/// Helper commands, which will not execute probe-run normally.
+const HELPER: [&str; 3] = ["list_chips", "list_probes", "version"];
 
 pub fn handle_arguments() -> anyhow::Result<i32> {
     let opts = Opts::parse();
