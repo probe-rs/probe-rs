@@ -8,7 +8,7 @@ license = "MIT OR Apache-2.0"
 name = "probe-run"
 readme = "README.md"
 repository = "https://github.com/knurling-rs/probe-run"
-version = "0.3.4"
+version = "0.3.5"
 
 [dependencies]
 addr2line = { version = "0.18", default-features = false, features = [
@@ -36,5 +36,5 @@ insta = "~1.11"
 os_pipe = "1.0"
 pretty_assertions = "1"
 rstest = { version = "0.15", default-features = false }
-nix = "0.24"
+nix = "0.25"
 serial_test = { version = "0.9", default-features = false }
