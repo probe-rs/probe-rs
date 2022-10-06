@@ -13,15 +13,15 @@ const EXIT_SUCCESS: i32 = 0;
 
 /// A Cargo runner for microcontrollers.
 #[derive(Parser)]
-#[command(name = "probe-run")]
+#[command()]
 pub struct Opts {
-    /// List supported chips and exit.
-    #[arg(long)]
-    list_chips: bool,
+    /// Disable or enable backtrace (auto in case of panic or stack overflow).
+    #[arg(long, default_value = "auto")]
+    pub backtrace: String,
 
-    /// Lists all the connected probes and exit.
-    #[arg(long)]
-    list_probes: bool,
+    /// Configure the number of lines to print before a backtrace gets cut off.
+    #[arg(long, default_value = "50")]
+    pub backtrace_limit: u32,
 
     /// The chip to program.
     #[arg(long, required = true, conflicts_with_all = HELPER, env = "PROBE_RUN_CHIP")]
@@ -31,17 +31,33 @@ pub struct Opts {
     #[arg(long)]
     pub chip_description_path: Option<PathBuf>,
 
-    /// The probe to use (eg. `VID:PID`, `VID:PID:Serial`, or just `Serial`).
-    #[arg(long, env = "PROBE_RUN_PROBE")]
-    pub probe: Option<String>,
+    /// Connect to device when NRST is pressed.
+    #[arg(long)]
+    pub connect_under_reset: bool,
 
-    /// The probe clock frequency in kHz
-    #[arg(long, env = "PROBE_RUN_SPEED")]
-    pub speed: Option<u32>,
+    /// Disable use of double buffering while downloading flash.
+    #[arg(long)]
+    pub disable_double_buffering: bool,
 
     /// Path to an ELF firmware file.
     #[arg(required = true, conflicts_with_all = HELPER)]
     elf: Option<PathBuf>,
+
+    /// Output logs a structured json.
+    #[arg(long)]
+    pub json: bool,
+
+    /// List supported chips and exit.
+    #[arg(long)]
+    list_chips: bool,
+
+    /// Lists all the connected probes and exit.
+    #[arg(long)]
+    list_probes: bool,
+
+    /// Whether to measure the program's stack consumption.
+    #[arg(long)]
+    pub measure_stack: bool,
 
     /// Skip writing the application binary to flash.
     #[arg(
@@ -51,44 +67,29 @@ pub struct Opts {
     )]
     pub no_flash: bool,
 
-    /// Connect to device when NRST is pressed.
-    #[arg(long)]
-    pub connect_under_reset: bool,
-
-    /// Enable more verbose output.
-    #[arg(short, long, action = ArgAction::Count)]
-    pub verbose: u8,
-
-    /// Prints version information
-    #[arg(short = 'V', long)]
-    version: bool,
-
-    /// Disable or enable backtrace (auto in case of panic or stack overflow).
-    #[arg(long, default_value = "auto")]
-    pub backtrace: String,
-
-    /// Configure the number of lines to print before a backtrace gets cut off
-    #[arg(long, default_value = "50")]
-    pub backtrace_limit: u32,
+    /// The probe to use (eg. `VID:PID`, `VID:PID:Serial`, or just `Serial`).
+    #[arg(long, env = "PROBE_RUN_PROBE")]
+    pub probe: Option<String>,
 
     /// Whether to shorten paths (e.g. to crates.io dependencies) in backtraces and defmt logs
     #[arg(long)]
     pub shorten_paths: bool,
 
-    /// Whether to measure the program's stack consumption.
-    #[arg(long)]
-    pub measure_stack: bool,
+    /// The probe clock frequency in kHz
+    #[arg(long, env = "PROBE_RUN_SPEED")]
+    pub speed: Option<u32>,
 
-    #[arg(long)]
-    pub json: bool,
-
-    /// Disable use of double buffering while downloading flash
-    #[arg(long)]
-    pub disable_double_buffering: bool,
+    /// Enable more verbose output.
+    #[arg(short, long, action = ArgAction::Count)]
+    pub verbose: u8,
 
     /// Verifies the written program.
     #[arg(long)]
     pub verify: bool,
+
+    /// Prints version information
+    #[arg(short = 'V', long)]
+    version: bool,
 
     /// Arguments passed after the ELF file path are discarded
     #[arg(allow_hyphen_values = true, hide = true, trailing_var_arg = true)]
