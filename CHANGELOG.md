@@ -6,12 +6,14 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/) and this p
 
 ## [Unreleased]
 
+## [v0.3.5] - 2022-10-07
+
 - [#357] Update to `clap 4.0`
 - [#349] Add `PROBE_RUN_SPEED` env variable
 - [#345] Update dev-dependency `serial_test`
 - [#344] Replace `pub(crate)` with `pub`
 - [#343] Mark `v0.3.4` as released in `CHANGELOG.md`
-- [#353] Add option to verify written flash
+- [#353] Add `--verify` option to verify written flash
 
 [#357]: https://github.com/knurling-rs/probe-run/pull/357
 [#349]: https://github.com/knurling-rs/probe-run/pull/349
@@ -434,7 +436,8 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/) and this p
 
 Initial release
 
-[Unreleased]: https://github.com/knurling-rs/probe-run/compare/v0.3.4...main
+[Unreleased]: https://github.com/knurling-rs/probe-run/compare/v0.3.5...main
+[v0.3.4]: https://github.com/knurling-rs/probe-run/compare/v0.3.4...v0.3.5
 [v0.3.4]: https://github.com/knurling-rs/probe-run/compare/v0.3.3...v0.3.4
 [v0.3.3]: https://github.com/knurling-rs/probe-run/compare/v0.3.2...v0.3.3
 [v0.3.2]: https://github.com/knurling-rs/probe-run/compare/v0.3.1...v0.3.2
