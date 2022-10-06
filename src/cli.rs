@@ -1,10 +1,10 @@
 use std::path::PathBuf;
 
+use clap::{ArgAction, Parser};
 use defmt_decoder::DEFMT_VERSION;
 use git_version::git_version;
 use log::Level;
 use probe_rs::Probe;
-use structopt::{clap::AppSettings, StructOpt};
 
 use crate::probe;
 
@@ -12,91 +12,95 @@ use crate::probe;
 const EXIT_SUCCESS: i32 = 0;
 
 /// A Cargo runner for microcontrollers.
-#[derive(StructOpt)]
-#[structopt(name = "probe-run", setting = AppSettings::TrailingVarArg)]
+#[derive(Parser)]
+#[command()]
 pub struct Opts {
-    /// List supported chips and exit.
-    #[structopt(long)]
-    list_chips: bool,
+    /// Disable or enable backtrace (auto in case of panic or stack overflow).
+    #[arg(long, default_value = "auto")]
+    pub backtrace: String,
 
-    /// Lists all the connected probes and exit.
-    #[structopt(long)]
-    list_probes: bool,
+    /// Configure the number of lines to print before a backtrace gets cut off.
+    #[arg(long, default_value = "50")]
+    pub backtrace_limit: u32,
 
     /// The chip to program.
-    #[structopt(long, required_unless_one(&["list-chips", "list-probes", "version"]), env = "PROBE_RUN_CHIP")]
+    #[arg(long, required = true, conflicts_with_all = HELPER_CMDS, env = "PROBE_RUN_CHIP")]
     chip: Option<String>,
 
     /// Path to chip description file, in YAML format.
-    #[structopt(long)]
+    #[arg(long)]
     pub chip_description_path: Option<PathBuf>,
 
-    /// The probe to use (eg. `VID:PID`, `VID:PID:Serial`, or just `Serial`).
-    #[structopt(long, env = "PROBE_RUN_PROBE")]
-    pub probe: Option<String>,
+    /// Connect to device when NRST is pressed.
+    #[arg(long)]
+    pub connect_under_reset: bool,
 
-    /// The probe clock frequency in kHz
-    #[structopt(long, env = "PROBE_RUN_SPEED")]
-    pub speed: Option<u32>,
+    /// Disable use of double buffering while downloading flash.
+    #[arg(long)]
+    pub disable_double_buffering: bool,
 
     /// Path to an ELF firmware file.
-    #[structopt(name = "ELF", parse(from_os_str), required_unless_one(&["list-chips", "list-probes", "version"]))]
+    #[arg(required = true, conflicts_with_all = HELPER_CMDS)]
     elf: Option<PathBuf>,
 
+    /// Output logs a structured json.
+    #[arg(long)]
+    pub json: bool,
+
+    /// List supported chips and exit.
+    #[arg(long)]
+    list_chips: bool,
+
+    /// Lists all the connected probes and exit.
+    #[arg(long)]
+    list_probes: bool,
+
+    /// Whether to measure the program's stack consumption.
+    #[arg(long)]
+    pub measure_stack: bool,
+
     /// Skip writing the application binary to flash.
-    #[structopt(
+    #[arg(
         long,
-        conflicts_with = "disable-double-buffering",
+        conflicts_with = "disable_double_buffering",
         conflicts_with = "verify"
     )]
     pub no_flash: bool,
 
-    /// Connect to device when NRST is pressed.
-    #[structopt(long)]
-    pub connect_under_reset: bool,
-
-    /// Enable more verbose output.
-    #[structopt(short, long, parse(from_occurrences))]
-    pub verbose: u32,
-
-    /// Prints version information
-    #[structopt(short = "V", long)]
-    version: bool,
-
-    /// Disable or enable backtrace (auto in case of panic or stack overflow).
-    #[structopt(long, default_value = "auto")]
-    pub backtrace: String,
-
-    /// Configure the number of lines to print before a backtrace gets cut off
-    #[structopt(long, default_value = "50")]
-    pub backtrace_limit: u32,
+    /// The probe to use (eg. `VID:PID`, `VID:PID:Serial`, or just `Serial`).
+    #[arg(long, env = "PROBE_RUN_PROBE")]
+    pub probe: Option<String>,
 
     /// Whether to shorten paths (e.g. to crates.io dependencies) in backtraces and defmt logs
-    #[structopt(long)]
+    #[arg(long)]
     pub shorten_paths: bool,
 
-    /// Whether to measure the program's stack consumption.
-    #[structopt(long)]
-    pub measure_stack: bool,
+    /// The probe clock frequency in kHz
+    #[arg(long, env = "PROBE_RUN_SPEED")]
+    pub speed: Option<u32>,
 
-    #[structopt(long)]
-    pub json: bool,
-
-    /// Disable use of double buffering while downloading flash
-    #[structopt(long = "disable-double-buffering")]
-    pub disable_double_buffering: bool,
+    /// Enable more verbose output.
+    #[arg(short, long, action = ArgAction::Count)]
+    pub verbose: u8,
 
     /// Verifies the written program.
-    #[structopt(long)]
+    #[arg(long)]
     pub verify: bool,
 
+    /// Prints version information
+    #[arg(short = 'V', long)]
+    version: bool,
+
     /// Arguments passed after the ELF file path are discarded
-    #[structopt(name = "REST")]
+    #[arg(allow_hyphen_values = true, hide = true, trailing_var_arg = true)]
     _rest: Vec<String>,
 }
 
+/// Helper commands, which will not execute probe-run normally.
+const HELPER_CMDS: [&str; 3] = ["list_chips", "list_probes", "version"];
+
 pub fn handle_arguments() -> anyhow::Result<i32> {
-    let opts: Opts = Opts::from_args();
+    let opts = Opts::parse();
     let verbose = opts.verbose;
 
     defmt_decoder::log::init_logger(verbose >= 1, opts.json, move |metadata| {
