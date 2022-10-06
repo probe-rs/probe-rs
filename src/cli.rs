@@ -24,7 +24,7 @@ pub struct Opts {
     pub backtrace_limit: u32,
 
     /// The chip to program.
-    #[arg(long, required = true, conflicts_with_all = HELPER, env = "PROBE_RUN_CHIP")]
+    #[arg(long, required = true, conflicts_with_all = HELPER_CMDS, env = "PROBE_RUN_CHIP")]
     chip: Option<String>,
 
     /// Path to chip description file, in YAML format.
@@ -40,7 +40,7 @@ pub struct Opts {
     pub disable_double_buffering: bool,
 
     /// Path to an ELF firmware file.
-    #[arg(required = true, conflicts_with_all = HELPER)]
+    #[arg(required = true, conflicts_with_all = HELPER_CMDS)]
     elf: Option<PathBuf>,
 
     /// Output logs a structured json.
@@ -97,7 +97,7 @@ pub struct Opts {
 }
 
 /// Helper commands, which will not execute probe-run normally.
-const HELPER: [&str; 3] = ["list_chips", "list_probes", "version"];
+const HELPER_CMDS: [&str; 3] = ["list_chips", "list_probes", "version"];
 
 pub fn handle_arguments() -> anyhow::Result<i32> {
     let opts = Opts::parse();
