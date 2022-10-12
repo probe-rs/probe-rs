@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added support for Microchip SAMDA1
 - Added Probe re-attach handling when needed after `debug_device_unlock`
 - Added Custom ArmDebugSequence for ATSAM D5x/E5x devices
+- Added FlashLoader::data method
 
 ### Changed
 

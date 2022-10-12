@@ -473,4 +473,12 @@ impl FlashLoader {
             }
         }
     }
+
+    /// Return data chunks stored in the `FlashLoader` as pairs of address and bytes.
+    pub fn data(&self) -> impl Iterator<Item = (u64, &[u8])> {
+        self.builder
+            .data
+            .iter()
+            .map(|(address, data)| (*address, data.as_slice()))
+    }
 }
