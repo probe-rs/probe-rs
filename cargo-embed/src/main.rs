@@ -25,8 +25,8 @@ use probe_rs::{
 use probe_rs_cli_util::logging::{ask_to_log_crash, capture_anyhow, capture_panic};
 
 use probe_rs_cli_util::{
-    build_artifact, clap,
-    clap::Parser,
+    build_artifact,
+    clap::{self, Parser},
     common_options::CargoOptions,
     indicatif::{MultiProgress, ProgressBar, ProgressStyle},
     logging::{self, Metadata},
@@ -53,6 +53,7 @@ const CARGO_VERSION: &str = env!("CARGO_PKG_VERSION");
 const GIT_VERSION: &str = git_version::git_version!(fallback = "crates.io");
 
 #[derive(Debug, clap::Parser)]
+#[clap(global_setting(clap::AppSettings::NoAutoVersion))]
 struct Opt {
     #[clap(short = 'V', long = "version")]
     pub version: bool,
