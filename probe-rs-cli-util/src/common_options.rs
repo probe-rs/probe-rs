@@ -9,15 +9,15 @@
 //!
 //! #[derive(clap::Parser)]
 //! struct Opts {
-//!     #[structopt(long = "some-opt")]
+//!     #[clap(long = "some-opt")]
 //!     opt: String,
 //!
-//!     #[structopt(flatten)]
+//!     #[clap(flatten)]
 //!     flash_options: FlashOptions,
 //! }
 //!
 //! fn main() {
-//!     let opts = Opts::from_iter(std::env::args());
+//!     let opts = Opts::parse();
 //!
 //!     opts.flash_options.probe_options.maybe_load_chip_desc().unwrap();
 //!
@@ -355,13 +355,15 @@ impl CargoOptions {
     /// --help. Example usage:
     /// ```no_run
     /// use probe_rs_cli_util::common_options::{FlashOptions, CargoOptions};
-    /// use probe_rs_cli_util::clap::Parser;
+    /// use probe_rs_cli_util::clap::{Parser, CommandFactory, FromArgMatches};
     ///
-    /// let matches = FlashOptions::clap()
+    /// let help_message = CargoOptions::help_message("cargo flash");
+    ///
+    /// let matches = FlashOptions::command()
     ///     .bin_name("cargo flash")
-    ///     .after_help(CargoOptions::help_message("cargo flash").as_str())
+    ///     .after_help(&help_message)
     ///     .get_matches_from(std::env::args());
-    /// let opts = FlashOptions::from_clap(&matches);
+    /// let opts = FlashOptions::from_arg_matches(&matches);
     /// ```
     pub fn help_message(bin: &str) -> String {
         format!(
