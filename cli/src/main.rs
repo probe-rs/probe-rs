@@ -104,7 +104,7 @@ enum Cli {
         common: ProbeOptions,
 
         /// Format of the file to be downloaded to the flash. Possible values are case-insensitive.
-        #[clap(arg_enum, ignore_case = true, default_value = "elf", long)]
+        #[clap(value_enum, ignore_case = true, default_value = "elf", long)]
         format: DownloadFileType,
 
         /// The address in memory where the binary will be put at. This is only considered when `bin` is selected as the format.
@@ -186,7 +186,7 @@ enum Cli {
     Chip(Chip),
 }
 
-#[derive(clap::StructOpt)]
+#[derive(clap::Parser)]
 /// Inspect internal registry of supported chips
 enum Chip {
     /// Lists all the available families and their chips with their full.
@@ -201,7 +201,7 @@ enum Chip {
 }
 
 /// Shared options for core selection, shared between commands
-#[derive(clap::StructOpt)]
+#[derive(clap::Parser)]
 pub(crate) struct CoreOptions {
     #[clap(long, default_value = "0")]
     core: usize,
@@ -524,7 +524,7 @@ fn debug(shared_options: &CoreOptions, common: &ProbeOptions, exe: Option<PathBu
     Ok(())
 }
 
-#[derive(clap::ArgEnum, Debug, Clone, Copy)]
+#[derive(clap::ValueEnum, Debug, Clone, Copy)]
 enum DownloadFileType {
     Elf,
     Hex,

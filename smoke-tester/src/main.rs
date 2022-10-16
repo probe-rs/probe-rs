@@ -25,14 +25,12 @@ fn main() -> Result<()> {
             Arg::new("dut_definitions")
                 .long("dut-definitions")
                 .value_name("DIRECTORY")
-                .takes_value(true)
                 .conflicts_with_all(&["chip", "probe", "single_dut"])
                 .required(true),
         )
         .arg(
             Arg::new("chip")
                 .long("chip")
-                .takes_value(true)
                 .value_name("CHIP")
                 .conflicts_with_all(&["dut_definitions", "single_dut"])
                 .required(true),
@@ -40,7 +38,6 @@ fn main() -> Result<()> {
         .arg(
             Arg::new("probe")
                 .long("probe")
-                .takes_value(true)
                 .value_name("PROBE")
                 .required(false),
         )
@@ -48,7 +45,6 @@ fn main() -> Result<()> {
             Arg::new("single_dut")
                 .long("single-dut")
                 .value_name("FILE")
-                .takes_value(true)
                 .required(true)
                 .conflicts_with_all(&["chip", "dut_definitions"]),
         );

@@ -9,4 +9,4 @@ authors = ["Matti Virkkunen <mvirkkunen@gmail.com>"]
 pretty_env_logger = "0.4.0"
 probe-rs = { version = "0.13.0", path = "../probe-rs" }
 probe-rs-rtt = { version = "0.13.0", path = "../rtt" }
-clap = { version = "3.0", features = ["derive"] }
+clap = { version = "4.0", features = ["derive"] }

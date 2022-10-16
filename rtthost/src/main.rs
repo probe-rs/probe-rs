@@ -8,7 +8,7 @@ use std::io::{stdin, stdout};
 use std::sync::mpsc::{channel, Receiver};
 use std::thread;
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 enum ProbeInfo {
     Number(usize),
     List,
