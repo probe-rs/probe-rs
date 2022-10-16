@@ -14,7 +14,7 @@ use rand::prelude::*;
 struct Cli {
     #[clap(long = "chip")]
     chip: Option<String>,
-    #[clap(long = "address", parse(try_from_str = parse_hex))]
+    #[clap(long = "address", value_parser= parse_hex)]
     address: u64,
     #[clap(long = "speed")]
     speed: Option<u32>,

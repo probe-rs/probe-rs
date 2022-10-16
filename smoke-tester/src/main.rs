@@ -55,17 +55,17 @@ fn main() -> Result<()> {
 
     let matches = app.get_matches();
 
-    let definitions = if let Some(dut_definitions) = matches.value_of("dut_definitions") {
+    let definitions = if let Some(dut_definitions) = matches.get_one::<String>("dut_definitions") {
         let definitions = DutDefinition::collect(dut_definitions)?;
         println!("Found {} target definitions.", definitions.len());
         definitions
-    } else if let Some(single_dut) = matches.value_of("single_dut") {
+    } else if let Some(single_dut) = matches.get_one::<String>("single_dut") {
         vec![DutDefinition::from_file(Path::new(single_dut))?]
     } else {
         // Chip needs to be specified
-        let chip = matches.value_of("chip").unwrap(); // If dut-definitions is not present, chip must be present
+        let chip = matches.get_one::<String>("chip").unwrap(); // If dut-definitions is not present, chip must be present
 
-        if let Some(probe) = matches.value_of("probe") {
+        if let Some(probe) = matches.get_one::<String>("probe") {
             vec![DutDefinition::new(chip, probe)?]
         } else {
             vec![DutDefinition::autodetect_probe(chip)?]

@@ -95,7 +95,7 @@ struct Opts {
     #[clap(
         long,
         default_value="",
-        parse(try_from_str=parse_scan_region),
+        value_parser = parse_scan_region,
         help = "Memory region to scan for control block. You can specify either an exact starting address '0x1000' or a range such as '0x0000..0x1000'. Both decimal and hex are accepted.")]
     scan_region: ScanRegion,
 }
