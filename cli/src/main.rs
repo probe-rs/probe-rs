@@ -62,7 +62,7 @@ enum Cli {
         )]
         gdb_connection_string: Option<String>,
 
-        #[structopt(
+        #[clap(
             name = "reset-halt",
             long = "reset-halt",
             help = "Use this flag to reset and halt (instead of just a halt) the attached core after attaching to the target."
@@ -79,104 +79,104 @@ enum Cli {
         #[clap(flatten)]
         common: ProbeOptions,
 
-        #[structopt(long, parse(from_os_str))]
+        #[clap(long, value_parser)]
         /// Binary to debug
         exe: Option<PathBuf>,
     },
     /// Dump memory from attached target
     Dump {
-        #[structopt(flatten)]
+        #[clap(flatten)]
         shared: CoreOptions,
 
-        #[structopt(flatten)]
+        #[clap(flatten)]
         common: ProbeOptions,
 
         /// The address of the memory to dump from the target.
-        #[structopt(parse(try_from_str = parse_u64))]
+        #[clap(value_parser = parse_u64)]
         loc: u64,
         /// The amount of memory (in words) to dump.
-        #[structopt(parse(try_from_str = parse_u32))]
+        #[clap(value_parser = parse_u32)]
         words: u32,
     },
     /// Download memory to attached target
     Download {
-        #[structopt(flatten)]
+        #[clap(flatten)]
         common: ProbeOptions,
 
         /// Format of the file to be downloaded to the flash. Possible values are case-insensitive.
-        #[clap(arg_enum, ignore_case = true, default_value = "elf", long)]
+        #[clap(value_enum, ignore_case = true, default_value = "elf", long)]
         format: DownloadFileType,
 
         /// The address in memory where the binary will be put at. This is only considered when `bin` is selected as the format.
-        #[structopt(long, parse(try_from_str = parse_u64))]
+        #[clap(long, value_parser = parse_u64)]
         base_address: Option<u64>,
         /// The number of bytes to skip at the start of the binary file. This is only considered when `bin` is selected as the format.
-        #[structopt(long, parse(try_from_str = parse_u32))]
+        #[clap(long, value_parser = parse_u32)]
         skip_bytes: Option<u32>,
 
         /// The path to the file to be downloaded to the flash
         path: String,
 
         /// Whether to erase the entire chip before downloading
-        #[structopt(long)]
+        #[clap(long)]
         chip_erase: bool,
 
         /// Whether to disable fancy progress reporting
-        #[structopt(long)]
+        #[clap(long)]
         disable_progressbars: bool,
 
         /// Disable double-buffering when downloading flash.  If downloading times out, try this option.
-        #[structopt(long = "disable-double-buffering")]
+        #[clap(long = "disable-double-buffering")]
         disable_double_buffering: bool,
     },
     /// Erase all nonvolatile memory of attached target
     Erase {
-        #[structopt(flatten)]
+        #[clap(flatten)]
         common: ProbeOptions,
     },
     /// Flash and run an ELF program
-    #[structopt(name = "run")]
+    #[clap(name = "run")]
     Run {
-        #[structopt(flatten)]
+        #[clap(flatten)]
         common: ProbeOptions,
 
         /// The path to the ELF file to flash and run
         path: String,
 
         /// Whether to erase the entire chip before downloading
-        #[structopt(long)]
+        #[clap(long)]
         chip_erase: bool,
 
         /// Disable double-buffering when downloading flash.  If downloading times out, try this option.
-        #[structopt(long = "disable-double-buffering")]
+        #[clap(long = "disable-double-buffering")]
         disable_double_buffering: bool,
     },
     /// Trace a memory location on the target
-    #[structopt(name = "trace")]
+    #[clap(name = "trace")]
     Trace {
-        #[structopt(flatten)]
+        #[clap(flatten)]
         shared: CoreOptions,
 
-        #[structopt(flatten)]
+        #[clap(flatten)]
         common: ProbeOptions,
 
         /// The address of the memory to dump from the target.
-        #[structopt(parse(try_from_str = parse_u64))]
+        #[clap(value_parser = parse_u64)]
         loc: u64,
     },
     /// Configure and monitor ITM trace packets from the target.
-    #[structopt(name = "itm")]
+    #[clap(name = "itm")]
     Itm {
-        #[structopt(flatten)]
+        #[clap(flatten)]
         shared: CoreOptions,
 
-        #[structopt(flatten)]
+        #[clap(flatten)]
         common: ProbeOptions,
 
-        #[structopt(parse(try_from_str = parse_u64))]
+        #[clap(value_parser = parse_u64)]
         duration_ms: u64,
 
-        #[structopt(long)]
+        #[clap(long)]
         output_file: Option<String>,
 
         #[clap(subcommand)]
@@ -186,14 +186,14 @@ enum Cli {
     Chip(Chip),
 }
 
-#[derive(clap::StructOpt)]
+#[derive(clap::Parser)]
 /// Inspect internal registry of supported chips
 enum Chip {
     /// Lists all the available families and their chips with their full.
-    #[structopt(name = "list")]
+    #[clap(name = "list")]
     List,
     /// Shows chip properties of a specific chip
-    #[structopt(name = "info")]
+    #[clap(name = "info")]
     Info {
         /// The name of the chip to display.
         name: String,
@@ -201,9 +201,9 @@ enum Chip {
 }
 
 /// Shared options for core selection, shared between commands
-#[derive(clap::StructOpt)]
+#[derive(clap::Parser)]
 pub(crate) struct CoreOptions {
-    #[structopt(long, default_value = "0")]
+    #[clap(long, default_value = "0")]
     core: usize,
 }
 
@@ -524,7 +524,7 @@ fn debug(shared_options: &CoreOptions, common: &ProbeOptions, exe: Option<PathBu
     Ok(())
 }
 
-#[derive(clap::ArgEnum, Debug, Clone, Copy)]
+#[derive(clap::ValueEnum, Debug, Clone, Copy)]
 enum DownloadFileType {
     Elf,
     Hex,

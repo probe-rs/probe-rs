@@ -12,7 +12,7 @@ use anyhow::{anyhow, Context, Result};
 struct Cli {
     #[clap(long = "chip")]
     chip: Option<String>,
-    #[clap(long = "address", parse(try_from_str = parse_hex))]
+    #[clap(long = "address", value_parser = parse_hex)]
     address: u64,
     #[clap(long = "size")]
     size: usize,

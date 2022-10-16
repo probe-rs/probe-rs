@@ -30,13 +30,13 @@ enum TargetGen {
     Pack {
         #[clap(
             name = "INPUT",
-            parse(from_os_str),
+            value_parser,
             help = "A Pack file or the unziped Pack directory."
         )]
         input: PathBuf,
         #[clap(
             name = "OUTPUT",
-            parse(from_os_str),
+            value_parser,
             help = "An output directory where all the generated .yaml files are put in."
         )]
         output_dir: PathBuf,
@@ -45,7 +45,7 @@ enum TargetGen {
     Arm {
         #[clap(
             name = "OUTPUT",
-            parse(from_os_str),
+            value_parser,
             help = "An output directory where all the generated .yaml files are put in."
         )]
         output_dir: PathBuf,
@@ -53,7 +53,7 @@ enum TargetGen {
     /// Extract a flash algorithm from an ELF file
     Elf {
         /// ELF file containing a flash algorithm
-        #[clap(parse(from_os_str))]
+        #[clap(value_parser)]
         elf: PathBuf,
         /// Name of the extracted flash algorithm
         #[clap(long = "name", short = 'n')]
@@ -62,7 +62,7 @@ enum TargetGen {
         #[clap(long = "update", short = 'u', requires = "output")]
         update: bool,
         /// Output file, if provided, the generated target description will be written to this file.
-        #[clap(parse(from_os_str))]
+        #[clap(value_parser)]
         output: Option<PathBuf>,
     },
 }
