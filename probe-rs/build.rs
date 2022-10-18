@@ -57,11 +57,9 @@ fn visit_dirs(dir: &Path, targets: &mut Vec<PathBuf>) -> io::Result<()> {
             let path = entry.path();
             if path.is_dir() {
                 visit_dirs(&path, targets)?;
-            } else {
-                if let Some(extension) = path.extension() {
-                    if extension.eq_ignore_ascii_case("yaml") {
-                        targets.push(path);
-                    }
+            } else if let Some(extension) = path.extension() {
+                if extension.eq_ignore_ascii_case("yaml") {
+                    targets.push(path);
                 }
             }
         }

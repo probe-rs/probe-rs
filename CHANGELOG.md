@@ -31,10 +31,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Note: This is a breaking API change for `probe_rs_cli::rtt::RttActiveChannel::get_rtt_data()`. To mitigate the impact of this change:
     - `probe_rs_cli::rtt::RttActiveTarget::poll_rtt()` will maintain the original signature and behaviour of ignoring errors from `defmt` until deprecated in 0.14.0.
     - The new `probe_rs_cli::rtt::RttActiveTarget::poll_rtt_fallible()` will propagate errors from `get_rtt_data()` on any of the active channels.
-- target-gen: Memory addresses and sizes in YAML are generated in hex format, for improved readability. ()
-- target-gen: Remove `Option::is_none` and empty `Vec` values in generated YAML, for improved readability. ()
-- target-gen: Generate all pack file specified memory regions. ()
-- target-gen: Match memory regions to pack file specified core names. ()
+- target-gen: Various changes and optimizations: (#1259)
+  - Memory addresses and sizes in YAML are generated in hex format, for improved readability.
+  - Remove `Option::is_none` and empty `Vec` values in generated YAML, for improved readability.
+  - Generate all pack file specified memory regions.
+  - Match memory regions to pack file specified core names.
 
 ### Fixed
 

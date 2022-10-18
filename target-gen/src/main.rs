@@ -289,7 +289,7 @@ fn cmd_arm(out_dir: &Path) -> Result<()> {
         let path = out_dir.join(family.name.clone().replace(' ', "_") + ".yaml");
         let file = std::fs::File::create(&path)
             .context(format!("Failed to create file '{}'.", path.display()))?;
-        serialize_to_yaml_file(&family, &file)?;
+        serialize_to_yaml_file(family, &file)?;
 
         generated_files.push(path);
     }
@@ -312,18 +312,19 @@ fn serialize_to_yaml_file(family: &ChipFamily, file: &File) -> Result<(), anyhow
     let mut reader = std::io::BufReader::new(yaml_string.as_bytes());
     let mut reader_line = String::new();
     let mut writer = std::io::BufWriter::new(file);
-    Ok(while reader.read_line(&mut reader_line)? > 0 {
+    while reader.read_line(&mut reader_line)? > 0 {
         if reader_line.ends_with(": null\n") || reader_line.ends_with(": []\n") {
             // Skip the line
         } else if (reader_line.contains("'0x") || reader_line.contains("'0X"))
             && reader_line.ends_with("'\n")
         {
             // Remove the single quotes
-            reader_line = reader_line.replace("'", "");
-            writer.write(reader_line.as_bytes())?;
+            reader_line = reader_line.replace('\'', "");
+            writer.write_all(reader_line.as_bytes())?;
         } else {
-            writer.write(reader_line.as_bytes())?;
+            writer.write_all(reader_line.as_bytes())?;
         }
         reader_line.clear();
-    })
+    }
+    Ok(())
 }
