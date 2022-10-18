@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added Probe re-attach handling when needed after `debug_device_unlock`
 - Added Custom ArmDebugSequence for ATSAM D5x/E5x devices
 - Added a `FlashLoader::data` method (#1254)
+- Added Support for STM32H735 family. (#913)
 
 ### Changed
 
@@ -30,6 +31,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Note: This is a breaking API change for `probe_rs_cli::rtt::RttActiveChannel::get_rtt_data()`. To mitigate the impact of this change:
     - `probe_rs_cli::rtt::RttActiveTarget::poll_rtt()` will maintain the original signature and behaviour of ignoring errors from `defmt` until deprecated in 0.14.0.
     - The new `probe_rs_cli::rtt::RttActiveTarget::poll_rtt_fallible()` will propagate errors from `get_rtt_data()` on any of the active channels.
+- target-gen: Memory addresses and sizes in YAML are generated in hex format, for improved readability. ()
+- target-gen: Remove `Option::is_none` and empty `Vec` values in generated YAML, for improved readability. ()
+- target-gen: Generate all pack file specified memory regions. ()
+- target-gen: Match memory regions to pack file specified core names. ()
 
 ### Fixed
 
@@ -47,6 +52,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Debugger: Improve core status checking during launch.(#1228)
 - Debugger: Prevent stack overflows when expanding "static" section in probe-rs-debugger. (#1231)
 - RTT: Prevent panicking in `probe-rs-cli-util/src/rtt/rs` when defmt stream decoding provides invalid frame index. (#1236)
+- Fix: Attaching to LPC55S69 seems to stop code execution - incorrect values in target YAML. (#1220)
+- Fix: Panic during flashing, because targets/STM32H7.yaml has invalid core name for dual-core devices. (#1023)
+- Fix: STM32H7 not all ram sections are described (#429).
 
 ## [0.13.0]
 
