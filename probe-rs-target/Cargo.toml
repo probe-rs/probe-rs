@@ -15,5 +15,3 @@ license = "MIT OR Apache-2.0"
 jep106 = "0.2.6"
 serde = { version = "1", features = ["derive"] }
 base64 = "0.13.0"
-num-integer = "0.1"
-num-traits = "0.2"

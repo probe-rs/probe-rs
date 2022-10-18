@@ -269,31 +269,6 @@ fn cmd_pack(input: &Path, out_dir: &Path) -> Result<()> {
     Ok(())
 }
 
-/// Some optimizations to improve the readability of the `serde_yaml` output:
-/// - If `Option<T>` is `None`, it is serialized as `null` ... we want to omit it.
-/// - If `Vec<T>` is empty, it is serialized as `[]` ... we want to omit it.
-/// - `serde_yaml` serializes hex formatted integers as single quoted strings, e.g. '0x1234' ... we need to remove the single quotes so that it round-trips properly.
-fn serialize_to_yaml_file(family: &ChipFamily, file: &File) -> Result<(), anyhow::Error> {
-    let yaml_string = serde_yaml::to_string(&family)?;
-    let mut reader = std::io::BufReader::new(yaml_string.as_bytes());
-    let mut reader_line = String::new();
-    let mut writer = std::io::BufWriter::new(file);
-    Ok(while reader.read_line(&mut reader_line)? > 0 {
-        if reader_line.ends_with(": null\n") || reader_line.ends_with(": []\n") {
-            // Skip the line
-        } else if (reader_line.contains("'0x") || reader_line.contains("'0X"))
-            && reader_line.ends_with("'\n")
-        {
-            reader_line = reader_line.replace("'", "");
-            writer.write(reader_line.as_bytes())?;
-            // Remove the single quotes
-        } else {
-            writer.write(reader_line.as_bytes())?;
-        }
-        reader_line.clear();
-    })
-}
-
 /// Handle the arm subcommand.
 /// Generated target descriptions will be placed in `out_dir`.
 fn cmd_arm(out_dir: &Path) -> Result<()> {
@@ -326,4 +301,29 @@ fn cmd_arm(out_dir: &Path) -> Result<()> {
     }
 
     Ok(())
+}
+
+/// Some optimizations to improve the readability of the `serde_yaml` output:
+/// - If `Option<T>` is `None`, it is serialized as `null` ... we want to omit it.
+/// - If `Vec<T>` is empty, it is serialized as `[]` ... we want to omit it.
+/// - `serde_yaml` serializes hex formatted integers as single quoted strings, e.g. '0x1234' ... we need to remove the single quotes so that it round-trips properly.
+fn serialize_to_yaml_file(family: &ChipFamily, file: &File) -> Result<(), anyhow::Error> {
+    let yaml_string = serde_yaml::to_string(&family)?;
+    let mut reader = std::io::BufReader::new(yaml_string.as_bytes());
+    let mut reader_line = String::new();
+    let mut writer = std::io::BufWriter::new(file);
+    Ok(while reader.read_line(&mut reader_line)? > 0 {
+        if reader_line.ends_with(": null\n") || reader_line.ends_with(": []\n") {
+            // Skip the line
+        } else if (reader_line.contains("'0x") || reader_line.contains("'0X"))
+            && reader_line.ends_with("'\n")
+        {
+            // Remove the single quotes
+            reader_line = reader_line.replace("'", "");
+            writer.write(reader_line.as_bytes())?;
+        } else {
+            writer.write(reader_line.as_bytes())?;
+        }
+        reader_line.clear();
+    })
 }
