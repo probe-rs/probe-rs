@@ -555,7 +555,7 @@ impl Debugger {
             }
         };
 
-        let mut session_data = match session_data::SessionData::new(&self.config) {
+        let mut session_data = match session_data::SessionData::new(&mut self.config) {
             Ok(session_data) => session_data,
             Err(error) => {
                 debug_adapter.send_error_response(&error)?;

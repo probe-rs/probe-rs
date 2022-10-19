@@ -96,6 +96,7 @@ fn add_generic_targets(vec: &mut Vec<ChipFamily>) {
                 }],
                 memory_map: vec![],
                 flash_algorithms: vec![],
+                supports_connect_under_reset: false,
             }],
             flash_algorithms: vec![],
             source: TargetDescriptionSource::Generic,

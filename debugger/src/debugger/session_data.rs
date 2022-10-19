@@ -37,7 +37,7 @@ pub struct SessionData {
 }
 
 impl SessionData {
-    pub(crate) fn new(config: &configuration::SessionConfig) -> Result<Self, DebuggerError> {
+    pub(crate) fn new(config: &mut configuration::SessionConfig) -> Result<Self, DebuggerError> {
         // `SessionConfig` Probe/Session level configurations initialization.
         let mut target_probe = match config.probe_selector.clone() {
             Some(selector) => Probe::open(selector.clone()).map_err(|e| match e {
@@ -104,13 +104,14 @@ impl SessionData {
         } else {
             target_probe
                 .attach(target_selector, permissions)
-                .map_err(|err| {
-                    anyhow!(
-                        "Error attaching to the probe: {:?}.\nTry the --connect-under-reset option",
-                        err
-                    )
-                })?
+                .map_err(|err| anyhow!("Error attaching to the probe: {:?}.", err))?
         };
+
+        if config.connect_under_reset && !target_session.target().supports_connect_under_reset {
+            // The target_session.attach would have ignored the invalite `connect_under_reset` flag,
+            // so we need to update the flag to ensure that subsequent behavior is correct.
+            config.connect_under_reset = false;
+        }
 
         // Change the current working directory if `config.cwd` is `Some(T)`.
         if let Some(new_cwd) = config.cwd.clone() {

@@ -6,6 +6,7 @@ pub(crate) mod ftdi;
 pub(crate) mod jlink;
 pub(crate) mod stlink;
 
+use self::espusbjtag::list_espjtag_devices;
 use crate::error::Error;
 use crate::Session;
 use crate::{
@@ -25,8 +26,6 @@ use crate::{
 };
 use jlink::list_jlink_devices;
 use std::{convert::TryFrom, fmt};
-
-use self::espusbjtag::list_espjtag_devices;
 
 /// Used to log warnings when the measured target voltage is
 /// lower than 1.4V, if at all measureable.
@@ -357,7 +356,6 @@ impl Probe {
         permissions: Permissions,
     ) -> Result<Session, Error> {
         self.attached = true;
-
         // The session will de-assert reset after connecting to the debug interface.
         Session::new(self, target.into(), AttachMethod::UnderReset, permissions)
     }

@@ -27,6 +27,9 @@ pub struct Chip {
     /// [`ChipFamily::flash_algorithms`]: crate::ChipFamily::flash_algorithms
     #[serde(default)]
     pub flash_algorithms: Vec<String>,
+    /// This chip supports the `connect_under_reset` feature (see [`probe_rs::probe::Probe::attach_under_reset`]).
+    #[serde(default)]
+    pub supports_connect_under_reset: bool,
 }
 
 impl Chip {
@@ -44,6 +47,7 @@ impl Chip {
             }],
             memory_map: vec![],
             flash_algorithms: vec![],
+            supports_connect_under_reset: false,
         }
     }
 }

@@ -11,6 +11,7 @@ pub struct NvmRegion {
     #[serde(serialize_with = "hex_range")]
     pub range: Range<u64>,
     /// True if the chip boots from this memory
+    #[serde(default)]
     pub is_boot_memory: bool,
     /// List of cores that can access this region
     pub cores: Vec<String>,
@@ -34,6 +35,7 @@ pub struct RamRegion {
     #[serde(serialize_with = "hex_range")]
     pub range: Range<u64>,
     /// True if the chip boots from this memory
+    #[serde(default)]
     pub is_boot_memory: bool,
     /// List of cores that can access this region
     pub cores: Vec<String>,

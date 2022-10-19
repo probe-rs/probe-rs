@@ -188,6 +188,7 @@ fn cmd_elf(
                     }),
                 ],
                 flash_algorithms: vec![algorithm_name],
+                supports_connect_under_reset: false,
             }],
             flash_algorithms: vec![algorithm],
             source: BuiltIn,
@@ -313,7 +314,10 @@ fn serialize_to_yaml_file(family: &ChipFamily, file: &File) -> Result<(), anyhow
     let mut reader_line = String::new();
     let mut writer = std::io::BufWriter::new(file);
     while reader.read_line(&mut reader_line)? > 0 {
-        if reader_line.ends_with(": null\n") || reader_line.ends_with(": []\n") {
+        if reader_line.ends_with(": null\n")
+            || reader_line.ends_with(": []\n")
+            || reader_line.ends_with(": false\n")
+        {
             // Skip the line
         } else if (reader_line.contains("'0x") || reader_line.contains("'0X"))
             && reader_line.ends_with("'\n")

@@ -134,12 +134,16 @@ where
             .map(create_core)
             .collect::<Result<Vec<_>>>()?;
 
+        // Only STM32 chips default to yes, otherwise false.
+        let supports_connect_under_reset = device_name.starts_with("STM32");
+
         family.variants.push(Chip {
             name: device_name,
             part: None,
             cores,
             memory_map: get_mem_map(&device),
             flash_algorithms: flash_algorithm_names,
+            supports_connect_under_reset,
         });
     }
 

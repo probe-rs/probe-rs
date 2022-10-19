@@ -33,9 +33,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - The new `probe_rs_cli::rtt::RttActiveTarget::poll_rtt_fallible()` will propagate errors from `get_rtt_data()` on any of the active channels.
 - target-gen: Various changes and optimizations: (#1259)
   - Memory addresses and sizes in YAML are generated in hex format, for improved readability.
-  - Remove `Option::is_none` and empty `Vec` values in generated YAML, for improved readability.
+  - Remove `Option::is_none`, empty `Vec`, and `false` bool values, in generated YAML, for improved readability.
   - Generate all pack file specified memory regions.
   - Match memory regions to pack file specified core names.
+  - `probe_rs_target::chip::Chip` and `probe_rs::config::target::Target` both have a new field `supports_connect_under_reset`.
+    - target-gen will generate `probe_rs_target::chip::Chip::supports_connect_under_reset` as `true` for all "STM32" targets, and `false` for others.
+- `probe_rs_::session::Session` will compare the target support for requested `AttachMethod` and warn the user (then silently ignore) if they request `AttachMethod::UnderReset` on an unsupported environment. (#1259)
 
 ### Fixed
 
