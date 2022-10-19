@@ -218,7 +218,27 @@ impl FlashAlgorithm {
         let mut code_start = 0;
 
         // Try to find a stack size that fits with at least one page of data.
-        for i in 0..Self::FLASH_ALGO_STACK_SIZE / Self::FLASH_ALGO_STACK_DECREMENT {
+        let stack_size = {
+            let stack_size = raw.stack_size.unwrap_or(Self::FLASH_ALGO_STACK_SIZE);
+            if stack_size < Self::FLASH_ALGO_STACK_DECREMENT {
+                // If the stack size is less than one decrement, we
+                // won't enter the loop (below), and we'll produce a variety
+                // of addresses that all start at zero (above).
+                // Let's make sure we have a chance to compute other addresses
+                // by using a reasonable minimum stack size.
+                tracing::warn!(
+                    "Stack size of {} bytes is too small; overriding to {} bytes",
+                    stack_size,
+                    Self::FLASH_ALGO_STACK_DECREMENT
+                );
+                Self::FLASH_ALGO_STACK_DECREMENT
+            } else {
+                stack_size
+            }
+        };
+        tracing::debug!("The flash algorithm will be configured with {stack_size} bytes of stack");
+
+        for i in 0..stack_size / Self::FLASH_ALGO_STACK_DECREMENT {
             // Load address
             addr_load = raw
                 .load_address
@@ -237,7 +257,10 @@ impl FlashAlgorithm {
             // Stack start address (desc)
             addr_stack = addr_load
                 + offset
-                + (Self::FLASH_ALGO_STACK_SIZE - Self::FLASH_ALGO_STACK_DECREMENT * i) as u64;
+                + (stack_size
+                    .checked_sub(Self::FLASH_ALGO_STACK_DECREMENT * i)
+                    .expect("Overflow never happens; decrement multiples are always less than stack size."))
+                    as u64;
 
             // Data buffer 1
             addr_data = addr_stack;

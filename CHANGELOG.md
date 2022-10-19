@@ -21,6 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added Support for STM32H735 family. (#913)
 - Added support for MAX32660 target (#1249)
 - Added support for W7500 target
+- Added an optional `stack_size` configuration to flash algorithms to control the stack size (#1260)
 
 ### Changed
 

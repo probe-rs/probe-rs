@@ -47,6 +47,12 @@ pub struct RawFlashAlgorithm {
     /// List of cores that can use this algorithm
     #[serde(default)]
     pub cores: Vec<String>,
+    /// The flash algorithm's stack size, in bytes.
+    ///
+    /// If not set, probe-rs selects a default value.
+    /// Increase this value if you're concerned about stack
+    /// overruns during flashing.
+    pub stack_size: Option<u32>,
 }
 
 pub fn serialize<S>(bytes: &[u8], serializer: S) -> Result<S::Ok, S::Error>
