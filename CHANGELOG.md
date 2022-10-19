@@ -39,6 +39,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `probe_rs_target::chip::Chip` and `probe_rs::config::target::Target` both have a new field `supports_connect_under_reset`.
     - target-gen will generate `probe_rs_target::chip::Chip::supports_connect_under_reset` as `true` for all "STM32" targets, and `false` for others.
 - `probe_rs_::session::Session` will compare the target support for requested `AttachMethod` and warn the user (then silently ignore) if they request `AttachMethod::UnderReset` on an unsupported environment. (#1259)
+- `probe_rs_target::chip::Chip` has a new field `pack_file_release` which is populated by `target-gen`.(#1259)
 
 ### Fixed
 
