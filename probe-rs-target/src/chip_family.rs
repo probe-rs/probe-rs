@@ -119,6 +119,11 @@ pub struct ChipFamily {
     pub name: String,
     /// The JEP106 code of the manufacturer.
     pub manufacturer: Option<JEP106Code>,
+    /// The latest release of the pack file from which this was generated.
+    /// Values:
+    /// - `None` if this was not generated from a pack file.
+    /// - `Some("1.3.0")` if the latest pack file release was for example "1.3.0".
+    pub pack_file_release: Option<String>,
     /// This vector holds all the variants of the family.
     pub variants: Vec<Chip>,
     /// This vector holds all available algorithms.

@@ -160,6 +160,7 @@ fn cmd_elf(
         let chip_family = ChipFamily {
             name: "<family name>".to_owned(),
             manufacturer: None,
+            pack_file_release: None,
             variants: vec![Chip {
                 cores: vec![Core {
                     name: "main".to_owned(),

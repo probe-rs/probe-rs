@@ -32,6 +32,7 @@ where
     T: std::io::Seek + std::io::Read,
 {
     // Forge a definition file for each device in the .pdsc file.
+    let pack_file_release = Some(pdsc.releases.latest_release().version.clone());
     let mut devices = pdsc.devices.0.into_iter().collect::<Vec<_>>();
     devices.sort_by(|a, b| a.0.cmp(&b.0));
 
@@ -65,6 +66,7 @@ where
             families.push(ChipFamily {
                 name: device.family.clone(),
                 manufacturer: None,
+                pack_file_release: pack_file_release.clone(),
                 variants: Vec::new(),
                 flash_algorithms: Vec::new(),
                 source: probe_rs::config::TargetDescriptionSource::BuiltIn,
