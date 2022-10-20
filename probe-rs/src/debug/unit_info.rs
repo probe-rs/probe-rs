@@ -1388,7 +1388,6 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                     .get_program_counter()
                                     .and_then(|reg| reg.value)
                                 {
-                                    // let program_counter: u64 = pc.try_into()?;
                                     let mut expression: Option<gimli::Expression<GimliReader>> =
                                         None;
                                     while let Some(location) = match locations.next() {
