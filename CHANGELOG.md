@@ -47,6 +47,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Debugger: Improve core status checking during launch.(#1228)
 - Debugger: Prevent stack overflows when expanding "static" section in probe-rs-debugger. (#1231)
 - RTT: Prevent panicking in `probe-rs-cli-util/src/rtt/rs` when defmt stream decoding provides invalid frame index. (#1236)
+- Debug: Fix `probe-rs-debugger` crashes when variable unwind fails with excessively long error messages. (#1252)
 
 ## [0.13.0]
 
