@@ -513,6 +513,8 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                         // Processed by `extract_type()`
                     }
                     other_attribute => {
+                        #[allow(clippy::format_in_format_args)]
+                        // This follows the examples of the "format!" documenation as the way to limit string length of a {:?} parameter.
                         child_variable.set_value(VariableValue::Error(format!(
                             "Unimplemented: Variable Attribute {:.100} : {:.100}, with children = {}",
                             format!("{:?}", other_attribute.static_string()),
