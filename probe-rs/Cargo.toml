@@ -57,7 +57,7 @@ scroll = "0.11.0"
 serde = { version = "1.0.104", features = ["derive"] }
 serde_yaml = "0.9.4"
 static_assertions = "1.1.0"
-svg = "0.10.0"
+svg = "0.12.0"
 thiserror = "1.0.10"
 
 # optional
