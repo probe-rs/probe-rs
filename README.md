@@ -3,7 +3,7 @@
 a modern, embedded debugging toolkit,
 written in Rust
 
-[![crates.io](https://img.shields.io/crates/v/probe-rs)](https://crates.io/crates/probe-rs) [![documentation](https://docs.rs/probe-rs/badge.svg)](https://docs.rs/probe-rs) [![Actions Status](https://img.shields.io/github/workflow/status/probe-rs/probe-rs/Run%20CI)](https://github.com/probe-rs/probe-rs/actions) [![chat](https://img.shields.io/badge/chat-probe--rs%3Amatrix.org-brightgreen)](https://matrix.to/#/#probe-rs:matrix.org) 
+[![crates.io](https://img.shields.io/crates/v/probe-rs)](https://crates.io/crates/probe-rs) [![documentation](https://docs.rs/probe-rs/badge.svg)](https://docs.rs/probe-rs) [![Actions Status](https://img.shields.io/github/workflow/status/probe-rs/probe-rs/Run%20CI)](https://github.com/probe-rs/probe-rs/actions) [![chat](https://img.shields.io/badge/chat-probe--rs%3Amatrix.org-brightgreen)](https://matrix.to/#/#probe-rs:matrix.org)
 
 The goal of this library is to provide a toolset to interact with a variety of embedded MCUs and debug probes.
 
@@ -43,9 +43,10 @@ If you are looking for a more extended debugging experience, please head over to
 
 ## VSCode
 
-We are implementing [Microsoft DAP](https://microsoft.github.io/debug-adapter-protocol/). This makes embedded debugging via probe-rs available in modern code editors implementing the standard, such as VSCode. To support this, probe-rs includes a debugger which supports both basic command line debugging, and more extensive capabilities when run as a DAP server. Please see [probe-rs-debugger](./debugger) and [vscode](https://github.com/probe-rs/vscode) for more information.
+We have implemented the [Microsoft DAP protocol](https://microsoft.github.io/debug-adapter-protocol/). This makes embedded debugging via probe-rs available in modern code editors implementing the standard, such as VSCode. Please see [probe-rs-debugger](./debugger) and [vscode](https://github.com/probe-rs/vscode) for more information.
 
 ## Usage Examples
+
 ### Halting the attached chip
 
 ```rust
@@ -162,10 +163,10 @@ In early stages of this library, we profited invaluably from the pyOCD code to u
 
 Licensed under either of
 
- * Apache License, Version 2.0 ([LICENSE-APACHE](LICENSE-APACHE) or
-   http://www.apache.org/licenses/LICENSE-2.0)
- * MIT license ([LICENSE-MIT](LICENSE-MIT) or
-   http://opensource.org/licenses/MIT) at your option.
+- Apache License, Version 2.0 ([LICENSE-APACHE](LICENSE-APACHE) or
+  http://www.apache.org/licenses/LICENSE-2.0)
+- MIT license ([LICENSE-MIT](LICENSE-MIT) or
+  http://opensource.org/licenses/MIT) at your option.
 
 ## Contributing
 
