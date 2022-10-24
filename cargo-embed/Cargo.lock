@@ -184,7 +184,7 @@ dependencies = [
  "figment",
  "gdb-server",
  "git-version",
- "goblin",
+ "goblin 0.6.0",
  "lazy_static",
  "log",
  "probe-rs",
@@ -674,6 +674,17 @@ name = "goblin"
 version = "0.5.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a7666983ed0dd8d21a6f6576ee00053ca0926fb281a5522577a4dbd0f1b54143"
+dependencies = [
+ "log",
+ "plain",
+ "scroll 0.11.0",
+]
+
+[[package]]
+name = "goblin"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "572564d6cba7d09775202c8e7eebc4d534d5ae36578ab402fb21e182a0ac9505"
 dependencies = [
  "log",
  "plain",
@@ -1352,7 +1363,7 @@ dependencies = [
  "defmt-decoder",
  "dunce",
  "env_logger",
- "goblin",
+ "goblin 0.5.4",
  "indicatif",
  "log",
  "num-traits",
