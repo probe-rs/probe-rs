@@ -513,10 +513,12 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                         // Processed by `extract_type()`
                     }
                     other_attribute => {
+                        #[allow(clippy::format_in_format_args)]
+                        // This follows the examples of the "format!" documenation as the way to limit string length of a {:?} parameter.
                         child_variable.set_value(VariableValue::Error(format!(
-                            "Unimplemented: Variable Attribute {:?} : {:?}, with children = {}",
-                            other_attribute.static_string(),
-                            tree_node.entry().attr_value(other_attribute),
+                            "Unimplemented: Variable Attribute {:.100} : {:.100}, with children = {}",
+                            format!("{:?}", other_attribute.static_string()),
+                            format!("{:?}", tree_node.entry().attr_value(other_attribute)),
                             tree_node.entry().has_children()
                         )));
                     }
@@ -818,7 +820,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                     VariantRole::Variant(const_value as u64)
                                 }
                                 other_attribute_value => {
-                                    variable.set_value(VariableValue::Error(format!("Unimplemented: Attribute Value for DW_AT_discr_value: {:?}", other_attribute_value)));
+                                    variable.set_value(VariableValue::Error(format!("Unimplemented: Attribute Value for DW_AT_discr_value: {:.100}", format!("{:?}", other_attribute_value))));
                                     VariantRole::Variant(u64::MAX)
                                 }
                             }
@@ -950,8 +952,8 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                         other_attribute_value => {
                                             child_variable.set_value(VariableValue::Error(
                                                 format!(
-                                            "Unimplemented: Attribute Value for DW_AT_type {:?}",
-                                            other_attribute_value
+                                            "Unimplemented: Attribute Value for DW_AT_type {:.100}",
+                                            format!("{:?}", other_attribute_value)
                                         ),
                                             ));
                                         }
@@ -1198,9 +1200,9 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                         other_attribute_value => {
                                             child_variable.set_value(VariableValue::Error(
                                                 format!(
-                                            "Unimplemented: Attribute Value for DW_AT_type {:?}",
-                                            other_attribute_value
-                                        ),
+                                                    "Unimplemented: Attribute Value for DW_AT_type {:?}",
+                                                    other_attribute_value
+                                                ),
                                             ));
                                         }
                                     }
@@ -1294,8 +1296,8 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                     }
                                     other_attribute_value => {
                                         child_variable.set_value(VariableValue::Error(format!(
-                                            "Unimplemented: Attribute Value for DW_AT_type {:?}",
-                                            other_attribute_value
+                                            "Unimplemented: Attribute Value for DW_AT_type {:.100}",
+                                            format!("{:?}", other_attribute_value)
                                         )));
                                     }
                                 },
@@ -1388,7 +1390,6 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                     .get_program_counter()
                                     .and_then(|reg| reg.value)
                                 {
-                                    // let program_counter: u64 = pc.try_into()?;
                                     let mut expression: Option<gimli::Expression<GimliReader>> =
                                         None;
                                     while let Some(location) = match locations.next() {
@@ -1431,7 +1432,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                     }
                     other_attribute_value => {
                         return Ok(ExpressionResult::Location(VariableLocation::Unsupported(
-                            format!( "Unimplemented: extract_location() Could not extract location from: {:?}", other_attribute_value))))
+                            format!( "Unimplemented: extract_location() Could not extract location from: {:.100}", format!("{:?}", other_attribute_value)))))
                     }
                 },
                 gimli::DW_AT_address_class => {
@@ -1447,8 +1448,8 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                         }
                         other_attribute_value => {
                             return Ok(ExpressionResult::Location(VariableLocation::Unsupported(format!(
-                                "Unimplemented: extract_location() found invalid DW_AT_address_class: {:?}",
-                                other_attribute_value
+                                "Unimplemented: extract_location() found invalid DW_AT_address_class: {:.100}",
+                                format!("{:?}", other_attribute_value)
                             ))))
                         }
                     }
@@ -1558,8 +1559,8 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                 }
                 l => Ok(ExpressionResult::Location(VariableLocation::Error(
                     format!(
-                        "Unimplemented: extract_location() found a location type: {:?}",
-                        l
+                        "Unimplemented: extract_location() found a location type: {:.100}",
+                        format!("{:?}", l)
                     ),
                 ))),
             }

@@ -39,6 +39,6 @@ terminal_size = "0.2.0"
 clap = { version = "4.0", features = ["derive"] }
 byte-unit = "4.0.13"
 chrono = { version = "0.4", features = ["serde"] }
-goblin = "0.5.1"
+goblin = "0.6.0"
 num-traits = "0.2.14"
 defmt-decoder = { version = "0.3.1", features = ["unstable"] }

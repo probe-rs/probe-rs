@@ -37,7 +37,7 @@ serde_json = "1"
 serde = { version = "1", features = ["derive"] }
 schemafy = "0.6"
 chrono = { version = "0.4", features = ["serde"] }
-goblin = "0.5.1"
+goblin = "0.6.0"
 base64 = "0.13"
 svd-parser = { version = "0.14.0", features = ["expand"] }
 
