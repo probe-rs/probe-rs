@@ -125,7 +125,7 @@
         {
             "type": "lldb",
             "request": "launch",
-            "name": "target-gen Update supported ARM target definitions",
+            "name": "target-gen Download and Update supported ARM target definitions",
             "cwd": "${workspaceFolder}/target-gen",
             "cargo": {
                 "args": [
@@ -140,13 +140,16 @@
             },
             "args": [
                 "arm",
+                // "--list", // Use this to list the available targets before filtering by chipFamily.
+                "--filter",
+                "${input:chipFamily}",
                 "${input:yamlFile}"
             ],
         },
         {
             "type": "lldb",
             "request": "launch",
-            "name": "target-gen Generate target yaml from single PDSC file",
+            "name": "target-gen Generate target yaml from single ARM CMSIS Pack file",
             "cwd": "${workspaceFolder}/target-gen",
             "cargo": {
                 "args": [
@@ -178,6 +181,12 @@
             "type": "promptString",
             "description": "Please enter the path to the output directory for yaml files.",
             "default": "${workspaceFolder}/probe-rs/targets"
+        },
+        {
+            "id": "chipFamily",
+            "type": "promptString",
+            "description": "Please enter the name or part of a name to filter the list of chips to be generated.",
+            "default": "STM32H7xx_DFP"
         }
     ]
 }

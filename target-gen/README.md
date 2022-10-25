@@ -5,12 +5,29 @@ chips from ARM CMSIS-Packs. This will then allow you to flash the chip using pro
 
 ## Usage with CMSIS-Pack
 
-As a first step, you need to get an appropriate CMSIS-Pack for the chip you want to flash. A good source for CMSIS-Packs
-is the following ARM website: https://developer.arm.com/tools-and-software/embedded/cmsis/cmsis-search
+As a first step, you need to get an appropriate CMSIS-Pack for the chip you want to flash. By default, probe-rs will look for CMSIS-Packs
+at the following ARM website: https://developer.arm.com/tools-and-software/embedded/cmsis/cmsis-search.
 
-From a CMSIS-Pack, you can extract the target descriptions for probe-rs:
+### To download and generate pack files, use the `arm` subcommand:
 
-    cargo run --release -- pack <CMSIS-PACK> out/
+`cargo run --release -- arm [OPTIONS] <OUTPUT>`
+
+Arguments:
+<OUTPUT> An output directory where all the generated .yaml files are put in.
+
+    Options:
+    -l, --list                  Optionally, list the names of all pack files available in <https://www.keil.com/pack/Keil.pidx>
+    -f, --filter <PACK_FILTER>  Optionally, filter the pack files that start with the specified name,
+                                e.g. `STM32H7xx` or `LPC55S69_DFP`.
+                                See `target-gen arm --list` for a list of available Pack files
+
+### If you already have a pack file, you use the `pack` submcommand:
+
+`cargo run --release -- pack [OPTIONS] <OUTPUT>`
+
+    Arguments:
+    <INPUT>   A Pack file or the unziped Pack directory.
+    <OUTPUT>  An output directory where all the generated .yaml files are put in.
 
 This wil generate YAML files containing the target descriptions, which can be used with probe-rs.
 
@@ -19,7 +36,6 @@ This wil generate YAML files containing the target descriptions, which can be us
 The target-gen tool can also be used to create a target description based on an ELF file. This
 requires that the ELF file adhers to the ARM CMSIS standard for flash algorithms, which
 can be found at: https://arm-software.github.io/CMSIS_5/Pack/html/algorithmFunc.html
-
 
 Running
 

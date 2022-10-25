@@ -66,6 +66,7 @@ where
             families.push(ChipFamily {
                 name: device.family.clone(),
                 manufacturer: None,
+                generated_from_pack: true,
                 pack_file_release: pack_file_release.clone(),
                 variants: Vec::new(),
                 flash_algorithms: Vec::new(),
@@ -244,7 +245,10 @@ pub(crate) fn visit_file(path: &Path, families: &mut Vec<ChipFamily>) -> Result<
     handle_package(package, Kind::Archive(&mut archive), families, false)
 }
 
-pub(crate) fn visit_arm_files(families: &mut Vec<ChipFamily>) -> Result<()> {
+pub(crate) fn visit_arm_files(
+    families: &mut Vec<ChipFamily>,
+    filter: Option<String>,
+) -> Result<()> {
     let packs = crate::fetch::get_vidx()?;
 
     //TODO: The multi-threaded logging makes it very difficult to track which errors/warnings belong where - needs some rework.
@@ -255,10 +259,23 @@ pub(crate) fn visit_arm_files(families: &mut Vec<ChipFamily>) -> Result<()> {
         .block_on(async move {
             let mut stream = futures::stream::iter(packs.pdsc_index.iter().enumerate().filter_map(
                 |(i, pack)| {
+                    let only_supported_familes = if let Some(ref filter) = filter {
+                        // If we are filtering for specific filter patterns, then skip all the ones we don't want.
+                        if !pack.name.contains(filter) {
+                            return None;
+                        } else {
+                            log::info!("Found matching chip family: {}", pack.name);
+                        }
+                        // If we are filtering for specific filter patterns, then do not restrict these to the list of supported families.
+                        false
+                    } else {
+                        // If we are not filtering for specific filter patterns, then only include the supported families.
+                        true
+                    };
                     if pack.deprecated.is_none() {
                         // We only want to download the pack if it is not deprecated.
                         log::info!("Working PACK {}/{} ...", i, packs.pdsc_index.len());
-                        Some(visit_arm_file(pack))
+                        Some(visit_arm_file(pack, only_supported_familes))
                     } else {
                         log::warn!("Pack {} is deprecated. Skipping ...", pack.name);
                         None
@@ -274,7 +291,10 @@ pub(crate) fn visit_arm_files(families: &mut Vec<ChipFamily>) -> Result<()> {
         })
 }
 
-pub(crate) async fn visit_arm_file(pack: &PdscRef) -> Vec<ChipFamily> {
+pub(crate) async fn visit_arm_file(
+    pack: &PdscRef,
+    only_supported_familes: bool,
+) -> Vec<ChipFamily> {
     let url = format!(
         "{url}/{vendor}.{name}.{version}.pack",
         url = pack.url,
@@ -351,7 +371,12 @@ pub(crate) async fn visit_arm_file(pack: &PdscRef) -> Vec<ChipFamily> {
 
     let mut families = vec![];
 
-    match handle_package(package, Kind::Archive(&mut archive), &mut families, true) {
+    match handle_package(
+        package,
+        Kind::Archive(&mut archive),
+        &mut families,
+        only_supported_familes,
+    ) {
         Ok(_) => {
             log::info!("Handled package {}", pdsc_name);
         }

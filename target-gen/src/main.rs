@@ -4,14 +4,9 @@ pub mod flash_device;
 pub mod generate;
 pub mod parser;
 
-use std::{
-    fs::{create_dir, File, OpenOptions},
-    io::{BufRead, Write},
-    path::{Path, PathBuf},
-};
-
 use anyhow::{bail, ensure, Context, Result};
 use clap::Parser;
+use parser::extract_flash_algo;
 use probe_rs::{
     config::{
         Chip, ChipFamily, Core, MemoryRegion, NvmRegion, RamRegion,
@@ -21,8 +16,12 @@ use probe_rs::{
 };
 use probe_rs_target::{ArmCoreAccessOptions, CoreAccessOptions};
 use simplelog::*;
-
-use parser::extract_flash_algo;
+use std::{
+    env::current_dir,
+    fs::{create_dir, File, OpenOptions},
+    io::{BufRead, Write},
+    path::{Path, PathBuf},
+};
 
 #[derive(clap::Parser)]
 enum TargetGen {
@@ -41,16 +40,30 @@ enum TargetGen {
         )]
         output_dir: PathBuf,
     },
-    /// Generates all the target descriptions from the entries listed in the ARM root VIDX/PIDX at <https://www.keil.com/pack/Keil.pidx>.
-    /// This will only generate target descriptions for chip families that are already supported by probe-rs, to avoid generating a lot of unsupportable chip families.
+    /// Generates from the entries listed in the ARM root VIDX/PIDX at <https://www.keil.com/pack/Keil.pidx>.
+    /// This will only download and generate target descriptions for chip families that are already supported by probe-rs, to avoid generating a lot of unsupportable chip families.
     /// Please use the `pack` subcommand to generate target descriptions for other chip families.
     Arm {
+        /// Only download and generate target descriptions for the chip families that start with the specified name, e.g. `STM32H7` or `LPC55S69`.
+        #[clap(
+            long = "list",
+            short = 'l',
+            help = "Optionally, list the names of all pack files available in <https://www.keil.com/pack/Keil.pidx>"
+        )]
+        list: bool,
+        /// Only download and generate target descriptions for the pack files that start with the specified name`.
+        #[clap(
+            long = "filter",
+            short = 'f',
+            help = "Optionally, filter the pack files that start with the specified name,\ne.g. `STM32H7xx` or `LPC55S69_DFP`.\nSee `target-gen arm --list` for a list of available Pack files"
+        )]
+        pack_filter: Option<String>,
         #[clap(
             name = "OUTPUT",
             value_parser,
             help = "An output directory where all the generated .yaml files are put in."
         )]
-        output_dir: PathBuf,
+        output_dir: Option<PathBuf>,
     },
     /// Extract a flash algorithm from an ELF file
     Elf {
@@ -92,7 +105,11 @@ fn main() -> Result<()> {
             update,
             name,
         } => cmd_elf(elf, output, update, name)?,
-        TargetGen::Arm { output_dir } => cmd_arm(output_dir.as_path())?,
+        TargetGen::Arm {
+            output_dir,
+            pack_filter: chip_family,
+            list,
+        } => cmd_arm(output_dir, chip_family, list)?,
     }
 
     println!("Finished in {:?}", t.elapsed());
@@ -160,6 +177,7 @@ fn cmd_elf(
         let chip_family = ChipFamily {
             name: "<family name>".to_owned(),
             manufacturer: None,
+            generated_from_pack: false,
             pack_file_release: None,
             variants: vec![Chip {
                 cores: vec![Core {
@@ -273,7 +291,24 @@ fn cmd_pack(input: &Path, out_dir: &Path) -> Result<()> {
 
 /// Handle the arm subcommand.
 /// Generated target descriptions will be placed in `out_dir`.
-fn cmd_arm(out_dir: &Path) -> Result<()> {
+fn cmd_arm(out_dir: Option<PathBuf>, chip_family: Option<String>, list: bool) -> Result<()> {
+    if list {
+        let mut packs = crate::fetch::get_vidx()?;
+        println!("Available ARM CMSIS Pack files:");
+        packs.pdsc_index.sort_by(|a, b| a.name.cmp(&b.name));
+        for pack in packs.pdsc_index.iter() {
+            println!("\t{}", pack.name);
+        }
+        return Ok(());
+    }
+
+    let out_dir = if let Some(target_dir) = out_dir {
+        target_dir.as_path().to_owned()
+    } else {
+        log::info!("No output directory specified. Using current directory.");
+        current_dir()?
+    };
+
     if !out_dir.exists() {
         create_dir(&out_dir).context(format!(
             "Failed to create output directory '{}'.",
@@ -283,7 +318,7 @@ fn cmd_arm(out_dir: &Path) -> Result<()> {
 
     let mut families = Vec::<ChipFamily>::new();
 
-    generate::visit_arm_files(&mut families)?;
+    generate::visit_arm_files(&mut families, chip_family)?;
 
     let mut generated_files = Vec::with_capacity(families.len());
 
