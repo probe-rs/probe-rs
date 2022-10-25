@@ -108,7 +108,7 @@ impl SessionData {
         };
 
         if config.connect_under_reset && !target_session.target().supports_connect_under_reset {
-            // The target_session.attach would have ignored the invalite `connect_under_reset` flag,
+            // The target_session.attach would have ignored the invalid `connect_under_reset` flag,
             // so we need to update the flag to ensure that subsequent behavior is correct.
             config.connect_under_reset = false;
         }

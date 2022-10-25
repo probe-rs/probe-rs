@@ -135,7 +135,9 @@ impl Target {
             source: family.source.clone(),
             memory_map: chip.memory_map.clone(),
             debug_sequence,
-            supports_connect_under_reset: chip.supports_connect_under_reset,
+            // Note: This is a solution to the fact that not ALL STM32 target files have been updated to generate this field.
+            supports_connect_under_reset: chip.supports_connect_under_reset
+                || chip.name.starts_with("STM32"),
         })
     }
 
