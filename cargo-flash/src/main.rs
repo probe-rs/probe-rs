@@ -177,8 +177,7 @@ fn main_try() -> Result<(), OperationError> {
             core.reset_and_halt(std::time::Duration::from_millis(500))
                 .map_err(OperationError::TargetResetHaltFailed)?;
         } else {
-            core.reset()
-                .map_err(OperationError::TargetResetFailed)?;
+            core.reset().map_err(OperationError::TargetResetFailed)?;
         }
     }
 
