@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added Probe re-attach handling when needed after `debug_device_unlock`
 - Added Custom ArmDebugSequence for ATSAM D5x/E5x devices
 - Added a `FlashLoader::data` method (#1254)
+- Added Support for STM32H735 family. (#913)
 
 ### Changed
 
@@ -30,6 +31,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Note: This is a breaking API change for `probe_rs_cli::rtt::RttActiveChannel::get_rtt_data()`. To mitigate the impact of this change:
     - `probe_rs_cli::rtt::RttActiveTarget::poll_rtt()` will maintain the original signature and behaviour of ignoring errors from `defmt` until deprecated in 0.14.0.
     - The new `probe_rs_cli::rtt::RttActiveTarget::poll_rtt_fallible()` will propagate errors from `get_rtt_data()` on any of the active channels.
+- target-gen: Various changes and optimizations: (#1259)
+  - Memory addresses and sizes in YAML are generated in hex format, for improved readability.
+  - Remove `Option::is_none`, empty `Vec`, and `false` bool values, in generated YAML, for improved readability.
+  - Generate all pack file specified memory regions.
+  - Match memory regions to pack file specified core names.
+  - `probe_rs_target::chip::Chip` and `probe_rs::config::target::Target` both have a new field `supports_connect_under_reset`.
+    - target-gen will generate `probe_rs_target::chip::Chip::supports_connect_under_reset` as `true` for all STM32 targets, and `false` for others.
+    - To avoid having to re-generate all STM32 targets, `probe_rs::config::Target::new()` will also "assume" this value to `true` for STM32 targets.
+- `probe_rs_::session::Session` will compare the target support for requested `AttachMethod` and warn the user (then silently ignore) if they request `AttachMethod::UnderReset` on an unsupported environment. (#1259)
+- `probe_rs_target::chip::Chip` has a new field `pack_file_release` which is populated by `target-gen`.(#1259)
 
 ### Fixed
 
@@ -47,6 +58,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Debugger: Improve core status checking during launch.(#1228)
 - Debugger: Prevent stack overflows when expanding "static" section in probe-rs-debugger. (#1231)
 - RTT: Prevent panicking in `probe-rs-cli-util/src/rtt/rs` when defmt stream decoding provides invalid frame index. (#1236)
+- Fix: Attaching to LPC55S69 seems to stop code execution - incorrect values in target YAML. (#1220)
 - Debug: Fix `probe-rs-debugger` crashes when variable unwind fails with excessively long error messages. (#1252)
 
 ## [0.13.0]

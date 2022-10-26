@@ -11,14 +11,7 @@ categories = ["embedded", "hardware-support", "development-tools::debugging"]
 keywords = ["embedded"]
 license = "MIT OR Apache-2.0"
 
-[features]
-# serde(skip_serializing_if) breaks with `bincode`, because it doesn't encode metadata (field names).
-# Enable this if you want to serialize to bincode. Do not enable this if you want to serialize to other formats (YAML, JSON...)
-# https://github.com/serde-rs/serde/issues/1732
-# https://github.com/bincode-org/bincode/issues/326
-bincode = []
-
 [dependencies]
 jep106 = "0.2.6"
-serde = { version = "1.0.104", features = ["derive"] }
+serde = { version = "1", features = ["derive"] }
 base64 = "0.13.0"

@@ -40,7 +40,13 @@ fn main() {
     let dest_path = Path::new(&out_dir).join("targets.bincode");
     std::fs::write(dest_path, &families_bin).unwrap();
 
-    let _: Vec<ChipFamily> = bincode::deserialize(&families_bin).unwrap();
+    let _: Vec<ChipFamily> = match bincode::deserialize(&families_bin) {
+        Ok(chip_families) => chip_families,
+        Err(deserialize_error) => panic!(
+            "Failed to deserialize supported target definitions from bincode: {:?}",
+            deserialize_error
+        ),
+    };
 }
 
 /// One possible implementation of walking a directory only visiting files.
@@ -51,8 +57,10 @@ fn visit_dirs(dir: &Path, targets: &mut Vec<PathBuf>) -> io::Result<()> {
             let path = entry.path();
             if path.is_dir() {
                 visit_dirs(&path, targets)?;
-            } else {
-                targets.push(path.to_owned());
+            } else if let Some(extension) = path.extension() {
+                if extension.eq_ignore_ascii_case("yaml") {
+                    targets.push(path);
+                }
             }
         }
     }

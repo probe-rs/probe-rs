@@ -27,8 +27,8 @@ mod registry;
 mod target;
 
 pub use probe_rs_target::{
-    Chip, ChipFamily, Core, CoreType, FlashProperties, InstructionSet, MemoryRange, MemoryRegion,
-    NvmRegion, PageInfo, RamRegion, RawFlashAlgorithm, SectorDescription, SectorInfo,
+    Chip, ChipFamily, Core, CoreType, FlashProperties, GenericRegion, InstructionSet, MemoryRange,
+    MemoryRegion, NvmRegion, PageInfo, RamRegion, RawFlashAlgorithm, SectorDescription, SectorInfo,
     TargetDescriptionSource,
 };
 

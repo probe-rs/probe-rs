@@ -7,27 +7,26 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 605028352
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 605028352
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 134742016
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 134742016
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h72x-73x_1024
       - stm32h7b3i_eval_fmc-nor
@@ -49,27 +48,26 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 605028352
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 605028352
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 134742016
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 134742016
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h72x-73x_1024
       - stm32h7b3i_eval_fmc-nor
@@ -91,27 +89,26 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 605028352
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 605028352
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 135266304
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 135266304
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h72x-73x_1024
       - stm32h7b3i_eval_fmc-nor
@@ -133,27 +130,26 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 605028352
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 605028352
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 135266304
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 135266304
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h72x-73x_1024
       - stm32h7b3i_eval_fmc-nor
@@ -175,27 +171,26 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 605028352
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 605028352
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 134742016
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 134742016
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h72x-73x_1024
       - stm32h7b3i_eval_fmc-nor
@@ -217,27 +212,26 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 605028352
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 605028352
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 134742016
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 134742016
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h72x-73x_1024
       - stm32h7b3i_eval_fmc-nor
@@ -259,27 +253,26 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 605028352
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 605028352
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 135266304
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 135266304
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h72x-73x_1024
       - stm32h7b3i_eval_fmc-nor
@@ -301,27 +294,26 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 605028352
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 605028352
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 135266304
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 135266304
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h72x-73x_1024
       - stm32h7b3i_eval_fmc-nor
@@ -343,27 +335,26 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 605028352
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 605028352
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 134742016
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 134742016
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h72x-73x_1024
       - stm32h7b3i_eval_fmc-nor
@@ -385,27 +376,26 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 605028352
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 605028352
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 135266304
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 135266304
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h72x-73x_1024
       - stm32h7b3i_eval_fmc-nor
@@ -427,27 +417,26 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 605028352
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 605028352
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 134742016
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 134742016
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h72x-73x_1024
       - stm32h7b3i_eval_fmc-nor
@@ -469,27 +458,26 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 605028352
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 605028352
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 134742016
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 134742016
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h72x-73x_1024
       - stm32h7b3i_eval_fmc-nor
@@ -511,27 +499,26 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 605028352
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 605028352
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 135266304
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 135266304
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h72x-73x_1024
       - stm32h7b3i_eval_fmc-nor
@@ -553,27 +540,26 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 605028352
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 605028352
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 135266304
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 135266304
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h72x-73x_1024
       - stm32h7b3i_eval_fmc-nor
@@ -595,27 +581,26 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 605028352
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 605028352
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 134742016
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 134742016
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h72x-73x_1024
       - stm32h7b3i_eval_fmc-nor
@@ -637,27 +622,26 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 605028352
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 605028352
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 135266304
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 135266304
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h72x-73x_1024
       - stm32h7b3i_eval_fmc-nor
@@ -679,27 +663,26 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 605028352
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 605028352
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 134742016
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 134742016
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h72x-73x_1024
       - stm32h7b3i_eval_fmc-nor
@@ -721,27 +704,26 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 605028352
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 605028352
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 134742016
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 134742016
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h72x-73x_1024
       - stm32h7b3i_eval_fmc-nor
@@ -763,27 +745,26 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 605028352
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 605028352
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 135266304
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 135266304
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h72x-73x_1024
       - stm32h7b3i_eval_fmc-nor
@@ -805,27 +786,26 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 605028352
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 605028352
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 135266304
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 135266304
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h72x-73x_1024
       - stm32h7b3i_eval_fmc-nor
@@ -847,27 +827,26 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 605028352
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 605028352
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 135266304
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 135266304
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h72x-73x_1024
       - stm32h7b3i_eval_fmc-nor
@@ -889,27 +868,26 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 605028352
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 605028352
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 134742016
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 134742016
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h72x-73x_1024
       - stm32h7b3i_eval_fmc-nor
@@ -931,27 +909,26 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 605028352
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 605028352
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 135266304
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 135266304
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h72x-73x_1024
       - stm32h7b3i_eval_fmc-nor
@@ -973,27 +950,26 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 605028352
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 605028352
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 134348800
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 134348800
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h730xx_128
       - stm32h7b3i_eval_fmc-nor
@@ -1015,27 +991,26 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 605028352
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 605028352
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 134348800
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 134348800
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h730xx_128
       - stm32h7b3i_eval_fmc-nor
@@ -1057,27 +1032,26 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 605028352
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 605028352
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 134348800
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 134348800
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h730xx_128
       - stm32h7b3i_eval_fmc-nor
@@ -1099,27 +1073,26 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 605028352
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 605028352
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 134348800
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 134348800
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h730xx_128
       - stm32h7b3i_eval_fmc-nor
@@ -1141,27 +1114,26 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 605028352
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 605028352
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 134348800
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 134348800
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h730xx_128
       - stm32h7b3i_eval_fmc-nor
@@ -1183,27 +1155,26 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 605028352
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 605028352
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 134348800
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 134348800
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h730xx_128
       - stm32h7b3i_eval_fmc-nor
@@ -1225,27 +1196,26 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 605028352
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 605028352
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 134348800
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 134348800
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h730xx_128
       - stm32h7b3i_eval_fmc-nor
@@ -1267,27 +1237,26 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 605028352
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 605028352
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 135266304
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 135266304
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h72x-73x_1024
       - stm32h7b3i_eval_fmc-nor
@@ -1309,27 +1278,26 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 605028352
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 605028352
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 135266304
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 135266304
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h72x-73x_1024
       - stm32h7b3i_eval_fmc-nor
@@ -1351,27 +1319,26 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 605028352
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 605028352
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 135266304
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 135266304
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h72x-73x_1024
       - stm32h7b3i_eval_fmc-nor
@@ -1393,27 +1360,26 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 605028352
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 605028352
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 135266304
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 135266304
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h72x-73x_1024
       - stm32h7b3i_eval_fmc-nor
@@ -1435,27 +1401,26 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 605028352
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 605028352
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 135266304
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 135266304
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h72x-73x_1024
       - stm32h7b3i_eval_fmc-nor
@@ -1477,27 +1442,26 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 605028352
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 605028352
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 135266304
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 135266304
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h72x-73x_1024
       - stm32h7b3i_eval_fmc-nor
@@ -1519,27 +1483,26 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 605028352
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 605028352
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 135266304
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 135266304
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h72x-73x_1024
       - stm32h7b3i_eval_fmc-nor
@@ -1561,27 +1524,26 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 605028352
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 605028352
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 135266304
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 135266304
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h72x-73x_1024
       - stm32h7b3i_eval_fmc-nor
@@ -1603,27 +1565,26 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 605028352
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 605028352
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 135266304
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 135266304
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h72x-73x_1024
       - stm32h7b3i_eval_fmc-nor
@@ -1645,27 +1606,26 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 605028352
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 605028352
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 135266304
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 135266304
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h72x-73x_1024
       - stm32h7b3i_eval_fmc-nor
@@ -1687,27 +1647,26 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 605028352
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 605028352
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 135266304
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 135266304
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h72x-73x_1024
       - stm32h7b3i_eval_fmc-nor
@@ -1729,27 +1688,26 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 605028352
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 605028352
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 135266304
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 135266304
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h72x-73x_1024
       - stm32h7b3i_eval_fmc-nor
@@ -1771,27 +1729,26 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 604372992
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 604372992
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 134742016
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 134742016
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h7x_2048
       - stm32h7b3i_eval_fmc-nor
@@ -1813,27 +1770,26 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 604372992
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 604372992
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 136314880
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 136314880
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h7x_2048
       - stm32h7b3i_eval_fmc-nor
@@ -1855,27 +1811,26 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 604372992
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 604372992
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 134742016
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 134742016
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h7x_2048
       - stm32h7b3i_eval_fmc-nor
@@ -1897,27 +1852,26 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 604372992
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 604372992
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 136314880
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 136314880
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h7x_2048
       - stm32h7b3i_eval_fmc-nor
@@ -1939,27 +1893,26 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 604372992
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 604372992
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 134742016
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 134742016
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h7x_2048
       - stm32h7b3i_eval_fmc-nor
@@ -1981,27 +1934,26 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 604372992
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 604372992
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 134742016
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 134742016
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h7x_2048
       - stm32h7b3i_eval_fmc-nor
@@ -2023,27 +1975,26 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 604372992
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 604372992
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 136314880
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 136314880
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h7x_2048
       - stm32h7b3i_eval_fmc-nor
@@ -2065,27 +2016,26 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 604372992
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 604372992
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 136314880
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 136314880
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h7x_2048
       - stm32h7b3i_eval_fmc-nor
@@ -2107,27 +2057,26 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 604372992
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 604372992
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 134742016
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 134742016
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h7x_2048
       - stm32h7b3i_eval_fmc-nor
@@ -2149,27 +2098,26 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 604372992
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 604372992
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 134742016
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 134742016
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h7x_2048
       - stm32h7b3i_eval_fmc-nor
@@ -2191,27 +2139,26 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 604372992
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 604372992
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 136314880
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 136314880
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h7x_2048
       - stm32h7b3i_eval_fmc-nor
@@ -2233,27 +2180,26 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 604372992
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 604372992
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 136314880
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 136314880
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h7x_2048
       - stm32h7b3i_eval_fmc-nor
@@ -2275,27 +2221,26 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 604372992
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 604372992
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 134742016
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 134742016
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h7x_2048
       - stm32h7b3i_eval_fmc-nor
@@ -2317,27 +2262,26 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 604372992
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 604372992
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 136314880
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 136314880
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h7x_2048
       - stm32h7b3i_eval_fmc-nor
@@ -2359,27 +2303,26 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 604372992
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 604372992
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 134742016
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 134742016
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h7x_2048
       - stm32h7b3i_eval_fmc-nor
@@ -2401,27 +2344,26 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 604372992
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 604372992
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 136314880
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 136314880
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h7x_2048
       - stm32h7b3i_eval_fmc-nor
@@ -2443,27 +2385,26 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 604504064
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 604504064
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 134742016
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 134742016
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h7x_2048
       - stm32h7b3i_eval_fmc-nor
@@ -2485,27 +2426,26 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 604504064
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 604504064
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 136314880
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 136314880
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h7x_2048
       - stm32h7b3i_eval_fmc-nor
@@ -2527,27 +2467,26 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 604504064
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 604504064
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 134742016
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 134742016
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h7x_2048
       - stm32h7b3i_eval_fmc-nor
@@ -2569,27 +2508,26 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 604504064
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 604504064
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 136314880
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 136314880
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h7x_2048
       - stm32h7b3i_eval_fmc-nor
@@ -2611,27 +2549,26 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 604504064
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 604504064
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 134742016
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 134742016
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h7x_2048
       - stm32h7b3i_eval_fmc-nor
@@ -2653,27 +2590,26 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 604504064
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 604504064
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 134742016
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 134742016
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h7x_2048
       - stm32h7b3i_eval_fmc-nor
@@ -2695,27 +2631,26 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 604504064
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 604504064
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 136314880
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 136314880
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h7x_2048
       - stm32h7b3i_eval_fmc-nor
@@ -2737,27 +2672,26 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 604504064
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 604504064
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 136314880
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 136314880
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h7x_2048
       - stm32h7b3i_eval_fmc-nor
@@ -2779,27 +2713,26 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 604504064
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 604504064
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 134742016
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 134742016
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h7x_2048
       - stm32h7b3i_eval_fmc-nor
@@ -2821,27 +2754,26 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 604504064
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 604504064
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 134742016
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 134742016
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h7x_2048
       - stm32h7b3i_eval_fmc-nor
@@ -2863,27 +2795,26 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 604504064
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 604504064
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 136314880
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 136314880
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h7x_2048
       - stm32h7b3i_eval_fmc-nor
@@ -2905,27 +2836,26 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 604504064
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 604504064
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 136314880
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 136314880
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h7x_2048
       - stm32h7b3i_eval_fmc-nor
@@ -2947,27 +2877,26 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 604504064
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 604504064
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 134742016
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 134742016
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h7x_2048
       - stm32h7b3i_eval_fmc-nor
@@ -2989,27 +2918,26 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 604504064
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 604504064
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 136314880
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 136314880
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h7x_2048
       - stm32h7b3i_eval_fmc-nor
@@ -3031,27 +2959,26 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 604504064
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 604504064
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 134742016
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 134742016
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h7x_2048
       - stm32h7b3i_eval_fmc-nor
@@ -3073,27 +3000,26 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 604504064
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 604504064
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 136314880
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 136314880
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h7x_2048
       - stm32h7b3i_eval_fmc-nor
@@ -3115,33 +3041,31 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
       - name: cm4
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 604504064
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 604504064
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 134742016
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 134742016
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h7x_2048
       - stm32h7b3i_eval_fmc-nor
@@ -3163,33 +3087,31 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
       - name: cm4
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 604504064
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 604504064
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 136314880
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 136314880
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h7x_2048
       - stm32h7b3i_eval_fmc-nor
@@ -3211,33 +3133,31 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
       - name: cm4
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 604504064
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 604504064
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 134742016
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 134742016
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h7x_2048
       - stm32h7b3i_eval_fmc-nor
@@ -3259,33 +3179,31 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
       - name: cm4
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 604504064
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 604504064
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 134742016
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 134742016
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h7x_2048
       - stm32h7b3i_eval_fmc-nor
@@ -3307,33 +3225,31 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
       - name: cm4
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 604504064
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 604504064
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 136314880
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 136314880
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h7x_2048
       - stm32h7b3i_eval_fmc-nor
@@ -3355,33 +3271,31 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
       - name: cm4
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 604504064
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 604504064
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 136314880
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 136314880
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h7x_2048
       - stm32h7b3i_eval_fmc-nor
@@ -3403,33 +3317,31 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
       - name: cm4
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 604504064
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 604504064
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 134742016
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 134742016
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h7x_2048
       - stm32h7b3i_eval_fmc-nor
@@ -3451,33 +3363,31 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
       - name: cm4
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 604504064
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 604504064
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 136314880
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 136314880
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h7x_2048
       - stm32h7b3i_eval_fmc-nor
@@ -3499,33 +3409,31 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
       - name: cm4
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 604504064
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 604504064
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 134742016
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 134742016
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h7x_2048
       - stm32h7b3i_eval_fmc-nor
@@ -3547,33 +3455,31 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
       - name: cm4
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 604504064
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 604504064
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 136314880
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 136314880
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h7x_2048
       - stm32h7b3i_eval_fmc-nor
@@ -3595,33 +3501,31 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
       - name: cm4
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 604504064
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 604504064
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 134742016
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 134742016
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h7x_2048
       - stm32h7b3i_eval_fmc-nor
@@ -3643,33 +3547,31 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
       - name: cm4
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 604504064
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 604504064
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 136314880
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 136314880
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h7x_2048
       - stm32h7b3i_eval_fmc-nor
@@ -3691,33 +3593,31 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
       - name: cm4
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 604504064
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 604504064
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 134742016
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 134742016
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h7x_2048
       - stm32h7b3i_eval_fmc-nor
@@ -3739,33 +3639,31 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
       - name: cm4
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 604504064
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 604504064
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 136314880
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 136314880
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h7x_2048
       - stm32h7b3i_eval_fmc-nor
@@ -3787,33 +3685,31 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
       - name: cm4
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 604504064
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 604504064
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 134742016
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 134742016
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h7x_2048
       - stm32h7b3i_eval_fmc-nor
@@ -3835,33 +3731,31 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
       - name: cm4
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 604504064
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 604504064
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 136314880
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 136314880
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h7x_2048
       - stm32h7b3i_eval_fmc-nor
@@ -3883,33 +3777,31 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
       - name: cm4
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 604504064
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 604504064
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 134742016
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 134742016
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h7x_2048
       - stm32h7b3i_eval_fmc-nor
@@ -3931,33 +3823,31 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
       - name: cm4
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 604504064
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 604504064
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 136314880
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 136314880
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h7x_2048
       - stm32h7b3i_eval_fmc-nor
@@ -3979,33 +3869,31 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
       - name: cm4
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 604504064
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 604504064
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 136314880
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 136314880
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h7x_2048
       - stm32h7b3i_eval_fmc-nor
@@ -4027,27 +3915,26 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 604504064
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 604504064
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 134348800
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 134348800
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h7x_128k
       - stm32h7b3i_eval_fmc-nor
@@ -4069,27 +3956,26 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 604504064
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 604504064
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 134348800
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 134348800
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h7x_128k
       - stm32h7b3i_eval_fmc-nor
@@ -4111,27 +3997,26 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 604504064
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 604504064
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 134348800
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 134348800
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h7x_128k
       - stm32h7b3i_eval_fmc-nor
@@ -4153,27 +4038,26 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 604504064
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 604504064
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 134348800
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 134348800
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h7x_128k
       - stm32h7b3i_eval_fmc-nor
@@ -4195,27 +4079,26 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 604504064
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 604504064
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 134348800
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 134348800
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h7x_128k
       - stm32h7b3i_eval_fmc-nor
@@ -4237,27 +4120,26 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 604504064
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 604504064
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 136314880
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 136314880
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h7x_2048
       - stm32h7b3i_eval_fmc-nor
@@ -4279,27 +4161,26 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 604504064
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 604504064
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 136314880
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 136314880
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h7x_2048
       - stm32h7b3i_eval_fmc-nor
@@ -4321,27 +4202,26 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 604504064
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 604504064
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 136314880
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 136314880
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h7x_2048
       - stm32h7b3i_eval_fmc-nor
@@ -4363,27 +4243,26 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 604504064
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 604504064
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 136314880
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 136314880
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h7x_2048
       - stm32h7b3i_eval_fmc-nor
@@ -4405,27 +4284,26 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 604504064
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 604504064
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 136314880
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 136314880
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h7x_2048
       - stm32h7b3i_eval_fmc-nor
@@ -4447,27 +4325,26 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 604504064
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 604504064
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 136314880
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 136314880
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h7x_2048
       - stm32h7b3i_eval_fmc-nor
@@ -4489,27 +4366,26 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 604504064
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 604504064
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 136314880
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 136314880
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h7x_2048
       - stm32h7b3i_eval_fmc-nor
@@ -4531,27 +4407,26 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 604504064
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 604504064
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 136314880
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 136314880
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h7x_2048
       - stm32h7b3i_eval_fmc-nor
@@ -4573,33 +4448,31 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
       - name: cm4
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 604504064
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 604504064
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 136314880
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 136314880
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h7x_2048
       - stm32h7b3i_eval_fmc-nor
@@ -4621,33 +4494,31 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
       - name: cm4
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 604504064
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 604504064
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 136314880
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 136314880
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h7x_2048
       - stm32h7b3i_eval_fmc-nor
@@ -4669,33 +4540,31 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
       - name: cm4
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 604504064
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 604504064
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 136314880
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 136314880
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h7x_2048
       - stm32h7b3i_eval_fmc-nor
@@ -4717,33 +4586,31 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
       - name: cm4
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 604504064
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 604504064
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 136314880
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 136314880
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h7x_2048
       - stm32h7b3i_eval_fmc-nor
@@ -4765,33 +4632,31 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
       - name: cm4
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 604504064
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 604504064
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 136314880
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 136314880
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h7x_2048
       - stm32h7b3i_eval_fmc-nor
@@ -4813,33 +4678,31 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
       - name: cm4
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 604504064
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 604504064
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 136314880
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 136314880
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h7x_2048
       - stm32h7b3i_eval_fmc-nor
@@ -4861,33 +4724,31 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
       - name: cm4
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 604504064
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 604504064
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 136314880
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 136314880
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h7x_2048
       - stm32h7b3i_eval_fmc-nor
@@ -4909,33 +4770,31 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
       - name: cm4
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 604504064
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 604504064
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 136314880
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 136314880
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h7x_2048
       - stm32h7b3i_eval_fmc-nor
@@ -4957,33 +4816,31 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
       - name: cm4
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 604504064
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 604504064
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 136314880
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 136314880
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h7x_2048
       - stm32h7b3i_eval_fmc-nor
@@ -5005,33 +4862,31 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
       - name: cm4
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 604504064
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 604504064
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 136314880
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 136314880
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h7x_2048
       - stm32h7b3i_eval_fmc-nor
@@ -5053,27 +4908,26 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 605028352
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 605028352
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 134742016
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 134742016
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h7a-b3_flash_2m
       - stm32h7b3i_eval_fmc-nor
@@ -5095,27 +4949,26 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 605028352
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 605028352
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 136314880
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 136314880
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h7a-b3_flash_2m
       - stm32h7b3i_eval_fmc-nor
@@ -5137,27 +4990,26 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 605028352
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 605028352
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 134742016
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 134742016
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h7a-b3_flash_2m
       - stm32h7b3i_eval_fmc-nor
@@ -5179,27 +5031,26 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 605028352
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 605028352
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 134742016
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 134742016
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h7a-b3_flash_2m
       - stm32h7b3i_eval_fmc-nor
@@ -5221,27 +5072,26 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 605028352
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 605028352
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 134742016
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 134742016
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h7a-b3_flash_2m
       - stm32h7b3i_eval_fmc-nor
@@ -5263,27 +5113,26 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 605028352
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 605028352
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 134742016
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 134742016
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h7a-b3_flash_2m
       - stm32h7b3i_eval_fmc-nor
@@ -5305,27 +5154,26 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 605028352
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 605028352
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 136314880
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 136314880
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h7a-b3_flash_2m
       - stm32h7b3i_eval_fmc-nor
@@ -5347,27 +5195,26 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 605028352
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 605028352
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 136314880
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 136314880
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h7a-b3_flash_2m
       - stm32h7b3i_eval_fmc-nor
@@ -5389,27 +5236,26 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 605028352
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 605028352
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 136314880
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 136314880
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h7a-b3_flash_2m
       - stm32h7b3i_eval_fmc-nor
@@ -5431,27 +5277,26 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 605028352
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 605028352
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 136314880
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 136314880
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h7a-b3_flash_2m
       - stm32h7b3i_eval_fmc-nor
@@ -5473,27 +5318,26 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 605028352
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 605028352
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 134742016
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 134742016
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h7a-b3_flash_2m
       - stm32h7b3i_eval_fmc-nor
@@ -5515,27 +5359,26 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 605028352
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 605028352
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 136314880
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 136314880
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h7a-b3_flash_2m
       - stm32h7b3i_eval_fmc-nor
@@ -5557,27 +5400,26 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 605028352
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 605028352
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 134742016
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 134742016
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h7a-b3_flash_2m
       - stm32h7b3i_eval_fmc-nor
@@ -5599,27 +5441,26 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 605028352
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 605028352
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 136314880
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 136314880
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h7a-b3_flash_2m
       - stm32h7b3i_eval_fmc-nor
@@ -5641,27 +5482,26 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 605028352
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 605028352
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 136314880
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 136314880
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h7a-b3_flash_2m
       - stm32h7b3i_eval_fmc-nor
@@ -5683,27 +5523,26 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 605028352
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 605028352
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 134742016
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 134742016
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h7a-b3_flash_2m
       - stm32h7b3i_eval_fmc-nor
@@ -5725,27 +5564,26 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 605028352
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 605028352
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 136314880
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 136314880
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h7a-b3_flash_2m
       - stm32h7b3i_eval_fmc-nor
@@ -5767,27 +5605,26 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 605028352
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 605028352
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 134742016
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 134742016
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h7a-b3_flash_2m
       - stm32h7b3i_eval_fmc-nor
@@ -5809,27 +5646,26 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 605028352
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 605028352
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 134742016
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 134742016
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h7a-b3_flash_2m
       - stm32h7b3i_eval_fmc-nor
@@ -5851,27 +5687,26 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 605028352
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 605028352
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 134742016
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 134742016
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h7a-b3_flash_2m
       - stm32h7b3i_eval_fmc-nor
@@ -5893,27 +5728,26 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 605028352
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 605028352
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 134742016
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 134742016
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h7a-b3_flash_2m
       - stm32h7b3i_eval_fmc-nor
@@ -5935,27 +5769,26 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 605028352
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 605028352
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 136314880
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 136314880
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h7a-b3_flash_2m
       - stm32h7b3i_eval_fmc-nor
@@ -5977,27 +5810,26 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 605028352
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 605028352
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 136314880
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 136314880
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h7a-b3_flash_2m
       - stm32h7b3i_eval_fmc-nor
@@ -6019,27 +5851,26 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 605028352
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 605028352
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 136314880
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 136314880
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h7a-b3_flash_2m
       - stm32h7b3i_eval_fmc-nor
@@ -6061,27 +5892,26 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 605028352
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 605028352
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 136314880
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 136314880
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h7a-b3_flash_2m
       - stm32h7b3i_eval_fmc-nor
@@ -6103,27 +5933,26 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 605028352
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 605028352
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 134742016
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 134742016
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h7a-b3_flash_2m
       - stm32h7b3i_eval_fmc-nor
@@ -6145,27 +5974,26 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 605028352
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 605028352
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 134742016
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 134742016
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h7a-b3_flash_2m
       - stm32h7b3i_eval_fmc-nor
@@ -6187,27 +6015,26 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 605028352
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 605028352
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 136314880
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 136314880
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h7a-b3_flash_2m
       - stm32h7b3i_eval_fmc-nor
@@ -6229,27 +6056,26 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 605028352
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 605028352
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 136314880
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 136314880
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h7a-b3_flash_2m
       - stm32h7b3i_eval_fmc-nor
@@ -6271,27 +6097,26 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 605028352
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 605028352
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 134348800
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 134348800
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h7b0_flash
       - stm32h7b3i_eval_fmc-nor
@@ -6313,27 +6138,26 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 605028352
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 605028352
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 134348800
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 134348800
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h7b0_flash
       - stm32h7b3i_eval_fmc-nor
@@ -6355,27 +6179,26 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 605028352
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 605028352
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 134348800
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 134348800
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h7b0_flash
       - stm32h7b3i_eval_fmc-nor
@@ -6397,27 +6220,26 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 605028352
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 605028352
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 134348800
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 134348800
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h7b0_flash
       - stm32h7b3i_eval_fmc-nor
@@ -6439,27 +6261,26 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 605028352
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 605028352
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 134348800
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 134348800
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h7b0_flash
       - stm32h7b3i_eval_fmc-nor
@@ -6481,27 +6302,26 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 605028352
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 605028352
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 134348800
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 134348800
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h7b0_flash
       - stm32h7b3i_eval_fmc-nor
@@ -6523,27 +6343,26 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 605028352
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 605028352
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 136314880
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 136314880
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h7a-b3_flash_2m
       - stm32h7b3i_eval_fmc-nor
@@ -6565,27 +6384,26 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 605028352
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 605028352
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 136314880
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 136314880
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h7a-b3_flash_2m
       - stm32h7b3i_eval_fmc-nor
@@ -6607,27 +6425,26 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 605028352
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 605028352
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 136314880
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 136314880
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h7a-b3_flash_2m
       - stm32h7b3i_eval_fmc-nor
@@ -6649,27 +6466,26 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 605028352
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 605028352
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 136314880
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 136314880
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h7a-b3_flash_2m
       - stm32h7b3i_eval_fmc-nor
@@ -6691,27 +6507,26 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 605028352
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 605028352
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 136314880
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 136314880
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h7a-b3_flash_2m
       - stm32h7b3i_eval_fmc-nor
@@ -6733,27 +6548,26 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 605028352
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 605028352
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 136314880
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 136314880
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h7a-b3_flash_2m
       - stm32h7b3i_eval_fmc-nor
@@ -6775,27 +6589,26 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 605028352
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 605028352
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 136314880
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 136314880
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h7a-b3_flash_2m
       - stm32h7b3i_eval_fmc-nor
@@ -6817,27 +6630,26 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 605028352
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 605028352
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 136314880
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 136314880
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h7a-b3_flash_2m
       - stm32h7b3i_eval_fmc-nor
@@ -6859,27 +6671,26 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 605028352
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 605028352
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 136314880
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 136314880
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h7a-b3_flash_2m
       - stm32h7b3i_eval_fmc-nor
@@ -6901,27 +6712,26 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 605028352
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 605028352
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 136314880
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 136314880
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h7a-b3_flash_2m
       - stm32h7b3i_eval_fmc-nor
@@ -6943,27 +6753,26 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 605028352
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 605028352
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 136314880
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 136314880
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h7a-b3_flash_2m
       - stm32h7b3i_eval_fmc-nor
@@ -6985,27 +6794,26 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 605028352
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 605028352
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 136314880
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 136314880
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h7a-b3_flash_2m
       - stm32h7b3i_eval_fmc-nor
@@ -7027,27 +6835,26 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 605028352
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 605028352
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 136314880
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 136314880
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h7a-b3_flash_2m
       - stm32h7b3i_eval_fmc-nor
@@ -7069,27 +6876,26 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 605028352
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 605028352
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 136314880
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 136314880
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h7a-b3_flash_2m
       - stm32h7b3i_eval_fmc-nor
@@ -7111,27 +6917,26 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0
-            psel: 0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          name: ~
-          range:
-            start: 603979776
-            end: 605028352
-          is_boot_memory: false
-          cores:
-            - main
+        name: ~
+        range:
+          start: 603979776
+          end: 605028352
+        is_boot_memory: false
+        cores:
+          - main
       - !Nvm
-          name: ~
-          range:
-            start: 134217728
-            end: 136314880
-          is_boot_memory: true
-          cores:
-            - main
+        name: ~
+        range:
+          start: 134217728
+          end: 136314880
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32h7a-b3_flash_2m
       - stm32h7b3i_eval_fmc-nor
