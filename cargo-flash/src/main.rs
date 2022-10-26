@@ -175,10 +175,10 @@ fn main_try() -> Result<(), OperationError> {
             .map_err(OperationError::AttachingToCoreFailed)?;
         if opt.reset_halt {
             core.reset_and_halt(std::time::Duration::from_millis(500))
-                .map_err(OperationError::TargetResetFailed)?;
+                .map_err(OperationError::TargetResetHaltFailed)?;
         } else {
             core.reset()
-                .map_err(OperationError::TargetResetHaltFailed)?;
+                .map_err(OperationError::TargetResetFailed)?;
         }
     }
 
