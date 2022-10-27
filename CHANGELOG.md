@@ -60,6 +60,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - RTT: Prevent panicking in `probe-rs-cli-util/src/rtt/rs` when defmt stream decoding provides invalid frame index. (#1236)
 - Fix: Attaching to LPC55S69 seems to stop code execution - incorrect values in target YAML. (#1220)
 - Debug: Fix `probe-rs-debugger` crashes when variable unwind fails with excessively long error messages. (#1252)
+- Fix: Dual core devices had incorrect 'core' names in `STM32H7_Series.yaml`, causing panic during flashing. (#1023)
+- Fix: Include all RAM regions in `STM32H7_Series.yaml` (#429)
+- Fix: Include all new STM32H7 variants from the latest CMSIS pack file (#913)
 
 ## [0.13.0]
 
