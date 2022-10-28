@@ -44,6 +44,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- (#1269) Error message in case of FTDI device access issues.
 - (#350) Flashing and debugging on STM32 chips using WFI instructions should now be stable (fixed in #1177)
 - Fixed rtthost --scan-region to properly support memory range scannig. (#1192)
 - Debug: Improve logic for halt locations used by breakpoints and stepping. (#1156)
