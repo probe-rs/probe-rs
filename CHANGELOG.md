@@ -19,6 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added Custom ArmDebugSequence for ATSAM D5x/E5x devices
 - Added a `FlashLoader::data` method (#1254)
 - Added Support for STM32H735 family. (#913)
+- Added support for MAX32660 target (#1249)
 
 ### Changed
 
