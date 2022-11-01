@@ -930,9 +930,118 @@ impl<Probe: DebugProbe + RawProtocolIo + JTAGAccess + 'static> RawDapAccess for 
     fn select_dp(&mut self, dp: DpAddress) -> Result<(), DebugProbeError> {
         match dp {
             DpAddress::Default => Ok(()), // nop
-            DpAddress::Multidrop(_) => Err(DebugProbeError::ProbeSpecific(
-                anyhow::anyhow!("JLink doesn't support multidrop SWD yet").into(),
-            )),
+            DpAddress::Multidrop(targetsel) => {
+                log::trace!("Starting leave-dormant-sequence");
+                let mut leave_dormant_sequence = IoSequence::new();
+                // Leave dormant state. From ADIv6 - B5.3.4
+                // 8 SWCLKTCK cycles with SWDIOTMS HIGH
+                for _ in 0..8 {
+                    leave_dormant_sequence.add_output(true);
+                }
+                // the 128-bit Selection Alert sequence
+                // we can't use swj_sequence as it only works up to 64 bits
+                let mut bits = 0b0100_1001_1100_1111_1001_0000_0100_0110_1010_1001_1011_0100_1010_0001_0110_0001_1001_0111_1111_0101_1011_1011_1100_0111_0100_0101_0111_0000_0011_1101_1001_1000u128.reverse_bits();
+
+                for _ in 0..128 {
+                    leave_dormant_sequence.add_output(bits & 1 == 1);
+
+                    bits >>= 1;
+                }
+
+                // four SWCLKTCK cycles with SWDIOTMS LOW
+                leave_dormant_sequence.add_output_sequence(&[false; 4]);
+
+                // the required activation code sequence on SWDIOTMS
+                let mut output_seq = match self.active_protocol().unwrap() {
+                    crate::WireProtocol::Swd => 0b0101_1000u8,
+                    crate::WireProtocol::Jtag => 0b0101_0000u8,
+                }
+                .reverse_bits();
+                for _ in 0..8 {
+                    leave_dormant_sequence.add_output(output_seq & 1 == 1);
+                    output_seq >>= 1;
+                }
+
+                // send the leave dormant sequence
+                match self.active_protocol().expect("No protocol set") {
+                    crate::WireProtocol::Jtag => {
+                        log::trace!("using jtag sequence");
+                        self.jtag_io(
+                            leave_dormant_sequence.io_bits().to_owned(),
+                            iter::repeat(false).take(8 + 128 + 4 + 8),
+                        )?;
+                    }
+                    crate::WireProtocol::Swd => {
+                        log::trace!("using swd sequence");
+                        self.swd_io(
+                            leave_dormant_sequence.direction_bits().to_owned(),
+                            leave_dormant_sequence.io_bits().to_owned(),
+                        )?;
+                    }
+                }
+
+                let mut target_sel_sequence = IoSequence::new();
+                // Line reset
+                for _ in 0..60 {
+                    target_sel_sequence.add_output(true);
+                }
+                for _ in 0..6 {
+                    target_sel_sequence.add_output(false);
+                }
+                target_sel_sequence.add_output(true); // start
+                target_sel_sequence.add_output(false); // APnDP
+                target_sel_sequence.add_output(false); // RnW
+                target_sel_sequence.add_output(true); // A
+                target_sel_sequence.add_output(true); // A
+                let parity = targetsel.count_ones() % 2 == 1;
+                target_sel_sequence.add_output(parity); // Parity
+                target_sel_sequence.add_output(false); // Stop
+                target_sel_sequence.add_output(true); // Park
+                for _ in 0..5 {
+                    // 5 cycles not driven, which apparently is not possible with jaylink
+                    target_sel_sequence.add_input();
+                }
+                let mut targetsel_bits = targetsel.reverse_bits();
+                for _ in 0..32 {
+                    target_sel_sequence.add_output(targetsel_bits & 1 == 1);
+                    targetsel_bits >>= 1;
+                }
+                target_sel_sequence.add_output(parity); // Parity
+
+                // send the built sequence
+                match self.active_protocol().expect("No protocol set") {
+                    crate::WireProtocol::Jtag => {
+                        log::trace!("using jtag sequence");
+                        self.jtag_io(
+                            target_sel_sequence.io_bits().to_owned(),
+                            iter::repeat(false).take(60 + 2 + 8 + 5 + 32 + 1),
+                        )?;
+                    }
+                    crate::WireProtocol::Swd => {
+                        log::trace!("using swd sequence");
+                        log::debug!("{:?}", target_sel_sequence.direction_bits().to_owned());
+                        self.swd_io(
+                            target_sel_sequence.direction_bits().to_owned(),
+                            target_sel_sequence.io_bits().to_owned(),
+                        )?;
+                    }
+                }
+
+                // Read dpidr register
+                log::trace!("reading dpidr");
+
+                match self.raw_read_register(PortType::DebugPort, 0) {
+                    Ok(res) => {
+                        log::debug!("DPIDR read {:08x}", res);
+                        return Ok(());
+                    }
+                    Err(e) => {
+                        log::debug!("DPIDR read failed, retrying. Error: {:?}", e);
+                    }
+                }
+
+                Ok(())
+            }
         }
     }
 
