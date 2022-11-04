@@ -928,18 +928,14 @@ impl<'probe> CoreInterface for Armv8a<'probe> {
         }
     }
 
-    fn write_core_reg(&mut self, address: RegisterId, value: RegisterValue) -> Result<()> {
+    fn write_core_reg(&mut self, address: RegisterId, value: RegisterValue) -> Result<(), Error> {
         let reg_num = address.0;
         let current_mode = if self.state.is_64_bit { 64 } else { 32 };
 
         if (reg_num as usize) >= self.state.register_cache.len() {
-            return Err(
-                Error::architecture_specific(Armv8aError::InvalidRegisterNumber(
-                    reg_num,
-                    current_mode,
-                ))
-                .into(),
-            );
+            return Err(Error::architecture_specific(
+                Armv8aError::InvalidRegisterNumber(reg_num, current_mode),
+            ));
         }
         self.state.register_cache[reg_num as usize] = Some((value, true));
 

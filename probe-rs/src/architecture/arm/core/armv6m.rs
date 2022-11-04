@@ -1,6 +1,6 @@
 //! Register types and the core interface for armv6-M
 
-use super::{CortexMState, Dfsr, CORTEX_M_COMMON_REGS};
+use super::{ArmError, CortexMState, Dfsr, CORTEX_M_COMMON_REGS};
 
 use crate::architecture::arm::sequences::ArmDebugSequence;
 use crate::core::{
@@ -799,13 +799,21 @@ impl<'probe> CoreInterface for Armv6m<'probe> {
     }
 
     fn read_core_reg(&mut self, address: RegisterId) -> Result<RegisterValue, Error> {
-        let val = super::cortex_m::read_core_reg(&mut self.memory, address)?;
-        Ok(val.into())
+        if self.state.current_state.is_halted() {
+            let val = super::cortex_m::read_core_reg(&mut self.memory, address)?;
+            Ok(val.into())
+        } else {
+            Err(Error::architecture_specific(ArmError::CoreNotHalted))
+        }
     }
 
-    fn write_core_reg(&mut self, address: RegisterId, value: RegisterValue) -> Result<()> {
-        super::cortex_m::write_core_reg(&mut self.memory, address, value.try_into()?)?;
-        Ok(())
+    fn write_core_reg(&mut self, address: RegisterId, value: RegisterValue) -> Result<(), Error> {
+        if self.state.current_state.is_halted() {
+            super::cortex_m::write_core_reg(&mut self.memory, address, value.try_into()?)?;
+            Ok(())
+        } else {
+            Err(Error::architecture_specific(ArmError::CoreNotHalted))
+        }
     }
 
     /// See docs on the [`CoreInterface::hw_breakpoints`] trait

@@ -104,13 +104,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added support for Huada Semiconductor HC32F005 MCUs.
 - Added FPU register support for Cortex-A cores (#1154)
 - GDB now reports the core name in `info threads` (#1158)
-- Added a recover sequence for the nRF9160
+- Added a recover sequence for the nRF9160 (#1169)
 
 ### Changed
 
 - ARM reset sequence now retries failed reads of DHCSR, fixes >500kHz SWD for ATSAMD21.
 - Chip names are now matched treating an 'x' as a wildcard. (#964)
-- GDB server is now available as a subcommand in the probe-rs-cli, not as a separate binary in the `gdb-server` package anymore . (#972)
+- GDB server is now available as a subcommand in the probe-rs-cli, not as a separate binary in the `gdb-server` package anymore. (#972)
 - `probe_rs::debug` and `probe-rs-debugger` changes/cleanup to the internals (#1013)
   - Removed StackFrameIterator and incorporated its logic into DebugInfo::unwind()
   - StackFrame now has VariableCache entries for locals, statics and registers
@@ -134,6 +134,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - gdb-server now uses all cores on a target (#1125)
 - gdb-server now supports floating point registers (#1133)
 - Debug: Correctly handle compressed vs non-compressed instructions sets for RISC-V. (#1224)
+- The core now needs to be halted for core register access. (#1044)
 
 ### Fixed
 
