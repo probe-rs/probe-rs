@@ -438,9 +438,9 @@ impl From<Command> for u8 {
     fn from(command: Command) -> Self {
         match command {
             Command::Clock { cap, tdi, tms } => {
-                (if cap { 4 } else { 0 } | if tms { 2 } else { 0 } | if tdi { 1 } else { 0 })
+                (if cap { 4 } else { 0 } | if tms { 2 } else { 0 } | u8::from(tdi))
             }
-            Command::Reset(srst) => 8 | if srst { 1 } else { 0 },
+            Command::Reset(srst) => 8 | u8::from(srst),
             Command::Flush => 0xA,
             Command::_Rsvd => 0xB,
             Command::Repetitions(repetitions) => 0xC + repetitions,

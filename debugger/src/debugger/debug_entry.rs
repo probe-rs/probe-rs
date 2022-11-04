@@ -786,7 +786,7 @@ impl Debugger {
                         download_options.progress = Some(&flash_progress);
                         download_file_with_options(
                             &mut session_data.session,
-                            &path_to_elf,
+                            path_to_elf,
                             Format::Elf,
                             download_options,
                         )

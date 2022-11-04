@@ -944,9 +944,8 @@ mod test {
 
             let expected_op = self.expected_ops.remove(0);
 
-            assert_eq!(
+            assert!(
                 expected_op.read,
-                true,
                 "R/W mismatch for register: Expected {:#} Actual: {:#}",
                 address_to_reg_num(expected_op.address),
                 address_to_reg_num(address)
@@ -980,9 +979,8 @@ mod test {
 
             let expected_op = self.expected_ops.remove(0);
 
-            assert_eq!(
-                expected_op.read,
-                false,
+            assert!(
+                !expected_op.read,
                 "Read/write mismatch on register: {:#}",
                 address_to_reg_num(address)
             );
@@ -1214,8 +1212,8 @@ mod test {
         .unwrap();
 
         // First read false, second read true
-        assert_eq!(false, armv7a.core_halted().unwrap());
-        assert_eq!(true, armv7a.core_halted().unwrap());
+        assert!(!armv7a.core_halted().unwrap());
+        assert!(armv7a.core_halted().unwrap());
     }
 
     #[test]

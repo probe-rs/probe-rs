@@ -245,7 +245,7 @@ fn cmd_pack(input: &Path, out_dir: &Path) -> Result<()> {
     );
 
     if !out_dir.exists() {
-        create_dir(&out_dir).context(format!(
+        create_dir(out_dir).context(format!(
             "Failed to create output directory '{}'.",
             out_dir.display()
         ))?;

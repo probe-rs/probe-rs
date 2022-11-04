@@ -203,7 +203,7 @@ impl DutDefinition {
 }
 
 fn lookup_unique_target(chip: &str) -> Result<Target> {
-    let targets = search_chips(&chip)?;
+    let targets = search_chips(chip)?;
 
     ensure!(
         !targets.is_empty(),

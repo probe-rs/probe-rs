@@ -308,7 +308,7 @@ impl ProbeOptions {
         let mut loader = FlashLoader::new(target.memory_map.to_vec(), target.source().clone());
 
         // Add data from the ELF.
-        let mut file = File::open(&elf_path).map_err(|error| OperationError::FailedToOpenElf {
+        let mut file = File::open(elf_path).map_err(|error| OperationError::FailedToOpenElf {
             source: error,
             path: elf_path.to_path_buf(),
         })?;

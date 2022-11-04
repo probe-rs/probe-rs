@@ -157,11 +157,7 @@ fn build_jtag_payload_and_address(transfer: &DapTransfer) -> (u64, u32) {
         payload |= (transfer.address as u64 & 0b1000) >> 1;
         payload |= (transfer.address as u64 & 0b0100) >> 1;
         // RnW, bit 0
-        payload |= if transfer.direction == TransferDirection::Read {
-            1
-        } else {
-            0
-        };
+        payload |= u64::from(transfer.direction == TransferDirection::Read);
 
         (payload, address)
     }
@@ -1769,7 +1765,7 @@ mod test {
         let mut mock = MockJaylink::new();
 
         let result = mock.select_protocol(crate::WireProtocol::Jtag);
-        assert_eq!(false, result.is_err());
+        assert!(result.is_ok());
 
         // Read request
         mock.add_jtag_response(PortType::AccessPort, 4, true, DapAcknowledge::Ok, 0, 0);
@@ -1824,7 +1820,7 @@ mod test {
         let mut mock = MockJaylink::new();
 
         let result = mock.select_protocol(crate::WireProtocol::Jtag);
-        assert_eq!(false, result.is_err());
+        assert!(result.is_ok());
 
         // Read
         mock.add_jtag_response(PortType::AccessPort, 4, true, DapAcknowledge::Ok, 0, 0);
@@ -1875,7 +1871,7 @@ mod test {
         let mut mock = MockJaylink::new();
 
         let result = mock.select_protocol(crate::WireProtocol::Jtag);
-        assert_eq!(false, result.is_err());
+        assert!(result.is_ok());
 
         mock.add_jtag_response(
             PortType::AccessPort,
@@ -1932,7 +1928,7 @@ mod test {
         let mut mock = MockJaylink::new();
 
         let result = mock.select_protocol(crate::WireProtocol::Jtag);
-        assert_eq!(false, result.is_err());
+        assert!(result.is_ok());
 
         mock.add_jtag_response(
             PortType::AccessPort,

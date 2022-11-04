@@ -147,7 +147,7 @@ fn main() -> Result<(), &'static str> {
 
         let commit_hash = String::from_utf8_lossy(
             &Command::new("git")
-                .args(&["rev-parse", "--short", "HEAD"])
+                .args(["rev-parse", "--short", "HEAD"])
                 .output()
                 .unwrap()
                 .stdout,
@@ -156,7 +156,7 @@ fn main() -> Result<(), &'static str> {
         .to_string();
 
         let commit_name = if Command::new("git")
-            .args(&["diff-index", "--quiet", "HEAD", "--"])
+            .args(["diff-index", "--quiet", "HEAD", "--"])
             .output()
             .unwrap()
             .status
