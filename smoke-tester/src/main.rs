@@ -25,14 +25,14 @@ fn main() -> Result<()> {
             Arg::new("dut_definitions")
                 .long("dut-definitions")
                 .value_name("DIRECTORY")
-                .conflicts_with_all(&["chip", "probe", "single_dut"])
+                .conflicts_with_all(["chip", "probe", "single_dut"])
                 .required(true),
         )
         .arg(
             Arg::new("chip")
                 .long("chip")
                 .value_name("CHIP")
-                .conflicts_with_all(&["dut_definitions", "single_dut"])
+                .conflicts_with_all(["dut_definitions", "single_dut"])
                 .required(true),
         )
         .arg(
@@ -46,7 +46,7 @@ fn main() -> Result<()> {
                 .long("single-dut")
                 .value_name("FILE")
                 .required(true)
-                .conflicts_with_all(&["chip", "dut_definitions"]),
+                .conflicts_with_all(["chip", "dut_definitions"]),
         );
 
     let matches = app.get_matches();

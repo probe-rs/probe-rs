@@ -179,8 +179,8 @@ define_ap_register!(
    to: value =>
         (value.BASEADDR << 12)
         // _RES0
-        | (u32::from(value.Format as u8   ) << 1)
-        | (if value.present { 1 } else { 0 })
+        | (u32::from(value.Format as u8) << 1)
+        | u32::from(value.present)
 );
 
 define_ap_register!(

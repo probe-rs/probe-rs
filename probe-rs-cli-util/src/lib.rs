@@ -113,7 +113,7 @@ pub fn build_artifact(work_dir: &Path, args: &[String]) -> Result<Artifact, Arti
         .current_dir(work_dir)
         .arg("build")
         .args(args)
-        .args(&["--message-format", "json-diagnostic-rendered-ansi"])
+        .args(["--message-format", "json-diagnostic-rendered-ansi"])
         .stdout(Stdio::piped())
         .spawn()
         .map_err(ArtifactError::Io)?;

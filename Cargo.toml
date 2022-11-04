@@ -10,12 +10,5 @@ members = [
     "rtthost",
     "smoke-tester",
     "xtask",
-    "target-gen"
+    "target-gen",
 ]
-
-[profile.release]
-debug = true
-split-debuginfo = "unpacked"
-
-[profile.dev]
-split-debuginfo = "unpacked"

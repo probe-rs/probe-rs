@@ -222,7 +222,7 @@ pub(crate) fn visit_dirs(path: &Path, families: &mut Vec<ChipFamily>) -> Result<
 pub(crate) fn visit_file(path: &Path, families: &mut Vec<ChipFamily>) -> Result<()> {
     log::info!("Trying to open pack file: {}.", path.display());
     // If we get a file, try to unpack it.
-    let file = fs::File::open(&path)?;
+    let file = fs::File::open(path)?;
     let mut archive = zip::ZipArchive::new(file)?;
 
     let mut pdsc_file = find_pdsc_in_archive(&mut archive)?

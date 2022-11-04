@@ -61,11 +61,11 @@ impl InnerTransferRequest {
     fn to_bytes(&self, buffer: &mut [u8]) -> Result<usize, SendError> {
         buffer[0] = (self.APnDP as u8)
             | (self.RnW as u8) << 1
-            | (if self.A2 { 1 } else { 0 }) << 2
-            | (if self.A3 { 1 } else { 0 }) << 3
-            | (if self.value_match { 1 } else { 0 }) << 4
-            | (if self.match_mask { 1 } else { 0 }) << 5
-            | (if self.td_timestamp_request { 1 } else { 0 }) << 7;
+            | u8::from(self.A2) << 2
+            | u8::from(self.A3) << 3
+            | u8::from(self.value_match) << 4
+            | u8::from(self.match_mask) << 5
+            | u8::from(self.td_timestamp_request) << 7;
         if let Some(data) = self.data {
             let data = data.to_le_bytes();
             buffer[1..5].copy_from_slice(&data[..]);
@@ -377,8 +377,8 @@ impl InnerTransferBlockRequest {
     fn to_bytes(&self, buffer: &mut [u8], offset: usize) -> Result<usize, SendError> {
         buffer[offset] = (self.ap_n_dp as u8)
             | (self.r_n_w as u8) << 1
-            | (if self.a2 { 1 } else { 0 }) << 2
-            | (if self.a3 { 1 } else { 0 }) << 3;
+            | u8::from(self.a2) << 2
+            | u8::from(self.a3) << 3;
         Ok(1)
     }
 }
