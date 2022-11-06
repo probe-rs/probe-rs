@@ -643,11 +643,7 @@ impl<'probe> CoreInterface for Armv7m<'probe> {
         let start = Instant::now();
 
         while start.elapsed() < timeout {
-            let dhcsr_val = Dhcsr(self.memory.read_word_32(Dhcsr::ADDRESS)?);
-            if dhcsr_val.s_halt() {
-                // update halted state
-                self.status()?;
-
+            if self.core_halted()? {
                 return Ok(());
             }
             std::thread::sleep(Duration::from_millis(1));
@@ -656,14 +652,7 @@ impl<'probe> CoreInterface for Armv7m<'probe> {
     }
 
     fn core_halted(&mut self) -> Result<bool, Error> {
-        // Wait until halted state is active again.
-        let dhcsr_val = Dhcsr(self.memory.read_word_32(Dhcsr::ADDRESS)?);
-
-        if dhcsr_val.s_halt() {
-            Ok(true)
-        } else {
-            Ok(false)
-        }
+        Ok(self.status()?.is_halted())
     }
 
     fn status(&mut self) -> Result<CoreStatus, Error> {

@@ -504,9 +504,7 @@ impl<'probe> CoreInterface for Armv6m<'probe> {
         let start = Instant::now();
 
         while start.elapsed() < timeout {
-            let dhcsr_val = Dhcsr(self.memory.read_word_32(Dhcsr::ADDRESS)?);
-
-            if dhcsr_val.s_halt() {
+            if self.core_halted()? {
                 return Ok(());
             }
             std::thread::sleep(Duration::from_millis(1));
@@ -516,13 +514,12 @@ impl<'probe> CoreInterface for Armv6m<'probe> {
 
     fn core_halted(&mut self) -> Result<bool, Error> {
         // Wait until halted state is active again.
-        let dhcsr_val = Dhcsr(self.memory.read_word_32(Dhcsr::ADDRESS)?);
+        //
+        // By calling the status function, the cached
+        // status is properly updated.
+        let status = self.status()?;
 
-        if dhcsr_val.s_halt() {
-            Ok(true)
-        } else {
-            Ok(false)
-        }
+        Ok(status.is_halted())
     }
 
     fn halt(&mut self, timeout: Duration) -> Result<CoreInformation, Error> {
@@ -536,9 +533,6 @@ impl<'probe> CoreInterface for Armv6m<'probe> {
         self.memory.write_word_32(Dhcsr::ADDRESS, value.into())?;
 
         self.wait_for_core_halted(timeout)?;
-
-        // Update core status
-        let _ = self.status()?;
 
         // try to read the program counter
         let pc_value = self.read_core_reg(PC.id)?;
