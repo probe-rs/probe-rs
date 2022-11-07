@@ -751,12 +751,11 @@ fn get_device_info(device: &rusb::Device<rusb::Context>) -> Option<DebugProbeInf
 
     let handle = match device.open() {
         Err(rusb::Error::Access) => {
-            eprintln!("Access denied: probe device {:#?}", device);
-            eprintln!("(Hint: check udev-Rules!)");
+            log::Warn("Access denied: probe device {:#?}", device);
             return None;
         }
         Err(e) => {
-            eprint!("Can't open probe device {:#?} -- Error: {:#?}", device, e);
+            log::Warn("Can't open probe device {:#?} -- Error: {:#?}", device, e);
             return None;
         }
         Ok(v) => v,
