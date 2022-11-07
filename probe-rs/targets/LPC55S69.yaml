@@ -1,128 +1,308 @@
 name: LPC55S69
-manufacturer: null
+generated_from_pack: true
+pack_file_release: 15.0.0
 variants:
-  - name: LPC55S69JBD100
+- name: LPC55S69JBD100
+  cores:
+  - name: cm33_core0
+    type: armv8m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  - name: cm33_core1
+    type: armv8m
+    core_access_options: !Arm
+      ap: 1
+      psel: 0
+  memory_map:
+  - !Ram
+    name: SRAM + SRAM4
+    range:
+      start: 0x20000000
+      end: 0x20044000
     cores:
-      - name: main
-        type: armv8m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20044000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x0
-            end: 0x98000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - lpc55xx_640
-      - lpc55xx_s_640
-  - name: LPC55S69JBD64
+    - main
+  - !Ram
+    name: SRAMX
+    range:
+      start: 0x4000000
+      end: 0x4008000
     cores:
-      - name: main
-        type: armv8m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20044000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x0
-            end: 0x98000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - lpc55xx_640
-      - lpc55xx_s_640
-  - name: LPC55S69JEV98
+    - main
+  - !Ram
+    name: USB_RAM
+    range:
+      start: 0x40100000
+      end: 0x40104000
     cores:
-      - name: main
-        type: armv8m
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
-    memory_map:
-      - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20044000
-          is_boot_memory: false
-          cores:
-            - main
-      - !Nvm
-          range:
-            start: 0x0
-            end: 0x98000
-          is_boot_memory: true
-          cores:
-            - main
-    flash_algorithms:
-      - lpc55xx_640
-      - lpc55xx_s_640
+    - main
+  - !Nvm
+    name: PROGRAM_FLASH
+    range:
+      start: 0x0
+      end: 0x9d800
+    is_boot_memory: true
+    cores:
+    - main
+  - !Generic
+    name: PROGRAM_FLASH_alias
+    range:
+      start: 0x10000000
+      end: 0x1009d800
+    cores:
+    - main
+  - !Generic
+    name: SRAM_alias + SRAM4_alias
+    range:
+      start: 0x30000000
+      end: 0x30044000
+    cores:
+    - main
+  - !Generic
+    name: BootROM
+    range:
+      start: 0x3000000
+      end: 0x3020000
+    cores:
+    - main
+  - !Generic
+    name: BootROM_alias
+    range:
+      start: 0x13000000
+      end: 0x13020000
+    cores:
+    - main
+  - !Generic
+    name: SRAMX_alias
+    range:
+      start: 0x14000000
+      end: 0x14008000
+    cores:
+    - main
+  - !Generic
+    name: USB_RAM_alias
+    range:
+      start: 0x50100000
+      end: 0x50104000
+    cores:
+    - main
+  flash_algorithms:
+  - lpc55xx_640
+  - lpc55xx_s_640
+- name: LPC55S69JBD64
+  cores:
+  - name: cm33_core0
+    type: armv8m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  - name: cm33_core1
+    type: armv8m
+    core_access_options: !Arm
+      ap: 1
+      psel: 0
+  memory_map:
+  - !Ram
+    name: SRAM + SRAM4
+    range:
+      start: 0x20000000
+      end: 0x20044000
+    cores:
+    - main
+  - !Ram
+    name: SRAMX
+    range:
+      start: 0x4000000
+      end: 0x4008000
+    cores:
+    - main
+  - !Ram
+    name: USB_RAM
+    range:
+      start: 0x40100000
+      end: 0x40104000
+    cores:
+    - main
+  - !Nvm
+    name: PROGRAM_FLASH
+    range:
+      start: 0x0
+      end: 0x9d800
+    is_boot_memory: true
+    cores:
+    - main
+  - !Generic
+    name: PROGRAM_FLASH_alias
+    range:
+      start: 0x10000000
+      end: 0x1009d800
+    cores:
+    - main
+  - !Generic
+    name: SRAM_alias + SRAM4_alias
+    range:
+      start: 0x30000000
+      end: 0x30044000
+    cores:
+    - main
+  - !Generic
+    name: BootROM
+    range:
+      start: 0x3000000
+      end: 0x3020000
+    cores:
+    - main
+  - !Generic
+    name: BootROM_alias
+    range:
+      start: 0x13000000
+      end: 0x13020000
+    cores:
+    - main
+  - !Generic
+    name: SRAMX_alias
+    range:
+      start: 0x14000000
+      end: 0x14008000
+    cores:
+    - main
+  - !Generic
+    name: USB_RAM_alias
+    range:
+      start: 0x50100000
+      end: 0x50104000
+    cores:
+    - main
+  flash_algorithms:
+  - lpc55xx_640
+  - lpc55xx_s_640
+- name: LPC55S69JEV98
+  cores:
+  - name: cm33_core0
+    type: armv8m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  - name: cm33_core1
+    type: armv8m
+    core_access_options: !Arm
+      ap: 1
+      psel: 0
+  memory_map:
+  - !Ram
+    name: SRAM + SRAM4
+    range:
+      start: 0x20000000
+      end: 0x20044000
+    cores:
+    - main
+  - !Ram
+    name: SRAMX
+    range:
+      start: 0x4000000
+      end: 0x4008000
+    cores:
+    - main
+  - !Ram
+    name: USB_RAM
+    range:
+      start: 0x40100000
+      end: 0x40104000
+    cores:
+    - main
+  - !Nvm
+    name: PROGRAM_FLASH
+    range:
+      start: 0x0
+      end: 0x9d800
+    is_boot_memory: true
+    cores:
+    - main
+  - !Generic
+    name: PROGRAM_FLASH_alias
+    range:
+      start: 0x10000000
+      end: 0x1009d800
+    cores:
+    - main
+  - !Generic
+    name: SRAM_alias + SRAM4_alias
+    range:
+      start: 0x30000000
+      end: 0x30044000
+    cores:
+    - main
+  - !Generic
+    name: BootROM
+    range:
+      start: 0x3000000
+      end: 0x3020000
+    cores:
+    - main
+  - !Generic
+    name: BootROM_alias
+    range:
+      start: 0x13000000
+      end: 0x13020000
+    cores:
+    - main
+  - !Generic
+    name: SRAMX_alias
+    range:
+      start: 0x14000000
+      end: 0x14008000
+    cores:
+    - main
+  - !Generic
+    name: USB_RAM_alias
+    range:
+      start: 0x50100000
+      end: 0x50104000
+    cores:
+    - main
+  flash_algorithms:
+  - lpc55xx_640
+  - lpc55xx_s_640
 flash_algorithms:
-  - name: lpc55xx_640
-    description: LPC55xx IAP 608kB Flash
-    cores:
-      - main
-    default: true
-    instructions: gLVA8gQAwPIAAEL24GFJ+AAQQPIAIMXyAAAAIcD4gBDA+IQQwPiAEUf2+3EBYED2BGD/IcXyAADM8t4BAWBP8KBAAiEBcEDyEADA8gAASEQA8HT4ACgYvwEggL0AIHBHgLVA8hAAwPIAAEbybGNIRAAhxvZlM0/0GCIA8H/4ACgYvwEggL0Av4C1IPBwQUDyEADA8gAARvJsY0hExvZlM0/0AEIA8Gr4ACgYvwEggL1wtRRGDUZBBCDwcEYN0UDyEADA8gAARvJsY0hEMUbG9mUzT/QAQgDwUfhA8hAAwPIAALX1AH+Yv0/0AHVIRDFGIkYrRgDwavgAKBi/ASBwvbC1DEYFRiDwcEARRiJGAPAB+gAoCL8lRChGsL2AtQpGIPBwQUDyEADA8gAASEQA8HX4ACgYvwEggL0AAEHy9ALB8gAy0WgAKQrQYCODYpJ4SWhA8gwDwPIAA0n4AyAIR0DyukDA8gAAQPLHQcDyAAF4RHlEhCIA8I35AL9A8gwMwPIADFn4DMC88QIPBNFE8jscwfIAPGBHQfIAHMHyADzc+ADAvPEADwLQ3PgIwGBHQPJqQMDyAABA8ndBwPIAAXhEeUSVIgDwZfkAv0DyDAzA8gAMWfgMwLzxAg8E0UTynRzB8gA8YEdB8gAcwfIAPNz4AMC88QAPAtDc+AzAYEdA8hpAwPIAAEDyJ0HA8gABeER5RKUiAPA9+QC/QfIAE8HyADMbaAArAdAbaRhHQPLsMMDyAABA8vkxwPIAAXhEeUStIgDwJvlA8gwMwPIADFn4DMC88QIPBNFE8n0swfIAPGBHQfIAHMHyADzc+ADAvPEADwLQ3PgUwGBHQPKeMMDyAABA8qsxwPIAAXhEeUTCIgDw//gAv0HyABPB8gAzG2gAKwHQm2kYR0DycDDA8gAAQPJ9McDyAAF4RHlEyyIA8Oj4QfIAEcHyADEJaAApAdCJaghHQPJEMMDyAABA8lExwPIAAXhEeUTVIgDw0vhB8gARwfIAMQloACkB0MlqCEdA8hgwwPIAAEDyJTHA8gABeER5RNwiAPC8+EHyABPB8gAzG2gAKwHQG2sYR0Dy7CDA8gAAQPL5IcDyAAF4RHlE4yIA8Kb4QfIAEsHyADISaAAqAdBSaxBHQPLAIMDyAABA8s0hwPIAAXhEeUTqIgDwkPhB8gAcwfIAPNz4AMC88QAPAtDc+DjAYEdA8o4gwPIAAEDymyHA8gABeER5RPEiAPB3+AC/QfIAEsHyADISaAAqAdDSaxBHQPJgIMDyAABA8m0hwPIAAXhEeUT4IgDwYPhB8gASwfIAMhJoACoB0BJsEEdA8jQgwPIAAEDyQSHA8gABeER5RP8iAPBK+EHyABPB8gAzG2gAKwHQW2wYR0DyCCDA8gAAQPIVIcDyAAF4RHlET/SDcgDwM/gAv0HyABPB8gAzG2gAKwHQm2wYR0Dy2BDA8gAAQPLlEcDyAAF4RHlEQPINEgDwG/gAv0HyABzB8gA83PgAwLzxAA8C0Nz4TMBgR0DyohDA8gAAQPKvEcDyAAF4RHlET/SKcgDwAPgOtQVGFEYORhOgAPBw+ChGAPBt+BagAPBq+DBGAPBn+BWgAPBk+AAhjfgLEAohDfEKAI34ChAI4JT78fIB+xJClPvx9DAyAPgBLQAs9NwA8E74APBB+AAAKioqIGFzc2VydGlvbiBmYWlsZWQ6IAAALCBmaWxlIAAsIGxpbmUgAEDqAQMQtZsHD9EEKg3TEMgIyRIfnEL40CC6GbqIQgHZASAQvU/w/zAQvRqx0wcD0FIcB+AAIBC9EPgBOxH4AUsbGwfREPgBOxH4AUsbGwHRkh7x0RhGEL0QtQAgAPAe+K/zAIC96BBAASAA8BG4ELUERgLgZBwA8AT4IHgAKPnREL0ItWlGjfgAAAMgq74IvQFJGCCrvv7nJgACABC1APAL+L3oEEAA8AG4cEcAKAHQ//fuv3BHAAAQtQAhAqAA8BP4ASAQvQAAU0lHQUJSVDogQWJub3JtYWwgdGVybWluYXRpb24AAABwtQVGDEYKIADgbRz/98X/NbEoeAAo+NEC4GQc//e9/xSxIHgAKPjRvehwQAog//e0v0ZMQVNIX0FQSV9UUkVFAGlhcDEvZnNsX2lhcDEuYwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-    pc_init: 0x1
-    pc_uninit: 0x5d
-    pc_program_page: 0xb1
-    pc_erase_sector: 0x89
-    pc_erase_all: 0x61
-    data_section_offset: 0x650
-    flash_properties:
-      address_range:
-        start: 0x0
-        end: 0x98000
-      page_size: 0x200
-      erased_byte_value: 0xff
-      program_page_timeout: 0x12c
-      erase_sector_timeout: 0xbb8
-      sectors:
-        - size: 0x8000
-          address: 0x0
-  - name: lpc55xx_s_640
-    description: LPC55xx S IAP 608kB Flash
-    cores:
-      - main
-    default: true
-    instructions: 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
-    pc_init: 0x1
-    pc_uninit: 0x5d
-    pc_program_page: 0xb1
-    pc_erase_sector: 0x89
-    pc_erase_all: 0x61
-    data_section_offset: 0x650
-    flash_properties:
-      address_range:
-        start: 0x10000000
-        end: 0x10098000
-      page_size: 0x200
-      erased_byte_value: 0xff
-      program_page_timeout: 0x12c
-      erase_sector_timeout: 0xbb8
-      sectors:
-        - size: 0x8000
-          address: 0x0
+- name: lpc55xx_640
+  description: LPC55xx IAP 630kB Flash
+  default: true
+  instructions: gLVA8gQAwPIAAEL24GFJ+AAQQPIAIMXyAAAAIcD4gBDA+IQQwPiAEUf2+3EBYED2BGD/IcXyAADM8t4BAWBP8KBAAiEBcEDyDADA8gAASEQA8GL4ACgYvwEggL0AIHBHgLVA8gwAwPIAAE32AAJG8mxjSETA8gkCACHG9mUzAPBx+AAoGL8BIIC9AL+AtSDwcEFA8gwAwPIAAEbybGNIRMb2ZTNP9AByAPBc+AAoGL8BIIC9gLULRiDwcEFA8gwAwPIAAEhEs/UAf5i/T/QAcwDwcPgAKBi/ASCAvbC1DEYFRiDwcEARRiJGAPDt+QAoCL8lRChGsL2AtQpGIPBwQUDyDADA8gAASEQA8Hv4ACgYvwEggL0AAEHy9gzB8gA83PgKEIGxQPIIA8DyAAMAIkn4AyCc+AAgSWgDOrL6gvJSCUn4AyAIR0DyhkDA8gAAQPKTQcDyAAF4RHlEbiIA8HP5AL9A8ggMwPIADFn4DMC88QAPC9BB8gAcwfIAPNz4AMC88QAPB9Dc+AjAYEdE8jscwfIAPGBHQPI2QMDyAABA8kNBwPIAAXhEeUR/IgDwS/kAv0DyCAzA8gAMWfgMwLzxAA8L0EHyABzB8gA83PgAwLzxAA8H0Nz4DMBgR0TynRzB8gA8YEdA8uYwwPIAAEDy8zHA8gABeER5RI8iAPAj+QC/QfIAE8HyADMbaAuxG2kYR0DyujDA8gAAQPLHMcDyAAF4RHlElyIA8A35AL9A8ggMwPIADFn4DMC88QAPC9BB8gAcwfIAPNz4AMC88QAPB9Dc+BTAYEdE8n0swfIAPGBHQPJqMMDyAABA8ncxwPIAAXhEeUSrIgDw5fgAv0HyABPB8gAzG2gLsZtpGEdA8j4wwPIAAEDySzHA8gABeER5RLQiAPDP+AC/QfIAEcHyADEJaAmxyWkIR0DyEjDA8gAAQPIfMcDyAAF4RHlEviIA8Ln4AL9B8gARwfIAMQloCbEJaghHQPLmIMDyAABA8vMhwPIAAXhEeUTFIgDwo/gAv0HyABPB8gAzG2gLsVtqGEdA8rogwPIAAEDyxyHA8gABeER5RMwiAPCN+AC/QfIAHMHyADzc+ADAvPEADwLQ3PgswGBHQPKGIMDyAABA8pMhwPIAAXhEeUTTIgDwc/gAv0HyABLB8gAyEmgKsRJrEEdA8logwPIAAEDyZyHA8gABeER5RNoiAPBd+AC/QfIAEsHyADISaAqxUmsQR0DyLiDA8gAAQPI7IcDyAAF4RHlE4SIA8Ef4AL9B8gATwfIAMxtoC7GbaxhHQPICIMDyAABA8g8hwPIAAXhEeUToIgDwMfgAv0HyABLB8gAyEmgKsZJqEEdA8tYQwPIAAEDy4xHA8gABeER5RO8iAPAb+AC/QfIAHMHyADzc+ADAvPEADwLQ3PhAwGBHQPKiEMDyAABA8q8RwPIAAXhEeUT2IgDwAfgAAA61BUYURg5GE6AA8HD4KEYA8G34FqAA8Gr4MEYA8Gf4FaAA8GT4ACGN+AsQCiEN8QoAjfgKEAjglPvx8gH7EkKU+/H0MDIA+AEtACz03ADwTvgA8EH4AAAqKiogYXNzZXJ0aW9uIGZhaWxlZDogAAAsIGZpbGUgACwgbGluZSAAQOoBAxC1mwcP0QQqDdMQyAjJEh+cQvjQILoZuohCAdkBIBC9T/D/MBC9GrHTBwPQUhwH4AAgEL0Q+AE7EfgBSxsbB9EQ+AE7EfgBSxsbAdGSHvHRGEYQvRC1ACAA8B74r/MAgL3oEEABIADwEbgQtQRGAuBkHADwBPggeAAo+dEQvQi1aUaN+AAAAyCrvgi9AUkYIKu+/ucmAAIAELUA8Av4vegQQADwAbhwRwAoAdD/9+6/cEcAABC1ACECoADwE/gBIBC9AABTSUdBQlJUOiBBYm5vcm1hbCB0ZXJtaW5hdGlvbgAAAHC1BUYMRgogAOBtHP/3xf81sSh4ACj40QLgZBz/973/FLEgeAAo+NG96HBACiD/97S/RkxBU0hfQVBJX1RSRUUAaWFwMS9mc2xfaWFwMS5jAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==
+  pc_init: 0x1
+  pc_uninit: 0x5d
+  pc_program_page: 0xb5
+  pc_erase_sector: 0x8d
+  pc_erase_all: 0x61
+  data_section_offset: 0x604
+  flash_properties:
+    address_range:
+      start: 0x0
+      end: 0x98000
+    page_size: 0x200
+    erased_byte_value: 0xff
+    program_page_timeout: 300
+    erase_sector_timeout: 3000
+    sectors:
+    - size: 0x200
+      address: 0x0
+- name: lpc55xx_s_640
+  description: LPC55xx S IAP 630kB Flash
+  default: true
+  instructions: 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
+  pc_init: 0x1
+  pc_uninit: 0x5d
+  pc_program_page: 0xb5
+  pc_erase_sector: 0x8d
+  pc_erase_all: 0x61
+  data_section_offset: 0x604
+  flash_properties:
+    address_range:
+      start: 0x10000000
+      end: 0x1009d800
+    page_size: 0x200
+    erased_byte_value: 0xff
+    program_page_timeout: 300
+    erase_sector_timeout: 3000
+    sectors:
+    - size: 0x200
+      address: 0x0
