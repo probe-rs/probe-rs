@@ -1,15 +1,15 @@
 [package]
 name = "probe-rs-target"
-version = "0.13.0"
-edition = "2021"
+version.workspace = true
+edition.workspace = true
 description = "Target description schema for probe-rs."
-documentation = "https://docs.rs/probe-rs/"
-homepage = "https://github.com/probe-rs/probe-rs"
-repository = "https://github.com/probe-rs/probe-rs"
-readme = "../README.md"
+documentation.workspace = true
+homepage.workspace = true
+repository.workspace = true
+readme.workspace = true
 categories = ["embedded", "hardware-support", "development-tools::debugging"]
 keywords = ["embedded"]
-license = "MIT OR Apache-2.0"
+license.workspace = true
 
 [dependencies]
 jep106 = "0.2.6"

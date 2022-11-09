@@ -1,35 +1,38 @@
 [package]
 name = "probe-rs-cli"
-version = "0.13.0"
-authors = ["Noah Hüsser <yatekii@yatekii.ch>", "Dominik Boehi <dominik.boehi@gmail.ch>"]
-edition = "2021"
+version.workspace = true
+authors = [
+    "Noah Hüsser <yatekii@yatekii.ch>",
+    "Dominik Boehi <dominik.boehi@gmail.ch>",
+]
+edition.workspace = true
 description = "A cli for on chip debugging and flashing of ARM chips."
-documentation = "https://docs.rs/probe-rs-cli/"
-homepage = "https://github.com/probe-rs/probe-rs"
-repository = "https://github.com/probe-rs/probe-rs"
-readme = "../README.md"
+documentation.workspace = true
+homepage.workspace = true
+repository.workspace = true
+readme.workspace = true
 categories = ["embedded", "hardware-support", "development-tools::debugging"]
 keywords = ["embedded"]
-license = "MIT OR Apache-2.0"
+license.workspace = true
 
 [features]
 ftdi = ["probe-rs/ftdi"]
 
 [dependencies]
-probe-rs = { path = "../probe-rs", version = "0.13.0" }
-probe-rs-cli-util = { path = "../probe-rs-cli-util", version = "0.13.0" }
-gdb-server = { path = "../gdb-server", version = "0.13.0" }
+probe-rs = { workspace = true }
+probe-rs-cli-util = { workspace = true }
+gdb-server = { workspace = true }
 
-pretty_env_logger = "0.4.0"
-log = "0.4.6"
+pretty_env_logger = { workspace = true }
+log = { workspace = true }
 scroll = "0.11.0"
 rustyline = "10.0.0"
 capstone = "0.11.0"
 ron = "0.8.0"
 ihex = "3.0.0"
 colored = "2.0.0"
-thiserror = "1.0"
-anyhow = "1.0.34"
+thiserror = { workspace = true }
+anyhow = { workspace = true }
 parse_int = "0.6.0"
 num-traits = "0.2.14"
 bitfield = "0.14.0"
