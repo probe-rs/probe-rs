@@ -26,7 +26,7 @@ probe-rs-cli-util = { version = "0.13.0", git = "https://github.com/probe-rs/pro
 probe-rs-rtt = { version = "0.13.0", git = "https://github.com/probe-rs/probe-rs" }
 
 git-version = "0.3.5"
-env_logger = "0.9.1"
+env_logger = "0.9.3"
 log = { version = "0.4.17", features = ["serde"] }
 lazy_static = "1.4.0"
 colored = "2.0.0"
