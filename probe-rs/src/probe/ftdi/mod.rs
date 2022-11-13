@@ -749,7 +749,17 @@ fn get_device_info(device: &rusb::Device<rusb::Context>) -> Option<DebugProbeInf
         return None;
     }
 
-    let handle = device.open().ok()?;
+    let handle = match device.open() {
+        Err(rusb::Error::Access) => {
+            log::warn!("Access denied: probe device {:#?}", device);
+            return None;
+        }
+        Err(e) => {
+            log::warn!("Can't open probe device {:#?} -- Error: {:#?}", device, e);
+            return None;
+        }
+        Ok(v) => v,
+    };
 
     let prod_str = handle.read_product_string_ascii(&d_desc).ok()?;
     let sn_str = handle.read_serial_number_string_ascii(&d_desc).ok();
