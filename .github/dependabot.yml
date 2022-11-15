@@ -5,6 +5,11 @@ updates:
     schedule:
       interval: "daily"
   - package-ecosystem: cargo
+    directory: "/"
+    schedule:
+      interval: daily
+    open-pull-requests-limit: 10
+  - package-ecosystem: cargo
     directory: "/cli"
     schedule:
       interval: daily
