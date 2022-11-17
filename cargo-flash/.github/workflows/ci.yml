@@ -32,7 +32,7 @@ jobs:
         if: (matrix.os == 'ubuntu-latest') || (matrix.os == 'ubuntu-20.04')
 
       - name: Install libftdi (windows)
-        uses: lukka/run-vcpkg@v7
+        uses: lukka/run-vcpkg@v10
         with:
           vcpkgArguments: "libftdi1:x64-windows"
           vcpkgGitCommitId: "7dbc05515b44bf54d2a42b4da9d1e1f910868b86"
