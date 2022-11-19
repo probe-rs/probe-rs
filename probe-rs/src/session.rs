@@ -168,7 +168,6 @@ impl Session {
                             probe.get_name()
                         );
                         log::info!("Falling back to standard probe reset.");
-                        attach_method = AttachMethod::Normal;
                         probe.target_reset_assert()?;
                     }
                 }

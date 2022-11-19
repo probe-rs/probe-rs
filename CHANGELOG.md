@@ -67,6 +67,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fix: Include all new STM32H7 variants from the latest CMSIS pack file (#913)
 - Fix: Update STM32G0_Series.yaml to include latest variants (STM32G050, STM32G051, STM32G061, STM32G0B0, STM32G0B1, STM32G0C1) (#1266)
 - Fix: Correct flash algorithm values in LPC55S69.yaml. (#1220)
+- Fix: Timeout during flashing when using connect under reset - regression from #1259. (#1286)
 
 ## [0.13.0]
 
