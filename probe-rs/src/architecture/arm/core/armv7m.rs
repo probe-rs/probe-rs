@@ -642,13 +642,18 @@ impl<'probe> CoreInterface for Armv7m<'probe> {
         // Wait until halted state is active again.
         let start = Instant::now();
 
-        while start.elapsed() < timeout {
+        // This will always call `self.core_halted()` at least once, which ensures that the `core` status is updated.
+        loop {
             if self.core_halted()? {
-                return Ok(());
+                // Core is halted.
+                break Ok(());
+            } else if start.elapsed() > timeout {
+                break Err(Error::Probe(DebugProbeError::Timeout));
+            } else {
+                // Wait a bit before polling again.
+                std::thread::sleep(Duration::from_millis(1));
             }
-            std::thread::sleep(Duration::from_millis(1));
         }
-        Err(Error::Probe(DebugProbeError::Timeout))
     }
 
     fn core_halted(&mut self) -> Result<bool, Error> {
@@ -750,9 +755,6 @@ impl<'probe> CoreInterface for Armv7m<'probe> {
         self.memory.write_word_32(Dhcsr::ADDRESS, value.into())?;
 
         self.wait_for_core_halted(timeout)?;
-
-        // Update core status
-        let _ = self.status()?;
 
         // try to read the program counter
         let pc_value = self.read_core_reg(register::PC.id)?;
