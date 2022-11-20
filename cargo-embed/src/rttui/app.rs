@@ -1,4 +1,4 @@
-use anyhow::{anyhow, Result};
+use anyhow::{anyhow, Context, Result};
 use crossterm::{
     event::{self, KeyCode},
     execute,
@@ -103,7 +103,7 @@ impl App {
 
         let events = Events::new();
 
-        enable_raw_mode().unwrap();
+        enable_raw_mode().context("Failed to enable 'raw' mode for terminal")?;
         let mut stdout = std::io::stdout();
         execute!(stdout, EnterAlternateScreen).unwrap();
         let backend = CrosstermBackend::new(stdout);
@@ -163,6 +163,9 @@ impl App {
         let scroll_offset = self.current_tab().scroll_offset();
         let messages = self.current_tab().messages().clone();
         let data = self.current_tab().data().clone();
+
+        log::debug!("Data length: {}", data.len());
+
         let tabs = &self.tabs;
         let current_tab = self.current_tab;
         let mut height = 0;
