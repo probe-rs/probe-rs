@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added a `FlashLoader::data` method (#1254)
 - Added Support for STM32H735 family. (#913)
 - Added support for MAX32660 target (#1249)
+- Added support for W7500 target
 
 ### Changed
 
