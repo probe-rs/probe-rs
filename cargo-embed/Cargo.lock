@@ -671,6 +671,7 @@ dependencies = [
 [[package]]
 name = "gdb-server"
 version = "0.13.0"
+source = "git+https://github.com/probe-rs/probe-rs#855a33ceba123e18b9a99d0ab5fc37d9d19e448f"
 dependencies = [
  "anyhow",
  "gdbstub",
@@ -1382,6 +1383,7 @@ checksum = "5b40af805b3121feab8a3c29f04d8ad262fa8e0561883e7653e024ae4479e6de"
 [[package]]
 name = "probe-rs"
 version = "0.13.0"
+source = "git+https://github.com/probe-rs/probe-rs#855a33ceba123e18b9a99d0ab5fc37d9d19e448f"
 dependencies = [
  "anyhow",
  "base64",
@@ -1412,6 +1414,7 @@ dependencies = [
 [[package]]
 name = "probe-rs-cli-util"
 version = "0.13.0"
+source = "git+https://github.com/probe-rs/probe-rs#855a33ceba123e18b9a99d0ab5fc37d9d19e448f"
 dependencies = [
  "anyhow",
  "byte-unit",
@@ -1440,6 +1443,7 @@ dependencies = [
 [[package]]
 name = "probe-rs-rtt"
 version = "0.13.0"
+source = "git+https://github.com/probe-rs/probe-rs#855a33ceba123e18b9a99d0ab5fc37d9d19e448f"
 dependencies = [
  "log",
  "probe-rs",
@@ -1451,6 +1455,7 @@ dependencies = [
 [[package]]
 name = "probe-rs-target"
 version = "0.13.0"
+source = "git+https://github.com/probe-rs/probe-rs#855a33ceba123e18b9a99d0ab5fc37d9d19e448f"
 dependencies = [
  "base64",
  "jep106",

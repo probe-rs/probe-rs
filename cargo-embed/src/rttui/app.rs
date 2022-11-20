@@ -71,7 +71,7 @@ impl App {
         } else {
             let up_channels = rtt.up_channels().drain();
             let mut down_channels = rtt.down_channels().drain().collect::<Vec<_>>();
-            for channel in up_channels.into_iter() {
+            for channel in up_channels {
                 let number = channel.number();
                 tabs.push(ChannelState::new(
                     Some(channel),
@@ -210,8 +210,7 @@ impl App {
                         // We need to collect to generate message_num :(
                         messages_wrapped = messages
                             .iter()
-                            .map(|m| textwrap::wrap(m, chunks[1].width as usize))
-                            .flatten()
+                            .flat_map(|m| textwrap::wrap(m, chunks[1].width as usize))
                             .map(|s| s.into_owned())
                             .collect();
 

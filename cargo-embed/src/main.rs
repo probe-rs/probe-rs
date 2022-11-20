@@ -420,7 +420,7 @@ fn main_try() -> Result<()> {
             options.keep_unwritten_bytes = config.flashing.restore_unwritten_bytes;
             options.do_chip_erase = config.flashing.do_chip_erase;
 
-            download_file_with_options(&mut session, &path, Format::Elf, options)
+            download_file_with_options(&mut session, path, Format::Elf, options)
                 .with_context(|| format!("failed to flash {}", path.display()))?;
 
             // If we don't do this, the inactive progress bars will swallow log
@@ -431,7 +431,7 @@ fn main_try() -> Result<()> {
             options.keep_unwritten_bytes = config.flashing.restore_unwritten_bytes;
             options.do_chip_erase = config.flashing.do_chip_erase;
 
-            download_file_with_options(&mut session, &path, Format::Elf, options)
+            download_file_with_options(&mut session, path, Format::Elf, options)
                 .with_context(|| format!("failed to flash {}", path.display()))?;
         }
 
@@ -579,7 +579,7 @@ fn main_try() -> Result<()> {
                                 up_channel.number(),
                                 &mode
                             );
-                            up_channel.set_mode(&mut core, mode.into())?;
+                            up_channel.set_mode(&mut core, mode)?;
                         }
                     }
 
