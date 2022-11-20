@@ -35,18 +35,21 @@ impl Events {
         let (tx, rx) = mpsc::channel();
         let ignore_exit_key = Arc::new(AtomicBool::new(false));
         let input_handle = {
-            thread::spawn(move || {
-                loop {
-                    // poll for tick rate duration, if no events, sent tick event.
-                    if event::poll(config.poll_rate).unwrap() {
-                        if let CEvent::Key(key) = event::read().unwrap() {
-                            if tx.send(key).is_err() {
-                                return;
+            thread::Builder::new()
+                .name("probe-rs-terminal-event-handler".to_owned())
+                .spawn(move || {
+                    loop {
+                        // poll for tick rate duration, if no events, sent tick event.
+                        if event::poll(config.poll_rate).unwrap() {
+                            if let CEvent::Key(key) = event::read().unwrap() {
+                                if tx.send(key).is_err() {
+                                    return;
+                                }
                             }
                         }
                     }
-                }
-            })
+                })
+                .unwrap()
         };
 
         Events {

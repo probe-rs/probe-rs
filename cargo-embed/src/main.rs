@@ -53,7 +53,7 @@ const CARGO_VERSION: &str = env!("CARGO_PKG_VERSION");
 const GIT_VERSION: &str = git_version::git_version!(fallback = "crates.io");
 
 #[derive(Debug, clap::Parser)]
-#[clap(global_setting(clap::AppSettings::NoAutoVersion))]
+#[clap(disable_version_flag = true)]
 struct Opt {
     #[clap(short = 'V', long = "version")]
     pub version: bool,
@@ -314,7 +314,7 @@ fn main_try() -> Result<()> {
             let style = ProgressStyle::default_bar()
                 .tick_chars("⠁⠁⠉⠙⠚⠒⠂⠂⠒⠲⠴⠤⠄⠄⠤⠠⠠⠤⠦⠖⠒⠐⠐⠒⠓⠋⠉⠈⠈✔")
                 .progress_chars("##-")
-                .template("{msg:.green.bold} {spinner} [{elapsed_precise}] [{wide_bar}] {bytes:>8}/{total_bytes:>8} @ {bytes_per_sec:>10} (eta {eta:3})");
+                .template("{msg:.green.bold} {spinner} [{elapsed_precise}] [{wide_bar}] {bytes:>8}/{total_bytes:>8} @ {bytes_per_sec:>10} (eta {eta:3})")?;
 
             // Create a new progress bar for the fill progress if filling is enabled.
             let fill_progress = if config.flashing.restore_unwritten_bytes {
@@ -362,16 +362,16 @@ fn main_try() -> Result<()> {
                             .map(|path| visualizer.write_svg(path));
                     }
                     StartedProgramming => {
-                        program_progress.enable_steady_tick(100);
+                        program_progress.enable_steady_tick(Duration::from_millis(100));
                         program_progress.reset_elapsed();
                     }
                     StartedErasing => {
-                        erase_progress.enable_steady_tick(100);
+                        erase_progress.enable_steady_tick(Duration::from_millis(100));
                         erase_progress.reset_elapsed();
                     }
                     StartedFilling => {
                         if let Some(fp) = fill_progress.as_ref() {
-                            fp.enable_steady_tick(100)
+                            fp.enable_steady_tick(Duration::from_millis(100))
                         };
                         if let Some(fp) = fill_progress.as_ref() {
                             fp.reset_elapsed()
@@ -414,24 +414,14 @@ fn main_try() -> Result<()> {
                 }
             });
 
-            // Make the multi progresses print.
-            // indicatif requires this in a separate thread as this join is a blocking op,
-            // but is required for printing multiprogress.
-            let progress_thread_handle = std::thread::spawn(move || {
-                multi_progress.join().unwrap();
-            });
-
             let mut options = DownloadOptions::new();
 
             options.progress = Some(&progress);
             options.keep_unwritten_bytes = config.flashing.restore_unwritten_bytes;
             options.do_chip_erase = config.flashing.do_chip_erase;
 
-            download_file_with_options(&mut session, &path, Format::Elf, options)
+            download_file_with_options(&mut session, path, Format::Elf, options)
                 .with_context(|| format!("failed to flash {}", path.display()))?;
-
-            // We don't care if we cannot join this thread.
-            let _ = progress_thread_handle.join();
 
             // If we don't do this, the inactive progress bars will swallow log
             // messages, so they'll never be printed anywhere.
@@ -441,7 +431,7 @@ fn main_try() -> Result<()> {
             options.keep_unwritten_bytes = config.flashing.restore_unwritten_bytes;
             options.do_chip_erase = config.flashing.do_chip_erase;
 
-            download_file_with_options(&mut session, &path, Format::Elf, options)
+            download_file_with_options(&mut session, path, Format::Elf, options)
                 .with_context(|| format!("failed to flash {}", path.display()))?;
         }
 
@@ -589,7 +579,7 @@ fn main_try() -> Result<()> {
                                 up_channel.number(),
                                 &mode
                             );
-                            up_channel.set_mode(&mut core, mode.into())?;
+                            up_channel.set_mode(&mut core, mode)?;
                         }
                     }
 

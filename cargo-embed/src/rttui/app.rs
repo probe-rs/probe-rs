@@ -1,4 +1,4 @@
-use anyhow::{anyhow, Result};
+use anyhow::{anyhow, Context, Result};
 use crossterm::{
     event::{self, KeyCode},
     execute,
@@ -71,7 +71,7 @@ impl App {
         } else {
             let up_channels = rtt.up_channels().drain();
             let mut down_channels = rtt.down_channels().drain().collect::<Vec<_>>();
-            for channel in up_channels.into_iter() {
+            for channel in up_channels {
                 let number = channel.number();
                 tabs.push(ChannelState::new(
                     Some(channel),
@@ -103,7 +103,7 @@ impl App {
 
         let events = Events::new();
 
-        enable_raw_mode().unwrap();
+        enable_raw_mode().context("Failed to enable 'raw' mode for terminal")?;
         let mut stdout = std::io::stdout();
         execute!(stdout, EnterAlternateScreen).unwrap();
         let backend = CrosstermBackend::new(stdout);
@@ -163,6 +163,9 @@ impl App {
         let scroll_offset = self.current_tab().scroll_offset();
         let messages = self.current_tab().messages().clone();
         let data = self.current_tab().data().clone();
+
+        log::debug!("Data length: {}", data.len());
+
         let tabs = &self.tabs;
         let current_tab = self.current_tab;
         let mut height = 0;
@@ -207,8 +210,7 @@ impl App {
                         // We need to collect to generate message_num :(
                         messages_wrapped = messages
                             .iter()
-                            .map(|m| textwrap::wrap(m, chunks[1].width as usize))
-                            .flatten()
+                            .flat_map(|m| textwrap::wrap(m, chunks[1].width as usize))
                             .map(|s| s.into_owned())
                             .collect();
 
