@@ -1,0 +1,51 @@
+name: W7500
+variants:
+- name: W7500
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Nvm
+    name: FLASH
+    range:
+      start: 0x0
+      end: 0x20000
+    is_boot_memory: true
+    cores:
+    - main
+  - !Ram
+    name: SRAM
+    range:
+      start: 0x20000000
+      end: 0x20004000
+    cores:
+    - main
+  flash_algorithms:
+  - w7500_128
+flash_algorithms:
+- name: w7500_128
+  description: W7500 128KB FLASH
+  default: true
+  instructions: MLQRTKRGMLxgRwAgcEcAIHBHACMQtRpGGUYUIP/38P8AIBC9ELUAIwFGGkYSIP/35/8AIBC9C0YQtQFGIiD/99//ACAQvQAAARD/HwAAAAA=
+  pc_init: 0xb
+  pc_uninit: 0xf
+  pc_program_page: 0x37
+  pc_erase_sector: 0x25
+  pc_erase_all: 0x13
+  data_section_offset: 0x4c
+  flash_properties:
+    address_range:
+      start: 0x0
+      end: 0x20000
+    page_size: 0x100
+    erased_byte_value: 0xff
+    program_page_timeout: 100
+    erase_sector_timeout: 3000
+    sectors:
+    - size: 0x100
+      address: 0x0
+  cores:
+  - main
