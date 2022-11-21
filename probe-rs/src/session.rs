@@ -114,7 +114,7 @@ impl Session {
     pub(crate) fn new(
         probe: Probe,
         target: TargetSelector,
-        mut attach_method: AttachMethod,
+        attach_method: AttachMethod,
         permissions: Permissions,
     ) -> Result<Self, Error> {
         let (mut probe, target) = get_target_from_selector(target, attach_method, probe)?;
@@ -157,10 +157,7 @@ impl Session {
                 };
 
                 if AttachMethod::UnderReset == attach_method {
-                    if !target.supports_connect_under_reset {
-                        attach_method = AttachMethod::Normal;
-                        log::warn!("Target {:?} does not support 'connect under reset'. Falling back to normal attach.", target.name);
-                    } else if let Some(dap_probe) = probe.try_as_dap_probe() {
+                    if let Some(dap_probe) = probe.try_as_dap_probe() {
                         sequence_handle.reset_hardware_assert(dap_probe)?;
                     } else {
                         log::info!(

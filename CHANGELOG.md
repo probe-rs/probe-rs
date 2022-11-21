@@ -38,11 +38,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Remove `Option::is_none`, empty `Vec`, and `false` bool values, in generated YAML, for improved readability.
   - Generate all pack file specified memory regions.
   - Match memory regions to pack file specified core names.
-  - `probe_rs_target::chip::Chip` and `probe_rs::config::target::Target` both have a new field `supports_connect_under_reset`.
-    - target-gen will generate `probe_rs_target::chip::Chip::supports_connect_under_reset` as `true` for all STM32 targets, and `false` for others.
-    - To avoid having to re-generate all STM32 targets, `probe_rs::config::Target::new()` will also "assume" this value to `true` for STM32 targets.
-- `probe_rs_::session::Session` will compare the target support for requested `AttachMethod` and warn the user (then silently ignore) if they request `AttachMethod::UnderReset` on an unsupported environment. (#1259)
 - `probe_rs_target::chip::Chip` has a new field `pack_file_release` which is populated by `target-gen`.(#1259)
+- Undo the introduction of new `supports_connect_under_reset` behavior that was introduced in #1259 and provide more descriptive error handling when connecting under reset fails due to timeout. ()
 
 ### Fixed
 
