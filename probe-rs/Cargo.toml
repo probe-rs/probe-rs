@@ -38,7 +38,7 @@ gimli = { version = "0.26.1", default-features = false, features = [
     "read",
     "std",
 ] }
-hidapi = { version = "1.2.0", default-features = false, features = [
+hidapi = { version = "2.0.2", default-features = false, features = [
     "linux-static-hidraw",
 ] }
 ihex = "3.0.0"
