@@ -107,12 +107,6 @@ impl SessionData {
                 .map_err(|err| anyhow!("Error attaching to the probe: {:?}.", err))?
         };
 
-        if config.connect_under_reset && !target_session.target().supports_connect_under_reset {
-            // The target_session.attach would have ignored the invalid `connect_under_reset` flag,
-            // so we need to update the flag to ensure that subsequent behavior is correct.
-            config.connect_under_reset = false;
-        }
-
         // Change the current working directory if `config.cwd` is `Some(T)`.
         if let Some(new_cwd) = config.cwd.clone() {
             set_current_dir(new_cwd.as_path()).map_err(|err| {

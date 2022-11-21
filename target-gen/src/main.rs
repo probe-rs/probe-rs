@@ -207,7 +207,6 @@ fn cmd_elf(
                     }),
                 ],
                 flash_algorithms: vec![algorithm_name],
-                supports_connect_under_reset: false,
             }],
             flash_algorithms: vec![algorithm],
             source: BuiltIn,

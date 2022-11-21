@@ -357,7 +357,14 @@ impl Probe {
     ) -> Result<Session, Error> {
         self.attached = true;
         // The session will de-assert reset after connecting to the debug interface.
-        Session::new(self, target.into(), AttachMethod::UnderReset, permissions)
+        Session::new(self, target.into(), AttachMethod::UnderReset, permissions).map_err(|e| {
+            if matches!(e, Error::Probe(DebugProbeError::Timeout)) {
+                Error::Other(
+                anyhow::anyhow!("Timeout while attaching to target under reset. This can happen if the target is not responding to the reset sequence. Ensure the chip's reset pin is connected, or try attaching without reset."))
+            } else {
+                e
+            }
+        })
     }
 
     pub(crate) fn inner_attach(&mut self) -> Result<(), DebugProbeError> {
