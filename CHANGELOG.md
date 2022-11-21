@@ -39,7 +39,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Generate all pack file specified memory regions.
   - Match memory regions to pack file specified core names.
 - `probe_rs_target::chip::Chip` has a new field `pack_file_release` which is populated by `target-gen`.(#1259)
-- Undo the introduction of new `supports_connect_under_reset` behavior that was introduced in #1259 and provide more descriptive error handling when connecting under reset fails due to timeout. ()
+- Undo the introduction of new `supports_connect_under_reset` behavior that was introduced in #1259 and provide more descriptive error handling when connecting under reset fails due to timeout. (#1289)
 
 ### Fixed
 
