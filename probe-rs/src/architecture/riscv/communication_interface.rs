@@ -49,6 +49,9 @@ pub enum RiscvError {
     /// This version of the debug module is not supported.
     #[error("The version '{0:?}' of the debug module is currently not supported.")]
     UnsupportedDebugModuleVersion(DebugModuleVersion),
+    /// The provided csr address was invalid/unsupported
+    #[error("CSR at address '{0:x}' is unsupported.")]
+    UnsupportedCsrAddress(u16),
     /// The given program buffer register is not supported.
     #[error("Program buffer register '{0}' is currently not supported.")]
     UnsupportedProgramBufferRegister(usize),
@@ -209,6 +212,10 @@ pub struct RiscvCommunicationInterfaceState {
 
 /// Timeout for RISCV operations.
 const RISCV_TIMEOUT: Duration = Duration::from_secs(5);
+
+/// RiscV only supports 12bit CSRs. See
+/// [Zicsr](https://riscv.org/wp-content/uploads/2019/06/riscv-spec.pdf#chapter.9) extension
+const RISCV_MAX_CSR_ADDR: u16 = 0xFFF;
 
 impl RiscvCommunicationInterfaceState {
     /// Create a new interface state.
@@ -1140,6 +1147,11 @@ impl RiscvCommunicationInterface {
     pub fn read_csr_progbuf(&mut self, address: u16) -> Result<u32, RiscvError> {
         log::debug!("Reading CSR {:#04x}", address);
 
+        // Validate that the CSR address is valid
+        if address > RISCV_MAX_CSR_ADDR {
+            return Err(RiscvError::UnsupportedCsrAddress(address));
+        }
+
         let s0 = self.abstract_cmd_register_read(&register::S0)?;
 
         // Read csr value into register 8 (s0)
@@ -1165,6 +1177,11 @@ impl RiscvCommunicationInterface {
     /// Write the CSR progbuf register.
     pub fn write_csr_progbuf(&mut self, address: u16, value: u32) -> Result<(), RiscvError> {
         log::debug!("Writing CSR {:#04x}={}", address, value);
+
+        // Validate that the CSR address is valid
+        if address > RISCV_MAX_CSR_ADDR {
+            return Err(RiscvError::UnsupportedCsrAddress(address));
+        }
 
         // Backup register s0
         let s0 = self.abstract_cmd_register_read(&register::S0)?;
