@@ -21,7 +21,7 @@ ftdi = ["probe-rs/ftdi"]
 sentry = ["probe-rs-cli-util/sentry"]
 
 [dependencies]
-env_logger = "0.9.3"
+env_logger = "0.10.0"
 lazy_static = "1.4.0"
 colored = "2.0.0"
 probe-rs = { version = "0.13.0", git = "https://github.com/probe-rs/probe-rs" }
