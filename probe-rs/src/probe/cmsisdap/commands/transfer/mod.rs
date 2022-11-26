@@ -178,7 +178,7 @@ impl Request for TransferRequest {
         }
         let transfer_count = buffer[0];
         if transfer_count as usize > self.transfers.len() {
-            log::error!("Transfer count larger than requested number of transfers");
+            tracing::error!("Transfer count larger than requested number of transfers");
             return Err(SendError::UnexpectedAnswer);
         }
 
@@ -305,7 +305,7 @@ impl Request for TransferBlockRequest {
 
         let num_transfers = (buffer.len() - 3) / 4;
 
-        log::debug!(
+        tracing::debug!(
             "Expected {} responses, got {} responses with data..",
             transfer_count,
             num_transfers

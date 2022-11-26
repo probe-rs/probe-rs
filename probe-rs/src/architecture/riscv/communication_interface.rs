@@ -310,7 +310,7 @@ impl RiscvCommunicationInterface {
     fn enter_debug_mode(&mut self) -> Result<(), RiscvError> {
         // We need a jtag interface
 
-        log::debug!("Building RISCV interface");
+        tracing::debug!("Building RISCV interface");
 
         // Reset error bits from previous connections
         self.dtm.reset()?;
@@ -344,7 +344,7 @@ impl RiscvCommunicationInterface {
             None
         };
 
-        log::debug!("dmstatus: {:?}", status);
+        tracing::debug!("dmstatus: {:?}", status);
 
         // enable the debug module
         let mut control = Dmcontrol(0);
@@ -361,7 +361,7 @@ impl RiscvCommunicationInterface {
 
         self.state.hartsellen = control.hartsel().count_ones() as u8;
 
-        log::debug!("HARTSELLEN: {}", self.state.hartsellen);
+        tracing::debug!("HARTSELLEN: {}", self.state.hartsellen);
 
         // Determine number of harts
 
@@ -387,7 +387,7 @@ impl RiscvCommunicationInterface {
             num_harts += 1;
         }
 
-        log::debug!("Number of harts: {}", num_harts);
+        tracing::debug!("Number of harts: {}", num_harts);
 
         self.state.num_harts = num_harts;
 
@@ -403,10 +403,10 @@ impl RiscvCommunicationInterface {
         let abstractcs: Abstractcs = self.read_dm_register()?;
 
         self.state.progbuf_size = abstractcs.progbufsize() as u8;
-        log::debug!("Program buffer size: {}", self.state.progbuf_size);
+        tracing::debug!("Program buffer size: {}", self.state.progbuf_size);
 
         self.state.data_register_count = abstractcs.datacount() as u8;
-        log::debug!(
+        tracing::debug!(
             "Number of data registers: {}",
             self.state.data_register_count
         );
@@ -415,7 +415,7 @@ impl RiscvCommunicationInterface {
         let hartinfo: Hartinfo = self.read_dm_register()?;
 
         self.state.nscratch = hartinfo.nscratch() as u8;
-        log::debug!("Number of dscratch registers: {}", self.state.nscratch);
+        tracing::debug!("Number of dscratch registers: {}", self.state.nscratch);
 
         // determine if autoexec works
         let mut abstractauto = Abstractauto(0);
@@ -427,7 +427,7 @@ impl RiscvCommunicationInterface {
         let abstractauto_readback: Abstractauto = self.read_dm_register()?;
 
         self.state.supports_autoexec = abstractauto_readback == abstractauto;
-        log::debug!("Support for autoexec: {}", self.state.supports_autoexec);
+        tracing::debug!("Support for autoexec: {}", self.state.supports_autoexec);
 
         // clear abstractauto
         abstractauto = Abstractauto(0);
@@ -472,7 +472,7 @@ impl RiscvCommunicationInterface {
                     .insert(RiscvBusAccess::A128, MemoryAccessMethod::SystemBus);
             }
         } else {
-            log::debug!(
+            tracing::debug!(
                 "System bus interface version {} is not supported.",
                 sbcs.sbversion()
             );
@@ -482,11 +482,11 @@ impl RiscvCommunicationInterface {
     }
 
     pub(super) fn read_dm_register<R: DebugRegister>(&mut self) -> Result<R, RiscvError> {
-        log::debug!("Reading DM register '{}' at {:#010x}", R::NAME, R::ADDRESS);
+        tracing::debug!("Reading DM register '{}' at {:#010x}", R::NAME, R::ADDRESS);
 
         let register_value = self.read_dm_register_untyped(R::ADDRESS as u64)?.into();
 
-        log::debug!(
+        tracing::debug!(
             "Read DM register '{}' at {:#010x} = {:x?}",
             R::NAME,
             R::ADDRESS,
@@ -515,7 +515,7 @@ impl RiscvCommunicationInterface {
     ) -> Result<(), RiscvError> {
         // write write command to dmi register
 
-        log::debug!(
+        tracing::debug!(
             "Write DM register '{}' at {:#010x} = {:x?}",
             R::NAME,
             R::ADDRESS,
@@ -574,7 +574,7 @@ impl RiscvCommunicationInterface {
 
         if data == &self.state.progbuf_cache[..data.len()] {
             // Check if we actually have to write the program buffer
-            log::debug!("Program buffer is up-to-date, skipping write.");
+            tracing::debug!("Program buffer is up-to-date, skipping write.");
             return Ok(());
         }
 
@@ -851,7 +851,7 @@ impl RiscvCommunicationInterface {
         address: u32,
         data: V,
     ) -> Result<(), RiscvError> {
-        log::debug!(
+        tracing::debug!(
             "Memory write using progbuf - {:#010x} = {:#?}",
             address,
             data
@@ -891,7 +891,7 @@ impl RiscvCommunicationInterface {
         if status.cmderr() != 0 {
             let error = AbstractCommandErrorKind::parse(status.cmderr() as u8);
 
-            log::error!(
+            tracing::error!(
                 "Executing the abstract command for perform_memory_write failed: {:?} ({:x?})",
                 error,
                 status,
@@ -957,7 +957,7 @@ impl RiscvCommunicationInterface {
         if status.cmderr() != 0 {
             let error = AbstractCommandErrorKind::parse(status.cmderr() as u8);
 
-            log::error!(
+            tracing::error!(
                 "Executing the abstract command for write_32 failed: {:?} ({:x?})",
                 error,
                 status,
@@ -993,7 +993,7 @@ impl RiscvCommunicationInterface {
         // read abstractcs to see its state
         let abstractcs_prev: Abstractcs = self.read_dm_register()?;
 
-        log::debug!("abstractcs: {:?}", abstractcs_prev);
+        tracing::debug!("abstractcs: {:?}", abstractcs_prev);
 
         if abstractcs_prev.cmderr() != 0 {
             // Clear previous command error.
@@ -1023,7 +1023,7 @@ impl RiscvCommunicationInterface {
             }
         }
 
-        log::debug!("abstracts: {:?}", abstractcs);
+        tracing::debug!("abstracts: {:?}", abstractcs);
 
         // check cmderr
         if abstractcs.cmderr() != 0 {
@@ -1145,7 +1145,7 @@ impl RiscvCommunicationInterface {
 
     /// Read the CSR progbuf register.
     pub fn read_csr_progbuf(&mut self, address: u16) -> Result<u32, RiscvError> {
-        log::debug!("Reading CSR {:#04x}", address);
+        tracing::debug!("Reading CSR {:#04x}", address);
 
         // Validate that the CSR address is valid
         if address > RISCV_MAX_CSR_ADDR {
@@ -1176,7 +1176,7 @@ impl RiscvCommunicationInterface {
 
     /// Write the CSR progbuf register.
     pub fn write_csr_progbuf(&mut self, address: u16, value: u32) -> Result<(), RiscvError> {
-        log::debug!("Writing CSR {:#04x}={}", address, value);
+        tracing::debug!("Writing CSR {:#04x}={}", address, value);
 
         // Validate that the CSR address is valid
         if address > RISCV_MAX_CSR_ADDR {
@@ -1239,7 +1239,7 @@ impl RiscvCommunicationInterface {
         address: u32,
         data: &mut [V],
     ) -> Result<(), crate::Error> {
-        log::debug!("read_32 from {:#08x}", address);
+        tracing::debug!("read_32 from {:#08x}", address);
 
         match self.state.memory_access_method(RiscvBusAccess::A32) {
             MemoryAccessMethod::ProgramBuffer => {
@@ -1303,7 +1303,7 @@ impl RiscvCommunicationInterface {
     ) -> Result<(), DebugProbeError> {
         // write write command to dmi register
 
-        log::debug!(
+        tracing::debug!(
             "Write DM register '{}' at {:#010x} = {:x?}",
             R::NAME,
             R::ADDRESS,
@@ -1329,7 +1329,7 @@ impl RiscvCommunicationInterface {
     pub(super) fn schedule_read_dm_register<R: DebugRegister>(
         &mut self,
     ) -> Result<DeferredResultIndex, DebugProbeError> {
-        log::debug!("Reading DM register '{}' at {:#010x}", R::NAME, R::ADDRESS);
+        tracing::debug!("Reading DM register '{}' at {:#010x}", R::NAME, R::ADDRESS);
 
         self.schedule_read_dm_register_untyped(R::ADDRESS as u64)
     }
@@ -1735,13 +1735,13 @@ impl MemoryInterface for RiscvCommunicationInterface {
 
     fn read_word_8(&mut self, address: u64) -> Result<u8, crate::Error> {
         let address = valid_32_address(address)?;
-        log::debug!("read_word_8 from {:#08x}", address);
+        tracing::debug!("read_word_8 from {:#08x}", address);
         self.read_word(address)
     }
 
     fn read_64(&mut self, address: u64, data: &mut [u64]) -> Result<(), crate::error::Error> {
         let address = valid_32_address(address)?;
-        log::debug!("read_64 from {:#08x}", address);
+        tracing::debug!("read_64 from {:#08x}", address);
 
         for (i, d) in data.iter_mut().enumerate() {
             *d = self.read_word_64((address + (i as u32 * 8)).into())?;
@@ -1752,14 +1752,14 @@ impl MemoryInterface for RiscvCommunicationInterface {
 
     fn read_32(&mut self, address: u64, data: &mut [u32]) -> Result<(), crate::Error> {
         let address = valid_32_address(address)?;
-        log::debug!("read_32 from {:#08x}", address);
+        tracing::debug!("read_32 from {:#08x}", address);
         self.read_multiple(address, data)
     }
 
     /// Read 8-bit values from target memory.
     fn read_8(&mut self, address: u64, data: &mut [u8]) -> Result<(), crate::Error> {
         let address = valid_32_address(address)?;
-        log::debug!("read_8 from {:#08x}", address);
+        tracing::debug!("read_8 from {:#08x}", address);
 
         self.read_multiple(address, data)
     }
@@ -1785,7 +1785,7 @@ impl MemoryInterface for RiscvCommunicationInterface {
 
     fn write_64(&mut self, address: u64, data: &[u64]) -> Result<(), crate::error::Error> {
         let address = valid_32_address(address)?;
-        log::debug!("write_64 to {:#08x}", address);
+        tracing::debug!("write_64 to {:#08x}", address);
 
         for (i, d) in data.iter().enumerate() {
             self.write_word_64((address + (i as u32 * 8)).into(), *d)?;
@@ -1796,14 +1796,14 @@ impl MemoryInterface for RiscvCommunicationInterface {
 
     fn write_32(&mut self, address: u64, data: &[u32]) -> Result<(), crate::Error> {
         let address = valid_32_address(address)?;
-        log::debug!("write_32 to {:#08x}", address);
+        tracing::debug!("write_32 to {:#08x}", address);
 
         self.write_multiple(address, data)
     }
 
     fn write_8(&mut self, address: u64, data: &[u8]) -> Result<(), crate::Error> {
         let address = valid_32_address(address)?;
-        log::debug!("write_8 to {:#08x}", address);
+        tracing::debug!("write_8 to {:#08x}", address);
 
         self.write_multiple(address, data)
     }

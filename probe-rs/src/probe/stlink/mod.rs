@@ -140,16 +140,16 @@ impl DebugProbe for StLink<StLinkUsbDevice> {
     }
 
     fn attach(&mut self) -> Result<(), DebugProbeError> {
-        log::debug!("attach({:?})", self.protocol);
+        tracing::debug!("attach({:?})", self.protocol);
         self.enter_idle()?;
 
         let param = match self.protocol {
             WireProtocol::Jtag => {
-                log::debug!("Switching protocol to JTAG");
+                tracing::debug!("Switching protocol to JTAG");
                 commands::JTAG_ENTER_JTAG_NO_CORE_RESET
             }
             WireProtocol::Swd => {
-                log::debug!("Switching protocol to SWD");
+                tracing::debug!("Switching protocol to SWD");
                 commands::JTAG_ENTER_SWD
             }
         };
@@ -159,12 +159,12 @@ impl DebugProbe for StLink<StLinkUsbDevice> {
             .get_target_voltage()?
             .expect("The ST-Link returned None when it should only be able to return Some(f32) or an error. Please report this bug!");
         if target_voltage < crate::probe::LOW_TARGET_VOLTAGE_WARNING_THRESHOLD {
-            log::warn!(
+            tracing::warn!(
                 "Target voltage (VAPP) is {:2.2} V. Is your target device powered?",
                 target_voltage
             );
         } else {
-            log::info!("Target voltage (VAPP): {:2.2} V", target_voltage);
+            tracing::info!("Target voltage (VAPP): {:2.2} V", target_voltage);
         }
 
         let mut buf = [0; 2];
@@ -175,7 +175,7 @@ impl DebugProbe for StLink<StLinkUsbDevice> {
             TIMEOUT,
         )?;
 
-        log::debug!("Successfully initialized SWD.");
+        tracing::debug!("Successfully initialized SWD.");
 
         // If the speed is not manually set, the probe will
         // use whatever speed has been configured before.
@@ -195,7 +195,7 @@ impl DebugProbe for StLink<StLinkUsbDevice> {
     }
 
     fn detach(&mut self) -> Result<(), DebugProbeError> {
-        log::debug!("Detaching from STLink.");
+        tracing::debug!("Detaching from STLink.");
         if self.swo_enabled {
             self.disable_swo()
                 .map_err(|e| DebugProbeError::ProbeSpecific(e.into()))?;
@@ -361,7 +361,7 @@ impl<D: StLinkUsb> StLink<D> {
 
     /// Get the current mode of the ST-Link
     fn get_current_mode(&mut self) -> Result<Mode, DebugProbeError> {
-        log::trace!("Getting current mode of device...");
+        tracing::trace!("Getting current mode of device...");
         let mut buf = [0; 2];
         self.device
             .write(&[commands::GET_CURRENT_MODE], &[], &mut buf, TIMEOUT)?;
@@ -376,7 +376,7 @@ impl<D: StLinkUsb> StLink<D> {
             _ => return Err(StlinkError::UnknownMode.into()),
         };
 
-        log::debug!("Current device mode: {:?}", mode);
+        tracing::debug!("Current device mode: {:?}", mode);
 
         Ok(mode)
     }
@@ -462,7 +462,7 @@ impl<D: StLinkUsb> StLink<D> {
     /// Opens the ST-Link USB device and tries to identify the ST-Links version and its target voltage.
     /// Internal helper.
     fn init(&mut self) -> Result<(), DebugProbeError> {
-        log::debug!("Initializing STLink...");
+        tracing::debug!("Initializing STLink...");
 
         if let Err(e) = self.enter_idle() {
             match e {
@@ -478,7 +478,7 @@ impl<D: StLinkUsb> StLink<D> {
         }
 
         let version = self.get_version()?;
-        log::debug!("STLink version: {:?}", version);
+        tracing::debug!("STLink version: {:?}", version);
 
         if self.hw_version == 3 {
             let (_, current) = self.get_communication_frequencies(WireProtocol::Swd)?;
@@ -603,7 +603,7 @@ impl<D: StLinkUsb> StLink<D> {
                 return Err(DebugProbeError::ProbeFirmwareOutdated);
             }
         } else if !self.opened_aps.contains(&ap) {
-            log::debug!("Opening AP {}", ap);
+            tracing::debug!("Opening AP {}", ap);
             self.open_ap(ap)?;
             self.opened_aps.push(ap);
         }
@@ -622,7 +622,7 @@ impl<D: StLinkUsb> StLink<D> {
         }
 
         let mut buf = [0; 2];
-        log::trace!("JTAG_INIT_AP {}", apsel);
+        tracing::trace!("JTAG_INIT_AP {}", apsel);
         self.send_jtag_command(
             &[commands::JTAG_COMMAND, commands::JTAG_INIT_AP, apsel],
             &[],
@@ -642,7 +642,7 @@ impl<D: StLinkUsb> StLink<D> {
         }
 
         let mut buf = [0; 2];
-        log::trace!("JTAG_CLOSE_AP {}", apsel);
+        tracing::trace!("JTAG_CLOSE_AP {}", apsel);
         self.send_jtag_command(
             &[commands::JTAG_COMMAND, commands::JTAG_CLOSE_AP_DBG, apsel],
             &[],
@@ -664,13 +664,13 @@ impl<D: StLinkUsb> StLink<D> {
             match Status::from(read_data[0]) {
                 Status::JtagOk => return Ok(()),
                 Status::SwdDpWait => {
-                    log::warn!("send_jtag_command {} got SwdDpWait, retrying", cmd[0])
+                    tracing::warn!("send_jtag_command {} got SwdDpWait, retrying", cmd[0])
                 }
                 Status::SwdApWait => {
-                    log::warn!("send_jtag_command {} got SwdApWait, retrying", cmd[0])
+                    tracing::warn!("send_jtag_command {} got SwdApWait, retrying", cmd[0])
                 }
                 status => {
-                    log::warn!("send_jtag_command {} failed: {:?}", cmd[0], status);
+                    tracing::warn!("send_jtag_command {} failed: {:?}", cmd[0], status);
                     return Err(StlinkError::CommandFailed(status).into());
                 }
             }
@@ -679,7 +679,7 @@ impl<D: StLinkUsb> StLink<D> {
             std::thread::sleep(Duration::from_micros(100 << attempt));
         }
 
-        log::warn!("too many retries, giving up");
+        tracing::warn!("too many retries, giving up");
 
         // Return the last error (will be SwdDpWait or SwdApWait)
         let status = Status::from(read_data[0]);
@@ -814,7 +814,7 @@ impl<D: StLinkUsb> StLink<D> {
     ) -> Result<(), DebugProbeError> {
         self.select_ap(apsel)?;
 
-        log::debug!(
+        tracing::debug!(
             "Read mem 32 bit, address={:08x}, length={}",
             address,
             data.len()
@@ -867,7 +867,7 @@ impl<D: StLinkUsb> StLink<D> {
     ) -> Result<Vec<u8>, DebugProbeError> {
         self.select_ap(apsel)?;
 
-        log::trace!("read_mem_8bit");
+        tracing::trace!("read_mem_8bit");
 
         if self.hw_version < 3 {
             assert!(
@@ -891,7 +891,7 @@ impl<D: StLinkUsb> StLink<D> {
 
         let mut receive_buffer = vec![0u8; buffer_len];
 
-        log::debug!("Read mem 8 bit, address={:08x}, length={}", address, length);
+        tracing::debug!("Read mem 8 bit, address={:08x}, length={}", address, length);
 
         let addbytes = address.to_le_bytes();
         let lenbytes = length.to_le_bytes();
@@ -929,7 +929,7 @@ impl<D: StLinkUsb> StLink<D> {
     ) -> Result<(), DebugProbeError> {
         self.select_ap(apsel)?;
 
-        log::trace!("write_mem_32bit");
+        tracing::trace!("write_mem_32bit");
         let length = data.len();
 
         // Maximum supported read length is 2^16 bytes.
@@ -978,7 +978,7 @@ impl<D: StLinkUsb> StLink<D> {
     ) -> Result<(), DebugProbeError> {
         self.select_ap(apsel)?;
 
-        log::trace!("write_mem_8bit");
+        tracing::trace!("write_mem_8bit");
         let byte_length = data.len();
 
         if self.hw_version < 3 {
@@ -1016,7 +1016,7 @@ impl<D: StLinkUsb> StLink<D> {
     }
 
     fn _read_debug_reg(&mut self, address: u32) -> Result<u32, DebugProbeError> {
-        log::trace!("Read debug reg {:08x}", address);
+        tracing::trace!("Read debug reg {:08x}", address);
         let mut buff = [0u8; 8];
 
         let addbytes = address.to_le_bytes();
@@ -1038,7 +1038,7 @@ impl<D: StLinkUsb> StLink<D> {
     }
 
     fn _write_debug_reg(&mut self, address: u32, value: u32) -> Result<(), DebugProbeError> {
-        log::trace!("Write debug reg {:08x}", address);
+        tracing::trace!("Write debug reg {:08x}", address);
         let mut buff = [0u8; 2];
 
         let mut cmd = [0u8; 2 + 4 + 4];
@@ -1180,7 +1180,7 @@ impl StlinkArmDebug {
                 Err(e) => return Err((interface.probe, e)),
             };
 
-            log::debug!("AP {:#x?}: {:?}", ap.ap_address(), ap_state);
+            tracing::debug!("AP {:#x?}: {:?}", ap.ap_address(), ap_state);
 
             interface.ap_information.push(ap_state);
         }
@@ -1269,7 +1269,7 @@ impl ArmProbeInterface for StlinkArmDebug {
             let idr: IDR = self
                 .read_ap_register(access_port)
                 .map_err(ProbeRsError::Probe)?;
-            log::debug!("{:#x?}", idr);
+            tracing::debug!("{:#x?}", idr);
 
             if idr.CLASS == ApClass::MemAp {
                 let access_port: MemoryAp = access_port.into();
@@ -1501,7 +1501,7 @@ impl ArmProbe for StLinkMemoryInterface<'_> {
 
         // If we write less than 64 bytes, just write it directly
         if data.len() < chunk_size {
-            log::trace!("write_8: small - direct 8 bit write to {:08x}", address);
+            tracing::trace!("write_8: small - direct 8 bit write to {:08x}", address);
             self.probe
                 .probe
                 .write_mem_8bit(address, data, ap.ap_address().ap)?;
@@ -1516,7 +1516,7 @@ impl ArmProbe for StLinkMemoryInterface<'_> {
             let mut current_address = address;
 
             if bytes_beginning > 0 {
-                log::trace!(
+                tracing::trace!(
                     "write_8: at_begin - unaligned write of {} bytes to address {:08x}",
                     bytes_beginning,
                     current_address,
@@ -1535,7 +1535,7 @@ impl ArmProbe for StLinkMemoryInterface<'_> {
 
             let aligned_len = ((data.len() - bytes_beginning) / 4) * 4;
 
-            log::trace!(
+            tracing::trace!(
                 "write_8: aligned write of {} bytes to address {:08x}",
                 aligned_len,
                 current_address,
@@ -1557,7 +1557,7 @@ impl ArmProbe for StLinkMemoryInterface<'_> {
             let remaining_bytes = &data[bytes_beginning + aligned_len..];
 
             if !remaining_bytes.is_empty() {
-                log::trace!(
+                tracing::trace!(
                     "write_8: at_end -unaligned write of {} bytes to address {:08x}",
                     bytes_beginning,
                     current_address,

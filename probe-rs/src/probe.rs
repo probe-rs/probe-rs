@@ -333,11 +333,11 @@ impl Probe {
         if let Some(dap_probe) = self.try_as_dap_probe() {
             DefaultArmSequence(()).reset_hardware_assert(dap_probe)?;
         } else {
-            log::info!(
+            tracing::info!(
                 "Custom reset sequences are not supported on {}.",
                 self.get_name()
             );
-            log::info!("Falling back to standard probe reset.");
+            tracing::info!("Falling back to standard probe reset.");
             self.target_reset_assert()?;
         }
 
@@ -397,7 +397,7 @@ impl Probe {
     ///
     /// This is not supported on all probes.
     pub fn target_reset_assert(&mut self) -> Result<(), DebugProbeError> {
-        log::debug!("Asserting target reset");
+        tracing::debug!("Asserting target reset");
         self.inner.target_reset_assert()
     }
 
@@ -406,7 +406,7 @@ impl Probe {
     ///
     /// This is not supported on all probes.
     pub fn target_reset_deassert(&mut self) -> Result<(), DebugProbeError> {
-        log::debug!("Deasserting target reset");
+        tracing::debug!("Deasserting target reset");
         self.inner.target_reset_deassert()
     }
 

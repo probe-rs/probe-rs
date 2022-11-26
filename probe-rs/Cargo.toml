@@ -45,7 +45,6 @@ ihex = "3.0.0"
 jaylink = "0.3.0"
 jep106 = "0.2.6"
 once_cell = "1.7.2"
-log = { workspace = true }
 num-traits = "0.2.11"
 object = { version = "0.30.0", default-features = false, features = [
     "elf",
@@ -59,6 +58,7 @@ serde_yaml = "0.9"
 static_assertions = "1.1.0"
 svg = "0.12.0"
 thiserror = { workspace = true }
+tracing = { version = "0.1.37", features = ["log"] }
 
 # optional
 hexdump = { version = "0.1.0", optional = true }
@@ -66,6 +66,7 @@ libftdi1-sys = { version = "1.1.2", optional = true }
 
 # path
 probe-rs-target = { workspace = true }
+
 
 [build-dependencies]
 bincode = "1.3.2"

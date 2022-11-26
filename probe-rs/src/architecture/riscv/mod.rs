@@ -47,13 +47,13 @@ impl<'probe> Riscv32<'probe> {
         // write needs to be clear
         // transfer has to be set
 
-        log::debug!("Reading CSR {:#x}", address);
+        tracing::debug!("Reading CSR {:#x}", address);
 
         // always try to read register with abstract command, fallback to program buffer,
         // if not supported
         match self.interface.abstract_cmd_register_read(address) {
             Err(RiscvError::AbstractCommand(AbstractCommandErrorKind::NotSupported)) => {
-                log::debug!("Could not read core register {:#x} with abstract command, falling back to program buffer", address);
+                tracing::debug!("Could not read core register {:#x} with abstract command, falling back to program buffer", address);
                 self.interface.read_csr_progbuf(address)
             }
             other => other,
@@ -61,11 +61,11 @@ impl<'probe> Riscv32<'probe> {
     }
 
     fn write_csr(&mut self, address: u16, value: u32) -> Result<(), RiscvError> {
-        log::debug!("Writing CSR {:#x}", address);
+        tracing::debug!("Writing CSR {:#x}", address);
 
         match self.interface.abstract_cmd_register_write(address, value) {
             Err(RiscvError::AbstractCommand(AbstractCommandErrorKind::NotSupported)) => {
-                log::debug!("Could not write core register {:#x} with abstract command, falling back to program buffer", address);
+                tracing::debug!("Could not write core register {:#x} with abstract command, falling back to program buffer", address);
                 self.interface.write_csr_progbuf(address, value)
             }
             other => other,
@@ -102,7 +102,7 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
         while start.elapsed() < timeout {
             let dmstatus: Dmstatus = self.interface.read_dm_register()?;
 
-            log::trace!("{:?}", dmstatus);
+            tracing::trace!("{:?}", dmstatus);
 
             if dmstatus.allhalted() {
                 return Ok(());
@@ -122,7 +122,7 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
         // write 1 to the haltreq register, which is part
         // of the dmcontrol register
 
-        log::debug!(
+        tracing::debug!(
             "Before requesting halt, the Dmcontrol register value was: {:?}",
             self.interface.read_dm_register::<Dmcontrol>()?
         );
@@ -175,7 +175,7 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
         &mut self,
         _timeout: Duration,
     ) -> Result<crate::core::CoreInformation, crate::Error> {
-        log::debug!("Resetting core, setting hartreset bit");
+        tracing::debug!("Resetting core, setting hartreset bit");
 
         let mut dmcontrol = Dmcontrol(0);
         dmcontrol.set_dmactive(true);
@@ -188,7 +188,7 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
         let readback: Dmcontrol = self.interface.read_dm_register()?;
 
         if readback.hartreset() {
-            log::debug!("Clearing hartreset bit");
+            tracing::debug!("Clearing hartreset bit");
             // Reset is performed by setting the bit high, and then low again
             let mut dmcontrol = Dmcontrol(0);
             dmcontrol.set_dmactive(true);
@@ -200,7 +200,7 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
             // Hartreset is not supported, whole core needs to be reset
             //
             // TODO: Cache this
-            log::debug!("Hartreset bit not supported, using ndmreset");
+            tracing::debug!("Hartreset bit not supported, using ndmreset");
             let mut dmcontrol = Dmcontrol(0);
             dmcontrol.set_dmactive(true);
             dmcontrol.set_ndmreset(true);
@@ -208,7 +208,7 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
 
             self.interface.write_dm_register(dmcontrol)?;
 
-            log::debug!("Clearing ndmreset bit");
+            tracing::debug!("Clearing ndmreset bit");
             let mut dmcontrol = Dmcontrol(0);
             dmcontrol.set_dmactive(true);
             dmcontrol.set_ndmreset(false);
@@ -316,7 +316,7 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
     fn available_breakpoint_units(&mut self) -> Result<u32, crate::Error> {
         // TODO: This should probably only be done once, when initialising
 
-        log::debug!("Determining number of HW breakpoints supported");
+        tracing::debug!("Determining number of HW breakpoints supported");
 
         let tselect = 0x7a0;
         let tdata1 = 0x7a1;
@@ -326,7 +326,7 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
 
         // These steps follow the debug specification 0.13, section 5.1 Enumeration
         loop {
-            log::debug!("Trying tselect={}", tselect_index);
+            tracing::debug!("Trying tselect={}", tselect_index);
             if let Err(e) = self.write_csr(tselect, tselect_index) {
                 match e {
                     RiscvError::AbstractCommand(AbstractCommandErrorKind::Exception) => break,
@@ -346,7 +346,7 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
                         // Trigger doesn't exist, break the loop
                         break;
                     } else {
-                        log::info!(
+                        tracing::info!(
                             "Discovered trigger with index {} and type {}",
                             tselect_index,
                             tinfo_val & 0xffff
@@ -367,7 +367,7 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
                         break;
                     }
 
-                    log::info!(
+                    tracing::info!(
                         "Discovered trigger with index {} and type {}",
                         tselect_index,
                         trigger_type,
@@ -379,7 +379,7 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
             tselect_index += 1;
         }
 
-        log::debug!("Target supports {} breakpoints.", tselect_index);
+        tracing::debug!("Target supports {} breakpoints.", tselect_index);
 
         Ok(tselect_index)
     }
@@ -403,7 +403,7 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
                 && tdata_value.execute()
                 && ((tdata_value.m() && tdata_value.u()) || (!tdata_value.m() && !tdata_value.u()))
             {
-                log::debug!(
+                tracing::debug!(
                     "Will modify breakpoint enabled={} for {}: {:?}",
                     state,
                     bp_unit_index,
@@ -432,7 +432,7 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
         let tdata1 = 0x7a1;
         let tdata2 = 0x7a2;
 
-        log::warn!("Setting breakpoint {}", bp_unit_index);
+        tracing::warn!("Setting breakpoint {}", bp_unit_index);
 
         self.write_csr(tselect, bp_unit_index as u32)?;
 
@@ -565,7 +565,7 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
             // Read the trigger "configuration" data.
             let tdata_value = Mcontrol(self.read_csr(tdata1)?);
 
-            log::warn!("Breakpoint {}: {:?}", bp_unit_index, tdata_value);
+            tracing::warn!("Breakpoint {}: {:?}", bp_unit_index, tdata_value);
 
             // The trigger must be active in at least a single mode
             let trigger_any_mode_active = tdata_value.m() || tdata_value.s() || tdata_value.u();

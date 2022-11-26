@@ -610,7 +610,7 @@ impl<'probe> Armv7m<'probe> {
 
                 let reason = dfsr.halt_reason();
 
-                log::debug!("Core was halted when connecting, reason: {:?}", reason);
+                tracing::debug!("Core was halted when connecting, reason: {:?}", reason);
 
                 CoreStatus::Halted(reason)
             } else {
@@ -661,7 +661,7 @@ impl<'probe> CoreInterface for Armv7m<'probe> {
         let dhcsr = Dhcsr(self.memory.read_word_32(Dhcsr::ADDRESS)?);
 
         if dhcsr.s_lockup() {
-            log::error!(
+            tracing::error!(
                 "The core is in locked up status as a result of an unrecoverable exception"
             );
 
@@ -673,7 +673,7 @@ impl<'probe> CoreInterface for Armv7m<'probe> {
         if dhcsr.s_sleep() {
             // Check if we assumed the core to be halted
             if self.state.current_state.is_halted() {
-                log::warn!("Expected core to be halted, but core is running");
+                tracing::warn!("Expected core to be halted, but core is running");
             }
 
             self.state.current_state = CoreStatus::Sleeping;
@@ -697,11 +697,11 @@ impl<'probe> CoreInterface for Armv7m<'probe> {
                 // that the reason for the halt has changed. No bits set
                 // means that we have an unkown HaltReason.
                 if reason == HaltReason::Unknown {
-                    log::debug!("Cached halt reason: {:?}", self.state.current_state);
+                    tracing::debug!("Cached halt reason: {:?}", self.state.current_state);
                     return Ok(self.state.current_state);
                 }
 
-                log::debug!(
+                tracing::debug!(
                     "Reason for halt has changed, old reason was {:?}, new reason is {:?}",
                     &self.state.current_state,
                     &reason
@@ -715,7 +715,7 @@ impl<'probe> CoreInterface for Armv7m<'probe> {
 
         // Core is neither halted nor sleeping, so we assume it is running.
         if self.state.current_state.is_halted() {
-            log::warn!("Core is running, but we expected it to be halted");
+            tracing::warn!("Core is running, but we expected it to be halted");
         }
 
         self.state.current_state = CoreStatus::Running;
@@ -806,7 +806,7 @@ impl<'probe> CoreInterface for Armv7m<'probe> {
 
         // Follow the rules of the ... ARMv7-M Architecture reference, C1.6 Debug System Registers - DHCSR, with respect to setting maskints
         if !dhcsr.c_debugen() {
-            log::warn!("Attempting to STEP while DHCSR->C_DEBUGEN is false");
+            tracing::warn!("Attempting to STEP while DHCSR->C_DEBUGEN is false");
         }
         if !dhcsr.c_maskints() {
             dhcsr.set_c_maskints(true); // This must be reset to false when we run() again.
@@ -836,7 +836,7 @@ impl<'probe> CoreInterface for Armv7m<'probe> {
                     .hw_breakpoints()?
                     .contains(&pc_before_step.try_into().ok())
             {
-                log::debug!("Encountered a breakpoint instruction @ {}. We need to manually advance the program counter to the next instruction.", pc_after_step);
+                tracing::debug!("Encountered a breakpoint instruction @ {}. We need to manually advance the program counter to the next instruction.", pc_after_step);
                 // Advance the program counter by the architecture specific byte size of the BKPT instruction.
                 pc_after_step.incremenet_address(2)?;
                 self.write_core_reg(self.registers().program_counter().id, pc_after_step)?;
@@ -892,7 +892,7 @@ impl<'probe> CoreInterface for Armv7m<'probe> {
         if reg.rev() == 0 || reg.rev() == 1 {
             Ok(reg.num_code())
         } else {
-            log::warn!("This chip uses FPBU revision {}, which is not yet supported. HW breakpoints are not available.", reg.rev());
+            tracing::warn!("This chip uses FPBU revision {}, which is not yet supported. HW breakpoints are not available.", reg.rev());
             Err(Error::Probe(DebugProbeError::CommandNotSupportedByProbe(
                 "get_available_breakpoint_units",
             )))
@@ -932,7 +932,7 @@ impl<'probe> CoreInterface for Armv7m<'probe> {
         } else if ctrl_reg.rev() == 1 {
             val = FpRev2CompX::breakpoint_configuration(addr).into();
         } else {
-            log::warn!("This chip uses FPBU revision {}, which is not yet supported. HW breakpoints are not available.", ctrl_reg.rev());
+            tracing::warn!("This chip uses FPBU revision {}, which is not yet supported. HW breakpoints are not available.", ctrl_reg.rev());
             return Err(Error::Other(anyhow!("This chip uses FPBU revision {}, which is not yet supported. HW breakpoints are not available.", ctrl_reg.rev())));
         }
 
@@ -1001,7 +1001,7 @@ impl<'probe> CoreInterface for Armv7m<'probe> {
                 } else if ctrl_reg.rev() == 1 {
                     breakpoint = FpRev2CompX::from(register_value).bpaddr() << 1;
                 } else {
-                    log::warn!("This chip uses FPBU revision {}, which is not yet supported. HW breakpoints are not available.", ctrl_reg.rev());
+                    tracing::warn!("This chip uses FPBU revision {}, which is not yet supported. HW breakpoints are not available.", ctrl_reg.rev());
                     return Err(Error::Other(anyhow!("This chip uses FPBU revision {}, which is not yet supported. HW breakpoints are not available.", ctrl_reg.rev())));
                 }
                 breakpoints.push(Some(breakpoint as u64));

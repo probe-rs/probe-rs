@@ -581,7 +581,7 @@ impl Variable {
             return;
         }
 
-        log::trace!(
+        tracing::trace!(
             "Extracting value for {:?}, type={:?}",
             self.name,
             self.type_name
@@ -1050,7 +1050,7 @@ impl Value for String {
                     // TODO: If implemented, the variable should not be fetched automatically,
                     // but only when requested by the user. This workaround can then be removed.
                     if string_length > 200 {
-                        log::warn!(
+                        tracing::warn!(
                             "Very long string ({} bytes), truncating to 200 bytes.",
                             string_length
                         );

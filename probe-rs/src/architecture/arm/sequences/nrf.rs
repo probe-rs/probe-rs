@@ -69,17 +69,17 @@ impl<T: Nrf> ArmDebugSequence for T {
         for (core_index, (core_ahb_ap_address, core_ctrl_ap_address)) in
             self.core_aps(&mut interface).iter().copied().enumerate()
         {
-            log::info!("Checking if core {} is unlocked", core_index);
+            tracing::info!("Checking if core {} is unlocked", core_index);
             if self.is_core_unlocked(
                 interface.get_arm_interface()?,
                 core_ahb_ap_address,
                 core_ctrl_ap_address,
             )? {
-                log::info!("Core {} is already unlocked", core_index);
+                tracing::info!("Core {} is already unlocked", core_index);
                 continue;
             }
 
-            log::warn!(
+            tracing::warn!(
                 "Core {} is locked. Erase procedure will be started to unlock it.",
                 core_index
             );

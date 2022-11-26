@@ -55,7 +55,7 @@ impl FlashAlgorithm {
     /// be returned.
     pub fn sector_info(&self, address: u64) -> Option<SectorInfo> {
         if !self.flash_properties.address_range.contains(&address) {
-            log::trace!("Address {:08x} not contained in this flash device", address);
+            tracing::trace!("Address {:08x} not contained in this flash device", address);
             return None;
         }
 

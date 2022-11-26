@@ -35,12 +35,12 @@ impl<'a> Dwt<'a> {
     pub fn info(&mut self) -> Result<(), Error> {
         let ctrl = Ctrl::load(self.component, self.interface)?;
 
-        log::info!("DWT info:");
-        log::info!("  number of comparators available: {}", ctrl.numcomp());
-        log::info!("  trace sampling support: {}", !ctrl.notrcpkt());
-        log::info!("  compare match support: {}", !ctrl.noexttrig());
-        log::info!("  cyccnt support: {}", !ctrl.nocyccnt());
-        log::info!("  performance counter support: {}", !ctrl.noprfcnt());
+        tracing::info!("DWT info:");
+        tracing::info!("  number of comparators available: {}", ctrl.numcomp());
+        tracing::info!("  trace sampling support: {}", !ctrl.notrcpkt());
+        tracing::info!("  compare match support: {}", !ctrl.noexttrig());
+        tracing::info!("  cyccnt support: {}", !ctrl.nocyccnt());
+        tracing::info!("  performance counter support: {}", !ctrl.noprfcnt());
 
         Ok(())
     }

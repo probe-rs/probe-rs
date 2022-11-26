@@ -45,7 +45,7 @@ fn main() -> Result<(), Error> {
         while let Ok(Some(packet)) = decoder.pull() {
             match packet {
                 TracePacket::LocalTimestamp1 { ts, data_relation } => {
-                    log::debug!(
+                    tracing::debug!(
                         "Timestamp packet: data_relation={:?} ts={}",
                         data_relation,
                         ts
@@ -56,11 +56,11 @@ fn main() -> Result<(), Error> {
                     timestamp += time_delta;
                 }
                 // TracePacket::DwtData { id, payload } => {
-                //     log::warn!("Dwt: id={} payload={:?}", id, payload);
+                //     tracing::warn!("Dwt: id={} payload={:?}", id, payload);
 
                 //     if id == 17 {
                 //         let value: i32 = payload.pread(0).unwrap();
-                //         log::trace!("VAL={}", value);
+                //         tracing::trace!("VAL={}", value);
                 //         // client.send_sample("a", timestamp, value as f64).unwrap();
                 //     }
                 // }
@@ -93,10 +93,10 @@ fn main() -> Result<(), Error> {
                     }
                 }
                 _ => {
-                    log::warn!("Trace packet: {:?}", packet);
+                    tracing::warn!("Trace packet: {:?}", packet);
                 }
             }
-            log::debug!("{}", timestamp);
+            tracing::debug!("{}", timestamp);
         }
     }
 }
@@ -124,7 +124,7 @@ impl TcpPublisher {
                     if err.kind() == std::io::ErrorKind::WouldBlock {
                     } else {
                         to_remove.push(i);
-                        log::error!("Writing to a tcp socket experienced an error: {:?}", err)
+                        tracing::error!("Writing to a tcp socket experienced an error: {:?}", err)
                     }
                 }
             }
@@ -197,7 +197,7 @@ impl SwoPublisher<Box<dyn Any + Send>> for TcpPublisher {
         let (_outbound, tx) = channel::<O>();
         let (halt_tx, halt_rx) = channel::<()>();
 
-        log::info!("Opening websocket on '{}'", self.connection_string);
+        tracing::info!("Opening websocket on '{}'", self.connection_string);
         let server = TcpListener::bind(&self.connection_string).unwrap();
         server.set_nonblocking(true).unwrap();
 
@@ -219,20 +219,20 @@ impl SwoPublisher<Box<dyn Any + Send>> for TcpPublisher {
                             // Make sure we operate in nonblocking mode.
                             // Is is required so read does not block forever.
                             stream.set_nonblocking(true).unwrap();
-                            log::info!("Accepted a new websocket connection from {}", addr);
+                            tracing::info!("Accepted a new websocket connection from {}", addr);
                             sockets.push((stream, addr));
                         }
                         Some(Err(err)) => {
                             if err.kind() == std::io::ErrorKind::WouldBlock {
                             } else {
-                                log::error!(
+                                tracing::error!(
                                     "Connecting to a websocket experienced an error: {:?}",
                                     err
                                 )
                             }
                         }
                         None => {
-                            log::error!("The TCP listener iterator was exhausted. Shutting down websocket listener.");
+                            tracing::error!("The TCP listener iterator was exhausted. Shutting down websocket listener.");
                             return;
                         }
                     }
@@ -266,7 +266,7 @@ impl SwoPublisher<Box<dyn Any + Send>> for TcpPublisher {
             h.0.join()
         }) {
             Some(Err(err)) => {
-                log::error!("An error occurred during thread execution: {:?}", err);
+                tracing::error!("An error occurred during thread execution: {:?}", err);
                 Err(err)
             }
             _ => Ok(()),

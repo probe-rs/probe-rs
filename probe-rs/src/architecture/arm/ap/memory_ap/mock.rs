@@ -133,7 +133,7 @@ impl ApAccess for MockMemoryAp {
         PORT: AccessPort,
         R: ApRegister<PORT>,
     {
-        log::debug!("Mock: Write to register {:x?}", &register);
+        tracing::debug!("Mock: Write to register {:x?}", &register);
 
         let value: u32 = register.into();
         self.store.insert(R::ADDRESS, value);

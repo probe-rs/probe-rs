@@ -33,7 +33,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
         stackframe_registers: Option<&DebugRegisters>,
         find_inlined: bool,
     ) -> Result<Vec<FunctionDie>, DebugError> {
-        log::trace!("Searching Function DIE for address {}", address);
+        tracing::trace!("Searching Function DIE for address {}", address);
 
         let mut entries_cursor = self.unit.entries();
         while let Ok(Some((_depth, current))) = entries_cursor.next_dfs() {
@@ -61,7 +61,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                     die.frame_base = Some(address);
                                 }
                             } else {
-                                log::trace!(
+                                tracing::trace!(
                                 "No stackframe registers provided, skipping frame_base calculation for function DIE."
                             );
                             }
@@ -70,7 +70,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                             let mut functions = vec![die];
 
                             if find_inlined {
-                                log::debug!(
+                                tracing::debug!(
                                     "Found DIE, now checking for inlined functions: name={:?}",
                                     functions[0].function_name()
                                 );
@@ -82,9 +82,9 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                 )?;
 
                                 if inlined_functions.is_empty() {
-                                    log::debug!("No inlined function found!");
+                                    tracing::debug!("No inlined function found!");
                                 } else {
-                                    log::debug!(
+                                    tracing::debug!(
                                         "{} inlined functions for address {}",
                                         inlined_functions.len(),
                                         address
@@ -94,7 +94,10 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
 
                                 return Ok(functions);
                             } else {
-                                log::debug!("Found DIE: name={:?}", functions[0].function_name());
+                                tracing::debug!(
+                                    "Found DIE: name={:?}",
+                                    functions[0].function_name()
+                                );
                             }
                             return Ok(functions);
                         }
@@ -159,13 +162,15 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                             }
                                         }
                                     }
-                                    other_value => log::warn!(
+                                    other_value => tracing::warn!(
                                         "Unsupported DW_AT_abstract_origin value: {:?}",
                                         other_value
                                     ),
                                 }
                             } else {
-                                log::warn!("No abstract origin for inlined function, skipping.");
+                                tracing::warn!(
+                                    "No abstract origin for inlined function, skipping."
+                                );
                                 return Ok(vec![]);
                             }
                         }
@@ -276,7 +281,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
             },
             Err(debug_error) => {
                 // An Err() result indicates something happened that we have not accounted for, and therefore will propogate upwards to terminate the process in an ungraceful manner. This should be treated as a bug.
-                log::error!("Encounted an unexpected error while resolving the location for variable {:?}. Please report this as a bug", child_variable.name);
+                tracing::error!("Encounted an unexpected error while resolving the location for variable {:?}. Please report this as a bug", child_variable.name);
                 return Err(debug_error);
             }
         }
@@ -555,7 +560,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                 )));
             };
 
-            log::trace!("process_tree for parent {}", parent_variable.variable_key);
+            tracing::trace!("process_tree for parent {}", parent_variable.variable_key);
 
             let mut child_nodes = parent_node.children();
             while let Some(mut child_node) = child_nodes.next()? {

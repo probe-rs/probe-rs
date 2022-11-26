@@ -4,4 +4,4 @@ pub(crate) mod adi_v5_memory_interface;
 pub(crate) mod romtable;
 
 use super::ap::AccessPortError;
-pub use romtable::{Component, CoresightComponent, PeripheralType};
+pub use romtable::{Component, ComponentId, CoresightComponent, PeripheralType};

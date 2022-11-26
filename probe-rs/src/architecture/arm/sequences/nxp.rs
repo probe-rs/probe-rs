@@ -36,7 +36,7 @@ impl ArmDebugSequence for LPC55S69 {
         interface: &mut ArmCommunicationInterface<Initialized>,
         dp: DpAddress,
     ) -> Result<(), DebugProbeError> {
-        log::info!("debug_port_start");
+        tracing::info!("debug_port_start");
 
         interface.write_dp_register(dp, Select(0))?;
 
@@ -140,25 +140,25 @@ impl ArmDebugSequence for LPC55S69 {
         }
 
         if timeout {
-            log::warn!("Failed: Wait for flash word read to finish");
+            tracing::warn!("Failed: Wait for flash word read to finish");
             return Err(crate::Error::Probe(DebugProbeError::Timeout));
         }
 
         if (interface.read_word_32(0x4003_4fe0)? & 0xB) == 0 {
-            log::info!("No Error reading Flash Word with Reset Vector");
+            tracing::info!("No Error reading Flash Word with Reset Vector");
 
             reset_vector = interface.read_word_32(0x0000_0004)?;
         }
 
         if reset_vector != 0xffff_ffff {
-            log::info!("Breakpoint on user application reset vector");
+            tracing::info!("Breakpoint on user application reset vector");
 
             interface.write_word_32(0xE000_2008, reset_vector | 1)?;
             interface.write_word_32(0xE000_2000, 3)?;
         }
 
         if reset_vector == 0xffff_ffff {
-            log::info!("Enable reset vector catch");
+            tracing::info!("Enable reset vector catch");
 
             let mut demcr = Demcr(interface.read_word_32(Demcr::ADDRESS)?);
 
@@ -169,7 +169,7 @@ impl ArmDebugSequence for LPC55S69 {
 
         let _ = interface.read_word_32(Dhcsr::ADDRESS)?;
 
-        log::debug!("reset_catch_set -- done");
+        tracing::debug!("reset_catch_set -- done");
 
         Ok(())
     }
@@ -207,10 +207,10 @@ impl ArmDebugSequence for LPC55S69 {
         }
 
         if let Err(e) = result {
-            log::debug!("Error requesting reset: {:?}", e);
+            tracing::debug!("Error requesting reset: {:?}", e);
         }
 
-        log::info!("Waiting after reset");
+        tracing::info!("Waiting after reset");
         thread::sleep(Duration::from_millis(10));
 
         wait_for_stop_after_reset(interface)
@@ -218,7 +218,7 @@ impl ArmDebugSequence for LPC55S69 {
 }
 
 fn wait_for_stop_after_reset(memory: &mut crate::Memory) -> Result<(), crate::Error> {
-    log::info!("Wait for stop after reset");
+    tracing::info!("Wait for stop after reset");
 
     thread::sleep(Duration::from_millis(10));
 
@@ -231,7 +231,7 @@ fn wait_for_stop_after_reset(memory: &mut crate::Memory) -> Result<(), crate::Er
 
     let start = Instant::now();
 
-    log::info!("Polling for reset");
+    tracing::info!("Polling for reset");
 
     while start.elapsed() < Duration::from_micros(50_0000) {
         let dhcsr = Dhcsr(memory.read_word_32(Dhcsr::ADDRESS)?);
@@ -264,18 +264,18 @@ fn enable_debug_mailbox(
     interface: &mut ArmCommunicationInterface<Initialized>,
     dp: DpAddress,
 ) -> Result<(), DebugProbeError> {
-    log::info!("LPC55xx connect srcipt start");
+    tracing::info!("LPC55xx connect srcipt start");
 
     let ap = ApAddress { dp, ap: 2 };
 
     let status: IDR = interface.read_ap_register(GenericAp::new(ap))?;
 
-    log::info!("APIDR: {:?}", status);
-    log::info!("APIDR: 0x{:08X}", u32::from(status));
+    tracing::info!("APIDR: {:?}", status);
+    tracing::info!("APIDR: 0x{:08X}", u32::from(status));
 
     let status: u32 = interface.read_dp_register::<DPIDR>(dp)?.into();
 
-    log::info!("DPIDR: 0x{:08X}", status);
+    tracing::info!("DPIDR: 0x{:08X}", status);
 
     // Active DebugMailbox
     interface.write_raw_ap_register(ap, 0x0, 0x0000_0021)?;
@@ -295,7 +295,7 @@ fn enable_debug_mailbox(
 
     let _ = interface.read_raw_ap_register(ap, 8)?;
 
-    log::info!("LPC55xx connect srcipt end");
+    tracing::info!("LPC55xx connect srcipt end");
     Ok(())
 }
 
@@ -326,7 +326,7 @@ impl MIMXRT10xx {
     fn check_core_type(&self, core_type: crate::CoreType) -> Result<(), crate::Error> {
         const EXPECTED: crate::CoreType = crate::CoreType::Armv7em;
         if core_type != EXPECTED {
-            log::warn!(
+            tracing::warn!(
                 "MIMXRT10xx core type supplied as {core_type:?}, but the actual core is a {EXPECTED:?}"
             );
             // Not an issue right now. Warning because it's curious.

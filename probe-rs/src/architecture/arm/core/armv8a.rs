@@ -75,12 +75,12 @@ impl<'probe> Armv8a<'probe> {
             let address = Edscr::get_mmio_address(base_address);
             let edscr = Edscr(memory.read_word_32(address)?);
 
-            log::debug!("State when connecting: {:x?}", edscr);
+            tracing::debug!("State when connecting: {:x?}", edscr);
 
             let core_state = if edscr.halted() {
                 let reason = edscr.halt_reason();
 
-                log::debug!("Core was halted when connecting, reason: {:?}", reason);
+                tracing::debug!("Core was halted when connecting, reason: {:?}", reason);
 
                 CoreStatus::Halted(reason)
             } else {
@@ -1047,7 +1047,7 @@ impl<'probe> CoreInterface for Armv8a<'probe> {
         }
         // Core is neither halted nor sleeping, so we assume it is running.
         if self.state.current_state.is_halted() {
-            log::warn!("Core is running, but we expected it to be halted");
+            tracing::warn!("Core is running, but we expected it to be halted");
         }
 
         self.state.current_state = CoreStatus::Running;

@@ -9,8 +9,6 @@ use crate::DebugProbeError;
 use std::str::Utf8Error;
 use std::time::Duration;
 
-use log::log_enabled;
-
 #[derive(Debug, thiserror::Error)]
 pub enum CmsisDapError {
     #[error("Error handling CMSIS-DAP command {command_id:?}")]
@@ -127,7 +125,7 @@ impl CmsisDapDevice {
     /// synchronised to requests. Swallows any errors, which are expected if
     /// there is no pending data to read.
     pub(super) fn drain(&self) {
-        log::debug!("Draining probe of any pending data.");
+        tracing::debug!("Draining probe of any pending data.");
 
         match self {
             CmsisDapDevice::V1 {
@@ -165,7 +163,7 @@ impl CmsisDapDevice {
     /// Sets either the HID report size for V1 devices,
     /// or the maximum bulk transfer size for V2 devices.
     pub(super) fn set_packet_size(&mut self, packet_size: usize) {
-        log::debug!("Configuring probe to use packet size {}", packet_size);
+        tracing::debug!("Configuring probe to use packet size {}", packet_size);
         match self {
             CmsisDapDevice::V1 {
                 ref mut report_size,
@@ -192,10 +190,10 @@ impl CmsisDapDevice {
     /// The device is then configured to use the detected size, which is returned.
     pub(super) fn find_packet_size(&mut self) -> Result<usize, CmsisDapError> {
         for repeat in 0..16 {
-            log::debug!("Attempt {} to find packet size", repeat + 1);
+            tracing::debug!("Attempt {} to find packet size", repeat + 1);
             match send_command(self, PacketSizeCommand {}) {
                 Ok(size) => {
-                    log::debug!("Success: packet size is {}", size);
+                    tracing::debug!("Success: packet size is {}", size);
                     self.set_packet_size(size as usize);
                     return Ok(size as usize);
                 }
@@ -386,10 +384,10 @@ fn send_command_inner<Req: Request>(
 /// zeros required for the various USB APIs, but make the trace output very long and
 /// difficult to read.
 fn trace_buffer(name: &str, buf: &[u8]) {
-    if log_enabled!(log::Level::Trace) {
+    if tracing::enabled!(tracing::Level::TRACE) {
         let len = buf.len();
         let cut = len + 1 - buf.iter().rev().position(|&x| x != 0).unwrap_or(len);
         let end = std::cmp::min(len, std::cmp::max(1, cut));
-        log::trace!("{}: {:02X?}...", name, &buf[..end]);
+        tracing::trace!("{}: {:02X?}...", name, &buf[..end]);
     }
 }

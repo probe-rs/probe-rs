@@ -937,7 +937,7 @@ impl Dfsr {
             // No bit is set
             HaltReason::Unknown
         } else if self.0.count_ones() > 1 {
-            log::debug!("DFSR: {:?}", self);
+            tracing::debug!("DFSR: {:?}", self);
 
             // We cannot identify why the chip halted,
             // it could be for multiple reasons.

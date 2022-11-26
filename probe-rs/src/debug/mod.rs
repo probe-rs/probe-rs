@@ -138,16 +138,16 @@ fn extract_file(
                 {
                     Some((path, file))
                 } else {
-                    log::warn!("Unable to extract file or path from {:?}.", attribute_value);
+                    tracing::warn!("Unable to extract file or path from {:?}.", attribute_value);
                     None
                 }
             } else {
-                log::warn!("Unable to extract file entry for {:?}.", attribute_value);
+                tracing::warn!("Unable to extract file entry for {:?}.", attribute_value);
                 None
             }
         }),
         other => {
-            log::warn!(
+            tracing::warn!(
                 "Unable to extract file information from attribute value {:?}: Not implemented.",
                 other
             );
@@ -166,14 +166,14 @@ fn extract_byte_size(
             Some(byte_size_attr) => match byte_size_attr.value() {
                 gimli::AttributeValue::Udata(byte_size) => byte_size,
                 other => {
-                    log::warn!("Unimplemented: DW_AT_byte_size value: {:?} ", other);
+                    tracing::warn!("Unimplemented: DW_AT_byte_size value: {:?} ", other);
                     0
                 }
             },
             None => 0,
         },
         Err(error) => {
-            log::warn!(
+            tracing::warn!(
                 "Failed to extract byte_size: {:?} for debug_entry {:?}",
                 error,
                 di_entry.tag().static_string()
@@ -267,7 +267,7 @@ pub(crate) fn _print_all_attributes(
                                         .unwrap()
                                 }
                                 x => {
-                                    log::error!(
+                                    tracing::error!(
                                         "Requested memory with size {}, which is not supported yet.",
                                         x
                                     );

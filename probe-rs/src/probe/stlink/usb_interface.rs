@@ -106,7 +106,7 @@ impl StLinkUsbDevice {
 
         let context = Context::new()?;
 
-        log::debug!("Acquired libusb context.");
+        tracing::debug!("Acquired libusb context.");
 
         let device = context
             .devices()?
@@ -138,21 +138,21 @@ impl StLinkUsbDevice {
 
         let mut device_handle = device.open()?;
 
-        log::debug!("Aquired handle for probe");
+        tracing::debug!("Aquired handle for probe");
 
         let config = device.active_config_descriptor()?;
 
-        log::debug!("Active config descriptor: {:?}", &config);
+        tracing::debug!("Active config descriptor: {:?}", &config);
 
         let descriptor = device.device_descriptor()?;
 
-        log::debug!("Device descriptor: {:?}", &descriptor);
+        tracing::debug!("Device descriptor: {:?}", &descriptor);
 
         let info = USB_PID_EP_MAP[&descriptor.product_id()].clone();
 
         device_handle.claim_interface(0)?;
 
-        log::debug!("Claimed interface 0 of USB device.");
+        tracing::debug!("Claimed interface 0 of USB device.");
 
         let mut endpoint_out = false;
         let mut endpoint_in = false;
@@ -189,7 +189,7 @@ impl StLinkUsbDevice {
             info,
         };
 
-        log::debug!("Succesfully attached to STLink.");
+        tracing::debug!("Succesfully attached to STLink.");
 
         Ok(usb_stlink)
     }
@@ -213,7 +213,7 @@ impl StLinkUsb for StLinkUsbDevice {
         read_data: &mut [u8],
         timeout: Duration,
     ) -> Result<(), DebugProbeError> {
-        log::trace!(
+        tracing::trace!(
             "Sending command {:x?} to STLink, timeout: {:?}",
             cmd,
             timeout
@@ -255,14 +255,14 @@ impl StLinkUsb for StLinkUsbDevice {
                 remaining_bytes -= written_bytes;
                 write_index += written_bytes;
 
-                log::trace!(
+                tracing::trace!(
                     "Wrote {} bytes, {} bytes remaining",
                     written_bytes,
                     remaining_bytes
                 );
             }
 
-            log::trace!("USB write done!");
+            tracing::trace!("USB write done!");
         }
 
         // Optional data in phase.
@@ -279,7 +279,7 @@ impl StLinkUsb for StLinkUsbDevice {
                 read_index += read_bytes;
                 remaining_bytes -= read_bytes;
 
-                log::trace!(
+                tracing::trace!(
                     "Read {} bytes, {} bytes remaining",
                     read_bytes,
                     remaining_bytes
@@ -294,7 +294,7 @@ impl StLinkUsb for StLinkUsbDevice {
         read_data: &mut [u8],
         timeout: Duration,
     ) -> Result<usize, DebugProbeError> {
-        log::trace!(
+        tracing::trace!(
             "Reading {:?} SWO bytes to STLink, timeout: {:?}",
             read_data.len(),
             timeout
@@ -314,7 +314,7 @@ impl StLinkUsb for StLinkUsbDevice {
     /// Reset the USB device. This can be used to recover when the
     /// STLink does not respond to USB requests.
     fn reset(&mut self) -> Result<(), DebugProbeError> {
-        log::debug!("Resetting USB device of STLink");
+        tracing::debug!("Resetting USB device of STLink");
         self.device_handle
             .reset()
             .map_err(|e| DebugProbeError::Usb(Some(Box::new(e))))
