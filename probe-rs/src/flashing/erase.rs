@@ -7,13 +7,13 @@ use crate::Session;
 
 /// Mass-erase all nonvolatile memory.
 pub fn erase_all(session: &mut Session) -> Result<(), FlashError> {
-    log::debug!("Erasing all...");
+    tracing::debug!("Erasing all...");
 
     let mut algos: HashMap<(String, String), Vec<NvmRegion>> = HashMap::new();
-    log::debug!("Regions:");
+    tracing::debug!("Regions:");
     for region in &session.target().memory_map {
         if let MemoryRegion::Nvm(region) = region {
-            log::debug!(
+            tracing::debug!(
                 "    region: {:08x}-{:08x} ({} bytes)",
                 region.range.start,
                 region.range.end,
@@ -33,12 +33,12 @@ pub fn erase_all(session: &mut Session) -> Result<(), FlashError> {
                 .or_default();
             entry.push(region.clone());
 
-            log::debug!("     -- using algorithm: {}", algo.name);
+            tracing::debug!("     -- using algorithm: {}", algo.name);
         }
     }
 
     for ((algo_name, core_name), regions) in algos {
-        log::debug!("Erasing with algorithm: {}", algo_name);
+        tracing::debug!("Erasing with algorithm: {}", algo_name);
 
         // This can't fail, algo_name comes from the target.
         let algo = session.target().flash_algorithm_by_name(&algo_name);
@@ -48,10 +48,10 @@ pub fn erase_all(session: &mut Session) -> Result<(), FlashError> {
         let mut flasher = Flasher::new(session, core_index, &algo)?;
 
         if flasher.is_chip_erase_supported() {
-            log::debug!("     -- chip erase supported, doing it.");
+            tracing::debug!("     -- chip erase supported, doing it.");
             flasher.run_erase(|active| active.erase_all())?;
         } else {
-            log::debug!("     -- chip erase not supported, erasing by sector.");
+            tracing::debug!("     -- chip erase not supported, erasing by sector.");
 
             // loop over all sectors erasing them individually instead.
 
@@ -66,7 +66,7 @@ pub fn erase_all(session: &mut Session) -> Result<(), FlashError> {
 
             flasher.run_erase(|active| {
                 for info in sectors {
-                    log::debug!(
+                    tracing::debug!(
                         "    sector: {:08x}-{:08x} ({} bytes)",
                         info.base_address,
                         info.base_address + info.size,

@@ -42,7 +42,7 @@ impl<'debugunit, 'abbrev, 'unit: 'debugunit, 'unit_info, 'debug_info>
                 frame_base: None,
             }),
             other_tag => {
-                log::error!("FunctionDie has to has to have Tag DW_TAG_subprogram, but tag is {:?}. This is a bug, please report it.", other_tag.static_string());
+                tracing::error!("FunctionDie has to has to have Tag DW_TAG_subprogram, but tag is {:?}. This is a bug, please report it.", other_tag.static_string());
                 None
             }
         }
@@ -65,7 +65,7 @@ impl<'debugunit, 'abbrev, 'unit: 'debugunit, 'unit_info, 'debug_info>
                 frame_base: None,
             }),
             other_tag => {
-                log::error!("FunctionDie has to has to have Tag DW_TAG_inlined_subroutine, but tag is {:?}. This is a bug, please report it.", other_tag.static_string());
+                tracing::error!("FunctionDie has to has to have Tag DW_TAG_inlined_subroutine, but tag is {:?}. This is a bug, please report it.", other_tag.static_string());
                 None
             }
         }
@@ -82,19 +82,19 @@ impl<'debugunit, 'abbrev, 'unit: 'debugunit, 'unit_info, 'debug_info>
                     match self.unit_info.debug_info.dwarf.string(fn_name_ref) {
                         Ok(fn_name_raw) => Some(String::from_utf8_lossy(&fn_name_raw).to_string()),
                         Err(error) => {
-                            log::debug!("No value for DW_AT_name: {:?}: error", error);
+                            tracing::debug!("No value for DW_AT_name: {:?}: error", error);
 
                             None
                         }
                     }
                 }
                 value => {
-                    log::debug!("Unexpected attribute value for DW_AT_name: {:?}", value);
+                    tracing::debug!("Unexpected attribute value for DW_AT_name: {:?}", value);
                     None
                 }
             }
         } else {
-            log::debug!("DW_AT_name attribute not found, unable to retrieve function name");
+            tracing::debug!("DW_AT_name attribute not found, unable to retrieve function name");
             None
         }
     }

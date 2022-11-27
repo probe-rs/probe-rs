@@ -215,14 +215,14 @@ impl AtSAME5x {
         let mut dsu_ctrl = DsuCtrl(0);
         dsu_ctrl.set_ce(true);
         memory.write_word_8(DsuCtrl::ADDRESS, dsu_ctrl.0)?;
-        log::info!("Chip-Erase started..");
+        tracing::info!("Chip-Erase started..");
 
         // Wait for it to finish
         let start = std::time::Instant::now();
         while start.elapsed() < std::time::Duration::from_secs(8) {
             let current_dsu_statusa = DsuStatusA::from(memory.read_word_8(DsuStatusA::ADDRESS)?);
             if current_dsu_statusa.done() {
-                log::info!("Chip-Erase complete");
+                tracing::info!("Chip-Erase complete");
                 // If the device was in Reset Extension when we started put it back into Reset Extension
                 if dsu_status_a.crstext() {
                     self.reset_hardware_with_extension(memory.get_arm_interface()?)?;
@@ -239,7 +239,7 @@ impl AtSAME5x {
             std::thread::sleep(std::time::Duration::from_millis(250));
         }
 
-        log::error!("Chip-Erase failed to complete within 8 seconds");
+        tracing::error!("Chip-Erase failed to complete within 8 seconds");
         Err(Error::Probe(DebugProbeError::Timeout))
     }
 
@@ -381,7 +381,7 @@ impl ArmDebugSequence for AtSAME5x {
         let dsu_status_b = DsuStatusB::from(memory.read_word_8(DsuStatusB::ADDRESS)?);
 
         if dsu_status_b.prot() {
-            log::warn!("The Device is locked, unlocking..");
+            tracing::warn!("The Device is locked, unlocking..");
             self.erase_all(&mut memory, permissions)
         } else {
             Ok(())

@@ -473,7 +473,7 @@ impl<'probe> Armv6m<'probe> {
 
                 let reason = dfsr.halt_reason();
 
-                log::debug!("Core was halted when connecting, reason: {:?}", reason);
+                tracing::debug!("Core was halted when connecting, reason: {:?}", reason);
 
                 CoreStatus::Halted(reason)
             } else {
@@ -599,7 +599,7 @@ impl<'probe> CoreInterface for Armv6m<'probe> {
                     .hw_breakpoints()?
                     .contains(&pc_before_step.try_into().ok())
             {
-                log::debug!("Encountered a breakpoint instruction @ {}. We need to manually advance the program counter to the next instruction.", pc_after_step);
+                tracing::debug!("Encountered a breakpoint instruction @ {}. We need to manually advance the program counter to the next instruction.", pc_after_step);
                 // Advance the program counter by the architecture specific byte size of the BKPT instruction.
                 pc_after_step.incremenet_address(2)?;
                 self.write_core_reg(self.registers().program_counter().id, pc_after_step)?;
@@ -653,7 +653,7 @@ impl<'probe> CoreInterface for Armv6m<'probe> {
     }
 
     fn enable_breakpoints(&mut self, state: bool) -> Result<(), Error> {
-        log::debug!("Enabling breakpoints: {:?}", state);
+        tracing::debug!("Enabling breakpoints: {:?}", state);
         let mut value = BpCtrl(0);
         value.set_key(true);
         value.set_enable(state);
@@ -669,7 +669,7 @@ impl<'probe> CoreInterface for Armv6m<'probe> {
     fn set_hw_breakpoint(&mut self, bp_register_index: usize, addr: u64) -> Result<(), Error> {
         let addr = valid_32_address(addr)?;
 
-        log::debug!("Setting breakpoint on address 0x{:08x}", addr);
+        tracing::debug!("Setting breakpoint on address 0x{:08x}", addr);
 
         // The highest 3 bits of the address have to be zero, otherwise the breakpoint cannot
         // be set at the address.
@@ -730,7 +730,9 @@ impl<'probe> CoreInterface for Armv6m<'probe> {
         let dhcsr = Dhcsr(self.memory.read_word_32(Dhcsr::ADDRESS)?);
 
         if dhcsr.s_lockup() {
-            log::warn!("The core is in locked up status as a result of an unrecoverable exception");
+            tracing::warn!(
+                "The core is in locked up status as a result of an unrecoverable exception"
+            );
 
             self.state.current_state = CoreStatus::LockedUp;
 
@@ -740,7 +742,7 @@ impl<'probe> CoreInterface for Armv6m<'probe> {
         if dhcsr.s_sleep() {
             // Check if we assumed the core to be halted
             if self.state.current_state.is_halted() {
-                log::warn!("Expected core to be halted, but core is running");
+                tracing::warn!("Expected core to be halted, but core is running");
             }
 
             self.state.current_state = CoreStatus::Sleeping;
@@ -766,11 +768,11 @@ impl<'probe> CoreInterface for Armv6m<'probe> {
                 // that the reason for the halt has changed. No bits set
                 // means that we have an unkown HaltReason.
                 if reason == HaltReason::Unknown {
-                    log::debug!("Cached halt reason: {:?}", self.state.current_state);
+                    tracing::debug!("Cached halt reason: {:?}", self.state.current_state);
                     return Ok(self.state.current_state);
                 }
 
-                log::debug!(
+                tracing::debug!(
                     "Reason for halt has changed, old reason was {:?}, new reason is {:?}",
                     &self.state.current_state,
                     &reason
@@ -784,7 +786,7 @@ impl<'probe> CoreInterface for Armv6m<'probe> {
 
         // Core is neither halted nor sleeping, so we assume it is running.
         if self.state.current_state.is_halted() {
-            log::warn!("Core is running, but we expected it to be halted");
+            tracing::warn!("Core is running, but we expected it to be halted");
         }
 
         self.state.current_state = CoreStatus::Running;

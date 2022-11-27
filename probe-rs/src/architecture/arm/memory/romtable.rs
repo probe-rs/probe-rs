@@ -69,7 +69,7 @@ impl<'probe, 'memory, 'reader> Iterator for RomTableIterator<'probe, 'memory, 'r
 
     fn next(&mut self) -> Option<Self::Item> {
         let component_address = self.rom_table_reader.base_address + self.offset;
-        log::info!("Reading rom table entry at {:08x}", component_address);
+        tracing::info!("Reading rom table entry at {:08x}", component_address);
 
         self.offset += 4;
 
@@ -85,14 +85,14 @@ impl<'probe, 'memory, 'reader> Iterator for RomTableIterator<'probe, 'memory, 'r
 
         // End of entries is marked by an all zero entry
         if entry_data[0] == 0 {
-            log::info!("Entry consists of all zeroes, stopping.");
+            tracing::info!("Entry consists of all zeroes, stopping.");
             return None;
         }
 
         let entry_data =
             RomTableEntryRaw::new(self.rom_table_reader.base_address as u32, entry_data[0]);
 
-        log::info!("ROM Table Entry: {:#x?}", entry_data);
+        tracing::info!("ROM Table Entry: {:#x?}", entry_data);
         Some(Ok(entry_data))
     }
 }
@@ -115,7 +115,7 @@ impl RomTable {
         #![allow(clippy::needless_collect)]
         let mut entries = vec![];
 
-        log::info!("Parsing romtable at base_address {:x?}", base_address);
+        tracing::info!("Parsing romtable at base_address {:x?}", base_address);
 
         // Read all the raw romtable entries and flatten them.
 
@@ -129,7 +129,7 @@ impl RomTable {
         for raw_entry in reader.into_iter() {
             let entry_base_addr = raw_entry.component_address();
 
-            log::info!("Parsing entry at {:x?}", entry_base_addr);
+            tracing::info!("Parsing entry at {:x?}", entry_base_addr);
 
             if raw_entry.entry_present {
                 let component = Component::try_parse(memory, u64::from(entry_base_addr))?;
@@ -145,6 +145,10 @@ impl RomTable {
         }
 
         Ok(RomTable { entries })
+    }
+
+    pub fn entries(&self) -> impl Iterator<Item = &RomTableEntry> {
+        self.entries.iter()
     }
 }
 
@@ -178,7 +182,7 @@ struct RomTableEntryRaw {
 impl RomTableEntryRaw {
     /// Create a new RomTableEntryRaw from raw ROM table entry data in memory.
     fn new(base_address: u32, raw: u32) -> Self {
-        log::debug!("Parsing raw rom table entry: 0x{:05x}", raw);
+        tracing::debug!("Parsing raw rom table entry: 0x{:05x}", raw);
 
         let address_offset = ((raw >> 12) & 0xf_ff_ff) as i32;
         let power_domain_id = ((raw >> 4) & 0xf) as u8;
@@ -206,7 +210,7 @@ impl RomTableEntryRaw {
 ///
 /// This struct should be used for public interfacing.
 #[derive(Debug, PartialEq)]
-struct RomTableEntry {
+pub struct RomTableEntry {
     /// The power domain ID of the CoreSight component behind the ROM table entry.
     power_domain_id: u8,
     /// The power domain is valid if this is true.
@@ -217,6 +221,12 @@ struct RomTableEntry {
     format: bool,
     /// The component class of the component pointed to by this romtable entry.
     pub(crate) component: CoresightComponent,
+}
+
+impl RomTableEntry {
+    pub fn component(&self) -> &Component {
+        &self.component.component
+    }
 }
 
 /// Component Identification information
@@ -269,7 +279,7 @@ impl<'probe: 'memory, 'memory> ComponentInformationReader<'probe, 'memory> {
             .read_32(self.base_address + 0xFF0, &mut cidr)
             .map_err(RomTableError::Memory)?;
 
-        log::debug!("CIDR: {:x?}", cidr);
+        tracing::debug!("CIDR: {:x?}", cidr);
 
         let preambles = [
             cidr[0] & 0xff,
@@ -282,7 +292,7 @@ impl<'probe: 'memory, 'memory> ComponentInformationReader<'probe, 'memory> {
 
         for i in 0..4 {
             if preambles[i] != expected[i] {
-                log::warn!(
+                tracing::warn!(
                     "Component at 0x{:x}: CIDR{} has invalid preamble (expected 0x{:x}, got 0x{:x})",
                     self.base_address, i, expected[i], preambles[i],
                 );
@@ -304,7 +314,7 @@ impl<'probe: 'memory, 'memory> ComponentInformationReader<'probe, 'memory> {
 
         let peripheral_id_address = self.base_address + 0xFD0;
 
-        log::debug!(
+        tracing::debug!(
             "Reading debug id from address: {:08x}",
             peripheral_id_address
         );
@@ -316,7 +326,7 @@ impl<'probe: 'memory, 'memory> ComponentInformationReader<'probe, 'memory> {
             .read_32(self.base_address + 0xFE0, &mut data[..4])
             .map_err(RomTableError::Memory)?;
 
-        log::debug!("Raw peripheral id: {:x?}", data);
+        tracing::debug!("Raw peripheral id: {:x?}", data);
 
         const DEV_TYPE_OFFSET: u64 = 0xFCC;
         const DEV_TYPE_MASK: u32 = 0xFF;
@@ -343,7 +353,7 @@ impl<'probe: 'memory, 'memory> ComponentInformationReader<'probe, 'memory> {
             })
             .map_err(RomTableError::Memory)?;
 
-        log::debug!("Dev type: {:x}, arch id: {:x}", dev_type, arch_id);
+        tracing::debug!("Dev type: {:x}, arch id: {:x}", dev_type, arch_id);
 
         Ok(PeripheralID::from_raw(&data, dev_type, arch_id))
     }
@@ -404,21 +414,21 @@ impl Component {
         memory: &'memory mut Memory<'probe>,
         baseaddr: u64,
     ) -> Result<Component, RomTableError> {
-        log::info!("\tReading component data at: {:08x}", baseaddr);
+        tracing::info!("\tReading component data at: {:08x}", baseaddr);
 
         let component_id = ComponentInformationReader::new(baseaddr, memory).read_all()?;
 
         // Determine the component class to find out what component we are dealing with.
-        log::info!("\tComponent class: {:x?}", component_id.class);
+        tracing::info!("\tComponent class: {:x?}", component_id.class);
 
         // Determine the peripheral id to find out what peripheral we are dealing with.
-        log::info!(
+        tracing::info!(
             "\tComponent peripheral id: {:x?}",
             component_id.peripheral_id
         );
 
         if let Some(info) = component_id.peripheral_id.determine_part() {
-            log::info!("\tComponent is known: {}", info);
+            tracing::info!("\tComponent is known: {}", info);
         }
 
         let class = match component_id.class {

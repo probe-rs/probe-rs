@@ -341,7 +341,7 @@ where
 
         let mut data_offset = 0;
 
-        log::debug!(
+        tracing::debug!(
             "Read first block with len {} at address {:#08x}",
             first_chunk_size_bytes,
             address
@@ -368,7 +368,7 @@ where
 
             let next_chunk_size_bytes = std::cmp::min(max_chunk_size_bytes, remaining_data_len * 4);
 
-            log::debug!(
+            tracing::debug!(
                 "Reading chunk with len {} at address {:#08x}",
                 next_chunk_size_bytes,
                 address
@@ -387,7 +387,7 @@ where
             data_offset += next_chunk_size_words;
         }
 
-        log::debug!("Finished reading block");
+        tracing::debug!("Finished reading block");
 
         Ok(())
     }
@@ -535,7 +535,7 @@ where
             return Err(AccessPortError::alignment_error(start_address, 4));
         }
 
-        log::debug!(
+        tracing::debug!(
             "Write block with total size {} bytes to address {:#08x}",
             data.len() * 4,
             start_address
@@ -564,7 +564,7 @@ where
 
         let mut data_offset = 0;
 
-        log::debug!(
+        tracing::debug!(
             "Write first block with len {} at address {:#08x}",
             first_chunk_size_bytes,
             address
@@ -589,7 +589,7 @@ where
 
             let next_chunk_size_bytes = std::cmp::min(max_chunk_size_bytes, remaining_data_len * 4);
 
-            log::debug!(
+            tracing::debug!(
                 "Writing chunk with len {} at address {:#08x}",
                 next_chunk_size_bytes,
                 address
@@ -608,7 +608,7 @@ where
             data_offset += next_chunk_size_words;
         }
 
-        log::debug!("Finished writing block");
+        tracing::debug!("Finished writing block");
 
         Ok(())
     }

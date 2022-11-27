@@ -116,6 +116,8 @@ pub struct Uninitialized {
 }
 
 pub struct Initialized {
+    /// Currently selected debug port. For targets without multidrop,
+    /// this will always be the single, default debug port in the system.
     current_dp: Option<DpAddress>,
     dps: HashMap<DpAddress, DpState>,
     use_overrun_detect: bool,
@@ -174,6 +176,8 @@ pub enum ApInformation {
     Other {
         /// Zero-based port number of the access port. This is used in the debug port to select an AP.
         address: ApAddress,
+        /// Content of the [`IDR`] register describing this AP.
+        idr: IDR,
     },
 }
 
@@ -223,7 +227,7 @@ impl ApInformation {
 
             let supports_hnonsec = csw.HNONSEC == 1;
 
-            log::debug!("HNONSEC supported: {}", supports_hnonsec);
+            tracing::debug!("HNONSEC supported: {}", supports_hnonsec);
 
             let cfg: CFG = probe.read_ap_register(access_port)?;
 
@@ -241,6 +245,7 @@ impl ApInformation {
         } else {
             Ok(ApInformation::Other {
                 address: access_port.ap_address(),
+                idr,
             })
         }
     }
@@ -366,7 +371,9 @@ impl UninitializedArmProbe for ArmCommunicationInterface<Uninitialized> {
         mut self: Box<Self>,
         sequence: Arc<dyn ArmDebugSequence>,
     ) -> Result<Box<dyn ArmProbeInterface>, ProbeRsError> {
+        let setup_span = tracing::debug_span!("debug_port_setup").entered();
         sequence.debug_port_setup(&mut self.probe)?;
+        drop(setup_span);
 
         let interface = self.into_initialized(sequence).map_err(|(_s, err)| err)?;
 
@@ -419,19 +426,19 @@ impl<'interface> ArmCommunicationInterface<Initialized> {
 
                 Ok(Memory::new(adi_v5_memory_interface, access_port))
             }
-            ApInformation::Other { address } => Err(ProbeRsError::Other(anyhow!(format!(
+            ApInformation::Other { address, .. } => Err(ProbeRsError::Other(anyhow!(format!(
                 "AP {:x?} is not a memory AP",
                 address
             )))),
         }
     }
 
-    fn select_dp(&mut self, dp: DpAddress) -> Result<(), DebugProbeError> {
+    fn select_dp(&mut self, dp: DpAddress) -> Result<&mut DpState, DebugProbeError> {
         if self.state.current_dp == Some(dp) {
-            return Ok(());
+            return Ok(self.state.dps.get_mut(&dp).unwrap());
         }
 
-        log::debug!("Selecting DP {:x?}", dp);
+        tracing::debug!("Selecting DP {:x?}", dp);
 
         if let Err(e) = self.probe.select_dp(dp) {
             self.state.current_dp = None;
@@ -444,28 +451,36 @@ impl<'interface> ArmCommunicationInterface<Initialized> {
             let sequence = self.state.sequence.clone();
 
             entry.insert(DpState::new());
-            sequence.debug_port_start(self, dp)?;
 
-            // Make sure we always enable the overrun detect mode as we rely on it for good, stable communication.
+            let start_span = tracing::debug_span!("debug_port_start").entered();
+            sequence.debug_port_start(self, dp)?;
+            drop(start_span);
+
+            // Make sure we enable the overrun detect mode when requested.
+            // For "bit-banging" probes, such as JLink or FTDI, we rely on it for good, stable communication.
             // This is required as the default sequence (and most special implementations) does not do this.
+            tracing::debug!("Setting orun_detect: {}", self.state.use_overrun_detect);
             let mut ctrl_reg: Ctrl = self.read_dp_register(dp)?;
             ctrl_reg.set_orun_detect(self.state.use_overrun_detect);
             self.write_dp_register(dp, ctrl_reg)?;
 
             /* determine the number and type of available APs */
-            log::trace!("Searching valid APs");
+            tracing::trace!("Searching valid APs");
 
+            let ap_span = tracing::debug_span!("AP discovery").entered();
             for ap in valid_access_ports(self, dp) {
                 let ap_state = ApInformation::read_from_target(self, ap)?;
-                log::debug!("AP {:x?}: {:?}", ap, ap_state);
+                tracing::debug!("AP {:x?}: {:?}", ap, ap_state);
 
                 // note(unwrap): we have inserted the state above, it must exist.
                 let state = self.state.dps.get_mut(&dp).unwrap();
                 state.ap_information.push(ap_state);
             }
+            drop(ap_span);
         }
 
-        Ok(())
+        // note(unwrap): Entry gets inserted above
+        Ok(self.state.dps.get_mut(&dp).unwrap())
     }
 
     fn select_dp_and_dp_bank(
@@ -473,10 +488,7 @@ impl<'interface> ArmCommunicationInterface<Initialized> {
         dp: DpAddress,
         dp_register_address: u8,
     ) -> Result<(), DebugPortError> {
-        self.select_dp(dp)?;
-
-        // NOTE(unwrap): select_dp adds the dp to state if not present.
-        let dp_state = self.state.dps.get_mut(&dp).unwrap();
+        let dp_state = self.select_dp(dp)?;
 
         // DP register addresses are 4 bank bits, 4 address bits. Lowest 2 address bits are
         // always 0, so this leaves only 4 possible addresses: 0x0, 0x4, 0x8, 0xC.
@@ -494,7 +506,7 @@ impl<'interface> ArmCommunicationInterface<Initialized> {
 
             let mut select = Select(0);
 
-            log::debug!("Changing DP_BANK_SEL to {}", dp_state.current_dpbanksel);
+            tracing::debug!("Changing DP_BANK_SEL to {}", dp_state.current_dpbanksel);
 
             select.set_ap_sel(dp_state.current_apsel);
             select.set_ap_bank_sel(dp_state.current_apbanksel);
@@ -511,10 +523,7 @@ impl<'interface> ArmCommunicationInterface<Initialized> {
         ap: ApAddress,
         ap_register_address: u8,
     ) -> Result<(), DebugProbeError> {
-        self.select_dp(ap.dp)?;
-
-        // NOTE(unwrap): select_dp adds the dp to state if not present.
-        let dp_state = self.state.dps.get_mut(&ap.dp).unwrap();
+        let dp_state = self.select_dp(ap.dp)?;
 
         let port = ap.ap;
         let ap_bank = ap_register_address >> 4;
@@ -534,7 +543,7 @@ impl<'interface> ArmCommunicationInterface<Initialized> {
         if cache_changed {
             let mut select = Select(0);
 
-            log::debug!(
+            tracing::debug!(
                 "Changing AP to {}, AP_BANK_SEL to {}",
                 dp_state.current_apsel,
                 dp_state.current_apbanksel
@@ -556,9 +565,8 @@ impl<'interface> ArmCommunicationInterface<Initialized> {
         access_port: impl AccessPort,
     ) -> Result<&ApInformation, ProbeRsError> {
         let addr = access_port.ap_address();
-        self.select_dp(addr.dp)?;
 
-        let state = self.state.dps.get(&addr.dp).unwrap();
+        let state = self.select_dp(addr.dp)?;
 
         match state.ap_information.get(addr.ap as usize) {
             Some(res) => Ok(res),
@@ -567,9 +575,8 @@ impl<'interface> ArmCommunicationInterface<Initialized> {
     }
 
     fn num_access_ports(&mut self, dp: DpAddress) -> Result<usize, ProbeRsError> {
-        self.select_dp(dp)?;
+        let state = self.select_dp(dp)?;
 
-        let state = self.state.dps.get(&dp).unwrap();
         Ok(state.ap_information.len())
     }
 }
@@ -706,7 +713,7 @@ impl ArmCommunicationInterface<Initialized> {
             .map_err(ProbeRsError::architecture_specific)?;
 
         if ctrl_reg.sticky_err() {
-            log::trace!("AP Search faulted. Cleaning up");
+            tracing::trace!("AP Search faulted. Cleaning up");
             let mut abort = Abort::default();
             abort.set_stkerrclr(true);
             self.write_dp_register(dp, abort)
@@ -716,7 +723,7 @@ impl ArmCommunicationInterface<Initialized> {
             let idr: IDR = self
                 .read_ap_register(access_port)
                 .map_err(ProbeRsError::Probe)?;
-            log::debug!("{:#x?}", idr);
+            tracing::debug!("{:#x?}", idr);
 
             if idr.CLASS == ApClass::MemAp {
                 let access_port: MemoryAp = access_port.into();
@@ -740,7 +747,7 @@ impl ArmCommunicationInterface<Initialized> {
                 }
             }
         }
-        // log::info!(
+        // tracing::info!(
         //     "{}\n{}\n{}\n{}",
         //     "If you are using a Nordic chip, it might be locked to debug access".yellow(),
         //     "Run cargo flash with --nrf-recover to unlock".yellow(),

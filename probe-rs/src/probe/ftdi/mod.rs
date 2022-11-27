@@ -254,7 +254,7 @@ impl JtagAdapter {
         for i in 0..max_device_count {
             let idcode = u32::from_le_bytes(r[i * 4..(i + 1) * 4].try_into().unwrap());
             if idcode != 0xffffffff {
-                log::debug!("tap found: {:08x}", idcode);
+                tracing::debug!("tap found: {:08x}", idcode);
                 let target = JtagChainItem { idcode, irlen: 0 };
                 targets.push(target);
             } else {
@@ -285,7 +285,7 @@ impl JtagAdapter {
 
             let irlen = r[1].count_ones() as usize;
             targets[0].irlen = irlen;
-            log::debug!("tap irlen: {}", irlen);
+            tracing::debug!("tap irlen: {}", irlen);
         } else {
             let cmd = vec![0xff; max_device_count];
             let mut r = self.transfer_ir(&cmd, cmd.len() * 8)?;
@@ -304,10 +304,10 @@ impl JtagAdapter {
                     let irlen = ir.trailing_zeros();
                     ir >>= irlen;
                     irbits -= irlen;
-                    log::debug!("tap {} irlen: {}", i, irlen);
+                    tracing::debug!("tap {} irlen: {}", i, irlen);
                     target.irlen = irlen as usize;
                 } else {
-                    log::debug!("invalid irlen for tap {}", i);
+                    tracing::debug!("invalid irlen for tap {}", i);
                     return Err(io::Error::new(
                         io::ErrorKind::InvalidData,
                         "Invalid IR sequence during the chain scan",
@@ -344,7 +344,7 @@ impl JtagAdapter {
         }
 
         if found {
-            log::debug!("Target chain params: {:?}", params);
+            tracing::debug!("Target chain params: {:?}", params);
             self.chain_params = Some(params);
             Ok(())
         } else {
@@ -445,7 +445,7 @@ impl DebugProbe for FtdiProbe {
             speed_khz: 0,
             idle_cycles: 0,
         };
-        log::debug!("opened probe: {:?}", probe);
+        tracing::debug!("opened probe: {:?}", probe);
         Ok(Box::new(probe))
     }
 
@@ -464,7 +464,7 @@ impl DebugProbe for FtdiProbe {
     }
 
     fn attach(&mut self) -> Result<(), DebugProbeError> {
-        log::debug!("attaching...");
+        tracing::debug!("attaching...");
 
         self.adapter
             .attach()
@@ -475,7 +475,7 @@ impl DebugProbe for FtdiProbe {
             .scan()
             .map_err(|e| DebugProbeError::ProbeSpecific(Box::new(e)))?;
         if taps.is_empty() {
-            log::warn!("no JTAG taps detected");
+            tracing::warn!("no JTAG taps detected");
             return Err(DebugProbeError::TargetNotFound);
         }
         if taps.len() == 1 {
@@ -506,17 +506,17 @@ impl DebugProbe for FtdiProbe {
     }
 
     fn target_reset(&mut self) -> Result<(), DebugProbeError> {
-        log::error!("FTDI target_reset");
+        tracing::error!("FTDI target_reset");
         unimplemented!()
     }
 
     fn target_reset_assert(&mut self) -> Result<(), DebugProbeError> {
-        log::error!("FTDI target_reset_assert");
+        tracing::error!("FTDI target_reset_assert");
         unimplemented!()
     }
 
     fn target_reset_deassert(&mut self) -> Result<(), DebugProbeError> {
-        log::error!("FTDI target_reset_deassert");
+        tracing::error!("FTDI target_reset_deassert");
         unimplemented!()
     }
 
@@ -560,23 +560,23 @@ impl DebugProbe for FtdiProbe {
 
 impl JTAGAccess for FtdiProbe {
     fn read_register(&mut self, address: u32, len: u32) -> Result<Vec<u8>, DebugProbeError> {
-        log::debug!("read_register({:#x}, {})", address, len);
+        tracing::debug!("read_register({:#x}, {})", address, len);
         let r = self
             .adapter
             .target_transfer(address, None, len as usize)
             .map_err(|e| {
-                log::debug!("target_transfer error: {:?}", e);
+                tracing::debug!("target_transfer error: {:?}", e);
                 DebugProbeError::ProbeSpecific(Box::new(e))
             })?;
         self.adapter
             .idle(self.idle_cycles as usize)
             .map_err(|e| DebugProbeError::ProbeSpecific(Box::new(e)))?;
-        log::debug!("read_register result: {:?})", r);
+        tracing::debug!("read_register result: {:?})", r);
         Ok(r)
     }
 
     fn set_idle_cycles(&mut self, idle_cycles: u8) {
-        log::debug!("set_idle_cycles({})", idle_cycles);
+        tracing::debug!("set_idle_cycles({})", idle_cycles);
         self.idle_cycles = idle_cycles;
     }
 
@@ -586,18 +586,18 @@ impl JTAGAccess for FtdiProbe {
         data: &[u8],
         len: u32,
     ) -> Result<Vec<u8>, DebugProbeError> {
-        log::debug!("write_register({:#x}, {:?}, {})", address, data, len);
+        tracing::debug!("write_register({:#x}, {:?}, {})", address, data, len);
         let r = self
             .adapter
             .target_transfer(address, Some(data), len as usize)
             .map_err(|e| {
-                log::debug!("target_transfer error: {:?}", e);
+                tracing::debug!("target_transfer error: {:?}", e);
                 DebugProbeError::ProbeSpecific(Box::new(e))
             })?;
         self.adapter
             .idle(self.idle_cycles as usize)
             .map_err(|e| DebugProbeError::ProbeSpecific(Box::new(e)))?;
-        log::debug!("write_register result: {:?})", r);
+        tracing::debug!("write_register result: {:?})", r);
         Ok(r)
     }
 
@@ -751,11 +751,11 @@ fn get_device_info(device: &rusb::Device<rusb::Context>) -> Option<DebugProbeInf
 
     let handle = match device.open() {
         Err(rusb::Error::Access) => {
-            log::warn!("Access denied: probe device {:#?}", device);
+            tracing::warn!("Access denied: probe device {:#?}", device);
             return None;
         }
         Err(e) => {
-            log::warn!("Can't open probe device {:#?} -- Error: {:#?}", device, e);
+            tracing::warn!("Can't open probe device {:#?} -- Error: {:#?}", device, e);
             return None;
         }
         Ok(v) => v,

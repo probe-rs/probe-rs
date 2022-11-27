@@ -136,7 +136,7 @@ impl DebugRegisters {
                             value: match core.read_core_reg(platform_register.id) {
                                 Ok::<RegisterValue, Error>(register_value) => Some(register_value),
                                 Err(e) => {
-                                    log::warn!(
+                                    tracing::warn!(
                                         "Failed to read value for register {:?}: {}",
                                         platform_register,
                                         e
@@ -147,7 +147,7 @@ impl DebugRegisters {
                         });
                     }
                 } else {
-                    log::warn!(
+                    tracing::warn!(
                         "Unsupported platform register type or size for register: {:?}",
                         platform_register
                     );

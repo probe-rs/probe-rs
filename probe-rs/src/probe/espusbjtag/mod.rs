@@ -43,7 +43,7 @@ impl EspUsbJtag {
     }
 
     fn read_dr(&mut self, register_bits: usize) -> Result<Vec<u8>, DebugProbeError> {
-        log::debug!("Read {} bits from DR", register_bits);
+        tracing::debug!("Read {} bits from DR", register_bits);
 
         let tms_enter_shift = [true, false, false];
 
@@ -65,7 +65,7 @@ impl EspUsbJtag {
 
         let mut response = self.protocol.jtag_io(tms, tdi, true)?;
 
-        log::trace!("Response: {:?}", response);
+        tracing::trace!("Response: {:?}", response);
 
         let _remainder = response.split_off(tms_enter_shift.len());
 
@@ -84,7 +84,7 @@ impl EspUsbJtag {
             result.push(bits_to_byte(response.split_off(remaining_bits)) as u8);
         }
 
-        log::debug!("Read from DR: {:?}", result);
+        tracing::debug!("Read from DR: {:?}", result);
 
         Ok(result)
     }
@@ -94,7 +94,7 @@ impl EspUsbJtag {
     /// will be truncated to `len` bits. If data has less
     /// than `len` bits, an error will be returned.
     fn write_ir(&mut self, data: &[u8], len: usize) -> Result<(), DebugProbeError> {
-        log::debug!("Write IR: {:?}, len={}", data, len);
+        tracing::debug!("Write IR: {:?}, len={}", data, len);
 
         // Check the bit length, enough data has to be
         // available
@@ -157,12 +157,12 @@ impl EspUsbJtag {
 
         tdi.extend_from_slice(&tdi_enter_idle);
 
-        log::trace!("tms: {:?}", tms);
-        log::trace!("tdi: {:?}", tdi);
+        tracing::trace!("tms: {:?}", tms);
+        tracing::trace!("tdi: {:?}", tdi);
 
         let response = self.protocol.jtag_io(tms, tdi, true)?;
 
-        log::trace!("Response: {:?}", response);
+        tracing::trace!("Response: {:?}", response);
 
         if len >= 8 {
             return Err(DebugProbeError::NotImplemented(
@@ -179,7 +179,7 @@ impl EspUsbJtag {
     }
 
     fn write_dr(&mut self, data: &[u8], register_bits: usize) -> Result<Vec<u8>, DebugProbeError> {
-        log::debug!("Write DR: {:?}, len={}", data, register_bits);
+        tracing::debug!("Write DR: {:?}, len={}", data, register_bits);
 
         let tms_enter_shift = [true, false, false];
 
@@ -235,7 +235,7 @@ impl EspUsbJtag {
 
         let mut response = self.protocol.jtag_io(tms, tdi, true)?;
 
-        log::trace!("Response: {:?}", response);
+        tracing::trace!("Response: {:?}", response);
 
         let _remainder = response.split_off(tms_enter_shift.len());
 
@@ -254,7 +254,7 @@ impl EspUsbJtag {
             result.push(bits_to_byte(response.split_off(remaining_bits)) as u8);
         }
 
-        log::trace!("result: {:?}", result);
+        tracing::trace!("result: {:?}", result);
 
         Ok(result)
     }
@@ -362,17 +362,17 @@ impl DebugProbe for EspUsbJtag {
     }
 
     fn attach(&mut self) -> Result<(), super::DebugProbeError> {
-        log::debug!("Attaching to ESP USB JTAG");
+        tracing::debug!("Attaching to ESP USB JTAG");
 
         // TODO: Maybe can be left in protocol altogether.
 
         // try some JTAG stuff
 
-        log::debug!("Resetting JTAG chain using trst");
+        tracing::debug!("Resetting JTAG chain using trst");
         self.protocol.set_reset(true, true)?;
         self.protocol.set_reset(false, false)?;
 
-        log::debug!("Resetting JTAG chain by setting tms high for 5 bits");
+        tracing::debug!("Resetting JTAG chain by setting tms high for 5 bits");
 
         // Reset JTAG chain (5 times TMS high), and enter idle state afterwards
         let tms = vec![true, true, true, true, true, false];
@@ -380,7 +380,7 @@ impl DebugProbe for EspUsbJtag {
 
         let response: Vec<_> = self.protocol.jtag_io(tms, tdi, false)?.collect();
 
-        log::debug!("Response to reset: {:?}", response);
+        tracing::debug!("Response to reset: {:?}", response);
 
         // try to read the idcode until we have some non-zero bytes
         let start = Instant::now();
@@ -393,7 +393,7 @@ impl DebugProbe for EspUsbJtag {
             }
         };
 
-        log::info!("JTAG IDCODE: {:#010x}", idcode);
+        tracing::info!("JTAG IDCODE: {:#010x}", idcode);
 
         Ok(())
     }
@@ -407,13 +407,13 @@ impl DebugProbe for EspUsbJtag {
     }
 
     fn target_reset_assert(&mut self) -> Result<(), DebugProbeError> {
-        log::info!("reset_assert!");
+        tracing::info!("reset_assert!");
         self.protocol.set_reset(false, false)?;
         Ok(())
     }
 
     fn target_reset_deassert(&mut self) -> Result<(), DebugProbeError> {
-        log::info!("reset_deassert!");
+        tracing::info!("reset_deassert!");
         self.protocol.set_reset(true, true)?;
         Ok(())
     }

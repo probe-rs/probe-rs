@@ -151,10 +151,10 @@ impl<T: DapAccess> ApAccess for T {
         PORT: AccessPort,
         R: ApRegister<PORT>,
     {
-        log::debug!("Reading register {}", R::NAME);
+        tracing::debug!("Reading register {}", R::NAME);
         let raw_value = self.read_raw_ap_register(port.into().ap_address(), R::ADDRESS)?;
 
-        log::debug!("Read register    {}, value=0x{:x?}", R::NAME, raw_value);
+        tracing::debug!("Read register    {}, value=0x{:x?}", R::NAME, raw_value);
 
         Ok(raw_value.into())
     }
@@ -168,7 +168,7 @@ impl<T: DapAccess> ApAccess for T {
         PORT: AccessPort,
         R: ApRegister<PORT>,
     {
-        log::debug!("Writing register {}, value={:x?}", R::NAME, register);
+        tracing::debug!("Writing register {}, value={:x?}", R::NAME, register);
         self.write_raw_ap_register(port.into().ap_address(), R::ADDRESS, register.into())
     }
 
@@ -182,7 +182,7 @@ impl<T: DapAccess> ApAccess for T {
         PORT: AccessPort,
         R: ApRegister<PORT>,
     {
-        log::debug!(
+        tracing::debug!(
             "Writing register {}, block with len={} words",
             R::NAME,
             values.len(),
@@ -200,7 +200,7 @@ impl<T: DapAccess> ApAccess for T {
         PORT: AccessPort,
         R: ApRegister<PORT>,
     {
-        log::debug!(
+        tracing::debug!(
             "Reading register {}, block with len={} words",
             R::NAME,
             values.len(),

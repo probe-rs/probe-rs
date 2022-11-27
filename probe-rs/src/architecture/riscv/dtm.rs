@@ -40,7 +40,7 @@ impl Dtm {
 
         let dtmcs = Dtmcs(u32::from_le_bytes((&dtmcs_raw[..]).try_into().unwrap()));
 
-        log::debug!("Dtmcs: {:?}", dtmcs);
+        tracing::debug!("Dtmcs: {:?}", dtmcs);
 
         let abits = dtmcs.abits();
         let idle_cycles = dtmcs.idle();

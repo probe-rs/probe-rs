@@ -24,6 +24,7 @@ use probe_rs_cli_util::{
 use rustyline::Editor;
 
 use anyhow::{Context, Result};
+use tracing_subscriber::EnvFilter;
 
 use std::{fs::File, path::PathBuf};
 use std::{io, time::Instant};
@@ -226,8 +227,11 @@ pub(crate) enum ItmSource {
 }
 
 fn main() -> Result<()> {
-    // Initialize the logging backend.
-    pretty_env_logger::init();
+    tracing_subscriber::fmt::fmt()
+        .compact()
+        .without_time()
+        .with_env_filter(EnvFilter::from_default_env())
+        .init();
 
     let matches = Cli::parse();
 

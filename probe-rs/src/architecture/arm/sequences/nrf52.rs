@@ -74,7 +74,7 @@ impl ArmDebugSequence for Nrf52 {
     ) -> Result<(), crate::Error> {
         let tpiu_clock = match sink {
             TraceSink::TraceMemory => {
-                log::error!("nRF52 does not have a trace buffer");
+                tracing::error!("nRF52 does not have a trace buffer");
                 return Err(Error::architecture_specific(
                     ComponentError::NordicNoTraceMem,
                 ));
@@ -91,7 +91,7 @@ impl ArmDebugSequence for Nrf52 {
             32_000_000 => 0,
             tpiu_clk => {
                 let e = ComponentError::NordicUnsupportedTPUICLKValue(tpiu_clk);
-                log::error!("{:?}", e);
+                tracing::error!("{:?}", e);
                 return Err(Error::architecture_specific(e));
             }
         };

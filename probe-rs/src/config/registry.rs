@@ -160,7 +160,7 @@ impl Registry {
     fn get_target_by_name(&self, name: impl AsRef<str>) -> Result<Target, RegistryError> {
         let name = name.as_ref();
 
-        log::debug!("Searching registry for chip with name {}", name);
+        tracing::debug!("Searching registry for chip with name {}", name);
 
         let (family, chip) = {
             // Try get the corresponding chip.
@@ -171,10 +171,10 @@ impl Registry {
                 for variant in family.variants.iter() {
                     if match_name_prefix(&variant.name, name) {
                         if variant.name.len() == name.len() {
-                            log::debug!("Exact match for chip name: {}", variant.name);
+                            tracing::debug!("Exact match for chip name: {}", variant.name);
                             exact_matches += 1;
                         } else {
-                            log::debug!("Partial match for chip name: {}", variant.name);
+                            tracing::debug!("Partial match for chip name: {}", variant.name);
                             partial_matches += 1;
                             if exact_matches > 0 {
                                 continue;
@@ -185,7 +185,7 @@ impl Registry {
                 }
             }
             if exact_matches > 1 || (exact_matches == 0 && partial_matches > 1) {
-                log::warn!(
+                tracing::warn!(
                     "Ignoring ambiguous matches for specified chip name {}",
                     name,
                 );
@@ -194,14 +194,14 @@ impl Registry {
             let (family, chip) = selected_family_and_chip
                 .ok_or_else(|| RegistryError::ChipNotFound(name.to_owned()))?;
             if exact_matches == 0 && partial_matches == 1 {
-                log::warn!(
+                tracing::warn!(
                     "Found chip {} which matches given partial name {}. Consider specifying its full name.",
                     chip.name,
                     name,
                 );
             }
             if chip.name.to_ascii_lowercase() != name.to_ascii_lowercase() {
-                log::warn!(
+                tracing::warn!(
                     "Matching {} based on wildcard. Consider specifying the chip as {} instead.",
                     name,
                     chip.name,
@@ -215,7 +215,7 @@ impl Registry {
     }
 
     fn search_chips(&self, name: &str) -> Vec<String> {
-        log::debug!("Searching registry for chip with name {}", name);
+        tracing::debug!("Searching registry for chip with name {}", name);
 
         let mut targets = Vec::new();
 
@@ -249,7 +249,7 @@ impl Registry {
                     let mut identified_chips = Vec::new();
 
                     for family in families {
-                        log::debug!("Checking family {}", family.name);
+                        tracing::debug!("Checking family {}", family.name);
 
                         let chips = family
                             .variants()
@@ -263,7 +263,7 @@ impl Registry {
                     if identified_chips.len() == 1 {
                         identified_chips.pop().unwrap()
                     } else {
-                        log::debug!(
+                        tracing::debug!(
                         "Found {} matching chips for information {:?}, unable to determine chip",
                         identified_chips.len(),
                         chip_info

@@ -69,12 +69,12 @@ impl<'probe> Armv7a<'probe> {
             let address = Dbgdscr::get_mmio_address(base_address);
             let dbgdscr = Dbgdscr(memory.read_word_32(address)?);
 
-            log::debug!("State when connecting: {:x?}", dbgdscr);
+            tracing::debug!("State when connecting: {:x?}", dbgdscr);
 
             let core_state = if dbgdscr.halted() {
                 let reason = dbgdscr.halt_reason();
 
-                log::debug!("Core was halted when connecting, reason: {:?}", reason);
+                tracing::debug!("Core was halted when connecting, reason: {:?}", reason);
 
                 CoreStatus::Halted(reason)
             } else {
@@ -711,7 +711,7 @@ impl<'probe> CoreInterface for Armv7a<'probe> {
         }
         // Core is neither halted nor sleeping, so we assume it is running.
         if self.state.current_state.is_halted() {
-            log::warn!("Core is running, but we expected it to be halted");
+            tracing::warn!("Core is running, but we expected it to be halted");
         }
 
         self.state.current_state = CoreStatus::Running;

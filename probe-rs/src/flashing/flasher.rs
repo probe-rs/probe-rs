@@ -78,7 +78,7 @@ impl<'session> Flasher<'session> {
                 name: session.target().name.clone(),
             })?;
 
-        log::info!("chosen RAM to run the algo: {:x?}", ram);
+        tracing::info!("Chosen RAM to run the algo: {:x?}", ram);
 
         let flash_algorithm = FlashAlgorithm::assemble_from_raw(raw_flash_algorithm, ram, target)?;
 
@@ -102,7 +102,7 @@ impl<'session> Flasher<'session> {
     }
 
     fn load(&mut self) -> Result<(), FlashError> {
-        log::debug!("Initializing the flash algorithm.");
+        tracing::debug!("Initializing the flash algorithm.");
         let algo = &mut self.flash_algorithm;
 
         // Attach to memory and core.
@@ -112,25 +112,25 @@ impl<'session> Flasher<'session> {
             .map_err(FlashError::Core)?;
 
         // TODO: Halt & reset target.
-        log::debug!("Halting core {}", self.core_index);
+        tracing::debug!("Halting core {}", self.core_index);
         let cpu_info = core
             .halt(Duration::from_millis(100))
             .map_err(FlashError::Core)?;
-        log::debug!("PC = 0x{:08x}", cpu_info.pc);
-        log::debug!("Reset and halt");
+        tracing::debug!("PC = 0x{:08x}", cpu_info.pc);
+        tracing::debug!("Reset and halt");
         core.reset_and_halt(Duration::from_millis(500))
             .map_err(FlashError::Core)?;
 
         // TODO: Possible special preparation of the target such as enabling faster clocks for the flash e.g.
 
         // Load flash algorithm code into target RAM.
-        log::debug!(
-            "Loading algorithm into RAM at address 0x{:08x}",
-            algo.load_address
-        );
+        let span = tracing::debug_span!("Loading algorithm into RAM", address = algo.load_address)
+            .entered();
 
         core.write_32(algo.load_address as u64, algo.instructions.as_slice())
             .map_err(FlashError::Core)?;
+
+        drop(span);
 
         let mut data = vec![0; algo.instructions.len()];
         core.read_32(algo.load_address as u64, &mut data)
@@ -139,21 +139,21 @@ impl<'session> Flasher<'session> {
         for (offset, (original, read_back)) in algo.instructions.iter().zip(data.iter()).enumerate()
         {
             if original != read_back {
-                log::error!(
+                tracing::error!(
                     "Failed to verify flash algorithm. Data mismatch at address {:#08x}",
                     algo.load_address + (4 * offset) as u64
                 );
-                log::error!("Original instruction: {:#08x}", original);
-                log::error!("Readback instruction: {:#08x}", read_back);
+                tracing::error!("Original instruction: {:#08x}", original);
+                tracing::error!("Readback instruction: {:#08x}", read_back);
 
-                log::error!("Original: {:x?}", &algo.instructions);
-                log::error!("Readback: {:x?}", &data);
+                tracing::error!("Original: {:x?}", &algo.instructions);
+                tracing::error!("Readback: {:x?}", &data);
 
                 return Err(FlashError::FlashAlgorithmNotLoaded);
             }
         }
 
-        log::debug!("RAM contents match flashing algo blob.");
+        tracing::debug!("RAM contents match flashing algo blob.");
 
         Ok(())
     }
@@ -168,7 +168,7 @@ impl<'session> Flasher<'session> {
             .core(self.core_index)
             .map_err(FlashError::Core)?;
 
-        log::debug!("Preparing Flasher for operation {}", O::operation_name());
+        tracing::debug!("Preparing Flasher for operation {}", O::operation_name());
         let mut flasher = ActiveFlasher::<O> {
             core,
             flash_algorithm: self.flash_algorithm.clone(),
@@ -231,7 +231,7 @@ impl<'session> Flasher<'session> {
         skip_erasing: bool,
         progress: &FlashProgress,
     ) -> Result<(), FlashError> {
-        log::debug!("Starting program procedure.");
+        tracing::debug!("Starting program procedure.");
         // Convert the list of flash operations into flash sectors and pages.
         let mut flash_layout = flash_builder.build_sectors_and_pages(
             region,
@@ -241,8 +241,8 @@ impl<'session> Flasher<'session> {
 
         progress.initialized(flash_layout.clone());
 
-        log::debug!("Double Buffering enabled: {:?}", enable_double_buffering);
-        log::debug!(
+        tracing::debug!("Double Buffering enabled: {:?}", enable_double_buffering);
+        tracing::debug!(
             "Restoring unwritten bytes enabled: {:?}",
             restore_unwritten_bytes
         );
@@ -494,9 +494,9 @@ pub(super) struct ActiveFlasher<'probe, O: Operation> {
 }
 
 impl<'probe, O: Operation> ActiveFlasher<'probe, O> {
+    #[tracing::instrument(name = "Call to flash algorithm init", skip(self, clock))]
     pub(super) fn init(&mut self, clock: Option<u32>) -> Result<(), FlashError> {
         let algo = &self.flash_algorithm;
-        log::debug!("Running init routine.");
 
         let address = self.flash_algorithm.flash_properties.address_range.start;
 
@@ -532,7 +532,7 @@ impl<'probe, O: Operation> ActiveFlasher<'probe, O> {
     // }
 
     pub(super) fn uninit(&mut self) -> Result<(), FlashError> {
-        log::debug!("Running uninit routine.");
+        tracing::debug!("Running uninit routine.");
         let algo = &self.flash_algorithm;
 
         if let Some(pc_uninit) = algo.pc_uninit {
@@ -571,7 +571,7 @@ impl<'probe, O: Operation> ActiveFlasher<'probe, O> {
     }
 
     fn call_function(&mut self, registers: &Registers, init: bool) -> Result<(), crate::Error> {
-        log::debug!("Calling routine {:?}, init={})", &registers, init);
+        tracing::debug!("Calling routine {:?}, init={})", &registers, init);
 
         let algo = &self.flash_algorithm;
         let regs: &'static RegisterFile = self.core.registers();
@@ -613,7 +613,7 @@ impl<'probe, O: Operation> ActiveFlasher<'probe, O> {
         for (description, value) in &registers {
             if let Some(v) = value {
                 self.core.write_core_reg(description.id, *v)?;
-                log::debug!(
+                tracing::debug!(
                     "content of {} {:#x}: 0x{:08x} should be: 0x{:08x}",
                     description.name,
                     description.id.0,
@@ -635,8 +635,9 @@ impl<'probe, O: Operation> ActiveFlasher<'probe, O> {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self))]
     pub(super) fn wait_for_completion(&mut self, timeout: Duration) -> Result<u32, crate::Error> {
-        log::debug!("Waiting for routine call completion.");
+        tracing::debug!("Waiting for routine call completion.");
         let regs = self.core.registers();
 
         self.core.wait_for_core_halted(timeout)?;
@@ -648,7 +649,7 @@ impl<'probe, O: Operation> ActiveFlasher<'probe, O> {
 
 impl<'probe> ActiveFlasher<'probe, Erase> {
     pub(super) fn erase_all(&mut self) -> Result<(), FlashError> {
-        log::debug!("Erasing entire chip.");
+        tracing::debug!("Erasing entire chip.");
         let flasher = self;
         let algo = &flasher.flash_algorithm;
 
@@ -685,7 +686,7 @@ impl<'probe> ActiveFlasher<'probe, Erase> {
     }
 
     pub(super) fn erase_sector(&mut self, address: u64) -> Result<(), FlashError> {
-        log::info!("Erasing sector at address 0x{:08x}", address);
+        tracing::info!("Erasing sector at address 0x{:08x}", address);
         let t1 = std::time::Instant::now();
 
         let result = self
@@ -706,7 +707,7 @@ impl<'probe> ActiveFlasher<'probe, Erase> {
                 sector_address: address,
                 source: Box::new(error),
             })?;
-        log::info!(
+        tracing::info!(
             "Done erasing sector. Result is {}. This took {:?}",
             result,
             t1.elapsed()
@@ -727,7 +728,7 @@ impl<'p> ActiveFlasher<'p, Program> {
     pub(super) fn program_page(&mut self, address: u64, bytes: &[u8]) -> Result<(), FlashError> {
         let t1 = std::time::Instant::now();
 
-        log::info!(
+        tracing::info!(
             "Flashing page at address {:#08x} with size: {}",
             address,
             bytes.len()
@@ -756,7 +757,7 @@ impl<'p> ActiveFlasher<'p, Program> {
                 page_address: address,
                 source: Box::new(error),
             })?;
-        log::info!("Flashing took: {:?}", t1.elapsed());
+        tracing::info!("Flashing took: {:?}", t1.elapsed());
 
         if result != 0 {
             Err(FlashError::PageWrite {
@@ -832,7 +833,7 @@ impl<'p> ActiveFlasher<'p, Program> {
             .write_32(algo.page_buffers[buffer_number], &words)
             .map_err(FlashError::Core)?;
 
-        log::info!(
+        tracing::info!(
             "Took {:?} to download {} byte page into ram",
             t1.elapsed(),
             bytes.len()

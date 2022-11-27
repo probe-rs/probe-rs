@@ -88,7 +88,7 @@ impl SteppingMode {
                         pc_at_error,
                     } => {
                         // Step on target instruction, and then try again.
-                        log::trace!(
+                        tracing::trace!(
                             "Incomplete stepping information @{:#010X}: {}",
                             pc_at_error,
                             message
@@ -100,7 +100,7 @@ impl SteppingMode {
                     other_error => {
                         core_status = core.status()?;
                         program_counter = core.read_core_reg(core.registers().program_counter())?;
-                        log::error!("Error during step ({:?}): {}", self, other_error);
+                        tracing::error!("Error during step ({:?}): {}", self, other_error);
                         return Ok((core_status, program_counter));
                     }
                 },
@@ -109,7 +109,7 @@ impl SteppingMode {
 
         (core_status, program_counter) = match target_address {
             Some(target_address) => {
-                log::debug!(
+                tracing::debug!(
                     "Preparing to step ({:20?}): \n\tfrom: {:?} @ {:#010X} \n\t  to: {:?} @ {:#010X}",
                     self,
                     debug_info
@@ -181,7 +181,7 @@ impl SteppingMode {
                     if let Some(halt_address) =
                         source_statement.get_first_halt_address(program_counter)
                     {
-                        log::debug!(
+                        tracing::debug!(
                             "Found first breakpoint {:#010x} for address: {:#010x}",
                             halt_address,
                             program_counter
@@ -285,17 +285,17 @@ impl SteppingMode {
                         let (core_status, new_pc) = step_to_address(inclusive_range, core)?;
                         if new_pc == current_source_statement.instruction_range.end {
                             // We have halted at the address after the current statement, so we can conclude there was no branching calls in this sequence.
-                            log::debug!("Stepping into next statement, but no branching calls found. Stepped to next available statement.");
+                            tracing::debug!("Stepping into next statement, but no branching calls found. Stepped to next available statement.");
                         } else if new_pc < current_source_statement.instruction_range.end
                             && matches!(core_status, CoreStatus::Halted(HaltReason::Breakpoint(_)))
                         {
                             // We have halted at a PC that is within the current statement, so there must be another breakpoint.
-                            log::debug!(
+                            tracing::debug!(
                                 "Stepping into next statement, but encountered a breakpoint."
                             );
                         } else {
                             // We have reached a location that is not in the current statement range (branch instruction or breakpoint in an interrupt handler).
-                            log::debug!(
+                            tracing::debug!(
                                 "Stepping into next statement at address: {:#010x}.",
                                 new_pc
                             );
@@ -312,7 +312,7 @@ impl SteppingMode {
                 {
                     // We want the first qualifying (PC is in range) function from the back of this list, to access the 'innermost' functions first.
                     if let Some(function) = function_dies.iter().rev().next() {
-                        log::trace!(
+                        tracing::trace!(
                             "Step Out target: Evaluating function {:?}, low_pc={:?}, high_pc={:?}",
                             function.function_name(),
                             function.low_pc,
@@ -338,7 +338,7 @@ impl SteppingMode {
                                         None,
                                     );
                                 } else if let Some(return_address) = return_address {
-                                    log::debug!(
+                                    tracing::debug!(
                                         "Step Out target: non-inline function, stepping over return address: {:#010x}",
                                             return_address
                                     );
@@ -443,7 +443,7 @@ fn step_to_address(
             CoreStatus::Halted(halt_reason) => match halt_reason {
                 HaltReason::Step | HaltReason::Request => continue,
                 HaltReason::Breakpoint(_) => {
-                    log::debug!(
+                    tracing::debug!(
                         "Encountered a breakpoint before the target address ({:#010x}) was reached.",
                         target_address_range.end()
                     );

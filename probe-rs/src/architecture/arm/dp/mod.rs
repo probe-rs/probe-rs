@@ -47,9 +47,9 @@ pub trait DpAccess {
 
 impl<T: DapAccess> DpAccess for T {
     fn read_dp_register<R: DpRegister>(&mut self, dp: DpAddress) -> Result<R, DebugPortError> {
-        log::debug!("Reading DP register {}", R::NAME);
+        tracing::debug!("Reading DP register {}", R::NAME);
         let result = self.read_raw_dp_register(dp, R::ADDRESS)?;
-        log::debug!("Read    DP register {}, value=0x{:08x}", R::NAME, result);
+        tracing::debug!("Read    DP register {}, value=0x{:08x}", R::NAME, result);
         Ok(result.into())
     }
 
@@ -59,7 +59,7 @@ impl<T: DapAccess> DpAccess for T {
         register: R,
     ) -> Result<(), DebugPortError> {
         let value = register.into();
-        log::debug!("Writing DP register {}, value=0x{:08x}", R::NAME, value);
+        tracing::debug!("Writing DP register {}, value=0x{:08x}", R::NAME, value);
         self.write_raw_dp_register(dp, R::ADDRESS, value)?;
         Ok(())
     }

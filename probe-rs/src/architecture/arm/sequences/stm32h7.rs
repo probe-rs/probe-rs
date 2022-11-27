@@ -49,9 +49,9 @@ impl Stm32h7 {
         enable: bool,
     ) -> Result<(), crate::Error> {
         if enable {
-            log::info!("Enabling STM32H7 debug components");
+            tracing::info!("Enabling STM32H7 debug components");
         } else {
-            log::info!("Disabling STM32H7 debug components");
+            tracing::info!("Disabling STM32H7 debug components");
         }
 
         let mut control = dbgmcu::Control::read(memory)?;
@@ -183,7 +183,7 @@ impl ArmDebugSequence for Stm32h7 {
         components: &[CoresightComponent],
         sink: &TraceSink,
     ) -> Result<(), crate::Error> {
-        log::warn!("Enabling tracing for STM32H7");
+        tracing::warn!("Enabling tracing for STM32H7");
 
         // Configure the two trace funnels in the H7 debug system to route trace data to the
         // appropriate destination. The CSTF feeds the TPIU and ETF peripherals.

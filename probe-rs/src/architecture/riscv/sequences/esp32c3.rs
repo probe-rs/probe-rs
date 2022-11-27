@@ -20,7 +20,7 @@ impl RiscvDebugSequence for ESP32C3 {
         &self,
         interface: &mut crate::architecture::riscv::communication_interface::RiscvCommunicationInterface,
     ) -> Result<(), crate::Error> {
-        log::info!("Disabling esp32c3 watchdogs...");
+        tracing::info!("Disabling esp32c3 watchdogs...");
         // disable super wdt
         interface.write_word_32(0x600080B0, 0x8F1D312Au32)?; // write protection off
         let current = interface.read_word_32(0x600080AC)?;

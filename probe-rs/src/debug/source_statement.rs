@@ -106,7 +106,7 @@ impl SourceStatements {
                 pc_at_error: program_counter,
             })
         } else {
-            log::trace!(
+            tracing::trace!(
                 "Source statements for pc={:#010x}\n{:?}",
                 program_counter,
                 source_statements
@@ -263,7 +263,7 @@ fn log_row_eval(
     row: &gimli::LineRow,
     status: &str,
 ) {
-    log::trace!("Sequence row {:#010X}<={:#010X}<{:#010X}: addr={:#010X} stmt={:5}  ep={:5}  es={:5}  line={:04}  col={:05}  f={:02} : {}",
+    tracing::trace!("Sequence row {:#010X}<={:#010X}<{:#010X}: addr={:#010X} stmt={:5}  ep={:5}  es={:5}  line={:04}  col={:05}  f={:02} : {}",
         active_sequence.start,
         pc,
         active_sequence.end,

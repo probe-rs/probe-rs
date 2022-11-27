@@ -134,7 +134,7 @@ fn armv7a_core_start(core: &mut Memory, debug_base: Option<u64>) -> Result<(), c
     let debug_base = debug_base.ok_or_else(|| {
         crate::Error::architecture_specific(ArmDebugSequenceError::DebugBaseNotSpecified)
     })?;
-    log::debug!(
+    tracing::debug!(
         "Starting debug for ARMv7-A core with registers at {:#X}",
         debug_base
     );
@@ -156,7 +156,7 @@ fn armv7a_core_start(core: &mut Memory, debug_base: Option<u64>) -> Result<(), c
     let mut dbgdscr = Dbgdscr(core.read_word_32(address)?);
 
     if dbgdscr.hdbgen() {
-        log::debug!("Core is already in debug mode, no need to enable it again");
+        tracing::debug!("Core is already in debug mode, no need to enable it again");
         return Ok(());
     }
 
@@ -253,7 +253,7 @@ fn armv8a_core_start(
         crate::Error::architecture_specific(ArmDebugSequenceError::CtiBaseNotSpecified)
     })?;
 
-    log::debug!(
+    tracing::debug!(
         "Starting debug for ARMv8-A core with registers at {:#X}",
         debug_base
     );
@@ -293,7 +293,7 @@ fn armv8a_core_start(
     let mut edscr = Edscr(core.read_word_32(address)?);
 
     if edscr.hde() {
-        log::debug!("Core is already in debug mode, no need to enable it again");
+        tracing::debug!("Core is already in debug mode, no need to enable it again");
         return Ok(());
     }
 
@@ -311,7 +311,7 @@ fn cortex_m_core_start(core: &mut Memory) -> Result<(), crate::Error> {
 
     // Note: Manual addition for debugging, not part of the original DebugCoreStart function
     if current_dhcsr.c_debugen() {
-        log::debug!("Core is already in debug mode, no need to enable it again");
+        tracing::debug!("Core is already in debug mode, no need to enable it again");
         return Ok(());
     }
     // -- End addition
@@ -432,6 +432,8 @@ pub trait ArmDebugSequence: Send + Sync {
                 if Pins(interface.swj_pins(n_reset, n_reset, 0)? as u8).nreset() {
                     return Ok(());
                 }
+
+                thread::sleep(Duration::from_millis(100));
             }
 
             Err(DebugProbeError::Timeout.into())
@@ -546,7 +548,7 @@ pub trait ArmDebugSequence: Send + Sync {
 
             let ctrl_reg: Ctrl = interface.read_dp_register(dp)?;
             if !(ctrl_reg.csyspwrupack() && ctrl_reg.cdbgpwrupack()) {
-                log::error!("Debug power request failed");
+                tracing::error!("Debug power request failed");
                 return Err(DapError::TargetPowerUpFailed.into());
             }
 
@@ -703,7 +705,7 @@ pub trait ArmDebugSequence: Send + Sync {
         _default_ap: MemoryAp,
         _permissions: &crate::Permissions,
     ) -> Result<(), crate::Error> {
-        // Empty by default
+        tracing::debug!("debug_device_unlock - empty by default");
         Ok(())
     }
 

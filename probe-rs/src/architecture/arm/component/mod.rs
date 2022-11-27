@@ -279,7 +279,7 @@ pub(crate) fn read_trace_memory(
                 // ITM ATID, see Itm::tx_enable()
                 13 => itm_trace.push(data),
                 0 => (),
-                id => log::warn!("Unexpected trace source ATID {id}: {data}, ignoring"),
+                id => tracing::warn!("Unexpected trace source ATID {id}: {data}, ignoring"),
             }
         }
         id = frame.id();

@@ -65,7 +65,7 @@ impl ProtocolHandler {
 
         let context = Context::new()?;
 
-        log::debug!("Acquired libusb context.");
+        tracing::debug!("Acquired libusb context.");
 
         let device = context
             .devices()?
@@ -97,21 +97,21 @@ impl ProtocolHandler {
 
         let mut device_handle = device.open()?;
 
-        log::debug!("Aquired handle for probe");
+        tracing::debug!("Aquired handle for probe");
 
         let config = device.config_descriptor(USB_CONFIGURATION)?;
 
-        log::debug!("Active config descriptor: {:?}", &config);
+        tracing::debug!("Active config descriptor: {:?}", &config);
 
         let descriptor = device.device_descriptor()?;
 
-        log::debug!("Device descriptor: {:?}", &descriptor);
+        tracing::debug!("Device descriptor: {:?}", &descriptor);
 
         let mut ep_out = None;
         let mut ep_in = None;
 
         for interface in config.interfaces() {
-            log::trace!("Interface {}", interface.number());
+            tracing::trace!("Interface {}", interface.number());
             let descriptor = interface.descriptors().next();
             if let Some(descriptor) = descriptor {
                 if descriptor.class_code() == USB_DEVICE_CLASS
@@ -119,7 +119,7 @@ impl ProtocolHandler {
                     && descriptor.protocol_code() == USB_DEVICE_PROTOCOL
                 {
                     for endpoint in descriptor.endpoint_descriptors() {
-                        log::trace!("Endpoint {}: {}", endpoint.number(), endpoint.address());
+                        tracing::trace!("Endpoint {}: {}", endpoint.number(), endpoint.address());
                         if endpoint.transfer_type() == USB_DEVICE_TRANSFER_TYPE {
                             if endpoint.direction() == Direction::In {
                                 ep_in = Some(endpoint.address());
@@ -132,7 +132,7 @@ impl ProtocolHandler {
             }
 
             if let (Some(ep_in), Some(ep_out)) = (ep_in, ep_out) {
-                log::debug!(
+                tracing::debug!(
                     "Claiming interface {} with IN EP {} and OUT EP {}.",
                     interface.number(),
                     ep_in,
@@ -169,8 +169,8 @@ impl ProtocolHandler {
         // let mut div_max = 1;
 
         let protocol_version = buffer[0];
-        log::debug!("{:?}", &buffer[..20]);
-        log::debug!("Protocol version: {}", protocol_version);
+        tracing::debug!("{:?}", &buffer[..20]);
+        tracing::debug!("Protocol version: {}", protocol_version);
         if protocol_version != JTAG_PROTOCOL_CAPABILITIES_VERSION {
             return Err(ProbeCreationError::ProbeSpecific(
                 "Unknown capabilities descriptor version.".into(),
@@ -190,7 +190,7 @@ impl ProtocolHandler {
                 // div_min = ((buffer[p + 5] as u16) << 8) | buffer[p + 4] as u16;
                 // div_max = ((buffer[p + 7] as u16) << 8) | buffer[p + 6] as u16;
             } else {
-                log::warn!("Unknown capabilities type {:01X?}", typ);
+                tracing::warn!("Unknown capabilities type {:01X?}", typ);
             }
 
             p += length as usize;
@@ -199,7 +199,7 @@ impl ProtocolHandler {
         // TODO:
         // let hw_in_fifo_len = 4;
 
-        log::debug!("Succesfully attached to ESP USB JTAG.");
+        tracing::debug!("Succesfully attached to ESP USB JTAG.");
 
         Ok(Self {
             device_handle,
@@ -220,7 +220,7 @@ impl ProtocolHandler {
         tdi: impl IntoIterator<Item = bool>,
         cap: bool,
     ) -> Result<BitIter, DebugProbeError> {
-        log::debug!("JTAG IO! {} ", cap);
+        tracing::debug!("JTAG IO! {} ", cap);
         for (tms, tdi) in tms.into_iter().zip(tdi.into_iter()) {
             self.push_command(Command::Clock { cap, tdi, tms })?;
             if cap {
@@ -265,7 +265,7 @@ impl ProtocolHandler {
             self.write_stream(command_in_queue, repetitions)?;
         }
 
-        log::debug!("Flushing ...");
+        tracing::debug!("Flushing ...");
 
         // https://github.com/espressif/openocd-esp32/blob/a28f71785066722f49494e0d946fdc56966dcc0d/src/jtag/drivers/esp_usb_jtag.c#L423
         self.add_raw_command(Command::Flush)?;
@@ -290,7 +290,7 @@ impl ProtocolHandler {
     ) -> Result<(), DebugProbeError> {
         let command = command.into();
         let mut repetitions = repetitions;
-        log::trace!("add raw cmd {:?} reps={}", command, repetitions);
+        tracing::trace!("add raw cmd {:?} reps={}", command, repetitions);
 
         // Make sure we send flush commands only once and not repeated (Could make the target unhapy).
         if command == Command::Flush {
@@ -331,7 +331,7 @@ impl ProtocolHandler {
 
     /// Sends the commands stored in the output buffer to the USB EP.
     fn send_buffer(&mut self) -> Result<(), DebugProbeError> {
-        log::trace!("Command Buffer: {:?}", self.output_buffer);
+        tracing::trace!("Command Buffer: {:?}", self.output_buffer);
 
         let commands = self
             .output_buffer
@@ -368,7 +368,7 @@ impl ProtocolHandler {
 
         while bits_read != self.pending_in_bits {
             let count = ((self.pending_in_bits + 7) / 8).min(IN_EP_BUFFER_SIZE);
-            log::trace!("Receiveing {} bytes.", count);
+            tracing::trace!("Receiveing {} bytes.", count);
 
             if count == 0 {
                 return Ok(BitIter::new(&[], 0));
@@ -387,11 +387,11 @@ impl ProtocolHandler {
                         USB_TIMEOUT,
                     )
                     .map_err(|e| {
-                        log::warn!("Something went wrong in read_bulk {:?}", e);
+                        tracing::warn!("Something went wrong in read_bulk {:?}", e);
                         DebugProbeError::Usb(Some(Box::new(e)))
                     })?;
 
-                log::trace!("Read bytes: {} bytes. On try {}", read_bytes, 4 - tries);
+                tracing::trace!("Read bytes: {} bytes. On try {}", read_bytes, 4 - tries);
 
                 if read_bytes != 0 {
                     break;
@@ -411,13 +411,13 @@ impl ProtocolHandler {
                 ));
             }
 
-            log::trace!("Received {} bytes.", count);
+            tracing::trace!("Received {} bytes.", count);
 
             let bits_in_buffer = self.pending_in_bits.min(count * 8);
             bits_read += bits_in_buffer;
         }
 
-        log::trace!("Read: {:?}, length = {}", self.input_buffer, bits_read);
+        tracing::trace!("Read: {:?}, length = {}", self.input_buffer, bits_read);
         self.pending_in_bits -= bits_read;
 
         Ok(BitIter::new(&self.input_buffer, bits_read))
@@ -571,13 +571,13 @@ pub fn list_espjtag_devices() -> Vec<DebugProbeInfo> {
                             // Reading the serial number can fail, e.g. if the driver for the probe
                             // is not installed. In this case we can still list the probe,
                             // just without serial number.
-                            log::debug!(
+                            tracing::debug!(
                                 "Failed to read serial number of device {:04x}:{:04x} : {}",
                                 descriptor.vendor_id(),
                                 descriptor.product_id(),
                                 e
                             );
-                            log::debug!("This might be happening because of a missing driver.");
+                            tracing::debug!("This might be happening because of a missing driver.");
                             None
                         }
                     };
