@@ -39,7 +39,7 @@ pub fn benchmark(common_options: ProbeOptions, options: BenchmarkOptions) -> any
     let protocol_name = probe
         .protocol()
         .map(|p| p.to_string())
-        .unwrap_or("Unknown protocol".to_string());
+        .unwrap_or_else(|| "Unknown protocol".to_string());
 
     let protocol_speed = probe.speed_khz() as i32;
 
