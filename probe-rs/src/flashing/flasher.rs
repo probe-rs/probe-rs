@@ -130,7 +130,7 @@ impl<'session> Flasher<'session> {
         core.write_32(algo.load_address as u64, algo.instructions.as_slice())
             .map_err(FlashError::Core)?;
 
-        let _span = span.exit();
+        drop(span);
 
         let mut data = vec![0; algo.instructions.len()];
         core.read_32(algo.load_address as u64, &mut data)
