@@ -169,6 +169,9 @@ fn main() -> Result<(), &'static str> {
 
         let client = reqwest::blocking::Client::new();
         const BASE_URL: &str = "https://perf.probe.rs/add";
+
+        let timestamp = NaiveDateTime::from_timestamp_opt(since_the_epoch as i64, 0).unwrap();
+
         client
             .post(&if let Some(pr) = matches.pr {
                 format!("{}?pr={}", BASE_URL, pr)
@@ -182,7 +185,7 @@ fn main() -> Result<(), &'static str> {
                 protocol: protocol_name,
                 protocol_speed,
                 commit_hash: commit_name,
-                timestamp: NaiveDateTime::from_timestamp(since_the_epoch as i64, 0),
+                timestamp,
                 kind: "ram".into(),
                 read_speed: read_throughput as i32,
                 write_speed: write_throughput as i32,
@@ -210,7 +213,8 @@ mod timestamp {
         D: Deserializer<'de>,
     {
         let s = i64::deserialize(deserializer)?;
-        Ok(NaiveDateTime::from_timestamp(s, 0))
+
+        Ok(NaiveDateTime::from_timestamp_opt(s, 0).unwrap())
     }
 }
 
