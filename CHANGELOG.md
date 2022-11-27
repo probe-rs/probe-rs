@@ -39,6 +39,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Generate all pack file specified memory regions.
   - Match memory regions to pack file specified core names.
 - `probe_rs_target::chip::Chip` has a new field `pack_file_release` which is populated by `target-gen`.(#1259)
+- Benchmarking code moved from an example to `probe-rs-cli` subcommand (#1296).
 
 ### Fixed
 

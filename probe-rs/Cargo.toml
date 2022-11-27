@@ -74,10 +74,8 @@ probe-rs-target = { workspace = true }
 serde_yaml = "0.9.4"
 
 [dev-dependencies]
-chrono = "0.4.19"
 pretty_env_logger = "0.4.0"
 rand = "0.8.0"
-reqwest = { version = "0.11.0", features = ["blocking", "json"] }
 serde_json = "1.0.47"
 serde = "1"
 clap = { version = "4.0", features = ["derive"] }

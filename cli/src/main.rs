@@ -1,3 +1,4 @@
+mod benchmark;
 mod common;
 mod debugger;
 mod gdb;
@@ -5,6 +6,7 @@ mod info;
 mod run;
 mod trace;
 
+use benchmark::{benchmark, BenchmarkOptions};
 use debugger::CliState;
 
 use probe_rs::{
@@ -185,6 +187,13 @@ enum Cli {
     },
     #[clap(subcommand)]
     Chip(Chip),
+    Benchmark {
+        #[clap(flatten)]
+        common: ProbeOptions,
+
+        #[clap(flatten)]
+        options: BenchmarkOptions,
+    },
 }
 
 #[derive(clap::Parser)]
@@ -309,6 +318,7 @@ fn main() -> Result<()> {
         }
         Cli::Chip(Chip::List) => print_families(io::stdout()).map_err(Into::into),
         Cli::Chip(Chip::Info { name }) => print_chip_info(name, io::stdout()),
+        Cli::Benchmark { common, options } => benchmark(common, options),
     }
 }
 

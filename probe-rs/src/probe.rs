@@ -380,6 +380,13 @@ impl Probe {
         }
     }
 
+    /// Get the currently selected protocol
+    ///
+    /// Depending on the probe, this might not be available.
+    pub fn protocol(&self) -> Option<WireProtocol> {
+        self.inner.active_protocol()
+    }
+
     /// Leave debug mode
     pub fn detach(&mut self) -> Result<(), DebugProbeError> {
         self.attached = false;
