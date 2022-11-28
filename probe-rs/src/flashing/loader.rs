@@ -315,7 +315,7 @@ impl FlashLoader {
 
             if do_chip_erase {
                 tracing::debug!("    Doing chip erase...");
-                flasher.run_erase(|active| active.erase_all())?;
+                flasher.run_erase_all()?;
 
                 if let Some(progress) = options.progress {
                     progress.finished_erasing();

@@ -49,7 +49,7 @@ pub fn erase_all(session: &mut Session) -> Result<(), FlashError> {
 
         if flasher.is_chip_erase_supported() {
             tracing::debug!("     -- chip erase supported, doing it.");
-            flasher.run_erase(|active| active.erase_all())?;
+            flasher.run_erase_all()?;
         } else {
             tracing::debug!("     -- chip erase not supported, erasing by sector.");
 

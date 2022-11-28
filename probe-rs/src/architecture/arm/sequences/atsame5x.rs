@@ -1,7 +1,13 @@
 //! Sequences for ATSAM D5x/E5x target families
 
-use super::ArmDebugSequence;
-use crate::{architecture, DebugProbeError, Error, Memory, Permissions};
+use super::{ArmDebugSequence, DebugEraseSequence};
+use crate::{
+    architecture::{
+        self,
+        arm::{ap::MemoryAp, ApAddress, DpAddress},
+    },
+    DebugProbeError, Error, Memory, Permissions,
+};
 use bitfield::bitfield;
 use std::sync::Arc;
 
@@ -386,5 +392,25 @@ impl ArmDebugSequence for AtSAME5x {
         } else {
             Ok(())
         }
+    }
+
+    fn debug_erase_sequence(&self) -> Option<Arc<dyn DebugEraseSequence>> {
+        Some(Self::create())
+    }
+}
+
+impl DebugEraseSequence for AtSAME5x {
+    fn erase_all(
+        &self,
+        interface: &mut Box<dyn architecture::arm::ArmProbeInterface>,
+    ) -> Result<(), Error> {
+        let mem_ap = MemoryAp::new(ApAddress {
+            dp: DpAddress::Default,
+            ap: 0,
+        });
+
+        let mut memory = interface.memory_interface(mem_ap)?;
+
+        AtSAME5x::erase_all(self, &mut memory, &Permissions::new().allow_erase_all())
     }
 }

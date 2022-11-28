@@ -180,6 +180,21 @@ impl<'session> Flasher<'session> {
         Ok(flasher)
     }
 
+    pub(super) fn run_erase_all(&mut self) -> Result<(), FlashError> {
+        if self.session.has_sequence_erase_all() {
+            self.session
+                .sequence_erase_all()
+                .map_err(|e| FlashError::ChipEraseFailed {
+                    source: Box::new(e),
+                })?;
+            // We need to reload the flasher, since the debug sequence erase
+            // may have invalidated any previously invalid state
+            self.load()
+        } else {
+            self.run_erase(|active| active.erase_all())
+        }
+    }
+
     pub(super) fn run_erase<T, F>(&mut self, f: F) -> Result<T, FlashError>
     where
         F: FnOnce(&mut ActiveFlasher<'_, Erase>) -> Result<T, FlashError> + Sized,
@@ -214,7 +229,7 @@ impl<'session> Flasher<'session> {
     }
 
     pub(super) fn is_chip_erase_supported(&self) -> bool {
-        self.flash_algorithm().pc_erase_all.is_some()
+        self.session.has_sequence_erase_all() || self.flash_algorithm().pc_erase_all.is_some()
     }
 
     /// Program the contents of given `FlashBuilder` to the flash.

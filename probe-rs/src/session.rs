@@ -1,4 +1,4 @@
-use crate::architecture::arm::sequences::DefaultArmSequence;
+use crate::architecture::arm::sequences::{ArmDebugSequence, DefaultArmSequence};
 use crate::architecture::arm::{ApAddress, DpAddress};
 use crate::config::{ChipInfo, MemoryRegion, RegistryError, Target, TargetSelector};
 use crate::core::{Architecture, CoreState, SpecificCoreState};
@@ -15,9 +15,9 @@ use crate::{
     },
     config::DebugSequence,
 };
-use crate::{AttachMethod, Core, CoreType, DebugProbeError, Error, Probe};
+use crate::{AttachMethod, Core, CoreType, DebugProbeError, Error, FakeProbe, Probe};
 use anyhow::anyhow;
-use std::{fmt, time::Duration};
+use std::{fmt, sync::Arc, time::Duration};
 
 /// The `Session` struct represents an active debug session.
 ///
@@ -192,16 +192,7 @@ impl Session {
                     Ok(()) => (),
                     // In case this happens after unlock. Try to re-attach the probe once.
                     Err(crate::Error::Probe(crate::DebugProbeError::ReAttachRequired)) => {
-                        tracing::debug!("Re-attaching to the Probe");
-                        let mut probe = interface.close();
-                        probe.detach()?;
-                        probe.attach_to_unspecified()?;
-
-                        let arm_interface =
-                            probe.try_into_arm_interface().map_err(|(_, err)| err)?;
-                        interface = arm_interface.initialize(sequence_handle.clone())?;
-
-                        tracing::debug!("The probe was re-attached");
+                        Self::reattach_arm_interface(&mut interface, &sequence_handle)?;
                     }
                     Err(e) => return Err(e),
                 }
@@ -461,6 +452,122 @@ impl Session {
         };
 
         Ok(interface)
+    }
+
+    fn reattach_arm_interface(
+        interface: &mut Box<dyn ArmProbeInterface>,
+        debug_sequence: &Arc<dyn ArmDebugSequence>,
+    ) -> Result<(), Error> {
+        use crate::DebugProbe;
+
+        // In order to re-attach we need an owned instance to the interface
+        // but we only have &mut. We can work around that by first creating
+        // an instance of a Dummy and then swapping it out for the real one.
+        // perform the re-attach and then swap it back.
+        let tmp_interface = Box::new(FakeProbe::default())
+            .try_get_arm_interface()
+            .unwrap();
+        let mut tmp_interface = tmp_interface
+            .initialize(DefaultArmSequence::create())
+            .unwrap();
+
+        std::mem::swap(interface, &mut tmp_interface);
+
+        tracing::debug!("Re-attaching Probe");
+        let mut probe = tmp_interface.close();
+        probe.detach()?;
+        probe.attach_to_unspecified()?;
+
+        let new_interface = probe.try_into_arm_interface().map_err(|(_, err)| err)?;
+
+        tmp_interface = new_interface.initialize(debug_sequence.clone())?;
+        // swap it back
+        std::mem::swap(interface, &mut tmp_interface);
+
+        tracing::debug!("Probe re-attached");
+        Ok(())
+    }
+
+    /// Check if the connected device has a debug erase sequence defined
+    pub fn has_sequence_erase_all(&self) -> bool {
+        match &self.target.debug_sequence {
+            DebugSequence::Arm(seq) => seq.debug_erase_sequence().is_some(),
+            DebugSequence::Riscv(_) => false,
+        }
+    }
+
+    /// Erase all flash memory using the Device's Debug Erase Sequence if any
+    ///
+    /// # Returns
+    /// Ok(()) if the device provides a custom erase sequence and it succeeded.
+    ///
+    /// # Errors
+    /// NotImplemented if no custom erase sequence exists
+    /// Err(e) if the custom erase sequence failed
+    pub fn sequence_erase_all(&mut self) -> Result<(), Error> {
+        match &mut self.interface {
+            ArchitectureInterface::Arm(interface) => {
+                let debug_sequence = match &self.target.debug_sequence {
+                    DebugSequence::Arm(seq) => seq.clone(),
+                    DebugSequence::Riscv(_) => {
+                        unreachable!("This should never happen. Please file a bug if it does.")
+                    }
+                };
+
+                if let Some(erase_sequence) = debug_sequence.debug_erase_sequence() {
+                    tracing::info!("Trying Debug Erase Sequence");
+                    let erase_res = erase_sequence.erase_all(interface);
+
+                    match erase_res {
+                        Ok(()) => (),
+                        // In case this happens after unlock. Try to re-attach the probe once.
+                        Err(crate::Error::Probe(crate::DebugProbeError::ReAttachRequired)) => {
+                            Self::reattach_arm_interface(interface, &debug_sequence)?;
+                            // For re-setup debugging on all cores
+                            for i in 0..self.target.cores.len() {
+                                let config = self.target.cores[i].clone();
+                                let arm_core_access_options = match config.core_access_options {
+                                    probe_rs_target::CoreAccessOptions::Arm(opt) => opt,
+                                    probe_rs_target::CoreAccessOptions::Riscv(_) => {
+                                        unreachable!(
+                                    "This should never happen. Please file a bug if it does."
+                                )
+                                    }
+                                };
+
+                                let mem_ap = MemoryAp::new(ApAddress {
+                                    dp: match arm_core_access_options.psel {
+                                        0 => DpAddress::Default,
+                                        x => DpAddress::Multidrop(x),
+                                    },
+                                    ap: arm_core_access_options.ap,
+                                });
+
+                                let mut memory_interface = interface.memory_interface(mem_ap)?;
+
+                                // Enable debug mode
+                                debug_sequence.debug_core_start(
+                                    &mut memory_interface,
+                                    config.core_type,
+                                    arm_core_access_options.debug_base,
+                                    arm_core_access_options.cti_base,
+                                )?;
+                            }
+                        }
+                        Err(e) => return Err(e),
+                    }
+                    tracing::info!("Device Erased Successfully");
+                    Ok(())
+                } else {
+                    Err(Error::Probe(crate::DebugProbeError::NotImplemented(
+                        "Debug Erase Sequence",
+                    )))
+                }
+            }
+            ArchitectureInterface::Riscv(_) => Err(Error::Probe(
+                crate::DebugProbeError::NotImplemented("Debug Erase Sequence"),
+            )),
+        }
     }
 
     /// Reads all the available ARM CoresightComponents of the currently attached target.
