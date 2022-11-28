@@ -6,10 +6,6 @@ on:
   pull_request:
     branches: [ main ]
 
-env:
-  CARGO_TERM_COLOR: always
-  RUSTFLAGS: "--deny warnings"
-
 # NOTE if you add, remove or rename a job you'll need to update the list of
 # jobs in the `ci` step (at the bottom of this file)
 jobs:
