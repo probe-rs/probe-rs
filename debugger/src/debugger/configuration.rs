@@ -82,7 +82,7 @@ impl SessionConfig {
                 match get_absolute_path(self.cwd.clone(), target_core_config.svd_file.as_ref()) {
                     Ok(svd_file) => {
                         if !svd_file.is_file() {
-                            log::error!("SVD file {:?} not found.", svd_file);
+                            tracing::error!("SVD file {:?} not found.", svd_file);
                             None
                         } else {
                             Some(svd_file)
@@ -90,7 +90,7 @@ impl SessionConfig {
                     }
                     Err(error) => {
                         // SVD file is not mandatory.
-                        log::debug!("SVD file not specified: {:?}", &error);
+                        tracing::debug!("SVD file not specified: {:?}", &error);
                         None
                     }
                 };
@@ -108,7 +108,7 @@ impl SessionConfig {
                 } else if let Ok(current_dir) = current_dir() {
                     Some(current_dir)
                 } else {
-                    log::error!("Cannot use current working directory. Please check existence and permissions.");
+                    tracing::error!("Cannot use current working directory. Please check existence and permissions.");
                     None
                 }
             }
@@ -116,7 +116,7 @@ impl SessionConfig {
                 if let Ok(current_dir) = current_dir() {
                     Some(current_dir)
                 } else {
-                    log::error!("Cannot use current working directory. Please check existence and permissions.");
+                    tracing::error!("Cannot use current working directory. Please check existence and permissions.");
                     None
                 }
             }

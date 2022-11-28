@@ -80,7 +80,7 @@ impl<'p> CoreHandle<'p> {
                 });
             }
             Err(_error) => {
-                log::warn!("Failed to initalize RTT. Will try again on the next request... ");
+                tracing::warn!("Failed to initalize RTT. Will try again on the next request... ");
             }
         };
         Ok(())

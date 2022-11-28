@@ -68,7 +68,7 @@ impl<R: Read, W: Write> DapAdapter<R, W> {
             Ok(_) => {}
             Err(error) => {
                 // TODO: Implement catch of errorkind "WouldBlock" and retry
-                log::error!("send_data - body: {:?}", error);
+                tracing::error!("send_data - body: {:?}", error);
                 self.output.flush().ok();
                 return Err(error);
             }
@@ -139,7 +139,7 @@ impl<R: Read, W: Write> DapAdapter<R, W> {
     fn listen_for_request_and_respond(&mut self) -> anyhow::Result<Option<Request>> {
         match self.receive_msg_content() {
             Ok(Some(request)) => {
-                log::debug!("Received request: {:?}", request);
+                tracing::debug!("Received request: {:?}", request);
 
                 // This is the SUCCESS request for new requests from the client.
                 match self.console_log_level {
@@ -163,7 +163,7 @@ impl<R: Read, W: Write> DapAdapter<R, W> {
             }
             Ok(None) => Ok(None),
             Err(e) => {
-                log::warn!("Error while listening to request: {:?}", e);
+                tracing::warn!("Error while listening to request: {:?}", e);
                 self.log_to_console(e.to_string());
                 self.show_message(MessageSeverity::Error, e.to_string());
 
@@ -253,7 +253,7 @@ impl<R: Read, W: Write> ProtocolAdapter for DapAdapter<R, W> {
     }
 
     fn show_message(&mut self, severity: MessageSeverity, message: impl Into<String>) -> bool {
-        log::debug!("show_message");
+        tracing::debug!("show_message");
 
         let event_body = match serde_json::to_value(ShowMessageEventBody {
             severity,
@@ -269,7 +269,7 @@ impl<R: Read, W: Write> ProtocolAdapter for DapAdapter<R, W> {
     }
 
     fn log_to_console<S: Into<String>>(&mut self, message: S) -> bool {
-        log::debug!("log_to_console");
+        tracing::debug!("log_to_console");
         let event_body = match serde_json::to_value(OutputEventBody {
             output: format!("{}\n", message.into()),
             category: Some("console".to_owned()),
@@ -337,13 +337,13 @@ impl<R: Read, W: Write> ProtocolAdapter for DapAdapter<R, W> {
             }
         };
 
-        log::debug!("send_response: {:?}", resp);
+        tracing::debug!("send_response: {:?}", resp);
 
         // Check if we got a request for this response
         if let Some(request_command) = self.pending_requests.remove(&resp.request_seq) {
             assert_eq!(request_command, resp.command);
         } else {
-            log::error!("Trying to send a response to non-existing request! Response {:?} has no pending request", resp);
+            tracing::error!("Trying to send a response to non-existing request! Response {:?} has no pending request", resp);
         }
 
         let encoded_resp = serde_json::to_vec(&resp)?;

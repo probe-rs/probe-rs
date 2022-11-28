@@ -11,6 +11,8 @@ use debugger::debug_entry::{debug, list_connected_devices, list_supported_chips}
 use probe_rs::{
     architecture::arm::ap::AccessPortError, flashing::FileDownloadError, DebugProbeError, Error,
 };
+use std::io::stderr;
+use tracing_subscriber::EnvFilter;
 
 #[derive(Debug, thiserror::Error)]
 pub enum DebuggerError {
@@ -83,8 +85,11 @@ enum CliCommands {
 }
 
 fn main() -> Result<()> {
-    env_logger::Builder::from_default_env()
-        .target(env_logger::Target::Stderr) // Log to Stderr, so that VSCode Debug Extension can intercept the messages and pass them to the VSCode DAP Client
+    tracing_subscriber::fmt::fmt()
+        .compact()
+        .without_time()
+        .with_env_filter(EnvFilter::from_default_env())
+        .with_writer(stderr)
         .init();
 
     let matches = CliCommands::parse();

@@ -10,7 +10,7 @@ authors = ["Matti Virkkunen <mvirkkunen@gmail.com>"]
 repository.workspace = true
 
 [dependencies]
-log = "0.4.8"
+tracing = { version = "0.1.37", features = ["log"] }
 probe-rs = { version = "0.13.0", path = "../probe-rs" }
 scroll = "0.10.1"
 serde = { version = "1", features = ["derive"] }
