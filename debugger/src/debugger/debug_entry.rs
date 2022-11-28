@@ -849,7 +849,7 @@ impl Debugger {
                         ) {
                             Ok(core_peripherals) => Some(core_peripherals),
                             Err(error) => {
-                                log::error!("{:?}", error);
+                                tracing::error!("{:?}", error);
                                 None
                             }
                         };
@@ -984,7 +984,7 @@ pub fn debug(port: Option<u16>, vscode: bool) -> Result<()> {
 
                         let message =
                             format!("{}: ..Starting session from   :{}", &program_name, addr);
-                        log::info!("{}", &message);
+                        tracing::info!("{}", &message);
                         println!("{}", &message);
                         let reader = socket
                             .try_clone()
@@ -997,7 +997,7 @@ pub fn debug(port: Option<u16>, vscode: bool) -> Result<()> {
 
                         match debugger.debug_session(debug_adapter) {
                             Err(error) => {
-                                log::error!("probe-rs-debugger session ended: {}", &error);
+                                tracing::error!("probe-rs-debugger session ended: {}", &error);
                                 println!(
                                     "{} CONSOLE: ....Closing session from  :{}, due to error: {}",
                                     &program_name, addr, error
@@ -1010,7 +1010,7 @@ pub fn debug(port: Option<u16>, vscode: bool) -> Result<()> {
                                 );
                             }
                             Ok(DebuggerStatus::ContinueSession) => {
-                                log::error!("probe-rs-debugger enountered unexpected `DebuggerStatus` in debug() execution. Please report this as a bug.");
+                                tracing::error!("probe-rs-debugger enountered unexpected `DebuggerStatus` in debug() execution. Please report this as a bug.");
                             }
                         }
                         // Terminate this process if it was started by VSCode
@@ -1019,14 +1019,14 @@ pub fn debug(port: Option<u16>, vscode: bool) -> Result<()> {
                         }
                     }
                     Err(error) => {
-                        log::error!("probe-rs-debugger failed to establish a socket connection. Reason: {:?}", error);
+                        tracing::error!("probe-rs-debugger failed to establish a socket connection. Reason: {:?}", error);
                     }
                 }
             }
             println!("{} CONSOLE: DAP Protocol server exiting", &program_name);
         }
         None => {
-            log::error!("Using probe-rs-debugger as a debug server, requires the use of the `--port` option. Please use the `--help` option for additional information");
+            tracing::error!("Using probe-rs-debugger as a debug server, requires the use of the `--port` option. Please use the `--help` option for additional information");
         }
     };
 

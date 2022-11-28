@@ -539,7 +539,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                                 Ok(_) => {}
                                 Err(error) => {
                                     //This will cause the debugger to show the user an error, but not stop the debugger.
-                                    log::error!(
+                                    tracing::error!(
                                         "Failed to re-enable breakpoint {:?} after reset. {}",
                                         breakpoint,
                                         error
@@ -814,7 +814,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         // Always clear existing breakpoints before setting new ones.
         match target_core.clear_breakpoints(BreakpointType::InstructionBreakpoint) {
             Ok(_) => {}
-            Err(error) => log::warn!("Failed to clear instruction breakpoints. {}", error),
+            Err(error) => tracing::warn!("Failed to clear instruction breakpoints. {}", error),
         }
 
         // Set the new (potentially an empty list) breakpoints.
@@ -865,7 +865,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                                     });
                             }
                             None => {
-                                log::debug!("The request `SetInstructionBreakpoints` could not resolve a source location for memory reference: {:#010}", memory_reference);
+                                tracing::debug!("The request `SetInstructionBreakpoints` could not resolve a source location for memory reference: {:#010}", memory_reference);
                             }
                         }
                     }
@@ -970,7 +970,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                             .send_response::<()>(request, Err(DebuggerError::ProbeRs(error)))
                     }
                 };
-                log::debug!(
+                tracing::debug!(
                     "Updating the stack frame data for core #{}",
                     target_core.core.id()
                 );
@@ -1119,7 +1119,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                         let source = if let Some(source_location) = &frame.source_location {
                             get_dap_source(source_location)
                         } else {
-                            log::debug!("No source location present for frame!");
+                            tracing::debug!("No source location present for frame!");
                             None
                         };
 
@@ -1198,7 +1198,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             }
         };
 
-        log::trace!("Getting scopes for frame {}", arguments.frame_id,);
+        tracing::trace!("Getting scopes for frame {}", arguments.frame_id,);
 
         if let Some(stack_frame) = target_core.get_stackframe(arguments.frame_id) {
             dap_scopes.push(Scope {
@@ -1485,7 +1485,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                                 }
                             } else {
                                 // It won't affect the outcome, but log it for completeness.
-                                log::debug!("The request `Disassemble` could not resolve a source location for memory reference: {:#010}", instruction.address());
+                                tracing::debug!("The request `Disassemble` could not resolve a source location for memory reference: {:#010}", instruction.address());
                             }
 
                             // Create the instruction data.
@@ -1732,7 +1732,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                                 frame_base,
                             )?;
                         } else {
-                            log::error!("Could not cache deferred child variables for variable: {}. No register data available.", parent_variable.name);
+                            tracing::error!("Could not cache deferred child variables for variable: {}. No register data available.", parent_variable.name);
                         }
                     }
                 }
@@ -1747,7 +1747,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                             "named" => !variable.is_indexed(),
                             other => {
                                 // This will yield an empty Vec, which will result in a user facing error as well as the log below.
-                                log::error!("Received invalid variable filter: {}", other);
+                                tracing::error!("Received invalid variable filter: {}", other);
                                 false
                             }
                         },

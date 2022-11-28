@@ -85,7 +85,7 @@ impl SessionData {
         if let Some(speed) = config.speed {
             let actual_speed = target_probe.set_speed(speed)?;
             if actual_speed != speed {
-                log::warn!(
+                tracing::warn!(
                     "Protocol speed {} kHz not supported, actual speed is {} kHz",
                     speed,
                     actual_speed
@@ -273,7 +273,7 @@ impl SessionData {
                     }
                 }
             } else {
-                log::debug!(
+                tracing::debug!(
                     "Failed to attach to target core #{}. Cannot poll for RTT data.",
                     core_config.core_index
                 );
