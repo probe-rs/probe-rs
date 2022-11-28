@@ -16,9 +16,6 @@ jobs:
   test:
     strategy:
       matrix:
-        rust:
-          - stable
-          - nightly
         os:
           - ubuntu-latest
           - macOS-latest
@@ -27,11 +24,8 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v2
-      - uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: ${{ matrix.rust }}
-          override: true
+      - name: Use the latest stable release
+        run: rustup update stable && rustup default stable
       - name: Install C libraries for tooling
         if: matrix.os == 'ubuntu-latest'
         run: sudo apt-get update && sudo apt-get install libudev-dev libusb-1.0-0-dev
@@ -43,12 +37,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      - uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: stable
-          override: true
-          components: clippy, rustfmt
+      - name: Use the latest stable release
+        run: rustup update stable && rustup default stable
       - name: Install C libraries for tooling
         run: sudo apt-get update && sudo apt-get install libudev-dev libusb-1.0-0-dev
 
