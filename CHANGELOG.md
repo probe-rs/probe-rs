@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/) and this p
 
 ## [Unreleased]
 
+- [#xxx] Update CI
+
+[#xxx]: https://github.com/knurling-rs/probe-run/pull/xxx
+
 ## [v0.3.5] - 2022-10-07
 
 - [#357] Update to `clap 4.0`
