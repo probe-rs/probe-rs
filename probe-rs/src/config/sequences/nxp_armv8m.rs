@@ -106,11 +106,15 @@ impl ArmDebugSequence for LPC55Sxx {
     ) -> Result<(), ArmError> {
         tracing::info!("debug_port_start");
 
-        let powered_down = self::debug_port_start(interface, dp, Select(0))?;
+        let _powered_down = self::debug_port_start(interface, dp, Select(0))?;
 
-        if powered_down {
-            enable_debug_mailbox(interface, dp)?;
-        }
+        // Per 51.6.2 and 51.6.3 there is no need to issue a debug mailbox
+        // command if we're attaching to a valid target. In fact, running
+        // the debug mailbox _prevents_ this from attaching to a running
+        // target since the debug mailbox is a separate code path.
+        // if _powered_down {
+        //     enable_debug_mailbox(interface, dp)?;
+        // }
 
         Ok(())
     }
