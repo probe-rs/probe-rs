@@ -235,10 +235,7 @@ impl ArmDebugSequence for XMC4000 {
         core.write_word_32(Aircr::ADDRESS, aircr.into())?;
         tracing::debug!("Resetting via AIRCR.SYSRESETREQ");
 
-        // Do not drive the debug pins for a short while
-        // We do not want to clobber the boot mode
-        std::thread::sleep(Duration::from_millis(100));
-
+        // Spin until CoreSight indicates the reset was processed
         let start = Instant::now();
         loop {
             let dhcsr = Dhcsr(core.read_word_32(Dhcsr::ADDRESS)?);
@@ -253,6 +250,41 @@ impl ArmDebugSequence for XMC4000 {
             }
         }
 
+        // Now that we commanded a reset, we've lost access to everything but CoreSight.
+        // XMC4700/XMC4800 reference manual v1.3 § 28-7:
+        //
+        // > For security reasons it is required to prevent a debug access to the processor before
+        // > and while the boot firmware code from ROM (SSW) is being executed. A bit DAPSA, (DAP
+        // > has system access) in the SCU is implemented, allowing the access from CoreSight™ debug
+        // > system to the processor core. The default value of this bit is disabled debug access.
+        // > The register is reset by System Reset. The System Reset disables the debug access each
+        // > time SSW is being executed. At the end of the SSW the DAPSA is enabled always
+        // > (independent of any other register setting or signaling value), to allow debug access
+        // > to the CPU. A tool accessing the SoC during the SSW execution time reads back a zero
+        // > and a write is going to a virtual, none existing address.
+        //
+        // Spin until DAPSA is clear
+        let start = Instant::now();
+        loop {
+            // DAPSA isn't directly accessible because of course it isn't.
+            //
+            // Read the SCU module ID register, which is guaranteed to be nonzero. If DAPSA is set,
+            // we'll read it normally, and we can go on with our lives. If DAPSA is clear, we'll
+            // read a zero.
+            let scu_module_id = core.read_word_32(0x5000_4000)?;
+            if scu_module_id != 0 {
+                tracing::debug!("DAPSA is set");
+                break;
+            } else {
+                tracing::trace!("DAPSA is clear");
+                if start.elapsed() > Duration::from_millis(500) {
+                    tracing::error!("timed out waiting for DAPSA to clear, indicating SSW hang");
+                    return Err(crate::Error::Probe(DebugProbeError::Timeout));
+                }
+            }
+        }
+
+        // If we are intending to halt after reset, spin and wait for that here
         if self
             .halt_after_reset_state
             .lock()
