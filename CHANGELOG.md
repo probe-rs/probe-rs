@@ -25,6 +25,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added Support for Debug Erase Sequences that (if available) are used instead of the normal chip-erase logic
 - Added Support for GD32E50x targets (#1304)
 - Added support for the Infineon XMC4000 family
+- Added support for the Infineon XMC4000 family (#1301)
 
 ### Changed
 
