@@ -32,6 +32,34 @@ struct HaltAfterResetState {
     fpcomp0: u32,
 }
 
+bitfield::bitfield! {
+    /// SCU->STCON startup configuration register, as documented in XMC4700/XMC4800 reference
+    /// manual v1.3 § 11-73.
+    #[derive(Copy,Clone)]
+    pub struct Stcon(u32);
+    impl Debug;
+
+    /// > HW Configuration
+    /// > At PORESET the following values are latched:
+    /// > HWCON.0 = not (TMS)
+    /// > HWCON.1 = TCK
+    /// >
+    /// > 0b00B: Normal mode, JTAG
+    /// > 0b01B: ASC BSL enabled
+    /// > 0b10B: BMI customized boot enabled
+    /// > 0b11B: CAN BSL enabled
+    pub hwcon, _: 1, 0;
+
+    /// > SW Configuration
+    /// > Bit[9:8] is copy of Bit[1:0] after PORESET
+    /// > …
+    /// > Note: Only reset with Power-on Reset
+    pub swcon, set_swcon: 11, 8;
+}
+impl Stcon {
+    const ADDRESS: u64 = 0x50004010;
+}
+
 impl ArmDebugSequence for XMC4000 {
     // We have a weird halt-after-reset sequence. It's described only in prose, not in a CMSIS pack
     // sequence. Per XMC4700/XMC4800 reference manual v1.3 § 28-8:
@@ -76,26 +104,20 @@ impl ArmDebugSequence for XMC4000 {
         // depends on the System Control Unit (SCU) Startup Control (STCON) register, which includes
         // both a software-settable field and a power-on-resettable field. We want a normal boot,
         // because normal boots are sane and reasonable.
-        let stcon = core.read_word_32(0x50004010)?;
-        if stcon & 0x3 != 0 {
-            // HWCON is nonzero, preventing a normal boot, and HWCON is latched at power-on reset
-            //
-            // In principle we can fix this because a) HWCON is connected to the debugger pins and
-            // b) the DEBUG_CM.002 erratum lets us perform power-on resets without disrupting
-            // debugger state (!), but... that's complicated.
-            //
-            // Settle for detecting this condition and producing an error.
-            tracing::error!(
-                "normal boots are impossible without a power on reset: SCU STCON = {:08x}",
-                stcon
-            );
-            return Err(Error::Other(anyhow!(
-                "SCU STCON HWCON must be zero to perform a normal boot"
-            )));
-        }
-        if stcon != 0 {
-            // Ask for a normal boot
-            core.write_word_32(0x50004010, 0)?;
+        //
+        // Read STCON.
+        let stcon = Stcon(core.read_word_32(Stcon::ADDRESS)?);
+
+        // The software-settable SWCON field is authoritative for system resets, per § 27.2.3:
+        //
+        // > HWCON bit field is read only for PORST (Power ON Reset). For every other reset type
+        // > (available in SCU_RSTSTAT) register, the SWCON field is assessed.
+        //
+        // Set it to a normal boot if needed.
+        if stcon.swcon() != 0 {
+            let mut stcon = stcon;
+            stcon.set_swcon(0);
+            core.write_word_32(Stcon::ADDRESS, stcon.0)?;
         }
 
         // § 27.3.1 describes the normal boot mode, which happens after firmware initialization:
