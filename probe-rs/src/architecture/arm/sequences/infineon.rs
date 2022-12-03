@@ -16,22 +16,36 @@ use super::ArmDebugSequence;
 
 /// An Infineon XMC4xxx MCU.
 pub struct XMC4000 {
-    halt_after_reset_state: Mutex<Option<HaltAfterResetState>>,
+    reset_state: Mutex<Option<ResetState>>,
 }
 
 impl XMC4000 {
     /// Create the sequencer for an Infineon XMC4000.
     pub fn create() -> Arc<dyn ArmDebugSequence> {
         Arc::new(Self {
-            halt_after_reset_state: Mutex::new(None),
+            reset_state: Mutex::new(None),
         })
     }
 }
 
-#[derive(Default)]
-struct HaltAfterResetState {
-    fpctrl_enabled: bool,
-    fpcomp0: u32,
+enum ResetState {
+    /// We are commanding a "Warm Reset Halt", per XMC4700/XMC4800 reference manual v1.3 § 28.4.2.
+    ///
+    /// This variant contains the state we clobbered while setting a breakpoint to halt on the jump
+    /// to user code.
+    Warm { fpctrl_enabled: bool, fpcomp0: u32 },
+    /// We are commanding a "Cold Reset Halt", per XMC4700/XMC4800 reference manual v1.3 § 28.4.2.
+    ///
+    /// This variant has no state to track.
+    Cold { tssw_start_at: Instant },
+}
+impl Default for ResetState {
+    fn default() -> Self {
+        ResetState::Warm {
+            fpctrl_enabled: false,
+            fpcomp0: 0,
+        }
+    }
 }
 
 bitfield::bitfield! {
@@ -86,10 +100,53 @@ impl ArmDebugSequence for XMC4000 {
     fn reset_catch_set(
         &self,
         core: &mut Memory,
-        _core_type: probe_rs_target::CoreType,
-        _debug_base: Option<u64>,
+        core_type: probe_rs_target::CoreType,
+        debug_base: Option<u64>,
     ) -> Result<(), Error> {
         tracing::trace!("performing XMC4000 ResetCatchSet");
+
+        // Did we just come out of a cold reset?
+        if let Some(tssw_start_at) = self
+            .reset_state
+            .lock()
+            .map(|v| match v.as_ref() {
+                Some(ResetState::Cold { tssw_start_at }) => Some(*tssw_start_at),
+                _ => None,
+            })
+            .unwrap()
+        {
+            // The core will halt itself after SSW execution _if_ we connected fast enough
+            // Attempt to determine how much time passed since the system software started running
+            let tssw_elapsed = tssw_start_at.elapsed();
+            if tssw_elapsed > Duration::from_micros(2_500) {
+                // We might have missed the window
+                tracing::warn!(
+                    "{:?} has elapsed since power on reset, exceeding typical tSSW of 2.5ms",
+                    tssw_elapsed
+                );
+            }
+
+            // See if we halted
+            match spin_until_core_is_halted(core, Duration::from_millis(3)) {
+                Err(Error::Probe(DebugProbeError::Timeout)) => {
+                    // We missed the boat
+                    tracing::info!("Core did not halt after cold boot; performing a warm reset");
+
+                    // Clear our cold boot status, since we failed
+                    self.reset_state.lock().map(|mut s| s.take()).unwrap();
+
+                    // Perform a warm reset
+                    self.reset_catch_set(core, core_type, debug_base)?;
+                    self.reset_system(core, core_type, debug_base)?;
+                }
+                Err(e) => return Err(e),
+                Ok(()) => {
+                    // We halted after cold reset, which is what our caller wanted
+                    // Job done
+                    return Ok(());
+                }
+            }
+        }
 
         // We need to find the "first instruction of the application code". The XMC4xxx system
         // software ("SSW") has a vector table at the start of boot ROM. XMC4700/XMC4800 reference
@@ -136,15 +193,17 @@ impl ArmDebugSequence for XMC4000 {
         // This is also why we have to use a breakpoint instead of trapping the reset vector. The
         // application's entrypoint is a normal jump from the firmware, not an exception dispatched
         // to the reset vector.
-        let application_entry = core.read_word_32(0x0C000004)? + 1;
+        let application_entry = core.read_word_32(0x0C000004)? - 1;
 
         // Read FP state so we can restore it later
         let fp_ctrl = FpCtrl(core.read_word_32(FpCtrl::ADDRESS)?);
         let fpcomp0 = core.read_word_32(FpRev1CompX::ADDRESS)?;
-        self.halt_after_reset_state
+
+        // Indicate we're in the midst of a warm reset
+        self.reset_state
             .lock()
             .map(|mut m| {
-                m.replace(HaltAfterResetState {
+                m.replace(ResetState::Warm {
                     fpctrl_enabled: fp_ctrl.enable(),
                     fpcomp0,
                 })
@@ -185,20 +244,30 @@ impl ArmDebugSequence for XMC4000 {
         tracing::trace!("performing XMC4000 ResetCatchClear");
 
         // Grab the prior breakpoint state
-        let original_state = self
-            .halt_after_reset_state
+        let reset_state = self
+            .reset_state
             .lock()
             .map(|mut m| m.take().unwrap_or_default())
             .unwrap();
 
-        // Put FPCTRL back
-        let mut fpctrl = FpCtrl::from(0);
-        fpctrl.set_key(true);
-        fpctrl.set_enable(original_state.fpctrl_enabled);
-        core.write_word_32(FpCtrl::ADDRESS, fpctrl.into())?;
+        match reset_state {
+            ResetState::Warm {
+                fpctrl_enabled,
+                fpcomp0,
+            } => {
+                // Put FPCTRL back
+                let mut fpctrl = FpCtrl::from(0);
+                fpctrl.set_key(true);
+                fpctrl.set_enable(fpctrl_enabled);
+                core.write_word_32(FpCtrl::ADDRESS, fpctrl.into())?;
 
-        // Put FPCOMP0 back
-        core.write_word_32(FpRev1CompX::ADDRESS, original_state.fpcomp0)?;
+                // Put FPCOMP0 back
+                core.write_word_32(FpRev1CompX::ADDRESS, fpcomp0)?;
+            }
+            ResetState::Cold { .. } => {
+                // No op
+            }
+        }
 
         Ok(())
     }
@@ -263,47 +332,14 @@ impl ArmDebugSequence for XMC4000 {
         // > to the CPU. A tool accessing the SoC during the SSW execution time reads back a zero
         // > and a write is going to a virtual, none existing address.
         //
-        // Spin until DAPSA is clear
-        let start = Instant::now();
-        loop {
-            // DAPSA isn't directly accessible because of course it isn't.
-            //
-            // Read the SCU module ID register, which is guaranteed to be nonzero. If DAPSA is set,
-            // we'll read it normally, and we can go on with our lives. If DAPSA is clear, we'll
-            // read a zero.
-            let scu_module_id = core.read_word_32(0x5000_4000)?;
-            if scu_module_id != 0 {
-                tracing::debug!("DAPSA is set");
-                break;
-            } else {
-                tracing::trace!("DAPSA is clear");
-                if start.elapsed() > Duration::from_millis(500) {
-                    tracing::error!("timed out waiting for DAPSA to clear, indicating SSW hang");
-                    return Err(crate::Error::Probe(DebugProbeError::Timeout));
-                }
-            }
-        }
+        spin_until_dapsa_is_clear(core)?;
 
         // If we are intending to halt after reset, spin and wait for that here
-        if self
-            .halt_after_reset_state
-            .lock()
-            .map(|v| v.is_some())
-            .unwrap()
-        {
+        if self.reset_state.lock().map(|v| v.is_some()).unwrap() {
             tracing::debug!("Waiting for XMC4000 to halt after reset");
             // We're doing a halt-after-reset
             // Wait for the core to halt
-            loop {
-                let dhcsr = Dhcsr(core.read_word_32(Dhcsr::ADDRESS)?);
-                if dhcsr.s_halt() {
-                    tracing::debug!("Halted after reset");
-                    break;
-                } else if start.elapsed() > Duration::from_millis(1000) {
-                    tracing::error!("XMC4000 did not halt after reset");
-                    return Err(crate::Error::Probe(DebugProbeError::Timeout));
-                }
-            }
+            spin_until_core_is_halted(core, Duration::from_millis(1000))?;
         } else {
             tracing::debug!("not performing a halt-after-reset");
         }
@@ -330,7 +366,48 @@ impl ArmDebugSequence for XMC4000 {
         pin_output.set_swclk_tck(false);
         pin_output.set_swdio_tms(true);
 
-        let _ = interface.swj_pins(pin_output.0 as u32, pin_select.0 as u32, 0)?;
+        loop {
+            match interface.swj_pins(pin_output.0 as u32, pin_select.0 as u32, 0) {
+                Err(DebugProbeError::CommandNotSupportedByProbe("swj_pins"))
+                    if pin_select.swdio_tms() =>
+                {
+                    // J-Link probes return this error when we try to set pins besides nRST
+                    // Settle for resetting, but warn the user that HWCON is uncontrolled
+                    tracing::debug!("swj_pins(nRST|TCK|TMS) unsupported by probe; falling back to swj_pins(nRST)");
+                    tracing::warn!(
+                        "This probe cannot manipulate HWCON, so the boot mode after power on reset cannot be controlled"
+                    );
+                    pin_select = Pins(0);
+                    pin_select.set_nreset(true);
+                }
+                Err(other) => return Err(other.into()),
+                Ok(_) => break,
+            }
+        }
+
+        // When we return, the caller will to attach the probe and set DEBUGEN. XMC4000 needs that
+        // to happen while the SSW is booting, _after_ releasing nRST. This means we need to
+        // deassert nRST here rather than waiting for ResetHardwareDeassert.
+        //
+        // Wait a moment for the reset signal to settle.
+        thread::sleep(Duration::from_millis(100));
+
+        // Indicate to ourselves that we're doing a cold reset, and that the system software began
+        // executing now
+        self.reset_state
+            .lock()
+            .map(|mut s| {
+                s.replace(ResetState::Cold {
+                    tssw_start_at: Instant::now(),
+                })
+            })
+            .unwrap();
+
+        // Deassert nRST
+        pin_output.set_nreset(true);
+        interface.swj_pins(pin_output.0 as u32, pin_select.0 as u32, 0)?;
+
+        // Race! :(
 
         Ok(())
     }
@@ -338,46 +415,48 @@ impl ArmDebugSequence for XMC4000 {
     fn reset_hardware_deassert(&self, memory: &mut Memory) -> Result<(), Error> {
         tracing::trace!("performing XMC4000 ResetHardwareDeassert");
 
-        use crate::architecture::arm::Pins;
-        let interface = memory.get_arm_probe();
+        // We already deasserted nRST in ResetHardwareAssert, because that's how Cold Reset Halts
+        // work on this platform.
 
-        // As above, we want to drive nRST, TCK, and TMS
-        let mut pin_select = Pins(0);
-        pin_select.set_nreset(true);
-        pin_select.set_swclk_tck(true);
-        pin_select.set_swdio_tms(true);
-
-        // Now want to drive nRST high to bring the chip out of reset
-        let mut pin_values = Pins(0);
-        pin_values.set_nreset(true);
-        // Continue driving HWCON = 0.
-        pin_values.set_swclk_tck(false);
-        pin_values.set_swdio_tms(true);
-
-        // Release nRST, and see if our probe reports the status of the pinss
-        let can_read_pins =
-            interface.swj_pins(pin_values.0 as u32, pin_select.0 as u32, 0)? != 0xffff_ffff;
-
-        if can_read_pins {
-            // Wait until nRST goes high
-            let start = Instant::now();
-            while start.elapsed() < Duration::from_secs(1) {
-                if Pins(interface.swj_pins(pin_values.0 as u32, pin_select.0 as u32, 0)? as u8)
-                    .nreset()
-                {
-                    break;
-                }
-
-                thread::sleep(Duration::from_millis(100));
-            }
-
-            tracing::error!("nRST did not go high despite driving it high");
-            return Err(DebugProbeError::Timeout.into());
-        } else {
-            // Wait a reasonable amount of time
-            thread::sleep(Duration::from_millis(100));
-        }
+        // We should however wait until the SSW is ready.
+        spin_until_dapsa_is_clear(memory)?;
 
         Ok(())
+    }
+}
+
+fn spin_until_core_is_halted(core: &mut Memory, timeout: Duration) -> Result<(), Error> {
+    let start = Instant::now();
+    loop {
+        let dhcsr = Dhcsr(core.read_word_32(Dhcsr::ADDRESS)?);
+        if dhcsr.s_halt() {
+            tracing::debug!("Halted after reset");
+            return Ok(());
+        } else if start.elapsed() > timeout {
+            tracing::error!("XMC4000 did not halt after reset");
+            return Err(crate::Error::Probe(DebugProbeError::Timeout));
+        }
+    }
+}
+
+fn spin_until_dapsa_is_clear(core: &mut Memory) -> Result<(), Error> {
+    let start = Instant::now();
+    loop {
+        // DAPSA isn't directly accessible because of course it isn't.
+        //
+        // Read the SCU module ID register, which is guaranteed to be nonzero. If DAPSA is set,
+        // we'll read it normally, and we can go on with our lives. If DAPSA is clear, we'll
+        // read a zero.
+        let scu_module_id = core.read_word_32(0x5000_4000)?;
+        if scu_module_id != 0 {
+            tracing::debug!("DAPSA is set");
+            break Ok(());
+        } else {
+            tracing::trace!("DAPSA is clear");
+            if start.elapsed() > Duration::from_millis(500) {
+                tracing::error!("timed out waiting for DAPSA to clear, indicating SSW hang");
+                break Err(Error::Probe(DebugProbeError::Timeout));
+            }
+        }
     }
 }
