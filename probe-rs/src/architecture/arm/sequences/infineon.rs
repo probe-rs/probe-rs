@@ -14,7 +14,7 @@ use super::ArmDebugSequence;
 
 /// An Infineon XMC4xxx MCU.
 pub struct XMC4000 {
-    halt_after_reset_state: Mutex<Option<(bool, u32)>>,
+    halt_after_reset_state: Mutex<Option<HaltAfterResetState>>,
 }
 
 impl XMC4000 {
@@ -24,6 +24,12 @@ impl XMC4000 {
             halt_after_reset_state: Mutex::new(None),
         })
     }
+}
+
+#[derive(Default)]
+struct HaltAfterResetState {
+    fpctrl_enabled: bool,
+    fpcomp0: u32,
 }
 
 impl ArmDebugSequence for XMC4000 {
@@ -108,15 +114,17 @@ impl ArmDebugSequence for XMC4000 {
         // to the reset vector.
         let application_entry = core.read_word_32(0x0C000004)? + 1;
 
-        // Read FPCTRL
+        // Read FP state so we can restore it later
         let fp_ctrl = FpCtrl(core.read_word_32(FpCtrl::ADDRESS)?);
-        let enabled = fp_ctrl.enable();
-
-        // Read FPCOMP0 so we can restore it later
-        let value = core.read_word_32(FpRev1CompX::ADDRESS)?;
+        let fpcomp0 = core.read_word_32(FpRev1CompX::ADDRESS)?;
         self.halt_after_reset_state
             .lock()
-            .map(|mut m| m.replace((enabled, value)))
+            .map(|mut m| {
+                m.replace(HaltAfterResetState {
+                    fpctrl_enabled: fp_ctrl.enable(),
+                    fpcomp0,
+                })
+            })
             .unwrap();
 
         // Enable FP
@@ -153,20 +161,20 @@ impl ArmDebugSequence for XMC4000 {
         tracing::trace!("performing XMC4000 ResetCatchClear");
 
         // Grab the prior breakpoint state
-        let (enabled, previous_breakpoint) = self
+        let original_state = self
             .halt_after_reset_state
             .lock()
-            .map(|mut m| m.take().unwrap_or((false, 0)))
+            .map(|mut m| m.take().unwrap_or_default())
             .unwrap();
 
         // Put FPCTRL back
         let mut fpctrl = FpCtrl::from(0);
         fpctrl.set_key(true);
-        fpctrl.set_enable(enabled);
+        fpctrl.set_enable(original_state.fpctrl_enabled);
         core.write_word_32(FpCtrl::ADDRESS, fpctrl.into())?;
 
         // Put FPCOMP0 back
-        core.write_word_32(FpRev1CompX::ADDRESS, previous_breakpoint)?;
+        core.write_word_32(FpRev1CompX::ADDRESS, original_state.fpcomp0)?;
 
         Ok(())
     }
