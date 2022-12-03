@@ -4,8 +4,10 @@ use crate::architecture::arm::armv7m::{Aircr, Dhcsr, FpCtrl, FpRev1CompX, FpRev2
 use anyhow::anyhow;
 use std::sync::Arc;
 use std::sync::Mutex;
+use std::thread;
 use std::time::{Duration, Instant};
 
+use crate::architecture::arm::communication_interface::DapProbe;
 use crate::Error;
 use crate::Memory;
 use crate::{DebugProbeError, MemoryMappedRegister};
@@ -272,6 +274,76 @@ impl ArmDebugSequence for XMC4000 {
             }
         } else {
             tracing::debug!("not performing a halt-after-reset");
+        }
+
+        Ok(())
+    }
+
+    fn reset_hardware_assert(&self, interface: &mut dyn DapProbe) -> Result<(), crate::Error> {
+        tracing::trace!("performing XMC4000 ResetHardwareAssert");
+
+        use crate::architecture::arm::Pins;
+
+        // We want to drive nRST, TCK, and TMS
+        let mut pin_select = Pins(0);
+        pin_select.set_nreset(true);
+        pin_select.set_swclk_tck(true);
+        pin_select.set_swdio_tms(true);
+
+        // We want to drive nRST low to command the reset
+        let mut pin_output = Pins(0);
+        pin_output.set_nreset(false);
+        // HWCON is latched at power-on reset to be [TCK, !TMS], and we want HWCON to be zero, so
+        // we want to drive TCK low and TMS high.
+        pin_output.set_swclk_tck(false);
+        pin_output.set_swdio_tms(true);
+
+        let _ = interface.swj_pins(pin_output.0 as u32, pin_select.0 as u32, 0)?;
+
+        Ok(())
+    }
+
+    fn reset_hardware_deassert(&self, memory: &mut Memory) -> Result<(), Error> {
+        tracing::trace!("performing XMC4000 ResetHardwareDeassert");
+
+        use crate::architecture::arm::Pins;
+        let interface = memory.get_arm_probe();
+
+        // As above, we want to drive nRST, TCK, and TMS
+        let mut pin_select = Pins(0);
+        pin_select.set_nreset(true);
+        pin_select.set_swclk_tck(true);
+        pin_select.set_swdio_tms(true);
+
+        // Now want to drive nRST high to bring the chip out of reset
+        let mut pin_values = Pins(0);
+        pin_values.set_nreset(true);
+        // Continue driving HWCON = 0.
+        pin_values.set_swclk_tck(false);
+        pin_values.set_swdio_tms(true);
+
+        // Release nRST, and see if our probe reports the status of the pinss
+        let can_read_pins =
+            interface.swj_pins(pin_values.0 as u32, pin_select.0 as u32, 0)? != 0xffff_ffff;
+
+        if can_read_pins {
+            // Wait until nRST goes high
+            let start = Instant::now();
+            while start.elapsed() < Duration::from_secs(1) {
+                if Pins(interface.swj_pins(pin_values.0 as u32, pin_select.0 as u32, 0)? as u8)
+                    .nreset()
+                {
+                    break;
+                }
+
+                thread::sleep(Duration::from_millis(100));
+            }
+
+            tracing::error!("nRST did not go high despite driving it high");
+            return Err(DebugProbeError::Timeout.into());
+        } else {
+            // Wait a reasonable amount of time
+            thread::sleep(Duration::from_millis(100));
         }
 
         Ok(())
