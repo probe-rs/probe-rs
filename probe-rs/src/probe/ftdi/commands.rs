@@ -1,6 +1,7 @@
 use std::io;
 
 use bitvec::{order::Lsb0, prelude::BitVec, slice::BitSlice};
+use ftdi_mpsse::*;
 
 use crate::{probe::CommandResult, DebugProbeError};
 
@@ -247,24 +248,31 @@ impl ShiftTmsCommand {
 
 impl JtagCommand for ShiftTmsCommand {
     fn add_bytes(&mut self, buffer: &mut Vec<u8>) {
-        let mut command = vec![];
+        let mut command = MpsseCmdBuilder::new();
 
+        // Clock Data to TMS pin, no read.
+        //
+        // Can only clock 7 TMS bits at a time, as 8th bit reserved for TDI output.
+        // However, this is never called where we transfer TDI data at same time,
+        // so TDI arg always false in clock_tms_out()
+        //
+        // See https://www.ftdichip.com/Support/Documents/AppNotes/AN_108_Command_Processor_for_MPSSE_and_MCU_Host_Bus_Emulation_Modes.pdf
+        // section 3.5
         let mut bits = self.bits;
         let mut data: &[u8] = &self.data;
         while bits > 0 {
             if bits >= 8 {
-                // 0x4b = Clock Data to TMS pin (no read)
-                // see https://www.ftdichip.com/Support/Documents/AppNotes/AN_108_Command_Processor_for_MPSSE_and_MCU_Host_Bus_Emulation_Modes.pdf
-                command.extend_from_slice(&[0x4b, 0x07, data[0]]);
+                command = command.clock_tms_out(ClockTMSOut::NegEdge, data[0], false, 7);
                 data = &data[1..];
                 bits -= 8;
             } else {
-                command.extend_from_slice(&[0x4b, (bits - 1) as u8, data[0]]);
+                command =
+                    command.clock_tms_out(ClockTMSOut::NegEdge, data[0], false, (bits - 1) as u8);
                 bits = 0;
             }
         }
 
-        buffer.extend_from_slice(&command);
+        buffer.extend_from_slice(command.as_slice());
     }
 
     fn bytes_to_read(&self) -> usize {
@@ -293,7 +301,7 @@ impl JtagCommand for ShiftTdiCommand {
         assert!(self.bits > 0);
         assert!((self.bits + 7) / 8 <= self.data.len());
 
-        let mut command = vec![];
+        let mut command = MpsseCmdBuilder::new();
         let mut bits = self.bits;
         let mut data: &[u8] = &self.data;
 
@@ -301,29 +309,29 @@ impl JtagCommand for ShiftTdiCommand {
         if full_bytes > 0 {
             assert!(full_bytes <= 65536);
 
-            command.extend_from_slice(&[0x19]);
-            let n: u16 = (full_bytes - 1) as u16;
-            command.extend_from_slice(&n.to_le_bytes());
-            command.extend_from_slice(&data[..full_bytes]);
+            command = command.clock_data_out(ClockDataOut::LsbNeg, &data[..full_bytes]);
 
             bits -= full_bytes * 8;
             data = &data[full_bytes..];
         }
         assert!(bits <= 8);
 
+        // Leftover data less than full byte
         if bits > 0 {
             let byte = data[0];
             if bits > 1 {
                 let n = (bits - 2) as u8;
-                command.extend_from_slice(&[0x1b, n, byte]);
+                command = command.clock_bits_out(ClockBitsOut::LsbNeg, byte, n);
             }
 
+            // Use TMS command to clock out last bit of TDI, does not clock any TMS out (length is 0)
+            // In contrast to ClockTMSBitsOut commands, ClockTMS also reads TDO
             let last_bit = (byte >> (bits - 1)) & 0x01;
-            let tms_byte = 0x01 | (last_bit << 7);
-            command.extend_from_slice(&[0x4b, 0x00, tms_byte]);
+            let tms_byte = 0x01 | (last_bit << 7); // Not sure why we or w/ 0x01 (only set bit in TMS component) if length is 0?
+            command = command.clock_tms_out(ClockTMSOut::NegEdge, tms_byte, true, 0);
         }
 
-        buffer.extend_from_slice(&command);
+        buffer.extend_from_slice(command.as_slice());
     }
 
     fn bytes_to_read(&self) -> usize {
@@ -358,7 +366,7 @@ impl JtagCommand for TransferTdiCommand {
         assert!(self.bits > 0);
         assert!((self.bits + 7) / 8 <= self.data.len());
 
-        let mut command = vec![];
+        let mut command = MpsseCmdBuilder::new();
 
         let mut bits = self.bits;
         let mut data: &[u8] = &self.data;
@@ -367,10 +375,7 @@ impl JtagCommand for TransferTdiCommand {
         if full_bytes > 0 {
             assert!(full_bytes <= 65536);
 
-            command.extend_from_slice(&[0x39]);
-            let n: u16 = (full_bytes - 1) as u16;
-            command.extend_from_slice(&n.to_le_bytes());
-            command.extend_from_slice(&data[..full_bytes]);
+            command = command.clock_data(ClockData::LsbPosIn, &data[..full_bytes]);
 
             bits -= full_bytes * 8;
             data = &data[full_bytes..];
@@ -380,14 +385,16 @@ impl JtagCommand for TransferTdiCommand {
         let byte = data[0];
         if bits > 1 {
             let n = (bits - 2) as u8;
-            command.extend_from_slice(&[0x3b, n, byte]);
+            command = command.clock_bits(ClockBits::LsbPosIn, byte, n);
         }
 
+        // Use TMS command to clock out last bit of TDI, does not clock any TMS out (length is 0)
+        // In contrast to ClockTMSBitsOut commands, ClockTMS also reads TDO
         let last_bit = (byte >> (bits - 1)) & 0x01;
-        let tms_byte = 0x01 | (last_bit << 7);
-        command.extend_from_slice(&[0x6b, 0x00, tms_byte]);
+        let tms_byte = 0x01 | (last_bit << 7); // Not sure why we or w/ 0x01 (only set bit in TMS component) if length is 0?
+        command = command.clock_tms(ClockTMS::NegTMSPosTDO, tms_byte, true, 0);
 
-        buffer.extend_from_slice(&command);
+        buffer.extend_from_slice(command.as_slice());
 
         let mut expect_bytes = full_bytes + 1;
         if bits > 1 {
