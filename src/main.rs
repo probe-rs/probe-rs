@@ -378,7 +378,7 @@ fn location_info(
     locations
         .map(|locations| &locations[&frame.index()])
         .map(|location| {
-            let path = if let Ok(relpath) = location.file.strip_prefix(&current_dir) {
+            let path = if let Ok(relpath) = location.file.strip_prefix(current_dir) {
                 relpath.display().to_string()
             } else {
                 let dep_path = dep::Path::from_std_path(&location.file);

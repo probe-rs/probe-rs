@@ -124,7 +124,7 @@ impl Subroutine {
                         .and_then(|file| loc.line.map(|line| (file, line, loc.column)))
                 }) {
                 let fullpath = Path::new(file);
-                let (path, is_local) = if let Ok(relpath) = fullpath.strip_prefix(&current_dir) {
+                let (path, is_local) = if let Ok(relpath) = fullpath.strip_prefix(current_dir) {
                     (relpath, true)
                 } else {
                     (fullpath, false)

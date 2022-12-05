@@ -68,7 +68,7 @@ fn run_command(args: &str) -> (os_pipe::PipeReader, std::process::Child) {
     let writer_clone = writer.try_clone().unwrap();
 
     let handle = Command::new("cargo")
-        .args(cmd.split(" "))
+        .args(cmd.split(' '))
         // capture stderr and stdout while preserving line order
         .stdout(writer)
         .stderr(writer_clone)
