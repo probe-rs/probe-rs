@@ -238,8 +238,12 @@ impl Registry {
         let (family, chip) = {
             match chip_info {
                 ChipInfo::Arm(chip_info) => {
-                    // Try get the corresponding chip.
+                    if let Some(target) = chip_info.target_name {
+                        // Already identified
+                        return self.get_target_by_name(target);
+                    }
 
+                    // Try get the corresponding chip.
                     let families = self.families.iter().filter(|f| {
                         f.manufacturer
                             .map(|m| m == chip_info.manufacturer)

@@ -678,7 +678,7 @@ impl DapAccess for ArmCommunicationInterface<Initialized> {
 /// Information about the chip target we are currently attached to.
 /// This can be used for discovery, tho, for now it does not work optimally,
 /// as some manufacturers (e.g. ST Microelectronics) violate the spec and thus need special discovery procedures.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ArmChipInfo {
     /// The JEP106 code of the manufacturer of this chip target.
     pub manufacturer: JEP106Code,
@@ -687,6 +687,26 @@ pub struct ArmChipInfo {
     ///
     /// Consider this not unique when working with targets!
     pub part: u16,
+    /// A specific target, if one could be autodetected using manufacturer-specific means.
+    pub target_name: Option<&'static str>,
+}
+
+impl ArmChipInfo {
+    pub(crate) fn autodetect(
+        manufacturer: JEP106Code,
+        part: u16,
+        memory: &mut Memory,
+    ) -> Result<Self, crate::Error> {
+        use crate::architecture::arm::sequences::*;
+        Ok(Self {
+            manufacturer,
+            part,
+            target_name: match manufacturer {
+                infineon::MANUFACTURER => infineon::autodetect(part, memory)?,
+                _ => None,
+            },
+        })
+    }
 }
 
 impl ArmCommunicationInterface<Initialized> {
@@ -730,10 +750,11 @@ impl ArmCommunicationInterface<Initialized> {
 
                 if let Component::Class1RomTable(component_id, _) = component {
                     if let Some(jep106) = component_id.peripheral_id().jep106() {
-                        return Ok(Some(ArmChipInfo {
-                            manufacturer: jep106,
-                            part: component_id.peripheral_id().part(),
-                        }));
+                        return Ok(Some(ArmChipInfo::autodetect(
+                            jep106,
+                            component_id.peripheral_id().part(),
+                            &mut memory,
+                        )?));
                     }
                 }
             }
