@@ -23,6 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added support for W7500 target
 - Added an optional `stack_size` configuration to flash algorithms to control the stack size (#1260)
 - Added Support for Debug Erase Sequences that (if available) are used instead of the normal chip-erase logic
+- Added Support for GD32E50x targets (#1304)
 
 ### Changed
 
