@@ -158,26 +158,10 @@ fn show_arm_info(interface: &mut Box<dyn ArmProbeInterface>) -> Result<()> {
             }) => {
                 let mut ap_nodes = Tree::new(format!("{} MemoryAP", address.ap));
 
-                let access_port: MemoryAp = access_port.into();
-
-                let base_address = *debug_base_address;
-
-                let mut memory = interface.memory_interface(access_port)?;
-
-                // Enable
-                // - Data Watchpoint and Trace (DWT)
-                // - Instrumentation Trace Macrocell (ITM)
-                // - Embedded Trace Macrocell (ETM)
-                // - Trace Port Interface Unit (TPIU).
-                let mut demcr = Demcr(memory.read_word_32(Demcr::ADDRESS)?);
-                demcr.set_dwtena(true);
-                memory.write_word_32(Demcr::ADDRESS, demcr.into())?;
-
-                let component = Component::try_parse(&mut memory, base_address)?;
-
-                let component_tree = coresight_component_tree(&component)?;
-
-                ap_nodes.push(component_tree);
+                match handle_memory_ap(access_port.into(), *debug_base_address, interface) {
+                    Ok(component_tree) => ap_nodes.push(component_tree),
+                    Err(e) => ap_nodes.push(format!("Error during access: {}", e)),
+                };
 
                 tree.push(ap_nodes);
             }
@@ -212,6 +196,20 @@ fn show_arm_info(interface: &mut Box<dyn ArmProbeInterface>) -> Result<()> {
     println!("{}", tree);
 
     Ok(())
+}
+
+fn handle_memory_ap(
+    access_port: MemoryAp,
+    base_address: u64,
+    interface: &mut Box<dyn ArmProbeInterface>,
+) -> Result<Tree<String>, anyhow::Error> {
+    let mut memory = interface.memory_interface(access_port)?;
+    let mut demcr = Demcr(memory.read_word_32(Demcr::ADDRESS)?);
+    demcr.set_dwtena(true);
+    memory.write_word_32(Demcr::ADDRESS, demcr.into())?;
+    let component = Component::try_parse(&mut memory, base_address)?;
+    let component_tree = coresight_component_tree(&component)?;
+    Ok(component_tree)
 }
 
 fn coresight_component_tree(component: &Component) -> Result<Tree<String>> {
