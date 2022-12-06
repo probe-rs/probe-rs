@@ -7,6 +7,7 @@ use crate::{
     DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, DebugProbeType, WireProtocol,
 };
 use bitvec::{order::Lsb0, slice::BitSlice, vec::BitVec};
+use ftdi_mpsse::*;
 use rusb::UsbContext;
 use std::convert::TryInto;
 use std::io::{self, Read, Write};
@@ -66,13 +67,13 @@ impl JtagAdapter {
         // Minimal values, may not work with all probes
         let output: u16 = 0x0008;
         let direction: u16 = 0x000b;
-        self.device
-            .write_all(&[0x80, output as u8, direction as u8])?;
-        self.device
-            .write_all(&[0x82, (output >> 8) as u8, (direction >> 8) as u8])?;
 
-        // Disable loopback
-        self.device.write_all(&[0x85])?;
+        let command = MpsseCmdBuilder::new()
+            .set_gpio_lower(output as u8, direction as u8)
+            .set_gpio_upper((output >> 8) as u8, (direction >> 8) as u8)
+            .disable_loopback();
+
+        self.device.write_all(command.as_slice())?;
 
         Ok(())
     }
@@ -104,35 +105,36 @@ impl JtagAdapter {
         assert!(bits > 0);
         assert!((bits + 7) / 8 <= data.len());
 
-        let mut command = vec![];
+        let mut command = MpsseCmdBuilder::new();
 
+        // Never called where we transfer TDI data at same time,
+        // so TDI arg always false in clock_tms_out()
         while bits > 0 {
             if bits >= 8 {
-                command.extend_from_slice(&[0x4b, 0x07, data[0]]);
+                command = command.clock_tms_out(ClockTMSOut::NegEdge, data[0], false, 0x07);
                 data = &data[1..];
                 bits -= 8;
             } else {
-                command.extend_from_slice(&[0x4b, (bits - 1) as u8, data[0]]);
+                command =
+                    command.clock_tms_out(ClockTMSOut::NegEdge, data[0], false, (bits - 1) as u8);
                 bits = 0;
             }
         }
-        self.device.write_all(&command)
+
+        self.device.write_all(command.as_slice())
     }
 
     fn shift_tdi(&mut self, mut data: &[u8], mut bits: usize) -> io::Result<()> {
         assert!(bits > 0);
         assert!((bits + 7) / 8 <= data.len());
 
-        let mut command = vec![];
+        let mut command = MpsseCmdBuilder::new();
 
         let full_bytes = (bits - 1) / 8;
         if full_bytes > 0 {
             assert!(full_bytes <= 65536);
 
-            command.extend_from_slice(&[0x19]);
-            let n: u16 = (full_bytes - 1) as u16;
-            command.extend_from_slice(&n.to_le_bytes());
-            command.extend_from_slice(&data[..full_bytes]);
+            command = command.clock_data_out(ClockDataOut::LsbNeg, &data[..full_bytes]);
 
             bits -= full_bytes * 8;
             data = &data[full_bytes..];
@@ -143,49 +145,53 @@ impl JtagAdapter {
             let byte = data[0];
             if bits > 1 {
                 let n = (bits - 2) as u8;
-                command.extend_from_slice(&[0x1b, n, byte]);
+                command = command.clock_bits_out(ClockBitsOut::LsbNeg, byte, n);
             }
 
+            // Use TMS command to clock out last bit of TDI, does not clock any TMS out (length is 0)
+            // In contrast to ClockTMSBitsOut commands, ClockTMS also reads TDO
             let last_bit = (byte >> (bits - 1)) & 0x01;
-            let tms_byte = 0x01 | (last_bit << 7);
-            command.extend_from_slice(&[0x4b, 0x00, tms_byte]);
+            let tms_byte = 0x01 | (last_bit << 7); // Not sure why we or w/ 0x01 (last bit of TMS) if length is 0?
+            command = command.clock_tms_out(ClockTMSOut::NegEdge, tms_byte, true, 0);
         }
 
-        self.device.write_all(&command)
+        self.device.write_all(command.as_slice())
     }
 
-    fn tranfer_tdi(&mut self, mut data: &[u8], mut bits: usize) -> io::Result<Vec<u8>> {
+    fn transfer_tdi(&mut self, mut data: &[u8], mut bits: usize) -> io::Result<Vec<u8>> {
         assert!(bits > 0);
         assert!((bits + 7) / 8 <= data.len());
 
-        let mut command = vec![];
+        // Write data out
+        let mut command = MpsseCmdBuilder::new();
 
         let full_bytes = (bits - 1) / 8;
         if full_bytes > 0 {
             assert!(full_bytes <= 65536);
 
-            command.extend_from_slice(&[0x39]);
-            let n: u16 = (full_bytes - 1) as u16;
-            command.extend_from_slice(&n.to_le_bytes());
-            command.extend_from_slice(&data[..full_bytes]);
+            command = command.clock_data(ClockData::LsbPosIn, &data[..full_bytes]);
 
             bits -= full_bytes * 8;
             data = &data[full_bytes..];
         }
         assert!(0 < bits && bits <= 8);
 
+        // Leftover data less than full byte
         let byte = data[0];
         if bits > 1 {
             let n = (bits - 2) as u8;
-            command.extend_from_slice(&[0x3b, n, byte]);
+            command = command.clock_bits(ClockBits::LsbPosIn, byte, n);
         }
 
+        // Use TMS command to clock out last bit of TDI, does not clock any TMS out (length is 0)
+        // In contrast to ClockTMSBitsOut commands, ClockTMS also reads TDO
         let last_bit = (byte >> (bits - 1)) & 0x01;
-        let tms_byte = 0x01 | (last_bit << 7);
-        command.extend_from_slice(&[0x6b, 0x00, tms_byte]);
+        let tms_byte = 0x01 | (last_bit << 7); // Not sure why we or w/ 0x01 (last bit of TMS) if length is 0?
+        command = command.clock_tms(ClockTMS::NegTMSPosTDO, tms_byte, true, 0);
 
-        self.device.write_all(&command)?;
+        self.device.write_all(command.as_slice())?;
 
+        // Read data back
         let mut expect_bytes = full_bytes + 1;
         if bits > 1 {
             expect_bytes += 1;
@@ -230,7 +236,7 @@ impl JtagAdapter {
     /// Shift to IR and return to IDLE
     pub fn transfer_ir(&mut self, data: &[u8], bits: usize) -> io::Result<Vec<u8>> {
         self.shift_tms(&[0b0011], 4)?;
-        let r = self.tranfer_tdi(data, bits)?;
+        let r = self.transfer_tdi(data, bits)?;
         self.shift_tms(&[0b01], 2)?;
         Ok(r)
     }
@@ -238,7 +244,7 @@ impl JtagAdapter {
     /// Shift to DR and return to IDLE
     pub fn transfer_dr(&mut self, data: &[u8], bits: usize) -> io::Result<Vec<u8>> {
         self.shift_tms(&[0b001], 3)?;
-        let r = self.tranfer_tdi(data, bits)?;
+        let r = self.transfer_tdi(data, bits)?;
         self.shift_tms(&[0b01], 2)?;
         Ok(r)
     }
@@ -378,6 +384,7 @@ impl JtagAdapter {
         }
 
         // Write IR register
+        // Do we always have to write the IR reg? JLink impl checks cached value before attempting
         let irbits = params.irpre + params.irlen + params.irpost;
         assert!(irbits <= 32);
         let mut ir: u32 = (1 << params.irpre) - 1;
@@ -385,6 +392,7 @@ impl JtagAdapter {
         ir |= ((1 << params.irpost) - 1) << (params.irpre + params.irlen);
         self.shift_ir(&ir.to_le_bytes(), irbits)?;
 
+        // Write/read DR register
         let drbits = params.drpre + len_bits + params.drpost;
         let request = if let Some(data_slice) = data {
             let data = BitSlice::<u8, Lsb0>::from_slice(data_slice);
@@ -650,7 +658,7 @@ impl JTAGAccess for FtdiProbe {
             // Send Immediate: This will make the FTDI chip flush its buffer back to the PC.
             // See https://www.ftdichip.com/Support/Documents/AppNotes/AN_108_Command_Processor_for_MPSSE_and_MCU_Host_Bus_Emulation_Modes.pdf
             // section 5.1
-            out_buffer.push(0x87);
+            out_buffer.push(MpsseCmd::DisableLoopback as u8);
 
             let write_res = self.adapter.device.write_all(&out_buffer);
             match write_res {
