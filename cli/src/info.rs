@@ -183,7 +183,7 @@ fn show_arm_info(interface: &mut Box<dyn ArmProbeInterface>) -> Result<()> {
                 tree.push(format!(
                     "{} Unknown AP (Designer: {}, Class: {:?}, Type: {}, Variant: {:#x}, Revision: {:#x})",
                     address.ap,
-                    jep.get().unwrap_or("unknown"),
+                    jep.get().unwrap_or("<unknown>"),
                     idr.CLASS,
                     ap_type,
                     idr.VARIANT,
