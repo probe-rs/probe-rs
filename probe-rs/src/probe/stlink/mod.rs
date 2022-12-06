@@ -9,9 +9,8 @@ use crate::{
     architecture::arm::{
         ap::{valid_access_ports, AccessPort, ApAccess, ApClass, MemoryAp, IDR},
         communication_interface::{
-            ArmProbeInterface, Initialized, Register, SwdSequence, UninitializedArmProbe,
+            ArmProbeInterface, Initialized, SwdSequence, UninitializedArmProbe,
         },
-        dp::DPIDR,
         memory::{adi_v5_memory_interface::ArmProbe, Component},
         sequences::ArmDebugSequence,
         ApAddress, ApInformation, ArmChipInfo, DapAccess, DpAddress, Pins, SwoAccess, SwoConfig,
@@ -1118,16 +1117,6 @@ struct UninitializedStLink {
 }
 
 impl UninitializedArmProbe for UninitializedStLink {
-    // Todo: Is this possible with an uninitialized ST Link?
-    fn read_dpidr(&mut self) -> Result<u32, ProbeRsError> {
-        let result = self
-            .probe
-            .read_register(DP_PORT, DPIDR::ADDRESS)
-            .map_err(|e| ProbeRsError::Other(e.into()))?;
-
-        Ok(result)
-    }
-
     fn initialize(
         self: Box<Self>,
         _sequence: Arc<dyn ArmDebugSequence>,

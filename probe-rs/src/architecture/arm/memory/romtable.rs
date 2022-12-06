@@ -97,7 +97,7 @@ impl<'probe, 'memory, 'reader> Iterator for RomTableIterator<'probe, 'memory, 'r
     }
 }
 
-/// Encapsulates information about a CoreSight component.
+/// Encapsulates information about a CoreSight ROM table (class 1).
 #[derive(Debug, PartialEq)]
 pub struct RomTable {
     /// ALL the entries in the romtable in flattened fashion.
@@ -112,7 +112,6 @@ impl RomTable {
     /// to contain a ROM table but assumes this was checked beforehand.
     fn try_parse(memory: &mut Memory<'_>, base_address: u64) -> Result<RomTable, RomTableError> {
         // This is required for the collect down below.
-        #![allow(clippy::needless_collect)]
         let mut entries = vec![];
 
         tracing::info!("Parsing romtable at base_address {:x?}", base_address);
@@ -134,7 +133,7 @@ impl RomTable {
             if raw_entry.entry_present {
                 let component = Component::try_parse(memory, u64::from(entry_base_addr))?;
 
-                // Finally remmeber the entry.
+                // Finally remember the entry.
                 entries.push(RomTableEntry {
                     format: raw_entry.format,
                     power_domain_id: raw_entry.power_domain_id,
@@ -399,7 +398,7 @@ pub enum Component {
     /// CoreSight component. For general information about CoreSight components, see the CoreSight Architecture Specification.
 
     /// A CoreSight component can be a Class 0x9 ROM Table, which can be identified from the DEVARCH.ARCHID having the value 0x0AF7. See also _ROM Table Types on page D2-237_. For detailed information about Class 0x9 ROM Tables, see _Chapter D4 Class 0x9 ROM Tables_.
-    Class9RomTable(ComponentId),
+    CoresightComponent(ComponentId),
     /// Peripheral Test Block.
     PeripheralTestBlock(ComponentId),
     /// Generic IP component.
@@ -440,7 +439,7 @@ impl Component {
 
                 Component::Class1RomTable(component_id, rom_table)
             }
-            RawComponent::CoreSightComponent => Component::Class9RomTable(component_id),
+            RawComponent::CoreSightComponent => Component::CoresightComponent(component_id),
             RawComponent::PeripheralTestBlock => Component::PeripheralTestBlock(component_id),
             RawComponent::GenericIPComponent => Component::GenericIPComponent(component_id),
             RawComponent::CoreLinkOrPrimeCellOrSystemComponent => {
@@ -456,7 +455,7 @@ impl Component {
         match self {
             Component::GenericVerificationComponent(component_id) => component_id,
             Component::Class1RomTable(component_id, ..) => component_id,
-            Component::Class9RomTable(component_id) => component_id,
+            Component::CoresightComponent(component_id, ..) => component_id,
             Component::PeripheralTestBlock(component_id) => component_id,
             Component::GenericIPComponent(component_id) => component_id,
             Component::CoreLinkOrPrimeCellOrSystemComponent(component_id) => component_id,
@@ -711,6 +710,7 @@ impl PeripheralID {
             ("ARM Ltd", 0xD21, 0x00, 0x1A03) => Some(PartInfo::new("Cortex-M33 BPU", PeripheralType::Bpu)),
             ("ARM Ltd", 0xD21, 0x13, 0x4A13) => Some(PartInfo::new("Cortex-M33 ETM", PeripheralType::Etm)),
             ("ARM Ltd", 0xD21, 0x11, 0x0000) => Some(PartInfo::new("Cortex-M33 TPIU", PeripheralType::Tpiu)),
+            ("ARM Ltd", 0x9a3, 0x13, 0x0000) => Some(PartInfo::new("Cortex-M0 MTB", PeripheralType::Mtb)),
             _ => None,
         }
     }
@@ -783,6 +783,8 @@ pub enum PeripheralType {
     Tsgen,
     /// Trace Memory Controller
     Tmc,
+    /// Micro Trace Buffer
+    Mtb,
 }
 
 impl std::fmt::Display for PeripheralType {
@@ -802,6 +804,7 @@ impl std::fmt::Display for PeripheralType {
             PeripheralType::TraceFunnel => write!(f, "Trace Funnel"),
             PeripheralType::Tsgen => write!(f, "Tsgen (Time Stamp Generator)"),
             PeripheralType::Tmc => write!(f, "Tmc (Trace Memory Controller)"),
+            PeripheralType::Mtb => write!(f, "MTB (Micro Trace Buffer)"),
         }
     }
 }
