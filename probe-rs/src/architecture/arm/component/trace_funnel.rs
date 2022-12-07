@@ -13,13 +13,13 @@ const REGISTER_OFFSET_ACCESS: u32 = 0xFB0;
 /// Trace funnel unit
 pub struct TraceFunnel<'a> {
     component: &'a CoresightComponent,
-    interface: &'a mut Box<dyn ArmProbeInterface>,
+    interface: &'a mut dyn ArmProbeInterface,
 }
 
 impl<'a> TraceFunnel<'a> {
     /// Construct a new TraceFunnel component.
     pub fn new(
-        interface: &'a mut Box<dyn ArmProbeInterface>,
+        interface: &'a mut dyn ArmProbeInterface,
         component: &'a CoresightComponent,
     ) -> Self {
         TraceFunnel {

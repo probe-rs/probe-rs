@@ -2,12 +2,13 @@
 
 use super::{ArmError, CortexMState, Dfsr, CORTEX_M_COMMON_REGS};
 
+use crate::architecture::arm::memory::adi_v5_memory_interface::ArmMemoryAccess;
 use crate::architecture::arm::sequences::ArmDebugSequence;
 use crate::core::{
     RegisterDataType, RegisterDescription, RegisterFile, RegisterKind, RegisterValue,
 };
 use crate::error::Error;
-use crate::memory::{valid_32bit_address, Memory};
+use crate::memory::valid_32bit_address;
 use crate::{
     Architecture, CoreInformation, CoreInterface, CoreStatus, CoreType, DebugProbeError,
     HaltReason, InstructionSet, MemoryInterface, MemoryMappedRegister, RegisterId,
@@ -449,7 +450,7 @@ const XPSR: RegisterDescription = RegisterDescription {
 
 /// The state of a core that can be used to persist core state across calls to multiple different cores.
 pub(crate) struct Armv6m<'probe> {
-    memory: Memory<'probe>,
+    memory: Box<dyn ArmMemoryAccess + 'probe>,
 
     state: &'probe mut CortexMState,
 
@@ -458,7 +459,7 @@ pub(crate) struct Armv6m<'probe> {
 
 impl<'probe> Armv6m<'probe> {
     pub(crate) fn new(
-        mut memory: Memory<'probe>,
+        mut memory: Box<dyn ArmMemoryAccess + 'probe>,
         state: &'probe mut CortexMState,
         sequence: Arc<dyn ArmDebugSequence>,
     ) -> Result<Self, Error> {
@@ -614,14 +615,14 @@ impl<'probe> CoreInterface for Armv6m<'probe> {
 
     fn reset(&mut self) -> Result<(), Error> {
         self.sequence
-            .reset_system(&mut self.memory, crate::CoreType::Armv6m, None)
+            .reset_system(&mut *self.memory, crate::CoreType::Armv6m, None)
     }
 
     fn reset_and_halt(&mut self, _timeout: Duration) -> Result<CoreInformation, Error> {
         self.sequence
-            .reset_catch_set(&mut self.memory, crate::CoreType::Armv6m, None)?;
+            .reset_catch_set(&mut *self.memory, crate::CoreType::Armv6m, None)?;
         self.sequence
-            .reset_system(&mut self.memory, crate::CoreType::Armv6m, None)?;
+            .reset_system(&mut *self.memory, crate::CoreType::Armv6m, None)?;
 
         // Update core status
         let _ = self.status()?;
@@ -633,7 +634,7 @@ impl<'probe> CoreInterface for Armv6m<'probe> {
         }
 
         self.sequence
-            .reset_catch_clear(&mut self.memory, crate::CoreType::Armv6m, None)?;
+            .reset_catch_clear(&mut *self.memory, crate::CoreType::Armv6m, None)?;
 
         // try to read the program counter
         let pc_value = self.read_core_reg(PC.id)?;
@@ -796,7 +797,7 @@ impl<'probe> CoreInterface for Armv6m<'probe> {
 
     fn read_core_reg(&mut self, address: RegisterId) -> Result<RegisterValue, Error> {
         if self.state.current_state.is_halted() {
-            let val = super::cortex_m::read_core_reg(&mut self.memory, address)?;
+            let val = super::cortex_m::read_core_reg(&mut *self.memory, address)?;
             Ok(val.into())
         } else {
             Err(Error::architecture_specific(ArmError::CoreNotHalted))
@@ -805,7 +806,7 @@ impl<'probe> CoreInterface for Armv6m<'probe> {
 
     fn write_core_reg(&mut self, address: RegisterId, value: RegisterValue) -> Result<(), Error> {
         if self.state.current_state.is_halted() {
-            super::cortex_m::write_core_reg(&mut self.memory, address, value.try_into()?)?;
+            super::cortex_m::write_core_reg(&mut *self.memory, address, value.try_into()?)?;
             Ok(())
         } else {
             Err(Error::architecture_specific(ArmError::CoreNotHalted))

@@ -6,12 +6,12 @@ use crate::{
         communication_interface::{
             ArmDebugState, Initialized, SwdSequence, Uninitialized, UninitializedArmProbe,
         },
-        memory::adi_v5_memory_interface::ADIMemoryInterface,
+        memory::adi_v5_memory_interface::{ADIMemoryInterface, ArmMemoryAccess},
         sequences::ArmDebugSequence,
         ApAddress, ArmProbeInterface, DapAccess, DpAddress, MemoryApInformation, PortType,
         RawDapAccess, SwoAccess,
     },
-    DebugProbe, DebugProbeError, DebugProbeSelector, Error, Memory, Probe, WireProtocol,
+    DebugProbe, DebugProbeError, DebugProbeSelector, Error, Probe, WireProtocol,
 };
 
 /// This is a mock probe which can be used for mocking things in tests or for dry runs.
@@ -277,19 +277,22 @@ impl UninitializedArmProbe for FakeArmInterface<Uninitialized> {
 }
 
 impl ArmProbeInterface for FakeArmInterface<Initialized> {
-    fn memory_interface(&mut self, access_port: MemoryAp) -> Result<Memory<'_>, Error> {
+    fn memory_interface(
+        &mut self,
+        access_port: MemoryAp,
+    ) -> Result<Box<dyn ArmMemoryAccess + '_>, Error> {
         let ap_information = MemoryApInformation {
             address: access_port.ap_address(),
-            only_32bit_data_size: false,
+            supports_only_32bit_data_size: false,
             debug_base_address: 0xf000_0000,
             supports_hnonsec: false,
             has_large_data_extension: false,
             has_large_address_extension: false,
         };
 
-        let memory = ADIMemoryInterface::new(&mut self.memory_ap, &ap_information)?;
+        let memory = ADIMemoryInterface::new(&mut self.memory_ap, ap_information)?;
 
-        Ok(Memory::new(memory, access_port))
+        Ok(Box::new(memory) as _)
     }
 
     fn ap_information(

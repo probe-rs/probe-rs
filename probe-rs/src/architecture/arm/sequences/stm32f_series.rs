@@ -19,7 +19,7 @@ impl Stm32fSeries {
 }
 
 mod dbgmcu {
-    use crate::Memory;
+    use crate::architecture::arm::memory::adi_v5_memory_interface::ArmMemoryAccess;
     use bitfield::bitfield;
 
     /// The base address of the DBGMCU component
@@ -43,13 +43,13 @@ mod dbgmcu {
         const ADDRESS: u64 = 0x04;
 
         /// Read the control register from memory.
-        pub fn read(memory: &mut Memory<'_>) -> Result<Self, crate::Error> {
+        pub fn read(memory: &mut dyn ArmMemoryAccess) -> Result<Self, crate::Error> {
             let contents = memory.read_word_32(DBGMCU + Self::ADDRESS)?;
             Ok(Self(contents))
         }
 
         /// Write the control register to memory.
-        pub fn write(&mut self, memory: &mut Memory<'_>) -> Result<(), crate::Error> {
+        pub fn write(&mut self, memory: &mut dyn ArmMemoryAccess) -> Result<(), crate::Error> {
             memory.write_word_32(DBGMCU + Self::ADDRESS, self.0)
         }
     }
@@ -58,25 +58,22 @@ mod dbgmcu {
 impl ArmDebugSequence for Stm32fSeries {
     fn debug_device_unlock(
         &self,
-        interface: &mut Box<dyn ArmProbeInterface>,
+        interface: &mut dyn ArmProbeInterface,
         default_ap: MemoryAp,
         _permissions: &crate::Permissions,
     ) -> Result<(), crate::Error> {
         let mut memory = interface.memory_interface(default_ap)?;
 
-        let mut cr = dbgmcu::Control::read(&mut memory)?;
+        let mut cr = dbgmcu::Control::read(&mut *memory)?;
         cr.enable_standby_debug(true);
         cr.enable_sleep_debug(true);
         cr.enable_stop_debug(true);
-        cr.write(&mut memory)?;
+        cr.write(&mut *memory)?;
 
         Ok(())
     }
 
-    fn debug_core_stop(
-        &self,
-        interface: &mut Box<dyn ArmProbeInterface>,
-    ) -> Result<(), crate::Error> {
+    fn debug_core_stop(&self, interface: &mut dyn ArmProbeInterface) -> Result<(), crate::Error> {
         // Power down the debug components
         let ap = MemoryAp::new(ApAddress {
             dp: DpAddress::Default,
@@ -85,23 +82,23 @@ impl ArmDebugSequence for Stm32fSeries {
 
         let mut memory = interface.memory_interface(ap)?;
 
-        let mut cr = dbgmcu::Control::read(&mut memory)?;
+        let mut cr = dbgmcu::Control::read(&mut *memory)?;
         cr.enable_standby_debug(false);
         cr.enable_sleep_debug(false);
         cr.enable_stop_debug(false);
-        cr.write(&mut memory)?;
+        cr.write(&mut *memory)?;
 
         Ok(())
     }
 
     fn trace_start(
         &self,
-        interface: &mut Box<dyn ArmProbeInterface>,
+        interface: &mut dyn ArmProbeInterface,
         components: &[CoresightComponent],
         sink: &TraceSink,
     ) -> Result<(), crate::Error> {
         let mut memory = interface.memory_interface(components[0].ap)?;
-        let mut cr = dbgmcu::Control::read(&mut memory)?;
+        let mut cr = dbgmcu::Control::read(&mut *memory)?;
 
         if matches!(sink, TraceSink::Tpiu(_) | TraceSink::Swo(_)) {
             cr.set_traceioen(true);
@@ -111,7 +108,7 @@ impl ArmDebugSequence for Stm32fSeries {
             cr.set_tracemode(0);
         }
 
-        cr.write(&mut memory)?;
+        cr.write(&mut *memory)?;
         Ok(())
     }
 }

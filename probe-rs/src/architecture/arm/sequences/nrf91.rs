@@ -3,10 +3,11 @@
 use std::sync::Arc;
 
 use super::{nrf::Nrf, ArmDebugSequence};
+use crate::architecture::arm::ap::AccessPort;
+use crate::architecture::arm::memory::adi_v5_memory_interface::ArmMemoryAccess;
 use crate::architecture::arm::{
     communication_interface::Initialized, ApAddress, ArmCommunicationInterface, DapAccess,
 };
-use crate::Memory;
 
 /// The sequence handle for the nRF9160.
 pub struct Nrf9160(());
@@ -19,8 +20,8 @@ impl Nrf9160 {
 }
 
 impl Nrf for Nrf9160 {
-    fn core_aps(&self, interface: &mut Memory) -> Vec<(ApAddress, ApAddress)> {
-        let ap_address = interface.get_ap();
+    fn core_aps(&self, memory: &mut dyn ArmMemoryAccess) -> Vec<(ApAddress, ApAddress)> {
+        let ap_address = memory.ap().ap_address();
 
         let core_aps = [(0, 4)];
 

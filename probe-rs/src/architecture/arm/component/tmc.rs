@@ -35,13 +35,13 @@ pub enum Mode {
 /// The embedded trace memory controller.
 pub struct TraceMemoryController<'a> {
     component: &'a CoresightComponent,
-    interface: &'a mut Box<dyn ArmProbeInterface>,
+    interface: &'a mut dyn ArmProbeInterface,
 }
 
 impl<'a> TraceMemoryController<'a> {
     /// Construct a new embedded trace fifo controller.
     pub fn new(
-        interface: &'a mut Box<dyn ArmProbeInterface>,
+        interface: &'a mut dyn ArmProbeInterface,
         component: &'a CoresightComponent,
     ) -> Self {
         Self {

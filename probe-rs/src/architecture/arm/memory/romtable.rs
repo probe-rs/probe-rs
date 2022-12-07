@@ -1,6 +1,8 @@
+use super::adi_v5_memory_interface::ArmMemoryAccess;
 use super::AccessPortError;
+use crate::architecture::arm::ap::AccessPort;
 use crate::architecture::arm::{ap::MemoryAp, communication_interface::ArmProbeInterface};
-use crate::{Error, Memory};
+use crate::Error;
 use enum_primitive_derive::Primitive;
 use num_traits::cast::FromPrimitive;
 
@@ -28,12 +30,12 @@ pub enum RomTableError {
 /// A lazy romtable reader that is used to create an iterator over all romtable entries.
 struct RomTableReader<'probe: 'memory, 'memory> {
     base_address: u64,
-    memory: &'memory mut Memory<'probe>,
+    memory: &'memory mut (dyn ArmMemoryAccess + 'probe),
 }
 
 /// Iterates over a ROM table non recursively.
 impl<'probe: 'memory, 'memory> RomTableReader<'probe, 'memory> {
-    fn new(memory: &'memory mut Memory<'probe>, base_address: u64) -> Self {
+    fn new(memory: &'memory mut (dyn ArmMemoryAccess + 'probe), base_address: u64) -> Self {
         RomTableReader {
             base_address,
             memory,
@@ -110,7 +112,10 @@ impl RomTable {
     ///
     /// This does not check whether the data actually signalizes
     /// to contain a ROM table but assumes this was checked beforehand.
-    fn try_parse(memory: &mut Memory<'_>, base_address: u64) -> Result<RomTable, RomTableError> {
+    fn try_parse(
+        memory: &mut dyn ArmMemoryAccess,
+        base_address: u64,
+    ) -> Result<RomTable, RomTableError> {
         // This is required for the collect down below.
         let mut entries = vec![];
 
@@ -138,7 +143,10 @@ impl RomTable {
                     format: raw_entry.format,
                     power_domain_id: raw_entry.power_domain_id,
                     power_domain_valid: raw_entry.power_domain_valid,
-                    component: CoresightComponent::new(component, MemoryAp::new(memory.get_ap())),
+                    component: CoresightComponent::new(
+                        component,
+                        MemoryAp::new(memory.ap().ap_address()),
+                    ),
                 });
             }
         }
@@ -255,12 +263,12 @@ impl ComponentId {
 /// This reader is meant for internal use only.
 pub struct ComponentInformationReader<'probe: 'memory, 'memory> {
     base_address: u64,
-    memory: &'memory mut Memory<'probe>,
+    memory: &'memory mut (dyn ArmMemoryAccess + 'probe),
 }
 
 impl<'probe: 'memory, 'memory> ComponentInformationReader<'probe, 'memory> {
     /// Creates a new `ComponentInformationReader` which can be used to extract the data from a component information table in memory.
-    pub fn new(base_address: u64, memory: &'memory mut Memory<'probe>) -> Self {
+    pub fn new(base_address: u64, memory: &'memory mut (dyn ArmMemoryAccess + 'probe)) -> Self {
         ComponentInformationReader {
             base_address,
             memory,
@@ -330,27 +338,29 @@ impl<'probe: 'memory, 'memory> ComponentInformationReader<'probe, 'memory> {
         const DEV_TYPE_OFFSET: u64 = 0xFCC;
         const DEV_TYPE_MASK: u32 = 0xFF;
 
-        let dev_type = self
-            .memory
-            .read_word_32(self.base_address + DEV_TYPE_OFFSET)
-            .map(|v| (v & DEV_TYPE_MASK) as u8)
+        let mut buff = [0];
+
+        self.memory
+            .read_32(self.base_address + DEV_TYPE_OFFSET, &mut buff)
             .map_err(RomTableError::Memory)?;
+
+        let dev_type = (buff[0] & DEV_TYPE_MASK) as u8;
 
         const ARCH_ID_OFFSET: u64 = 0xFBC;
         const ARCH_ID_MASK: u32 = 0xFFFF;
         const ARCH_ID_PRESENT_BIT: u32 = 1 << 20;
 
-        let arch_id = self
-            .memory
-            .read_word_32(self.base_address + ARCH_ID_OFFSET)
-            .map(|v| {
-                if v & ARCH_ID_PRESENT_BIT > 0 {
-                    (v & ARCH_ID_MASK) as u16
-                } else {
-                    0
-                }
-            })
+        self.memory
+            .read_32(self.base_address + ARCH_ID_OFFSET, &mut buff)
             .map_err(RomTableError::Memory)?;
+
+        let arch_id = {
+            if buff[0] & ARCH_ID_PRESENT_BIT > 0 {
+                (buff[0] & ARCH_ID_MASK) as u16
+            } else {
+                0
+            }
+        };
 
         tracing::debug!("Dev type: {:x}, arch id: {:x}", dev_type, arch_id);
 
@@ -410,7 +420,7 @@ pub enum Component {
 impl Component {
     /// Tries to parse a CoreSight component table.
     pub fn try_parse<'probe: 'memory, 'memory>(
-        memory: &'memory mut Memory<'probe>,
+        memory: &'memory mut (dyn ArmMemoryAccess + 'probe),
         baseaddr: u64,
     ) -> Result<Component, RomTableError> {
         tracing::info!("\tReading component data at: {:08x}", baseaddr);
@@ -481,23 +491,30 @@ impl CoresightComponent {
     /// Reads a register of the component pointed to by this romtable entry.
     pub fn read_reg(
         &self,
-        interface: &mut Box<dyn ArmProbeInterface>,
+        interface: &mut dyn ArmProbeInterface,
         offset: u32,
     ) -> Result<u32, Error> {
         let mut memory = interface.memory_interface(self.ap)?;
-        let value = memory.read_word_32(self.component.id().component_address + offset as u64)?;
-        Ok(value)
+        let mut buff = [0];
+        memory.read_32(
+            self.component.id().component_address + offset as u64,
+            &mut buff,
+        )?;
+        Ok(buff[0])
     }
 
     /// Writes a register of the component pointed to by this romtable entry.
     pub fn write_reg(
         &self,
-        interface: &mut Box<dyn ArmProbeInterface>,
+        interface: &mut dyn ArmProbeInterface,
         offset: u32,
         value: u32,
     ) -> Result<(), Error> {
         let mut memory = interface.memory_interface(self.ap)?;
-        memory.write_word_32(self.component.id().component_address + offset as u64, value)?;
+        memory.write_32(
+            self.component.id().component_address + offset as u64,
+            &[value],
+        )?;
         Ok(())
     }
 

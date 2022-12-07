@@ -74,7 +74,7 @@ fn try_show_info(
             Ok(interface) => {
                 let mut interface = interface.initialize(DefaultArmSequence::create()).unwrap();
 
-                if let Err(e) = show_arm_info(&mut interface) {
+                if let Err(e) = show_arm_info(&mut *interface) {
                     // Log error?
                     log::warn!("Error showing ARM chip information: {}", e);
                 }
@@ -116,7 +116,7 @@ fn try_show_info(
     (probe, Ok(()))
 }
 
-fn show_arm_info(interface: &mut Box<dyn ArmProbeInterface>) -> Result<()> {
+fn show_arm_info(interface: &mut dyn ArmProbeInterface) -> Result<()> {
     let dp_info = interface.read_raw_dp_register(DpAddress::Default, DPIDR::ADDRESS)?;
     let dp_info = DPIDR(dp_info);
 
@@ -201,13 +201,13 @@ fn show_arm_info(interface: &mut Box<dyn ArmProbeInterface>) -> Result<()> {
 fn handle_memory_ap(
     access_port: MemoryAp,
     base_address: u64,
-    interface: &mut Box<dyn ArmProbeInterface>,
+    interface: &mut dyn ArmProbeInterface,
 ) -> Result<Tree<String>, anyhow::Error> {
     let mut memory = interface.memory_interface(access_port)?;
     let mut demcr = Demcr(memory.read_word_32(Demcr::ADDRESS)?);
     demcr.set_dwtena(true);
     memory.write_word_32(Demcr::ADDRESS, demcr.into())?;
-    let component = Component::try_parse(&mut memory, base_address)?;
+    let component = Component::try_parse(&mut *memory, base_address)?;
     let component_tree = coresight_component_tree(&component)?;
     Ok(component_tree)
 }

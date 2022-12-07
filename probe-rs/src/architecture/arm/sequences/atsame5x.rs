@@ -4,9 +4,12 @@ use super::{ArmDebugSequence, DebugEraseSequence};
 use crate::{
     architecture::{
         self,
-        arm::{ap::MemoryAp, ApAddress, DpAddress},
+        arm::{
+            ap::MemoryAp, memory::adi_v5_memory_interface::ArmMemoryAccess, ApAddress,
+            ArmProbeInterface, DpAddress,
+        },
     },
-    DebugProbeError, Error, Memory, Permissions,
+    DebugProbeError, Error, Permissions,
 };
 use bitfield::bitfield;
 use std::sync::Arc;
@@ -198,7 +201,11 @@ impl AtSAME5x {
     /// enabled (this lock can only be released from within the device firmare).
     /// After a successful Chip-Erase a `DebugProbeError::ReAttachRequired` is returned
     /// to signal that a re-connect is needed for the DSU to start operating in unlocked mode.
-    pub fn erase_all(&self, memory: &mut Memory, permissions: &Permissions) -> Result<(), Error> {
+    pub fn erase_all(
+        &self,
+        memory: &mut (impl ArmMemoryAccess + ?Sized),
+        permissions: &Permissions,
+    ) -> Result<(), Error> {
         let dsu_status_a = DsuStatusA::from(memory.read_word_8(DsuStatusA::ADDRESS)?);
         let dsu_status_b = DsuStatusB::from(memory.read_word_8(DsuStatusB::ADDRESS)?);
 
@@ -231,9 +238,9 @@ impl AtSAME5x {
                 tracing::info!("Chip-Erase complete");
                 // If the device was in Reset Extension when we started put it back into Reset Extension
                 if dsu_status_a.crstext() {
-                    self.reset_hardware_with_extension(memory.get_arm_interface()?)?;
+                    self.reset_hardware_with_extension(memory.get_arm_communication_interface()?)?;
                 } else {
-                    self.reset_hardware(memory.get_arm_interface()?)?;
+                    self.reset_hardware(memory.get_arm_communication_interface()?)?;
                 }
 
                 // We need to reconnect to target to finalize the unlock.
@@ -288,7 +295,7 @@ impl AtSAME5x {
     ///
     /// # Errors
     /// Subject to probe communication errors
-    pub fn release_reset_extension(&self, memory: &mut Memory) -> Result<(), Error> {
+    pub fn release_reset_extension(&self, memory: &mut dyn ArmMemoryAccess) -> Result<(), Error> {
         // clear the reset extension bit
         let mut dsu_statusa = DsuStatusA(0);
         dsu_statusa.set_crstext(true);
@@ -349,14 +356,12 @@ impl ArmDebugSequence for AtSAME5x {
     ///
     /// Instead of de-asserting `nReset` here (this was already done during the CPU Reset Extension process),
     /// the device is released from Reset Extension.
-    fn reset_hardware_deassert(&self, memory: &mut Memory) -> Result<(), Error> {
-        let interface = memory.get_arm_probe();
-
+    fn reset_hardware_deassert(&self, memory: &mut dyn ArmMemoryAccess) -> Result<(), Error> {
         let mut pins = architecture::arm::Pins(0);
         pins.set_nreset(true);
 
         let current_pins =
-            architecture::arm::Pins(interface.swj_pins(pins.0 as u32, pins.0 as u32, 0)? as u8);
+            architecture::arm::Pins(memory.swj_pins(pins.0 as u32, pins.0 as u32, 0)? as u8);
         if !current_pins.nreset() {
             return Err(Error::Probe(DebugProbeError::Other(anyhow::anyhow!(
                 "Expected nReset to already be de-asserted"
@@ -378,7 +383,7 @@ impl ArmDebugSequence for AtSAME5x {
     ///   to signal that a probe re-attach is required before the new `unlocked` status takes effect.
     fn debug_device_unlock(
         &self,
-        interface: &mut Box<dyn architecture::arm::ArmProbeInterface>,
+        interface: &mut dyn ArmProbeInterface,
         default_ap: architecture::arm::ap::MemoryAp,
         permissions: &Permissions,
     ) -> Result<(), Error> {
@@ -388,7 +393,7 @@ impl ArmDebugSequence for AtSAME5x {
 
         if dsu_status_b.prot() {
             tracing::warn!("The Device is locked, unlocking..");
-            self.erase_all(&mut memory, permissions)
+            self.erase_all(&mut *memory, permissions)
         } else {
             Ok(())
         }
@@ -400,10 +405,7 @@ impl ArmDebugSequence for AtSAME5x {
 }
 
 impl DebugEraseSequence for AtSAME5x {
-    fn erase_all(
-        &self,
-        interface: &mut Box<dyn architecture::arm::ArmProbeInterface>,
-    ) -> Result<(), Error> {
+    fn erase_all(&self, interface: &mut dyn ArmProbeInterface) -> Result<(), Error> {
         let mem_ap = MemoryAp::new(ApAddress {
             dp: DpAddress::Default,
             ap: 0,
@@ -411,6 +413,6 @@ impl DebugEraseSequence for AtSAME5x {
 
         let mut memory = interface.memory_interface(mem_ap)?;
 
-        AtSAME5x::erase_all(self, &mut memory, &Permissions::new().allow_erase_all())
+        AtSAME5x::erase_all(self, &mut *memory, &Permissions::new().allow_erase_all())
     }
 }

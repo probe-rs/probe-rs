@@ -1,5 +1,6 @@
 pub(crate) mod communication_interface;
 
+use crate::architecture::arm::memory::adi_v5_memory_interface::ArmMemoryAccess;
 use crate::architecture::riscv::RiscVState;
 use crate::{CoreType, InstructionSet};
 pub use communication_interface::CommunicationInterface;
@@ -12,7 +13,7 @@ use crate::architecture::{
 };
 use crate::error;
 use crate::Target;
-use crate::{Error, Memory, MemoryInterface};
+use crate::{Error, MemoryInterface};
 use anyhow::{anyhow, Result};
 use std::cmp::Ordering;
 use std::convert::Infallible;
@@ -710,7 +711,7 @@ impl SpecificCoreState {
     pub(crate) fn attach_arm<'probe, 'target: 'probe>(
         &'probe mut self,
         state: &'probe mut CoreState,
-        memory: Memory<'probe>,
+        memory: Box<dyn ArmMemoryAccess + 'probe>,
         target: &'target Target,
     ) -> Result<Core<'probe>, Error> {
         let debug_sequence = match &target.debug_sequence {

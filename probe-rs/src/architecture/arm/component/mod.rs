@@ -53,7 +53,7 @@ pub trait DebugRegister: Clone + From<u32> + Into<u32> + Sized + std::fmt::Debug
     /// Loads the register value from the given debug component via the given core.
     fn load(
         component: &CoresightComponent,
-        interface: &mut Box<dyn ArmProbeInterface>,
+        interface: &mut dyn ArmProbeInterface,
     ) -> Result<Self, Error> {
         Ok(Self::from(component.read_reg(interface, Self::ADDRESS)?))
     }
@@ -61,7 +61,7 @@ pub trait DebugRegister: Clone + From<u32> + Into<u32> + Sized + std::fmt::Debug
     /// Loads the register value from the given component in given unit via the given core.
     fn load_unit(
         component: &CoresightComponent,
-        interface: &mut Box<dyn ArmProbeInterface>,
+        interface: &mut dyn ArmProbeInterface,
         unit: usize,
     ) -> Result<Self, Error> {
         Ok(Self::from(
@@ -73,7 +73,7 @@ pub trait DebugRegister: Clone + From<u32> + Into<u32> + Sized + std::fmt::Debug
     fn store(
         &self,
         component: &CoresightComponent,
-        interface: &mut Box<dyn ArmProbeInterface>,
+        interface: &mut dyn ArmProbeInterface,
     ) -> Result<(), Error> {
         component.write_reg(interface, Self::ADDRESS, self.clone().into())
     }
@@ -82,7 +82,7 @@ pub trait DebugRegister: Clone + From<u32> + Into<u32> + Sized + std::fmt::Debug
     fn store_unit(
         &self,
         component: &CoresightComponent,
-        interface: &mut Box<dyn ArmProbeInterface>,
+        interface: &mut dyn ArmProbeInterface,
         unit: usize,
     ) -> Result<(), Error> {
         component.write_reg(
@@ -116,7 +116,7 @@ fn find_component(
 /// * `component` - The TPIU CoreSight component found.
 /// * `config` - The SWO pin configuration to use.
 fn configure_tpiu(
-    interface: &mut Box<dyn ArmProbeInterface>,
+    interface: &mut dyn ArmProbeInterface,
     component: &CoresightComponent,
     config: &SwoConfig,
 ) -> Result<(), Error> {
@@ -146,7 +146,7 @@ fn configure_tpiu(
 ///
 /// Expects to be given a list of all ROM table `components` as the second argument.
 pub(crate) fn setup_tracing(
-    interface: &mut Box<dyn ArmProbeInterface>,
+    interface: &mut dyn ArmProbeInterface,
     components: &[CoresightComponent],
     sink: &TraceSink,
 ) -> Result<(), Error> {
@@ -229,7 +229,7 @@ pub(crate) fn setup_tracing(
 /// # Returns
 /// All data stored in trace memory, with an upper bound at the size of internal trace memory.
 pub(crate) fn read_trace_memory(
-    interface: &mut Box<dyn ArmProbeInterface>,
+    interface: &mut dyn ArmProbeInterface,
     components: &[CoresightComponent],
 ) -> Result<Vec<u8>, Error> {
     let mut tmc =
@@ -293,7 +293,7 @@ pub(crate) fn read_trace_memory(
 ///
 /// Expects to be given a list of all ROM table `components` as the second argument.
 pub(crate) fn add_swv_data_trace(
-    interface: &mut Box<dyn ArmProbeInterface>,
+    interface: &mut dyn ArmProbeInterface,
     components: &[CoresightComponent],
     unit: usize,
     address: u32,
@@ -307,7 +307,7 @@ pub(crate) fn add_swv_data_trace(
 ///
 /// Expects to be given a list of all ROM table `components` as the second argument.
 pub fn remove_swv_data_trace(
-    interface: &mut Box<dyn ArmProbeInterface>,
+    interface: &mut dyn ArmProbeInterface,
     components: &[CoresightComponent],
     unit: usize,
 ) -> Result<(), Error> {

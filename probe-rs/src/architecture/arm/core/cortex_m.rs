@@ -1,6 +1,9 @@
 //! Common functions and data types for Cortex-M core variants
 
-use crate::{DebugProbeError, Error, Memory, MemoryMappedRegister, RegisterId};
+use crate::{
+    architecture::arm::memory::adi_v5_memory_interface::ArmMemoryAccess, DebugProbeError, Error,
+    MemoryMappedRegister, RegisterId,
+};
 
 use bitfield::bitfield;
 use std::time::{Duration, Instant};
@@ -160,7 +163,10 @@ impl MemoryMappedRegister for Mvfr0 {
     const NAME: &'static str = "MVFR0";
 }
 
-pub(crate) fn read_core_reg(memory: &mut Memory, addr: RegisterId) -> Result<u32, Error> {
+pub(crate) fn read_core_reg(
+    memory: &mut dyn ArmMemoryAccess,
+    addr: RegisterId,
+) -> Result<u32, Error> {
     // Write the DCRSR value to select the register we want to read.
     let mut dcrsr_val = Dcrsr(0);
     dcrsr_val.set_regwnr(false); // Perform a read.
@@ -176,7 +182,7 @@ pub(crate) fn read_core_reg(memory: &mut Memory, addr: RegisterId) -> Result<u32
 }
 
 pub(crate) fn write_core_reg(
-    memory: &mut Memory,
+    memory: &mut dyn ArmMemoryAccess,
     addr: RegisterId,
     value: u32,
 ) -> Result<(), Error> {
@@ -194,7 +200,10 @@ pub(crate) fn write_core_reg(
     Ok(())
 }
 
-fn wait_for_core_register_transfer(memory: &mut Memory, timeout: Duration) -> Result<(), Error> {
+fn wait_for_core_register_transfer(
+    memory: &mut dyn ArmMemoryAccess,
+    timeout: Duration,
+) -> Result<(), Error> {
     // now we have to poll the dhcsr register, until the dhcsr.s_regrdy bit is set
     // (see C1-292, cortex m0 arm)
     let start = Instant::now();
