@@ -45,6 +45,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Benchmarking code moved from an example to `probe-rs-cli` subcommand (#1296).
 - Replace `log` crate, with `tracing` in `probe-rs-debugger` executable, and in the `rtt` library. (#1297)
 - Replace FTDI probe command creation with `ftdi-mpsse` library functions/enums (#1302)
+- Improved formatting of `probe-rs-cli info` output. (#1305)
+
 
 ### Fixed
 
