@@ -629,6 +629,10 @@ impl<'probe> MemoryInterface for Core<'probe> {
         self.inner.write(addr, data)
     }
 
+    fn supports_8bit_transfers(&self) -> Result<bool, error::Error> {
+        self.inner.supports_8bit_transfers()
+    }
+
     fn flush(&mut self) -> Result<(), Error> {
         self.inner.flush()
     }

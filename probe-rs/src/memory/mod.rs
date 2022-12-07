@@ -1,5 +1,5 @@
 use crate::architecture::arm::{
-    ap::{AccessPort, MemoryAp},
+    ap::{AccessPort, AccessPortError, MemoryAp},
     memory::adi_v5_memory_interface::ArmProbe,
     ApAddress,
 };
@@ -9,6 +9,7 @@ use crate::{
 };
 
 use anyhow::{anyhow, Result};
+use scroll::Pread;
 
 /// An interface to be implemented for drivers that allow target memory access.
 pub trait MemoryInterface {
@@ -142,10 +143,95 @@ pub trait MemoryInterface {
     /// Write a block of 8bit words at `address`.
     fn write_8(&mut self, address: u64, data: &[u8]) -> Result<(), error::Error>;
 
-    /// Write a block of 8bit words at `address`. May use 32 bit memory access,
+    /// Writes bytes using 64 bit memory access. Address must be 64 bit aligned
+    /// and data must be an exact multiple of 8.
+    fn write_mem_64bit(&mut self, address: u64, data: &[u8]) -> Result<(), error::Error> {
+        // Default implementation uses `write_64`, then converts u64 values back
+        // to bytes. Assumes target is little endian. May be overridden to
+        // provide an implementation that avoids heap allocation and endian
+        // conversions. Must be overridden for big endian targets.
+        if data.len() % 8 != 0 {
+            return Err(error::Error::Other(anyhow!(
+                "Call to read_mem_64bit with data.len() not a multiple of 8"
+            )));
+        }
+        let mut buffer = vec![0u64; data.len() / 8];
+        for (bytes, value) in data.chunks_exact(8).zip(buffer.iter_mut()) {
+            *value = bytes
+                .pread_with(0, scroll::LE)
+                .expect("an u64 - this is a bug, please report it");
+        }
+
+        self.write_64(address, &buffer)?;
+        Ok(())
+    }
+
+    /// Writes bytes using 32 bit memory access. Address must be 32 bit aligned
+    /// and data must be an exact multiple of 8.
+    fn write_mem_32bit(&mut self, address: u64, data: &[u8]) -> Result<(), error::Error> {
+        // Default implementation uses `write_32`, then converts u32 values back
+        // to bytes. Assumes target is little endian. May be overridden to
+        // provide an implementation that avoids heap allocation and endian
+        // conversions. Must be overridden for big endian targets.
+        if data.len() % 4 != 0 {
+            return Err(error::Error::Other(anyhow!(
+                "Call to read_mem_32bit with data.len() not a multiple of 4"
+            )));
+        }
+        let mut buffer = vec![0u32; data.len() / 4];
+        for (bytes, value) in data.chunks_exact(4).zip(buffer.iter_mut()) {
+            *value = bytes
+                .pread_with(0, scroll::LE)
+                .expect("an u32 - this is a bug, please report it");
+        }
+
+        self.write_32(address, &buffer)?;
+        Ok(())
+    }
+
+    /// Write a block of 8bit words at `address`. May use 64 bit memory access,
     /// so should only be used if reading memory locations that don't have side
-    /// effects. Generally faster than [`MemoryInterface::read_8`].
-    fn write(&mut self, address: u64, data: &[u8]) -> Result<(), error::Error>;
+    /// effects. Generally faster than [`MemoryInterface::write_8`].
+    fn write(&mut self, address: u64, data: &[u8]) -> Result<(), error::Error> {
+        let len = data.len();
+        let start_extra_count = 4 - (address % 4) as usize;
+        let end_extra_count = ((len - start_extra_count) % 4) as usize;
+        let inbetween_count = len - start_extra_count - end_extra_count;
+        assert!(start_extra_count < 4);
+        assert!(end_extra_count < 4);
+        assert!(inbetween_count % 4 == 0);
+
+        // If we do not have 32 bit aligned access we first check that we can do 8 bit aligned access on this platform.
+        // If we cannot we throw an error.
+        // If we can we read the first n < 4 bytes up until the word aligned address that comes next.
+        if address % 4 != 0 || len % 4 != 0 {
+            // If we do not support 8 bit transfers we have to bail because we can only do 32 bit word aligned transers.
+            if !self.supports_8bit_transfers()? {
+                return Err(error::Error::ArchitectureSpecific(Box::new(
+                    AccessPortError::alignment_error(address, 4),
+                )));
+            }
+
+            // We first do an 8 bit write of the first < 4 bytes up until the 4 byte aligned boundary.
+            self.write_8(address, &data[..start_extra_count])?;
+        }
+
+        let mut buffer = vec![0u32; inbetween_count / 4];
+        for (bytes, value) in data.chunks_exact(4).zip(buffer.iter_mut()) {
+            *value = u32::from_le_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]);
+        }
+        self.write_32(address, &buffer)?;
+
+        // We read the remaining bytes that we did not read yet which is always n < 4.
+        if end_extra_count > 0 {
+            self.write_8(address, &data[..start_extra_count])?;
+        }
+
+        Ok(())
+    }
+
+    /// Returns whether the current platform supports native 8bit transfers.
+    fn supports_8bit_transfers(&self) -> Result<bool, error::Error>;
 
     /// Flush any outstanding operations.
     ///
@@ -218,6 +304,10 @@ where
 
     fn write(&mut self, address: u64, data: &[u8]) -> Result<(), error::Error> {
         (*self).write(address, data)
+    }
+
+    fn supports_8bit_transfers(&self) -> Result<bool, error::Error> {
+        MemoryInterface::supports_8bit_transfers(*self)
     }
 
     fn flush(&mut self) -> Result<(), error::Error> {
@@ -331,6 +421,11 @@ impl<'probe> Memory<'probe> {
         self.inner.write(self.ap_sel, address, data)
     }
 
+    /// Returns whether the current platform supports native 8bit transfers.
+    pub fn supports_8bit_transfers(&self) -> Result<bool, error::Error> {
+        self.inner.supports_8bit_transfers()
+    }
+
     /// Flushes all the outstanding read and write commands to the debug probe,
     /// effectively executing all queued commands.
     pub fn flush(&mut self) -> Result<(), error::Error> {
@@ -358,7 +453,7 @@ impl<'probe> Memory<'probe> {
 // Helper functions to validate address space constraints
 
 /// Validate that an input address is valid for 32-bit only systems
-pub(crate) fn valid_32_address(address: u64) -> Result<u32, error::Error> {
+pub(crate) fn valid_32bit_address(address: u64) -> Result<u32, error::Error> {
     let address: u32 = address
         .try_into()
         .map_err(|_| anyhow!("Address {:#08x} out of range", address))?;

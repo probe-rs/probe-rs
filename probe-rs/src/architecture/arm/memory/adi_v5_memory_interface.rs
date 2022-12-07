@@ -23,7 +23,7 @@ pub trait ArmProbe: SwdSequence {
     /// effects. Generally faster than [`MemoryInterface::read_8`].
     fn read(&mut self, ap: MemoryAp, address: u64, data: &mut [u8]) -> Result<(), Error> {
         let len = data.len();
-        if address % 4 == 0 && len % 4 == 0 {
+        if address % 4 == 0 || len % 4 == 0 {
             let mut buffer = vec![0u32; len / 4];
             self.read_32(ap, address, &mut buffer)?;
             for (bytes, value) in data.chunks_exact_mut(4).zip(buffer.iter()) {
@@ -65,7 +65,7 @@ pub trait ArmProbe: SwdSequence {
         // If we do not have 32 bit aligned access we first check that we can do 8 bit aligned access on this platform.
         // If we cannot we throw an error.
         // If we can we read the first n < 4 bytes up until the word aligned address that comes next.
-        if address % 4 != 0 && len % 4 != 0 {
+        if address % 4 != 0 || len % 4 != 0 {
             // If we do not support 8 bit transfers we have to bail because we can only do 32 bit word aligned transers.
             if !self.supports_8bit_transfers()? {
                 return Err(Error::ArchitectureSpecific(Box::new(
@@ -166,9 +166,6 @@ where
         // the ARM Debug Interface Architecture Specification.
         //
         // The HNONSEC bit is set according to [Self::supports_hnonsec]:
-        //
-        //  HNONSEC[30]          = 1  - Should be One, if unsupported, otherwise
-        //                              zero to indicate secure access
         // The PROT bits are set as follows:
         //  MasterType, bit [29] = 1  - Access as default AHB Master
         //  HPROT[4]             = 0  - Non-allocating access
@@ -398,6 +395,7 @@ where
         self.write_tar_register(access_port, address)?;
 
         // The maximum chunk size we can read before data overflows.
+        // This is the size of the internal counter that is used for the address increment in the ARM spec.
         let max_chunk_size_bytes = 0x400;
 
         let mut remaining_data_len = data.len();
@@ -482,7 +480,6 @@ where
         let start_address = address;
         let mut data_u32 = vec![0u32; data.len()];
 
-        // Second we read in 32 bit reads until we have less than 32 bits left to read.
         let csw = self.build_csw_register(DataSize::U8);
         self.write_csw_register(access_port, csw)?;
 
@@ -490,6 +487,7 @@ where
         self.write_tar_register(access_port, address)?;
 
         // The maximum chunk size we can read before data overflows.
+        // This is the size of the internal counter that is used for the address increment in the ARM spec.
         let max_chunk_size_bytes = 0x400;
 
         let mut remaining_data_len = data.len();
@@ -501,7 +499,7 @@ where
 
         let mut data_offset = 0;
 
-        log::debug!(
+        tracing::debug!(
             "Read first block with len {} at address {:#08x}",
             first_chunk_size_bytes,
             address
@@ -528,7 +526,7 @@ where
 
             let next_chunk_size_bytes = std::cmp::min(max_chunk_size_bytes, remaining_data_len);
 
-            log::debug!(
+            tracing::debug!(
                 "Reading chunk with len {} at address {:#08x}",
                 next_chunk_size_bytes,
                 address
@@ -549,11 +547,14 @@ where
             data_offset += next_chunk_size_words;
         }
 
+        // The required shifting logic here is described in C2.2.6 Byte lanes of the ADI v5.2 specification.
+        // All bytes are transfered in their lane, so when we do an access at an address that is not divisible by 4,
+        // we have to shift the word (one or two bytes) to it's correct position.
         for (target, (i, source)) in data.iter_mut().zip(data_u32.iter().enumerate()) {
             *target = ((*source >> (((start_address + i as u64) % 4) * 8)) & 0xFF) as u8;
         }
 
-        log::debug!("Finished reading block");
+        tracing::debug!("Finished reading block");
 
         Ok(())
     }
@@ -706,7 +707,7 @@ where
 
         remaining_data_len -= first_chunk_size_words;
         let mut address = address
-            .checked_add((first_chunk_size_words) as u64)
+            .checked_add((first_chunk_size_words * 4) as u64)
             .ok_or(AccessPortError::OutOfBounds)?;
         data_offset += first_chunk_size_words;
 
@@ -733,7 +734,7 @@ where
 
             remaining_data_len -= next_chunk_size_words;
             address = address
-                .checked_add((next_chunk_size_words) as u64)
+                .checked_add((next_chunk_size_words * 4) as u64)
                 .ok_or(AccessPortError::OutOfBounds)?;
             data_offset += next_chunk_size_words;
         }
@@ -760,13 +761,16 @@ where
             return Ok(());
         }
 
+        // The required shifting logic here is described in C2.2.6 Byte lanes of the ADI v5.2 specification.
+        // All bytes are transfered in their lane, so when we do an access at an address that is not divisible by 4,
+        // we have to shift the word (one or two bytes) to it's correct position.
         let data = data
             .iter()
             .enumerate()
             .map(|(i, v)| (*v as u32) << (((address as usize + i) % 4) * 8))
             .collect::<Vec<_>>();
 
-        log::debug!(
+        tracing::debug!(
             "Write block with total size {} bytes to address {:#08x}",
             data.len(),
             address
@@ -793,7 +797,7 @@ where
 
         let mut data_offset = 0;
 
-        log::debug!(
+        tracing::debug!(
             "Write first block with len {} at address {:#08x}",
             first_chunk_size_bytes,
             address
@@ -820,7 +824,7 @@ where
 
             let next_chunk_size_bytes = std::cmp::min(max_chunk_size_bytes, remaining_data_len);
 
-            log::debug!(
+            tracing::debug!(
                 "Writing chunk with len {} at address {:#08x}",
                 next_chunk_size_bytes,
                 address
@@ -841,7 +845,7 @@ where
             data_offset += next_chunk_size_words;
         }
 
-        log::debug!("Finished writing block");
+        tracing::debug!("Finished writing block");
 
         Ok(())
     }

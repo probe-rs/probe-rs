@@ -4,7 +4,7 @@ use crate::architecture::arm::core::armv8a_debug_regs::*;
 use crate::architecture::arm::sequences::ArmDebugSequence;
 use crate::core::{RegisterFile, RegisterValue};
 use crate::error::Error;
-use crate::memory::{valid_32_address, Memory};
+use crate::memory::{valid_32bit_address, Memory};
 use crate::CoreInterface;
 use crate::CoreStatus;
 use crate::DebugProbeError;
@@ -389,7 +389,7 @@ impl<'probe> Armv8a<'probe> {
 
             self.execute_instruction_with_input_64(instruction, value)
         } else {
-            let value = valid_32_address(value)?;
+            let value = valid_32bit_address(value)?;
 
             let instruction = build_mrc(14, 0, reg, 0, 5, 0);
 
@@ -606,7 +606,7 @@ impl<'probe> Armv8a<'probe> {
     }
 
     fn read_cpu_memory_aarch32_32(&mut self, address: u64) -> Result<u32, Error> {
-        let address = valid_32_address(address)?;
+        let address = valid_32bit_address(address)?;
 
         // Save r0, r1
         self.prepare_for_clobber(0)?;
@@ -662,7 +662,7 @@ impl<'probe> Armv8a<'probe> {
     }
 
     fn write_cpu_memory_aarch32_32(&mut self, address: u64, data: u32) -> Result<(), Error> {
-        let address = valid_32_address(address)?;
+        let address = valid_32bit_address(address)?;
 
         // Save r0, r1
         self.prepare_for_clobber(0)?;
@@ -1226,6 +1226,10 @@ impl<'probe> MemoryInterface for Armv8a<'probe> {
         }
 
         Ok(())
+    }
+
+    fn supports_8bit_transfers(&self) -> Result<bool, Error> {
+        Ok(false)
     }
 
     fn flush(&mut self) -> Result<(), Error> {

@@ -3,7 +3,7 @@
 use crate::architecture::arm::sequences::ArmDebugSequence;
 use crate::core::RegisterFile;
 use crate::error::Error;
-use crate::memory::{valid_32_address, Memory};
+use crate::memory::{valid_32bit_address, Memory};
 use crate::{
     architecture::arm::core::register, CoreStatus, DebugProbeError, HaltReason, MemoryInterface,
 };
@@ -263,7 +263,7 @@ impl<'probe> CoreInterface for Armv8m<'probe> {
     }
 
     fn set_hw_breakpoint(&mut self, bp_unit_index: usize, addr: u64) -> Result<(), Error> {
-        let addr = valid_32_address(addr)?;
+        let addr = valid_32bit_address(addr)?;
 
         let mut val = FpCompN::from(0);
 
@@ -461,6 +461,10 @@ impl<'probe> MemoryInterface for Armv8m<'probe> {
 
     fn write(&mut self, address: u64, data: &[u8]) -> Result<(), Error> {
         self.memory.write(address, data)
+    }
+
+    fn supports_8bit_transfers(&self) -> Result<bool, Error> {
+        self.memory.supports_8bit_transfers()
     }
 
     fn flush(&mut self) -> Result<(), Error> {

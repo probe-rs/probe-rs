@@ -10,7 +10,7 @@ use communication_interface::{
 };
 
 use crate::core::{CoreInformation, RegisterFile, RegisterValue};
-use crate::memory::valid_32_address;
+use crate::memory::valid_32bit_address;
 use crate::{CoreStatus, Error, HaltReason, MemoryInterface, RegisterId};
 
 use bitfield::bitfield;
@@ -421,7 +421,7 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
     }
 
     fn set_hw_breakpoint(&mut self, bp_unit_index: usize, addr: u64) -> Result<(), crate::Error> {
-        let addr = valid_32_address(addr)?;
+        let addr = valid_32bit_address(addr)?;
 
         if !self.hw_breakpoints_enabled() {
             self.enable_breakpoints(true)?;
@@ -662,6 +662,10 @@ impl<'probe> MemoryInterface for Riscv32<'probe> {
 
     fn write(&mut self, address: u64, data: &[u8]) -> Result<(), Error> {
         self.interface.write(address, data)
+    }
+
+    fn supports_8bit_transfers(&self) -> Result<bool, Error> {
+        self.interface.supports_8bit_transfers()
     }
 
     fn flush(&mut self) -> Result<(), Error> {

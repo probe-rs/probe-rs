@@ -5,7 +5,7 @@ use crate::architecture::arm::core::register;
 use crate::architecture::arm::sequences::ArmDebugSequence;
 use crate::core::{RegisterFile, RegisterValue};
 use crate::error::Error;
-use crate::memory::{valid_32_address, Memory};
+use crate::memory::{valid_32bit_address, Memory};
 use crate::CoreInterface;
 use crate::CoreStatus;
 use crate::DebugProbeError;
@@ -629,7 +629,7 @@ impl<'probe> CoreInterface for Armv7a<'probe> {
     }
 
     fn set_hw_breakpoint(&mut self, bp_unit_index: usize, addr: u64) -> Result<(), Error> {
-        let addr = valid_32_address(addr)?;
+        let addr = valid_32bit_address(addr)?;
 
         let bp_value_addr =
             Dbgbvr::get_mmio_address(self.base_address) + (bp_unit_index * size_of::<u32>()) as u64;
@@ -772,7 +772,7 @@ impl<'probe> MemoryInterface for Armv7a<'probe> {
     }
 
     fn read_word_32(&mut self, address: u64) -> Result<u32, Error> {
-        let address = valid_32_address(address)?;
+        let address = valid_32bit_address(address)?;
 
         // LDC p14, c5, [r0], #4
         let instr = build_ldc(14, 5, 0, 4);
@@ -823,14 +823,6 @@ impl<'probe> MemoryInterface for Armv7a<'probe> {
         Ok(())
     }
 
-    fn read(&mut self, address: u64, data: &mut [u8]) -> Result<(), Error> {
-        for (i, byte) in data.iter_mut().enumerate() {
-            *byte = self.read_word_8(address + (i as u64))?;
-        }
-
-        Ok(())
-    }
-
     fn write_word_64(&mut self, address: u64, data: u64) -> Result<(), crate::error::Error> {
         let data_low = data as u32;
         let data_high = (data >> 32) as u32;
@@ -840,7 +832,7 @@ impl<'probe> MemoryInterface for Armv7a<'probe> {
     }
 
     fn write_word_32(&mut self, address: u64, data: u32) -> Result<(), Error> {
-        let address = valid_32_address(address)?;
+        let address = valid_32bit_address(address)?;
 
         // STC p14, c5, [r0], #4
         let instr = build_stc(14, 5, 0, 4);
@@ -892,12 +884,8 @@ impl<'probe> MemoryInterface for Armv7a<'probe> {
         Ok(())
     }
 
-    fn write(&mut self, address: u64, data: &[u8]) -> Result<(), Error> {
-        for (i, byte) in data.iter().enumerate() {
-            self.write_word_8(address + ((i as u64) * 4), *byte)?;
-        }
-
-        Ok(())
+    fn supports_8bit_transfers(&self) -> Result<bool, Error> {
+        Ok(false)
     }
 
     fn flush(&mut self) -> Result<(), Error> {
