@@ -23,8 +23,8 @@ vendored-libusb = ["rusb/vendored"]
 # Enable all built in targets.
 builtin-targets = []
 
-ftdi = ["libftdi1-sys"]
-ftdi-vendored = ["libftdi1-sys/vendored", "libftdi1-sys/libusb1-sys"]
+ftdi = ["libftdi1-sys", "ftdi-mpsse"]
+ftdi-vendored = ["libftdi1-sys/vendored", "libftdi1-sys/libusb1-sys", "ftdi-mpsse"]
 
 [dependencies]
 anyhow = { workspace = true }
@@ -63,6 +63,7 @@ tracing = { version = "0.1.37", features = ["log"] }
 # optional
 hexdump = { version = "0.1.0", optional = true }
 libftdi1-sys = { version = "1.1.2", optional = true }
+ftdi-mpsse = { version = "0.1.1", optional = true }
 
 # path
 probe-rs-target = { workspace = true }

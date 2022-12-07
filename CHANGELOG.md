@@ -23,6 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added support for W7500 target
 - Added an optional `stack_size` configuration to flash algorithms to control the stack size (#1260)
 - Added Support for Debug Erase Sequences that (if available) are used instead of the normal chip-erase logic
+- Added Support for GD32E50x targets (#1304)
 
 ### Changed
 
@@ -43,7 +44,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `probe_rs_target::chip::Chip` has a new field `pack_file_release` which is populated by `target-gen`.(#1259)
 - Benchmarking code moved from an example to `probe-rs-cli` subcommand (#1296).
 - Replace `log` crate, with `tracing` in `probe-rs-debugger` executable, and in the `rtt` library. (#1297)
+- Replace FTDI probe command creation with `ftdi-mpsse` library functions/enums (#1302)
 - Improved formatting of `probe-rs-cli info` output. (#1305)
+
 
 ### Fixed
 

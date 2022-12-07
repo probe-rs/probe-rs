@@ -1,0 +1,668 @@
+name: GD32E50x Series
+generated_from_pack: true
+pack_file_release: 1.3.2
+variants:
+- name: GD32E503CC
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20018000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8040000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - gd32e50x_256
+- name: GD32E503CE
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20020000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8080000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - gd32e50x_512
+- name: GD32E503RC
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20018000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8040000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - gd32e50x_256
+- name: GD32E503RE
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20020000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8080000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - gd32e50x_512
+- name: GD32E503VC
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20018000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8040000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - gd32e50x_256
+- name: GD32E503VE
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20020000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8080000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - gd32e50x_512
+- name: GD32E503ZC
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20018000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8040000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - gd32e50x_256
+- name: GD32E503ZE
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20018000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8080000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - gd32e50x_512
+- name: GD32E505RB
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20014000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8020000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - gd32e50x_128
+- name: GD32E505RC
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20018000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8040000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - gd32e50x_256
+- name: GD32E505RE
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20020000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8080000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - gd32e50x_512
+- name: GD32E505VC
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20018000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8040000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - gd32e50x_256
+- name: GD32E505VE
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20020000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8080000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - gd32e50x_512
+- name: GD32E505ZC
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20018000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8040000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - gd32e50x_256
+- name: GD32E505ZE
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20018000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8080000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - gd32e50x_512
+- name: GD32E507RC
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20018000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8040000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - gd32e50x_256
+- name: GD32E507RE
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20020000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8080000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - gd32e50x_512
+- name: GD32E507VC
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20018000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8040000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - gd32e50x_256
+- name: GD32E507VE
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20020000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8080000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - gd32e50x_512
+- name: GD32E507ZC
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20018000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8040000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - gd32e50x_256
+- name: GD32E507ZE
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20020000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8080000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - gd32e50x_512
+- name: GD32E508RE
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20020000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8080000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - gd32e50x_512
+- name: GD32E508VE
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20020000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8080000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - gd32e50x_512
+- name: GD32E508ZE
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20020000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8080000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - gd32e50x_512
+flash_algorithms:
+- name: gd32e50x_256
+  description: GD32E50x 256KB
+  default: true
+  instructions: QPIEAkPyAAFv8xIAwPIAAsTyAAFJ+AIAT/T4MAAiClBC8gQAQPIjEsTyAgDE8mdSAmBI9qsSzPbvUgJggGkQ8AQPB9FF8lVQCGAGIEhgQPb/cIhgACBwR0LyEAHE8gIBCGhA8IACACAKYHBHQvIQAcTyAgEIaEDwBAAIYAhoQPBAAAhgUfgEDBDwAQ8e0EPyAADE8gAASvaqIgC/AmBR+AQ8E/ABDxHQAmBR+AQ8E/ABDwvQAmBR+AQ8E/ABDwXQAmBR+AQ8E/ABD+fRCGgg8AQCACAKYHBHQvIQAcTyAgEKaELwAgIKYEhgCGhA8EAACGBR+AQMEPABDx3QQ/IAAMTyAABK9qoiAmBR+AQ8E/ABDxHQAmBR+AQ8E/ABDwvQAmBR+AQ8E/ABDwXQAmBR+AQ8E/ABD+fRCGgg8AICACAKYHBHAzEh8AMMvPEADwS/ACBwR0LyDAPE8gIDCOAAvwQwvPEEDALxBAIEvwAgcEdZaEHwAQFZYBFoAWAZaBHwAQ8L0BloEfABDwfQGWgR8AEPA9AZaBHwAQ/v0VloIfABAVlgGWgR8BQP2dAYaEDwFAAYYAEgcEcAAAAAAAAAAA==
+  pc_init: 0x1
+  pc_uninit: 0x59
+  pc_program_page: 0x145
+  pc_erase_sector: 0xd9
+  pc_erase_all: 0x6d
+  data_section_offset: 0x1b8
+  flash_properties:
+    address_range:
+      start: 0x8000000
+      end: 0x8040000
+    page_size: 0x400
+    erased_byte_value: 0xff
+    program_page_timeout: 100
+    erase_sector_timeout: 3000
+    sectors:
+    - size: 0x2000
+      address: 0x0
+- name: gd32e50x_512
+  description: GD32E50x 512KB
+  default: true
+  instructions: QPIEAkPyAAFv8xIAwPIAAsTyAAFJ+AIAT/T4MAAiClBC8gQAQPIjEsTyAgDE8mdSAmBI9qsSzPbvUgJggGkQ8AQPB9FF8lVQCGAGIEhgQPb/cIhgACBwR0LyEAHE8gIBCGhA8IACACAKYHBHQvIQAcTyAgEIaEDwBAAIYAhoQPBAAAhgUfgEDBDwAQ8e0EPyAADE8gAASvaqIgC/AmBR+AQ8E/ABDxHQAmBR+AQ8E/ABDwvQAmBR+AQ8E/ABDwXQAmBR+AQ8E/ABD+fRCGgg8AQCACAKYHBHQvIQAcTyAgEKaELwAgIKYEhgCGhA8EAACGBR+AQMEPABDx3QQ/IAAMTyAABK9qoiAmBR+AQ8E/ABDxHQAmBR+AQ8E/ABDwvQAmBR+AQ8E/ABDwXQAmBR+AQ8E/ABD+fRCGgg8AICACAKYHBHAzEh8AMMvPEADwS/ACBwR0LyDAPE8gIDCOAAvwQwvPEEDALxBAIEvwAgcEdZaEHwAQFZYBFoAWAZaBHwAQ8L0BloEfABDwfQGWgR8AEPA9AZaBHwAQ/v0VloIfABAVlgGWgR8BQP2dAYaEDwFAAYYAEgcEcAAAAAAAAAAA==
+  pc_init: 0x1
+  pc_uninit: 0x59
+  pc_program_page: 0x145
+  pc_erase_sector: 0xd9
+  pc_erase_all: 0x6d
+  data_section_offset: 0x1b8
+  flash_properties:
+    address_range:
+      start: 0x8000000
+      end: 0x8080000
+    page_size: 0x400
+    erased_byte_value: 0xff
+    program_page_timeout: 100
+    erase_sector_timeout: 3000
+    sectors:
+    - size: 0x2000
+      address: 0x0
+- name: gd32e50x_128
+  description: GD32E50x 128KB
+  default: true
+  instructions: QPIEAkPyAAFv8xIAwPIAAsTyAAFJ+AIAT/T4MAAiClBC8gQAQPIjEsTyAgDE8mdSAmBI9qsSzPbvUgJggGkQ8AQPB9FF8lVQCGAGIEhgQPb/cIhgACBwR0LyEAHE8gIBCGhA8IACACAKYHBHQvIQAcTyAgEIaEDwBAAIYAhoQPBAAAhgUfgEDBDwAQ8e0EPyAADE8gAASvaqIgC/AmBR+AQ8E/ABDxHQAmBR+AQ8E/ABDwvQAmBR+AQ8E/ABDwXQAmBR+AQ8E/ABD+fRCGgg8AQCACAKYHBHQvIQAcTyAgEKaELwAgIKYEhgCGhA8EAACGBR+AQMEPABDx3QQ/IAAMTyAABK9qoiAmBR+AQ8E/ABDxHQAmBR+AQ8E/ABDwvQAmBR+AQ8E/ABDwXQAmBR+AQ8E/ABD+fRCGgg8AICACAKYHBHAzEh8AMMvPEADwS/ACBwR0LyDAPE8gIDCOAAvwQwvPEEDALxBAIEvwAgcEdZaEHwAQFZYBFoAWAZaBHwAQ8L0BloEfABDwfQGWgR8AEPA9AZaBHwAQ/v0VloIfABAVlgGWgR8BQP2dAYaEDwFAAYYAEgcEcAAAAAAAAAAA==
+  pc_init: 0x1
+  pc_uninit: 0x59
+  pc_program_page: 0x145
+  pc_erase_sector: 0xd9
+  pc_erase_all: 0x6d
+  data_section_offset: 0x1b8
+  flash_properties:
+    address_range:
+      start: 0x8000000
+      end: 0x8020000
+    page_size: 0x400
+    erased_byte_value: 0xff
+    program_page_timeout: 100
+    erase_sector_timeout: 3000
+    sectors:
+    - size: 0x2000
+      address: 0x0
