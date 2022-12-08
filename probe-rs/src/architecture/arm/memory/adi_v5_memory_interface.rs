@@ -422,7 +422,7 @@ where
         )?;
 
         remaining_data_len -= first_chunk_size_transfer_unit;
-        let address = address
+        let mut address = address
             .checked_add((4 * first_chunk_size_transfer_unit) as u64)
             .ok_or(AccessPortError::OutOfBounds)?;
         data_offset += first_chunk_size_transfer_unit;
@@ -440,19 +440,19 @@ where
                 address
             );
 
-            let next_chunk_size_words = next_chunk_size_bytes / 4;
+            let next_chunk_size_transfer_unit = next_chunk_size_bytes / 4;
 
             self.read_ap_register_repeated(
                 access_port,
                 DRW { data: 0 },
-                &mut data[data_offset..(data_offset + next_chunk_size_words)],
+                &mut data[data_offset..(data_offset + next_chunk_size_transfer_unit)],
             )?;
 
-            remaining_data_len -= next_chunk_size_words;
-            address
-                .checked_add((4 * next_chunk_size_words) as u64)
+            remaining_data_len -= next_chunk_size_transfer_unit;
+            address = address
+                .checked_add((4 * next_chunk_size_transfer_unit) as u64)
                 .ok_or(AccessPortError::OutOfBounds)?;
-            data_offset += next_chunk_size_words;
+            data_offset += next_chunk_size_transfer_unit;
         }
 
         tracing::debug!("Finished reading block");
@@ -532,19 +532,19 @@ where
                 address
             );
 
-            let next_chunk_size_words = next_chunk_size_bytes;
+            let next_chunk_size_transfer_unit = next_chunk_size_bytes;
 
             self.read_ap_register_repeated(
                 access_port,
                 DRW { data: 0 },
-                &mut data_u32[data_offset..(data_offset + next_chunk_size_words)],
+                &mut data_u32[data_offset..(data_offset + next_chunk_size_transfer_unit)],
             )?;
 
-            remaining_data_len -= next_chunk_size_words;
-            address
-                .checked_add((next_chunk_size_words) as u64)
+            remaining_data_len -= next_chunk_size_transfer_unit;
+            address = address
+                .checked_add((next_chunk_size_transfer_unit) as u64)
                 .ok_or(AccessPortError::OutOfBounds)?;
-            data_offset += next_chunk_size_words;
+            data_offset += next_chunk_size_transfer_unit;
         }
 
         // The required shifting logic here is described in C2.2.6 Byte lanes of the ADI v5.2 specification.
@@ -724,19 +724,19 @@ where
                 address
             );
 
-            let next_chunk_size_words = next_chunk_size_bytes / 4;
+            let next_chunk_size_transfer_unit = next_chunk_size_bytes / 4;
 
             self.write_ap_register_repeated(
                 access_port,
                 DRW { data: 0 },
-                &data[data_offset..(data_offset + next_chunk_size_words)],
+                &data[data_offset..(data_offset + next_chunk_size_transfer_unit)],
             )?;
 
-            remaining_data_len -= next_chunk_size_words;
+            remaining_data_len -= next_chunk_size_transfer_unit;
             address = address
-                .checked_add((next_chunk_size_words * 4) as u64)
+                .checked_add((next_chunk_size_transfer_unit * 4) as u64)
                 .ok_or(AccessPortError::OutOfBounds)?;
-            data_offset += next_chunk_size_words;
+            data_offset += next_chunk_size_transfer_unit;
         }
 
         tracing::debug!("Finished writing block");
@@ -830,19 +830,19 @@ where
                 address
             );
 
-            let next_chunk_size_words = next_chunk_size_bytes;
+            let next_chunk_size_transfer_unit = next_chunk_size_bytes;
 
             self.write_ap_register_repeated(
                 access_port,
                 DRW { data: 0 },
-                &data[data_offset..(data_offset + next_chunk_size_words)],
+                &data[data_offset..(data_offset + next_chunk_size_transfer_unit)],
             )?;
 
-            remaining_data_len -= next_chunk_size_words;
+            remaining_data_len -= next_chunk_size_transfer_unit;
             address = address
-                .checked_add((next_chunk_size_words) as u64)
+                .checked_add((next_chunk_size_transfer_unit) as u64)
                 .ok_or(AccessPortError::OutOfBounds)?;
-            data_offset += next_chunk_size_words;
+            data_offset += next_chunk_size_transfer_unit;
         }
 
         tracing::debug!("Finished writing block");
@@ -968,6 +968,8 @@ fn aligned_range(address: u64, len: usize) -> Result<Range<u64>, AccessPortError
 
 #[cfg(test)]
 mod tests {
+    use scroll::Pread;
+
     use crate::architecture::arm::{ap::AccessPort, ApAddress, DpAddress, MemoryApInformation};
 
     use super::super::super::ap::memory_ap::mock::MockMemoryAp;
@@ -1100,6 +1102,30 @@ mod tests {
                 );
             }
         }
+    }
+
+    #[test]
+    fn read_32_big_chunk() {
+        let mut mock = MockMemoryAp::with_pattern();
+        let expected: Vec<u32> = mock
+            .memory
+            .chunks(4)
+            .map(|b| b.pread(0).unwrap())
+            .take(513)
+            .collect();
+        let mut mi = ADIMemoryInterface::new_mock(&mut mock);
+
+        let mut data = vec![0u32; 513];
+        mi.read_32(DUMMY_AP, 0, &mut data)
+            .unwrap_or_else(|_| panic!("read_32 failed, address = {}, len = {}", 0, data.len()));
+
+        assert_eq!(
+            data.as_slice(),
+            expected,
+            "address = {}, len = {}",
+            0,
+            data.len()
+        );
     }
 
     #[test]

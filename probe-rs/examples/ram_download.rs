@@ -130,7 +130,15 @@ fn main() -> Result<()> {
     }
 
     if error_count > 0 {
-        println!("First element: {:08x}", sample_data[0]);
+        println!(
+            "First element: {:08x} ?= {:08x}",
+            sample_data[0], readback_data[0]
+        );
+        println!(
+            "Last element: {:08x} ?= {:08x}",
+            sample_data[sample_data.len() - 1],
+            readback_data[readback_data.len() - 1]
+        );
         eprintln!("Verification failed!");
     } else {
         println!("Verification succesful.");
