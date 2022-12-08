@@ -23,7 +23,7 @@ pub trait ArmProbe: SwdSequence {
     /// effects. Generally faster than [`MemoryInterface::read_8`].
     fn read(&mut self, ap: MemoryAp, address: u64, data: &mut [u8]) -> Result<(), Error> {
         let len = data.len();
-        if address % 4 == 0 || len % 4 == 0 {
+        if address % 4 == 0 && len % 4 == 0 {
             let mut buffer = vec![0u32; len / 4];
             self.read_32(ap, address, &mut buffer)?;
             for (bytes, value) in data.chunks_exact_mut(4).zip(buffer.iter()) {
@@ -413,19 +413,19 @@ where
             address
         );
 
-        let first_chunk_size_words = first_chunk_size_bytes / 4;
+        let first_chunk_size_transfer_unit = first_chunk_size_bytes / 4;
 
         self.read_ap_register_repeated(
             access_port,
             DRW { data: 0 },
-            &mut data[data_offset..first_chunk_size_words],
+            &mut data[data_offset..first_chunk_size_transfer_unit],
         )?;
 
-        remaining_data_len -= first_chunk_size_words;
+        remaining_data_len -= first_chunk_size_transfer_unit;
         let address = address
-            .checked_add((4 * first_chunk_size_words) as u64)
+            .checked_add((4 * first_chunk_size_transfer_unit) as u64)
             .ok_or(AccessPortError::OutOfBounds)?;
-        data_offset += first_chunk_size_words;
+        data_offset += first_chunk_size_transfer_unit;
 
         while remaining_data_len > 0 {
             // the autoincrement is limited to the 10 lowest bits so we need to write the address
@@ -505,19 +505,19 @@ where
             address
         );
 
-        let first_chunk_size_words = first_chunk_size_bytes;
+        let first_chunk_size_transfer_unit = first_chunk_size_bytes;
 
         self.read_ap_register_repeated(
             access_port,
             DRW { data: 0 },
-            &mut data_u32[data_offset..first_chunk_size_words],
+            &mut data_u32[data_offset..first_chunk_size_transfer_unit],
         )?;
 
-        remaining_data_len -= first_chunk_size_words;
+        remaining_data_len -= first_chunk_size_transfer_unit;
         address = address
-            .checked_add((first_chunk_size_words) as u64)
+            .checked_add((first_chunk_size_transfer_unit) as u64)
             .ok_or(AccessPortError::OutOfBounds)?;
-        data_offset += first_chunk_size_words;
+        data_offset += first_chunk_size_transfer_unit;
 
         while remaining_data_len > 0 {
             // The autoincrement is limited to the 10 lowest bits so we need to write the address
@@ -697,19 +697,19 @@ where
             address
         );
 
-        let first_chunk_size_words = first_chunk_size_bytes / 4;
+        let first_chunk_size_transfer_unit = first_chunk_size_bytes / 4;
 
         self.write_ap_register_repeated(
             access_port,
             DRW { data: 0 },
-            &data[data_offset..first_chunk_size_words],
+            &data[data_offset..first_chunk_size_transfer_unit],
         )?;
 
-        remaining_data_len -= first_chunk_size_words;
+        remaining_data_len -= first_chunk_size_transfer_unit;
         let mut address = address
-            .checked_add((first_chunk_size_words * 4) as u64)
+            .checked_add((first_chunk_size_transfer_unit * 4) as u64)
             .ok_or(AccessPortError::OutOfBounds)?;
-        data_offset += first_chunk_size_words;
+        data_offset += first_chunk_size_transfer_unit;
 
         while remaining_data_len > 0 {
             // the autoincrement is limited to the 10 lowest bits so we need to write the address
@@ -803,19 +803,19 @@ where
             address
         );
 
-        let first_chunk_size_words = first_chunk_size_bytes;
+        let first_chunk_size_transfer_unit = first_chunk_size_bytes;
 
         self.write_ap_register_repeated(
             access_port,
             DRW { data: 0 },
-            &data[data_offset..first_chunk_size_words],
+            &data[data_offset..first_chunk_size_transfer_unit],
         )?;
 
-        remaining_data_len -= first_chunk_size_words;
+        remaining_data_len -= first_chunk_size_transfer_unit;
         let mut address = address
-            .checked_add((first_chunk_size_words) as u64)
+            .checked_add((first_chunk_size_transfer_unit) as u64)
             .ok_or(AccessPortError::OutOfBounds)?;
-        data_offset += first_chunk_size_words;
+        data_offset += first_chunk_size_transfer_unit;
 
         while remaining_data_len > 0 {
             // the autoincrement is limited to the 10 lowest bits so we need to write the address

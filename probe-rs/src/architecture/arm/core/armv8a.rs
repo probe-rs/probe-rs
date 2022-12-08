@@ -1155,14 +1155,6 @@ impl<'probe> MemoryInterface for Armv8a<'probe> {
         Ok(())
     }
 
-    fn read(&mut self, address: u64, data: &mut [u8]) -> Result<(), Error> {
-        for (i, byte) in data.iter_mut().enumerate() {
-            *byte = self.read_word_8(address + (i as u64))?;
-        }
-
-        Ok(())
-    }
-
     fn write_word_64(&mut self, address: u64, data: u64) -> Result<(), Error> {
         if self.state.is_64_bit {
             self.write_cpu_memory_aarch64_64(address, data)
@@ -1213,14 +1205,6 @@ impl<'probe> MemoryInterface for Armv8a<'probe> {
     }
 
     fn write_8(&mut self, address: u64, data: &[u8]) -> Result<(), Error> {
-        for (i, byte) in data.iter().enumerate() {
-            self.write_word_8(address + ((i as u64) * 4), *byte)?;
-        }
-
-        Ok(())
-    }
-
-    fn write(&mut self, address: u64, data: &[u8]) -> Result<(), Error> {
         for (i, byte) in data.iter().enumerate() {
             self.write_word_8(address + ((i as u64) * 4), *byte)?;
         }

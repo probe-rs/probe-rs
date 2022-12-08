@@ -980,8 +980,8 @@ mod test {
             Ok(())
         }
 
-        fn read(&mut self, _ap: MemoryAp, _address: u64, _data: &mut [u8]) -> Result<(), Error> {
-            todo!()
+        fn read(&mut self, ap: MemoryAp, address: u64, data: &mut [u8]) -> Result<(), Error> {
+            self.read_8(ap, address, data)
         }
 
         fn write_8(&mut self, _ap: MemoryAp, _address: u64, _data: &[u8]) -> Result<(), Error> {
@@ -1022,8 +1022,8 @@ mod test {
             Ok(())
         }
 
-        fn write(&mut self, _ap: MemoryAp, _address: u64, _data: &[u8]) -> Result<(), Error> {
-            todo!()
+        fn write(&mut self, ap: MemoryAp, address: u64, data: &[u8]) -> Result<(), Error> {
+            self.write_8(ap, address, data)
         }
 
         fn flush(&mut self) -> Result<(), Error> {
