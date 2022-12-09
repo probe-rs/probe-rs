@@ -17,7 +17,7 @@ use crate::{MemoryInterface, Probe};
 
 use crate::{probe::JTAGAccess, Error as ProbeRsError, RegisterId};
 
-use crate::memory::valid_32_address;
+use crate::memory::valid_32bit_address;
 
 use bitfield::bitfield;
 use std::{
@@ -1721,7 +1721,7 @@ impl MemoryInterface for RiscvCommunicationInterface {
     }
 
     fn read_word_64(&mut self, address: u64) -> Result<u64, crate::error::Error> {
-        let address = valid_32_address(address)?;
+        let address = valid_32bit_address(address)?;
         let mut ret = self.read_word::<u32>(address)? as u64;
         ret |= (self.read_word::<u32>(address + 4)? as u64) << 32;
 
@@ -1729,18 +1729,18 @@ impl MemoryInterface for RiscvCommunicationInterface {
     }
 
     fn read_word_32(&mut self, address: u64) -> Result<u32, crate::Error> {
-        let address = valid_32_address(address)?;
+        let address = valid_32bit_address(address)?;
         self.read_word(address)
     }
 
     fn read_word_8(&mut self, address: u64) -> Result<u8, crate::Error> {
-        let address = valid_32_address(address)?;
+        let address = valid_32bit_address(address)?;
         tracing::debug!("read_word_8 from {:#08x}", address);
         self.read_word(address)
     }
 
     fn read_64(&mut self, address: u64, data: &mut [u64]) -> Result<(), crate::error::Error> {
-        let address = valid_32_address(address)?;
+        let address = valid_32bit_address(address)?;
         tracing::debug!("read_64 from {:#08x}", address);
 
         for (i, d) in data.iter_mut().enumerate() {
@@ -1751,21 +1751,25 @@ impl MemoryInterface for RiscvCommunicationInterface {
     }
 
     fn read_32(&mut self, address: u64, data: &mut [u32]) -> Result<(), crate::Error> {
-        let address = valid_32_address(address)?;
+        let address = valid_32bit_address(address)?;
         tracing::debug!("read_32 from {:#08x}", address);
         self.read_multiple(address, data)
     }
 
-    /// Read 8-bit values from target memory.
     fn read_8(&mut self, address: u64, data: &mut [u8]) -> Result<(), crate::Error> {
-        let address = valid_32_address(address)?;
+        let address = valid_32bit_address(address)?;
         tracing::debug!("read_8 from {:#08x}", address);
 
         self.read_multiple(address, data)
     }
 
+    fn read(&mut self, address: u64, data: &mut [u8]) -> Result<(), crate::Error> {
+        let address = valid_32bit_address(address)?;
+        self.read_multiple(address, data)
+    }
+
     fn write_word_64(&mut self, address: u64, data: u64) -> Result<(), crate::error::Error> {
-        let address = valid_32_address(address)?;
+        let address = valid_32bit_address(address)?;
         let low_word = data as u32;
         let high_word = (data >> 32) as u32;
 
@@ -1774,17 +1778,17 @@ impl MemoryInterface for RiscvCommunicationInterface {
     }
 
     fn write_word_32(&mut self, address: u64, data: u32) -> Result<(), crate::Error> {
-        let address = valid_32_address(address)?;
+        let address = valid_32bit_address(address)?;
         self.write_word(address, data)
     }
 
     fn write_word_8(&mut self, address: u64, data: u8) -> Result<(), crate::Error> {
-        let address = valid_32_address(address)?;
+        let address = valid_32bit_address(address)?;
         self.write_word(address, data)
     }
 
     fn write_64(&mut self, address: u64, data: &[u64]) -> Result<(), crate::error::Error> {
-        let address = valid_32_address(address)?;
+        let address = valid_32bit_address(address)?;
         tracing::debug!("write_64 to {:#08x}", address);
 
         for (i, d) in data.iter().enumerate() {
@@ -1795,17 +1799,26 @@ impl MemoryInterface for RiscvCommunicationInterface {
     }
 
     fn write_32(&mut self, address: u64, data: &[u32]) -> Result<(), crate::Error> {
-        let address = valid_32_address(address)?;
+        let address = valid_32bit_address(address)?;
         tracing::debug!("write_32 to {:#08x}", address);
 
         self.write_multiple(address, data)
     }
 
     fn write_8(&mut self, address: u64, data: &[u8]) -> Result<(), crate::Error> {
-        let address = valid_32_address(address)?;
+        let address = valid_32bit_address(address)?;
         tracing::debug!("write_8 to {:#08x}", address);
 
         self.write_multiple(address, data)
+    }
+
+    fn write(&mut self, address: u64, data: &[u8]) -> Result<(), crate::Error> {
+        let address = valid_32bit_address(address)?;
+        self.write_multiple(address, data)
+    }
+
+    fn supports_8bit_transfers(&self) -> Result<bool, crate::Error> {
+        Ok(true)
     }
 
     fn flush(&mut self) -> Result<(), crate::Error> {

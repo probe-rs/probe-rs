@@ -27,7 +27,7 @@ impl MockMemoryAp {
         store.insert(TAR::ADDRESS, 0);
         store.insert(DRW::ADDRESS, 0);
         Self {
-            memory: (1..=16).collect(),
+            memory: std::iter::repeat(1..=255).flatten().take(1 << 15).collect(),
             store,
         }
     }

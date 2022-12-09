@@ -7,7 +7,7 @@ use crate::core::{
     RegisterDataType, RegisterDescription, RegisterFile, RegisterKind, RegisterValue,
 };
 use crate::error::Error;
-use crate::memory::{valid_32_address, Memory};
+use crate::memory::{valid_32bit_address, Memory};
 use crate::{
     Architecture, CoreInformation, CoreInterface, CoreStatus, CoreType, DebugProbeError,
     HaltReason, InstructionSet, MemoryInterface, MemoryMappedRegister, RegisterId,
@@ -667,7 +667,7 @@ impl<'probe> CoreInterface for Armv6m<'probe> {
     }
 
     fn set_hw_breakpoint(&mut self, bp_register_index: usize, addr: u64) -> Result<(), Error> {
-        let addr = valid_32_address(addr)?;
+        let addr = valid_32bit_address(addr)?;
 
         tracing::debug!("Setting breakpoint on address 0x{:08x}", addr);
 
@@ -848,33 +848,51 @@ impl<'probe> MemoryInterface for Armv6m<'probe> {
     fn read_word_8(&mut self, address: u64) -> Result<u8, Error> {
         self.memory.read_word_8(address)
     }
+
     fn read_64(&mut self, address: u64, data: &mut [u64]) -> Result<(), crate::error::Error> {
         self.memory.read_64(address, data)
     }
+
     fn read_32(&mut self, address: u64, data: &mut [u32]) -> Result<(), Error> {
         self.memory.read_32(address, data)
     }
+
     fn read_8(&mut self, address: u64, data: &mut [u8]) -> Result<(), Error> {
         self.memory.read_8(address, data)
     }
+
     fn write_word_64(&mut self, address: u64, data: u64) -> Result<(), crate::error::Error> {
         self.memory.write_word_64(address, data)
     }
+
     fn write_word_32(&mut self, address: u64, data: u32) -> Result<(), Error> {
         self.memory.write_word_32(address, data)
     }
+
     fn write_word_8(&mut self, address: u64, data: u8) -> Result<(), Error> {
         self.memory.write_word_8(address, data)
     }
+
     fn write_64(&mut self, address: u64, data: &[u64]) -> Result<(), crate::error::Error> {
         self.memory.write_64(address, data)
     }
+
     fn write_32(&mut self, address: u64, data: &[u32]) -> Result<(), Error> {
         self.memory.write_32(address, data)
     }
+
     fn write_8(&mut self, address: u64, data: &[u8]) -> Result<(), Error> {
         self.memory.write_8(address, data)
     }
+
+    fn write(&mut self, address: u64, data: &[u8]) -> Result<(), Error> {
+        self.memory.write(address, data)
+    }
+
+    fn supports_8bit_transfers(&self) -> Result<bool, Error> {
+        self.memory.supports_8bit_transfers()
+    }
+
     fn flush(&mut self) -> Result<(), Error> {
         self.memory.flush()
     }

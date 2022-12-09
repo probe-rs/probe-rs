@@ -20,7 +20,7 @@ use super::{ApAddress, DapAccess, DpAddress, Register};
 pub enum AccessPortError {
     /// The given register address to perform an access on was not memory aligned.
     /// Make sure it is aligned to the size of the access (`address & access_size == 0`).
-    #[error("Failed to access address 0x{address:08x} as it is not aligned to the requirement of {alignment} bytes.")]
+    #[error("Failed to access address 0x{address:08x} as it is not aligned to the requirement of {alignment} bytes for this platform and API call.")]
     MemoryNotAligned {
         /// The address of the register.
         address: u64,
@@ -58,6 +58,9 @@ pub enum AccessPortError {
     /// An error occurred when trying to flush batched writes of to the AP.
     #[error("Failed to flush batched writes")]
     Flush(#[from] DebugProbeError),
+    /// The requested memory transfer width is not supported on the current core.
+    #[error("{0} bit is not a supported memory transfer width on the current core")]
+    UnsupportedTransferWidth(usize),
 }
 
 impl AccessPortError {

@@ -4,7 +4,7 @@ use crate::architecture::arm::core::armv8a_debug_regs::*;
 use crate::architecture::arm::sequences::ArmDebugSequence;
 use crate::core::{RegisterFile, RegisterValue};
 use crate::error::Error;
-use crate::memory::{valid_32_address, Memory};
+use crate::memory::{valid_32bit_address, Memory};
 use crate::CoreInterface;
 use crate::CoreStatus;
 use crate::DebugProbeError;
@@ -389,7 +389,7 @@ impl<'probe> Armv8a<'probe> {
 
             self.execute_instruction_with_input_64(instruction, value)
         } else {
-            let value = valid_32_address(value)?;
+            let value = valid_32bit_address(value)?;
 
             let instruction = build_mrc(14, 0, reg, 0, 5, 0);
 
@@ -606,7 +606,7 @@ impl<'probe> Armv8a<'probe> {
     }
 
     fn read_cpu_memory_aarch32_32(&mut self, address: u64) -> Result<u32, Error> {
-        let address = valid_32_address(address)?;
+        let address = valid_32bit_address(address)?;
 
         // Save r0, r1
         self.prepare_for_clobber(0)?;
@@ -662,7 +662,7 @@ impl<'probe> Armv8a<'probe> {
     }
 
     fn write_cpu_memory_aarch32_32(&mut self, address: u64, data: u32) -> Result<(), Error> {
-        let address = valid_32_address(address)?;
+        let address = valid_32bit_address(address)?;
 
         // Save r0, r1
         self.prepare_for_clobber(0)?;
@@ -1130,6 +1130,7 @@ impl<'probe> MemoryInterface for Armv8a<'probe> {
         // Return the byte
         Ok(data.to_le_bytes()[byte_offset as usize])
     }
+
     fn read_64(&mut self, address: u64, data: &mut [u64]) -> Result<(), Error> {
         for (i, word) in data.iter_mut().enumerate() {
             *word = self.read_word_64(address + ((i as u64) * 8))?;
@@ -1137,6 +1138,7 @@ impl<'probe> MemoryInterface for Armv8a<'probe> {
 
         Ok(())
     }
+
     fn read_32(&mut self, address: u64, data: &mut [u32]) -> Result<(), Error> {
         for (i, word) in data.iter_mut().enumerate() {
             *word = self.read_word_32(address + ((i as u64) * 4))?;
@@ -1144,6 +1146,7 @@ impl<'probe> MemoryInterface for Armv8a<'probe> {
 
         Ok(())
     }
+
     fn read_8(&mut self, address: u64, data: &mut [u8]) -> Result<(), Error> {
         for (i, byte) in data.iter_mut().enumerate() {
             *byte = self.read_word_8(address + (i as u64))?;
@@ -1151,6 +1154,7 @@ impl<'probe> MemoryInterface for Armv8a<'probe> {
 
         Ok(())
     }
+
     fn write_word_64(&mut self, address: u64, data: u64) -> Result<(), Error> {
         if self.state.is_64_bit {
             self.write_cpu_memory_aarch64_64(address, data)
@@ -1162,6 +1166,7 @@ impl<'probe> MemoryInterface for Armv8a<'probe> {
             self.write_cpu_memory_aarch32_32(address + 4, high_word)
         }
     }
+
     fn write_word_32(&mut self, address: u64, data: u32) -> Result<(), Error> {
         if self.state.is_64_bit {
             self.write_cpu_memory_aarch64_32(address, data)
@@ -1169,6 +1174,7 @@ impl<'probe> MemoryInterface for Armv8a<'probe> {
             self.write_cpu_memory_aarch32_32(address, data)
         }
     }
+
     fn write_word_8(&mut self, address: u64, data: u8) -> Result<(), Error> {
         // Find the word this is in and its byte offset
         let byte_offset = address % 4;
@@ -1181,6 +1187,7 @@ impl<'probe> MemoryInterface for Armv8a<'probe> {
 
         self.write_word_32(word_start, u32::from_le_bytes(word_bytes))
     }
+
     fn write_64(&mut self, address: u64, data: &[u64]) -> Result<(), Error> {
         for (i, word) in data.iter().enumerate() {
             self.write_word_64(address + ((i as u64) * 8), *word)?;
@@ -1188,6 +1195,7 @@ impl<'probe> MemoryInterface for Armv8a<'probe> {
 
         Ok(())
     }
+
     fn write_32(&mut self, address: u64, data: &[u32]) -> Result<(), Error> {
         for (i, word) in data.iter().enumerate() {
             self.write_word_32(address + ((i as u64) * 4), *word)?;
@@ -1195,6 +1203,7 @@ impl<'probe> MemoryInterface for Armv8a<'probe> {
 
         Ok(())
     }
+
     fn write_8(&mut self, address: u64, data: &[u8]) -> Result<(), Error> {
         for (i, byte) in data.iter().enumerate() {
             self.write_word_8(address + ((i as u64) * 4), *byte)?;
@@ -1202,6 +1211,11 @@ impl<'probe> MemoryInterface for Armv8a<'probe> {
 
         Ok(())
     }
+
+    fn supports_8bit_transfers(&self) -> Result<bool, Error> {
+        Ok(false)
+    }
+
     fn flush(&mut self) -> Result<(), Error> {
         // Nothing to do - this runs through the CPU which automatically handles any caching
         Ok(())
@@ -1357,6 +1371,10 @@ mod test {
 
         fn write_64(&mut self, _ap: MemoryAp, _address: u64, _data: &[u64]) -> Result<(), Error> {
             todo!()
+        }
+
+        fn supports_8bit_transfers(&self) -> Result<bool, Error> {
+            Ok(false)
         }
 
         fn supports_native_64bit_access(&mut self) -> bool {
