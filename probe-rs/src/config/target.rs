@@ -3,6 +3,7 @@ use probe_rs_target::{Architecture, ChipFamily};
 use super::{Core, MemoryRegion, RawFlashAlgorithm, RegistryError, TargetDescriptionSource};
 use crate::architecture::arm::sequences::{
     atsame5x::AtSAME5x,
+    infineon::XMC4000,
     nrf52::Nrf52,
     nrf53::Nrf5340,
     nrf91::Nrf9160,
@@ -124,6 +125,9 @@ impl Target {
         } else if chip.name.starts_with("ATSAMD5") || chip.name.starts_with("ATSAME5") {
             tracing::warn!("Using custom sequence for {}", chip.name);
             debug_sequence = DebugSequence::Arm(AtSAME5x::create());
+        } else if chip.name.starts_with("XMC4") {
+            tracing::warn!("Using custom sequence for XMC4000");
+            debug_sequence = DebugSequence::Arm(XMC4000::create());
         }
 
         Ok(Target {
