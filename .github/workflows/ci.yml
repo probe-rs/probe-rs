@@ -100,11 +100,6 @@ jobs:
           command: test
           args: --all-features
 
-      - name: Build with default features
-        uses: actions-rs/cargo@v1.0.3
-        with:
-          command: build
-
   fmt:
     name: Rustfmt
     runs-on: ubuntu-latest
