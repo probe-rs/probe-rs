@@ -12,8 +12,8 @@ use crate::architecture::arm::core::armv6m::Demcr;
 use crate::architecture::arm::{ArmProbeInterface, SwoConfig, SwoMode};
 use crate::{Core, Error, MemoryInterface, MemoryMappedRegister};
 
+pub use self::itm::Itm;
 pub use dwt::Dwt;
-pub use itm::Itm;
 pub use swo::Swo;
 pub use tmc::TraceMemoryController;
 pub use tpiu::Tpiu;

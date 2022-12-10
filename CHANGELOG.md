@@ -50,7 +50,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Improved formatting of `probe-rs-cli info` output. (#1305)
 - Refactor FTDI probe impl to use all JtagCommand logic (#1307)
 
-
 ### Fixed
 
 - (#1269) Error message in case of FTDI device access issues.
@@ -667,11 +666,10 @@ Initial release on crates.io
 - Working basic flash downloader with nRF51.
 - Introduce cargo-flash which can automatically build & flash the target elf file.
 
-[unreleased]: https://github.com/probe-rs/probe-rs/compare/0.13.0...master
-[0.13.0]: https://github.com/probe-rs/probe-rs/compare/0.12.0...0.13.0
-[0.12.0]: https://github.com/probe-rs/probe-rs/compare/0.11.0...0.12.0
-[0.11.0]: https://github.com/probe-rs/probe-rs/compare/v0.10.1...0.11.0
-[0.11.0-alpha.1]: https://github.com/probe-rs/probe-rs/compare/v0.10.1...0.11.0-alpha.1
+[unreleased]: https://github.com/probe-rs/probe-rs/compare/v0.13.0...master
+[0.13.0]: https://github.com/probe-rs/probe-rs/compare/v0.12.0...v0.13.0
+[0.12.0]: https://github.com/probe-rs/probe-rs/compare/v0.11.0...v0.12.0
+[0.11.0]: https://github.com/probe-rs/probe-rs/compare/v0.10.1...v0.11.0
 [0.10.1]: https://github.com/probe-rs/probe-rs/compare/v0.10.0...v0.10.1
 [0.10.0]: https://github.com/probe-rs/probe-rs/compare/v0.9.0...v0.10.0
 [0.9.0]: https://github.com/probe-rs/probe-rs/compare/v0.8.0...v0.9.0
