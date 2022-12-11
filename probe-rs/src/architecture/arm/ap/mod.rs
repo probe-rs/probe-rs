@@ -148,7 +148,7 @@ pub trait ApAccess {
         R: ApRegister<PORT>;
 }
 
-impl<T: DapAccess> ApAccess for T {
+impl<T: DapAccess + ?Sized> ApAccess for T {
     fn read_ap_register<PORT, R>(&mut self, port: impl Into<PORT>) -> Result<R, DebugProbeError>
     where
         PORT: AccessPort,
@@ -217,7 +217,7 @@ impl<T: DapAccess> ApAccess for T {
 /// Can fail silently under the hood testing an ap that doesnt exist and would require cleanup.
 pub fn access_port_is_valid<AP>(debug_port: &mut AP, access_port: GenericAp) -> bool
 where
-    AP: ApAccess,
+    AP: ApAccess + ?Sized,
 {
     let idr_result: Result<IDR, DebugProbeError> = debug_port.read_ap_register(access_port);
 
@@ -231,7 +231,7 @@ where
 /// Can fail silently under the hood testing an ap that doesnt exist and would require cleanup.
 pub(crate) fn valid_access_ports<AP>(debug_port: &mut AP, dp: DpAddress) -> Vec<GenericAp>
 where
-    AP: ApAccess,
+    AP: ApAccess + ?Sized,
 {
     (0..=255)
         .map(|ap| GenericAp::new(ApAddress { dp, ap }))

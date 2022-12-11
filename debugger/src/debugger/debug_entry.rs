@@ -10,6 +10,7 @@ use crate::{
     DebuggerError,
 };
 use anyhow::{anyhow, Context, Result};
+use probe_rs::config::Registry;
 use probe_rs::{
     flashing::{download_file_with_options, DownloadOptions, FlashProgress, Format},
     CoreStatus, Probe,
@@ -932,15 +933,13 @@ pub fn list_connected_devices() -> Result<()> {
     Ok(())
 }
 
-pub fn list_supported_chips() -> Result<()> {
+pub fn list_supported_chips(registry: &Registry) -> Result<()> {
     println!("Available chips:");
-    for family in
-        probe_rs::config::families().map_err(|e| anyhow!("Families could not be read: {:?}", e))?
-    {
+    for family in registry.families() {
         println!("{}", &family.name);
         println!("    Variants:");
-        for variant in family.variants() {
-            println!("        {}", variant.name);
+        for variant in family.chip_names {
+            println!("        {}", variant);
         }
     }
 

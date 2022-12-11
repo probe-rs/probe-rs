@@ -28,6 +28,7 @@ use rustyline::Editor;
 use anyhow::{Context, Result};
 use tracing_subscriber::EnvFilter;
 
+use probe_rs::config::Registry;
 use std::{fs::File, path::PathBuf};
 use std::{io, time::Instant};
 use std::{num::ParseIntError, path::Path};
@@ -311,8 +312,14 @@ fn main() -> Result<()> {
                 std::time::Duration::from_millis(duration_ms),
             )
         }
-        Cli::Chip(Chip::List) => print_families(io::stdout()).map_err(Into::into),
-        Cli::Chip(Chip::Info { name }) => print_chip_info(name, io::stdout()),
+        Cli::Chip(Chip::List) => {
+            let registry = Registry::default();
+            print_families(io::stdout(), &registry).map_err(Into::into)
+        }
+        Cli::Chip(Chip::Info { name }) => {
+            let registry = Registry::default();
+            print_chip_info(name, io::stdout(), &registry)
+        }
         Cli::Benchmark { common, options } => benchmark(common, options),
     }
 }
@@ -339,7 +346,8 @@ fn dump_memory(
     loc: u64,
     words: u32,
 ) -> Result<()> {
-    let mut session = common.simple_attach()?;
+    let registry = common.registry()?;
+    let mut session = common.simple_attach(&registry)?;
 
     let mut data = vec![0_u32; words as usize];
 
@@ -376,7 +384,8 @@ fn download_program_fast(
     disable_progressbars: bool,
     disable_double_buffering: bool,
 ) -> Result<()> {
-    let mut session = common.simple_attach()?;
+    let registry = common.registry()?;
+    let mut session = common.simple_attach(&registry)?;
 
     let mut file = match File::open(path) {
         Ok(file) => file,
@@ -417,7 +426,8 @@ fn download_program_fast(
 }
 
 fn erase(common: &ProbeOptions) -> Result<()> {
-    let mut session = common.simple_attach()?;
+    let registry = common.registry()?;
+    let mut session = common.simple_attach(&registry)?;
 
     erase_all(&mut session)?;
 
@@ -429,7 +439,8 @@ fn reset_target_of_device(
     common: &ProbeOptions,
     _assert: Option<bool>,
 ) -> Result<()> {
-    let mut session = common.simple_attach()?;
+    let registry = common.registry()?;
+    let mut session = common.simple_attach(&registry)?;
 
     session.core(shared_options.core)?.reset()?;
 
@@ -451,7 +462,8 @@ fn trace_u32_on_target(
 
     let start = Instant::now();
 
-    let mut session = common.simple_attach()?;
+    let registry = common.registry()?;
+    let mut session = common.simple_attach(&registry)?;
 
     let mut core = session.core(shared_options.core)?;
 
@@ -485,7 +497,8 @@ fn trace_u32_on_target(
 }
 
 fn debug(shared_options: &CoreOptions, common: &ProbeOptions, exe: Option<PathBuf>) -> Result<()> {
-    let mut session = common.simple_attach()?;
+    let registry = common.registry()?;
+    let mut session = common.simple_attach(&registry)?;
 
     let di = exe
         .as_ref()

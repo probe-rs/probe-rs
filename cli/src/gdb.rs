@@ -1,3 +1,4 @@
+use probe_rs::config::Registry;
 use std::sync::Mutex;
 use std::time::Duration;
 
@@ -8,7 +9,8 @@ pub fn run_gdb_server(
     connection_string: Option<&str>,
     reset_halt: bool,
 ) -> anyhow::Result<()> {
-    let mut session = common.simple_attach()?;
+    let registry = Registry::default();
+    let mut session = common.simple_attach(&registry)?;
 
     if reset_halt {
         session

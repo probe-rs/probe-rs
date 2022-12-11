@@ -1,15 +1,10 @@
 //! Internal target registry
 
-use super::{Chip, ChipFamily, ChipInfo, Core, Target, TargetDescriptionSource};
-use crate::config::CoreType;
-use once_cell::sync::Lazy;
-use probe_rs_target::{CoreAccessOptions, RiscvCoreAccessOptions};
-use std::fs::File;
+use super::{ChipFamily, Target};
+use crate::architecture::arm::ArmChipInfo;
+use crate::provider::{Provider, Variant};
+use crate::Memory;
 use std::path::Path;
-use std::sync::{Arc, Mutex};
-
-static REGISTRY: Lazy<Arc<Mutex<Registry>>> =
-    Lazy::new(|| Arc::new(Mutex::new(Registry::from_builtin_families())));
 
 /// Error type for all errors which occur when working
 /// with the internal registry of targets.
@@ -40,293 +35,144 @@ pub enum RegistryError {
     InvalidChipFamilyDefinition(ChipFamily, String),
 }
 
-fn add_generic_targets(vec: &mut Vec<ChipFamily>) {
-    vec.extend_from_slice(&[
-        ChipFamily {
-            name: "Generic ARMv6-M".to_owned(),
-            manufacturer: None,
-            generated_from_pack: false,
-            pack_file_release: None,
-            variants: vec![
-                Chip::generic_arm("Cortex-M0", CoreType::Armv6m),
-                Chip::generic_arm("Cortex-M0+", CoreType::Armv6m),
-                Chip::generic_arm("Cortex-M1", CoreType::Armv6m),
-            ],
-
-            flash_algorithms: vec![],
-            source: TargetDescriptionSource::Generic,
-        },
-        ChipFamily {
-            name: "Generic ARMv7-M".to_owned(),
-            manufacturer: None,
-            generated_from_pack: false,
-            pack_file_release: None,
-            variants: vec![Chip::generic_arm("Cortex-M3", CoreType::Armv7m)],
-            flash_algorithms: vec![],
-            source: TargetDescriptionSource::Generic,
-        },
-        ChipFamily {
-            name: "Generic ARMv7E-M".to_owned(),
-            manufacturer: None,
-            generated_from_pack: false,
-            pack_file_release: None,
-            variants: vec![
-                Chip::generic_arm("Cortex-M4", CoreType::Armv7em),
-                Chip::generic_arm("Cortex-M7", CoreType::Armv7em),
-            ],
-            flash_algorithms: vec![],
-            source: TargetDescriptionSource::Generic,
-        },
-        ChipFamily {
-            name: "Generic ARMv8-M".to_owned(),
-            manufacturer: None,
-            generated_from_pack: false,
-            pack_file_release: None,
-            variants: vec![
-                Chip::generic_arm("Cortex-M23", CoreType::Armv8m),
-                Chip::generic_arm("Cortex-M33", CoreType::Armv8m),
-                Chip::generic_arm("Cortex-M35P", CoreType::Armv8m),
-                Chip::generic_arm("Cortex-M55", CoreType::Armv8m),
-            ],
-            flash_algorithms: vec![],
-            source: TargetDescriptionSource::Generic,
-        },
-        ChipFamily {
-            name: "Generic RISC-V".to_owned(),
-            manufacturer: None,
-            pack_file_release: None,
-            generated_from_pack: false,
-            variants: vec![Chip {
-                name: "riscv".to_owned(),
-                part: None,
-                cores: vec![Core {
-                    name: "core".to_owned(),
-                    core_type: CoreType::Riscv,
-                    core_access_options: CoreAccessOptions::Riscv(RiscvCoreAccessOptions {}),
-                }],
-                memory_map: vec![],
-                flash_algorithms: vec![],
-            }],
-            flash_algorithms: vec![],
-            source: TargetDescriptionSource::Generic,
-        },
-    ]);
+/// Registry of all available targets.
+pub struct Registry {
+    /// All the available chips.
+    providers: Vec<Box<dyn Provider>>,
 }
 
-/// Registry of all available targets.
-struct Registry {
-    /// All the available chips.
-    families: Vec<ChipFamily>,
+impl Default for Registry {
+    fn default() -> Self {
+        let mut providers: Vec<Box<dyn Provider>> = Vec::new();
+
+        providers.push(Box::new(crate::provider::Generic::new()));
+
+        #[cfg(feature = "builtin-targets")]
+        providers.push(Box::new(crate::provider::Builtin::new()));
+
+        Self { providers }
+    }
 }
 
 impl Registry {
-    #[cfg(feature = "builtin-targets")]
-    fn from_builtin_families() -> Self {
-        const BUILTIN_TARGETS: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/targets.bincode"));
-
-        let mut families: Vec<ChipFamily> = match bincode::deserialize(BUILTIN_TARGETS) {
-            Ok(families) => families,
-            Err(err) => panic!(
-                "Failed to deserialize builtin targets. This is a bug : {:?}",
-                err
-            ),
-        };
-
-        add_generic_targets(&mut families);
-
-        // We skip validating the targets here as this is done at a later stage in `get_target`.
-        // Additionally, validation for existing targets is done in the tests `validate_generic_targets` and
-        // `validate_builtin` as well, to ensure we do not ship broken target definitions.
-
-        Self { families }
-    }
-
-    #[cfg(not(feature = "builtin-targets"))]
-    fn from_builtin_families() -> Self {
-        let mut families = vec![];
-        add_generic_targets(&mut families);
-
-        // We skip validating the targets here as this is done at a later stage in `get_target`.
-        // Additionally, validation for existing targets is done in the tests `validate_generic_targets` and
-        // `validate_builtin` as well, to ensure we do not ship broken target definitions.
-
-        Self { families }
-    }
-
-    fn families(&self) -> &Vec<ChipFamily> {
-        &self.families
-    }
-
-    fn get_target_by_name(&self, name: impl AsRef<str>) -> Result<Target, RegistryError> {
+    /// Get a target from the internal registry based on its name.
+    pub fn get_target_by_name(&self, name: impl AsRef<str>) -> Result<Target, RegistryError> {
         let name = name.as_ref();
 
         tracing::debug!("Searching registry for chip with name {}", name);
 
-        let (family, chip) = {
-            // Try get the corresponding chip.
-            let mut selected_family_and_chip = None;
-            let mut exact_matches = 0;
-            let mut partial_matches = 0;
-            for family in &self.families {
-                for variant in family.variants.iter() {
-                    if match_name_prefix(&variant.name, name) {
-                        if variant.name.len() == name.len() {
-                            tracing::debug!("Exact match for chip name: {}", variant.name);
+        // Try get the corresponding chip.
+        let mut selected = None;
+        let mut exact_matches = 0;
+        let mut partial_matches = 0;
+        for provider in &self.providers {
+            for family in provider.families() {
+                for variant in family.variants() {
+                    let variant_name = variant.name();
+                    if match_name_prefix(&variant_name, name) {
+                        if variant_name.len() == name.len() {
+                            tracing::debug!("Exact match for chip name: {}", variant_name);
                             exact_matches += 1;
                         } else {
-                            tracing::debug!("Partial match for chip name: {}", variant.name);
+                            tracing::debug!("Partial match for chip name: {}", variant_name);
                             partial_matches += 1;
                             if exact_matches > 0 {
                                 continue;
                             }
                         }
-                        selected_family_and_chip = Some((family, variant));
+                        selected = Some(variant);
                     }
                 }
             }
-            if exact_matches > 1 || (exact_matches == 0 && partial_matches > 1) {
-                tracing::warn!(
-                    "Ignoring ambiguous matches for specified chip name {}",
-                    name,
-                );
-                return Err(RegistryError::ChipNotUnique(name.to_owned()));
-            }
-            let (family, chip) = selected_family_and_chip
-                .ok_or_else(|| RegistryError::ChipNotFound(name.to_owned()))?;
-            if exact_matches == 0 && partial_matches == 1 {
-                tracing::warn!(
+        }
+        if exact_matches > 1 || (exact_matches == 0 && partial_matches > 1) {
+            tracing::warn!(
+                "Ignoring ambiguous matches for specified chip name {}",
+                name,
+            );
+            return Err(RegistryError::ChipNotUnique(name.to_owned()));
+        }
+        let selected = selected.ok_or_else(|| RegistryError::ChipNotFound(name.to_owned()))?;
+        if exact_matches == 0 && partial_matches == 1 {
+            tracing::warn!(
                     "Found chip {} which matches given partial name {}. Consider specifying its full name.",
-                    chip.name,
+                    selected.name(),
                     name,
                 );
-            }
-            if chip.name.to_ascii_lowercase() != name.to_ascii_lowercase() {
-                tracing::warn!(
-                    "Matching {} based on wildcard. Consider specifying the chip as {} instead.",
-                    name,
-                    chip.name,
-                );
-            }
+        }
+        if selected.name().to_ascii_lowercase() != name.to_ascii_lowercase() {
+            tracing::warn!(
+                "Matching {} based on wildcard. Consider specifying the chip as {} instead.",
+                name,
+                selected.name(),
+            );
+        }
 
-            // Try get the correspnding flash algorithm.
-            (family, chip)
-        };
-        self.get_target(family, chip)
+        Ok(selected.to_target())
     }
 
-    fn search_chips(&self, name: &str) -> Vec<String> {
+    /// Get a target from the internal registry based on its name.
+    pub fn search_chips(&self, name: &str) -> Vec<String> {
         tracing::debug!("Searching registry for chip with name {}", name);
 
-        let mut targets = Vec::new();
-
-        for family in &self.families {
-            for variant in family.variants.iter() {
-                if variant
-                    .name
+        self.providers
+            .iter()
+            .flat_map(|provider| {
+                provider
+                    .families()
+                    .flat_map(|f| f.variants().map(|t| t.name().to_string()))
+            })
+            .filter(|variant_name| {
+                variant_name
                     .to_ascii_lowercase()
                     .starts_with(&name.to_ascii_lowercase())
-                {
-                    targets.push(variant.name.to_string())
-                }
-            }
-        }
-
-        targets
+            })
+            .collect()
     }
 
-    fn get_target_by_chip_info(&self, chip_info: ChipInfo) -> Result<Target, RegistryError> {
-        let (family, chip) = {
-            match chip_info {
-                ChipInfo::Arm(chip_info) => {
-                    // Try get the corresponding chip.
-
-                    let families = self.families.iter().filter(|f| {
-                        f.manufacturer
-                            .map(|m| m == chip_info.manufacturer)
-                            .unwrap_or(false)
-                    });
-
-                    let mut identified_chips = Vec::new();
-
-                    for family in families {
-                        tracing::debug!("Checking family {}", family.name);
-
-                        let chips = family
-                            .variants()
-                            .iter()
-                            .filter(|v| v.part.map(|p| p == chip_info.part).unwrap_or(false))
-                            .map(|c| (family, c));
-
-                        identified_chips.extend(chips)
-                    }
-
-                    if identified_chips.len() == 1 {
-                        identified_chips.pop().unwrap()
-                    } else {
-                        tracing::debug!(
-                        "Found {} matching chips for information {:?}, unable to determine chip",
-                        identified_chips.len(),
-                        chip_info
-                    );
-                        return Err(RegistryError::ChipAutodetectFailed);
-                    }
-                }
-            }
-        };
-        self.get_target(family, chip)
-    }
-
-    fn get_target(&self, family: &ChipFamily, chip: &Chip) -> Result<Target, RegistryError> {
-        // The validity of the given `ChipFamily` is checked in the constructor.
-        Target::new(family, &chip.name)
-    }
-
-    fn add_target_from_yaml(&mut self, path_to_yaml: &Path) -> Result<(), RegistryError> {
-        let file = File::open(path_to_yaml)?;
-        let family: ChipFamily = serde_yaml::from_reader(file)?;
-
-        family
-            .validate()
-            .map_err(|e| RegistryError::InvalidChipFamilyDefinition(family.clone(), e))?;
-
-        let index = self
-            .families
+    /// Get a list of all families which are contained in the internal registry.
+    pub fn families(&self) -> Vec<FamilyRecord> {
+        self.providers
             .iter()
-            .position(|old_family| old_family.name == family.name);
-        if let Some(index) = index {
-            self.families.remove(index);
-        }
-        self.families.push(family);
+            .flat_map(|provider| {
+                provider.families().map(|family| FamilyRecord {
+                    name: family.name().to_string(),
+                    chip_names: family
+                        .variants()
+                        .map(|variant| variant.name().to_string())
+                        .collect(),
+                })
+            })
+            .collect()
+    }
 
+    /// Parse a target description file and add the contained targets
+    /// to the internal target registry.
+    pub fn add_target_from_yaml(&mut self, path_to_yaml: &Path) -> Result<(), RegistryError> {
+        // todo: replacement?
+        let provider = crate::provider::File::new(path_to_yaml)?;
+        self.providers.push(Box::new(provider));
         Ok(())
     }
+
+    pub(crate) fn autodetect_arm(
+        &self,
+        chip_info: &ArmChipInfo,
+        memory: &mut Memory,
+    ) -> Option<Box<dyn Variant + '_>> {
+        for provider in &self.providers {
+            if let Some(variant) = provider.autodetect_arm(chip_info, memory) {
+                return Some(variant);
+            }
+        }
+        None
+    }
 }
 
-/// Get a target from the internal registry based on its name.
-pub fn get_target_by_name(name: impl AsRef<str>) -> Result<Target, RegistryError> {
-    REGISTRY.lock().unwrap().get_target_by_name(name)
-}
-
-/// Get a target from the internal registry based on its name.
-pub fn search_chips(name: impl AsRef<str>) -> Result<Vec<String>, RegistryError> {
-    Ok(REGISTRY.lock().unwrap().search_chips(name.as_ref()))
-}
-
-/// Try to retrieve a target based on [ChipInfo] read from a target.
-pub(crate) fn get_target_by_chip_info(chip_info: ChipInfo) -> Result<Target, RegistryError> {
-    REGISTRY.lock().unwrap().get_target_by_chip_info(chip_info)
-}
-
-/// Parse a target description file and add the contained targets
-/// to the internal target registry.
-pub fn add_target_from_yaml(path_to_yaml: &Path) -> Result<(), RegistryError> {
-    REGISTRY.lock().unwrap().add_target_from_yaml(path_to_yaml)
-}
-
-/// Get a list of all families which are contained in the internal
-/// registry.
-pub fn families() -> Result<Vec<ChipFamily>, RegistryError> {
-    Ok(REGISTRY.lock().unwrap().families().clone())
+#[derive(Debug, Clone)]
+pub struct FamilyRecord {
+    pub name: String,
+    pub chip_names: Vec<String>,
 }
 
 /// See if `name` matches the start of `pattern`, treating any lower-case `x`
@@ -350,7 +196,7 @@ mod tests {
 
     #[test]
     fn try_fetch_not_unique() {
-        let registry = Registry::from_builtin_families();
+        let registry = Registry::default();
         // ambiguous: partially matches STM32G081KBUx and STM32G081KBUxN
         assert!(matches!(
             registry.get_target_by_name("STM32G081KBU"),
@@ -360,7 +206,7 @@ mod tests {
 
     #[test]
     fn try_fetch_not_found() {
-        let registry = Registry::from_builtin_families();
+        let registry = Registry::default();
         assert!(matches!(
             registry.get_target_by_name("not_a_real_chip"),
             Err(RegistryError::ChipNotFound(_))
@@ -369,45 +215,22 @@ mod tests {
 
     #[test]
     fn try_fetch2() {
-        let registry = Registry::from_builtin_families();
+        let registry = Registry::default();
         // ok: matches both STM32G081KBUx and STM32G081KBUxN, but the first one is an exact match
         assert!(registry.get_target_by_name("stm32G081KBUx").is_ok());
     }
 
     #[test]
     fn try_fetch3() {
-        let registry = Registry::from_builtin_families();
+        let registry = Registry::default();
         // ok: unique substring match
         assert!(registry.get_target_by_name("STM32G081RBI").is_ok());
     }
 
     #[test]
     fn try_fetch4() {
-        let registry = Registry::from_builtin_families();
+        let registry = Registry::default();
         // ok: unique exact match
         assert!(registry.get_target_by_name("nrf51822_Xxaa").is_ok());
-    }
-
-    #[test]
-    fn validate_generic_targets() {
-        let mut families = vec![];
-        add_generic_targets(&mut families);
-
-        families
-            .iter()
-            .map(|family| family.validate())
-            .collect::<Result<Vec<_>, _>>()
-            .unwrap();
-    }
-
-    #[test]
-    fn validate_builtin() {
-        let registry = Registry::from_builtin_families();
-        registry
-            .families()
-            .iter()
-            .map(|family| family.validate())
-            .collect::<Result<Vec<_>, _>>()
-            .unwrap();
     }
 }

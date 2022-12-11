@@ -1,14 +1,13 @@
 use anyhow::{bail, ensure, Context, Result};
-use probe_rs::{
-    config::{get_target_by_name, search_chips},
-    DebugProbeSelector, Probe, Target,
-};
+use probe_rs::config::Registry;
+use probe_rs::{DebugProbeSelector, Probe, Target};
 use serde::Deserialize;
 use std::{
     convert::TryInto,
     ffi::OsStr,
     path::{Path, PathBuf},
 };
+
 ///! # DUT Defintions
 ///!
 ///! This module handles the definition of the different devices under test (DUTs),
@@ -69,8 +68,8 @@ pub struct DutDefinition {
 }
 
 impl DutDefinition {
-    pub fn new(chip: &str, probe: &str) -> Result<Self> {
-        let target = lookup_unique_target(chip)?;
+    pub fn new(chip: &str, probe: &str, registry: &Registry) -> Result<Self> {
+        let target = lookup_unique_target(registry, chip)?;
 
         let selector: DebugProbeSelector = probe.parse()?;
 
@@ -83,8 +82,8 @@ impl DutDefinition {
         })
     }
 
-    pub fn autodetect_probe(chip: &str) -> Result<Self> {
-        let target = lookup_unique_target(chip)?;
+    pub fn autodetect_probe(chip: &str, registry: &Registry) -> Result<Self> {
+        let target = lookup_unique_target(registry, chip)?;
 
         Ok(DutDefinition {
             chip: target,
@@ -103,7 +102,7 @@ impl DutDefinition {
     /// For TOML files which do not contain a valid DUT definition,
     /// an error is returned. Errors are also returned in case of
     /// IO errors, or if the given path is not a directory.
-    pub fn collect(directory: impl AsRef<Path>) -> Result<Vec<DutDefinition>> {
+    pub fn collect(directory: impl AsRef<Path>, registry: &Registry) -> Result<Vec<DutDefinition>> {
         let directory = directory.as_ref();
 
         ensure!(
@@ -126,7 +125,7 @@ impl DutDefinition {
                 continue;
             }
 
-            let definition = DutDefinition::from_file(&file_path)
+            let definition = DutDefinition::from_file(&file_path, registry)
                 .with_context(|| format!("Failed to parse definition '{}'", file_path.display()))?;
 
             definitions.push(definition);
@@ -136,10 +135,10 @@ impl DutDefinition {
     }
 
     /// Try to parse a DUT definition from a file.
-    pub fn from_file(file: &Path) -> Result<Self> {
+    pub fn from_file(file: &Path, registry: &Registry) -> Result<Self> {
         let raw_definition = RawDutDefinition::from_file(file)?;
 
-        DutDefinition::from_raw_definition(raw_definition, file)
+        DutDefinition::from_raw_definition(raw_definition, file, registry)
     }
 
     pub fn open_probe(&self) -> Result<Probe> {
@@ -167,10 +166,14 @@ impl DutDefinition {
         }
     }
 
-    fn from_raw_definition(raw_definition: RawDutDefinition, source_file: &Path) -> Result<Self> {
+    fn from_raw_definition(
+        raw_definition: RawDutDefinition,
+        source_file: &Path,
+        registry: &Registry,
+    ) -> Result<Self> {
         let probe_selector = Some(raw_definition.probe_selector.try_into()?);
 
-        let target = lookup_unique_target(&raw_definition.chip)?;
+        let target = lookup_unique_target(registry, &raw_definition.chip)?;
 
         let flash_test_binary = raw_definition.flash_test_binary.map(PathBuf::from);
 
@@ -202,8 +205,8 @@ impl DutDefinition {
     }
 }
 
-fn lookup_unique_target(chip: &str) -> Result<Target> {
-    let targets = search_chips(chip)?;
+fn lookup_unique_target(registry: &Registry, chip: &str) -> Result<Target> {
+    let targets = registry.search_chips(chip);
 
     ensure!(
         !targets.is_empty(),
@@ -224,7 +227,7 @@ fn lookup_unique_target(chip: &str) -> Result<Target> {
         bail!("Chip definition does not match exactly.");
     }
 
-    let target = get_target_by_name(&targets[0])?;
+    let target = registry.get_target_by_name(&targets[0])?;
 
     Ok(target)
 }

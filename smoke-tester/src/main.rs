@@ -11,6 +11,7 @@ use anyhow::{Context, Result};
 use colored::Colorize;
 
 use clap::{Arg, Command};
+use probe_rs::config::Registry;
 use probe_rs::{Error, Permissions};
 
 mod dut_definition;
@@ -19,6 +20,7 @@ mod tests;
 
 fn main() -> Result<()> {
     pretty_env_logger::init();
+    let registry = Registry::default();
 
     let app = Command::new("smoke tester")
         .arg(
@@ -52,19 +54,19 @@ fn main() -> Result<()> {
     let matches = app.get_matches();
 
     let definitions = if let Some(dut_definitions) = matches.get_one::<String>("dut_definitions") {
-        let definitions = DutDefinition::collect(dut_definitions)?;
+        let definitions = DutDefinition::collect(dut_definitions, &registry)?;
         println!("Found {} target definitions.", definitions.len());
         definitions
     } else if let Some(single_dut) = matches.get_one::<String>("single_dut") {
-        vec![DutDefinition::from_file(Path::new(single_dut))?]
+        vec![DutDefinition::from_file(Path::new(single_dut), &registry)?]
     } else {
         // Chip needs to be specified
         let chip = matches.get_one::<String>("chip").unwrap(); // If dut-definitions is not present, chip must be present
 
         if let Some(probe) = matches.get_one::<String>("probe") {
-            vec![DutDefinition::new(chip, probe)?]
+            vec![DutDefinition::new(chip, probe, &registry)?]
         } else {
-            vec![DutDefinition::autodetect_probe(chip)?]
+            vec![DutDefinition::autodetect_probe(chip, &registry)?]
         }
     };
 

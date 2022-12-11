@@ -1,23 +1,10 @@
-use probe_rs_target::{Architecture, ChipFamily};
+use probe_rs_target::Architecture;
 
-use super::{Core, MemoryRegion, RawFlashAlgorithm, RegistryError, TargetDescriptionSource};
-use crate::architecture::arm::sequences::{
-    atsame5x::AtSAME5x,
-    infineon::XMC4000,
-    nrf52::Nrf52,
-    nrf53::Nrf5340,
-    nrf91::Nrf9160,
-    nxp::{MIMXRT10xx, LPC55S69},
-    stm32f_series::Stm32fSeries,
-    stm32h7::Stm32h7,
-    ArmDebugSequence,
-};
-use crate::architecture::riscv::sequences::esp32c3::ESP32C3;
-use crate::architecture::riscv::sequences::{DefaultRiscvSequence, RiscvDebugSequence};
+use super::{Core, MemoryRegion, RawFlashAlgorithm, TargetDescriptionSource};
+use crate::architecture::arm::sequences::ArmDebugSequence;
+use crate::architecture::riscv::sequences::RiscvDebugSequence;
 use crate::flashing::FlashLoader;
 use std::sync::Arc;
-
-use crate::architecture::arm::sequences::DefaultArmSequence;
 
 /// This describes a complete target with a fixed chip model and variant.
 #[derive(Clone)]
@@ -54,92 +41,6 @@ impl std::fmt::Debug for Target {
 pub type TargetParseError = serde_yaml::Error;
 
 impl Target {
-    /// Create a new target for the given details.
-    ///
-    /// We suggest never using this function directly.
-    /// Use (crate::registry::Registry::get_target)[`Registry::get_target`] instead.
-    /// This will ensure that the used target is valid.
-    ///
-    /// The user has to make sure that all the cores have the same [`Architecture`].
-    /// In any case, this function will always just use the architecture of the first core in any further functionality.
-    /// In practice we have never encountered a [`Chip`] with mixed architectures so this should not be of issue.
-    ///
-    /// Furthermore, the user has to ensure that any [`Core`] in `flash_algorithms[n].cores` is present in `cores` as well.
-    pub(crate) fn new(
-        family: &ChipFamily,
-        chip_name: impl AsRef<str>,
-    ) -> Result<Target, RegistryError> {
-        // Make sure we are given a valid family:
-        family
-            .validate()
-            .map_err(|e| RegistryError::InvalidChipFamilyDefinition(family.clone(), e))?;
-
-        let chip = family
-            .variants
-            .iter()
-            .find(|chip| chip.name == chip_name.as_ref())
-            .ok_or_else(|| RegistryError::ChipNotFound(chip_name.as_ref().to_string()))?;
-
-        let mut flash_algorithms = Vec::new();
-        for algo_name in chip.flash_algorithms.iter() {
-            let algo = family.get_algorithm(algo_name).expect(
-                "The required flash algorithm was not found. This is a bug. Please report it.",
-            );
-
-            flash_algorithms.push(algo.clone());
-        }
-
-        // We always just take the architecture of the first core which is okay if there is no mixed architectures.
-        let mut debug_sequence = match chip.cores[0].core_type.architecture() {
-            Architecture::Arm => DebugSequence::Arm(DefaultArmSequence::create()),
-            Architecture::Riscv => DebugSequence::Riscv(DefaultRiscvSequence::create()),
-        };
-
-        if chip.name.starts_with("MIMXRT10") {
-            tracing::warn!("Using custom sequence for MIMXRT10xx");
-            debug_sequence = DebugSequence::Arm(MIMXRT10xx::create());
-        } else if chip.name.starts_with("LPC55S16") || chip.name.starts_with("LPC55S69") {
-            tracing::warn!("Using custom sequence for LPC55S16/LPC55S69");
-            debug_sequence = DebugSequence::Arm(LPC55S69::create());
-        } else if chip.name.starts_with("esp32c3") {
-            tracing::warn!("Using custom sequence for ESP32c3");
-            debug_sequence = DebugSequence::Riscv(ESP32C3::create());
-        } else if chip.name.starts_with("nRF5340") {
-            tracing::warn!("Using custom sequence for nRF5340");
-            debug_sequence = DebugSequence::Arm(Nrf5340::create());
-        } else if chip.name.starts_with("nRF52") {
-            tracing::warn!("Using custom sequence for nRF52");
-            debug_sequence = DebugSequence::Arm(Nrf52::create());
-        } else if chip.name.starts_with("nRF9160") {
-            tracing::warn!("Using custom sequence for nRF9160");
-            debug_sequence = DebugSequence::Arm(Nrf9160::create());
-        } else if chip.name.starts_with("STM32H7") {
-            tracing::warn!("Using custom sequence for STM32H7");
-            debug_sequence = DebugSequence::Arm(Stm32h7::create());
-        } else if chip.name.starts_with("STM32F2")
-            || chip.name.starts_with("STM32F4")
-            || chip.name.starts_with("STM32F7")
-        {
-            tracing::warn!("Using custom sequence for STM32F2/4/7");
-            debug_sequence = DebugSequence::Arm(Stm32fSeries::create());
-        } else if chip.name.starts_with("ATSAMD5") || chip.name.starts_with("ATSAME5") {
-            tracing::warn!("Using custom sequence for {}", chip.name);
-            debug_sequence = DebugSequence::Arm(AtSAME5x::create());
-        } else if chip.name.starts_with("XMC4") {
-            tracing::warn!("Using custom sequence for XMC4000");
-            debug_sequence = DebugSequence::Arm(XMC4000::create());
-        }
-
-        Ok(Target {
-            name: chip.name.clone(),
-            cores: chip.cores.clone(),
-            flash_algorithms,
-            source: family.source.clone(),
-            memory_map: chip.memory_map.clone(),
-            debug_sequence,
-        })
-    }
-
     /// Get the architecture of the target
     pub fn architecture(&self) -> Architecture {
         let target_arch = self.cores[0].core_type.architecture();

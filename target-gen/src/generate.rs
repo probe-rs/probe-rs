@@ -8,7 +8,7 @@ use cmsis_pack::{pack_index::PdscRef, utils::FromElem};
 use futures::StreamExt;
 use probe_rs::config::{
     Chip, ChipFamily, Core as ProbeCore, GenericRegion, MemoryRegion, NvmRegion, RamRegion,
-    RawFlashAlgorithm,
+    RawFlashAlgorithm, Registry,
 };
 use probe_rs::{Architecture, CoreType};
 use probe_rs_target::{ArmCoreAccessOptions, CoreAccessOptions, RiscvCoreAccessOptions};
@@ -27,6 +27,7 @@ pub(crate) fn handle_package<T>(
     mut kind: Kind<T>,
     families: &mut Vec<ChipFamily>,
     only_supported_familes: bool,
+    registry: &Registry,
 ) -> Result<()>
 where
     T: std::io::Seek + std::io::Read,
@@ -38,12 +39,7 @@ where
 
     for (device_name, device) in devices {
         // Only process this, if this belongs to a supported family.
-        let currently_supported_chip_families = probe_rs::config::families().map_err(|e| {
-            anyhow!(
-                "Currently supported chip families could not be read: {:?}",
-                e
-            )
-        })?;
+        let currently_supported_chip_families = registry.families();
 
         if only_supported_familes
             && !currently_supported_chip_families
@@ -186,14 +182,18 @@ fn core_to_probe_core(value: &Core) -> Result<CoreType, Error> {
 }
 
 // one possible implementation of walking a directory only visiting files
-pub(crate) fn visit_dirs(path: &Path, families: &mut Vec<ChipFamily>) -> Result<()> {
+pub(crate) fn visit_dirs(
+    path: &Path,
+    families: &mut Vec<ChipFamily>,
+    registry: &Registry,
+) -> Result<()> {
     // If we get a dir, look for all .pdsc files.
     for entry in fs::read_dir(path)? {
         let entry = entry?;
         let entry_path = entry.path();
 
         if entry_path.is_dir() {
-            visit_dirs(&entry_path, families)?;
+            visit_dirs(&entry_path, families, registry)?;
         } else if let Some(extension) = entry_path.extension() {
             if extension == "pdsc" {
                 log::info!("Found .pdsc file: {}", path.display());
@@ -203,6 +203,7 @@ pub(crate) fn visit_dirs(path: &Path, families: &mut Vec<ChipFamily>) -> Result<
                     Kind::Directory(path),
                     families,
                     false,
+                    registry,
                 )
                 .context(format!(
                     "Failed to process .pdsc file {}.",
@@ -215,7 +216,11 @@ pub(crate) fn visit_dirs(path: &Path, families: &mut Vec<ChipFamily>) -> Result<
     Ok(())
 }
 
-pub(crate) fn visit_file(path: &Path, families: &mut Vec<ChipFamily>) -> Result<()> {
+pub(crate) fn visit_file(
+    path: &Path,
+    families: &mut Vec<ChipFamily>,
+    registry: &Registry,
+) -> Result<()> {
     log::info!("Trying to open pack file: {}.", path.display());
     // If we get a file, try to unpack it.
     let file = fs::File::open(path)?;
@@ -238,12 +243,19 @@ pub(crate) fn visit_file(path: &Path, families: &mut Vec<ChipFamily>) -> Result<
 
     drop(pdsc_file);
 
-    handle_package(package, Kind::Archive(&mut archive), families, false)
+    handle_package(
+        package,
+        Kind::Archive(&mut archive),
+        families,
+        false,
+        registry,
+    )
 }
 
 pub(crate) fn visit_arm_files(
     families: &mut Vec<ChipFamily>,
     filter: Option<String>,
+    registry: &Registry,
 ) -> Result<()> {
     let packs = crate::fetch::get_vidx()?;
 
@@ -271,7 +283,7 @@ pub(crate) fn visit_arm_files(
                     if pack.deprecated.is_none() {
                         // We only want to download the pack if it is not deprecated.
                         log::info!("Working PACK {}/{} ...", i, packs.pdsc_index.len());
-                        Some(visit_arm_file(pack, only_supported_familes))
+                        Some(visit_arm_file(pack, only_supported_familes, registry))
                     } else {
                         log::warn!("Pack {} is deprecated. Skipping ...", pack.name);
                         None
@@ -290,6 +302,7 @@ pub(crate) fn visit_arm_files(
 pub(crate) async fn visit_arm_file(
     pack: &PdscRef,
     only_supported_familes: bool,
+    registry: &Registry,
 ) -> Vec<ChipFamily> {
     let url = format!(
         "{url}/{vendor}.{name}.{version}.pack",
@@ -372,6 +385,7 @@ pub(crate) async fn visit_arm_file(
         Kind::Archive(&mut archive),
         &mut families,
         only_supported_familes,
+        registry,
     ) {
         Ok(_) => {
             log::info!("Handled package {}", pdsc_name);

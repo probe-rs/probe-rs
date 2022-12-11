@@ -18,15 +18,14 @@
 //!
 //! fn main() {
 //!     let opts = Opts::parse();
-//!
-//!     opts.flash_options.probe_options.maybe_load_chip_desc().unwrap();
+//!     let registry = probe_rs::config::Registry::default();
 //!
 //!     // handle --list-{chips,probes}
-//!     if opts.flash_options.early_exit(std::io::stdout()).unwrap() {
+//!     if opts.flash_options.early_exit(std::io::stdout(), &registry).unwrap() {
 //!         return;
 //!     }
 //!
-//!     let target_session = opts.flash_options.probe_options.simple_attach().unwrap();
+//!     let target_session = opts.flash_options.probe_options.simple_attach(&registry).unwrap();
 //!
 //!     // ...
 //! }
@@ -37,6 +36,7 @@ use std::{fs::File, io::Write, path::Path, path::PathBuf};
 
 use byte_unit::Byte;
 use clap;
+use probe_rs::config::Registry;
 use probe_rs::{
     config::{RegistryError, TargetSelector},
     flashing::{FileDownloadError, FlashError, FlashLoader},
@@ -116,16 +116,14 @@ impl FlashOptions {
     /// handles --list-{probes,chips}.
     ///
     /// If `Ok(false)` is returned, calling program should continue executing.
-    ///
-    /// Note: [ProbeOptions::maybe_load_chip_desc] should be called before this function.
-    pub fn early_exit(&self, f: impl Write) -> Result<bool, OperationError> {
+    pub fn early_exit(&self, f: impl Write, registry: &Registry) -> Result<bool, OperationError> {
         if self.list_probes {
             list_connected_probes(f)?;
             return Ok(true);
         }
 
         if self.list_chips {
-            print_families(f)?;
+            print_families(f, registry)?;
             return Ok(true);
         }
 
@@ -172,27 +170,28 @@ pub struct ProbeOptions {
 }
 
 impl ProbeOptions {
-    /// Add targets contained in file given by --chip-description-path
-    /// to probe-rs registery.
-    ///
-    /// Note: should be called before [FlashOptions::early_exit] and any other functions in [ProbeOptions].
-    pub fn maybe_load_chip_desc(&self) -> Result<(), OperationError> {
+    /// Construct a `Registry`, loading `chip_description_path` if specified.
+    pub fn registry(&self) -> Result<Registry, OperationError> {
+        let mut registry = Registry::default();
         if let Some(ref cdp) = self.chip_description_path {
-            probe_rs::config::add_target_from_yaml(Path::new(cdp)).map_err(|error| {
-                OperationError::FailedChipDescriptionParsing {
+            registry
+                .add_target_from_yaml(Path::new(cdp))
+                .map_err(|error| OperationError::FailedChipDescriptionParsing {
                     source: error,
                     path: cdp.clone(),
-                }
-            })
-        } else {
-            Ok(())
+                })?;
         }
+
+        Ok(registry)
     }
 
     /// Resolves a resultant target selector from passed [ProbeOptions].
-    pub fn get_target_selector(&self) -> Result<TargetSelector, OperationError> {
+    pub fn get_target_selector(
+        &self,
+        registry: &Registry,
+    ) -> Result<TargetSelector, OperationError> {
         let target = if let Some(chip_name) = &self.chip {
-            let target = probe_rs::config::get_target_by_name(chip_name).map_err(|error| {
+            let target = registry.get_target_by_name(chip_name).map_err(|error| {
                 OperationError::ChipNotFound {
                     source: error,
                     name: chip_name.clone(),
@@ -286,8 +285,8 @@ impl ProbeOptions {
 
     /// Convenience method that attaches to the specified probe, target,
     /// and target session.
-    pub fn simple_attach(&self) -> Result<Session, OperationError> {
-        let target = self.get_target_selector()?;
+    pub fn simple_attach(&self, registry: &Registry) -> Result<Session, OperationError> {
+        let target = self.get_target_selector(registry)?;
         let probe = self.attach_probe()?;
         let session = self.attach_session(probe, target)?;
 
@@ -441,8 +440,6 @@ CARGO BUILD OPTIONS:
 pub enum OperationError {
     #[error("No connected probes were found.")]
     NoProbesFound,
-    #[error("Failed to list the target descriptions.")]
-    FailedToReadFamilies(#[source] RegistryError),
     #[error("Failed to open the ELF file '{path}' for flashing.")]
     FailedToOpenElf {
         #[source]
@@ -545,13 +542,13 @@ pub fn list_connected_probes(mut f: impl Write) -> Result<(), std::io::Error> {
 
 /// Print all the available families and their contained chips to the
 /// commandline.
-pub fn print_families(mut f: impl Write) -> Result<(), OperationError> {
+pub fn print_families(mut f: impl Write, registry: &Registry) -> Result<(), OperationError> {
     writeln!(f, "Available chips:")?;
-    for family in probe_rs::config::families().map_err(OperationError::FailedToReadFamilies)? {
+    for family in registry.families() {
         writeln!(f, "{}", &family.name)?;
         writeln!(f, "    Variants:")?;
-        for variant in family.variants() {
-            writeln!(f, "        {}", variant.name)?;
+        for variant in family.chip_names {
+            writeln!(f, "        {}", variant)?;
         }
     }
     Ok(())
@@ -563,9 +560,13 @@ fn get_range_len(range: &std::ops::Range<u64>) -> u64 {
 
 /// Print all the available families and their contained chips to the
 /// commandline.
-pub fn print_chip_info(name: impl AsRef<str>, mut f: impl Write) -> anyhow::Result<()> {
+pub fn print_chip_info(
+    name: impl AsRef<str>,
+    mut f: impl Write,
+    registry: &Registry,
+) -> anyhow::Result<()> {
     writeln!(f, "{}", name.as_ref())?;
-    let target = probe_rs::config::get_target_by_name(name)?;
+    let target = registry.get_target_by_name(name)?;
     writeln!(f, "Cores ({}):", target.cores.len())?;
     for core in target.cores {
         writeln!(

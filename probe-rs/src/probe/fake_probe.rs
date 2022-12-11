@@ -303,13 +303,6 @@ impl ArmProbeInterface for FakeArmInterface<Initialized> {
         Ok(1)
     }
 
-    fn read_chip_info_from_rom_table(
-        &mut self,
-        _dp: DpAddress,
-    ) -> Result<Option<crate::architecture::arm::ArmChipInfo>, Error> {
-        Ok(None)
-    }
-
     fn close(self: Box<Self>) -> Probe {
         Probe::from_attached_probe(self.probe)
     }

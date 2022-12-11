@@ -7,14 +7,13 @@ use super::{DebugProbe, DebugProbeError, ProbeCreationError, WireProtocol};
 use crate::memory::valid_32bit_address;
 use crate::{
     architecture::arm::{
-        ap::{valid_access_ports, AccessPort, ApAccess, ApClass, MemoryAp, IDR},
+        ap::{valid_access_ports, AccessPort, MemoryAp},
         communication_interface::{
             ArmProbeInterface, Initialized, SwdSequence, UninitializedArmProbe,
         },
-        memory::{adi_v5_memory_interface::ArmProbe, Component},
+        memory::adi_v5_memory_interface::ArmProbe,
         sequences::ArmDebugSequence,
-        ApAddress, ApInformation, ArmChipInfo, DapAccess, DpAddress, Pins, SwoAccess, SwoConfig,
-        SwoMode,
+        ApAddress, ApInformation, DapAccess, DpAddress, Pins, SwoAccess, SwoConfig, SwoMode,
     },
     DebugProbeSelector, Error as ProbeRsError, Memory, Probe,
 };
@@ -1244,46 +1243,6 @@ impl ArmProbeInterface for StlinkArmDebug {
             Some(res) => Ok(res),
             None => Err(anyhow!("AP {:#x?} does not exist", addr).into()),
         }
-    }
-
-    fn read_chip_info_from_rom_table(
-        &mut self,
-        dp: DpAddress,
-    ) -> Result<Option<crate::architecture::arm::ArmChipInfo>, ProbeRsError> {
-        if dp != DpAddress::Default {
-            return Err(DebugProbeError::from(StlinkError::MultidropNotSupported).into());
-        }
-
-        for access_port in valid_access_ports(self, dp) {
-            let idr: IDR = self
-                .read_ap_register(access_port)
-                .map_err(ProbeRsError::Probe)?;
-            tracing::debug!("{:#x?}", idr);
-
-            if idr.CLASS == ApClass::MemAp {
-                let access_port: MemoryAp = access_port.into();
-
-                let baseaddr = access_port.base_address(self)?;
-
-                let mut memory = self
-                    .memory_interface(access_port)
-                    .map_err(ProbeRsError::architecture_specific)?;
-
-                let component = Component::try_parse(&mut memory, baseaddr)
-                    .map_err(ProbeRsError::architecture_specific)?;
-
-                if let Component::Class1RomTable(component_id, _) = component {
-                    if let Some(jep106) = component_id.peripheral_id().jep106() {
-                        return Ok(Some(ArmChipInfo {
-                            manufacturer: jep106,
-                            part: component_id.peripheral_id().part(),
-                        }));
-                    }
-                }
-            }
-        }
-
-        Ok(None)
     }
 
     fn num_access_ports(&mut self, dp: DpAddress) -> Result<usize, ProbeRsError> {

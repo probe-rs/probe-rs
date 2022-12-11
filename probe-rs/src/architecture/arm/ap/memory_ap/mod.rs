@@ -20,7 +20,7 @@ impl MemoryAp {
     /// The base address of this AP which is used to then access all relative control registers.
     pub fn base_address<A>(&self, interface: &mut A) -> Result<u64, DebugProbeError>
     where
-        A: ApAccess,
+        A: ApAccess + ?Sized,
     {
         let base_register: BASE = interface.read_ap_register(*self)?;
 

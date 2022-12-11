@@ -15,6 +15,8 @@ use crate::{
 use anyhow::anyhow;
 use jep106::JEP106Code;
 
+use crate::config::Registry;
+use crate::provider::Variant;
 use std::{
     collections::{hash_map, HashMap},
     fmt::Debug,
@@ -70,14 +72,82 @@ pub trait ArmProbeInterface: DapAccess + SwdSequence + SwoAccess + Send {
     /// Returns the number of access ports the debug port has.
     fn num_access_ports(&mut self, dp: DpAddress) -> Result<usize, ProbeRsError>;
 
-    /// Reads the chip info from the romtable of given debug port.
-    fn read_chip_info_from_rom_table(
-        &mut self,
-        dp: DpAddress,
-    ) -> Result<Option<ArmChipInfo>, ProbeRsError>;
-
     /// Closes the interface and returns back the generic probe it consumed.
     fn close(self: Box<Self>) -> Probe;
+}
+
+/// An extension trait to add `ArmProbeInterface` behaviors without expanding its surface area.
+pub(crate) trait ArmProbeInterfaceExt {
+    fn autodetect<'r>(
+        &mut self,
+        dp: DpAddress,
+        registry: &'r Registry,
+    ) -> Result<Option<Box<dyn Variant<'r> + 'r>>, ProbeRsError>;
+}
+
+impl<T> ArmProbeInterfaceExt for T
+where
+    T: ArmProbeInterface + ?Sized,
+{
+    fn autodetect<'r>(
+        &mut self,
+        dp: DpAddress,
+        registry: &'r Registry,
+    ) -> Result<Option<Box<dyn Variant<'r> + 'r>>, ProbeRsError> {
+        // faults on some chips need to be cleaned up.
+        let aps = valid_access_ports(self, dp);
+
+        // Check sticky error and cleanup if necessary
+        let ctrl_reg: crate::architecture::arm::dp::Ctrl = self
+            .read_dp_register(dp)
+            .map_err(ProbeRsError::architecture_specific)?;
+
+        if ctrl_reg.sticky_err() {
+            tracing::trace!("AP Search faulted. Cleaning up");
+            let mut abort = Abort::default();
+            abort.set_stkerrclr(true);
+            self.write_dp_register(dp, abort)
+                .map_err(ProbeRsError::architecture_specific)?;
+        }
+        for access_port in aps {
+            let idr: IDR = self
+                .read_ap_register(access_port)
+                .map_err(ProbeRsError::Probe)?;
+            tracing::debug!("{:#x?}", idr);
+
+            if idr.CLASS == ApClass::MemAp {
+                let access_port: MemoryAp = access_port.into();
+
+                let baseaddr = access_port.base_address(self)?;
+
+                let mut memory = self
+                    .memory_interface(access_port)
+                    .map_err(ProbeRsError::architecture_specific)?;
+
+                let component = Component::try_parse(&mut memory, baseaddr)
+                    .map_err(ProbeRsError::architecture_specific)?;
+
+                if let Component::Class1RomTable(component_id, _) = component {
+                    if let Some(jep106) = component_id.peripheral_id().jep106() {
+                        let chip_info = ArmChipInfo {
+                            manufacturer: jep106,
+                            part: component_id.peripheral_id().part(),
+                        };
+                        return Ok(registry.autodetect_arm(&chip_info, &mut memory));
+                    }
+                }
+            }
+        }
+        // tracing::info!(
+        //     "{}\n{}\n{}\n{}",
+        //     "If you are using a Nordic chip, it might be locked to debug access".yellow(),
+        //     "Run cargo flash with --nrf-recover to unlock".yellow(),
+        //     "WARNING: --nrf-recover will erase the entire code".yellow(),
+        //     "flash and UICR area of the device, in addition to the entire RAM".yellow()
+        // );
+
+        Ok(None)
+    }
 }
 
 // TODO: Rename trait!
@@ -301,13 +371,6 @@ impl ArmProbeInterface for ArmCommunicationInterface<Initialized> {
 
     fn ap_information(&mut self, access_port: GenericAp) -> Result<&ApInformation, ProbeRsError> {
         ArmCommunicationInterface::ap_information(self, access_port)
-    }
-
-    fn read_chip_info_from_rom_table(
-        &mut self,
-        dp: DpAddress,
-    ) -> Result<Option<ArmChipInfo>, ProbeRsError> {
-        ArmCommunicationInterface::read_chip_info_from_rom_table(self, dp)
     }
 
     fn num_access_ports(&mut self, dp: DpAddress) -> Result<usize, ProbeRsError> {
@@ -687,67 +750,6 @@ pub struct ArmChipInfo {
     ///
     /// Consider this not unique when working with targets!
     pub part: u16,
-}
-
-impl ArmCommunicationInterface<Initialized> {
-    /// Reads the chip info from the romtable of given debug port.
-    pub fn read_chip_info_from_rom_table(
-        &mut self,
-        dp: DpAddress,
-    ) -> Result<Option<ArmChipInfo>, ProbeRsError> {
-        // faults on some chips need to be cleaned up.
-        let aps = valid_access_ports(self, dp);
-
-        // Check sticky error and cleanup if necessary
-        let ctrl_reg: crate::architecture::arm::dp::Ctrl = self
-            .read_dp_register(dp)
-            .map_err(ProbeRsError::architecture_specific)?;
-
-        if ctrl_reg.sticky_err() {
-            tracing::trace!("AP Search faulted. Cleaning up");
-            let mut abort = Abort::default();
-            abort.set_stkerrclr(true);
-            self.write_dp_register(dp, abort)
-                .map_err(ProbeRsError::architecture_specific)?;
-        }
-        for access_port in aps {
-            let idr: IDR = self
-                .read_ap_register(access_port)
-                .map_err(ProbeRsError::Probe)?;
-            tracing::debug!("{:#x?}", idr);
-
-            if idr.CLASS == ApClass::MemAp {
-                let access_port: MemoryAp = access_port.into();
-
-                let baseaddr = access_port.base_address(self)?;
-
-                let mut memory = self
-                    .memory_interface(access_port)
-                    .map_err(ProbeRsError::architecture_specific)?;
-
-                let component = Component::try_parse(&mut memory, baseaddr)
-                    .map_err(ProbeRsError::architecture_specific)?;
-
-                if let Component::Class1RomTable(component_id, _) = component {
-                    if let Some(jep106) = component_id.peripheral_id().jep106() {
-                        return Ok(Some(ArmChipInfo {
-                            manufacturer: jep106,
-                            part: component_id.peripheral_id().part(),
-                        }));
-                    }
-                }
-            }
-        }
-        // tracing::info!(
-        //     "{}\n{}\n{}\n{}",
-        //     "If you are using a Nordic chip, it might be locked to debug access".yellow(),
-        //     "Run cargo flash with --nrf-recover to unlock".yellow(),
-        //     "WARNING: --nrf-recover will erase the entire code".yellow(),
-        //     "flash and UICR area of the device, in addition to the entire RAM".yellow()
-        // );
-
-        Ok(None)
-    }
 }
 
 impl std::fmt::Display for ArmChipInfo {

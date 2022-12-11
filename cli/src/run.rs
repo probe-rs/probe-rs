@@ -13,7 +13,8 @@ pub fn run(
     chip_erase: bool,
     disable_double_buffering: bool,
 ) -> Result<()> {
-    let mut session = common.simple_attach()?;
+    let registry = common.registry()?;
+    let mut session = common.simple_attach(&registry)?;
 
     let mut file = match File::open(path) {
         Ok(file) => file,

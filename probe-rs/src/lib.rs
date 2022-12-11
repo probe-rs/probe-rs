@@ -84,6 +84,8 @@ mod probe;
 #[warn(missing_docs)]
 mod session;
 
+pub(crate) mod provider;
+
 pub use crate::config::{CoreType, InstructionSet, Target};
 pub use crate::core::{
     Architecture, BreakpointCause, BreakpointId, CommunicationInterface, Core, CoreInformation,

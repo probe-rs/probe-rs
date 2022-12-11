@@ -22,7 +22,6 @@
 //! be used to read targets from a YAML file.
 //!
 
-mod chip_info;
 mod registry;
 mod target;
 
@@ -32,11 +31,5 @@ pub use probe_rs_target::{
     TargetDescriptionSource,
 };
 
-pub use registry::{
-    add_target_from_yaml, families, get_target_by_name, search_chips, RegistryError,
-};
+pub use registry::{Registry, RegistryError};
 pub use target::{DebugSequence, Target, TargetParseError, TargetSelector};
-
-// Crate-internal API
-pub(crate) use chip_info::ChipInfo;
-pub(crate) use registry::get_target_by_chip_info;

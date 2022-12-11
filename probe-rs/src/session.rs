@@ -1,6 +1,7 @@
+use crate::architecture::arm::communication_interface::ArmProbeInterfaceExt;
 use crate::architecture::arm::sequences::{ArmDebugSequence, DefaultArmSequence};
 use crate::architecture::arm::{ApAddress, DpAddress};
-use crate::config::{ChipInfo, MemoryRegion, RegistryError, Target, TargetSelector};
+use crate::config::{MemoryRegion, Registry, RegistryError, Target, TargetSelector};
 use crate::core::{Architecture, CoreState, SpecificCoreState};
 use crate::{
     architecture::{
@@ -117,7 +118,9 @@ impl Session {
         attach_method: AttachMethod,
         permissions: Permissions,
     ) -> Result<Self, Error> {
-        let (mut probe, target) = get_target_from_selector(target, attach_method, probe)?;
+        let registry = Registry::default();
+        let (mut probe, target) =
+            get_target_from_selector(target, attach_method, probe, &registry)?;
 
         let cores = target
             .cores
@@ -786,14 +789,15 @@ fn get_target_from_selector(
     target: TargetSelector,
     attach_method: AttachMethod,
     probe: Probe,
+    registry: &Registry,
 ) -> Result<(Probe, Target), Error> {
     let mut probe = probe;
 
     let target = match target {
-        TargetSelector::Unspecified(name) => crate::config::get_target_by_name(name)?,
+        TargetSelector::Unspecified(name) => registry.get_target_by_name(name)?,
         TargetSelector::Specified(target) => target,
         TargetSelector::Auto => {
-            let mut found_chip = None;
+            let mut found_variant = None;
 
             // At this point we do not know what the target is, so we cannot use the chip specific reset sequence.
             // Thus, we try just using a normal reset for target detection if we want to do so under reset.
@@ -811,14 +815,10 @@ fn get_target_from_selector(
                         // TODO:
                         let dp = DpAddress::Default;
 
-                        let found_arm_chip = interface
-                            .read_chip_info_from_rom_table(dp)
-                            .unwrap_or_else(|e| {
-                                tracing::info!("Error during auto-detection of ARM chips: {}", e);
-                                None
-                            });
-
-                        found_chip = found_arm_chip.map(ChipInfo::from);
+                        found_variant = interface.autodetect(dp, registry).unwrap_or_else(|e| {
+                            tracing::info!("Error during auto-detection of ARM chips: {}", e);
+                            None
+                        });
 
                         probe = interface.close();
                     }
@@ -831,7 +831,7 @@ fn get_target_from_selector(
                 tracing::debug!("No ARM interface was present. Skipping Riscv autodetect.");
             }
 
-            if found_chip.is_none() && probe.has_riscv_interface() {
+            if found_variant.is_none() && probe.has_riscv_interface() {
                 match probe.try_into_riscv_interface() {
                     Ok(mut interface) => {
                         let idcode = interface.read_idcode();
@@ -852,11 +852,12 @@ fn get_target_from_selector(
             // Now we can deassert reset in case we asserted it before. This is always okay.
             probe.target_reset_deassert()?;
 
-            if let Some(chip) = found_chip {
-                crate::config::get_target_by_chip_info(chip)?
-            } else {
-                return Err(Error::ChipNotFound(RegistryError::ChipAutodetectFailed));
-            }
+            found_variant
+                .map(|variant| {
+                    tracing::info!("autodetected {}", variant.name());
+                    variant.to_target()
+                })
+                .ok_or(Error::ChipNotFound(RegistryError::ChipAutodetectFailed))?
         }
     };
 

@@ -8,6 +8,7 @@ mod peripherals;
 use anyhow::Result;
 use clap::{crate_authors, crate_description, crate_name, crate_version, Parser};
 use debugger::debug_entry::{debug, list_connected_devices, list_supported_chips};
+use probe_rs::config::Registry;
 use probe_rs::{
     architecture::arm::ap::AccessPortError, flashing::FileDownloadError, DebugProbeError, Error,
 };
@@ -96,7 +97,10 @@ fn main() -> Result<()> {
 
     match matches {
         CliCommands::List {} => list_connected_devices()?,
-        CliCommands::ListChips {} => list_supported_chips()?,
+        CliCommands::ListChips {} => {
+            let registry = Registry::default();
+            list_supported_chips(&registry)?
+        }
         CliCommands::Debug { port, vscode } => debug(port, vscode)?,
     }
     Ok(())

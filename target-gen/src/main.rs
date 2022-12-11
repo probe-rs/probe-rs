@@ -7,6 +7,7 @@ pub mod parser;
 use anyhow::{bail, ensure, Context, Result};
 use clap::Parser;
 use parser::extract_flash_algo;
+use probe_rs::config::Registry;
 use probe_rs::{
     config::{
         Chip, ChipFamily, Core, MemoryRegion, NvmRegion, RamRegion,
@@ -250,14 +251,15 @@ fn cmd_pack(input: &Path, out_dir: &Path) -> Result<()> {
         ))?;
     }
 
+    let registry = Registry::default();
     let mut families = Vec::<ChipFamily>::new();
 
     if input.is_file() {
-        generate::visit_file(input, &mut families)
+        generate::visit_file(input, &mut families, &registry)
             .context(format!("Failed to process file {}.", input.display()))?;
     } else {
         // Look for the .pdsc file in the given dir and it's child directories.
-        generate::visit_dirs(input, &mut families)
+        generate::visit_dirs(input, &mut families, &registry)
             .context("Failed to generate target configuration.")?;
 
         // Check that we found at least a single .pdsc file
@@ -315,9 +317,10 @@ fn cmd_arm(out_dir: Option<PathBuf>, chip_family: Option<String>, list: bool) ->
         ))?;
     }
 
+    let registry = Registry::default();
     let mut families = Vec::<ChipFamily>::new();
 
-    generate::visit_arm_files(&mut families, chip_family)?;
+    generate::visit_arm_files(&mut families, chip_family, &registry)?;
 
     let mut generated_files = Vec::with_capacity(families.len());
 

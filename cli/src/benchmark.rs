@@ -10,6 +10,7 @@ use chrono::NaiveDateTime;
 use probe_rs::MemoryInterface;
 use probe_rs_cli_util::{clap, common_options::ProbeOptions};
 
+use probe_rs::config::Registry;
 use rand::prelude::*;
 use serde::{Deserialize, Serialize};
 
@@ -34,6 +35,8 @@ fn parse_hex(src: &str) -> Result<u64, ParseIntError> {
 }
 
 pub fn benchmark(common_options: ProbeOptions, options: BenchmarkOptions) -> anyhow::Result<()> {
+    let registry = Registry::default();
+
     let probe = common_options.attach_probe()?;
 
     let protocol_name = probe
@@ -43,7 +46,7 @@ pub fn benchmark(common_options: ProbeOptions, options: BenchmarkOptions) -> any
 
     let protocol_speed = probe.speed_khz() as i32;
 
-    let mut session = common_options.simple_attach()?;
+    let mut session = common_options.simple_attach(&registry)?;
 
     let target_name = session.target().name.clone();
 

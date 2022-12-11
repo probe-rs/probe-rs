@@ -45,7 +45,7 @@ pub trait DpAccess {
     ) -> Result<(), DebugPortError>;
 }
 
-impl<T: DapAccess> DpAccess for T {
+impl<T: DapAccess + ?Sized> DpAccess for T {
     fn read_dp_register<R: DpRegister>(&mut self, dp: DpAddress) -> Result<R, DebugPortError> {
         tracing::debug!("Reading DP register {}", R::NAME);
         let result = self.read_raw_dp_register(dp, R::ADDRESS)?;

@@ -17,7 +17,8 @@ pub(crate) fn itm_trace(
     sink: TraceSink,
     duration: std::time::Duration,
 ) -> anyhow::Result<()> {
-    let mut session = common.simple_attach()?;
+    let registry = common.registry()?;
+    let mut session = common.simple_attach(&registry)?;
 
     session.setup_tracing(shared_options.core, sink)?;
 
