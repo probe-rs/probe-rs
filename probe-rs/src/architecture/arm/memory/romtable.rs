@@ -1,6 +1,5 @@
 use super::adi_v5_memory_interface::ArmMemoryAccess;
 use super::AccessPortError;
-use crate::architecture::arm::ap::AccessPort;
 use crate::architecture::arm::{ap::MemoryAp, communication_interface::ArmProbeInterface};
 use crate::Error;
 use enum_primitive_derive::Primitive;
@@ -143,10 +142,7 @@ impl RomTable {
                     format: raw_entry.format,
                     power_domain_id: raw_entry.power_domain_id,
                     power_domain_valid: raw_entry.power_domain_valid,
-                    component: CoresightComponent::new(
-                        component,
-                        MemoryAp::new(memory.ap().ap_address()),
-                    ),
+                    component: CoresightComponent::new(component, memory.ap()),
                 });
             }
         }
@@ -338,29 +334,27 @@ impl<'probe: 'memory, 'memory> ComponentInformationReader<'probe, 'memory> {
         const DEV_TYPE_OFFSET: u64 = 0xFCC;
         const DEV_TYPE_MASK: u32 = 0xFF;
 
-        let mut buff = [0];
-
-        self.memory
-            .read_32(self.base_address + DEV_TYPE_OFFSET, &mut buff)
-            .map_err(RomTableError::Memory)?;
-
-        let dev_type = (buff[0] & DEV_TYPE_MASK) as u8;
+        let dev_type = self
+            .memory
+            .read_word_32(self.base_address + DEV_TYPE_OFFSET)
+            .map_err(RomTableError::Memory)
+            .map(|v| (v & DEV_TYPE_MASK) as u8)?;
 
         const ARCH_ID_OFFSET: u64 = 0xFBC;
         const ARCH_ID_MASK: u32 = 0xFFFF;
         const ARCH_ID_PRESENT_BIT: u32 = 1 << 20;
 
-        self.memory
-            .read_32(self.base_address + ARCH_ID_OFFSET, &mut buff)
-            .map_err(RomTableError::Memory)?;
-
-        let arch_id = {
-            if buff[0] & ARCH_ID_PRESENT_BIT > 0 {
-                (buff[0] & ARCH_ID_MASK) as u16
-            } else {
-                0
-            }
-        };
+        let arch_id = self
+            .memory
+            .read_word_32(self.base_address + ARCH_ID_OFFSET)
+            .map_err(RomTableError::Memory)
+            .map(|v| {
+                if v & ARCH_ID_PRESENT_BIT > 0 {
+                    (v & ARCH_ID_MASK) as u16
+                } else {
+                    0
+                }
+            })?;
 
         tracing::debug!("Dev type: {:x}, arch id: {:x}", dev_type, arch_id);
 
@@ -495,12 +489,8 @@ impl CoresightComponent {
         offset: u32,
     ) -> Result<u32, Error> {
         let mut memory = interface.memory_interface(self.ap)?;
-        let mut buff = [0];
-        memory.read_32(
-            self.component.id().component_address + offset as u64,
-            &mut buff,
-        )?;
-        Ok(buff[0])
+        let value = memory.read_word_32(self.component.id().component_address + offset as u64)?;
+        Ok(value)
     }
 
     /// Writes a register of the component pointed to by this romtable entry.
@@ -511,10 +501,7 @@ impl CoresightComponent {
         value: u32,
     ) -> Result<(), Error> {
         let mut memory = interface.memory_interface(self.ap)?;
-        memory.write_32(
-            self.component.id().component_address + offset as u64,
-            &[value],
-        )?;
+        memory.write_word_32(self.component.id().component_address + offset as u64, value)?;
         Ok(())
     }
 

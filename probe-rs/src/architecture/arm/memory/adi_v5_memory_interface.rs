@@ -47,7 +47,7 @@ pub trait ArmMemoryAccess: SwdSequence {
     /// effects. Generally faster than [`MemoryInterface::read_8`].
     fn read(&mut self, address: u64, data: &mut [u8]) -> Result<(), Error> {
         let len = data.len();
-        if address % 4 == 0 || len % 4 == 0 {
+        if address % 4 == 0 && len % 4 == 0 {
             let mut buffer = vec![0u32; len / 4];
             self.read_32(address, &mut buffer)?;
             for (bytes, value) in data.chunks_exact_mut(4).zip(buffer.iter()) {

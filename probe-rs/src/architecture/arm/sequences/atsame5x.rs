@@ -203,7 +203,7 @@ impl AtSAME5x {
     /// to signal that a re-connect is needed for the DSU to start operating in unlocked mode.
     pub fn erase_all(
         &self,
-        memory: &mut (impl ArmMemoryAccess + ?Sized),
+        memory: &mut dyn ArmMemoryAccess,
         permissions: &Permissions,
     ) -> Result<(), Error> {
         let dsu_status_a = DsuStatusA::from(memory.read_word_8(DsuStatusA::ADDRESS)?);
