@@ -1,5 +1,5 @@
 [workspace.package]
-version = "0.13.0"
+version = "0.14.0"
 edition = "2021"
 
 documentation = "https://docs.rs/probe-rs/"
@@ -25,11 +25,11 @@ members = [
 ]
 
 [workspace.dependencies]
-probe-rs = { path = "probe-rs", version = "0.13.0" }
-probe-rs-cli-util = { path = "probe-rs-cli-util", version = "0.13.0" }
-probe-rs-rtt = { path = "rtt", version = "0.13.0" }
-probe-rs-target = { path = "probe-rs-target", version = "0.13.0" }
-gdb-server = { path = "gdb-server", version = "0.13.0" }
+probe-rs = { path = "probe-rs", version = "0.14.0" }
+probe-rs-cli-util = { path = "probe-rs-cli-util", version = "0.14.0" }
+probe-rs-rtt = { path = "rtt", version = "0.14.0" }
+probe-rs-target = { path = "probe-rs-target", version = "0.14.0" }
+gdb-server = { path = "gdb-server", version = "0.14.0" }
 
 log = "0.4.6"
 pretty_env_logger = "0.4.0"
