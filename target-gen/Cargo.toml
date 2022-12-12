@@ -24,7 +24,7 @@ serde_yaml = "^0.9"
 log = "0.4.16"
 zip = "0.6.2"
 clap = { version = "4.0", features = ["derive"] }
-base64 = "0.13.0"
+base64 = "0.20.0"
 simplelog = "0.12.0"
 anyhow = "1.0.57"
 reqwest = { version = "0.11.10", features = ["json", "blocking"] }
