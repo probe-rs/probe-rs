@@ -43,7 +43,9 @@ pub fn benchmark(common_options: ProbeOptions, options: BenchmarkOptions) -> any
 
     let protocol_speed = probe.speed_khz() as i32;
 
-    let mut session = common_options.simple_attach()?;
+    let target = common_options.get_target_selector()?;
+    let probe_name = probe.get_name();
+    let mut session = common_options.attach_session(probe, target)?;
 
     let target_name = session.target().name.clone();
 
@@ -152,7 +154,7 @@ pub fn benchmark(common_options: ProbeOptions, options: BenchmarkOptions) -> any
                     BASE_URL.to_string()
                 })
                 .json(&NewLog {
-                    probe: probe.get_name(),
+                    probe: probe_name,
                     chip: target_name,
                     os: env::consts::OS.to_string(),
                     protocol: protocol_name,
