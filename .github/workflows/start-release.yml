@@ -14,17 +14,66 @@ jobs:
       pull-requests: write
       contents: write
     runs-on: ubuntu-latest
+    env:
+      BRANCH_NAME: release/${{ inputs.version }}
     steps:
       - uses: actions/checkout@v3
       - uses: chainguard-dev/actions/setup-gitsign@main
       - name: install cargo-release
         run: |
           curl -LsSf https://github.com/crate-ci/cargo-release/releases/download/v0.24.0/cargo-release-v0.24.0-x86_64-unknown-linux-gnu.tar.gz | tar xzf - -C ${CARGO_HOME:-~/.cargo}/bin
+      - name: Install semver checks
+        run: |
+          cargo install cargo-semver-checks --locked
+      - name: Install libusb, libudev (linux)
+        run: |
+          sudo apt update
+          sudo apt install -y libusb-1.0-0-dev libudev-dev
 
-      - uses: cargo-bins/release-pr@v2
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          version: ${{ inputs.version }}
-          crate-release-all: true
-          check-semver: true
-          pr-label: "release"
+      - name: Git setup
+        run: |
+          git config user.name "releasebot"
+          git config user.email "release@probe.rs"
+          git fetch --unshallow
+          git fetch --tags
+
+      - name: Create branch
+        run: |
+          git checkout -b ${BRANCH_NAME}
+
+      - name: Bump versions
+        run: |
+          cargo release version ${{ inputs.version }} --execute --verbose --no-confirm --allow-branch ${BRANCH_NAME}
+          cargo release replace --execute --verbose --no-confirm
+          cargo release hook --execute --verbose --no-confirm
+          cargo release commit --execute --verbose --no-confirm
+
+      - name: Check semver compliance
+        run: |
+          cargo semver-checks check-release -p probe-rs -p probe-rs-target -p probe-rs-rtt -p probe-rs-cli-util
+
+      - name: Push branch
+        run: |
+          git push origin ${BRANCH_NAME}
+
+      - name: create pull request
+        run: |
+          gh pr create -B master -H "${BRANCH_NAME}"\
+            --title "Release ${BRANCH_NAME}"\
+            --body "This is the release PR for **${{ inputs.version }}**.
+          ---
+          It releases:
+
+          - probe-rs
+          - probe-rs-target
+          - probe-rs-rtt
+          - probe-rs-cli-util
+          - probe-rs-cli
+          - probe-rs-debugger
+          - gdb-server
+          - target-gen
+          - rtthost
+          ---
+          Use \`bors r+\` to merge."
+        env:
+            GITHUB_TOKEN: ${{ secrets.GH_PAT }}
