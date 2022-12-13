@@ -2,7 +2,6 @@
 
 use super::{CoreOptions, ProbeOptions};
 use probe_rs::architecture::arm::component::TraceSink;
-use std::io::Write;
 
 /// Trace the application using ITM.
 ///
@@ -17,46 +16,26 @@ pub(crate) fn itm_trace(
     common: &ProbeOptions,
     sink: TraceSink,
     duration: std::time::Duration,
-    output_file: Option<String>,
 ) -> anyhow::Result<()> {
     let mut session = common.simple_attach()?;
 
     session.setup_tracing(shared_options.core, sink)?;
 
-    let mut decoder = itm_decode::Decoder::new(itm_decode::DecoderOptions::default());
-
-    // If the user specified an output file, create it and open it for writing now.
-    let mut output = if let Some(destination) = output_file {
-        Some(
-            std::fs::OpenOptions::new()
-                .create(true)
-                .write(true)
-                .open(destination)?,
-        )
-    } else {
-        None
-    };
+    let decoder = itm::Decoder::new(
+        session.swo_reader()?,
+        itm::DecoderOptions { ignore_eof: true },
+    );
 
     let start = std::time::Instant::now();
+    let iter = decoder.singles();
 
-    while start.elapsed() < duration {
-        let itm_data = session.read_trace_data()?;
-
-        if itm_data.is_empty() {
-            log::info!("No trace data read, exitting");
-            break;
+    // Decode and print the ITM data for display.
+    for packet in iter {
+        if start.elapsed() > duration {
+            return Ok(());
         }
 
-        // Write the raw ITM data to the output file if one was opened.
-        if let Some(ref mut output) = output {
-            output.write_all(&itm_data)?;
-        }
-
-        // Decode and print the ITM data for display.
-        decoder.push(&itm_data);
-        while let Some(packet) = decoder.pull_with_timestamp() {
-            println!("{packet:?}");
-        }
+        println!("{packet:?}");
     }
 
     Ok(())

@@ -263,12 +263,6 @@ impl<S: ArmDebugState> SwdSequence for FakeArmInterface<S> {
 }
 
 impl UninitializedArmProbe for FakeArmInterface<Uninitialized> {
-    fn read_dpidr(&mut self) -> Result<u32, Error> {
-        let result = self.probe.raw_read_register(PortType::DebugPort, 0)?;
-
-        Ok(result)
-    }
-
     fn initialize(
         self: Box<Self>,
         sequence: Arc<dyn ArmDebugSequence>,

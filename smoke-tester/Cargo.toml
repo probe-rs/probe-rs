@@ -1,6 +1,6 @@
 [package]
 name = "smoke_tester"
-version = "0.11.0"
+version.workspace = true
 authors = ["Dominik Boehi <dominik.boehi@gmail.com>"]
 edition = "2021"
 publish = false

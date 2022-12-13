@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Tracing on M4 architectures utilize the TPIU for all hardware tracing (#1182)
 - ITM tracing can now be completed using the probe-rs CLI (#1180)
 - Added support for MIMXRT10xx targets (#1174)
+- Added support for the Cortex M7 of MIMXRT11xx targets (#1250)
 - Added support for in-line (column specific) breakpoints where multiple statements (potential breakpoints) are on the same line of source code. (#1156)
 - Added support for MSP432P4XX targets (#1201)
 - Added support for Microchip SAMDA1
@@ -23,6 +24,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added support for W7500 target
 - Added an optional `stack_size` configuration to flash algorithms to control the stack size (#1260)
 - Added Support for Debug Erase Sequences that (if available) are used instead of the normal chip-erase logic
+- Added Support for GD32E50x targets (#1304)
+- Added support for the Infineon XMC4000 family
+- Added support for the Infineon XMC4000 family (#1301)
 
 ### Changed
 
@@ -43,6 +47,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `probe_rs_target::chip::Chip` has a new field `pack_file_release` which is populated by `target-gen`.(#1259)
 - Benchmarking code moved from an example to `probe-rs-cli` subcommand (#1296).
 - Replace `log` crate, with `tracing` in `probe-rs-debugger` executable, and in the `rtt` library. (#1297)
+- Replace FTDI probe command creation with `ftdi-mpsse` library functions/enums (#1302)
+- Improved formatting of `probe-rs-cli info` output. (#1305)
+- Refactor FTDI probe impl to use all JtagCommand logic (#1307)
 
 ### Fixed
 
@@ -140,6 +147,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - gdb-server now supports floating point registers (#1133)
 - Debug: Correctly handle compressed vs non-compressed instructions sets for RISC-V. (#1224)
 - The core now needs to be halted for core register access. (#1044)
+- The memory functions to do memory transfers have been standardized. This effectively means that `read_*` and `write_*` do what the name says unconditionally. E.g. `read_8` will always do 8 bit reads or `write_32` will always do 32 bit writes. New functions that are called `read` and `write` have been introduced. Those will try to maximize throughput. They mix transfer sizes however they see fit. If you need to use a feature of a chip that requires a specific transfer size, please resort to the `read_*` and `write_*` functions. (#1078)
 
 ### Fixed
 
@@ -659,11 +667,10 @@ Initial release on crates.io
 - Working basic flash downloader with nRF51.
 - Introduce cargo-flash which can automatically build & flash the target elf file.
 
-[unreleased]: https://github.com/probe-rs/probe-rs/compare/0.13.0...master
-[0.13.0]: https://github.com/probe-rs/probe-rs/compare/0.12.0...0.13.0
-[0.12.0]: https://github.com/probe-rs/probe-rs/compare/0.11.0...0.12.0
-[0.11.0]: https://github.com/probe-rs/probe-rs/compare/v0.10.1...0.11.0
-[0.11.0-alpha.1]: https://github.com/probe-rs/probe-rs/compare/v0.10.1...0.11.0-alpha.1
+[unreleased]: https://github.com/probe-rs/probe-rs/compare/v0.13.0...master
+[0.13.0]: https://github.com/probe-rs/probe-rs/compare/v0.12.0...v0.13.0
+[0.12.0]: https://github.com/probe-rs/probe-rs/compare/v0.11.0...v0.12.0
+[0.11.0]: https://github.com/probe-rs/probe-rs/compare/v0.10.1...v0.11.0
 [0.10.1]: https://github.com/probe-rs/probe-rs/compare/v0.10.0...v0.10.1
 [0.10.0]: https://github.com/probe-rs/probe-rs/compare/v0.9.0...v0.10.0
 [0.9.0]: https://github.com/probe-rs/probe-rs/compare/v0.8.0...v0.9.0

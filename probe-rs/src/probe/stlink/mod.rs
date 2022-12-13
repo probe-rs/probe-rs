@@ -4,14 +4,13 @@ mod usb_interface;
 
 use self::usb_interface::{StLinkUsb, StLinkUsbDevice};
 use super::{DebugProbe, DebugProbeError, ProbeCreationError, WireProtocol};
-use crate::memory::valid_32_address;
+use crate::memory::valid_32bit_address;
 use crate::{
     architecture::arm::{
         ap::{valid_access_ports, AccessPort, ApAccess, ApClass, MemoryAp, IDR},
         communication_interface::{
-            ArmProbeInterface, Initialized, Register, SwdSequence, UninitializedArmProbe,
+            ArmProbeInterface, Initialized, SwdSequence, UninitializedArmProbe,
         },
-        dp::DPIDR,
         memory::{adi_v5_memory_interface::ArmProbe, Component},
         sequences::ArmDebugSequence,
         ApAddress, ApInformation, ArmChipInfo, DapAccess, DpAddress, Pins, SwoAccess, SwoConfig,
@@ -1118,16 +1117,6 @@ struct UninitializedStLink {
 }
 
 impl UninitializedArmProbe for UninitializedStLink {
-    // Todo: Is this possible with an uninitialized ST Link?
-    fn read_dpidr(&mut self) -> Result<u32, ProbeRsError> {
-        let result = self
-            .probe
-            .read_register(DP_PORT, DPIDR::ADDRESS)
-            .map_err(|e| ProbeRsError::Other(e.into()))?;
-
-        Ok(result)
-    }
-
     fn initialize(
         self: Box<Self>,
         _sequence: Arc<dyn ArmDebugSequence>,
@@ -1371,7 +1360,7 @@ impl ArmProbe for StLinkMemoryInterface<'_> {
         address: u64,
         data: &mut [u64],
     ) -> Result<(), ProbeRsError> {
-        let address = valid_32_address(address)?;
+        let address = valid_32bit_address(address)?;
 
         for (i, d) in data.iter_mut().enumerate() {
             let mut buff = vec![0u8; 8];
@@ -1394,7 +1383,7 @@ impl ArmProbe for StLinkMemoryInterface<'_> {
         address: u64,
         data: &mut [u32],
     ) -> Result<(), ProbeRsError> {
-        let address = valid_32_address(address)?;
+        let address = valid_32bit_address(address)?;
 
         // Read needs to be chunked into chunks with appropiate max length (see STLINK_MAX_READ_LEN).
         for (index, chunk) in data.chunks_mut(STLINK_MAX_READ_LEN / 4).enumerate() {
@@ -1415,7 +1404,7 @@ impl ArmProbe for StLinkMemoryInterface<'_> {
     }
 
     fn read_8(&mut self, ap: MemoryAp, address: u64, data: &mut [u8]) -> Result<(), ProbeRsError> {
-        let address = valid_32_address(address)?;
+        let address = valid_32bit_address(address)?;
 
         // Read needs to be chunked into chunks of appropriate max length of the probe
         let chunk_size = if self.probe.probe.hw_version < 3 {
@@ -1440,7 +1429,7 @@ impl ArmProbe for StLinkMemoryInterface<'_> {
     }
 
     fn write_64(&mut self, ap: MemoryAp, address: u64, data: &[u64]) -> Result<(), ProbeRsError> {
-        let address = valid_32_address(address)?;
+        let address = valid_32bit_address(address)?;
 
         let mut tx_buffer = vec![0u8; data.len() * 8];
 
@@ -1464,7 +1453,7 @@ impl ArmProbe for StLinkMemoryInterface<'_> {
     }
 
     fn write_32(&mut self, ap: MemoryAp, address: u64, data: &[u32]) -> Result<(), ProbeRsError> {
-        let address = valid_32_address(address)?;
+        let address = valid_32bit_address(address)?;
 
         let mut tx_buffer = vec![0u8; data.len() * 4];
 
@@ -1488,7 +1477,7 @@ impl ArmProbe for StLinkMemoryInterface<'_> {
     }
 
     fn write_8(&mut self, ap: MemoryAp, address: u64, data: &[u8]) -> Result<(), ProbeRsError> {
-        let address = valid_32_address(address)?;
+        let address = valid_32bit_address(address)?;
 
         // The underlying STLink command is limited to a single USB frame at a time
         // so we must manually chunk it into multiple command if it exceeds
@@ -1574,6 +1563,10 @@ impl ArmProbe for StLinkMemoryInterface<'_> {
 
     fn flush(&mut self) -> Result<(), ProbeRsError> {
         Ok(())
+    }
+
+    fn supports_8bit_transfers(&self) -> Result<bool, ProbeRsError> {
+        Ok(true)
     }
 
     fn get_arm_communication_interface(

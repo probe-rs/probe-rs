@@ -8,22 +8,94 @@ use crate::architecture::arm::{
     communication_interface::Initialized, dp::DpAccess, MemoryApInformation,
 };
 use crate::{CommunicationInterface, Error};
-use scroll::{Pread, Pwrite, LE};
 use std::convert::TryInto;
 use std::ops::Range;
 
 pub trait ArmProbe: SwdSequence {
     fn read_8(&mut self, ap: MemoryAp, address: u64, data: &mut [u8]) -> Result<(), Error>;
+
     fn read_32(&mut self, ap: MemoryAp, address: u64, data: &mut [u32]) -> Result<(), Error>;
+
     fn read_64(&mut self, ap: MemoryAp, address: u64, data: &mut [u64]) -> Result<(), Error>;
 
+    /// Read a block of 8bit words at `address`. May use 32 bit memory access,
+    /// so should only be used if reading memory locations that don't have side
+    /// effects. Generally faster than [`MemoryInterface::read_8`].
+    fn read(&mut self, ap: MemoryAp, address: u64, data: &mut [u8]) -> Result<(), Error> {
+        let len = data.len();
+        if address % 4 == 0 && len % 4 == 0 {
+            let mut buffer = vec![0u32; len / 4];
+            self.read_32(ap, address, &mut buffer)?;
+            for (bytes, value) in data.chunks_exact_mut(4).zip(buffer.iter()) {
+                bytes.copy_from_slice(&u32::to_le_bytes(*value));
+            }
+        } else {
+            let start_extra_count = (address % 4) as usize;
+            let mut buffer = vec![0u32; (start_extra_count + len + 3) / 4];
+            let read_address = address - start_extra_count as u64;
+            self.read_32(ap, read_address, &mut buffer)?;
+            for (bytes, value) in data
+                .chunks_exact_mut(4)
+                .zip(buffer[start_extra_count..start_extra_count + len].iter())
+            {
+                bytes.copy_from_slice(&u32::to_le_bytes(*value));
+            }
+        }
+        Ok(())
+    }
+
     fn write_8(&mut self, ap: MemoryAp, address: u64, data: &[u8]) -> Result<(), Error>;
+
     fn write_32(&mut self, ap: MemoryAp, address: u64, data: &[u32]) -> Result<(), Error>;
+
     fn write_64(&mut self, ap: MemoryAp, address: u64, data: &[u64]) -> Result<(), Error>;
+
+    /// Write a block of 8bit words to `address`. May use 32 bit memory access,
+    /// so it should only be used if writing memory locations that don't have side
+    /// effects. Generally faster than [`MemoryInterface::write_8`].
+    fn write(&mut self, ap: MemoryAp, address: u64, data: &[u8]) -> Result<(), Error> {
+        let len = data.len();
+        let start_extra_count = 4 - (address % 4) as usize;
+        let end_extra_count = ((len - start_extra_count) % 4) as usize;
+        let inbetween_count = len - start_extra_count - end_extra_count;
+        assert!(start_extra_count < 4);
+        assert!(end_extra_count < 4);
+        assert!(inbetween_count % 4 == 0);
+
+        // If we do not have 32 bit aligned access we first check that we can do 8 bit aligned access on this platform.
+        // If we cannot we throw an error.
+        // If we can we read the first n < 4 bytes up until the word aligned address that comes next.
+        if address % 4 != 0 || len % 4 != 0 {
+            // If we do not support 8 bit transfers we have to bail because we can only do 32 bit word aligned transers.
+            if !self.supports_8bit_transfers()? {
+                return Err(Error::ArchitectureSpecific(Box::new(
+                    AccessPortError::alignment_error(address, 4),
+                )));
+            }
+
+            // We first do an 8 bit write of the first < 4 bytes up until the 4 byte aligned boundary.
+            self.write_8(ap, address, &data[..start_extra_count])?;
+        }
+
+        let mut buffer = vec![0u32; inbetween_count / 4];
+        for (bytes, value) in data.chunks_exact(4).zip(buffer.iter_mut()) {
+            *value = u32::from_le_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]);
+        }
+        self.write_32(ap, address, &buffer)?;
+
+        // We read the remaining bytes that we did not read yet which is always n < 4.
+        if end_extra_count > 0 {
+            self.write_8(ap, address, &data[..start_extra_count])?;
+        }
+
+        Ok(())
+    }
 
     fn flush(&mut self) -> Result<(), Error>;
 
     fn supports_native_64bit_access(&mut self) -> bool;
+
+    fn supports_8bit_transfers(&self) -> Result<bool, Error>;
 
     fn get_arm_communication_interface(
         &mut self,
@@ -36,7 +108,6 @@ where
     AP: CommunicationInterface + ApAccess + DpAccess,
 {
     interface: &'interface mut AP,
-    only_32bit_data_size: bool,
 
     /// Supports 64-bit address values
     has_large_address_extension: bool,
@@ -47,13 +118,19 @@ where
     // Does the connected memory AP support the HNONSEC bit?
     // If it doesn't support it, bit 30 in the CSW register has
     // to be set to 1 at all times.
+    /// Supports only 32 bit data transfers (every ARM chip does) if true.
+    supports_only_32bit_data_size: bool,
+
+    /// Does the connected memory AP support the HNONSEC bit?
+    /// If it doesn't support it, bit 30 in the CSW register has
+    /// to be set to 1 at all times.
     supports_hnonsec: bool,
 
-    // Cached value of the CSW register, to avoid unecessary writes.
+    /// Cached value of the CSW register, to avoid unecessary writes.
     //
-    // TODO: This is the wrong location for this, it should actually be
-    // cached on a lower level, where the other Memory AP information is
-    // stored.
+    /// TODO: This is the wrong location for this, it should actually be
+    /// cached on a lower level, where the other Memory AP information is
+    /// stored.
     cached_csw_value: Option<CSW>,
 }
 
@@ -68,7 +145,7 @@ where
     ) -> Result<ADIMemoryInterface<'interface, AP>, AccessPortError> {
         Ok(Self {
             interface,
-            only_32bit_data_size: ap_information.only_32bit_data_size,
+            supports_only_32bit_data_size: ap_information.only_32bit_data_size,
             supports_hnonsec: ap_information.supports_hnonsec,
             cached_csw_value: None,
             has_large_address_extension: ap_information.has_large_address_extension,
@@ -89,9 +166,6 @@ where
         // the ARM Debug Interface Architecture Specification.
         //
         // The HNONSEC bit is set according to [Self::supports_hnonsec]:
-        //
-        //  HNONSEC[30]          = 1  - Should be One, if unsupported, otherwise
-        //                              zero to indicate secure access
         // The PROT bits are set as follows:
         //  MasterType, bit [29] = 1  - Access as default AHB Master
         //  HPROT[4]             = 0  - Non-allocating access
@@ -215,7 +289,7 @@ where
             .map_err(AccessPortError::register_write_error::<R, _>)
     }
 
-    /// Read a 64bit word at `addr`.
+    /// Read a 64bit word at `address`.
     ///
     /// The address where the read should be performed at has to be word aligned.
     /// Returns `AccessPortError::MemoryNotAligned` if this does not hold true.
@@ -271,36 +345,32 @@ where
         Ok(result.data)
     }
 
-    /// Read an 8bit word at `addr`.
+    /// Read an 8 bit word at `address`.
     pub fn read_word_8(
         &mut self,
         access_port: MemoryAp,
         address: u64,
     ) -> Result<u8, AccessPortError> {
+        if self.supports_only_32bit_data_size {
+            return Err(AccessPortError::UnsupportedTransferWidth(8));
+        }
+
         let aligned = aligned_range(address, 1)?;
 
         // Offset of byte in word (little endian)
         let bit_offset = (address - aligned.start) * 8;
 
-        let result = if self.only_32bit_data_size {
-            // Read 32-bit word and extract the correct byte
-            ((self.read_word_32(access_port, aligned.start)? >> bit_offset) & 0xFF) as u8
-        } else {
-            let csw = self.build_csw_register(DataSize::U8);
+        let csw = self.build_csw_register(DataSize::U8);
+        self.write_csw_register(access_port, csw)?;
+        self.write_tar_register(access_port, address)?;
+        let result: DRW = self.read_ap_register(access_port)?;
 
-            self.write_csw_register(access_port, csw)?;
-            self.write_tar_register(access_port, address)?;
-            let result: DRW = self.read_ap_register(access_port)?;
-
-            // Extract the correct byte
-            // See "Arm Debug Interface Architecture Specification ADIv5.0 to ADIv5.2", C2.2.6
-            ((result.data >> bit_offset) & 0xFF) as u8
-        };
-
-        Ok(result)
+        // Extract the correct byte
+        // See "Arm Debug Interface Architecture Specification ADIv5.0 to ADIv5.2", C2.2.6
+        Ok(((result.data >> bit_offset) & 0xFF) as u8)
     }
 
-    /// Read a block of words of the size defined by S at `addr`.
+    /// Read a block of 32 bit words at `address`.
     ///
     /// The number of words read is `data.len()`.
     /// The address where the read should be performed at has to be word aligned.
@@ -308,28 +378,24 @@ where
     pub fn read_32(
         &mut self,
         access_port: MemoryAp,
-        start_address: u64,
+        address: u64,
         data: &mut [u32],
     ) -> Result<(), AccessPortError> {
         if data.is_empty() {
             return Ok(());
         }
 
-        if (start_address % 4) != 0 {
-            return Err(AccessPortError::alignment_error(start_address, 4));
+        if (address % 4) != 0 {
+            return Err(AccessPortError::alignment_error(address, 4));
         }
 
         // Second we read in 32 bit reads until we have less than 32 bits left to read.
         let csw = self.build_csw_register(DataSize::U32);
         self.write_csw_register(access_port, csw)?;
-
-        let mut address = start_address;
         self.write_tar_register(access_port, address)?;
 
-        // figure out how many words we can write before the
-        // data overflows
-
-        // maximum chunk size
+        // The maximum chunk size we can read before data overflows.
+        // This is the size of the internal counter that is used for the address increment in the ARM spec.
         let max_chunk_size_bytes = 0x400;
 
         let mut remaining_data_len = data.len();
@@ -347,19 +413,19 @@ where
             address
         );
 
-        let first_chunk_size_words = first_chunk_size_bytes / 4;
+        let first_chunk_size_transfer_unit = first_chunk_size_bytes / 4;
 
         self.read_ap_register_repeated(
             access_port,
             DRW { data: 0 },
-            &mut data[data_offset..first_chunk_size_words],
+            &mut data[data_offset..first_chunk_size_transfer_unit],
         )?;
 
-        remaining_data_len -= first_chunk_size_words;
-        address = address
-            .checked_add((4 * first_chunk_size_words) as u64)
+        remaining_data_len -= first_chunk_size_transfer_unit;
+        let mut address = address
+            .checked_add((4 * first_chunk_size_transfer_unit) as u64)
             .ok_or(AccessPortError::OutOfBounds)?;
-        data_offset += first_chunk_size_words;
+        data_offset += first_chunk_size_transfer_unit;
 
         while remaining_data_len > 0 {
             // the autoincrement is limited to the 10 lowest bits so we need to write the address
@@ -374,17 +440,19 @@ where
                 address
             );
 
-            let next_chunk_size_words = next_chunk_size_bytes / 4;
+            let next_chunk_size_transfer_unit = next_chunk_size_bytes / 4;
 
             self.read_ap_register_repeated(
                 access_port,
                 DRW { data: 0 },
-                &mut data[data_offset..(data_offset + next_chunk_size_words)],
+                &mut data[data_offset..(data_offset + next_chunk_size_transfer_unit)],
             )?;
 
-            remaining_data_len -= next_chunk_size_words;
-            address += (4 * next_chunk_size_words) as u64;
-            data_offset += next_chunk_size_words;
+            remaining_data_len -= next_chunk_size_transfer_unit;
+            address = address
+                .checked_add((4 * next_chunk_size_transfer_unit) as u64)
+                .ok_or(AccessPortError::OutOfBounds)?;
+            data_offset += next_chunk_size_transfer_unit;
         }
 
         tracing::debug!("Finished reading block");
@@ -392,32 +460,101 @@ where
         Ok(())
     }
 
+    /// Read a block of 8 bit words at `address`.
+    ///
+    /// The number of words read is `data.len()`.
     pub fn read_8(
         &mut self,
         access_port: MemoryAp,
         address: u64,
         data: &mut [u8],
     ) -> Result<(), AccessPortError> {
+        if self.supports_only_32bit_data_size {
+            return Err(AccessPortError::UnsupportedTransferWidth(8));
+        }
+
         if data.is_empty() {
             return Ok(());
         }
 
-        let aligned = aligned_range(address, data.len())?;
-        let aligned_len = (aligned.end - aligned.start) as usize;
+        let start_address = address;
+        let mut data_u32 = vec![0u32; data.len()];
 
-        // Read aligned block of 32-bit words
-        let mut buf32 = vec![0u32; aligned_len / 4];
-        self.read_32(access_port, aligned.start, &mut buf32)?;
+        let csw = self.build_csw_register(DataSize::U8);
+        self.write_csw_register(access_port, csw)?;
 
-        // Convert 32-bit words to bytes
-        let mut buf8 = vec![0u8; aligned_len];
-        for (i, word) in buf32.into_iter().enumerate() {
-            buf8.pwrite_with(word, i * 4, LE).unwrap();
+        let mut address = address;
+        self.write_tar_register(access_port, address)?;
+
+        // The maximum chunk size we can read before data overflows.
+        // This is the size of the internal counter that is used for the address increment in the ARM spec.
+        let max_chunk_size_bytes = 0x400;
+
+        let mut remaining_data_len = data.len();
+
+        let first_chunk_size_bytes = std::cmp::min(
+            max_chunk_size_bytes - (address as usize % max_chunk_size_bytes),
+            data.len(),
+        );
+
+        let mut data_offset = 0;
+
+        tracing::debug!(
+            "Read first block with len {} at address {:#08x}",
+            first_chunk_size_bytes,
+            address
+        );
+
+        let first_chunk_size_transfer_unit = first_chunk_size_bytes;
+
+        self.read_ap_register_repeated(
+            access_port,
+            DRW { data: 0 },
+            &mut data_u32[data_offset..first_chunk_size_transfer_unit],
+        )?;
+
+        remaining_data_len -= first_chunk_size_transfer_unit;
+        address = address
+            .checked_add((first_chunk_size_transfer_unit) as u64)
+            .ok_or(AccessPortError::OutOfBounds)?;
+        data_offset += first_chunk_size_transfer_unit;
+
+        while remaining_data_len > 0 {
+            // The autoincrement is limited to the 10 lowest bits so we need to write the address
+            // every time it overflows.
+            self.write_tar_register(access_port, address)?;
+
+            let next_chunk_size_bytes = std::cmp::min(max_chunk_size_bytes, remaining_data_len);
+
+            tracing::debug!(
+                "Reading chunk with len {} at address {:#08x}",
+                next_chunk_size_bytes,
+                address
+            );
+
+            let next_chunk_size_transfer_unit = next_chunk_size_bytes;
+
+            self.read_ap_register_repeated(
+                access_port,
+                DRW { data: 0 },
+                &mut data_u32[data_offset..(data_offset + next_chunk_size_transfer_unit)],
+            )?;
+
+            remaining_data_len -= next_chunk_size_transfer_unit;
+            address = address
+                .checked_add((next_chunk_size_transfer_unit) as u64)
+                .ok_or(AccessPortError::OutOfBounds)?;
+            data_offset += next_chunk_size_transfer_unit;
         }
 
-        // Copy relevant part of aligned block to output data
-        let start = (address - aligned.start) as usize;
-        data.copy_from_slice(&buf8[start..start + data.len()]);
+        // The required shifting logic here is described in C2.2.6 Byte lanes of the ADI v5.2 specification.
+        // All bytes are transfered in their lane, so when we do an access at an address that is not divisible by 4,
+        // we have to shift the word (one or two bytes) to it's correct position.
+        for (target, (i, source)) in data.iter_mut().zip(data_u32.iter().enumerate()) {
+            *target = ((*source >> (((start_address + i as u64) % 4) * 8)) & 0xFF) as u8;
+        }
+
+        tracing::debug!("Finished reading block");
 
         Ok(())
     }
@@ -458,7 +595,7 @@ where
         }
     }
 
-    /// Write a 32bit word at `addr`.
+    /// Write a 32bit word at `address`.
     ///
     /// The address where the write should be performed at has to be word aligned.
     /// Returns `AccessPortError::MemoryNotAligned` if this does not hold true.
@@ -483,40 +620,34 @@ where
         Ok(())
     }
 
-    /// Write an 8bit word at `addr`.
+    /// Write an 8 bit word at `address`.
     pub fn write_word_8(
         &mut self,
         access_port: MemoryAp,
         address: u64,
         data: u8,
     ) -> Result<(), AccessPortError> {
+        if self.supports_only_32bit_data_size {
+            return Err(AccessPortError::UnsupportedTransferWidth(8));
+        }
+
         let aligned = aligned_range(address, 1)?;
 
         // Offset of byte in word (little endian)
         let bit_offset = (address - aligned.start) * 8;
 
-        if self.only_32bit_data_size {
-            // Read the existing 32-bit word and insert the byte at the correct bit offset
-            // See "Arm Debug Interface Architecture Specification ADIv5.0 to ADIv5.2", C2.2.6
-            let word = self.read_word_32(access_port, aligned.start)?;
-            let word = word & !(0xFF << bit_offset) | (u32::from(data) << bit_offset);
-
-            self.write_word_32(access_port, aligned.start, word)?;
-        } else {
-            let csw = self.build_csw_register(DataSize::U8);
-            let drw = DRW {
-                data: u32::from(data) << bit_offset,
-            };
-            self.write_csw_register(access_port, csw)?;
-
-            self.write_tar_register(access_port, address)?;
-            self.write_ap_register(access_port, drw)?;
-        }
+        let csw = self.build_csw_register(DataSize::U8);
+        let drw = DRW {
+            data: u32::from(data) << bit_offset,
+        };
+        self.write_csw_register(access_port, csw)?;
+        self.write_tar_register(access_port, address)?;
+        self.write_ap_register(access_port, drw)?;
 
         Ok(())
     }
 
-    /// Write a block of 32bit words at `addr`.
+    /// Write a block of 32 bit words at `address`.
     ///
     /// The number of words written is `data.len()`.
     /// The address where the write should be performed at has to be word aligned.
@@ -524,21 +655,21 @@ where
     pub fn write_32(
         &mut self,
         access_port: MemoryAp,
-        start_address: u64,
+        address: u64,
         data: &[u32],
     ) -> Result<(), AccessPortError> {
-        if data.is_empty() {
-            return Ok(());
+        if (address % 4) != 0 {
+            return Err(AccessPortError::alignment_error(address, 4));
         }
 
-        if (start_address % 4) != 0 {
-            return Err(AccessPortError::alignment_error(start_address, 4));
+        if data.is_empty() {
+            return Ok(());
         }
 
         tracing::debug!(
             "Write block with total size {} bytes to address {:#08x}",
             data.len() * 4,
-            start_address
+            address
         );
 
         // Second we write in 32 bit reads until we have less than 32 bits left to write.
@@ -546,11 +677,7 @@ where
 
         self.write_csw_register(access_port, csw)?;
 
-        let mut address = start_address;
         self.write_tar_register(access_port, address)?;
-
-        // figure out how many words we can write before the
-        // data overflows
 
         // maximum chunk size
         let max_chunk_size_bytes = 0x400_usize;
@@ -570,17 +697,19 @@ where
             address
         );
 
-        let first_chunk_size_words = first_chunk_size_bytes / 4;
+        let first_chunk_size_transfer_unit = first_chunk_size_bytes / 4;
 
         self.write_ap_register_repeated(
             access_port,
             DRW { data: 0 },
-            &data[data_offset..first_chunk_size_words],
+            &data[data_offset..first_chunk_size_transfer_unit],
         )?;
 
-        remaining_data_len -= first_chunk_size_words;
-        address += (4 * first_chunk_size_words) as u64;
-        data_offset += first_chunk_size_words;
+        remaining_data_len -= first_chunk_size_transfer_unit;
+        let mut address = address
+            .checked_add((first_chunk_size_transfer_unit * 4) as u64)
+            .ok_or(AccessPortError::OutOfBounds)?;
+        data_offset += first_chunk_size_transfer_unit;
 
         while remaining_data_len > 0 {
             // the autoincrement is limited to the 10 lowest bits so we need to write the address
@@ -595,17 +724,19 @@ where
                 address
             );
 
-            let next_chunk_size_words = next_chunk_size_bytes / 4;
+            let next_chunk_size_transfer_unit = next_chunk_size_bytes / 4;
 
             self.write_ap_register_repeated(
                 access_port,
                 DRW { data: 0 },
-                &data[data_offset..(data_offset + next_chunk_size_words)],
+                &data[data_offset..(data_offset + next_chunk_size_transfer_unit)],
             )?;
 
-            remaining_data_len -= next_chunk_size_words;
-            address += (4 * next_chunk_size_words) as u64;
-            data_offset += next_chunk_size_words;
+            remaining_data_len -= next_chunk_size_transfer_unit;
+            address = address
+                .checked_add((next_chunk_size_transfer_unit * 4) as u64)
+                .ok_or(AccessPortError::OutOfBounds)?;
+            data_offset += next_chunk_size_transfer_unit;
         }
 
         tracing::debug!("Finished writing block");
@@ -613,7 +744,7 @@ where
         Ok(())
     }
 
-    /// Write a block of 8bit words at `addr`.
+    /// Write a block of 8 bit words at `address`.
     ///
     /// The number of words written is `data.len()`.
     pub fn write_8(
@@ -622,44 +753,99 @@ where
         address: u64,
         data: &[u8],
     ) -> Result<(), AccessPortError> {
+        if self.supports_only_32bit_data_size {
+            return Err(AccessPortError::UnsupportedTransferWidth(8));
+        }
+
         if data.is_empty() {
             return Ok(());
         }
 
-        let aligned = aligned_range(address, data.len())?;
-        let aligned_len = (aligned.end - aligned.start) as usize;
+        // The required shifting logic here is described in C2.2.6 Byte lanes of the ADI v5.2 specification.
+        // All bytes are transfered in their lane, so when we do an access at an address that is not divisible by 4,
+        // we have to shift the word (one or two bytes) to it's correct position.
+        let data = data
+            .iter()
+            .enumerate()
+            .map(|(i, v)| (*v as u32) << (((address as usize + i) % 4) * 8))
+            .collect::<Vec<_>>();
 
-        // Create buffer with aligned size
-        let mut buf8 = vec![0u8; aligned_len];
+        tracing::debug!(
+            "Write block with total size {} bytes to address {:#08x}",
+            data.len(),
+            address
+        );
 
-        // If the start of the range isn't aligned, read the first word in to avoid clobbering
-        if address != aligned.start {
-            buf8.pwrite_with(self.read_word_32(access_port, aligned.start)?, 0, LE)
-                .unwrap();
+        // Second we write in 8 bit writes until we have less than 8 bits left to write.
+        let csw = self.build_csw_register(DataSize::U8);
+
+        self.write_csw_register(access_port, csw)?;
+        self.write_tar_register(access_port, address)?;
+
+        // figure out how many words we can write before the
+        // data overflows
+
+        // maximum chunk size
+        let max_chunk_size_bytes = 0x400_usize;
+
+        let mut remaining_data_len = data.len();
+
+        let first_chunk_size_bytes = std::cmp::min(
+            max_chunk_size_bytes - (address as usize % max_chunk_size_bytes),
+            data.len(),
+        );
+
+        let mut data_offset = 0;
+
+        tracing::debug!(
+            "Write first block with len {} at address {:#08x}",
+            first_chunk_size_bytes,
+            address
+        );
+
+        let first_chunk_size_transfer_unit = first_chunk_size_bytes;
+
+        self.write_ap_register_repeated(
+            access_port,
+            DRW { data: 0 },
+            &data[data_offset..first_chunk_size_transfer_unit],
+        )?;
+
+        remaining_data_len -= first_chunk_size_transfer_unit;
+        let mut address = address
+            .checked_add((first_chunk_size_transfer_unit) as u64)
+            .ok_or(AccessPortError::OutOfBounds)?;
+        data_offset += first_chunk_size_transfer_unit;
+
+        while remaining_data_len > 0 {
+            // the autoincrement is limited to the 10 lowest bits so we need to write the address
+            // every time it overflows
+            self.write_tar_register(access_port, address)?;
+
+            let next_chunk_size_bytes = std::cmp::min(max_chunk_size_bytes, remaining_data_len);
+
+            tracing::debug!(
+                "Writing chunk with len {} at address {:#08x}",
+                next_chunk_size_bytes,
+                address
+            );
+
+            let next_chunk_size_transfer_unit = next_chunk_size_bytes;
+
+            self.write_ap_register_repeated(
+                access_port,
+                DRW { data: 0 },
+                &data[data_offset..(data_offset + next_chunk_size_transfer_unit)],
+            )?;
+
+            remaining_data_len -= next_chunk_size_transfer_unit;
+            address = address
+                .checked_add((next_chunk_size_transfer_unit) as u64)
+                .ok_or(AccessPortError::OutOfBounds)?;
+            data_offset += next_chunk_size_transfer_unit;
         }
 
-        // If the end of the range isn't aligned, read the last word in to avoid clobbering
-        if address + data.len() as u64 != aligned.end {
-            buf8.pwrite_with(
-                self.read_word_32(access_port, aligned.end - 4)?,
-                aligned_len - 4,
-                LE,
-            )
-            .unwrap();
-        }
-
-        // Copy input data into buffer at the correct location
-        let start = (address - aligned.start) as usize;
-        buf8[start..start + data.len()].copy_from_slice(data);
-
-        // Convert buffer to 32-bit words
-        let mut buf32 = vec![0u32; aligned_len / 4];
-        for (i, word) in buf32.iter_mut().enumerate() {
-            *word = buf8.pread_with(i * 4, LE).unwrap();
-        }
-
-        // Write aligned block into memory
-        self.write_32(access_port, aligned.start, &buf32)?;
+        tracing::debug!("Finished writing block");
 
         Ok(())
     }
@@ -744,6 +930,10 @@ where
         Ok(())
     }
 
+    fn supports_8bit_transfers(&self) -> Result<bool, Error> {
+        Ok(!self.supports_only_32bit_data_size)
+    }
+
     fn flush(&mut self) -> Result<(), Error> {
         self.interface.flush()?;
 
@@ -778,6 +968,8 @@ fn aligned_range(address: u64, len: usize) -> Result<Range<u64>, AccessPortError
 
 #[cfg(test)]
 mod tests {
+    use scroll::Pread;
+
     use crate::architecture::arm::{ap::AccessPort, ApAddress, DpAddress, MemoryApInformation};
 
     use super::super::super::ap::memory_ap::mock::MockMemoryAp;
@@ -910,6 +1102,30 @@ mod tests {
                 );
             }
         }
+    }
+
+    #[test]
+    fn read_32_big_chunk() {
+        let mut mock = MockMemoryAp::with_pattern();
+        let expected: Vec<u32> = mock
+            .memory
+            .chunks(4)
+            .map(|b| b.pread(0).unwrap())
+            .take(513)
+            .collect();
+        let mut mi = ADIMemoryInterface::new_mock(&mut mock);
+
+        let mut data = vec![0u32; 513];
+        mi.read_32(DUMMY_AP, 0, &mut data)
+            .unwrap_or_else(|_| panic!("read_32 failed, address = {}, len = {}", 0, data.len()));
+
+        assert_eq!(
+            data.as_slice(),
+            expected,
+            "address = {}, len = {}",
+            0,
+            data.len()
+        );
     }
 
     #[test]

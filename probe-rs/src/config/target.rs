@@ -3,10 +3,11 @@ use probe_rs_target::{Architecture, ChipFamily};
 use super::{Core, MemoryRegion, RawFlashAlgorithm, RegistryError, TargetDescriptionSource};
 use crate::architecture::arm::sequences::{
     atsame5x::AtSAME5x,
+    infineon::XMC4000,
     nrf52::Nrf52,
     nrf53::Nrf5340,
     nrf91::Nrf9160,
-    nxp::{MIMXRT10xx, LPC55S69},
+    nxp::{MIMXRT10xx, MIMXRT11xx, LPC55S69},
     stm32f_series::Stm32fSeries,
     stm32h7::Stm32h7,
     ArmDebugSequence,
@@ -97,6 +98,9 @@ impl Target {
         if chip.name.starts_with("MIMXRT10") {
             tracing::warn!("Using custom sequence for MIMXRT10xx");
             debug_sequence = DebugSequence::Arm(MIMXRT10xx::create());
+        } else if chip.name.starts_with("MIMXRT11") {
+            tracing::warn!("Using custom sequence for MIMXRT11xx");
+            debug_sequence = DebugSequence::Arm(MIMXRT11xx::create());
         } else if chip.name.starts_with("LPC55S16") || chip.name.starts_with("LPC55S69") {
             tracing::warn!("Using custom sequence for LPC55S16/LPC55S69");
             debug_sequence = DebugSequence::Arm(LPC55S69::create());
@@ -124,6 +128,9 @@ impl Target {
         } else if chip.name.starts_with("ATSAMD5") || chip.name.starts_with("ATSAME5") {
             tracing::warn!("Using custom sequence for {}", chip.name);
             debug_sequence = DebugSequence::Arm(AtSAME5x::create());
+        } else if chip.name.starts_with("XMC4") {
+            tracing::warn!("Using custom sequence for XMC4000");
+            debug_sequence = DebugSequence::Arm(XMC4000::create());
         }
 
         Ok(Target {

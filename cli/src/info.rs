@@ -1,13 +1,15 @@
 use std::error::Error;
+use std::fmt::Write;
 
 use probe_rs::{
     architecture::{
         arm::{
             ap::{GenericAp, MemoryAp},
             armv6m::Demcr,
+            dp::DPIDR,
             memory::Component,
             sequences::DefaultArmSequence,
-            ApAddress, ApInformation, ArmProbeInterface, DpAddress, MemoryApInformation,
+            ApAddress, ApInformation, ArmProbeInterface, DpAddress, MemoryApInformation, Register,
         },
         riscv::communication_interface::RiscvCommunicationInterface,
     },
@@ -16,6 +18,7 @@ use probe_rs::{
 
 use anyhow::Result;
 use probe_rs_cli_util::common_options::ProbeOptions;
+use termtree::Tree;
 
 pub(crate) fn show_info_of_device(common: &ProbeOptions) -> Result<()> {
     let mut probe = common.attach_probe()?;
@@ -69,9 +72,7 @@ fn try_show_info(
     if probe.has_arm_interface() {
         match probe.try_into_arm_interface() {
             Ok(interface) => {
-                let mut interface = interface
-                    .initialize(DefaultArmSequence::create())
-                    .expect("This should not be an unwrap...");
+                let mut interface = interface.initialize(DefaultArmSequence::create()).unwrap();
 
                 if let Err(e) = show_arm_info(&mut interface) {
                     // Log error?
@@ -116,7 +117,26 @@ fn try_show_info(
 }
 
 fn show_arm_info(interface: &mut Box<dyn ArmProbeInterface>) -> Result<()> {
-    println!("\nAvailable Access Ports:");
+    let dp_info = interface.read_raw_dp_register(DpAddress::Default, DPIDR::ADDRESS)?;
+    let dp_info = DPIDR(dp_info);
+
+    let mut dp_node = String::new();
+
+    write!(dp_node, "Debug Port: Version {}", dp_info.version())?;
+
+    if dp_info.min() {
+        write!(dp_node, ", MINDP")?;
+    }
+
+    let jep_code = jep106::JEP106Code::new(dp_info.jep_cc(), dp_info.jep_id());
+
+    write!(
+        dp_node,
+        ", Designer: {}",
+        jep_code.get().unwrap_or("<unknown>")
+    )?;
+
+    let mut tree = Tree::new(dp_node);
 
     let dp = DpAddress::Default;
     let num_access_ports = interface.num_access_ports(dp).unwrap();
@@ -132,42 +152,118 @@ fn show_arm_info(interface: &mut Box<dyn ArmProbeInterface>) -> Result<()> {
 
         match ap_information {
             ApInformation::MemoryAp(MemoryApInformation {
-                debug_base_address, ..
+                debug_base_address,
+                address,
+                ..
             }) => {
-                let access_port: MemoryAp = access_port.into();
+                let mut ap_nodes = Tree::new(format!("{} MemoryAP", address.ap));
 
-                let base_address = *debug_base_address;
+                match handle_memory_ap(access_port.into(), *debug_base_address, interface) {
+                    Ok(component_tree) => ap_nodes.push(component_tree),
+                    Err(e) => ap_nodes.push(format!("Error during access: {}", e)),
+                };
 
-                let mut memory = interface.memory_interface(access_port)?;
-
-                // Enable
-                // - Data Watchpoint and Trace (DWT)
-                // - Instrumentation Trace Macrocell (ITM)
-                // - Embedded Trace Macrocell (ETM)
-                // - Trace Port Interface Unit (TPIU).
-                let mut demcr = Demcr(memory.read_word_32(Demcr::ADDRESS)?);
-                demcr.set_dwtena(true);
-                memory.write_word_32(Demcr::ADDRESS, demcr.into())?;
-
-                let component_table = Component::try_parse(&mut memory, base_address);
-
-                component_table
-                    .iter()
-                    .for_each(|entry| println!("{:#08x?}", entry));
-
-                // let mut reader = crate::memory::romtable::RomTableReader::new(&link_ref, baseaddr as u64);
-
-                // for e in reader.entries() {
-                //     if let Ok(e) = e {
-                //         println!("ROM Table Entry: Component @ 0x{:08x}", e.component_addr());
-                //     }
-                // }
+                tree.push(ap_nodes);
             }
-            ApInformation::Other { .. } => println!("Unknown Type of access port"),
+
+            ApInformation::Other { address, idr } => {
+                let designer = idr.DESIGNER;
+
+                let cc = (designer >> 7) as u8;
+                let id = (designer & 0x7f) as u8;
+
+                let jep = jep106::JEP106Code::new(cc, id);
+
+                let ap_type = if designer == 0x43b {
+                    format!("{:?}", idr.TYPE)
+                } else {
+                    format!("{:#x}", idr.TYPE as u8)
+                };
+
+                tree.push(format!(
+                    "{} Unknown AP (Designer: {}, Class: {:?}, Type: {}, Variant: {:#x}, Revision: {:#x})",
+                    address.ap,
+                    jep.get().unwrap_or("<unknown>"),
+                    idr.CLASS,
+                    ap_type,
+                    idr.VARIANT,
+                    idr.REVISION
+                ));
+            }
         }
     }
 
+    println!("{}", tree);
+
     Ok(())
+}
+
+fn handle_memory_ap(
+    access_port: MemoryAp,
+    base_address: u64,
+    interface: &mut Box<dyn ArmProbeInterface>,
+) -> Result<Tree<String>, anyhow::Error> {
+    let mut memory = interface.memory_interface(access_port)?;
+    let mut demcr = Demcr(memory.read_word_32(Demcr::ADDRESS)?);
+    demcr.set_dwtena(true);
+    memory.write_word_32(Demcr::ADDRESS, demcr.into())?;
+    let component = Component::try_parse(&mut memory, base_address)?;
+    let component_tree = coresight_component_tree(&component)?;
+    Ok(component_tree)
+}
+
+fn coresight_component_tree(component: &Component) -> Result<Tree<String>> {
+    let tree = match component {
+        Component::GenericVerificationComponent(_) => Tree::new("Generic".to_string()),
+        Component::Class1RomTable(_, table) => {
+            let mut rom_table = Tree::new("ROM Table (Class 1)".to_string());
+
+            for entry in table.entries() {
+                let component = entry.component();
+
+                rom_table.push(coresight_component_tree(component)?);
+            }
+
+            rom_table
+        }
+        Component::CoresightComponent(id) => {
+            let peripheral_id = id.peripheral_id();
+
+            let component_description = if let Some(part_info) = peripheral_id.determine_part() {
+                format!("{}  (Coresight Component)", part_info.name())
+            } else {
+                format!(
+                    "Coresight Component, Part: {:#06x}, Designer: {}",
+                    peripheral_id.part(),
+                    peripheral_id
+                        .jep106()
+                        .and_then(|j| j.get())
+                        .unwrap_or("<unknown>"),
+                )
+            };
+
+            Tree::new(component_description)
+        }
+
+        Component::PeripheralTestBlock(_) => Tree::new("Peripheral test block".to_string()),
+        Component::GenericIPComponent(id) => {
+            let peripheral_id = id.peripheral_id();
+
+            let desc = if let Some(part_desc) = peripheral_id.determine_part() {
+                format!("{} (Generic IP component)", part_desc.name())
+            } else {
+                "Generic IP component".to_string()
+            };
+
+            Tree::new(desc)
+        }
+
+        Component::CoreLinkOrPrimeCellOrSystemComponent(_) => {
+            Tree::new("Core Link / Prime Cell / System component".to_string())
+        }
+    };
+
+    Ok(tree)
 }
 
 fn show_riscv_info(interface: &mut RiscvCommunicationInterface) -> Result<()> {

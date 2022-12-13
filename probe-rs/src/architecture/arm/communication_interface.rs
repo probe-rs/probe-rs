@@ -103,9 +103,6 @@ pub trait UninitializedArmProbe: SwdSequence {
     fn initialize_unspecified(self: Box<Self>) -> Result<Box<dyn ArmProbeInterface>, ProbeRsError> {
         self.initialize(DefaultArmSequence::create())
     }
-
-    /// Read DPDIR Register
-    fn read_dpidr(&mut self) -> Result<u32, ProbeRsError>;
 }
 
 pub trait ArmDebugState {}
@@ -361,12 +358,6 @@ impl ArmCommunicationInterface<Uninitialized> {
 }
 
 impl UninitializedArmProbe for ArmCommunicationInterface<Uninitialized> {
-    fn read_dpidr(&mut self) -> Result<u32, ProbeRsError> {
-        let result = self.probe.raw_read_register(PortType::DebugPort, 0)?;
-
-        Ok(result)
-    }
-
     fn initialize(
         mut self: Box<Self>,
         sequence: Arc<dyn ArmDebugSequence>,

@@ -597,6 +597,10 @@ impl<'probe> MemoryInterface for Core<'probe> {
         self.inner.read_8(address, data)
     }
 
+    fn read(&mut self, address: u64, data: &mut [u8]) -> Result<(), Error> {
+        self.inner.read(address, data)
+    }
+
     fn write_word_64(&mut self, addr: u64, data: u64) -> Result<(), Error> {
         self.inner.write_word_64(addr, data)
     }
@@ -619,6 +623,14 @@ impl<'probe> MemoryInterface for Core<'probe> {
 
     fn write_8(&mut self, addr: u64, data: &[u8]) -> Result<(), Error> {
         self.inner.write_8(addr, data)
+    }
+
+    fn write(&mut self, addr: u64, data: &[u8]) -> Result<(), Error> {
+        self.inner.write(addr, data)
+    }
+
+    fn supports_8bit_transfers(&self) -> Result<bool, error::Error> {
+        self.inner.supports_8bit_transfers()
     }
 
     fn flush(&mut self) -> Result<(), Error> {

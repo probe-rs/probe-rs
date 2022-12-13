@@ -8,7 +8,7 @@ use std::{
 
 use crate::{
     architecture::arm::{
-        ap::{ApAccess, GenericAp, IDR},
+        ap::{ApAccess, GenericAp, MemoryAp, DRW, IDR, TAR},
         communication_interface::Initialized,
         core::armv7m::{Aircr, Demcr, Dhcsr},
         dp::{Abort, Ctrl, DpAccess, Select, DPIDR},
@@ -19,6 +19,73 @@ use crate::{
 };
 
 use super::ArmDebugSequence;
+
+/// Start the debug port, and return if the device was (true) or wasn't (false)
+/// powered down.
+///
+/// Note that this routine only supports SWD protocols. See the inline TODOs to
+/// understand where JTAG support should go.
+fn debug_port_start(
+    interface: &mut ArmCommunicationInterface<Initialized>,
+    dp: DpAddress,
+    select: Select,
+) -> Result<bool, DebugProbeError> {
+    interface.write_dp_register(dp, select)?;
+
+    let ctrl = interface.read_dp_register::<Ctrl>(dp)?;
+
+    let powered_down = !(ctrl.csyspwrupack() && ctrl.cdbgpwrupack());
+
+    if powered_down {
+        let mut ctrl = Ctrl(0);
+        ctrl.set_cdbgpwrupreq(true);
+        ctrl.set_csyspwrupreq(true);
+
+        interface.write_dp_register(dp, ctrl)?;
+
+        let start = Instant::now();
+
+        let mut timeout = true;
+
+        while start.elapsed() < Duration::from_micros(100_0000) {
+            let ctrl = interface.read_dp_register::<Ctrl>(dp)?;
+
+            if ctrl.csyspwrupack() && ctrl.cdbgpwrupack() {
+                timeout = false;
+                break;
+            }
+        }
+
+        if timeout {
+            return Err(DebugProbeError::Timeout);
+        }
+
+        // TODO: Handle JTAG Specific part
+
+        // TODO: Only run the following code when the SWD protocol is used
+
+        // Init AP Transfer Mode, Transaction Counter, and Lane Mask (Normal Transfer Mode, Include all Byte Lanes)
+        let mut ctrl = Ctrl(0);
+
+        ctrl.set_cdbgpwrupreq(true);
+        ctrl.set_csyspwrupreq(true);
+
+        ctrl.set_mask_lane(0b1111);
+
+        interface.write_dp_register(dp, ctrl)?;
+
+        let mut abort = Abort(0);
+
+        abort.set_orunerrclr(true);
+        abort.set_wderrclr(true);
+        abort.set_stkerrclr(true);
+        abort.set_stkcmpclr(true);
+
+        interface.write_dp_register(dp, abort)?;
+    }
+
+    Ok(powered_down)
+}
 
 /// The sequence handle for the LPC55S69.
 pub struct LPC55S69(());
@@ -38,59 +105,9 @@ impl ArmDebugSequence for LPC55S69 {
     ) -> Result<(), DebugProbeError> {
         tracing::info!("debug_port_start");
 
-        interface.write_dp_register(dp, Select(0))?;
-
-        let ctrl = interface.read_dp_register::<Ctrl>(dp)?;
-
-        let powered_down = !(ctrl.csyspwrupack() && ctrl.cdbgpwrupack());
+        let powered_down = self::debug_port_start(interface, dp, Select(0))?;
 
         if powered_down {
-            let mut ctrl = Ctrl(0);
-            ctrl.set_cdbgpwrupreq(true);
-            ctrl.set_csyspwrupreq(true);
-
-            interface.write_dp_register(dp, ctrl)?;
-
-            let start = Instant::now();
-
-            let mut timeout = true;
-
-            while start.elapsed() < Duration::from_micros(100_0000) {
-                let ctrl = interface.read_dp_register::<Ctrl>(dp)?;
-
-                if ctrl.csyspwrupack() && ctrl.cdbgpwrupack() {
-                    timeout = false;
-                    break;
-                }
-            }
-
-            if timeout {
-                return Err(DebugProbeError::Timeout);
-            }
-
-            // TODO: Handle JTAG Specific part
-
-            // TODO: Only run the following code when the SWD protocol is used
-
-            // Init AP Transfer Mode, Transaction Counter, and Lane Mask (Normal Transfer Mode, Include all Byte Lanes)
-            let mut ctrl = Ctrl(0);
-
-            ctrl.set_cdbgpwrupreq(true);
-            ctrl.set_csyspwrupreq(true);
-
-            ctrl.set_mask_lane(0b1111);
-
-            interface.write_dp_register(dp, ctrl)?;
-
-            let mut abort = Abort(0);
-
-            abort.set_orunerrclr(true);
-            abort.set_wderrclr(true);
-            abort.set_stkerrclr(true);
-            abort.set_stkcmpclr(true);
-
-            interface.write_dp_register(dp, abort)?;
-
             enable_debug_mailbox(interface, dp)?;
         }
 
@@ -357,6 +374,170 @@ impl ArmDebugSequence for MIMXRT10xx {
         std::thread::sleep(Duration::from_millis(100));
 
         // Clear the status bit. This read shouldn't fail.
+        interface.read_word_32(Dhcsr::ADDRESS)?;
+        Ok(())
+    }
+}
+
+/// Debug sequences for MIMXRT11xx MCUs.
+///
+/// Currently only supports the Cortex M7.
+pub struct MIMXRT11xx(());
+
+impl MIMXRT11xx {
+    /// Create a sequence handle for the MIMXRT10xx.
+    pub fn create() -> Arc<dyn ArmDebugSequence> {
+        Arc::new(Self(()))
+    }
+
+    fn prepare_cm7_trap_code(
+        &self,
+        ap: MemoryAp,
+        interface: &mut ArmCommunicationInterface<Initialized>,
+    ) -> Result<(), crate::DebugProbeError> {
+        const START: u32 = 0x2001FF00;
+        const IOMUX_LPSR_GPR26: u32 = 0x40C0C068;
+
+        interface.write_ap_register(ap, TAR { address: START })?;
+        interface.write_ap_register(ap, DRW { data: START + 0x20 })?;
+
+        interface.write_ap_register(ap, TAR { address: START + 4 })?;
+        interface.write_ap_register(ap, DRW { data: 0x23105 })?;
+
+        interface.write_ap_register(
+            ap,
+            TAR {
+                address: IOMUX_LPSR_GPR26,
+            },
+        )?;
+        interface.write_ap_register(ap, DRW { data: START >> 7 })?;
+        Ok(())
+    }
+
+    fn prepare_cm4_trap_code(
+        &self,
+        ap: MemoryAp,
+        interface: &mut ArmCommunicationInterface<Initialized>,
+    ) -> Result<(), crate::DebugProbeError> {
+        const START: u32 = 0x20250000;
+        const IOMUX_LPSR_GPR0: u32 = 0x40c0c000;
+        const IOMUX_LPSR_GPR1: u32 = 0x40c0c004;
+        interface.write_ap_register(ap, TAR { address: START })?;
+        interface.write_ap_register(ap, DRW { data: START + 0x20 })?;
+
+        interface.write_ap_register(ap, TAR { address: START + 4 })?;
+        interface.write_ap_register(ap, DRW { data: 0x23F041 })?;
+
+        interface.write_ap_register(
+            ap,
+            TAR {
+                address: IOMUX_LPSR_GPR0,
+            },
+        )?;
+        interface.write_ap_register(
+            ap,
+            DRW {
+                data: START & 0xFFFF,
+            },
+        )?;
+
+        interface.write_ap_register(
+            ap,
+            TAR {
+                address: IOMUX_LPSR_GPR1,
+            },
+        )?;
+        interface.write_ap_register(ap, DRW { data: START >> 16 })?;
+        Ok(())
+    }
+
+    fn release_cm4(
+        &self,
+        ap: MemoryAp,
+        interface: &mut ArmCommunicationInterface<Initialized>,
+    ) -> Result<(), crate::DebugProbeError> {
+        const SRC_SCR: u32 = 0x40c04000;
+        interface.write_ap_register(ap, TAR { address: SRC_SCR })?;
+        interface.write_ap_register(ap, DRW { data: 1 })?;
+        Ok(())
+    }
+
+    fn change_reset_modes(
+        &self,
+        ap: MemoryAp,
+        interface: &mut ArmCommunicationInterface<Initialized>,
+    ) -> Result<(), anyhow::Error> {
+        const SRC_SBMR: u32 = 0x40c04004;
+        interface.write_ap_register(ap, TAR { address: SRC_SBMR })?;
+        let DRW { data: mut src_sbmr } = interface.read_ap_register(ap)?;
+        src_sbmr |= 0xF << 10; // Puts both cores into "do not reset."
+        interface.write_ap_register(ap, DRW { data: src_sbmr })?;
+        Ok(())
+    }
+}
+
+impl ArmDebugSequence for MIMXRT11xx {
+    fn debug_port_start(
+        &self,
+        interface: &mut ArmCommunicationInterface<Initialized>,
+        dp: DpAddress,
+    ) -> Result<(), crate::DebugProbeError> {
+        tracing::debug!("debug_port_start");
+        // Note that debug_port_start only supports SWD protocols,
+        // which means the MIMXRT11xx only supports SWD right now.
+        // See its documentation and TODOs.
+        self::debug_port_start(interface, dp, Select(0))?;
+
+        let ap = ApAddress { dp, ap: 0 };
+        let ap = MemoryAp::new(ap);
+
+        tracing::debug!("Prepare trap code for Cortex M7");
+        self.prepare_cm7_trap_code(ap, interface)?;
+
+        tracing::debug!("Prepare trap code for Cortex M4");
+        self.prepare_cm4_trap_code(ap, interface)?;
+
+        tracing::debug!("Release the CM4");
+        self.release_cm4(ap, interface)?;
+
+        tracing::debug!("Change reset mode of both cores");
+        self.change_reset_modes(ap, interface)?;
+        Ok(())
+    }
+
+    fn reset_system(
+        &self,
+        interface: &mut crate::Memory,
+        _: crate::CoreType,
+        _: Option<u64>,
+    ) -> Result<(), crate::Error> {
+        // It's unpredictable to VECTRESET a core if it's not halted and
+        // in debug state.
+        tracing::debug!("Halting MIMXRT11xx core before VECTRESET");
+        let mut dhcsr = Dhcsr(0);
+        dhcsr.set_c_halt(true);
+        dhcsr.set_c_debugen(true);
+        dhcsr.enable_write();
+
+        interface.write_word_32(Dhcsr::ADDRESS, dhcsr.into())?;
+        std::thread::sleep(Duration::from_millis(100));
+
+        // Initial testing showed that a SYSRESET (the default reset approach)
+        // can result in an unreliable programming sequence, particularly if
+        // the target we're reprogramming is interrupting / excepting.
+        //
+        // The debug port setup (above) will trap the core(s) after this VECRESET.
+        // Once that trap happens, we're ready to debug / flash.
+        tracing::debug!("Resetting MIMXRT11xx with VECTRESET");
+        let mut aircr = Aircr(0);
+        aircr.vectkey();
+        aircr.set_vectreset(true);
+
+        interface.write_word_32(Aircr::ADDRESS, aircr.into()).ok();
+        interface.flush().ok();
+
+        std::thread::sleep(Duration::from_millis(100));
+
         interface.read_word_32(Dhcsr::ADDRESS)?;
         Ok(())
     }

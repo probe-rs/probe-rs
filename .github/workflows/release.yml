@@ -13,7 +13,6 @@ jobs:
     name: Release
     runs-on: ubuntu-latest
     if: github.event.pull_request.merged == true && contains(github.event.pull_request.labels.*.name, 'release')
-    environment: release
 
     steps:
       - name: Checkout sources
@@ -24,29 +23,33 @@ jobs:
           sudo apt update
           sudo apt install -y libusb-1.0-0-dev libftdi1-dev libudev-dev
 
-      - name: Install Rust toolchains
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          override: true
+      - uses: chainguard-dev/actions/setup-gitsign@main
 
-      - name: Publish to crates.io
+      - name: install cargo-release
         run: |
-          cargo install cargo-workspaces
-          cargo workspaces publish --from-git --token ${{ secrets.CARGO_REGISTRY_TOKEN }} custom `echo "${{ github.head_ref }}" | cut -c2-`
+          curl -LsSf https://github.com/crate-ci/cargo-release/releases/download/v0.24.0/cargo-release-v0.24.0-x86_64-unknown-linux-gnu.tar.gz | tar xzf - -C ${CARGO_HOME:-~/.cargo}/bin
 
-      - name: Bump version and push tag
-        id: tag_version
-        uses: mathieudutour/github-tag-action@v6.1
-        with:
-          custom_tag: ${{ steps.extract_branch.outputs.branch }}
-          github_token: ${{ secrets.GITHUB_TOKEN }}
+      - name: release to crates.io
+        run: |
+          git config user.name "releasebot"
+          git config user.email "release@probe.rs"
+          git checkout master
+          cargo login ${{ secrets.CARGO_REGISTRY_TOKEN }}
+          cargo release --no-confirm --execute $( echo '${{ github.head_ref }}' | sed 's?release/??' )
+
+      - name: Generate Release Notes
+        id: notes
+        run: |
+          NOTES=$(python -c 'import re; print(re.search("## \\[\\d+.\\d+.\\d+\\]\n\n(?:Released \\d+-\\d+-\\d+)?\n?\n?((?:[\n]|.)*?)(?=## \\[\\d+.\\d+.\\d+\\])", open("CHANGELOG.md", "r").read()).group(1).strip().replace("%", "%25").replace("\n", "%0A"))')
+          echo "::set-output name=notes::$NOTES"
 
       - name: Create a GitHub release
         uses: actions/create-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: ${{ steps.tag_version.outputs.new_tag }}
-          release_name: Release ${{ steps.tag_version.outputs.new_tag }}
-          body: ${{ steps.tag_version.outputs.changelog }}
+          tag_name: $( echo '${{ github.head_ref }}' | sed 's?release/??' )
+          release_name: $( echo '${{ github.head_ref }}' | sed 's?release/??' )
+          body: ${{ steps.notes.outputs.notes }}
+          draft: false
+          prerelease: false
