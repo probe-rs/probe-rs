@@ -226,6 +226,10 @@ impl ApInformation {
 
             tracing::debug!("HNONSEC supported: {}", supports_hnonsec);
 
+            let device_enabled = csw.DeviceEn == 1;
+
+            tracing::debug!("Device enabled: {}", device_enabled);
+
             let cfg: CFG = probe.read_ap_register(access_port)?;
 
             let has_large_address_extension = cfg.LA == 1;
@@ -238,6 +242,7 @@ impl ApInformation {
                 supports_hnonsec,
                 has_large_address_extension,
                 has_large_data_extension,
+                device_enabled,
             }))
         } else {
             Ok(ApInformation::Other {
@@ -277,6 +282,10 @@ pub struct MemoryApInformation {
 
     /// This AP has the large data extension present, supporting 64-bit data access
     pub has_large_data_extension: bool,
+
+    /// Memory transaction can be issued through this AP. If this bit is not set,
+    /// no transactions can be issued.
+    pub device_enabled: bool,
 }
 
 /// An implementation of the communication protocol between probe and target.

@@ -983,34 +983,46 @@ impl<Probe: DebugProbe + RawProtocolIo + JTAGAccess + 'static> RawDapAccess for 
 
                     // A fault happened during operation.
 
-                    // To get a clue about the actual fault we read the ctrl register,
-                    // which will have the fault status flags set.
-                    let response =
-                        RawDapAccess::raw_read_register(self, PortType::DebugPort, Ctrl::ADDRESS)?;
-                    let ctrl = Ctrl::from(response);
-                    tracing::debug!(
-                        "Reading DAP register failed. Ctrl/Stat register value is: {:#?}",
-                        ctrl
-                    );
+                    // To get a clue about the actual fault we want to read the ctrl register,
+                    // which will have the fault status flags set. But we only do this
+                    // if we are *not* currently reading the ctrl register, otherwise
+                    // this could end up being an endless recursion.
 
-                    // Check the reason for the fault
-                    // Other fault reasons than overrun or write error are not handled yet.
-                    if ctrl.sticky_orun() || ctrl.sticky_err() {
-                        // We did not handle a WAIT state properly
-
-                        // Because we use overrun detection, we now have to clear the overrun error
-                        let mut abort = Abort(0);
-
-                        // Clear sticky error flags
-                        abort.set_orunerrclr(ctrl.sticky_orun());
-                        abort.set_stkerrclr(ctrl.sticky_err());
-
-                        RawDapAccess::raw_write_register(
+                    if address != Ctrl::ADDRESS {
+                        let response = RawDapAccess::raw_read_register(
                             self,
                             PortType::DebugPort,
-                            Abort::ADDRESS,
-                            abort.into(),
+                            Ctrl::ADDRESS,
                         )?;
+                        let ctrl = Ctrl::from(response);
+                        tracing::debug!(
+                            "Reading DAP register failed. Ctrl/Stat register value is: {:#?}",
+                            ctrl
+                        );
+
+                        // Check the reason for the fault
+                        // Other fault reasons than overrun or write error are not handled yet.
+                        if ctrl.sticky_orun() || ctrl.sticky_err() {
+                            // We did not handle a WAIT state properly
+
+                            // Because we use overrun detection, we now have to clear the overrun error
+                            let mut abort = Abort(0);
+
+                            // Clear sticky error flags
+                            abort.set_orunerrclr(ctrl.sticky_orun());
+                            abort.set_stkerrclr(ctrl.sticky_err());
+
+                            RawDapAccess::raw_write_register(
+                                self,
+                                PortType::DebugPort,
+                                Abort::ADDRESS,
+                                abort.into(),
+                            )?;
+                        }
+                    } else {
+                        tracing::warn!(
+                            "Error reading CTRL/STAT register. This should not happen..."
+                        );
                     }
 
                     return Err(DapError::FaultResponse.into());

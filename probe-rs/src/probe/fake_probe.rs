@@ -285,6 +285,7 @@ impl ArmProbeInterface for FakeArmInterface<Initialized> {
             supports_hnonsec: false,
             has_large_data_extension: false,
             has_large_address_extension: false,
+            device_enabled: true,
         };
 
         let memory = ADIMemoryInterface::new(&mut self.memory_ap, &ap_information)?;

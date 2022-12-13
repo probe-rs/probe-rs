@@ -654,6 +654,14 @@ impl PeripheralID {
         self.PART
     }
 
+    pub fn arch_id(&self) -> u16 {
+        self.arch_id
+    }
+
+    pub fn dev_type(&self) -> u8 {
+        self.dev_type
+    }
+
     /// Uses the available data to match it againts a table of known components.
     /// If the component is known, some info about it is returned.
     /// If it is not known, None is returned.
@@ -710,7 +718,8 @@ impl PeripheralID {
             ("ARM Ltd", 0xD21, 0x00, 0x1A03) => Some(PartInfo::new("Cortex-M33 BPU", PeripheralType::Bpu)),
             ("ARM Ltd", 0xD21, 0x13, 0x4A13) => Some(PartInfo::new("Cortex-M33 ETM", PeripheralType::Etm)),
             ("ARM Ltd", 0xD21, 0x11, 0x0000) => Some(PartInfo::new("Cortex-M33 TPIU", PeripheralType::Tpiu)),
-            ("ARM Ltd", 0x9a3, 0x13, 0x0000) => Some(PartInfo::new("Cortex-M0 MTB", PeripheralType::Mtb)),
+            ("ARM Ltd", 0xD21, 0x14, 0x1A14) => Some(PartInfo::new("Cortex-M33 CTI", PeripheralType::Cti)),
+            ("ARM Ltd", 0x9A3, 0x13, 0x0000) => Some(PartInfo::new("Cortex-M0 MTB", PeripheralType::Mtb)),
             _ => None,
         }
     }
@@ -785,6 +794,8 @@ pub enum PeripheralType {
     Tmc,
     /// Micro Trace Buffer
     Mtb,
+    /// Cross Trigger Interface
+    Cti,
 }
 
 impl std::fmt::Display for PeripheralType {
@@ -805,6 +816,7 @@ impl std::fmt::Display for PeripheralType {
             PeripheralType::Tsgen => write!(f, "Tsgen (Time Stamp Generator)"),
             PeripheralType::Tmc => write!(f, "Tmc (Trace Memory Controller)"),
             PeripheralType::Mtb => write!(f, "MTB (Micro Trace Buffer)"),
+            PeripheralType::Cti => write!(f, "CTI (Cross Trigger Interface)"),
         }
     }
 }

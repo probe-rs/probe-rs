@@ -993,6 +993,7 @@ mod tests {
                 debug_base_address: 0xf000_0000,
                 has_large_address_extension: false,
                 has_large_data_extension: false,
+                device_enabled: true,
             };
 
             Self::new(mock, &ap_information).unwrap()
