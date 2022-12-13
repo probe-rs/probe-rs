@@ -2,17 +2,17 @@
 
 use crate::architecture::arm::armv7m::{Aircr, Dhcsr, FpCtrl, FpRev1CompX, FpRev2CompX};
 use anyhow::anyhow;
+use jep106::JEP106Code;
 use std::sync::Arc;
 use std::sync::Mutex;
 use std::thread;
 use std::time::{Duration, Instant};
 
+use super::ArmDebugSequence;
 use crate::architecture::arm::communication_interface::DapProbe;
 use crate::Error;
 use crate::Memory;
 use crate::{DebugProbeError, MemoryMappedRegister};
-
-use super::ArmDebugSequence;
 
 /// An Infineon XMC4xxx MCU.
 pub struct XMC4000 {
@@ -459,4 +459,169 @@ fn spin_until_dapsa_is_clear(core: &mut Memory) -> Result<(), Error> {
             }
         }
     }
+}
+
+pub(crate) const MANUFACTURER: JEP106Code = JEP106Code { id: 0x41, cc: 0x00 };
+
+pub(crate) fn autodetect(part: u16, memory: &mut Memory) -> Result<Option<&'static str>, Error> {
+    match part {
+        0x1dd | 0x1df | 0x1dc | 0x1db => {
+            // We're definitely an XMC4xxx of some variety
+            tracing::debug!("Detected Infineon XMC4xxx part");
+
+            // Determine the next digit
+            let scu_idchip = read_xmc4xxx_scu_idchip(memory)?;
+            tracing::trace!("SCU_IDCHIP = {:08x}", scu_idchip);
+
+            #[derive(Debug, Copy, Clone, Eq, PartialEq)]
+            enum Family {
+                XMC41,
+                XMC42,
+                XMC43,
+                XMC44,
+                XMC45,
+                XMC47,
+                XMC48,
+            }
+
+            // Determine a family
+            let family = match (part, scu_idchip >> 4) {
+                // xmc4100_xmc4200_ds_v1.4_2018_09.pdf:
+                // This will autodetect some XMC41 engineering samples as Family::XMC42, but that
+                // seems fair given that they stamped "4200" into the die
+                (0x1dd, 0x4100) => Family::XMC41,
+                (0x1dd, 0x4200) => Family::XMC42,
+                // xmc4300_ds_v1.1_2018-09.pdf:
+                (0x1df, 0x4300) => Family::XMC43,
+                // xmc4400_ds_v1.3_2018_09.pdf:
+                (0x1dc, 0x4400) => Family::XMC44,
+                // Infineon-XMC4500-DS-v01_05-EN.pdf:
+                (0x1db, 0x4500) => Family::XMC45,
+                // xmc4700_xmc4800_ds_v1.1_2018_09.pdf:
+                (0x1df, 0x4700) => Family::XMC47,
+                (0x1df, 0x4800) => Family::XMC48,
+                _ => {
+                    tracing::warn!(
+                        "Unrecognized Infineon XMC4xxx chip: part = {:04x}, SCU_IDCHIP = {:08x}",
+                        part,
+                        scu_idchip
+                    );
+                    return Ok(None);
+                }
+            };
+            tracing::debug!("Detected family {:?}", family);
+
+            // Uncached flash starts at 0x0c00_0000. Read the last word various kilobytes from that
+            // address, returning the size which last read successfully, and assume that's how big
+            // the onboard flash is.
+            //
+            // Reads can fail for other reasons besides "there is no flash memory here", but the
+            // flash memory peripheral doesn't report its size, so... this is what we got.
+            let flash_size_kb = probe_size(
+                &[
+                    // Actual flash sizes used in XMC4xxx devices
+                    64, 128, 256, 512, 768, 1024, 1536, 2048,
+                    // So we can detect "all reads succeeded", which shouldn't happen
+                    2049,
+                ],
+                |size| 0x0c00_0000 + (size << 10) - 4,
+                memory,
+            );
+
+            // Bad news: Infineon manufactures identical dies, wires them into a bunch of
+            // different packages, and doesn't tell the die which package it's in. The package is
+            // not observable from the core. You always get all the peripherals and all the GPIO
+            // pads, but some of them never leave the silicon substrate. The JTAG BSDLs describe
+            // the same IDCODE, the same TAPs, and the same registers -- many of which are marked
+            // `internal` -- relying on the user to specify the package because the tool can't tell.
+            //
+            // Good news: this means one package guess is as good as any other. Anything that works
+            // with the detected target will work with the "right" target, even if we get the
+            // package wrong. The exact package can't matter because the die doesn't know.
+            //
+            // Map (family, flash size) to a same-size target in the right series
+            let found = match (family, flash_size_kb) {
+                (Family::XMC41, 64) => "XMC4104-Q48x64",
+                (Family::XMC41, 128) => "XMC4100-Q48x128",
+                (Family::XMC42, 256) => "XMC4200-Q48x256",
+                (Family::XMC43, 256) => "XMC4300-F100x256",
+                (Family::XMC44, 256) => "XMC4400-F64x256",
+                (Family::XMC44, 512) => "XMC4400-F64x512",
+                (Family::XMC45, 512) => "XMC4504-F100x512",
+                (Family::XMC45, 768) => "XMC4500-F100x768",
+                (Family::XMC45, 1024) => "XMC4500-F100x1024",
+                (Family::XMC47, 2048) => "XMC4700-F100x2048",
+                (Family::XMC47, 1536) => "XMC4700-F100x1536",
+                (Family::XMC47, 1024) => "XMC4700-F100x1024",
+                (Family::XMC48, 2048) => "XMC4800-F100x2048",
+                (Family::XMC48, 1536) => "XMC4800-F100x1536",
+                (Family::XMC48, 1024) => "XMC4800-F100x1024",
+                _ => {
+                    tracing::warn!(
+                        "Unrecognized Infineon XMC4xxx: {:?}, but {} KB of flash",
+                        family,
+                        flash_size_kb
+                    );
+                    return Ok(None);
+                }
+            };
+            tracing::info!("Detected Infineon {} or equivalent", found);
+
+            return Ok(Some(found));
+        }
+        _ => {
+            tracing::warn!("Unrecognized Infineon chip: {:04x}", part);
+            Ok(None)
+        }
+    }
+}
+
+fn probe_size<F: Fn(u32) -> u32>(sizes: &[u32], f: F, memory: &mut Memory) -> u32 {
+    let mut last_ok_size = 0;
+    for size in sizes {
+        let addr = f(*size);
+        let ok = memory.read_word_32(addr as u64).is_ok();
+        tracing::trace!("probing size: addr={:08x}, ok: {:?}", addr, ok);
+        if ok {
+            last_ok_size = *size;
+        } else {
+            break;
+        }
+    }
+    last_ok_size
+}
+
+fn read_xmc4xxx_scu_idchip(memory: &mut Memory) -> Result<u32, Error> {
+    // The SCU peripheral has a peripheral/module ID register:
+    bitfield::bitfield! {
+        /// SCU->ID register.
+        #[derive(Copy,Clone)]
+        struct ScuId(u32);
+        impl Debug;
+        pub mod_rev, _: 7, 0;
+        pub mod_type, _: 15, 8;
+        pub mod_number, _: 31, 16;
+    }
+    impl ScuId {
+        const ADDRESS: u32 = 0x5000_4000;
+    }
+
+    // And it has a chip ID register:
+    #[derive(Debug, Copy, Clone)]
+    struct ScuChipId(u32);
+    impl ScuChipId {
+        const ADDRESS: u32 = 0x5000_4004;
+    }
+
+    // Read the SCU ID
+    let scu_id = ScuId(memory.read_word_32(ScuId::ADDRESS as u64)?);
+    if scu_id.mod_type() != 0xC0 {
+        // This address is not an SCU
+        return Err(Error::ArchitectureSpecific(
+            anyhow::anyhow!("XMC4xxx SCU not found").into(),
+        ));
+    }
+
+    // Read the SCU chip ID register
+    memory.read_word_32(ScuChipId::ADDRESS as u64)
 }
