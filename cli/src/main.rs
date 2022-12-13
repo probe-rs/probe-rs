@@ -7,6 +7,7 @@ mod run;
 mod trace;
 
 use benchmark::{benchmark, BenchmarkOptions};
+use chrono::Local;
 use debugger::CliState;
 
 use probe_rs::{
@@ -26,7 +27,10 @@ use probe_rs_cli_util::{
 use rustyline::Editor;
 
 use anyhow::{Context, Result};
-use tracing_subscriber::EnvFilter;
+use tracing_subscriber::{
+    fmt::format::FmtSpan, prelude::__tracing_subscriber_SubscriberExt, util::SubscriberInitExt,
+    EnvFilter, Layer,
+};
 
 use std::{fs::File, path::PathBuf};
 use std::{io, time::Instant};
@@ -233,15 +237,40 @@ pub(crate) enum ItmSource {
 }
 
 fn main() -> Result<()> {
-    tracing_subscriber::fmt::fmt()
+    let project_dirs = directories::ProjectDirs::from("rs", "probe-rs", "probe-rs")
+        .expect("An application directory");
+    let directory = project_dirs.data_dir();
+    let logname = sanitize_filename::sanitize_with_options(
+        format!("{}.log", Local::now().timestamp_millis()),
+        sanitize_filename::Options {
+            replacement: "_",
+            ..Default::default()
+        },
+    );
+    std::fs::create_dir_all(&directory).expect("log directory could not be created.");
+
+    let log_path = directory.join(logname);
+    let log_file = File::create(dbg!(&log_path))?;
+
+    let file_subscriber = tracing_subscriber::fmt::layer()
+        .json()
+        .with_file(true)
+        .with_line_number(true)
+        .with_span_events(FmtSpan::FULL)
+        .with_writer(log_file);
+
+    let stdout_subscriber = tracing_subscriber::fmt::layer()
         .compact()
-        .without_time()
-        .with_env_filter(EnvFilter::from_default_env())
+        .with_filter(EnvFilter::from_default_env());
+
+    tracing_subscriber::registry()
+        .with(stdout_subscriber)
+        .with(file_subscriber)
         .init();
 
     let matches = Cli::parse();
 
-    match matches {
+    let result = match matches {
         Cli::List {} => list_connected_devices(),
         Cli::Info { common } => crate::info::show_info_of_device(&common),
         Cli::Gdb {
@@ -314,7 +343,11 @@ fn main() -> Result<()> {
         Cli::Chip(Chip::List) => print_families(io::stdout()).map_err(Into::into),
         Cli::Chip(Chip::Info { name }) => print_chip_info(name, io::stdout()),
         Cli::Benchmark { common, options } => benchmark(common, options),
-    }
+    };
+
+    eprintln!("Log file was written to {:?}", log_path);
+
+    result
 }
 
 fn list_connected_devices() -> Result<()> {
