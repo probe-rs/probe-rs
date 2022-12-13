@@ -238,7 +238,7 @@ pub(crate) enum ItmSource {
 
 fn main() -> Result<()> {
     let project_dirs = directories::ProjectDirs::from("rs", "probe-rs", "probe-rs")
-        .expect("An application directory");
+        .context("the application storage directory could not be determined")?;
     let directory = project_dirs.data_dir();
     let logname = sanitize_filename::sanitize_with_options(
         format!("{}.log", Local::now().timestamp_millis()),
@@ -247,10 +247,10 @@ fn main() -> Result<()> {
             ..Default::default()
         },
     );
-    std::fs::create_dir_all(&directory).expect("log directory could not be created.");
+    std::fs::create_dir_all(directory).context(format!("{directory:?} could not be created"))?;
 
     let log_path = directory.join(logname);
-    let log_file = File::create(dbg!(&log_path))?;
+    let log_file = File::create(&log_path)?;
 
     let file_subscriber = tracing_subscriber::fmt::layer()
         .json()
@@ -261,12 +261,15 @@ fn main() -> Result<()> {
 
     let stdout_subscriber = tracing_subscriber::fmt::layer()
         .compact()
+        .without_time()
         .with_filter(EnvFilter::from_default_env());
 
     tracing_subscriber::registry()
         .with(stdout_subscriber)
         .with(file_subscriber)
         .init();
+
+    tracing::info!("Writing log to {:?}", log_path);
 
     let matches = Cli::parse();
 
@@ -344,8 +347,6 @@ fn main() -> Result<()> {
         Cli::Chip(Chip::Info { name }) => print_chip_info(name, io::stdout()),
         Cli::Benchmark { common, options } => benchmark(common, options),
     };
-
-    eprintln!("Log file was written to {:?}", log_path);
 
     result
 }
