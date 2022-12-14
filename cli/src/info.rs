@@ -6,7 +6,7 @@ use probe_rs::{
         arm::{
             ap::{GenericAp, MemoryAp},
             armv6m::Demcr,
-            dp::DPIDR,
+            dp::{DPIDR, TARGETID},
             memory::Component,
             sequences::DefaultArmSequence,
             ApAddress, ApInformation, ArmProbeInterface, DpAddress, MemoryApInformation, Register,
@@ -130,11 +130,35 @@ fn show_arm_info(interface: &mut Box<dyn ArmProbeInterface>) -> Result<()> {
 
     let jep_code = jep106::JEP106Code::new(dp_info.jep_cc(), dp_info.jep_id());
 
-    write!(
-        dp_node,
-        ", Designer: {}",
-        jep_code.get().unwrap_or("<unknown>")
-    )?;
+    if dp_info.version() == 2 {
+        let target_id = interface.read_raw_dp_register(DpAddress::Default, TARGETID::ADDRESS)?;
+
+        let target_id = TARGETID(target_id);
+
+        let part_no = target_id.tpartno();
+        let revision = target_id.trevision();
+
+        let designer_id = target_id.tdesigner();
+
+        let cc = (designer_id >> 7) as u8;
+        let id = (designer_id & 0x7f) as u8;
+
+        let designer = jep106::JEP106Code::new(cc, id);
+
+        write!(
+            dp_node,
+            ", Designer: {}",
+            designer.get().unwrap_or("<unknown>")
+        )?;
+        write!(dp_node, ", Part: {:#x}", part_no)?;
+        write!(dp_node, ", Revision: {:#x}", revision)?;
+    } else {
+        write!(
+            dp_node,
+            ", DP Designer: {}",
+            jep_code.get().unwrap_or("<unknown>")
+        )?;
+    }
 
     let mut tree = Tree::new(dp_node);
 
@@ -154,14 +178,19 @@ fn show_arm_info(interface: &mut Box<dyn ArmProbeInterface>) -> Result<()> {
             ApInformation::MemoryAp(MemoryApInformation {
                 debug_base_address,
                 address,
+                device_enabled,
                 ..
             }) => {
                 let mut ap_nodes = Tree::new(format!("{} MemoryAP", address.ap));
 
-                match handle_memory_ap(access_port.into(), *debug_base_address, interface) {
-                    Ok(component_tree) => ap_nodes.push(component_tree),
-                    Err(e) => ap_nodes.push(format!("Error during access: {}", e)),
-                };
+                if *device_enabled {
+                    match handle_memory_ap(access_port.into(), *debug_base_address, interface) {
+                        Ok(component_tree) => ap_nodes.push(component_tree),
+                        Err(e) => ap_nodes.push(format!("Error during access: {}", e)),
+                    };
+                } else {
+                    ap_nodes.push("Access disabled".to_string());
+                }
 
                 tree.push(ap_nodes);
             }
@@ -233,8 +262,10 @@ fn coresight_component_tree(component: &Component) -> Result<Tree<String>> {
                 format!("{}  (Coresight Component)", part_info.name())
             } else {
                 format!(
-                    "Coresight Component, Part: {:#06x}, Designer: {}",
+                    "Coresight Component, Part: {:#06x}, Devtype: {:#04x}, Archid: {:#06x}, Designer: {}",
                     peripheral_id.part(),
+                    peripheral_id.dev_type(),
+                    peripheral_id.arch_id(),
                     peripheral_id
                         .jep106()
                         .and_then(|j| j.get())
