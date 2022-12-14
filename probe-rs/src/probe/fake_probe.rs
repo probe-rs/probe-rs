@@ -6,7 +6,7 @@ use crate::{
         communication_interface::{
             ArmDebugState, Initialized, SwdSequence, Uninitialized, UninitializedArmProbe,
         },
-        memory::adi_v5_memory_interface::{ADIMemoryInterface, ArmMemoryAccess},
+        memory::adi_v5_memory_interface::{ADIMemoryInterface, ArmProbe},
         sequences::ArmDebugSequence,
         ApAddress, ArmProbeInterface, DapAccess, DpAddress, MemoryApInformation, PortType,
         RawDapAccess, SwoAccess,
@@ -277,10 +277,7 @@ impl UninitializedArmProbe for FakeArmInterface<Uninitialized> {
 }
 
 impl ArmProbeInterface for FakeArmInterface<Initialized> {
-    fn memory_interface(
-        &mut self,
-        access_port: MemoryAp,
-    ) -> Result<Box<dyn ArmMemoryAccess + '_>, Error> {
+    fn memory_interface(&mut self, access_port: MemoryAp) -> Result<Box<dyn ArmProbe + '_>, Error> {
         let ap_information = MemoryApInformation {
             address: access_port.ap_address(),
             supports_only_32bit_data_size: false,

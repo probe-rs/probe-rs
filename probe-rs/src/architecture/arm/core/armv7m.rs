@@ -1,6 +1,6 @@
 //! Register types and the core interface for armv7-M
 
-use crate::architecture::arm::memory::adi_v5_memory_interface::ArmMemoryAccess;
+use crate::architecture::arm::memory::adi_v5_memory_interface::ArmProbe;
 use crate::architecture::arm::sequences::ArmDebugSequence;
 use crate::core::{
     CoreInformation, CoreInterface, MemoryMappedRegister, RegisterFile, RegisterId, RegisterValue,
@@ -587,7 +587,7 @@ pub const PSP: RegisterId = RegisterId(0b000_1010);
 
 /// The state of a core that can be used to persist core state across calls to multiple different cores.
 pub struct Armv7m<'probe> {
-    memory: Box<dyn ArmMemoryAccess + 'probe>,
+    memory: Box<dyn ArmProbe + 'probe>,
 
     state: &'probe mut CortexMState,
 
@@ -596,7 +596,7 @@ pub struct Armv7m<'probe> {
 
 impl<'probe> Armv7m<'probe> {
     pub(crate) fn new(
-        mut memory: Box<dyn ArmMemoryAccess + 'probe>,
+        mut memory: Box<dyn ArmProbe + 'probe>,
         state: &'probe mut CortexMState,
         sequence: Arc<dyn ArmDebugSequence>,
     ) -> Result<Self, Error> {

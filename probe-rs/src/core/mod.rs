@@ -1,6 +1,6 @@
 pub(crate) mod communication_interface;
 
-use crate::architecture::arm::memory::adi_v5_memory_interface::ArmMemoryAccess;
+use crate::architecture::arm::memory::adi_v5_memory_interface::ArmProbe;
 use crate::architecture::riscv::RiscVState;
 use crate::{CoreType, InstructionSet};
 pub use communication_interface::CommunicationInterface;
@@ -711,7 +711,7 @@ impl SpecificCoreState {
     pub(crate) fn attach_arm<'probe, 'target: 'probe>(
         &'probe mut self,
         state: &'probe mut CoreState,
-        memory: Box<dyn ArmMemoryAccess + 'probe>,
+        memory: Box<dyn ArmProbe + 'probe>,
         target: &'target Target,
     ) -> Result<Core<'probe>, Error> {
         let debug_sequence = match &target.debug_sequence {

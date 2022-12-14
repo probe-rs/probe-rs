@@ -5,8 +5,8 @@ use crate::{
     architecture::{
         self,
         arm::{
-            ap::MemoryAp, memory::adi_v5_memory_interface::ArmMemoryAccess, ApAddress,
-            ArmProbeInterface, DpAddress,
+            ap::MemoryAp, memory::adi_v5_memory_interface::ArmProbe, ApAddress, ArmProbeInterface,
+            DpAddress,
         },
     },
     DebugProbeError, Error, Permissions,
@@ -203,7 +203,7 @@ impl AtSAME5x {
     /// to signal that a re-connect is needed for the DSU to start operating in unlocked mode.
     pub fn erase_all(
         &self,
-        memory: &mut dyn ArmMemoryAccess,
+        memory: &mut dyn ArmProbe,
         permissions: &Permissions,
     ) -> Result<(), Error> {
         let dsu_status_a = DsuStatusA::from(memory.read_word_8(DsuStatusA::ADDRESS)?);
@@ -295,7 +295,7 @@ impl AtSAME5x {
     ///
     /// # Errors
     /// Subject to probe communication errors
-    pub fn release_reset_extension(&self, memory: &mut dyn ArmMemoryAccess) -> Result<(), Error> {
+    pub fn release_reset_extension(&self, memory: &mut dyn ArmProbe) -> Result<(), Error> {
         // clear the reset extension bit
         let mut dsu_statusa = DsuStatusA(0);
         dsu_statusa.set_crstext(true);
@@ -356,7 +356,7 @@ impl ArmDebugSequence for AtSAME5x {
     ///
     /// Instead of de-asserting `nReset` here (this was already done during the CPU Reset Extension process),
     /// the device is released from Reset Extension.
-    fn reset_hardware_deassert(&self, memory: &mut dyn ArmMemoryAccess) -> Result<(), Error> {
+    fn reset_hardware_deassert(&self, memory: &mut dyn ArmProbe) -> Result<(), Error> {
         let mut pins = architecture::arm::Pins(0);
         pins.set_nreset(true);
 

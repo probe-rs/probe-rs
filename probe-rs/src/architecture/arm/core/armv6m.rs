@@ -2,7 +2,7 @@
 
 use super::{ArmError, CortexMState, Dfsr, CORTEX_M_COMMON_REGS};
 
-use crate::architecture::arm::memory::adi_v5_memory_interface::ArmMemoryAccess;
+use crate::architecture::arm::memory::adi_v5_memory_interface::ArmProbe;
 use crate::architecture::arm::sequences::ArmDebugSequence;
 use crate::core::{
     RegisterDataType, RegisterDescription, RegisterFile, RegisterKind, RegisterValue,
@@ -450,7 +450,7 @@ const XPSR: RegisterDescription = RegisterDescription {
 
 /// The state of a core that can be used to persist core state across calls to multiple different cores.
 pub(crate) struct Armv6m<'probe> {
-    memory: Box<dyn ArmMemoryAccess + 'probe>,
+    memory: Box<dyn ArmProbe + 'probe>,
 
     state: &'probe mut CortexMState,
 
@@ -459,7 +459,7 @@ pub(crate) struct Armv6m<'probe> {
 
 impl<'probe> Armv6m<'probe> {
     pub(crate) fn new(
-        mut memory: Box<dyn ArmMemoryAccess + 'probe>,
+        mut memory: Box<dyn ArmProbe + 'probe>,
         state: &'probe mut CortexMState,
         sequence: Arc<dyn ArmDebugSequence>,
     ) -> Result<Self, Error> {

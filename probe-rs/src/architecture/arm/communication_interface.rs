@@ -5,7 +5,7 @@ use super::{
     },
     dp::{Abort, Ctrl, DebugPortError, DebugPortVersion, DpAccess, Select, DPIDR},
     memory::{
-        adi_v5_memory_interface::{ADIMemoryInterface, ArmMemoryAccess},
+        adi_v5_memory_interface::{ADIMemoryInterface, ArmProbe},
         Component,
     },
     sequences::{ArmDebugSequence, DefaultArmSequence},
@@ -68,7 +68,7 @@ pub trait ArmProbeInterface: DapAccess + SwdSequence + SwoAccess + Send {
     fn memory_interface(
         &mut self,
         access_port: MemoryAp,
-    ) -> Result<Box<dyn ArmMemoryAccess + '_>, ProbeRsError>;
+    ) -> Result<Box<dyn ArmProbe + '_>, ProbeRsError>;
 
     /// Returns information about a specific access port.
     fn ap_information(&mut self, access_port: GenericAp) -> Result<&ApInformation, ProbeRsError>;
@@ -309,7 +309,7 @@ impl ArmProbeInterface for ArmCommunicationInterface<Initialized> {
     fn memory_interface(
         &mut self,
         access_port: MemoryAp,
-    ) -> Result<Box<dyn ArmMemoryAccess + '_>, ProbeRsError> {
+    ) -> Result<Box<dyn ArmProbe + '_>, ProbeRsError> {
         ArmCommunicationInterface::memory_interface(self, access_port)
     }
 
@@ -412,7 +412,7 @@ impl<'interface> ArmCommunicationInterface<Initialized> {
     pub fn memory_interface(
         &'interface mut self,
         access_port: MemoryAp,
-    ) -> Result<Box<dyn ArmMemoryAccess + 'interface>, ProbeRsError> {
+    ) -> Result<Box<dyn ArmProbe + 'interface>, ProbeRsError> {
         let info = self.ap_information(access_port).map_err(|_| {
             anyhow!(
                 "Failed to get information for AP {:x?}",

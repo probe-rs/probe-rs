@@ -2,7 +2,7 @@
 
 use super::ArmDebugSequence;
 use crate::architecture::arm::ap::MemoryAp;
-use crate::architecture::arm::memory::adi_v5_memory_interface::ArmMemoryAccess;
+use crate::architecture::arm::memory::adi_v5_memory_interface::ArmProbe;
 use crate::architecture::arm::{
     communication_interface::Initialized, ApAddress, ArmCommunicationInterface, ArmProbeInterface,
     DapAccess,
@@ -10,7 +10,7 @@ use crate::architecture::arm::{
 
 pub trait Nrf: Sync + Send {
     /// Returns the ahb_ap and ctrl_ap of every core
-    fn core_aps(&self, interface: &mut dyn ArmMemoryAccess) -> Vec<(ApAddress, ApAddress)>;
+    fn core_aps(&self, interface: &mut dyn ArmProbe) -> Vec<(ApAddress, ApAddress)>;
 
     /// Returns true when the core is unlocked and false when it is locked.
     fn is_core_unlocked(
@@ -45,7 +45,7 @@ fn unlock_core(
 }
 
 /// Sets the network core to active running.
-fn set_network_core_running(interface: &mut dyn ArmMemoryAccess) -> Result<(), crate::Error> {
+fn set_network_core_running(interface: &mut dyn ArmProbe) -> Result<(), crate::Error> {
     interface.write_32(
         APPLICATION_RESET_S_NETWORK_FORCEOFF_REGISTER as u64,
         &[RELEASE_FORCEOFF],

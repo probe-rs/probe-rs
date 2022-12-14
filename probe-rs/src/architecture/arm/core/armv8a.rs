@@ -1,7 +1,7 @@
 //! Register types and the core interface for armv8-a
 
 use crate::architecture::arm::core::armv8a_debug_regs::*;
-use crate::architecture::arm::memory::adi_v5_memory_interface::ArmMemoryAccess;
+use crate::architecture::arm::memory::adi_v5_memory_interface::ArmProbe;
 use crate::architecture::arm::sequences::ArmDebugSequence;
 use crate::core::{RegisterFile, RegisterValue};
 use crate::error::Error;
@@ -50,7 +50,7 @@ fn prep_instr_for_itr_32(instruction: u32) -> u32 {
 
 /// Interface for interacting with an ARMv8-A core
 pub struct Armv8a<'probe> {
-    memory: Box<dyn ArmMemoryAccess + 'probe>,
+    memory: Box<dyn ArmProbe + 'probe>,
 
     state: &'probe mut CortexAState,
 
@@ -65,7 +65,7 @@ pub struct Armv8a<'probe> {
 
 impl<'probe> Armv8a<'probe> {
     pub(crate) fn new(
-        mut memory: Box<dyn ArmMemoryAccess + 'probe>,
+        mut memory: Box<dyn ArmProbe + 'probe>,
         state: &'probe mut CortexAState,
         base_address: u64,
         cti_address: u64,
@@ -1227,7 +1227,7 @@ impl<'probe> MemoryInterface for Armv8a<'probe> {
 mod test {
     use crate::architecture::arm::{
         ap::MemoryAp, communication_interface::SwdSequence,
-        memory::adi_v5_memory_interface::ArmMemoryAccess, sequences::DefaultArmSequence,
+        memory::adi_v5_memory_interface::ArmProbe, sequences::DefaultArmSequence,
     };
 
     use super::*;
@@ -1275,7 +1275,7 @@ mod test {
         }
     }
 
-    impl ArmMemoryAccess for MockProbe {
+    impl ArmProbe for MockProbe {
         fn read_8(&mut self, _address: u64, _data: &mut [u8]) -> Result<(), Error> {
             todo!()
         }

@@ -11,7 +11,7 @@ use crate::{CommunicationInterface, Error};
 use std::convert::TryInto;
 use std::ops::Range;
 
-pub trait ArmMemoryAccess: SwdSequence {
+pub trait ArmProbe: SwdSequence {
     fn read_8(&mut self, address: u64, data: &mut [u8]) -> Result<(), Error>;
 
     fn read_32(&mut self, address: u64, data: &mut [u32]) -> Result<(), Error>;
@@ -897,7 +897,7 @@ where
     }
 }
 
-impl<AP> ArmMemoryAccess for ADIMemoryInterface<'_, AP>
+impl<AP> ArmProbe for ADIMemoryInterface<'_, AP>
 where
     AP: CommunicationInterface + ApAccess + DpAccess,
 {

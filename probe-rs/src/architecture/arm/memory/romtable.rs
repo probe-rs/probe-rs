@@ -1,4 +1,4 @@
-use super::adi_v5_memory_interface::ArmMemoryAccess;
+use super::adi_v5_memory_interface::ArmProbe;
 use super::AccessPortError;
 use crate::architecture::arm::{ap::MemoryAp, communication_interface::ArmProbeInterface};
 use crate::Error;
@@ -29,12 +29,12 @@ pub enum RomTableError {
 /// A lazy romtable reader that is used to create an iterator over all romtable entries.
 struct RomTableReader<'probe: 'memory, 'memory> {
     base_address: u64,
-    memory: &'memory mut (dyn ArmMemoryAccess + 'probe),
+    memory: &'memory mut (dyn ArmProbe + 'probe),
 }
 
 /// Iterates over a ROM table non recursively.
 impl<'probe: 'memory, 'memory> RomTableReader<'probe, 'memory> {
-    fn new(memory: &'memory mut (dyn ArmMemoryAccess + 'probe), base_address: u64) -> Self {
+    fn new(memory: &'memory mut (dyn ArmProbe + 'probe), base_address: u64) -> Self {
         RomTableReader {
             base_address,
             memory,
@@ -111,10 +111,7 @@ impl RomTable {
     ///
     /// This does not check whether the data actually signalizes
     /// to contain a ROM table but assumes this was checked beforehand.
-    fn try_parse(
-        memory: &mut dyn ArmMemoryAccess,
-        base_address: u64,
-    ) -> Result<RomTable, RomTableError> {
+    fn try_parse(memory: &mut dyn ArmProbe, base_address: u64) -> Result<RomTable, RomTableError> {
         // This is required for the collect down below.
         let mut entries = vec![];
 
@@ -259,12 +256,12 @@ impl ComponentId {
 /// This reader is meant for internal use only.
 pub struct ComponentInformationReader<'probe: 'memory, 'memory> {
     base_address: u64,
-    memory: &'memory mut (dyn ArmMemoryAccess + 'probe),
+    memory: &'memory mut (dyn ArmProbe + 'probe),
 }
 
 impl<'probe: 'memory, 'memory> ComponentInformationReader<'probe, 'memory> {
     /// Creates a new `ComponentInformationReader` which can be used to extract the data from a component information table in memory.
-    pub fn new(base_address: u64, memory: &'memory mut (dyn ArmMemoryAccess + 'probe)) -> Self {
+    pub fn new(base_address: u64, memory: &'memory mut (dyn ArmProbe + 'probe)) -> Self {
         ComponentInformationReader {
             base_address,
             memory,
@@ -414,7 +411,7 @@ pub enum Component {
 impl Component {
     /// Tries to parse a CoreSight component table.
     pub fn try_parse<'probe: 'memory, 'memory>(
-        memory: &'memory mut (dyn ArmMemoryAccess + 'probe),
+        memory: &'memory mut (dyn ArmProbe + 'probe),
         baseaddr: u64,
     ) -> Result<Component, RomTableError> {
         tracing::info!("\tReading component data at: {:08x}", baseaddr);

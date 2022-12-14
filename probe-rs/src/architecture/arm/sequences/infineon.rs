@@ -1,7 +1,7 @@
 //! Sequences for Infineon target families
 
 use crate::architecture::arm::armv7m::{Aircr, Dhcsr, FpCtrl, FpRev1CompX, FpRev2CompX};
-use crate::architecture::arm::memory::adi_v5_memory_interface::ArmMemoryAccess;
+use crate::architecture::arm::memory::adi_v5_memory_interface::ArmProbe;
 use anyhow::anyhow;
 use std::sync::Arc;
 use std::sync::Mutex;
@@ -99,7 +99,7 @@ impl ArmDebugSequence for XMC4000 {
 
     fn reset_catch_set(
         &self,
-        core: &mut dyn ArmMemoryAccess,
+        core: &mut dyn ArmProbe,
         core_type: probe_rs_target::CoreType,
         debug_base: Option<u64>,
     ) -> Result<(), Error> {
@@ -237,7 +237,7 @@ impl ArmDebugSequence for XMC4000 {
 
     fn reset_catch_clear(
         &self,
-        core: &mut dyn ArmMemoryAccess,
+        core: &mut dyn ArmProbe,
         _core_type: probe_rs_target::CoreType,
         _debug_base: Option<u64>,
     ) -> Result<(), Error> {
@@ -274,7 +274,7 @@ impl ArmDebugSequence for XMC4000 {
 
     fn reset_system(
         &self,
-        core: &mut dyn ArmMemoryAccess,
+        core: &mut dyn ArmProbe,
         _core_type: probe_rs_target::CoreType,
         _debug_base: Option<u64>,
     ) -> Result<(), Error> {
@@ -412,7 +412,7 @@ impl ArmDebugSequence for XMC4000 {
         Ok(())
     }
 
-    fn reset_hardware_deassert(&self, memory: &mut dyn ArmMemoryAccess) -> Result<(), Error> {
+    fn reset_hardware_deassert(&self, memory: &mut dyn ArmProbe) -> Result<(), Error> {
         tracing::trace!("performing XMC4000 ResetHardwareDeassert");
 
         // We already deasserted nRST in ResetHardwareAssert, because that's how Cold Reset Halts
@@ -425,10 +425,7 @@ impl ArmDebugSequence for XMC4000 {
     }
 }
 
-fn spin_until_core_is_halted(
-    core: &mut dyn ArmMemoryAccess,
-    timeout: Duration,
-) -> Result<(), Error> {
+fn spin_until_core_is_halted(core: &mut dyn ArmProbe, timeout: Duration) -> Result<(), Error> {
     let start = Instant::now();
     loop {
         let dhcsr = Dhcsr(core.read_word_32(Dhcsr::ADDRESS)?);
@@ -442,7 +439,7 @@ fn spin_until_core_is_halted(
     }
 }
 
-fn spin_until_dapsa_is_clear(core: &mut dyn ArmMemoryAccess) -> Result<(), Error> {
+fn spin_until_dapsa_is_clear(core: &mut dyn ArmProbe) -> Result<(), Error> {
     let start = Instant::now();
     loop {
         // DAPSA isn't directly accessible because of course it isn't.

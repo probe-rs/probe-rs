@@ -12,7 +12,7 @@ use crate::{
         communication_interface::Initialized,
         core::armv7m::{Aircr, Demcr, Dhcsr},
         dp::{Abort, Ctrl, DpAccess, Select, DPIDR},
-        memory::adi_v5_memory_interface::ArmMemoryAccess,
+        memory::adi_v5_memory_interface::ArmProbe,
         ApAddress, ArmCommunicationInterface, DapAccess, DpAddress,
     },
     core::MemoryMappedRegister,
@@ -117,7 +117,7 @@ impl ArmDebugSequence for LPC55S69 {
 
     fn reset_catch_set(
         &self,
-        interface: &mut dyn ArmMemoryAccess,
+        interface: &mut dyn ArmProbe,
         _core_type: crate::CoreType,
         _debug_base: Option<u64>,
     ) -> Result<(), crate::Error> {
@@ -194,7 +194,7 @@ impl ArmDebugSequence for LPC55S69 {
 
     fn reset_catch_clear(
         &self,
-        interface: &mut dyn ArmMemoryAccess,
+        interface: &mut dyn ArmProbe,
         _core_type: crate::CoreType,
         _debug_base: Option<u64>,
     ) -> Result<(), crate::Error> {
@@ -210,7 +210,7 @@ impl ArmDebugSequence for LPC55S69 {
 
     fn reset_system(
         &self,
-        interface: &mut dyn ArmMemoryAccess,
+        interface: &mut dyn ArmProbe,
         _core_type: crate::CoreType,
         _debug_base: Option<u64>,
     ) -> Result<(), crate::Error> {
@@ -235,7 +235,7 @@ impl ArmDebugSequence for LPC55S69 {
     }
 }
 
-fn wait_for_stop_after_reset(memory: &mut dyn ArmMemoryAccess) -> Result<(), crate::Error> {
+fn wait_for_stop_after_reset(memory: &mut dyn ArmProbe) -> Result<(), crate::Error> {
     tracing::info!("Wait for stop after reset");
 
     thread::sleep(Duration::from_millis(10));
@@ -356,7 +356,7 @@ impl MIMXRT10xx {
 impl ArmDebugSequence for MIMXRT10xx {
     fn reset_system(
         &self,
-        interface: &mut dyn ArmMemoryAccess,
+        interface: &mut dyn ArmProbe,
         core_type: crate::CoreType,
         _: Option<u64>,
     ) -> Result<(), crate::Error> {
@@ -508,7 +508,7 @@ impl ArmDebugSequence for MIMXRT11xx {
 
     fn reset_system(
         &self,
-        interface: &mut dyn ArmMemoryAccess,
+        interface: &mut dyn ArmProbe,
         _: crate::CoreType,
         _: Option<u64>,
     ) -> Result<(), crate::Error> {
