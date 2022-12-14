@@ -91,7 +91,7 @@ pub use crate::core::{
     RegisterFile, RegisterId, RegisterValue, SpecificCoreState,
 };
 pub use crate::error::Error;
-pub use crate::memory::{Memory, MemoryInterface};
+pub use crate::memory::MemoryInterface;
 pub use crate::probe::{
     AttachMethod, DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, DebugProbeType,
     Probe, ProbeCreationError, WireProtocol,
