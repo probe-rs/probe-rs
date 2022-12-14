@@ -621,6 +621,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                             cache.remove_cache_entry(namespace_variable.variable_key)?;
                         }
                     }
+                    gimli::DW_TAG_formal_parameter |  // Parameters to functions.
                     gimli::DW_TAG_variable |    // Typical top-level variables.
                     gimli::DW_TAG_member |      // Members of structured types.
                     gimli::DW_TAG_enumerator    // Possible values for enumerators, used by extract_type() when processing DW_TAG_enumeration_type.
@@ -784,7 +785,6 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                     other => {
                         // One of two things are true here. Either we've encountered a DwTag that is implemented in `extract_type`, and whould be ignored, or we have encountered an unimplemented  DwTag.
                         match other {
-                            gimli::DW_TAG_formal_parameter | // Parameters to functions are not included in our processing of variables.
                             gimli::DW_TAG_inlined_subroutine | // Inlined subroutines are handled at the [StackFame] level
                             gimli::DW_TAG_base_type |
                             gimli::DW_TAG_pointer_type |
