@@ -12,6 +12,7 @@ use std::time::Duration;
 /// This method uses rusb to read device strings, which might fail due
 /// to permission or driver errors, so it falls back to listing only
 /// HID devices if it does not find any suitable devices.
+#[tracing::instrument(skip_all)]
 pub fn list_cmsisdap_devices() -> Vec<DebugProbeInfo> {
     tracing::debug!("Searching for CMSIS-DAP probes using libusb");
     let mut probes = match rusb::Context::new().and_then(|ctx| ctx.devices()) {

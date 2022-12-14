@@ -738,6 +738,7 @@ pub(crate) fn bits_to_byte(bits: impl IntoIterator<Item = bool>) -> u32 {
     bit_val
 }
 
+#[tracing::instrument(skip_all)]
 pub(crate) fn list_jlink_devices() -> Vec<DebugProbeInfo> {
     match jaylink::scan_usb() {
         Ok(devices) => devices
