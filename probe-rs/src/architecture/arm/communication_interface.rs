@@ -283,7 +283,7 @@ pub struct MemoryApInformation {
     /// This AP has the large data extension present, supporting 64-bit data access
     pub has_large_data_extension: bool,
 
-    /// Memory transaction can be issued through this AP. If this bit is not set,
+    /// Memory transactions can be issued through this AP. If this bit is not set,
     /// no transactions can be issued.
     pub device_enabled: bool,
 }
