@@ -16,7 +16,7 @@ pub enum SteppingMode {
     StepInstruction,
     /// Step Over the current statement, and halt at the start of the next statement.
     OverStatement,
-    /// Use best efforts to determin the location of any function calls in this statement, and step into them.
+    /// Use best efforts to determine the location of any function calls in this statement, and step into them.
     IntoStatement,
     /// Step to the calling statement, immediately after the current function returns.
     OutOfStatement,
@@ -376,7 +376,7 @@ impl SteppingMode {
 /// - We encounter an error (e.g. the core locks up, or the USB cable is unplugged, etc.)
 /// - It turns out this step will be long-running, and we do not have to wait any longer for the request to complete.
 fn run_to_address(
-    program_counter: u64,
+    mut program_counter: u64,
     target_address: u64,
     core: &mut Core,
 ) -> Result<(CoreStatus, u64), DebugError> {
@@ -395,7 +395,7 @@ fn run_to_address(
     } else if core.set_hw_breakpoint(target_address).is_ok() {
         core.run()?;
         // It is possible that we are stepping over long running instructions.
-        match core.wait_for_core_halted(Duration::from_millis(500)) {
+        match core.wait_for_core_halted(Duration::from_millis(1000)) {
             Ok(()) => {
                 // We have hit the target address, so all is good.
                 // NOTE: It is conceivable that the core has halted, but we have not yet stepped to the target address. (e.g. the user tries to step out of a function, but there is another breakpoint active before the end of the function.)
@@ -407,14 +407,21 @@ fn run_to_address(
                 )
             }
             Err(error) => {
+                program_counter = core.halt(Duration::from_millis(500))?.pc;
+                core.clear_hw_breakpoint(target_address)?;
                 if matches!(error, crate::Error::Probe(DebugProbeError::Timeout)) {
-                    // This is not a quick-step, so pass control back to the caller.
+                    // This is not a quick step and halt operation. Notify the user that we are not going to wait any longer, and then return the current program counter so that the debugger can show the user where the forced halt happened.
+                    tracing::error!(
+                        "The core did not halt after stepping to {:#010X}. Forced a halt at {:#010X}. Long running operations between debug steps are not currently supported.",
+                        target_address,
+                        program_counter
+                    );
                     (core.status()?, program_counter)
                 } else {
                     // Something else is wrong.
-                    core.halt(Duration::from_millis(500))?;
                     return Err(DebugError::Other(anyhow::anyhow!(
-                        "Unexpected error while waiting for the core to halt after stepping to {:#010?}. {:?}.",
+                        "Unexpected error while waiting for the core to halt after stepping to {:#010X}. Forced a halt at {:#010X}. {:?}.",
+                        program_counter,
                         target_address,
                         error
                     )));

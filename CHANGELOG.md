@@ -77,6 +77,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fix: Correct flash algorithm values in LPC55S69.yaml. (#1220)
 - Fix: Timeout during flashing when using connect under reset - regression from #1259. (#1286)
 - Fix: Validate RiscV CSR addresses to avoid unnecessary panics. (#1291)
+- Debugger: Fix unpredictable behaviour when breaking on, or stepping over macros. (#1230)
 
 ## [0.13.0]
 

@@ -87,6 +87,7 @@ enum CliCommands {
 fn main() -> Result<()> {
     tracing_subscriber::fmt::fmt()
         .compact()
+        .with_ansi(false)
         .without_time()
         .with_env_filter(EnvFilter::from_default_env())
         .with_writer(stderr)

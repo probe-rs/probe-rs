@@ -410,7 +410,6 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
                     tdata_value
                 );
                 tdata_value.set_m(state);
-                tdata_value.set_s(state);
                 tdata_value.set_u(state);
                 self.write_csr(tdata1, tdata_value.0)?;
             }
