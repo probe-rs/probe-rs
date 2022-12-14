@@ -17,6 +17,7 @@ use crate::{
 };
 use crate::{AttachMethod, Core, CoreType, DebugProbeError, Error, FakeProbe, Probe};
 use anyhow::anyhow;
+use std::ops::DerefMut;
 use std::{fmt, sync::Arc, time::Duration};
 
 /// The `Session` struct represents an active debug session.
@@ -182,7 +183,7 @@ impl Session {
 
                 // Enable debug mode
                 let unlock_res = sequence_handle.debug_device_unlock(
-                    &mut interface,
+                    &mut *interface,
                     default_memory_ap,
                     &permissions,
                 );
@@ -223,7 +224,7 @@ impl Session {
                             tracing::debug_span!("debug_core_start").entered();
                         // Enable debug mode
                         sequence_handle.debug_core_start(
-                            &mut memory_interface,
+                            &mut *memory_interface,
                             config.core_type,
                             arm_core_access_options.debug_base,
                             arm_core_access_options.cti_base,
@@ -239,7 +240,7 @@ impl Session {
                         let reset_catch_span = tracing::debug_span!("reset_catch_set").entered();
                         // we need to halt the chip here
                         sequence_handle.reset_catch_set(
-                            &mut memory_interface,
+                            &mut *memory_interface,
                             config.core_type,
                             arm_core_access_options.debug_base,
                         )?;
@@ -252,7 +253,7 @@ impl Session {
                         // TODO: A timeout here indicates that the reset pin is probably not properly
                         //       connected.
                         if let Err(e) =
-                            sequence_handle.reset_hardware_deassert(&mut memory_interface)
+                            sequence_handle.reset_hardware_deassert(&mut *memory_interface)
                         {
                             if matches!(e, Error::Probe(DebugProbeError::Timeout)) {
                                 tracing::warn!("Timeout while deasserting hardware reset pin. This indicates that the reset pin is not properly connected. Please check your hardware setup.");
@@ -285,7 +286,7 @@ impl Session {
                         // Clear the reset_catch bit which was set earlier.
                         let reset_catch_span = tracing::debug_span!("reset_catch_clear").entered();
                         sequence_handle.reset_catch_clear(
-                            &mut memory_interface,
+                            &mut *memory_interface,
                             config.core_type,
                             arm_core_access_options.debug_base,
                         )?;
@@ -436,16 +437,16 @@ impl Session {
     }
 
     /// Get the Arm probe interface.
-    pub fn get_arm_interface(&mut self) -> Result<&mut Box<dyn ArmProbeInterface>, Error> {
+    pub fn get_arm_interface(&mut self) -> Result<&mut dyn ArmProbeInterface, Error> {
         let interface = match &mut self.interface {
-            ArchitectureInterface::Arm(state) => state,
+            ArchitectureInterface::Arm(state) => state.deref_mut(),
             _ => return Err(Error::ArchitectureRequired(&["ARMv7", "ARMv8"])),
         };
 
         Ok(interface)
     }
 
-    fn get_riscv_interface(&mut self) -> Result<&mut Box<RiscvCommunicationInterface>, Error> {
+    fn get_riscv_interface(&mut self) -> Result<&mut RiscvCommunicationInterface, Error> {
         let interface = match &mut self.interface {
             ArchitectureInterface::Riscv(interface) => interface,
             _ => return Err(Error::ArchitectureRequired(&["Riscv"])),
@@ -516,7 +517,7 @@ impl Session {
 
                 if let Some(erase_sequence) = debug_sequence.debug_erase_sequence() {
                     tracing::info!("Trying Debug Erase Sequence");
-                    let erase_res = erase_sequence.erase_all(interface);
+                    let erase_res = erase_sequence.erase_all(interface.deref_mut());
 
                     match erase_res {
                         Ok(()) => (),
@@ -547,7 +548,7 @@ impl Session {
 
                                 // Enable debug mode
                                 debug_sequence.debug_core_start(
-                                    &mut memory_interface,
+                                    &mut *memory_interface,
                                     config.core_type,
                                     arm_core_access_options.debug_base,
                                     arm_core_access_options.cti_base,
@@ -599,7 +600,7 @@ impl Session {
                 }) => {
                     let ap = MemoryAp::new(address);
                     let mut memory = interface.memory_interface(ap)?;
-                    let component = Component::try_parse(&mut memory, debug_base_address)
+                    let component = Component::try_parse(&mut *memory, debug_base_address)
                         .map_err(Error::architecture_specific)?;
                     Ok(CoresightComponent::new(component, ap))
                 }

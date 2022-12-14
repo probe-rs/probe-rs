@@ -2,15 +2,15 @@
 
 use super::ArmDebugSequence;
 use crate::architecture::arm::ap::MemoryAp;
+use crate::architecture::arm::memory::adi_v5_memory_interface::ArmProbe;
 use crate::architecture::arm::{
     communication_interface::Initialized, ApAddress, ArmCommunicationInterface, ArmProbeInterface,
     DapAccess,
 };
-use crate::Memory;
 
 pub trait Nrf: Sync + Send {
     /// Returns the ahb_ap and ctrl_ap of every core
-    fn core_aps(&self, memory: &mut Memory) -> Vec<(ApAddress, ApAddress)>;
+    fn core_aps(&self, interface: &mut dyn ArmProbe) -> Vec<(ApAddress, ApAddress)>;
 
     /// Returns true when the core is unlocked and false when it is locked.
     fn is_core_unlocked(
@@ -45,7 +45,7 @@ fn unlock_core(
 }
 
 /// Sets the network core to active running.
-fn set_network_core_running(interface: &mut crate::Memory) -> Result<(), crate::Error> {
+fn set_network_core_running(interface: &mut dyn ArmProbe) -> Result<(), crate::Error> {
     interface.write_32(
         APPLICATION_RESET_S_NETWORK_FORCEOFF_REGISTER as u64,
         &[RELEASE_FORCEOFF],
@@ -56,7 +56,7 @@ fn set_network_core_running(interface: &mut crate::Memory) -> Result<(), crate::
 impl<T: Nrf> ArmDebugSequence for T {
     fn debug_device_unlock(
         &self,
-        interface: &mut Box<dyn ArmProbeInterface>,
+        interface: &mut dyn ArmProbeInterface,
         default_ap: MemoryAp,
         permissions: &crate::Permissions,
     ) -> Result<(), crate::Error> {
@@ -67,11 +67,11 @@ impl<T: Nrf> ArmDebugSequence for T {
         // These keys should be queried from the user if required and once that mechanism is implemented
 
         for (core_index, (core_ahb_ap_address, core_ctrl_ap_address)) in
-            self.core_aps(&mut interface).iter().copied().enumerate()
+            self.core_aps(&mut *interface).iter().copied().enumerate()
         {
             tracing::info!("Checking if core {} is unlocked", core_index);
             if self.is_core_unlocked(
-                interface.get_arm_interface()?,
+                interface.get_arm_communication_interface()?,
                 core_ahb_ap_address,
                 core_ctrl_ap_address,
             )? {
@@ -84,13 +84,13 @@ impl<T: Nrf> ArmDebugSequence for T {
                 core_index
             );
             unlock_core(
-                interface.get_arm_interface()?,
+                interface.get_arm_communication_interface()?,
                 core_ctrl_ap_address,
                 permissions,
             )?;
 
             if !self.is_core_unlocked(
-                interface.get_arm_interface()?,
+                interface.get_arm_communication_interface()?,
                 core_ahb_ap_address,
                 core_ctrl_ap_address,
             )? {
@@ -101,7 +101,7 @@ impl<T: Nrf> ArmDebugSequence for T {
         }
 
         if self.has_network_core() {
-            set_network_core_running(&mut interface)?;
+            set_network_core_running(&mut *interface)?;
         }
 
         Ok(())

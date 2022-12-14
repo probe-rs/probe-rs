@@ -31,7 +31,7 @@ impl Nrf52 {
 }
 
 mod clock {
-    use crate::Memory;
+    use crate::architecture::arm::memory::adi_v5_memory_interface::ArmProbe;
     use bitfield::bitfield;
 
     /// The base address of the DBGMCU component
@@ -53,13 +53,13 @@ mod clock {
         const ADDRESS: u64 = 0x55C;
 
         /// Read the control register from memory.
-        pub fn read(memory: &mut Memory<'_>) -> Result<Self, crate::Error> {
+        pub fn read(memory: &mut dyn ArmProbe) -> Result<Self, crate::Error> {
             let contents = memory.read_word_32(CLOCK + Self::ADDRESS)?;
             Ok(Self(contents))
         }
 
         /// Write the control register to memory.
-        pub fn write(&mut self, memory: &mut Memory<'_>) -> Result<(), crate::Error> {
+        pub fn write(&mut self, memory: &mut dyn ArmProbe) -> Result<(), crate::Error> {
             memory.write_word_32(CLOCK + Self::ADDRESS, self.0)
         }
     }
@@ -68,7 +68,7 @@ mod clock {
 impl ArmDebugSequence for Nrf52 {
     fn trace_start(
         &self,
-        interface: &mut Box<dyn ArmProbeInterface>,
+        interface: &mut dyn ArmProbeInterface,
         components: &[CoresightComponent],
         sink: &TraceSink,
     ) -> Result<(), crate::Error> {
@@ -97,7 +97,7 @@ impl ArmDebugSequence for Nrf52 {
         };
 
         let mut memory = interface.memory_interface(components[0].ap)?;
-        let mut config = clock::TraceConfig::read(&mut memory)?;
+        let mut config = clock::TraceConfig::read(&mut *memory)?;
         config.set_traceportspeed(portspeed);
         if matches!(sink, TraceSink::Tpiu(_)) {
             config.set_tracemux(2);
@@ -105,7 +105,7 @@ impl ArmDebugSequence for Nrf52 {
             config.set_tracemux(1);
         }
 
-        config.write(&mut memory)?;
+        config.write(&mut *memory)?;
 
         Ok(())
     }

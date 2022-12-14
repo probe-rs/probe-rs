@@ -1,9 +1,10 @@
 //! Register types and the core interface for armv8-M
 
+use crate::architecture::arm::memory::adi_v5_memory_interface::ArmProbe;
 use crate::architecture::arm::sequences::ArmDebugSequence;
 use crate::core::RegisterFile;
 use crate::error::Error;
-use crate::memory::{valid_32bit_address, Memory};
+use crate::memory::valid_32bit_address;
 use crate::{
     architecture::arm::core::register, CoreStatus, DebugProbeError, HaltReason, MemoryInterface,
 };
@@ -24,7 +25,7 @@ use std::{
 
 /// The state of a core that can be used to persist core state across calls to multiple different cores.
 pub struct Armv8m<'probe> {
-    memory: Memory<'probe>,
+    memory: Box<dyn ArmProbe + 'probe>,
 
     state: &'probe mut CortexMState,
 
@@ -33,7 +34,7 @@ pub struct Armv8m<'probe> {
 
 impl<'probe> Armv8m<'probe> {
     pub(crate) fn new(
-        mut memory: Memory<'probe>,
+        mut memory: Box<dyn ArmProbe + 'probe>,
         state: &'probe mut CortexMState,
         sequence: Arc<dyn ArmDebugSequence>,
     ) -> Result<Self, Error> {
@@ -139,7 +140,7 @@ impl<'probe> CoreInterface for Armv8m<'probe> {
 
     fn reset(&mut self) -> Result<(), Error> {
         self.sequence
-            .reset_system(&mut self.memory, crate::CoreType::Armv8m, None)
+            .reset_system(&mut *self.memory, crate::CoreType::Armv8m, None)
     }
 
     fn reset_and_halt(&mut self, _timeout: Duration) -> Result<CoreInformation, Error> {
@@ -147,9 +148,9 @@ impl<'probe> CoreInterface for Armv8m<'probe> {
         // This will halt the core after reset.
 
         self.sequence
-            .reset_catch_set(&mut self.memory, crate::CoreType::Armv8m, None)?;
+            .reset_catch_set(&mut *self.memory, crate::CoreType::Armv8m, None)?;
         self.sequence
-            .reset_system(&mut self.memory, crate::CoreType::Armv8m, None)?;
+            .reset_system(&mut *self.memory, crate::CoreType::Armv8m, None)?;
 
         // Update core status
         let _ = self.status()?;
@@ -161,7 +162,7 @@ impl<'probe> CoreInterface for Armv8m<'probe> {
         }
 
         self.sequence
-            .reset_catch_clear(&mut self.memory, crate::CoreType::Armv8m, None)?;
+            .reset_catch_clear(&mut *self.memory, crate::CoreType::Armv8m, None)?;
 
         // try to read the program counter
         let pc_value = self.read_core_reg(register::PC.id)?;
@@ -225,7 +226,7 @@ impl<'probe> CoreInterface for Armv8m<'probe> {
 
     fn read_core_reg(&mut self, address: RegisterId) -> Result<RegisterValue, Error> {
         if self.state.current_state.is_halted() {
-            let value = super::cortex_m::read_core_reg(&mut self.memory, address)?;
+            let value = super::cortex_m::read_core_reg(&mut *self.memory, address)?;
             Ok(value.into())
         } else {
             Err(Error::architecture_specific(ArmError::CoreNotHalted))
@@ -234,7 +235,7 @@ impl<'probe> CoreInterface for Armv8m<'probe> {
 
     fn write_core_reg(&mut self, address: RegisterId, value: RegisterValue) -> Result<(), Error> {
         if self.state.current_state.is_halted() {
-            super::cortex_m::write_core_reg(&mut self.memory, address, value.try_into()?)?;
+            super::cortex_m::write_core_reg(&mut *self.memory, address, value.try_into()?)?;
             Ok(())
         } else {
             Err(Error::architecture_specific(ArmError::CoreNotHalted))

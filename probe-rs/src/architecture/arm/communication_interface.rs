@@ -4,13 +4,16 @@ use super::{
         BASE, BASE2, CFG, CSW, IDR,
     },
     dp::{Abort, Ctrl, DebugPortError, DebugPortVersion, DpAccess, Select, DPIDR},
-    memory::{adi_v5_memory_interface::ADIMemoryInterface, Component},
+    memory::{
+        adi_v5_memory_interface::{ADIMemoryInterface, ArmProbe},
+        Component,
+    },
     sequences::{ArmDebugSequence, DefaultArmSequence},
     ApAddress, DapAccess, DpAddress, PortType, RawDapAccess, SwoAccess, SwoConfig,
 };
 use crate::{
     architecture::arm::ap::DataSize, CommunicationInterface, DebugProbe, DebugProbeError,
-    Error as ProbeRsError, Memory, Probe,
+    Error as ProbeRsError, Probe,
 };
 use anyhow::anyhow;
 use jep106::JEP106Code;
@@ -62,7 +65,10 @@ pub trait Register: Clone + From<u32> + Into<u32> + Sized + Debug {
 /// To be implemented by debug probe drivers that support debugging ARM cores.
 pub trait ArmProbeInterface: DapAccess + SwdSequence + SwoAccess + Send {
     /// Returns a memory interface to access the target's memory.
-    fn memory_interface(&mut self, access_port: MemoryAp) -> Result<Memory<'_>, ProbeRsError>;
+    fn memory_interface(
+        &mut self,
+        access_port: MemoryAp,
+    ) -> Result<Box<dyn ArmProbe + '_>, ProbeRsError>;
 
     /// Returns information about a specific access port.
     fn ap_information(&mut self, access_port: GenericAp) -> Result<&ApInformation, ProbeRsError>;
@@ -237,7 +243,7 @@ impl ApInformation {
 
             Ok(ApInformation::MemoryAp(MemoryApInformation {
                 address: access_port.ap_address(),
-                only_32bit_data_size,
+                supports_only_32bit_data_size: only_32bit_data_size,
                 debug_base_address: base_address,
                 supports_hnonsec,
                 has_large_address_extension,
@@ -259,10 +265,12 @@ impl ApInformation {
 pub struct MemoryApInformation {
     /// Zero-based port number of the access port. This is used in the debug port to select an AP.
     pub address: ApAddress,
+
     /// Some Memory APs only support 32 bit wide access to data, while others
     /// also support other widths. Based on this, 8 bit data access can either
     /// be performed directly, or has to be done as a 32 bit access.
-    pub only_32bit_data_size: bool,
+    pub supports_only_32bit_data_size: bool,
+
     /// The Debug Base Address points to either the start of a set of debug register,
     /// or a ROM table which describes the connected debug components.
     ///
@@ -275,6 +283,9 @@ pub struct MemoryApInformation {
     /// See section E1.5.1, [ARM Debug Interface Architecture Specification].
     ///
     /// [ARM Debug Interface Architecture Specification]: https://developer.arm.com/documentation/ihi0031/d/
+    ///
+    /// If HNONSEC is not supported, bit 30 in the CSW register has
+    /// to be set to 1 at all times.
     pub supports_hnonsec: bool,
 
     /// This AP has the large address extension present, supporting 64-bit addresses
@@ -304,7 +315,10 @@ pub struct ArmCommunicationInterface<S: ArmDebugState> {
 pub trait DapProbe: RawDapAccess + DebugProbe {}
 
 impl ArmProbeInterface for ArmCommunicationInterface<Initialized> {
-    fn memory_interface(&mut self, access_port: MemoryAp) -> Result<Memory<'_>, ProbeRsError> {
+    fn memory_interface(
+        &mut self,
+        access_port: MemoryAp,
+    ) -> Result<Box<dyn ArmProbe + '_>, ProbeRsError> {
         ArmCommunicationInterface::memory_interface(self, access_port)
     }
 
@@ -372,7 +386,7 @@ impl UninitializedArmProbe for ArmCommunicationInterface<Uninitialized> {
         sequence: Arc<dyn ArmDebugSequence>,
     ) -> Result<Box<dyn ArmProbeInterface>, ProbeRsError> {
         let setup_span = tracing::debug_span!("debug_port_setup").entered();
-        sequence.debug_port_setup(&mut self.probe)?;
+        sequence.debug_port_setup(&mut *self.probe)?;
         drop(setup_span);
 
         let interface = self.into_initialized(sequence).map_err(|(_s, err)| err)?;
@@ -407,7 +421,7 @@ impl<'interface> ArmCommunicationInterface<Initialized> {
     pub fn memory_interface(
         &'interface mut self,
         access_port: MemoryAp,
-    ) -> Result<Memory<'interface>, ProbeRsError> {
+    ) -> Result<Box<dyn ArmProbe + 'interface>, ProbeRsError> {
         let info = self.ap_information(access_port).map_err(|_| {
             anyhow!(
                 "Failed to get information for AP {:x?}",
@@ -421,10 +435,10 @@ impl<'interface> ArmCommunicationInterface<Initialized> {
                 let adi_v5_memory_interface = ADIMemoryInterface::<
                     'interface,
                     ArmCommunicationInterface<Initialized>,
-                >::new(self, &information)
+                >::new(self, information)
                 .map_err(ProbeRsError::architecture_specific)?;
 
-                Ok(Memory::new(adi_v5_memory_interface, access_port))
+                Ok(Box::new(adi_v5_memory_interface))
             }
             ApInformation::Other { address, .. } => Err(ProbeRsError::Other(anyhow!(format!(
                 "AP {:x?} is not a memory AP",
@@ -734,7 +748,7 @@ impl ArmCommunicationInterface<Initialized> {
                     .memory_interface(access_port)
                     .map_err(ProbeRsError::architecture_specific)?;
 
-                let component = Component::try_parse(&mut memory, baseaddr)
+                let component = Component::try_parse(&mut *memory, baseaddr)
                     .map_err(ProbeRsError::architecture_specific)?;
 
                 if let Component::Class1RomTable(component_id, _) = component {

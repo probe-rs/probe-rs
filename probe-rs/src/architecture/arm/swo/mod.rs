@@ -168,12 +168,12 @@ pub(crate) fn poll_interval_from_buf_size(
 
 /// A reader interface to pull SWO data from the underlying driver.
 pub struct SwoReader<'a> {
-    interface: &'a mut Box<dyn ArmProbeInterface>,
+    interface: &'a mut dyn ArmProbeInterface,
     buf: Vec<u8>,
 }
 
 impl<'a> SwoReader<'a> {
-    pub(crate) fn new(interface: &'a mut Box<dyn ArmProbeInterface>) -> Self {
+    pub(crate) fn new(interface: &'a mut dyn ArmProbeInterface) -> Self {
         Self {
             interface,
             buf: Vec::new(),

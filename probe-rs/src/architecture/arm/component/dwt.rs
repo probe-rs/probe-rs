@@ -16,13 +16,13 @@ use crate::Error;
 /// A struct representing a DWT unit on target.
 pub struct Dwt<'a> {
     component: &'a CoresightComponent,
-    interface: &'a mut Box<dyn ArmProbeInterface>,
+    interface: &'a mut dyn ArmProbeInterface,
 }
 
 impl<'a> Dwt<'a> {
     /// Creates a new DWT component representation.
     pub fn new(
-        interface: &'a mut Box<dyn ArmProbeInterface>,
+        interface: &'a mut dyn ArmProbeInterface,
         component: &'a CoresightComponent,
     ) -> Self {
         Dwt {
