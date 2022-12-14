@@ -225,7 +225,7 @@ impl CmsisDap {
                             PortType::DebugPort,
                             Ctrl::ADDRESS,
                         )?;
-                        let ctrl = Ctrl::from(response);
+                        let ctrl = Ctrl::try_from(response)?;
                         tracing::trace!("Ctrl/Stat register value is: {:?}", ctrl);
 
                         if ctrl.sticky_err() {

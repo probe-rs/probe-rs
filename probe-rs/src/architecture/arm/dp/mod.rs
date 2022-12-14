@@ -3,7 +3,7 @@
 #[macro_use]
 mod register_generation;
 
-use super::{DapAccess, DpAddress, Register};
+use super::{communication_interface::RegisterParseError, DapAccess, DpAddress, Register};
 use bitfield::bitfield;
 use jep106::JEP106Code;
 
@@ -21,6 +21,9 @@ pub enum DebugPortError {
         /// The version of the operated debug port.
         version: DebugPortVersion,
     },
+    /// Error parsing a register value.
+    #[error("Error parsing register value.")]
+    Parse(#[from] RegisterParseError),
     /// An error with operating the debug probe occurred.
     #[error("A Debug Probe Error occurred")]
     DebugProbe(#[from] DebugProbeError),
@@ -50,7 +53,7 @@ impl<T: DapAccess> DpAccess for T {
         tracing::debug!("Reading DP register {}", R::NAME);
         let result = self.read_raw_dp_register(dp, R::ADDRESS)?;
         tracing::debug!("Read    DP register {}, value=0x{:08x}", R::NAME, result);
-        Ok(result.into())
+        Ok(result.try_into()?)
     }
 
     fn write_dp_register<R: DpRegister>(
@@ -88,9 +91,11 @@ bitfield! {
     pub _, set_dapabort: 0;
 }
 
-impl From<u32> for Abort {
-    fn from(raw: u32) -> Self {
-        Abort(raw)
+impl TryFrom<u32> for Abort {
+    type Error = RegisterParseError;
+
+    fn try_from(raw: u32) -> Result<Self, Self::Error> {
+        Ok(Abort(raw))
     }
 }
 
@@ -258,9 +263,11 @@ bitfield! {
     pub orun_detect, set_orun_detect: 0;
 }
 
-impl From<u32> for Ctrl {
-    fn from(raw: u32) -> Self {
-        Ctrl(raw)
+impl TryFrom<u32> for Ctrl {
+    type Error = RegisterParseError;
+
+    fn try_from(raw: u32) -> Result<Self, Self::Error> {
+        Ok(Ctrl(raw))
     }
 }
 
@@ -314,9 +321,11 @@ bitfield! {
     pub u8, dp_bank_sel, set_dp_bank_sel: 3, 0;
 }
 
-impl From<u32> for Select {
-    fn from(raw: u32) -> Self {
-        Select(raw)
+impl TryFrom<u32> for Select {
+    type Error = RegisterParseError;
+
+    fn try_from(raw: u32) -> Result<Self, Self::Error> {
+        Ok(Select(raw))
     }
 }
 
@@ -377,9 +386,11 @@ bitfield! {
     pub u8, jep_id, _: 7, 1;
 }
 
-impl From<u32> for DPIDR {
-    fn from(raw: u32) -> Self {
-        Self(raw)
+impl TryFrom<u32> for DPIDR {
+    type Error = RegisterParseError;
+
+    fn try_from(raw: u32) -> Result<Self, Self::Error> {
+        Ok(Self(raw))
     }
 }
 
@@ -429,9 +440,11 @@ bitfield! {
     pub u16, tdesigner, _: 11, 1;
 }
 
-impl From<u32> for TARGETID {
-    fn from(raw: u32) -> Self {
-        Self(raw)
+impl TryFrom<u32> for TARGETID {
+    type Error = RegisterParseError;
+
+    fn try_from(raw: u32) -> Result<Self, Self::Error> {
+        Ok(Self(raw))
     }
 }
 
@@ -502,9 +515,11 @@ impl Register for RdBuff {
     const NAME: &'static str = "RDBUFF";
 }
 
-impl From<u32> for RdBuff {
-    fn from(val: u32) -> Self {
-        RdBuff(val)
+impl TryFrom<u32> for RdBuff {
+    type Error = RegisterParseError;
+
+    fn try_from(val: u32) -> Result<Self, Self::Error> {
+        Ok(RdBuff(val))
     }
 }
 

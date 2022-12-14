@@ -994,7 +994,7 @@ impl<Probe: DebugProbe + RawProtocolIo + JTAGAccess + 'static> RawDapAccess for 
                             PortType::DebugPort,
                             Ctrl::ADDRESS,
                         )?;
-                        let ctrl = Ctrl::from(response);
+                        let ctrl = Ctrl::try_from(response)?;
                         tracing::debug!(
                             "Reading DAP register failed. Ctrl/Stat register value is: {:#?}",
                             ctrl
@@ -1182,7 +1182,7 @@ impl<Probe: DebugProbe + RawProtocolIo + JTAGAccess + 'static> RawDapAccess for 
                     let response =
                         RawDapAccess::raw_read_register(self, PortType::DebugPort, Ctrl::ADDRESS)?;
 
-                    let ctrl = Ctrl::from(response);
+                    let ctrl = Ctrl::try_from(response)?;
                     tracing::trace!(
                         "Writing DAP register failed. Ctrl/Stat register value is: {:#?}",
                         ctrl

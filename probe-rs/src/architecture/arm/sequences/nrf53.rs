@@ -8,6 +8,7 @@ use crate::architecture::arm::memory::adi_v5_memory_interface::ArmProbe;
 use crate::architecture::arm::{
     communication_interface::Initialized, ApAddress, ArmCommunicationInterface, DapAccess,
 };
+use crate::DebugProbeError;
 
 /// The sequence handle for the nRF5340.
 pub struct Nrf5340(());
@@ -50,7 +51,8 @@ impl Nrf for Nrf5340 {
     ) -> Result<bool, crate::Error> {
         let csw: CSW = arm_interface
             .read_raw_ap_register(ahb_ap_address, 0x00)?
-            .into();
+            .try_into()
+            .map_err(|e| DebugProbeError::from(e))?;
         Ok(csw.DeviceEn != 0)
     }
 

@@ -55,11 +55,26 @@ impl From<DapError> for DebugProbeError {
 }
 
 /// A trait to be implemented on register types for typed device access.
-pub trait Register: Clone + From<u32> + Into<u32> + Sized + Debug {
+pub trait Register:
+    Clone + TryFrom<u32, Error = RegisterParseError> + Into<u32> + Sized + Debug
+{
     /// The address of the register (in bytes).
     const ADDRESS: u8;
     /// The name of the register as string.
     const NAME: &'static str;
+}
+
+#[derive(Debug, thiserror::Error)]
+#[error("Failed to parse register {name} from {value:#010x}")]
+pub struct RegisterParseError {
+    name: &'static str,
+    value: u32,
+}
+
+impl RegisterParseError {
+    pub fn new(name: &'static str, value: u32) -> Self {
+        RegisterParseError { name, value }
+    }
 }
 
 /// To be implemented by debug probe drivers that support debugging ARM cores.

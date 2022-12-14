@@ -7,6 +7,7 @@ pub(crate) mod jlink;
 pub(crate) mod stlink;
 
 use self::espusbjtag::list_espjtag_devices;
+use crate::architecture::arm::communication_interface::RegisterParseError;
 use crate::error::Error;
 use crate::Session;
 use crate::{
@@ -167,6 +168,9 @@ pub enum DebugProbeError {
     /// The hardware breakpoint could not be set because all breakpoint units are in use.
     #[error("Unable to set hardware breakpoint, all available breakpoint units are in use.")]
     BreakpointUnitsExceeded,
+    /// Error parsing a register
+    #[error("Error parsing a register.")]
+    RegisterParsing(#[from] RegisterParseError),
     /// Some other error occurred.
     #[error(transparent)]
     Other(#[from] anyhow::Error),

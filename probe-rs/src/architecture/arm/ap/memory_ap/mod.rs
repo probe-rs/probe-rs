@@ -4,7 +4,10 @@
 pub(crate) mod mock;
 
 use super::{AccessPort, ApAccess, ApRegister, GenericAp, Register};
-use crate::{architecture::arm::ApAddress, DebugProbeError};
+use crate::{
+    architecture::arm::{communication_interface::RegisterParseError, ApAddress},
+    DebugProbeError,
+};
 use enum_primitive_derive::Primitive;
 use num_traits::{FromPrimitive, ToPrimitive};
 
@@ -162,7 +165,7 @@ define_ap_register!(
         /// This field can be used to detect access points by iterating over all possible ones until one is found which has `exists == false`.
         present: bool,
     ],
-    from: value => BASE {
+    from: value => Ok(BASE {
         BASEADDR: (value & 0xFFFF_F000) >> 12,
         _RES0: 0,
         Format: match ((value >> 1) & 0x01) as u8 {
@@ -175,7 +178,7 @@ define_ap_register!(
             1 => true,
             _ => panic!("This is a bug. Please report it."),
         },
-    },
+    }),
    to: value =>
         (value.BASEADDR << 12)
         // _RES0
@@ -192,7 +195,7 @@ define_ap_register!(
         /// The second part of the base address of this access point if required.
         BASEADDR: u32
     ],
-    from: value => BASE2 { BASEADDR: value },
+    from: value => Ok(BASE2 { BASEADDR: value }),
     to: value => value.BASEADDR
 );
 
@@ -205,7 +208,7 @@ define_ap_register!(
         /// The data held in this bank.
         data: u32,
     ],
-    from: value => BD0 { data: value },
+    from: value => Ok(BD0 { data: value }),
     to: value => value.data
 );
 
@@ -218,7 +221,7 @@ define_ap_register!(
         /// The data held in this bank.
         data: u32,
     ],
-    from: value => BD1 { data: value },
+    from: value => Ok(BD1 { data: value }),
     to: value => value.data
 );
 
@@ -231,7 +234,7 @@ define_ap_register!(
         /// The data held in this bank.
         data: u32,
     ],
-    from: value => BD2 { data: value },
+    from: value => Ok(BD2 { data: value }),
     to: value => value.data
 );
 
@@ -244,7 +247,7 @@ define_ap_register!(
         /// The data held in this bank.
         data: u32,
     ],
-    from: value => BD3 { data: value },
+    from: value => Ok(BD3 { data: value }),
     to: value => value.data
 );
 
@@ -264,11 +267,11 @@ define_ap_register!(
         /// Specifies whether this architecture uses big endian. Must always be zero for modern chips as the ADI v5.2 deprecates big endian.
         BE: u8,
     ],
-    from: value => CFG {
+    from: value => Ok(CFG {
         LD: ((value >> 2) & 0x01) as u8,
         LA: ((value >> 1) & 0x01) as u8,
         BE: (value & 0x01) as u8,
-    },
+    }),
     to: value => u32::from((value.LD << 2) | (value.LA << 1) | value.BE)
 );
 
@@ -320,7 +323,7 @@ define_ap_register!(
         /// The access size of this memory AP.
         SIZE: DataSize,            // 3 bits
     ],
-    from: value => CSW {
+    from: value => Ok(CSW {
         DbgSwEnable: ((value >> 31) & 0x01) as u8,
         HNONSEC: ((value >> 30) & 0x01) as u8,
         PROT: ((value >> 28) & 0x03) as u8,
@@ -332,12 +335,10 @@ define_ap_register!(
         Mode: ((value >> 8) & 0x0F) as u8,
         TrinProg: ((value >> 7) & 0x01) as u8,
         DeviceEn: ((value >> 6) & 0x01) as u8,
-        AddrInc: AddressIncrement::from_u8(((value >> 4) & 0x03) as u8).unwrap(),
+        AddrInc: AddressIncrement::from_u8(((value >> 4) & 0x03) as u8).ok_or_else(|| RegisterParseError::new("CSW", value))?,
         _RES1: 0,
-        // unwrap() is safe as the chip will only return valid values.
-        // If not it's good to crash for now.
-        SIZE: DataSize::from_u8((value & 0x07) as u8).unwrap(),
-    },
+        SIZE: DataSize::from_u8((value & 0x07) as u8).ok_or_else(|| RegisterParseError::new("CSW", value))?,
+    }),
     to: value => (u32::from(value.DbgSwEnable) << 31)
     | (u32::from(value.HNONSEC    ) << 30)
     | (u32::from(value.PROT       ) << 28)
@@ -404,7 +405,7 @@ define_ap_register!(
         /// The data held in the DRW corresponding to the address held in TAR.
         data: u32,
     ],
-    from: value => DRW { data: value },
+    from: value => Ok(DRW { data: value }),
     to: value => value.data
 );
 
@@ -424,7 +425,7 @@ define_ap_register!(
         /// This value is implementation defined and the ADIv5.2 spec does not explain what it does for targets with the Barrier Operations Extension implemented.
         data: u32,
     ],
-    from: value => MBT { data: value },
+    from: value => Ok(MBT { data: value }),
     to: value => value.data
 );
 
@@ -441,7 +442,7 @@ define_ap_register!(
         /// The register address to be used for the next access to DRW.
         address: u32,
     ],
-    from: value => TAR { address: value },
+    from: value => Ok(TAR { address: value }),
     to: value => value.address
 );
 
@@ -458,6 +459,6 @@ define_ap_register!(
         /// The uppper 32-bits of the register address to be used for the next access to DRW.
         address: u32,
     ],
-    from: value => TAR2 { address: value },
+    from: value => Ok(TAR2 { address: value }),
     to: value => value.address
 );

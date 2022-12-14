@@ -159,7 +159,7 @@ impl<T: DapAccess> ApAccess for T {
 
         tracing::debug!("Read register    {}, value=0x{:x?}", R::NAME, raw_value);
 
-        Ok(raw_value.into())
+        Ok(raw_value.try_into()?)
     }
 
     fn write_ap_register<PORT, R>(
