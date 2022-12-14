@@ -621,10 +621,10 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                             cache.remove_cache_entry(namespace_variable.variable_key)?;
                         }
                     }
-                    gimli::DW_TAG_formal_parameter |  // Parameters to functions.
-                    gimli::DW_TAG_variable |    // Typical top-level variables.
-                    gimli::DW_TAG_member |      // Members of structured types.
-                    gimli::DW_TAG_enumerator    // Possible values for enumerators, used by extract_type() when processing DW_TAG_enumeration_type.
+                    gimli::DW_TAG_formal_parameter | // Parameters to functions.
+                    gimli::DW_TAG_variable         | // Typical top-level variables.
+                    gimli::DW_TAG_member           | // Members of structured types.
+                    gimli::DW_TAG_enumerator         // Possible values for enumerators, used by extract_type() when processing DW_TAG_enumeration_type.
                     => {
                         let mut child_variable = cache.cache_variable(Some(parent_variable.variable_key), Variable::new(
                         self.unit.header.offset().as_debug_info_offset(),
