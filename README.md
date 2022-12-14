@@ -151,10 +151,6 @@ See [the vcpkg crate documentation](https://docs.rs/vcpkg/) for more information
 Target files are generated using [target-gen](https://github.com/probe-rs/probe-rs/tree/master/target-gen) from CMSIS packs provided [here](https://developer.arm.com/tools-and-software/embedded/cmsis/cmsis-search).
 Generated files are then placed in `probe-rs/targets` for inclusion in the probe-rs project.
 
-## Sponsors
-
-[![Technokrat](https://technokrat.ch/static/img/svg_banner-light.svg)](https://technokrat.ch)
-
 ## Acknowledgements
 
 In early stages of this library, we profited invaluably from the pyOCD code to understand how flashing works. Also it's always a good reference to cross check how ARM specific things work. So, a big thank you to the team behind pyOCD!
