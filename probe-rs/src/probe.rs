@@ -249,7 +249,7 @@ impl Probe {
     /// Get a list of all debug probes found.
     /// This can be used to select the debug probe which
     /// should be used.
-    #[tracing::instrument(skip_all)]
+    #[tracing::instrument]
     pub fn list_all() -> Vec<DebugProbeInfo> {
         let mut list = cmsisdap::tools::list_cmsisdap_devices();
         #[cfg(feature = "ftdi")]
