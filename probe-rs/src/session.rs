@@ -1,6 +1,6 @@
 use crate::architecture::arm::sequences::{ArmDebugSequence, DefaultArmSequence};
 use crate::architecture::arm::{ApAddress, DpAddress};
-use crate::config::{ChipInfo, MemoryRegion, RegistryError, Target, TargetSelector};
+use crate::config::{ChipInfo, RegistryError, Target, TargetSelector};
 use crate::core::{Architecture, CoreState, SpecificCoreState};
 use crate::{
     architecture::{
@@ -345,6 +345,7 @@ impl Session {
     }
 
     /// Automatically creates a session with the first connected probe found.
+    #[tracing::instrument(skip(target))]
     pub fn auto_attach(
         target: impl Into<TargetSelector>,
         permissions: Permissions,
@@ -399,6 +400,7 @@ impl Session {
     ///
     /// This method is only supported for ARM-based targets, and will
     /// return [Error::ArchitectureRequired] otherwise.
+    #[tracing::instrument(skip(self))]
     pub fn read_trace_data(&mut self) -> Result<Vec<u8>, Error> {
         let sink = self
             .configured_trace_sink
@@ -455,6 +457,7 @@ impl Session {
         Ok(interface)
     }
 
+    #[tracing::instrument(skip_all)]
     fn reattach_arm_interface(
         interface: &mut Box<dyn ArmProbeInterface>,
         debug_sequence: &Arc<dyn ArmDebugSequence>,
@@ -696,12 +699,6 @@ impl Session {
         let components = self.get_arm_components()?;
         let interface = self.get_arm_interface()?;
         crate::architecture::arm::component::remove_swv_data_trace(interface, &components, unit)
-    }
-
-    /// Returns the memory map of the target.
-    #[deprecated = "Use the Session::target function instead"]
-    pub fn memory_map(&self) -> &[MemoryRegion] {
-        &self.target.memory_map
     }
 
     /// Return the `Architecture` of the currently connected chip.

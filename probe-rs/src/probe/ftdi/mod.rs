@@ -648,6 +648,7 @@ fn get_device_info(device: &rusb::Device<rusb::Context>) -> Option<DebugProbeInf
     })
 }
 
+#[tracing::instrument(skip_all)]
 pub(crate) fn list_ftdi_devices() -> Vec<DebugProbeInfo> {
     match rusb::Context::new().and_then(|ctx| ctx.devices()) {
         Ok(devices) => devices
