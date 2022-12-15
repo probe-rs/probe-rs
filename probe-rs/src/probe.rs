@@ -170,7 +170,7 @@ pub enum DebugProbeError {
     BreakpointUnitsExceeded,
     /// Error parsing a register
     #[error("Error parsing a register.")]
-    RegisterParsing(#[from] RegisterParseError),
+    RegisterParse(#[from] RegisterParseError),
     /// Some other error occurred.
     #[error(transparent)]
     Other(#[from] anyhow::Error),
