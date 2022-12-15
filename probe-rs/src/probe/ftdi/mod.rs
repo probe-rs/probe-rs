@@ -174,7 +174,7 @@ impl JtagAdapter {
 
         // TODO: Go back to using vec![] and fix borrow
         let cmd: [u8; MAX_DEVICE_COUNT * 4] = [0xff; MAX_DEVICE_COUNT * 4];
-        let r = self.transfer_dr(cmd.to_vec(), (cmd.len() * 8) as usize)?;
+        let r = self.transfer_dr(cmd.to_vec(), cmd.len() * 8)?;
 
         let mut targets = vec![];
         for i in 0..MAX_DEVICE_COUNT {
@@ -216,7 +216,7 @@ impl JtagAdapter {
         } else {
             // TODO: Go back to using vec![] and fix borrow
             let cmd: [u8; MAX_DEVICE_COUNT] = [0xFF; MAX_DEVICE_COUNT];
-            let mut r = self.transfer_ir(cmd.to_vec(), (cmd.len() * 8) as usize)?;
+            let mut r = self.transfer_ir(cmd.to_vec(), cmd.len() * 8)?;
 
             let mut ir = 0;
             let mut irbits = 0;

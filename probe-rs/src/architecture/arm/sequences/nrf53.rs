@@ -52,7 +52,7 @@ impl Nrf for Nrf5340 {
         let csw: CSW = arm_interface
             .read_raw_ap_register(ahb_ap_address, 0x00)?
             .try_into()
-            .map_err(|e| DebugProbeError::from(e))?;
+            .map_err(DebugProbeError::from)?;
         Ok(csw.DeviceEn != 0)
     }
 

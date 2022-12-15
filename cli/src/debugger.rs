@@ -420,7 +420,7 @@ impl DebugCli {
                             halted_state.frame_indices = halted_state
                                 .stack_frames
                                 .iter()
-                                .map(|sf| sf.id as i64)
+                                .map(|sf| sf.id)
                                 .collect();
 
                             for (i, frame) in halted_state.stack_frames.iter().enumerate() {

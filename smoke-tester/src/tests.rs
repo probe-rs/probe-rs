@@ -56,8 +56,8 @@ pub fn test_memory_access(
             probe_rs::config::MemoryRegion::Ram(ram)
                 if ram.cores.iter().any(|c| c == core_name) =>
             {
-                let ram_start = ram.range.start as u64;
-                let ram_size = (ram.range.end - ram.range.start) as u64;
+                let ram_start = ram.range.start;
+                let ram_size = ram.range.end - ram.range.start;
 
                 println_test_status!(tracker, blue, "Test - RAM Start 32");
                 // Write first word
@@ -123,7 +123,7 @@ pub fn test_hw_breakpoints(
     for region in memory_regions {
         match region {
             probe_rs::config::MemoryRegion::Nvm(nvm) => {
-                let initial_breakpoint_addr = nvm.range.start as u64;
+                let initial_breakpoint_addr = nvm.range.start;
 
                 let num_breakpoints = core.available_breakpoint_units()?;
 

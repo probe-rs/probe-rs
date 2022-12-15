@@ -79,7 +79,7 @@ impl<'probe, 'memory, 'reader> Iterator for RomTableIterator<'probe, 'memory, 'r
         if let Err(e) = self
             .rom_table_reader
             .memory
-            .read_32(component_address as u64, &mut entry_data)
+            .read_32(component_address, &mut entry_data)
         {
             return Some(Err(RomTableError::Memory(e)));
         }

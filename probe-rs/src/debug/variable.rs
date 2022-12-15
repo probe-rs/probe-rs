@@ -1279,7 +1279,7 @@ impl Value for u8 {
                     new_value,
                     error
                 ))
-            })? as u8,
+            })?,
         )
         .map_err(|error| DebugError::Other(anyhow::anyhow!("{:?}", error)))
     }

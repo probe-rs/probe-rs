@@ -136,7 +136,7 @@ impl SteppingMode {
                 return Err(DebugError::NoValidHaltLocation {
                     message: "Unable to determine target address for this step request."
                         .to_string(),
-                    pc_at_error: program_counter as u64,
+                    pc_at_error: program_counter,
                 });
             }
         };
@@ -323,8 +323,8 @@ impl SteppingMode {
                         "Function {:?} is marked as `noreturn`. Cannot step out of this function.",
                         function.function_name()
                     )));
-                        } else if function.low_pc <= program_counter as u64
-                            && function.high_pc > program_counter as u64
+                        } else if function.low_pc <= program_counter
+                            && function.high_pc > program_counter
                         {
                             if let Some(core) = core {
                                 if function.is_inline() {
@@ -380,13 +380,13 @@ fn run_to_address(
     target_address: u64,
     core: &mut Core,
 ) -> Result<(CoreStatus, u64), DebugError> {
-    Ok(if target_address < program_counter as u64 {
+    Ok(if target_address < program_counter {
         // We are not able to calculate a step_out_address. Notify the user to try something else.
         return Err(DebugError::NoValidHaltLocation {
             message: "Unable to determine target address for this step request. Please try a different form of stepping.".to_string(),
-            pc_at_error: program_counter as u64,
+            pc_at_error: program_counter,
         });
-    } else if target_address == program_counter as u64 {
+    } else if target_address == program_counter {
         // No need to step further. e.g. For inline functions we have already stepped to the best available target address..
         (
             core.status()?,

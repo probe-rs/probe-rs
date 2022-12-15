@@ -174,23 +174,7 @@ impl DutDefinition {
 
         let flash_test_binary = raw_definition.flash_test_binary.map(PathBuf::from);
 
-        let flash_test_binary = match flash_test_binary {
-            Some(path) => {
-                if path.is_absolute() {
-                    Some(path)
-                } else {
-                    // For relative paths, join the path with the location of the source file to create an absolute path.
-
-                    let source_file_directory =
-                        source_file.parent().unwrap_or_else(|| Path::new("."));
-
-                    let flash_binary_location = source_file_directory.join(path);
-
-                    Some(flash_binary_location.canonicalize()?)
-                }
-            }
-            None => None,
-        };
+        let flash_test_binary = flash_test_binary.filter(|path| path.is_absolute());
 
         Ok(Self {
             chip: target,

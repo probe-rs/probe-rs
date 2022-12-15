@@ -29,7 +29,7 @@ pub fn test_stepping(core: &mut Core, memory_regions: &[MemoryRegion]) -> Result
 
     core.halt(Duration::from_millis(100))?;
 
-    let code_load_address = ram_region.range.start as u64;
+    let code_load_address = ram_region.range.start;
 
     core.write_8(code_load_address, TEST_CODE)?;
 
@@ -39,7 +39,7 @@ pub fn test_stepping(core: &mut Core, memory_regions: &[MemoryRegion]) -> Result
 
     let core_information = core.step()?;
 
-    assert_eq!(core_information.pc as u64, code_load_address + 2);
+    assert_eq!(core_information.pc, code_load_address + 2);
 
     let core_status = core.status()?;
 

@@ -36,7 +36,7 @@ macro_rules! define_ap_register {
         }
 
         impl TryFrom<u32> for $name {
-            type Error = crate::architecture::arm::communication_interface::RegisterParseError;
+            type Error = $crate::architecture::arm::communication_interface::RegisterParseError;
 
             fn try_from($from_param: u32) -> Result<$name, Self::Error> {
                 $from

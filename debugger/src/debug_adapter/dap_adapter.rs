@@ -1125,7 +1125,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
 
                         // TODO: Can we add more meaningful info to `module_id`, etc.
                         StackFrame {
-                            id: frame.id as i64,
+                            id: frame.id,
                             name: function_display_name,
                             source,
                             line,
@@ -1383,7 +1383,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
 
         // The memory address for the next instruction to be disassembled
         let mut instruction_pointer = if let Some(read_pointer) = read_pointer {
-            read_pointer as u64
+            read_pointer
         } else {
             let error_message = format!("Unable to calculate starting address for disassembly request with memory reference:{:#010X}, byte offset:{:#010X}, and instruction offset:{:#010X}.", memory_reference, byte_offset, instruction_offset);
             return Err(DebuggerError::Other(anyhow!(error_message)));
@@ -1437,7 +1437,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                 }
             }
 
-            match cs.disasm_all(&code_buffer, instruction_pointer as u64) {
+            match cs.disasm_all(&code_buffer, instruction_pointer) {
                 Ok(instructions) => {
                     if num_traits::Zero::is_zero(&instructions.len()) {
                         // The capstone library sometimes returns an empty result set, instead of an Err. Catch it here or else we risk an infinte loop looking for a valid instruction.
@@ -1451,7 +1451,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                         .iter()
                         .map(|instruction| {
                             // Before processing, update the code buffer appropriately
-                            code_buffer = code_buffer.split_at(instruction.len() as usize).1.to_vec();
+                            code_buffer = code_buffer.split_at(instruction.len()).1.to_vec();
 
                             // Variable width instruction sets my not use the full `code_buffer`, so we need to read ahead, to ensure we have enough code in the buffer to disassemble the 'widest' of instructions in the instruction set.
                             read_more_bytes = code_buffer.len() < target_instruction_set.get_maximum_instruction_size() as usize;

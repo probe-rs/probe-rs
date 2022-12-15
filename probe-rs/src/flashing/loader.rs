@@ -382,8 +382,7 @@ impl FlashLoader {
                         data.len()
                     );
                     // Write data to memory.
-                    core.write_8(address as u64, data)
-                        .map_err(FlashError::Core)?;
+                    core.write_8(address, data).map_err(FlashError::Core)?;
                 }
 
                 if !some {
@@ -417,7 +416,7 @@ impl FlashLoader {
                 let mut core = session.core(core_index).map_err(FlashError::Core)?;
 
                 let mut written_data = vec![0; data.len()];
-                core.read(address as u64, &mut written_data)
+                core.read(address, &mut written_data)
                     .map_err(FlashError::Core)?;
 
                 if data != &written_data {

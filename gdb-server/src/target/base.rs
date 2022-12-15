@@ -59,7 +59,7 @@ impl MultiThreadBase for RuntimeTarget<'_> {
         for reg in self.target_desc.get_registers_for_main_group() {
             let bytesize = reg.size_in_bytes();
 
-            let current_regval_end = current_regval_offset + bytesize as usize;
+            let current_regval_end = current_regval_offset + bytesize;
 
             if current_regval_end > regs.regs.len() {
                 // Supplied write general registers command argument length not valid, tell GDB
@@ -156,13 +156,13 @@ impl SingleRegisterAccess<Tid> for RuntimeTarget<'_> {
         let mut value: u128 =
             read_register_from_source(&mut core, reg.source()).into_target_result()?;
 
-        for i in 0..bytesize {
+        for buf_entry in buf.iter_mut().take(bytesize) {
             let byte = value as u8;
-            buf[i as usize] = byte;
+            *buf_entry = byte;
             value >>= 8;
         }
 
-        Ok(bytesize as usize)
+        Ok(bytesize)
     }
 
     fn write_register(
@@ -179,7 +179,7 @@ impl SingleRegisterAccess<Tid> for RuntimeTarget<'_> {
 
         let mut value = 0;
 
-        for (exp, ch) in val.iter().enumerate().take(bytesize as usize) {
+        for (exp, ch) in val.iter().enumerate().take(bytesize) {
             value += (*ch as u128) << (8 * exp);
         }
 

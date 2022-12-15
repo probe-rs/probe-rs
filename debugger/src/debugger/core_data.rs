@@ -119,7 +119,7 @@ impl<'p> CoreHandle<'p> {
         if let Some(breakpoint_position) = breakpoint_position {
             self.core_data
                 .breakpoints
-                .remove(breakpoint_position as usize);
+                .remove(breakpoint_position);
         }
         Ok(())
     }

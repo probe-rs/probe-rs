@@ -283,7 +283,7 @@ pub(crate) fn _print_all_attributes(
                             base_type,
                         } => {
                             let raw_value: u64 = core
-                                .read_core_reg(register.0 as u16)
+                                .read_core_reg(register.0)
                                 .expect("Failed to read memory");
 
                             if base_type != gimli::UnitOffset(0) {

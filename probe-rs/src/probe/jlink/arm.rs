@@ -189,7 +189,7 @@ fn perform_jtag_transfer<P: JTAGAccess + RawProtocolIo>(
     let result = probe.write_register(address, &data[..], JTAG_DR_BIT_LENGTH)?;
 
     // Clock out any idle time
-    let idle_sequence = iter::repeat(false).take(transfer.idle_cycles_after as usize);
+    let idle_sequence = iter::repeat(false).take(transfer.idle_cycles_after);
     probe.jtag_io(idle_sequence.to_owned(), idle_sequence)?;
 
     let received = parse_jtag_response(&result);
