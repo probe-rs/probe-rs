@@ -2,18 +2,23 @@
 
 mod dwt;
 mod itm;
+mod scs;
 mod swo;
 mod tmc;
 mod tpiu;
 mod trace_funnel;
 
+use super::ap::{GenericAp, MemoryAp};
 use super::memory::romtable::{CoresightComponent, PeripheralType, RomTableError};
+use super::memory::Component;
+use super::{ApAddress, ApInformation, DpAddress, MemoryApInformation};
 use crate::architecture::arm::core::armv6m::Demcr;
 use crate::architecture::arm::{ArmProbeInterface, SwoConfig, SwoMode};
 use crate::{Core, Error, MemoryInterface, MemoryMappedRegister};
 
 pub use self::itm::Itm;
 pub use dwt::Dwt;
+pub use scs::Scs;
 pub use swo::Swo;
 pub use tmc::TraceMemoryController;
 pub use tpiu::Tpiu;
@@ -93,8 +98,63 @@ pub trait DebugRegister: Clone + From<u32> + Into<u32> + Sized + std::fmt::Debug
     }
 }
 
+/// Reads all the available ARM CoresightComponents of the currently attached target.
+///
+/// This will recursively parse the Romtable of the attached target
+/// and create a list of all the contained components.
+pub fn get_arm_components(
+    interface: &mut dyn ArmProbeInterface,
+) -> Result<Vec<CoresightComponent>, Error> {
+    let mut components = Vec::new();
+
+    // TODO
+    let dp = DpAddress::Default;
+
+    for ap_index in 0..(interface.num_access_ports(dp)? as u8) {
+        let ap_information = interface
+            .ap_information(GenericAp::new(ApAddress { dp, ap: ap_index }))?
+            .clone();
+
+        let component = match ap_information {
+            ApInformation::MemoryAp(MemoryApInformation {
+                debug_base_address: 0,
+                ..
+            }) => Err(Error::Other(anyhow::anyhow!("AP has a base address of 0"))),
+            ApInformation::MemoryAp(MemoryApInformation {
+                address,
+                debug_base_address,
+                ..
+            }) => {
+                let ap = MemoryAp::new(address);
+                let mut memory = interface.memory_interface(ap)?;
+                let component = Component::try_parse(&mut *memory, debug_base_address)
+                    .map_err(Error::architecture_specific)?;
+                Ok(CoresightComponent::new(component, ap))
+            }
+            ApInformation::Other { address, .. } => {
+                // Return an error, only possible to get Component from MemoryAP
+                Err(Error::Other(anyhow::anyhow!(
+                    "AP {:#x?} is not a MemoryAP, unable to get ARM component.",
+                    address
+                )))
+            }
+        };
+
+        match component {
+            Ok(component) => {
+                components.push(component);
+            }
+            Err(e) => {
+                tracing::info!("Not counting AP {} because of: {}", ap_index, e);
+            }
+        }
+    }
+
+    Ok(components)
+}
+
 /// Goes through every component in the vector and tries to find the first component with the given type
-fn find_component(
+pub fn find_component(
     components: &[CoresightComponent],
     peripheral_type: PeripheralType,
 ) -> Result<&CoresightComponent, Error> {

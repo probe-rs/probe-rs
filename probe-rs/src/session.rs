@@ -1,3 +1,4 @@
+use crate::architecture::arm::component::get_arm_components;
 use crate::architecture::arm::sequences::{ArmDebugSequence, DefaultArmSequence};
 use crate::architecture::arm::{ApAddress, DpAddress};
 use crate::config::{ChipInfo, MemoryRegion, RegistryError, Target, TargetSelector};
@@ -5,11 +6,8 @@ use crate::core::{Architecture, CoreState, SpecificCoreState};
 use crate::{
     architecture::{
         arm::{
-            ap::{GenericAp, MemoryAp},
-            communication_interface::{ArmProbeInterface, MemoryApInformation},
-            component::TraceSink,
-            memory::{Component, CoresightComponent},
-            ApInformation, SwoReader,
+            ap::MemoryAp, communication_interface::ArmProbeInterface, component::TraceSink,
+            memory::CoresightComponent, SwoReader,
         },
         riscv::communication_interface::RiscvCommunicationInterface,
     },
@@ -578,52 +576,7 @@ impl Session {
     pub fn get_arm_components(&mut self) -> Result<Vec<CoresightComponent>, Error> {
         let interface = self.get_arm_interface()?;
 
-        let mut components = Vec::new();
-
-        // TODO
-        let dp = DpAddress::Default;
-
-        for ap_index in 0..(interface.num_access_ports(dp)? as u8) {
-            let ap_information = interface
-                .ap_information(GenericAp::new(ApAddress { dp, ap: ap_index }))?
-                .clone();
-
-            let component = match ap_information {
-                ApInformation::MemoryAp(MemoryApInformation {
-                    debug_base_address: 0,
-                    ..
-                }) => Err(Error::Other(anyhow!("AP has a base address of 0"))),
-                ApInformation::MemoryAp(MemoryApInformation {
-                    address,
-                    debug_base_address,
-                    ..
-                }) => {
-                    let ap = MemoryAp::new(address);
-                    let mut memory = interface.memory_interface(ap)?;
-                    let component = Component::try_parse(&mut *memory, debug_base_address)
-                        .map_err(Error::architecture_specific)?;
-                    Ok(CoresightComponent::new(component, ap))
-                }
-                ApInformation::Other { address, .. } => {
-                    // Return an error, only possible to get Component from MemoryAP
-                    Err(Error::Other(anyhow!(
-                        "AP {:#x?} is not a MemoryAP, unable to get ARM component.",
-                        address
-                    )))
-                }
-            };
-
-            match component {
-                Ok(component) => {
-                    components.push(component);
-                }
-                Err(e) => {
-                    tracing::info!("Not counting AP {} because of: {}", ap_index, e);
-                }
-            }
-        }
-
-        Ok(components)
+        get_arm_components(interface)
     }
 
     /// Get the target description of the connected target.

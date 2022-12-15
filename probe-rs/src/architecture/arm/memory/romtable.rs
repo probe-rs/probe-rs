@@ -99,7 +99,7 @@ impl<'probe, 'memory, 'reader> Iterator for RomTableIterator<'probe, 'memory, 'r
 }
 
 /// Encapsulates information about a CoreSight ROM table (class 1).
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct RomTable {
     /// ALL the entries in the romtable in flattened fashion.
     /// This contains all nested romtable entries.
@@ -209,7 +209,7 @@ impl RomTableEntryRaw {
 /// A completely finished-parsing romtable entry.
 ///
 /// This struct should be used for public interfacing.
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct RomTableEntry {
     /// The power domain ID of the CoreSight component behind the ROM table entry.
     power_domain_id: u8,
@@ -232,7 +232,7 @@ impl RomTableEntry {
 /// Component Identification information
 ///
 /// Identification for a CoreSight component
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct ComponentId {
     component_address: u64,
     class: RawComponent,
@@ -377,7 +377,7 @@ impl<'probe: 'memory, 'memory> ComponentInformationReader<'probe, 'memory> {
 /// Meant for internal parsing usage only.
 ///
 /// Described in table D1-2 in the ADIv5.2 spec.
-#[derive(Primitive, Debug, PartialEq)]
+#[derive(Clone, Primitive, Debug, PartialEq)]
 enum RawComponent {
     GenericVerificationComponent = 0,
     RomTable = 1,
@@ -389,7 +389,7 @@ enum RawComponent {
 
 /// This enum describes a CoreSight component.
 /// Described in table D1-2 in the ADIv5.2 spec.
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum Component {
     /// Generic verification component.
     GenericVerificationComponent(ComponentId),
@@ -465,7 +465,7 @@ impl Component {
 }
 
 /// A Coresight debug component that can be configured with the Probe.
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct CoresightComponent {
     /// The component variant that is accessible.
     pub component: Component,
@@ -582,7 +582,7 @@ impl<'a> Iterator for CoresightComponentIter<'a> {
 }
 
 /// Indicates component modifications by the implementor of a CoreSight component.
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 enum ComponentModification {
     /// Indicates that no specific modification was made.
     No,
@@ -594,7 +594,7 @@ enum ComponentModification {
 ///
 /// Described in section D1.2.2 of the ADIv5.2 spec.
 #[allow(non_snake_case)]
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct PeripheralID {
     /// Indicates minor errata fixes by the component `designer`.
     REVAND: u8,
