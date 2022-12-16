@@ -1572,7 +1572,7 @@ impl RiscvValue for u32 {
     where
         R: LargeRegister,
     {
-        interface.schedule_write_dm_register_untyped(R::R0_ADDRESS as u64, value as u32)
+        interface.schedule_write_dm_register_untyped(R::R0_ADDRESS as u64, value)
     }
 }
 

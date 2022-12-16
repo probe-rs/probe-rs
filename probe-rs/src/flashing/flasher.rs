@@ -127,13 +127,13 @@ impl<'session> Flasher<'session> {
         let span = tracing::debug_span!("Loading algorithm into RAM", address = algo.load_address)
             .entered();
 
-        core.write_32(algo.load_address as u64, algo.instructions.as_slice())
+        core.write_32(algo.load_address, algo.instructions.as_slice())
             .map_err(FlashError::Core)?;
 
         drop(span);
 
         let mut data = vec![0; algo.instructions.len()];
-        core.read_32(algo.load_address as u64, &mut data)
+        core.read_32(algo.load_address, &mut data)
             .map_err(FlashError::Core)?;
 
         for (offset, (original, read_back)) in algo.instructions.iter().zip(data.iter()).enumerate()
@@ -316,7 +316,7 @@ impl<'session> Flasher<'session> {
         self.run_verify(|active| {
             active
                 .core
-                .read(fill.address() as u64, page_slice)
+                .read(fill.address(), page_slice)
                 .map_err(FlashError::Core)
         })
     }
@@ -751,7 +751,7 @@ impl<'p> ActiveFlasher<'p, Program> {
 
         // Transfer the bytes to RAM.
         self.core
-            .write_8(self.flash_algorithm.begin_data as u64, bytes)
+            .write_8(self.flash_algorithm.begin_data, bytes)
             .map_err(FlashError::Core)?;
 
         let result = self
@@ -805,9 +805,7 @@ impl<'p> ActiveFlasher<'p, Program> {
                 pc: into_reg(self.flash_algorithm.pc_program_page)?,
                 r0: Some(into_reg(address)?),
                 r1: Some(self.flash_algorithm.flash_properties.page_size),
-                r2: Some(into_reg(
-                    self.flash_algorithm.page_buffers[buffer_number as usize],
-                )?),
+                r2: Some(into_reg(self.flash_algorithm.page_buffers[buffer_number])?),
                 r3: None,
             },
             false,

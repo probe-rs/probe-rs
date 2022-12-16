@@ -224,7 +224,7 @@ impl<'probe> Armv7a<'probe> {
                 if writeback {
                     match i {
                         0..=14 => {
-                            let instruction = build_mrc(14, 0, i as u16, 0, 5, 0);
+                            let instruction = build_mrc(14, 0, i, 0, 5, 0);
 
                             self.execute_instruction_with_input(instruction, val.try_into()?)?;
                         }

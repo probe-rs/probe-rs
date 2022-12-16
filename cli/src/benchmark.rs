@@ -148,7 +148,7 @@ pub fn benchmark(common_options: ProbeOptions, options: BenchmarkOptions) -> any
             let client = reqwest::blocking::Client::new();
             const BASE_URL: &str = "https://perf.probe.rs/add";
             client
-                .post(&if let Some(pr) = options.pr {
+                .post(if let Some(pr) = options.pr {
                     format!("{}?pr={}", BASE_URL, pr)
                 } else {
                     BASE_URL.to_string()

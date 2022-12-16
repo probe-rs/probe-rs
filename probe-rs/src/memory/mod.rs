@@ -188,7 +188,7 @@ pub trait MemoryInterface {
     fn write(&mut self, address: u64, data: &[u8]) -> Result<(), error::Error> {
         let len = data.len();
         let start_extra_count = 4 - (address % 4) as usize;
-        let end_extra_count = ((len - start_extra_count) % 4) as usize;
+        let end_extra_count = (len - start_extra_count) % 4;
         let inbetween_count = len - start_extra_count - end_extra_count;
         assert!(start_extra_count < 4);
         assert!(end_extra_count < 4);

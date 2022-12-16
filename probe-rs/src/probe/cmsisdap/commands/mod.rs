@@ -387,7 +387,7 @@ fn trace_buffer(name: &str, buf: &[u8]) {
     if tracing::enabled!(tracing::Level::TRACE) {
         let len = buf.len();
         let cut = len + 1 - buf.iter().rev().position(|&x| x != 0).unwrap_or(len);
-        let end = std::cmp::min(len, std::cmp::max(1, cut));
+        let end = cut.clamp(1, len);
         tracing::trace!("{}: {:02X?}...", name, &buf[..end]);
     }
 }

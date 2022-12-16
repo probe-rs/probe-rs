@@ -225,7 +225,7 @@ impl CmsisDap {
                             PortType::DebugPort,
                             Ctrl::ADDRESS,
                         )?;
-                        let ctrl = Ctrl::from(response);
+                        let ctrl = Ctrl::try_from(response)?;
                         tracing::trace!("Ctrl/Stat register value is: {:?}", ctrl);
 
                         if ctrl.sticky_err() {
@@ -657,7 +657,7 @@ impl RawDapAccess for CmsisDap {
 
         for (i, chunk) in values.chunks(data_chunk_len).enumerate() {
             let request =
-                TransferBlockRequest::write_request(register_address as u8, port, Vec::from(chunk));
+                TransferBlockRequest::write_request(register_address, port, Vec::from(chunk));
 
             tracing::debug!("Transfer block: chunk={}, len={} bytes", i, chunk.len() * 4);
 
@@ -695,11 +695,8 @@ impl RawDapAccess for CmsisDap {
         let data_chunk_len = max_packet_size_words as usize;
 
         for (i, chunk) in values.chunks_mut(data_chunk_len).enumerate() {
-            let request = TransferBlockRequest::read_request(
-                register_address as u8,
-                port,
-                chunk.len() as u16,
-            );
+            let request =
+                TransferBlockRequest::read_request(register_address, port, chunk.len() as u16);
 
             tracing::debug!("Transfer block: chunk={}, len={} bytes", i, chunk.len() * 4);
 

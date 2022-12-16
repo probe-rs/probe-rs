@@ -95,7 +95,7 @@ pub trait ArmProbe: SwdSequence {
     fn write(&mut self, address: u64, data: &[u8]) -> Result<(), Error> {
         let len = data.len();
         let start_extra_count = 4 - (address % 4) as usize;
-        let end_extra_count = ((len - start_extra_count) % 4) as usize;
+        let end_extra_count = (len - start_extra_count) % 4;
         let inbetween_count = len - start_extra_count - end_extra_count;
         assert!(start_extra_count < 4);
         assert!(end_extra_count < 4);
@@ -204,11 +204,7 @@ where
         //   HPROT[3] == 0   - non-bufferable access
 
         CSW {
-            HNONSEC: if self.ap_information.supports_hnonsec {
-                0
-            } else {
-                1
-            },
+            HNONSEC: !self.ap_information.supports_hnonsec as u8,
             PROT: 0b10,
             CACHE: 0b11,
             AddrInc: AddressIncrement::Single,

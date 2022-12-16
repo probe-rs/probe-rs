@@ -1174,8 +1174,7 @@ fn unwind_register(
     let register_rule = debug_register
         .dwarf_id
         .and_then(|register_position| {
-            unwind_info
-                .map(|unwind_info| unwind_info.register(gimli::Register(register_position as u16)))
+            unwind_info.map(|unwind_info| unwind_info.register(gimli::Register(register_position)))
         })
         .unwrap_or(gimli::RegisterRule::Undefined);
     let mut register_rule_string = format!("{:?}", register_rule);

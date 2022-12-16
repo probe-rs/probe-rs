@@ -67,7 +67,7 @@ impl ApAccess for MockMemoryAp {
                 let drw = self.store[&DRW::ADDRESS];
                 let bit_offset = (address % 4) * 8;
                 let offset = address as usize;
-                let csw = CSW::from(csw);
+                let csw = CSW::try_from(csw).unwrap();
 
                 let (new_drw, offset) = match csw.SIZE {
                     DataSize::U32 => {
@@ -113,10 +113,10 @@ impl ApAccess for MockMemoryAp {
                     }
                 }
 
-                Ok(R::from(new_drw))
+                Ok(R::try_from(new_drw).unwrap())
             }
-            CSW::ADDRESS => Ok(R::from(self.store[&R::ADDRESS])),
-            TAR::ADDRESS => Ok(R::from(self.store[&R::ADDRESS])),
+            CSW::ADDRESS => Ok(R::try_from(self.store[&R::ADDRESS]).unwrap()),
+            TAR::ADDRESS => Ok(R::try_from(self.store[&R::ADDRESS]).unwrap()),
             _ => Err(anyhow!("MockMemoryAp: unknown register").into()),
         }
     }
@@ -142,7 +142,7 @@ impl ApAccess for MockMemoryAp {
 
         match R::ADDRESS {
             DRW::ADDRESS => {
-                let csw = CSW::from(csw);
+                let csw = CSW::try_from(csw).unwrap();
 
                 let access_width = match csw.SIZE {
                     DataSize::U256 => 32,
@@ -211,7 +211,7 @@ impl ApAccess for MockMemoryAp {
         R: ApRegister<PORT>,
     {
         for value in values {
-            self.write_ap_register(port.clone(), R::from(*value))?
+            self.write_ap_register(port.clone(), R::try_from(*value).unwrap())?
         }
 
         Ok(())
@@ -239,7 +239,7 @@ impl ApAccess for MockMemoryAp {
 impl DpAccess for MockMemoryAp {
     fn read_dp_register<R: DpRegister>(&mut self, _dp: DpAddress) -> Result<R, DebugPortError> {
         // Ignore for Tests
-        Ok(0.into())
+        Ok(0.try_into().unwrap())
     }
 
     fn write_dp_register<R: DpRegister>(

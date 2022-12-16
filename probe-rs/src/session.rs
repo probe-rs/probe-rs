@@ -468,9 +468,7 @@ impl Session {
         // but we only have &mut. We can work around that by first creating
         // an instance of a Dummy and then swapping it out for the real one.
         // perform the re-attach and then swap it back.
-        let tmp_interface = Box::new(FakeProbe::default())
-            .try_get_arm_interface()
-            .unwrap();
+        let tmp_interface = Box::<FakeProbe>::default().try_get_arm_interface().unwrap();
         let mut tmp_interface = tmp_interface
             .initialize(DefaultArmSequence::create())
             .unwrap();

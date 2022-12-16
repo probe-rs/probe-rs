@@ -456,8 +456,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                     discriminant_variable
                                         .get_value(cache)
                                         .parse()
-                                        .unwrap_or(u64::MAX)
-                                        as u64,
+                                        .unwrap_or(u64::MAX),
                                 );
                             }
                             cache.remove_cache_entry(discriminant_variable.variable_key)?;
@@ -720,7 +719,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                         let mut in_scope =  false;
                         if let Ok(Some(low_pc_attr)) = child_node.entry().attr(gimli::DW_AT_low_pc) {
                             let low_pc = match low_pc_attr.value() {
-                                gimli::AttributeValue::Addr(value) => value as u64,
+                                gimli::AttributeValue::Addr(value) => value,
                                 _other => u64::MAX,
                             };
                             let high_pc = if let Ok(Some(high_pc_attr))
@@ -885,7 +884,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                             VariableLocation::Address(address) => {
                                 // This is a member of an array type, and needs special handling.
                                 let (location, has_overflowed) = address.overflowing_add(
-                                    child_member_index as u64 * child_variable.byte_size as u64,
+                                    child_member_index as u64 * child_variable.byte_size,
                                 );
 
                                 if has_overflowed {
@@ -986,7 +985,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                             VariableLocation::Address(address) => {
                                 // This is a member of an array type, and needs special handling.
                                 let (location, has_overflowed) = address.overflowing_add(
-                                    child_member_index as u64 * child_variable.byte_size as u64,
+                                    child_member_index as u64 * child_variable.byte_size,
                                 );
 
                                 if has_overflowed {
@@ -1234,7 +1233,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                             VariableLocation::Address(address) => {
                                 // This is a member of an array type, and needs special handling.
                                 let (location, has_overflowed) = address.overflowing_add(
-                                    child_member_index as u64 * child_variable.byte_size as u64,
+                                    child_member_index as u64 * child_variable.byte_size,
                                 );
 
                                 if has_overflowed {
@@ -1598,7 +1597,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                         match size {
                             1 => evaluation.resume_with_memory(gimli::Value::U8(buff[0]))?,
                             2 => {
-                                let val = (u16::from(buff[0]) << 8) | (u16::from(buff[1]) as u16);
+                                let val = (u16::from(buff[0]) << 8) | (u16::from(buff[1]));
                                 evaluation.resume_with_memory(gimli::Value::U16(val))?
                             }
                             4 => {
