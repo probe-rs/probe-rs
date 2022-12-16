@@ -434,6 +434,7 @@ mod test {
         let mut output = Vec::new();
 
         let mut adapter = DapAdapter::new(input.as_bytes(), &mut output);
+        adapter.console_log_level = super::ConsoleLog::Info;
 
         let request = adapter.listen_for_request().unwrap().unwrap();
 
@@ -454,6 +455,7 @@ mod test {
         let mut output = Vec::new();
 
         let mut adapter = DapAdapter::new(input.as_bytes(), &mut output);
+        adapter.console_log_level = super::ConsoleLog::Info;
 
         let _request = adapter.listen_for_request().unwrap_err();
 
@@ -471,6 +473,7 @@ mod test {
         let mut output = Vec::new();
 
         let mut adapter = DapAdapter::new(input.as_bytes(), &mut output);
+        adapter.console_log_level = super::ConsoleLog::Info;
 
         let _request = adapter.listen_for_request().unwrap_err();
 
@@ -491,6 +494,7 @@ mod test {
         let mut output = Vec::new();
 
         let mut adapter = DapAdapter::new(input, &mut output);
+        adapter.console_log_level = super::ConsoleLog::Info;
 
         let request = adapter.listen_for_request().unwrap();
 
