@@ -962,13 +962,17 @@ impl<Probe: DebugProbe + RawProtocolIo + JTAGAccess + 'static> RawDapAccess for 
                     output_seq >>= 1;
                 }
 
+                for _ in 0..50 {
+                    leave_dormant_sequence.add_output(true);
+                }
+
                 // send the leave dormant sequence
                 match self.active_protocol().expect("No protocol set") {
                     crate::WireProtocol::Jtag => {
                         log::trace!("using jtag sequence");
                         self.jtag_io(
                             leave_dormant_sequence.io_bits().to_owned(),
-                            iter::repeat(false).take(8 + 128 + 4 + 8),
+                            iter::repeat(false).take(8 + 128 + 4 + 8 + 50),
                         )?;
                     }
                     crate::WireProtocol::Swd => {
@@ -982,10 +986,10 @@ impl<Probe: DebugProbe + RawProtocolIo + JTAGAccess + 'static> RawDapAccess for 
 
                 let mut target_sel_sequence = IoSequence::new();
                 // Line reset
-                for _ in 0..60 {
+                for _ in 0..50 {
                     target_sel_sequence.add_output(true);
                 }
-                for _ in 0..6 {
+                for _ in 0..2 {
                     target_sel_sequence.add_output(false);
                 }
                 target_sel_sequence.add_output(true); // start
@@ -1001,12 +1005,32 @@ impl<Probe: DebugProbe + RawProtocolIo + JTAGAccess + 'static> RawDapAccess for 
                     // 5 cycles not driven, which apparently is not possible with jaylink
                     target_sel_sequence.add_input();
                 }
-                let mut targetsel_bits = targetsel.reverse_bits();
+                let mut targetsel_bits = targetsel;
                 for _ in 0..32 {
                     target_sel_sequence.add_output(targetsel_bits & 1 == 1);
                     targetsel_bits >>= 1;
                 }
+                let parity = targetsel.count_ones() & 1 == 1;
                 target_sel_sequence.add_output(parity); // Parity
+
+
+                target_sel_sequence.add_output(true); // start
+                target_sel_sequence.add_output(false); // APnDP
+                target_sel_sequence.add_output(true); // RnW
+                target_sel_sequence.add_output(false); // A
+                target_sel_sequence.add_output(false); // A
+                //let parity = targetsel.count_ones() % 2 == 1;
+                //target_sel_sequence.add_output(parity); // Parity
+                target_sel_sequence.add_output(true); // Parity
+                target_sel_sequence.add_output(false); // Stop
+                target_sel_sequence.add_output(true); // Park
+                target_sel_sequence.add_input(); // turnaround
+                for _ in 0..3 {
+                    target_sel_sequence.add_input();
+                }
+                for _ in 0..33 {
+                    target_sel_sequence.add_input();
+                }
 
                 // send the built sequence
                 match self.active_protocol().expect("No protocol set") {
