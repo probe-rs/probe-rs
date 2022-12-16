@@ -112,6 +112,10 @@ fn try_show_info(
                 probe = interface_probe;
             }
         }
+    } else {
+        println!(
+            "No JTAG interface was found on the connected probe. Thus, RISC-V info cannot be printed."
+        );
     }
 
     (probe, Ok(()))
