@@ -1,7 +1,6 @@
 ---
 source: debugger/src/debug_adapter/protocol.rs
+assertion_line: 442
 expression: output_str
 ---
-Content-Length: 151
 
-{"body":{"category":"console","group":"probe-rs-debug","output":"\nReceived DAP Request sequence #3 : test\n"},"event":"output","seq":1,"type":"event"}
