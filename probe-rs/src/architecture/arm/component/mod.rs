@@ -104,11 +104,9 @@ pub trait DebugRegister: Clone + From<u32> + Into<u32> + Sized + std::fmt::Debug
 /// and create a list of all the contained components.
 pub fn get_arm_components(
     interface: &mut dyn ArmProbeInterface,
+    dp: DpAddress,
 ) -> Result<Vec<CoresightComponent>, Error> {
     let mut components = Vec::new();
-
-    // TODO
-    let dp = DpAddress::Default;
 
     for ap_index in 0..(interface.num_access_ports(dp)? as u8) {
         let ap_information = interface
