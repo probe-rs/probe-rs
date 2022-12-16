@@ -7,6 +7,16 @@
     {
       "type": "lldb",
       "request": "launch",
+      "name": "Launch CLI",
+      "cargo": {
+        "args": ["build", "--package=probe-rs-cli"]
+      },
+      "program": "${cargo:program}",
+      "args": ["generate", "bash"]
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
       "name": "Launch smoke tester",
       "cargo": {
         "args": ["build", "--package=smoke_tester"]
@@ -17,33 +27,37 @@
     {
       "type": "lldb",
       "request": "launch",
-      "name": "DAP-Server probe-rs", // Use this to test the dap server .
+      "name": "DAP-Server probe-rs-debugger", // Use this to test the dap server .
       "cargo": {
-        "args": ["build", "--bin=probe-rs", "--features=cli"],
+        "args": [
+          "build",
+          "--bin=probe-rs-debugger",
+          "--package=probe-rs-debugger"
+        ],
         "filter": {
-          "name": "probe-rs",
+          "name": "probe-rs-debugger",
           "kind": "bin"
         }
       },
-      "args": ["dap-server", "--port", "50001"],
-      // "env": {
-      //     "RUST_LOG": "error",
-      //     "DEFMT_LOG": "info"
-      // },
-      "cwd": "${workspaceFolder}/probe-rs/src/bin/probe-rs/cmd/dap_server"
+      "args": ["debug", "--port", "50001"],
+      "cwd": "${workspaceFolder}/debugger"
     },
     {
       "type": "lldb",
       "request": "launch",
       "name": "list supported chips",
       "cargo": {
-        "args": ["build", "--bin=probe-rs", "--features=cli"],
+        "args": [
+          "build",
+          "--bin=probe-rs-debugger",
+          "--package=probe-rs-debugger"
+        ],
         "filter": {
-          "name": "probe-rs",
+          "name": "probe-rs-debugger",
           "kind": "bin"
         }
       },
-      "args": ["chip", "list"],
+      "args": ["list-chips"],
       "cwd": "${workspaceFolder}/debugger"
     },
     {
@@ -51,9 +65,13 @@
       "request": "launch",
       "name": "list attached probes",
       "cargo": {
-        "args": ["build", "--bin=probe-rs", "--features=cli"],
+        "args": [
+          "build",
+          "--bin=probe-rs-debugger",
+          "--package=probe-rs-debugger"
+        ],
         "filter": {
-          "name": "probe-rs",
+          "name": "probe-rs-debugger",
           "kind": "bin"
         }
       },
@@ -65,9 +83,13 @@
       "request": "launch",
       "name": "display help text",
       "cargo": {
-        "args": ["build", "--bin=probe-rs", "--features=cli"],
+        "args": [
+          "build",
+          "--bin=probe-rs-debugger",
+          "--package=probe-rs-debugger"
+        ],
         "filter": {
-          "name": "probe-rs",
+          "name": "probe-rs-debugger",
           "kind": "bin"
         }
       },
@@ -77,15 +99,19 @@
     {
       "type": "lldb",
       "request": "launch",
-      "name": "display dap-server debug subcommand help text",
+      "name": "display debug subcommand help text",
       "cargo": {
-        "args": ["build", "--bin=probe-rs", "--features=cli"],
+        "args": [
+          "build",
+          "--bin=probe-rs-debugger",
+          "--package=probe-rs-debugger"
+        ],
         "filter": {
-          "name": "probe-rs",
+          "name": "probe-rs-debugger",
           "kind": "bin"
         }
       },
-      "args": ["help", "dap-server", "debug"],
+      "args": ["help", "debug"],
       "cwd": "${workspaceFolder}/debugger"
     },
     {

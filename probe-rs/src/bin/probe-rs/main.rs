@@ -81,6 +81,7 @@ enum Subcommand {
     Profile(cmd::profile::ProfileCmd),
     Read(cmd::read::Cmd),
     Write(cmd::write::Cmd),
+    Complete(cmd::complete::Cmd),
 }
 
 /// Shared options for core selection, shared between commands
@@ -305,5 +306,45 @@ fn main() -> Result<()> {
         Subcommand::Profile(cmd) => cmd.run(&lister),
         Subcommand::Read(cmd) => cmd.run(&lister),
         Subcommand::Write(cmd) => cmd.run(&lister),
+        Subcommand::Complete(cmd) => cmd.run(&lister),
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+#[non_exhaustive]
+pub enum GenerateKind {
+    AutocompleteScript,
+    ChipsList,
+}
+
+impl FromStr for GenerateKind {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(match s {
+            "chips-list" => Self::ChipsList,
+            _ => return Err(format!("Invalid variant: {}", s)),
+        })
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+#[non_exhaustive]
+pub enum CompleteKind {
+    GenerateScript,
+    ProbeList,
+    ChipList,
+}
+
+impl FromStr for CompleteKind {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(match s {
+            "generate-script" => Self::GenerateScript,
+            "chip-list" => Self::ChipList,
+            "probe-list" => Self::ProbeList,
+            _ => return Err(format!("Invalid variant: {}", s)),
+        })
     }
 }

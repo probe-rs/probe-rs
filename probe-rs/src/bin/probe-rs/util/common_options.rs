@@ -1,7 +1,11 @@
-use std::{fs::File, path::Path, path::PathBuf};
+use std::{
+    fs::File,
+    path::{Path, PathBuf},
+};
 
 use super::cargo::ArtifactError;
 use crate::util::parse_u64;
+use clap::ValueHint;
 use probe_rs::{
     config::{RegistryError, TargetSelector},
     flashing::{FileDownloadError, FlashError},
@@ -63,7 +67,7 @@ pub struct ReadWriteOptions {
 /// Common options and logic when interfacing with a [Probe].
 #[derive(clap::Parser, Debug)]
 pub struct ProbeOptions {
-    #[arg(long, env = "PROBE_RS_CHIP", help_heading = "PROBE CONFIGURATION")]
+    #[arg(long, env = "PROBE_RS_CHIP", help_heading = "PROBE CONFIGURATION", value_hint = ValueHint::Unknown)]
     pub chip: Option<String>,
     #[arg(
         value_name = "chip description file path",

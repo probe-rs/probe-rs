@@ -398,8 +398,8 @@ where
 
 /// Get a list of all families which are contained in the internal
 /// registry.
-pub fn families() -> Result<Vec<ChipFamily>, RegistryError> {
-    Ok(REGISTRY.lock().unwrap().families().clone())
+pub fn families() -> Vec<ChipFamily> {
+    REGISTRY.lock().unwrap().families().clone()
 }
 
 /// See if `name` matches the start of `pattern`, treating any lower-case `x`
