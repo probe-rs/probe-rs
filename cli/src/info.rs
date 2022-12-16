@@ -92,7 +92,7 @@ fn try_show_info(
         );
     }
 
-    if probe.has_riscv_interface() && !matches!(protocol, WireProtocol::Swd) {
+    if probe.has_riscv_interface() && protocol == WireProtocol::Swd {
         match probe.try_into_riscv_interface() {
             Ok(mut interface) => {
                 if let Err(e) = show_riscv_info(&mut interface) {
@@ -169,10 +169,6 @@ fn show_arm_info(interface: &mut dyn ArmProbeInterface) -> Result<()> {
 
     let dp = DpAddress::Default;
     let num_access_ports = interface.num_access_ports(dp).unwrap();
-
-    if num_access_ports == 0 {
-        tree.push("No memory APs found. The chip has locked debug access.".to_string());
-    }
 
     for ap_index in 0..num_access_ports {
         let ap = ApAddress {
