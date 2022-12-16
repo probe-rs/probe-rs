@@ -193,17 +193,15 @@ pub struct CoreConfig {
 }
 
 fn default_console_log() -> Option<ConsoleLog> {
-    Some(ConsoleLog::Error)
+    Some(ConsoleLog::Console)
 }
 
-/// The level of information to be logged to the debugger console. The DAP Client will set appropriate RUST_LOG env for 'launch' configurations,  and will pass the rust log output to the client debug console.
+/// The level of information to be logged to the debugger console.
 #[derive(Copy, Clone, PartialEq, Eq, Debug, serde::Serialize, serde::Deserialize)]
 pub enum ConsoleLog {
-    Error,
-    Warn,
+    Console,
     Info,
     Debug,
-    Trace,
 }
 
 impl std::str::FromStr for ConsoleLog {
@@ -211,13 +209,11 @@ impl std::str::FromStr for ConsoleLog {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match &s.to_ascii_lowercase()[..] {
-            "error" => Ok(ConsoleLog::Error),
-            "warn" => Ok(ConsoleLog::Error),
+            "console" => Ok(ConsoleLog::Console),
             "info" => Ok(ConsoleLog::Info),
             "debug" => Ok(ConsoleLog::Debug),
-            "trace" => Ok(ConsoleLog::Trace),
             _ => Err(format!(
-                "'{}' is not a valid console log level. Choose from [error, warn, info, debug, or trace].",
+                "'{}' is not a valid console log level. Choose from [console, info, or debug].",
                 s
             )),
         }

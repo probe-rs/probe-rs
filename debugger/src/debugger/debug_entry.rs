@@ -380,7 +380,11 @@ impl Debugger {
     pub(crate) fn debug_session<P: ProtocolAdapter + 'static>(
         &mut self,
         mut debug_adapter: DebugAdapter<P>,
+        log_info_message: &String,
     ) -> Result<DebuggerStatus, DebuggerError> {
+        debug_adapter.log_to_console("Starting debug session...");
+        debug_adapter.log_to_console(log_info_message);
+
         // The DapClient startup process has a specific sequence.
         // Handle it here before starting a probe-rs session and looping through user generated requests.
         // Handling the initialize, and Attach/Launch requests here in this method,
@@ -530,7 +534,7 @@ impl Debugger {
                     }
                 }
                 debug_adapter.set_console_log_level(
-                    self.config.console_log_level.unwrap_or(ConsoleLog::Error),
+                    self.config.console_log_level.unwrap_or(ConsoleLog::Console),
                 );
             }
             Err(error) => {
@@ -590,7 +594,7 @@ impl Debugger {
                     }
                 };
                 debug_adapter.log_to_console(format!(
-                    "INFO: FLASHING: Starting write of {:?} to device memory",
+                    "FLASHING: Starting write of {:?} to device memory",
                     &path_to_elf
                 ));
 
@@ -808,7 +812,7 @@ impl Debugger {
                 match flash_result {
                     Ok(_) => {
                         debug_adapter.log_to_console(format!(
-                            "INFO: FLASHING: Completed write of {:?} to device memory",
+                            "FLASHING: Completed write of {:?} to device memory",
                             &path_to_elf
                         ));
                     }
@@ -947,15 +951,11 @@ pub fn list_supported_chips() -> Result<()> {
     Ok(())
 }
 
-pub fn debug(port: Option<u16>, vscode: bool) -> Result<()> {
-    let program_name = clap::crate_name!();
-
+pub fn debug(port: Option<u16>, vscode: bool, log_info_message: &String) -> Result<()> {
     let mut debugger = Debugger::new(port);
 
-    println!(
-        "{} CONSOLE: Starting as a DAP Protocol server",
-        &program_name
-    );
+    log_to_console_and_tracing("Starting as a DAP Protocol server".to_string());
+
     match &debugger.config.port.clone() {
         Some(port) => {
             let addr = std::net::SocketAddr::new(
@@ -963,14 +963,16 @@ pub fn debug(port: Option<u16>, vscode: bool) -> Result<()> {
                 port.to_owned(),
             );
 
+            // Tell the user if (and where) RUST_LOG messages are written.
+            log_to_console_and_tracing(log_info_message.to_string());
+
             loop {
                 let listener = TcpListener::bind(addr)?;
 
-                println!(
-                    "{} CONSOLE: Listening for requests on port {}",
-                    &program_name,
+                log_to_console_and_tracing(format!(
+                    "Listening for requests on port {}",
                     addr.port()
-                );
+                ));
 
                 listener.set_nonblocking(false).ok();
                 match listener.accept() {
@@ -982,10 +984,8 @@ pub fn debug(port: Option<u16>, vscode: bool) -> Result<()> {
                             )
                         })?;
 
-                        let message =
-                            format!("{}: ..Starting session from   :{}", &program_name, addr);
-                        tracing::info!("{}", &message);
-                        println!("{}", &message);
+                        log_to_console_and_tracing(format!("..Starting session from   :{}", addr));
+
                         let reader = socket
                             .try_clone()
                             .context("Failed to establish a bi-directional Tcp connection.")?;
@@ -995,19 +995,15 @@ pub fn debug(port: Option<u16>, vscode: bool) -> Result<()> {
 
                         let debug_adapter = DebugAdapter::new(dap_adapter);
 
-                        match debugger.debug_session(debug_adapter) {
+                        match debugger.debug_session(debug_adapter, log_info_message) {
                             Err(error) => {
-                                tracing::error!("probe-rs-debugger session ended: {}", &error);
-                                println!(
-                                    "{} CONSOLE: ....Closing session from  :{}, due to error: {}",
-                                    &program_name, addr, error
-                                );
+                                tracing::error!("probe-rs-debugger session ended: {}", error);
                             }
                             Ok(DebuggerStatus::TerminateSession) => {
-                                println!(
-                                    "{} CONSOLE: ....Closing session from  :{}",
-                                    &program_name, addr
-                                );
+                                log_to_console_and_tracing(format!(
+                                    "....Closing session from  :{}",
+                                    addr
+                                ));
                             }
                             Ok(DebuggerStatus::ContinueSession) => {
                                 tracing::error!("probe-rs-debugger enountered unexpected `DebuggerStatus` in debug() execution. Please report this as a bug.");
@@ -1023,7 +1019,7 @@ pub fn debug(port: Option<u16>, vscode: bool) -> Result<()> {
                     }
                 }
             }
-            println!("{} CONSOLE: DAP Protocol server exiting", &program_name);
+            log_to_console_and_tracing("CONSOLE: DAP Protocol server exiting".to_string());
         }
         None => {
             tracing::error!("Using probe-rs-debugger as a debug server, requires the use of the `--port` option. Please use the `--help` option for additional information");
@@ -1031,4 +1027,10 @@ pub fn debug(port: Option<u16>, vscode: bool) -> Result<()> {
     };
 
     Ok(())
+}
+
+/// All eprintln! messages are picked up by the VSCode extension and displayed in the debug console. We send these to stderr, in addition to logging them, so that they will show up, irrespective of the RUST_LOG level filters.
+fn log_to_console_and_tracing(message: String) {
+    eprintln!("probe-rs-debug: {}", &message);
+    tracing::info!("{}", &message);
 }
