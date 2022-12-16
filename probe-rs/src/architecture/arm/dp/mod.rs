@@ -23,7 +23,7 @@ pub enum DebugPortError {
     },
     /// Error parsing a register value.
     #[error("Error parsing register value.")]
-    Parse(#[from] RegisterParseError),
+    RegisterParse(#[from] RegisterParseError),
     /// An error with operating the debug probe occurred.
     #[error("A Debug Probe Error occurred")]
     DebugProbe(#[from] DebugProbeError),
