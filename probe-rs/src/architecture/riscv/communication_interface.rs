@@ -67,6 +67,11 @@ pub enum RiscvError {
     /// The given trigger type is not available for the address breakpoint.
     #[error("Unexpected trigger type {0} for address breakpoint.")]
     UnexpectedTriggerType(u32),
+    /// The connected chip is most likely not a RISC-V chip.
+    /// It could also be another issue but the DTMCS read as zero which hints that the connected chip
+    /// (if any) is not RISC-V.
+    #[error("The connected chip ist most likely not a RISC-V chip.")]
+    NotRiscV,
 }
 
 impl From<RiscvError> for ProbeRsError {

@@ -92,7 +92,7 @@ fn try_show_info(
         );
     }
 
-    if probe.has_riscv_interface() {
+    if probe.has_riscv_interface() && !matches!(protocol, WireProtocol::Swd) {
         match probe.try_into_riscv_interface() {
             Ok(mut interface) => {
                 if let Err(e) = show_riscv_info(&mut interface) {
