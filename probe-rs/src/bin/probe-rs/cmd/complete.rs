@@ -19,8 +19,8 @@ pub struct Cmd {
 
 impl Cmd {
     pub fn run(&self, lister: &Lister) -> Result<(), anyhow::Error> {
-        if self.shell != Shell::Zsh {
-            anyhow::bail!("Only ZSH is supported for autocompletions at the moment");
+        if !matches!(self.shell, Shell::Zsh | Shell::Bash) {
+            anyhow::bail!("Only ZSH and Bash are supported for autocompletions at the moment");
         }
 
         let output = match self.kind {
@@ -28,6 +28,7 @@ impl Cmd {
                 let mut command = <Cli as CommandFactory>::command();
                 let name = std::env::args_os().next().unwrap();
                 let name = name.to_str().unwrap().split('/').last().unwrap();
+                command = command.name("probe-rs");
                 let mut script = Cursor::new(Vec::<u8>::new());
                 generate(self.shell, &mut command, name, &mut script);
                 let mut script = String::from_utf8_lossy(&script.into_inner()).to_string();
@@ -118,14 +119,28 @@ _probe-rs-cli_probe_list() {
             "#;
             *script = re.replace_all(script, format!("{inject}\n$1")).into();
 
-            let re = regex::Regex::new(&format!(r#"(PROBE_SELECTOR: )"#))?;
+            let re = regex::Regex::new("(PROBE_SELECTOR: )")?;
             *script = re
                 .replace_all(script, "PROBE_SELECTOR:_probe-rs-cli_probe_list")
                 .into();
 
-            let re = regex::Regex::new(&format!(r#"(CHIP: )"#))?;
+            let re = regex::Regex::new("(CHIP: )")?;
             *script = re
                 .replace_all(script, "CHIP:_probe-rs-cli_chips_list")
+                .into();
+        }
+        Shell::Bash => {
+            let re = regex::Regex::new(
+                r#"(?s)(\-\-chip\)\n *COMPREPLY=\(\$\()compgen \-f( "\$\{cur\}"\)\))"#,
+            )?;
+            *script = re
+                .replace_all(script, r#"${1}probe-rs-cli complete chip-list $2"#)
+                .into();
+            let re = regex::Regex::new(
+                r#"(?s)(\-\-probe\)\n *COMPREPLY=\(\$\()compgen \-f( "\$\{cur\}"\)\))"#,
+            )?;
+            *script = re
+                .replace_all(script, r#"${1}probe-rs-cli complete probe-list $2"#)
                 .into();
         }
         _ => {}
