@@ -1,3 +1,4 @@
+use crate::architecture::riscv::communication_interface::RiscvError;
 use crate::architecture::{
     arm::communication_interface::UninitializedArmProbe,
     riscv::communication_interface::RiscvCommunicationInterface,
@@ -393,7 +394,7 @@ impl DebugProbe for FtdiProbe {
         Ok(())
     }
 
-    fn detach(&mut self) -> Result<(), DebugProbeError> {
+    fn detach(&mut self) -> Result<(), crate::Error> {
         Ok(())
     }
 
@@ -427,7 +428,7 @@ impl DebugProbe for FtdiProbe {
 
     fn try_get_riscv_interface(
         self: Box<Self>,
-    ) -> Result<RiscvCommunicationInterface, (Box<dyn DebugProbe>, DebugProbeError)> {
+    ) -> Result<RiscvCommunicationInterface, (Box<dyn DebugProbe>, RiscvError)> {
         match RiscvCommunicationInterface::new(self) {
             Ok(interface) => Ok(interface),
             Err((probe, err)) => Err((probe.into_probe(), err)),
@@ -493,7 +494,10 @@ impl JTAGAccess for FtdiProbe {
         let mut results = Vec::<CommandResult>::new();
 
         let chain_params = self.adapter.get_chain_params().map_err(|e| {
-            BatchExecutionError::new(DebugProbeError::ProbeSpecific(Box::new(e)), results.clone())
+            BatchExecutionError::new(
+                crate::Error::Probe(DebugProbeError::ProbeSpecific(Box::new(e))),
+                results.clone(),
+            )
         })?;
 
         let commands: Result<Vec<WriteRegisterCommand>, _> = writes
@@ -510,7 +514,10 @@ impl JTAGAccess for FtdiProbe {
             .collect();
 
         let mut commands = commands.map_err(|e| {
-            BatchExecutionError::new(DebugProbeError::ProbeSpecific(Box::new(e)), results.clone())
+            BatchExecutionError::new(
+                crate::Error::Probe(DebugProbeError::ProbeSpecific(Box::new(e))),
+                results.clone(),
+            )
         })?;
 
         for cmd_chunk in commands.chunks_mut(CHUNK_SIZE) {
@@ -531,7 +538,7 @@ impl JTAGAccess for FtdiProbe {
                 Ok(_) => (),
                 Err(e) => {
                     return Err(BatchExecutionError::new(
-                        DebugProbeError::ProbeSpecific(Box::new(e)),
+                        crate::Error::Probe(DebugProbeError::ProbeSpecific(Box::new(e))),
                         results.clone(),
                     ));
                 }
@@ -544,7 +551,7 @@ impl JTAGAccess for FtdiProbe {
             while result.len() < size {
                 if t0.elapsed() > timeout {
                     return Err(BatchExecutionError::new(
-                        DebugProbeError::Timeout,
+                        crate::Error::Probe(DebugProbeError::Timeout),
                         results.clone(),
                     ));
                 }
@@ -554,7 +561,7 @@ impl JTAGAccess for FtdiProbe {
                     Ok(_) => (),
                     Err(e) => {
                         return Err(BatchExecutionError::new(
-                            DebugProbeError::ProbeSpecific(Box::new(e)),
+                            crate::Error::Probe(DebugProbeError::ProbeSpecific(Box::new(e))),
                             results.clone(),
                         ));
                     }
@@ -563,10 +570,10 @@ impl JTAGAccess for FtdiProbe {
 
             if result.len() > size {
                 return Err(BatchExecutionError::new(
-                    DebugProbeError::ProbeSpecific(Box::new(io::Error::new(
+                    crate::Error::Probe(DebugProbeError::ProbeSpecific(Box::new(io::Error::new(
                         io::ErrorKind::InvalidData,
                         "Read more data than expected",
-                    ))),
+                    )))),
                     results.clone(),
                 ));
             }
@@ -593,7 +600,12 @@ impl JTAGAccess for FtdiProbe {
                                 .map_err(|e| BatchExecutionError::new(e, results.clone()))?,
                         );
                     }
-                    Err(e) => return Err(BatchExecutionError::new(e, results.clone())),
+                    Err(e) => {
+                        return Err(BatchExecutionError::new(
+                            crate::Error::Probe(e),
+                            results.clone(),
+                        ))
+                    }
                 }
 
                 pos += len;

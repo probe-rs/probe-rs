@@ -7,7 +7,7 @@ pub(crate) mod jlink;
 pub(crate) mod stlink;
 
 use self::espusbjtag::list_espjtag_devices;
-use crate::architecture::arm::communication_interface::RegisterParseError;
+use crate::architecture::riscv::communication_interface::RiscvError;
 use crate::error::Error;
 use crate::Session;
 use crate::{
@@ -17,9 +17,9 @@ use crate::{
 use crate::{
     architecture::{
         arm::{
-            communication_interface::DapProbe,
+            communication_interface::{DapProbe, RegisterParseError},
             sequences::{ArmDebugSequence, DefaultArmSequence},
-            PortType, SwoAccess,
+            DapError, PortType, SwoAccess,
         },
         riscv::communication_interface::RiscvCommunicationInterface,
     },
@@ -115,9 +115,6 @@ pub enum DebugProbeError {
     /// A timeout occurred during an operation.
     #[error("Operation timed out")]
     Timeout,
-    /// An error that is specific to the selected  target core architecture occoured.
-    #[error("An error specific to the selected architecture occurred")]
-    ArchitectureSpecific(#[source] Box<dyn std::error::Error + Send + Sync>),
     /// The selected probe does not support the selected interface.
     /// This happens if a probe does not support certain functionality, such as:
     /// - ARM debugging
@@ -171,6 +168,9 @@ pub enum DebugProbeError {
     /// Error parsing a register
     #[error("Error parsing a register.")]
     RegisterParse(#[from] RegisterParseError),
+    /// A DAP error occured.
+    #[error("A DAP error occured.")]
+    DapError(DapError),
     /// Some other error occurred.
     #[error(transparent)]
     Other(#[from] anyhow::Error),
@@ -394,7 +394,7 @@ impl Probe {
     }
 
     /// Leave debug mode
-    pub fn detach(&mut self) -> Result<(), DebugProbeError> {
+    pub fn detach(&mut self) -> Result<(), crate::Error> {
         self.attached = false;
         self.inner.detach()?;
         Ok(())
@@ -476,9 +476,9 @@ impl Probe {
     /// If an error occurs while trying to connect, the probe is returned.
     pub fn try_into_riscv_interface(
         self,
-    ) -> Result<RiscvCommunicationInterface, (Self, DebugProbeError)> {
+    ) -> Result<RiscvCommunicationInterface, (Self, RiscvError)> {
         if !self.attached {
-            Err((self, DebugProbeError::NotAttached))
+            Err((self, DebugProbeError::NotAttached.into()))
         } else {
             self.inner
                 .try_get_riscv_interface()
@@ -559,7 +559,11 @@ pub trait DebugProbe: Send + fmt::Debug {
     /// Detach from the chip.
     ///
     /// This should run all the necessary protocol deinit routines.
-    fn detach(&mut self) -> Result<(), DebugProbeError>;
+    ///
+    /// If the probe uses batched commands, this will also cause all
+    /// remaining commands to be executed. If an error occurs during
+    /// this execution, the probe might remain in the attached state.
+    fn detach(&mut self) -> Result<(), crate::Error>;
 
     /// This should hard reset the target device.
     fn target_reset(&mut self) -> Result<(), DebugProbeError>;
@@ -597,10 +601,10 @@ pub trait DebugProbe: Send + fmt::Debug {
     /// probe actually supports this by calling [DebugProbe::has_riscv_interface] first.
     fn try_get_riscv_interface(
         self: Box<Self>,
-    ) -> Result<RiscvCommunicationInterface, (Box<dyn DebugProbe>, DebugProbeError)> {
+    ) -> Result<RiscvCommunicationInterface, (Box<dyn DebugProbe>, RiscvError)> {
         Err((
             self.into_probe(),
-            DebugProbeError::InterfaceNotAvailable("RISCV"),
+            DebugProbeError::InterfaceNotAvailable("RISCV").into(),
         ))
     }
 
@@ -851,6 +855,7 @@ pub trait JTAGAccess: DebugProbe {
         for write in writes {
             match self
                 .write_register(write.address, &write.data, write.len)
+                .map_err(crate::Error::Probe)
                 .and_then(|response| (write.transform)(response))
             {
                 Ok(res) => results.push(res),
@@ -869,18 +874,18 @@ pub struct JtagWriteCommand {
     pub address: u32,
     pub data: Vec<u8>,
     pub len: u32,
-    pub transform: fn(Vec<u8>) -> Result<CommandResult, DebugProbeError>,
+    pub transform: fn(Vec<u8>) -> Result<CommandResult, crate::Error>,
 }
 
 #[derive(thiserror::Error, Debug)]
 pub struct BatchExecutionError {
     #[source]
-    pub error: DebugProbeError,
+    pub error: crate::Error,
     pub results: Vec<CommandResult>,
 }
 
 impl BatchExecutionError {
-    pub fn new(error: DebugProbeError, results: Vec<CommandResult>) -> BatchExecutionError {
+    pub fn new(error: crate::Error, results: Vec<CommandResult>) -> BatchExecutionError {
         BatchExecutionError { error, results }
     }
 }

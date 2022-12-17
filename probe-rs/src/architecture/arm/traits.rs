@@ -1,5 +1,7 @@
 use crate::{DebugProbe, DebugProbeError};
 
+use super::ArmNewError;
+
 /// The type of port we are using.
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum PortType {
@@ -57,12 +59,12 @@ pub struct ApAddress {
 /// handle bank switching and AP selection.
 pub trait RawDapAccess {
     /// Select the debug port to operate on.
-    fn select_dp(&mut self, dp: DpAddress) -> Result<(), DebugProbeError>;
+    fn select_dp(&mut self, dp: DpAddress) -> Result<(), ArmNewError>;
 
     /// Read a DAP register.
     ///
     /// Only the lowest 4 bits of `addr` are used. Bank switching is the caller's responsibility.
-    fn raw_read_register(&mut self, port: PortType, addr: u8) -> Result<u32, DebugProbeError>;
+    fn raw_read_register(&mut self, port: PortType, addr: u8) -> Result<u32, ArmNewError>;
 
     /// Read multiple values from the same DAP register.
     ///
@@ -75,7 +77,7 @@ pub trait RawDapAccess {
         port: PortType,
         addr: u8,
         values: &mut [u32],
-    ) -> Result<(), DebugProbeError> {
+    ) -> Result<(), ArmNewError> {
         for val in values {
             *val = self.raw_read_register(port, addr)?;
         }
@@ -91,7 +93,7 @@ pub trait RawDapAccess {
         port: PortType,
         addr: u8,
         value: u32,
-    ) -> Result<(), DebugProbeError>;
+    ) -> Result<(), ArmNewError>;
 
     /// Write multiple values to the same DAP register.
     ///
@@ -104,7 +106,7 @@ pub trait RawDapAccess {
         port: PortType,
         addr: u8,
         values: &[u32],
-    ) -> Result<(), DebugProbeError> {
+    ) -> Result<(), ArmNewError> {
         for val in values {
             self.raw_write_register(port, addr, *val)?;
         }
@@ -116,7 +118,7 @@ pub trait RawDapAccess {
     ///
     /// By default, this does nothing -- but in probes that implement write
     /// batching, this needs to flush any pending writes.
-    fn raw_flush(&mut self) -> Result<(), DebugProbeError> {
+    fn raw_flush(&mut self) -> Result<(), ArmNewError> {
         Ok(())
     }
 
@@ -157,7 +159,7 @@ pub trait DapAccess {
     ///
     /// Highest 4 bits of `addr` are interpreted as the bank number, implementations
     /// will do bank switching if necessary.
-    fn read_raw_dp_register(&mut self, dp: DpAddress, addr: u8) -> Result<u32, DebugProbeError>;
+    fn read_raw_dp_register(&mut self, dp: DpAddress, addr: u8) -> Result<u32, ArmNewError>;
 
     /// Write a Debug Port register.
     ///
@@ -168,13 +170,13 @@ pub trait DapAccess {
         dp: DpAddress,
         addr: u8,
         value: u32,
-    ) -> Result<(), DebugProbeError>;
+    ) -> Result<(), ArmNewError>;
 
     /// Read an Access Port register.
     ///
     /// Highest 4 bits of `addr` are interpreted as the bank number, implementations
     /// will do bank switching if necessary.
-    fn read_raw_ap_register(&mut self, ap: ApAddress, addr: u8) -> Result<u32, DebugProbeError>;
+    fn read_raw_ap_register(&mut self, ap: ApAddress, addr: u8) -> Result<u32, ArmNewError>;
 
     /// Read multiple values from the same Access Port register.
     ///
@@ -188,7 +190,7 @@ pub trait DapAccess {
         ap: ApAddress,
         addr: u8,
         values: &mut [u32],
-    ) -> Result<(), DebugProbeError> {
+    ) -> Result<(), ArmNewError> {
         for val in values {
             *val = self.read_raw_ap_register(ap, addr)?;
         }
@@ -204,7 +206,7 @@ pub trait DapAccess {
         ap: ApAddress,
         addr: u8,
         value: u32,
-    ) -> Result<(), DebugProbeError>;
+    ) -> Result<(), ArmNewError>;
 
     /// Write multiple values to the same Access Port register.
     ///
@@ -218,7 +220,7 @@ pub trait DapAccess {
         ap: ApAddress,
         addr: u8,
         values: &[u32],
-    ) -> Result<(), DebugProbeError> {
+    ) -> Result<(), ArmNewError> {
         for val in values {
             self.write_raw_ap_register(ap, addr, *val)?;
         }

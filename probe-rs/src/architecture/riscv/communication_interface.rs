@@ -67,13 +67,16 @@ pub enum RiscvError {
     /// The given trigger type is not available for the address breakpoint.
     #[error("Unexpected trigger type {0} for address breakpoint.")]
     UnexpectedTriggerType(u32),
+    /// The connected target is not a RISCV device.
+    #[error("Connected target is not a RISCV device.")]
+    NoRiscvTarget,
 }
 
 impl From<RiscvError> for ProbeRsError {
     fn from(err: RiscvError) -> Self {
         match err {
             RiscvError::DebugProbe(e) => e.into(),
-            other => ProbeRsError::ArchitectureSpecific(Box::new(other)),
+            other => ProbeRsError::Riscv(other),
         }
     }
 }
@@ -278,20 +281,14 @@ pub struct RiscvCommunicationInterface {
 
 impl RiscvCommunicationInterface {
     /// Creates a new RISC-V communication interface with a given probe driver.
-    pub fn new(probe: Box<dyn JTAGAccess>) -> Result<Self, (Box<dyn JTAGAccess>, DebugProbeError)> {
+    pub fn new(probe: Box<dyn JTAGAccess>) -> Result<Self, (Box<dyn JTAGAccess>, RiscvError)> {
         let state = RiscvCommunicationInterfaceState::new();
-        let dtm = Dtm::new(probe).map_err(|(probe, e)| match e {
-            RiscvError::DebugProbe(err) => (probe, err),
-            other_error => (
-                probe,
-                DebugProbeError::ArchitectureSpecific(Box::new(other_error)),
-            ),
-        })?;
+        let dtm = Dtm::new(probe)?;
 
         let mut s = Self { dtm, state };
 
         if let Err(err) = s.enter_debug_mode() {
-            return Err((s.dtm.probe, DebugProbeError::from(anyhow!(err))));
+            return Err((s.dtm.probe, err));
         }
 
         Ok(s)
@@ -963,10 +960,7 @@ impl RiscvCommunicationInterface {
                 status,
             );
 
-            return Err(DebugProbeError::ArchitectureSpecific(Box::new(
-                RiscvError::AbstractCommand(error),
-            ))
-            .into());
+            return Err(RiscvError::AbstractCommand(error));
         }
 
         // Restore register s0 and s1
@@ -1293,14 +1287,14 @@ impl RiscvCommunicationInterface {
         Probe::from_attached_probe(self.dtm.probe.into_probe())
     }
 
-    pub(super) fn execute(&mut self) -> Result<Vec<CommandResult>, DebugProbeError> {
+    pub(super) fn execute(&mut self) -> Result<Vec<CommandResult>, RiscvError> {
         self.dtm.execute()
     }
 
     pub(super) fn schedule_write_dm_register<R: DebugRegister>(
         &mut self,
         register: R,
-    ) -> Result<(), DebugProbeError> {
+    ) -> Result<(), RiscvError> {
         // write write command to dmi register
 
         tracing::debug!(
@@ -1321,14 +1315,14 @@ impl RiscvCommunicationInterface {
         &mut self,
         address: u64,
         value: u32,
-    ) -> Result<DeferredResultIndex, DebugProbeError> {
+    ) -> Result<DeferredResultIndex, RiscvError> {
         self.dtm
             .schedule_dmi_register_access(address, value, DmiOperation::Write)
     }
 
     pub(super) fn schedule_read_dm_register<R: DebugRegister>(
         &mut self,
-    ) -> Result<DeferredResultIndex, DebugProbeError> {
+    ) -> Result<DeferredResultIndex, RiscvError> {
         tracing::debug!("Reading DM register '{}' at {:#010x}", R::NAME, R::ADDRESS);
 
         self.schedule_read_dm_register_untyped(R::ADDRESS as u64)
@@ -1340,7 +1334,7 @@ impl RiscvCommunicationInterface {
     fn schedule_read_dm_register_untyped(
         &mut self,
         address: u64,
-    ) -> Result<DeferredResultIndex, DebugProbeError> {
+    ) -> Result<DeferredResultIndex, RiscvError> {
         // Prepare the read by sending a read request with the register address
         self.dtm
             .schedule_dmi_register_access(address, 0, DmiOperation::Read)?;
@@ -1350,9 +1344,7 @@ impl RiscvCommunicationInterface {
             .schedule_dmi_register_access(0, 0, DmiOperation::NoOp)
     }
 
-    fn schedule_read_large_dtm_register<V, R>(
-        &mut self,
-    ) -> Result<DeferredResultIndex, DebugProbeError>
+    fn schedule_read_large_dtm_register<V, R>(&mut self) -> Result<DeferredResultIndex, RiscvError>
     where
         V: RiscvValue,
         R: LargeRegister,
@@ -1363,7 +1355,7 @@ impl RiscvCommunicationInterface {
     fn schedule_write_large_dtm_register<V, R>(
         &mut self,
         value: V,
-    ) -> Result<DeferredResultIndex, DebugProbeError>
+    ) -> Result<DeferredResultIndex, RiscvError>
     where
         V: RiscvValue,
         R: LargeRegister,
@@ -1437,14 +1429,14 @@ pub(crate) trait RiscvValue: std::fmt::Debug + Copy + Sized {
 
     fn schedule_read_from_register<R>(
         interface: &mut RiscvCommunicationInterface,
-    ) -> Result<DeferredResultIndex, DebugProbeError>
+    ) -> Result<DeferredResultIndex, RiscvError>
     where
         R: LargeRegister;
 
     fn schedule_write_to_register<R>(
         interface: &mut RiscvCommunicationInterface,
         value: Self,
-    ) -> Result<DeferredResultIndex, DebugProbeError>
+    ) -> Result<DeferredResultIndex, RiscvError>
     where
         R: LargeRegister;
 }
@@ -1475,7 +1467,7 @@ impl RiscvValue for u8 {
 
     fn schedule_read_from_register<R>(
         interface: &mut RiscvCommunicationInterface,
-    ) -> Result<DeferredResultIndex, DebugProbeError>
+    ) -> Result<DeferredResultIndex, RiscvError>
     where
         R: LargeRegister,
     {
@@ -1485,7 +1477,7 @@ impl RiscvValue for u8 {
     fn schedule_write_to_register<R>(
         interface: &mut RiscvCommunicationInterface,
         value: Self,
-    ) -> Result<DeferredResultIndex, DebugProbeError>
+    ) -> Result<DeferredResultIndex, RiscvError>
     where
         R: LargeRegister,
     {
@@ -1518,7 +1510,7 @@ impl RiscvValue for u16 {
 
     fn schedule_read_from_register<R>(
         interface: &mut RiscvCommunicationInterface,
-    ) -> Result<DeferredResultIndex, DebugProbeError>
+    ) -> Result<DeferredResultIndex, RiscvError>
     where
         R: LargeRegister,
     {
@@ -1528,7 +1520,7 @@ impl RiscvValue for u16 {
     fn schedule_write_to_register<R>(
         interface: &mut RiscvCommunicationInterface,
         value: Self,
-    ) -> Result<DeferredResultIndex, DebugProbeError>
+    ) -> Result<DeferredResultIndex, RiscvError>
     where
         R: LargeRegister,
     {
@@ -1559,7 +1551,7 @@ impl RiscvValue for u32 {
 
     fn schedule_read_from_register<R>(
         interface: &mut RiscvCommunicationInterface,
-    ) -> Result<DeferredResultIndex, DebugProbeError>
+    ) -> Result<DeferredResultIndex, RiscvError>
     where
         R: LargeRegister,
     {
@@ -1568,7 +1560,7 @@ impl RiscvValue for u32 {
     fn schedule_write_to_register<R>(
         interface: &mut RiscvCommunicationInterface,
         value: Self,
-    ) -> Result<DeferredResultIndex, DebugProbeError>
+    ) -> Result<DeferredResultIndex, RiscvError>
     where
         R: LargeRegister,
     {
@@ -1612,7 +1604,7 @@ impl RiscvValue for u64 {
 
     fn schedule_read_from_register<R>(
         interface: &mut RiscvCommunicationInterface,
-    ) -> Result<DeferredResultIndex, DebugProbeError>
+    ) -> Result<DeferredResultIndex, RiscvError>
     where
         R: LargeRegister,
     {
@@ -1623,7 +1615,7 @@ impl RiscvValue for u64 {
     fn schedule_write_to_register<R>(
         interface: &mut RiscvCommunicationInterface,
         value: Self,
-    ) -> Result<DeferredResultIndex, DebugProbeError>
+    ) -> Result<DeferredResultIndex, RiscvError>
     where
         R: LargeRegister,
     {
@@ -1683,7 +1675,7 @@ impl RiscvValue for u128 {
 
     fn schedule_read_from_register<R>(
         interface: &mut RiscvCommunicationInterface,
-    ) -> Result<DeferredResultIndex, DebugProbeError>
+    ) -> Result<DeferredResultIndex, RiscvError>
     where
         R: LargeRegister,
     {
@@ -1696,7 +1688,7 @@ impl RiscvValue for u128 {
     fn schedule_write_to_register<R>(
         interface: &mut RiscvCommunicationInterface,
         value: Self,
-    ) -> Result<DeferredResultIndex, DebugProbeError>
+    ) -> Result<DeferredResultIndex, RiscvError>
     where
         R: LargeRegister,
     {

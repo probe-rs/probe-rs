@@ -3,7 +3,9 @@
 #[macro_use]
 mod register_generation;
 
-use super::{communication_interface::RegisterParseError, DapAccess, DpAddress, Register};
+use super::{
+    communication_interface::RegisterParseError, ArmNewError, DapAccess, DpAddress, Register,
+};
 use bitfield::bitfield;
 use jep106::JEP106Code;
 
@@ -27,11 +29,15 @@ pub enum DebugPortError {
     /// An error with operating the debug probe occurred.
     #[error("A Debug Probe Error occurred")]
     DebugProbe(#[from] DebugProbeError),
+    // TODO: The error below shouldn't exist
+    /// A general ARM specific error occured
+    #[error("A general ARM error occured")]
+    Arm(#[source] Box<ArmNewError>),
 }
 
-impl From<DebugPortError> for DebugProbeError {
-    fn from(error: DebugPortError) -> Self {
-        DebugProbeError::ArchitectureSpecific(Box::new(error))
+impl From<ArmNewError> for DebugPortError {
+    fn from(value: ArmNewError) -> Self {
+        DebugPortError::Arm(Box::new(value))
     }
 }
 

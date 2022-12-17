@@ -4,7 +4,7 @@
 //! This module provides access and control of the trace funnel CoreSight component block.
 use super::DebugRegister;
 use crate::architecture::arm::memory::romtable::CoresightComponent;
-use crate::architecture::arm::ArmProbeInterface;
+use crate::architecture::arm::{ArmProbeInterface, ArmNewError};
 use crate::Error;
 use bitfield::bitfield;
 
@@ -41,7 +41,7 @@ impl<'a> TraceFunnel<'a> {
     /// # Note
     /// The trace funnel acts as a selector for multiple sources. This function allows you to block
     /// or pass specific trace sources selectively.
-    pub fn enable_port(&mut self, mask: u8) -> Result<(), Error> {
+    pub fn enable_port(&mut self, mask: u8) -> Result<(), ArmNewError> {
         let mut control = Control::load(self.component, self.interface)?;
         control.set_slave_enable(mask);
         control.store(self.component, self.interface)

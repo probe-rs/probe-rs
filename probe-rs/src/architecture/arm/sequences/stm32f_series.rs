@@ -19,7 +19,7 @@ impl Stm32fSeries {
 }
 
 mod dbgmcu {
-    use crate::architecture::arm::memory::adi_v5_memory_interface::ArmProbe;
+    use crate::architecture::arm::{memory::adi_v5_memory_interface::ArmProbe, ArmNewError};
     use bitfield::bitfield;
 
     /// The base address of the DBGMCU component
@@ -43,13 +43,13 @@ mod dbgmcu {
         const ADDRESS: u64 = 0x04;
 
         /// Read the control register from memory.
-        pub fn read(memory: &mut dyn ArmProbe) -> Result<Self, crate::Error> {
+        pub fn read(memory: &mut dyn ArmProbe) -> Result<Self, ArmNewError> {
             let contents = memory.read_word_32(DBGMCU + Self::ADDRESS)?;
             Ok(Self(contents))
         }
 
         /// Write the control register to memory.
-        pub fn write(&mut self, memory: &mut dyn ArmProbe) -> Result<(), crate::Error> {
+        pub fn write(&mut self, memory: &mut dyn ArmProbe) -> Result<(), ArmNewError> {
             memory.write_word_32(DBGMCU + Self::ADDRESS, self.0)
         }
     }

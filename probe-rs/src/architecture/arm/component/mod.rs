@@ -8,6 +8,7 @@ mod tpiu;
 mod trace_funnel;
 
 use super::memory::romtable::{CoresightComponent, PeripheralType, RomTableError};
+use super::ArmNewError;
 use crate::architecture::arm::core::armv6m::Demcr;
 use crate::architecture::arm::{ArmProbeInterface, SwoConfig, SwoMode};
 use crate::{Core, Error, MemoryInterface, MemoryMappedRegister};
@@ -54,7 +55,7 @@ pub trait DebugRegister: Clone + From<u32> + Into<u32> + Sized + std::fmt::Debug
     fn load(
         component: &CoresightComponent,
         interface: &mut dyn ArmProbeInterface,
-    ) -> Result<Self, Error> {
+    ) -> Result<Self, ArmNewError> {
         Ok(Self::from(component.read_reg(interface, Self::ADDRESS)?))
     }
 
@@ -63,7 +64,7 @@ pub trait DebugRegister: Clone + From<u32> + Into<u32> + Sized + std::fmt::Debug
         component: &CoresightComponent,
         interface: &mut dyn ArmProbeInterface,
         unit: usize,
-    ) -> Result<Self, Error> {
+    ) -> Result<Self, ArmNewError> {
         Ok(Self::from(
             component.read_reg(interface, Self::ADDRESS + 16 * unit as u32)?,
         ))
@@ -74,7 +75,7 @@ pub trait DebugRegister: Clone + From<u32> + Into<u32> + Sized + std::fmt::Debug
         &self,
         component: &CoresightComponent,
         interface: &mut dyn ArmProbeInterface,
-    ) -> Result<(), Error> {
+    ) -> Result<(), ArmNewError> {
         component.write_reg(interface, Self::ADDRESS, self.clone().into())
     }
 
@@ -84,7 +85,7 @@ pub trait DebugRegister: Clone + From<u32> + Into<u32> + Sized + std::fmt::Debug
         component: &CoresightComponent,
         interface: &mut dyn ArmProbeInterface,
         unit: usize,
-    ) -> Result<(), Error> {
+    ) -> Result<(), ArmNewError> {
         component.write_reg(
             interface,
             Self::ADDRESS + 16 * unit as u32,
@@ -97,13 +98,13 @@ pub trait DebugRegister: Clone + From<u32> + Into<u32> + Sized + std::fmt::Debug
 fn find_component(
     components: &[CoresightComponent],
     peripheral_type: PeripheralType,
-) -> Result<&CoresightComponent, Error> {
-    components
+) -> Result<&CoresightComponent, ArmNewError> {
+    let component = components
         .iter()
         .find_map(|component| component.find_component(peripheral_type))
-        .ok_or_else(|| {
-            Error::architecture_specific(RomTableError::ComponentNotFound(peripheral_type))
-        })
+        .ok_or_else(|| RomTableError::ComponentNotFound(peripheral_type))?;
+
+    Ok(component)
 }
 
 /// Configure the Trace Port Interface Unit
@@ -231,7 +232,7 @@ pub(crate) fn setup_tracing(
 pub(crate) fn read_trace_memory(
     interface: &mut dyn ArmProbeInterface,
     components: &[CoresightComponent],
-) -> Result<Vec<u8>, Error> {
+) -> Result<Vec<u8>, ArmNewError> {
     let mut tmc =
         TraceMemoryController::new(interface, find_component(components, PeripheralType::Tmc)?);
 
@@ -297,7 +298,7 @@ pub(crate) fn add_swv_data_trace(
     components: &[CoresightComponent],
     unit: usize,
     address: u32,
-) -> Result<(), Error> {
+) -> Result<(), ArmNewError> {
     let mut dwt = Dwt::new(interface, find_component(components, PeripheralType::Dwt)?);
     dwt.enable_data_trace(unit, address)
 }
@@ -310,7 +311,7 @@ pub fn remove_swv_data_trace(
     interface: &mut dyn ArmProbeInterface,
     components: &[CoresightComponent],
     unit: usize,
-) -> Result<(), Error> {
+) -> Result<(), ArmNewError> {
     let mut dwt = Dwt::new(interface, find_component(components, PeripheralType::Dwt)?);
     dwt.disable_data_trace(unit)
 }

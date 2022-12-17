@@ -10,6 +10,8 @@ pub mod nxp;
 pub mod stm32f_series;
 pub mod stm32h7;
 
+use anyhow::anyhow;
+
 use std::{
     sync::Arc,
     thread,
@@ -34,7 +36,7 @@ use super::{
         adi_v5_memory_interface::ArmProbe,
         romtable::{CoresightComponent, PeripheralType},
     },
-    ArmCommunicationInterface, DpAddress, Pins, PortType, Register,
+    ArmCommunicationInterface, ArmNewError, DpAddress, Pins, PortType, Register,
 };
 
 /// An error occurred when executing an ARM debug sequence
@@ -86,12 +88,11 @@ fn armv7a_reset_catch_set(
 fn armv7a_reset_catch_clear(
     core: &mut dyn ArmProbe,
     debug_base: Option<u64>,
-) -> Result<(), crate::Error> {
+) -> Result<(), ArmNewError> {
     use crate::architecture::arm::core::armv7a_debug_regs::Dbgprcr;
 
-    let debug_base = debug_base.ok_or_else(|| {
-        crate::Error::architecture_specific(ArmDebugSequenceError::DebugBaseNotSpecified)
-    })?;
+    let debug_base = debug_base
+        .ok_or_else(|| ArmNewError::from(ArmDebugSequenceError::DebugBaseNotSpecified))?;
 
     let address = Dbgprcr::get_mmio_address(debug_base);
     let mut dbgprcr = Dbgprcr(core.read_word_32(address)?);
@@ -135,12 +136,11 @@ fn armv7a_reset_system(
 }
 
 /// DebugCoreStart for v7 Cortex-A devices
-fn armv7a_core_start(core: &mut dyn ArmProbe, debug_base: Option<u64>) -> Result<(), crate::Error> {
+fn armv7a_core_start(core: &mut dyn ArmProbe, debug_base: Option<u64>) -> Result<(), ArmNewError> {
     use crate::architecture::arm::core::armv7a_debug_regs::{Dbgdsccr, Dbgdscr, Dbgdsmcr, Dbglar};
 
-    let debug_base = debug_base.ok_or_else(|| {
-        crate::Error::architecture_specific(ArmDebugSequenceError::DebugBaseNotSpecified)
-    })?;
+    let debug_base = debug_base
+        .ok_or_else(|| ArmNewError::from(ArmDebugSequenceError::DebugBaseNotSpecified))?;
     tracing::debug!(
         "Starting debug for ARMv7-A core with registers at {:#X}",
         debug_base
@@ -198,12 +198,11 @@ fn armv8a_reset_catch_set(
 fn armv8a_reset_catch_clear(
     core: &mut dyn ArmProbe,
     debug_base: Option<u64>,
-) -> Result<(), crate::Error> {
+) -> Result<(), ArmNewError> {
     use crate::architecture::arm::core::armv8a_debug_regs::{Armv8DebugRegister, Edecr};
 
-    let debug_base = debug_base.ok_or_else(|| {
-        crate::Error::architecture_specific(ArmDebugSequenceError::DebugBaseNotSpecified)
-    })?;
+    let debug_base = debug_base
+        .ok_or_else(|| ArmNewError::from(ArmDebugSequenceError::DebugBaseNotSpecified))?;
 
     let address = Edecr::get_mmio_address(debug_base);
     let mut edecr = Edecr(core.read_word_32(address)?);
@@ -251,17 +250,15 @@ fn armv8a_core_start(
     core: &mut dyn ArmProbe,
     debug_base: Option<u64>,
     cti_base: Option<u64>,
-) -> Result<(), crate::Error> {
+) -> Result<(), ArmNewError> {
     use crate::architecture::arm::core::armv8a_debug_regs::{
         Armv8DebugRegister, CtiControl, CtiGate, CtiOuten, Edlar, Edscr,
     };
 
-    let debug_base = debug_base.ok_or_else(|| {
-        crate::Error::architecture_specific(ArmDebugSequenceError::DebugBaseNotSpecified)
-    })?;
-    let cti_base = cti_base.ok_or_else(|| {
-        crate::Error::architecture_specific(ArmDebugSequenceError::CtiBaseNotSpecified)
-    })?;
+    let debug_base = debug_base
+        .ok_or_else(|| ArmNewError::from(ArmDebugSequenceError::DebugBaseNotSpecified))?;
+    let cti_base =
+        cti_base.ok_or_else(|| ArmNewError::from(ArmDebugSequenceError::CtiBaseNotSpecified))?;
 
     tracing::debug!(
         "Starting debug for ARMv8-A core with registers at {:#X}",
@@ -314,7 +311,7 @@ fn armv8a_core_start(
 }
 
 /// DebugCoreStart for Cortex-M devices
-fn cortex_m_core_start(core: &mut dyn ArmProbe) -> Result<(), crate::Error> {
+fn cortex_m_core_start(core: &mut dyn ArmProbe) -> Result<(), ArmNewError> {
     use crate::architecture::arm::core::armv7m::Dhcsr;
 
     let current_dhcsr = Dhcsr(core.read_word_32(Dhcsr::ADDRESS)?);
@@ -336,7 +333,7 @@ fn cortex_m_core_start(core: &mut dyn ArmProbe) -> Result<(), crate::Error> {
 }
 
 /// ResetCatchClear for Cortex-M devices
-fn cortex_m_reset_catch_clear(core: &mut dyn ArmProbe) -> Result<(), crate::Error> {
+fn cortex_m_reset_catch_clear(core: &mut dyn ArmProbe) -> Result<(), ArmNewError> {
     use crate::architecture::arm::core::armv7m::Demcr;
 
     // Clear reset catch bit
@@ -378,20 +375,12 @@ fn cortex_m_reset_system(interface: &mut dyn ArmProbe) -> Result<(), crate::Erro
     while start.elapsed() < Duration::from_micros(50_0000) {
         let dhcsr = match interface.read_word_32(Dhcsr::ADDRESS) {
             Ok(val) => Dhcsr(val),
-            Err(err) => {
-                if let crate::Error::ArchitectureSpecific(ref arch_err) = err {
-                    if let Some(AccessPortError::RegisterRead { .. }) =
-                        arch_err.downcast_ref::<AccessPortError>()
-                    {
-                        // Some combinations of debug probe and target (in
-                        // particular, hs-probe and ATSAMD21) result in
-                        // register read errors while the target is
-                        // resetting.
-                        continue;
-                    }
-                }
-                return Err(err);
-            }
+            // Some combinations of debug probe and target (in
+            // particular, hs-probe and ATSAMD21) result in
+            // register read errors while the target is
+            // resetting.
+            Err(ArmNewError::AccessPort(AccessPortError::RegisterRead { .. })) => continue,
+            Err(err) => return Err(err.into()),
         };
 
         // Wait until the S_RESET_ST bit is cleared on a read
@@ -412,7 +401,7 @@ pub trait ArmDebugSequence: Send + Sync {
     ///
     /// [ARM SVD Debug Description]: http://www.keil.com/pack/doc/cmsis/Pack/html/debug_description.html#resetHardwareAssert
     #[doc(alias = "ResetHardwareAssert")]
-    fn reset_hardware_assert(&self, interface: &mut dyn DapProbe) -> Result<(), crate::Error> {
+    fn reset_hardware_assert(&self, interface: &mut dyn DapProbe) -> Result<(), ArmNewError> {
         let mut n_reset = Pins(0);
         n_reset.set_nreset(true);
 
@@ -426,7 +415,7 @@ pub trait ArmDebugSequence: Send + Sync {
     ///
     /// [ARM SVD Debug Description]: http://www.keil.com/pack/doc/cmsis/Pack/html/debug_description.html#resetHardwareDeassert
     #[doc(alias = "ResetHardwareDeassert")]
-    fn reset_hardware_deassert(&self, memory: &mut dyn ArmProbe) -> Result<(), crate::Error> {
+    fn reset_hardware_deassert(&self, memory: &mut dyn ArmProbe) -> Result<(), ArmNewError> {
         let mut n_reset = Pins(0);
         n_reset.set_nreset(true);
         let n_reset = n_reset.0 as u32;
@@ -456,7 +445,7 @@ pub trait ArmDebugSequence: Send + Sync {
     ///
     /// [ARM SVD Debug Description]: http://www.keil.com/pack/doc/cmsis/Pack/html/debug_description.html#debugPortSetup
     #[doc(alias = "DebugPortSetup")]
-    fn debug_port_setup(&self, interface: &mut dyn DapProbe) -> Result<(), crate::Error> {
+    fn debug_port_setup(&self, interface: &mut dyn DapProbe) -> Result<(), ArmNewError> {
         // TODO: Handle this differently for ST-Link?
 
         // TODO: Use atomic block
@@ -477,8 +466,8 @@ pub trait ArmDebugSequence: Send + Sync {
                 interface.swj_sequence(16, 0xE79E)?;
             }
             _ => {
-                return Err(crate::Error::Probe(DebugProbeError::NotImplemented(
-                    "Cannot detect current protocol",
+                return Err(ArmNewError::temporary(anyhow!(
+                    "Cannot detect current protocol"
                 )));
             }
         }
@@ -506,7 +495,7 @@ pub trait ArmDebugSequence: Send + Sync {
         &self,
         interface: &mut ArmCommunicationInterface<Initialized>,
         dp: DpAddress,
-    ) -> Result<(), crate::DebugProbeError> {
+    ) -> Result<(), ArmNewError> {
         // Clear all errors.
         // CMSIS says this is only necessary to do inside the `if powered_down`, but
         // without it here, nRF52840 faults in the next access.
@@ -540,7 +529,7 @@ pub trait ArmDebugSequence: Send + Sync {
             }
 
             if timeout {
-                return Err(DebugProbeError::Timeout);
+                return Err(ArmNewError::Timeout);
             }
 
             // TODO: Handle JTAG Specific part
@@ -578,7 +567,7 @@ pub trait ArmDebugSequence: Send + Sync {
         core_type: CoreType,
         debug_base: Option<u64>,
         cti_base: Option<u64>,
-    ) -> Result<(), crate::Error> {
+    ) -> Result<(), ArmNewError> {
         // Dispatch based on core type (Cortex-A vs M)
         match core_type {
             CoreType::Armv7a => armv7a_core_start(core, debug_base),
@@ -630,7 +619,7 @@ pub trait ArmDebugSequence: Send + Sync {
         core: &mut dyn ArmProbe,
         core_type: CoreType,
         debug_base: Option<u64>,
-    ) -> Result<(), crate::Error> {
+    ) -> Result<(), ArmNewError> {
         // Dispatch based on core type (Cortex-A vs M)
         match core_type {
             CoreType::Armv7a => armv7a_reset_catch_clear(core, debug_base),

@@ -1052,9 +1052,3 @@ impl CortexAState {
         self.initialized
     }
 }
-
-#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
-pub enum ArmError {
-    #[error("The core needs to be halted for this operation but was not.")]
-    CoreNotHalted,
-}

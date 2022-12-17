@@ -1,5 +1,6 @@
 use crate::architecture::arm::sequences::{ArmDebugSequence, DefaultArmSequence};
-use crate::architecture::arm::{ApAddress, DpAddress};
+use crate::architecture::arm::{ApAddress, ArmNewError, DpAddress};
+use crate::architecture::riscv::communication_interface::RiscvError;
 use crate::config::{ChipInfo, RegistryError, Target, TargetSelector};
 use crate::core::{Architecture, CoreState, SpecificCoreState};
 use crate::{
@@ -15,7 +16,7 @@ use crate::{
     },
     config::DebugSequence,
 };
-use crate::{AttachMethod, Core, CoreType, DebugProbeError, Error, FakeProbe, Probe};
+use crate::{AttachMethod, Core, CoreType, Error, FakeProbe, Probe};
 use anyhow::anyhow;
 use std::ops::DerefMut;
 use std::{fmt, sync::Arc, time::Duration};
@@ -255,11 +256,11 @@ impl Session {
                         if let Err(e) =
                             sequence_handle.reset_hardware_deassert(&mut *memory_interface)
                         {
-                            if matches!(e, Error::Probe(DebugProbeError::Timeout)) {
+                            if matches!(e, ArmNewError::Timeout) {
                                 tracing::warn!("Timeout while deasserting hardware reset pin. This indicates that the reset pin is not properly connected. Please check your hardware setup.");
                             }
 
-                            return Err(e);
+                            return Err(e.into());
                         }
                         drop(reset_hardware_deassert);
                     }
@@ -401,11 +402,11 @@ impl Session {
     /// This method is only supported for ARM-based targets, and will
     /// return [Error::ArchitectureRequired] otherwise.
     #[tracing::instrument(skip(self))]
-    pub fn read_trace_data(&mut self) -> Result<Vec<u8>, Error> {
+    pub fn read_trace_data(&mut self) -> Result<Vec<u8>, ArmNewError> {
         let sink = self
             .configured_trace_sink
             .as_ref()
-            .ok_or_else(|| anyhow!("Tracing has not been configured"))?;
+            .ok_or_else(|| ArmNewError::temporary(anyhow!("Tracing has not been configured")))?;
 
         match sink {
             TraceSink::Swo(_) => {
@@ -439,19 +440,19 @@ impl Session {
     }
 
     /// Get the Arm probe interface.
-    pub fn get_arm_interface(&mut self) -> Result<&mut dyn ArmProbeInterface, Error> {
+    pub fn get_arm_interface(&mut self) -> Result<&mut dyn ArmProbeInterface, ArmNewError> {
         let interface = match &mut self.interface {
             ArchitectureInterface::Arm(state) => state.deref_mut(),
-            _ => return Err(Error::ArchitectureRequired(&["ARMv7", "ARMv8"])),
+            _ => return Err(ArmNewError::NoArmTarget),
         };
 
         Ok(interface)
     }
 
-    fn get_riscv_interface(&mut self) -> Result<&mut RiscvCommunicationInterface, Error> {
+    fn get_riscv_interface(&mut self) -> Result<&mut RiscvCommunicationInterface, RiscvError> {
         let interface = match &mut self.interface {
             ArchitectureInterface::Riscv(interface) => interface,
-            _ => return Err(Error::ArchitectureRequired(&["Riscv"])),
+            _ => return Err(RiscvError::NoRiscvTarget),
         };
 
         Ok(interface)
@@ -576,7 +577,7 @@ impl Session {
     ///
     /// This will recursively parse the Romtable of the attached target
     /// and create a list of all the contained components.
-    pub fn get_arm_components(&mut self) -> Result<Vec<CoresightComponent>, Error> {
+    pub fn get_arm_components(&mut self) -> Result<Vec<CoresightComponent>, ArmNewError> {
         let interface = self.get_arm_interface()?;
 
         let mut components = Vec::new();
@@ -601,8 +602,7 @@ impl Session {
                 }) => {
                     let ap = MemoryAp::new(address);
                     let mut memory = interface.memory_interface(ap)?;
-                    let component = Component::try_parse(&mut *memory, debug_base_address)
-                        .map_err(Error::architecture_specific)?;
+                    let component = Component::try_parse(&mut *memory, debug_base_address)?;
                     Ok(CoresightComponent::new(component, ap))
                 }
                 ApInformation::Other { address, .. } => {
@@ -681,7 +681,7 @@ impl Session {
     }
 
     /// Begin tracing a memory address over SWV.
-    pub fn add_swv_data_trace(&mut self, unit: usize, address: u32) -> Result<(), Error> {
+    pub fn add_swv_data_trace(&mut self, unit: usize, address: u32) -> Result<(), ArmNewError> {
         let components = self.get_arm_components()?;
         let interface = self.get_arm_interface()?;
         crate::architecture::arm::component::add_swv_data_trace(
@@ -693,7 +693,7 @@ impl Session {
     }
 
     /// Stop tracing from a given SWV unit
-    pub fn remove_swv_data_trace(&mut self, unit: usize) -> Result<(), Error> {
+    pub fn remove_swv_data_trace(&mut self, unit: usize) -> Result<(), ArmNewError> {
         let components = self.get_arm_components()?;
         let interface = self.get_arm_interface()?;
         crate::architecture::arm::component::remove_swv_data_trace(interface, &components, unit)

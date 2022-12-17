@@ -2,10 +2,14 @@ use anyhow::anyhow;
 
 use super::super::{ApAccess, Register};
 use super::{AddressIncrement, ApRegister, DataSize, CSW, DRW, TAR};
-use crate::architecture::arm::{ap::AccessPort, DpAddress};
+use crate::DebugProbeError;
 use crate::{
-    architecture::arm::dp::{DebugPortError, DpAccess, DpRegister},
-    CommunicationInterface, DebugProbeError,
+    architecture::arm::{
+        ap::AccessPort,
+        dp::{DebugPortError, DpAccess, DpRegister},
+        ArmNewError, DpAddress,
+    },
+    CommunicationInterface,
 };
 use std::collections::HashMap;
 use std::convert::TryInto;
@@ -34,7 +38,7 @@ impl MockMemoryAp {
 }
 
 impl CommunicationInterface for MockMemoryAp {
-    fn flush(&mut self) -> Result<(), DebugProbeError> {
+    fn flush(&mut self) -> Result<(), ArmNewError> {
         Ok(())
     }
 
@@ -44,7 +48,7 @@ impl CommunicationInterface for MockMemoryAp {
         &mut crate::architecture::arm::ArmCommunicationInterface<
             crate::architecture::arm::communication_interface::Initialized,
         >,
-        crate::Error,
+        DebugProbeError,
     > {
         todo!()
     }
@@ -54,7 +58,7 @@ impl ApAccess for MockMemoryAp {
     /// Mocks the read_register method of a AP.
     ///
     /// Returns an Error if any bad instructions or values are chosen.
-    fn read_ap_register<PORT, R>(&mut self, _port: impl Into<PORT>) -> Result<R, DebugProbeError>
+    fn read_ap_register<PORT, R>(&mut self, _port: impl Into<PORT>) -> Result<R, ArmNewError>
     where
         PORT: AccessPort,
         R: ApRegister<PORT>,
@@ -98,7 +102,11 @@ impl ApAccess for MockMemoryAp {
                             1,
                         )
                     }
-                    _ => return Err(anyhow!("MockMemoryAp: unknown width").into()),
+                    _ => {
+                        return Err(ArmNewError::temporary(anyhow!(
+                            "MockMemoryAp: unknown width"
+                        )))
+                    }
                 };
 
                 self.store.insert(DRW::ADDRESS, new_drw);
@@ -117,7 +125,9 @@ impl ApAccess for MockMemoryAp {
             }
             CSW::ADDRESS => Ok(R::try_from(self.store[&R::ADDRESS]).unwrap()),
             TAR::ADDRESS => Ok(R::try_from(self.store[&R::ADDRESS]).unwrap()),
-            _ => Err(anyhow!("MockMemoryAp: unknown register").into()),
+            _ => Err(ArmNewError::temporary(anyhow!(
+                "MockMemoryAp: unknown register"
+            ))),
         }
     }
 
@@ -128,7 +138,7 @@ impl ApAccess for MockMemoryAp {
         &mut self,
         _port: impl Into<PORT>,
         register: R,
-    ) -> Result<(), DebugProbeError>
+    ) -> Result<(), ArmNewError>
     where
         PORT: AccessPort,
         R: ApRegister<PORT>,
@@ -176,7 +186,11 @@ impl ApAccess for MockMemoryAp {
                         self.memory[address as usize] = value as u8;
                         Ok(1)
                     }
-                    _ => return Err(anyhow!("MockMemoryAp: unknown width").into()),
+                    _ => {
+                        return Err(ArmNewError::temporary(anyhow!(
+                            "MockMemoryAp: unknown width"
+                        )))
+                    }
                 }
                 .map(|offset| match csw.AddrInc {
                     AddressIncrement::Single => {
@@ -196,7 +210,9 @@ impl ApAccess for MockMemoryAp {
                 self.store.insert(TAR::ADDRESS, value);
                 Ok(())
             }
-            _ => Err(anyhow!("MockMemoryAp: unknown register").into()),
+            _ => Err(ArmNewError::temporary(anyhow!(
+                "MockMemoryAp: unknown register"
+            ))),
         }
     }
 
@@ -205,7 +221,7 @@ impl ApAccess for MockMemoryAp {
         port: impl Into<PORT> + Clone,
         _register: R,
         values: &[u32],
-    ) -> Result<(), DebugProbeError>
+    ) -> Result<(), ArmNewError>
     where
         PORT: AccessPort,
         R: ApRegister<PORT>,
@@ -222,7 +238,7 @@ impl ApAccess for MockMemoryAp {
         port: impl Into<PORT> + Clone,
         _register: R,
         values: &mut [u32],
-    ) -> Result<(), DebugProbeError>
+    ) -> Result<(), ArmNewError>
     where
         PORT: AccessPort,
         R: ApRegister<PORT>,

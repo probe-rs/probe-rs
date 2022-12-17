@@ -1,7 +1,7 @@
 use super::adi_v5_memory_interface::ArmProbe;
 use super::AccessPortError;
+use crate::architecture::arm::ArmNewError;
 use crate::architecture::arm::{ap::MemoryAp, communication_interface::ArmProbeInterface};
-use crate::Error;
 use enum_primitive_derive::Primitive;
 use num_traits::cast::FromPrimitive;
 
@@ -19,7 +19,7 @@ pub enum RomTableError {
     #[error("The CoreSight Component could not be identified")]
     CSComponentIdentification,
     #[error("Could not access romtable")]
-    Memory(#[source] Error),
+    Memory(#[source] ArmNewError),
     #[error("The requested component '{0}' was not found")]
     ComponentNotFound(PeripheralType),
     #[error("There are no components to operate on")]
@@ -484,7 +484,7 @@ impl CoresightComponent {
         &self,
         interface: &mut dyn ArmProbeInterface,
         offset: u32,
-    ) -> Result<u32, Error> {
+    ) -> Result<u32, ArmNewError> {
         let mut memory = interface.memory_interface(self.ap)?;
         let value = memory.read_word_32(self.component.id().component_address + offset as u64)?;
         Ok(value)
@@ -496,7 +496,7 @@ impl CoresightComponent {
         interface: &mut dyn ArmProbeInterface,
         offset: u32,
         value: u32,
-    ) -> Result<(), Error> {
+    ) -> Result<(), ArmNewError> {
         let mut memory = interface.memory_interface(self.ap)?;
         memory.write_word_32(self.component.id().component_address + offset as u64, value)?;
         Ok(())

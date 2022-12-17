@@ -13,7 +13,7 @@ pub use memory_ap::{
     AddressIncrement, BaseaddrFormat, DataSize, MemoryAp, BASE, BASE2, CFG, CSW, DRW, TAR, TAR2,
 };
 
-use super::{ApAddress, DapAccess, DpAddress, Register};
+use super::{ApAddress, ArmNewError, DapAccess, DpAddress, Register};
 
 /// Some error during AP handling occurred.
 #[derive(Debug, thiserror::Error)]
@@ -108,7 +108,7 @@ pub trait AccessPort {
 /// A trait to be implemented by access port drivers to implement access port operations.
 pub trait ApAccess {
     /// Read a register of the access port.
-    fn read_ap_register<PORT, R>(&mut self, port: impl Into<PORT>) -> Result<R, DebugProbeError>
+    fn read_ap_register<PORT, R>(&mut self, port: impl Into<PORT>) -> Result<R, ArmNewError>
     where
         PORT: AccessPort,
         R: ApRegister<PORT>;
@@ -120,7 +120,7 @@ pub trait ApAccess {
         port: impl Into<PORT> + Clone,
         register: R,
         values: &mut [u32],
-    ) -> Result<(), DebugProbeError>
+    ) -> Result<(), ArmNewError>
     where
         PORT: AccessPort,
         R: ApRegister<PORT>;
@@ -130,7 +130,7 @@ pub trait ApAccess {
         &mut self,
         port: impl Into<PORT>,
         register: R,
-    ) -> Result<(), DebugProbeError>
+    ) -> Result<(), ArmNewError>
     where
         PORT: AccessPort,
         R: ApRegister<PORT>;
@@ -142,14 +142,14 @@ pub trait ApAccess {
         port: impl Into<PORT> + Clone,
         register: R,
         values: &[u32],
-    ) -> Result<(), DebugProbeError>
+    ) -> Result<(), ArmNewError>
     where
         PORT: AccessPort,
         R: ApRegister<PORT>;
 }
 
 impl<T: DapAccess> ApAccess for T {
-    fn read_ap_register<PORT, R>(&mut self, port: impl Into<PORT>) -> Result<R, DebugProbeError>
+    fn read_ap_register<PORT, R>(&mut self, port: impl Into<PORT>) -> Result<R, ArmNewError>
     where
         PORT: AccessPort,
         R: ApRegister<PORT>,
@@ -166,7 +166,7 @@ impl<T: DapAccess> ApAccess for T {
         &mut self,
         port: impl Into<PORT>,
         register: R,
-    ) -> Result<(), DebugProbeError>
+    ) -> Result<(), ArmNewError>
     where
         PORT: AccessPort,
         R: ApRegister<PORT>,
@@ -180,7 +180,7 @@ impl<T: DapAccess> ApAccess for T {
         port: impl Into<PORT>,
         _register: R,
         values: &[u32],
-    ) -> Result<(), DebugProbeError>
+    ) -> Result<(), ArmNewError>
     where
         PORT: AccessPort,
         R: ApRegister<PORT>,
@@ -198,7 +198,7 @@ impl<T: DapAccess> ApAccess for T {
         port: impl Into<PORT>,
         _register: R,
         values: &mut [u32],
-    ) -> Result<(), DebugProbeError>
+    ) -> Result<(), ArmNewError>
     where
         PORT: AccessPort,
         R: ApRegister<PORT>,
@@ -219,7 +219,7 @@ pub fn access_port_is_valid<AP>(debug_port: &mut AP, access_port: GenericAp) -> 
 where
     AP: ApAccess,
 {
-    let idr_result: Result<IDR, DebugProbeError> = debug_port.read_ap_register(access_port);
+    let idr_result: Result<IDR, _> = debug_port.read_ap_register(access_port);
 
     match idr_result {
         Ok(idr) => u32::from(idr) != 0,

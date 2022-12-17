@@ -5,8 +5,8 @@ use crate::{
     architecture::{
         self,
         arm::{
-            ap::MemoryAp, memory::adi_v5_memory_interface::ArmProbe, ApAddress, ArmProbeInterface,
-            DpAddress,
+            ap::MemoryAp, memory::adi_v5_memory_interface::ArmProbe, ApAddress, ArmNewError,
+            ArmProbeInterface, DpAddress,
         },
     },
     DebugProbeError, Error, Permissions,
@@ -172,14 +172,17 @@ impl<'a> From<&'a mut dyn architecture::arm::communication_interface::DapProbe>
 }
 
 impl<'a> architecture::arm::communication_interface::SwdSequence for SwdSequenceShim<'a> {
-    fn swj_sequence(&mut self, bit_len: u8, bits: u64) -> Result<(), Error> {
-        self.0.swj_sequence(bit_len, bits).map_err(Error::Probe)
+    fn swj_sequence(&mut self, bit_len: u8, bits: u64) -> Result<(), DebugProbeError> {
+        self.0.swj_sequence(bit_len, bits)
     }
 
-    fn swj_pins(&mut self, pin_out: u32, pin_select: u32, pin_wait: u32) -> Result<u32, Error> {
-        self.0
-            .swj_pins(pin_out, pin_select, pin_wait)
-            .map_err(Error::Probe)
+    fn swj_pins(
+        &mut self,
+        pin_out: u32,
+        pin_select: u32,
+        pin_wait: u32,
+    ) -> Result<u32, DebugProbeError> {
+        self.0.swj_pins(pin_out, pin_select, pin_wait)
     }
 }
 
@@ -268,7 +271,7 @@ impl AtSAME5x {
     pub fn reset_hardware_with_extension(
         &self,
         interface: &mut dyn architecture::arm::communication_interface::SwdSequence,
-    ) -> Result<(), Error> {
+    ) -> Result<(), ArmNewError> {
         let mut pins = architecture::arm::Pins(0);
         pins.set_nreset(true);
         pins.set_swdio_tms(true);
@@ -295,7 +298,7 @@ impl AtSAME5x {
     ///
     /// # Errors
     /// Subject to probe communication errors
-    pub fn release_reset_extension(&self, memory: &mut dyn ArmProbe) -> Result<(), Error> {
+    pub fn release_reset_extension(&self, memory: &mut dyn ArmProbe) -> Result<(), ArmNewError> {
         // clear the reset extension bit
         let mut dsu_statusa = DsuStatusA(0);
         dsu_statusa.set_crstext(true);
@@ -309,7 +312,7 @@ impl AtSAME5x {
             }
         }
 
-        Err(Error::Probe(DebugProbeError::Timeout))
+        Err(ArmNewError::Timeout)
     }
 
     /// Perform a normal hardware reset without triggering a Reset extension
@@ -347,7 +350,7 @@ impl ArmDebugSequence for AtSAME5x {
     fn reset_hardware_assert(
         &self,
         interface: &mut dyn architecture::arm::communication_interface::DapProbe,
-    ) -> Result<(), Error> {
+    ) -> Result<(), ArmNewError> {
         let mut shim = SwdSequenceShim::from(interface);
         self.reset_hardware_with_extension(&mut shim)
     }
@@ -356,16 +359,16 @@ impl ArmDebugSequence for AtSAME5x {
     ///
     /// Instead of de-asserting `nReset` here (this was already done during the CPU Reset Extension process),
     /// the device is released from Reset Extension.
-    fn reset_hardware_deassert(&self, memory: &mut dyn ArmProbe) -> Result<(), Error> {
+    fn reset_hardware_deassert(&self, memory: &mut dyn ArmProbe) -> Result<(), ArmNewError> {
         let mut pins = architecture::arm::Pins(0);
         pins.set_nreset(true);
 
         let current_pins =
             architecture::arm::Pins(memory.swj_pins(pins.0 as u32, pins.0 as u32, 0)? as u8);
         if !current_pins.nreset() {
-            return Err(Error::Probe(DebugProbeError::Other(anyhow::anyhow!(
+            return Err(ArmNewError::temporary(anyhow::anyhow!(
                 "Expected nReset to already be de-asserted"
-            ))));
+            )));
         }
 
         self.release_reset_extension(memory)

@@ -88,18 +88,17 @@ impl Dtm {
         Ok(())
     }
 
-    pub fn execute(&mut self) -> Result<Vec<CommandResult>, DebugProbeError> {
+    pub fn execute(&mut self) -> Result<Vec<CommandResult>, RiscvError> {
         let cmds = self.queued_commands.clone();
         self.queued_commands = Vec::new();
 
         match self.probe.write_register_batch(&cmds) {
             Ok(r) => Ok(r),
             Err(e) => match e.error {
-                DebugProbeError::ArchitectureSpecific(ref ae) => {
-                    match ae.downcast_ref::<RiscvError>() {
-                        Some(RiscvError::DmiTransfer(DmiOperationStatus::RequestInProgress)) => {
-                            self.reset()
-                                .map_err(|e| DebugProbeError::ArchitectureSpecific(Box::new(e)))?;
+                crate::Error::Riscv(ae) => {
+                    match ae {
+                        RiscvError::DmiTransfer(DmiOperationStatus::RequestInProgress) => {
+                            self.reset()?;
 
                             // queue up the remaining commands when we retry
                             self.queued_commands
@@ -109,10 +108,11 @@ impl Dtm {
 
                             self.execute()
                         }
-                        _ => Err(e.error),
+                        _ => Err(ae),
                     }
                 }
-                _ => Err(e.error),
+                crate::Error::Probe(err) => Err(err.into()),
+                _other => todo!("Handle this better, should never occur."),
             },
         }
     }
@@ -122,7 +122,7 @@ impl Dtm {
         address: u64,
         value: u32,
         op: DmiOperation,
-    ) -> Result<DeferredResultIndex, DebugProbeError> {
+    ) -> Result<DeferredResultIndex, RiscvError> {
         let register_value: u128 = ((address as u128) << DMI_ADDRESS_BIT_OFFSET)
             | ((value as u128) << DMI_VALUE_BIT_OFFSET)
             | op as u128;
@@ -145,10 +145,8 @@ impl Dtm {
                 let op = (response_value & DMI_OP_MASK) as u8;
 
                 if op != 0 {
-                    return Err(DebugProbeError::ArchitectureSpecific(Box::new(
-                        RiscvError::DmiTransfer(
-                            DmiOperationStatus::parse(op).expect("INVALID DMI OP status"),
-                        ),
+                    return Err(crate::Error::Riscv(RiscvError::DmiTransfer(
+                        DmiOperationStatus::parse(op).expect("INVALID DMI OP status"),
                     )));
                 }
 
