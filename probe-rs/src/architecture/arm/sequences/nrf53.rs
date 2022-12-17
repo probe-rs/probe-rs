@@ -5,6 +5,7 @@ use std::sync::Arc;
 use super::{nrf::Nrf, ArmDebugSequence};
 use crate::architecture::arm::ap::{AccessPort, CSW};
 use crate::architecture::arm::memory::adi_v5_memory_interface::ArmProbe;
+use crate::architecture::arm::ArmError;
 use crate::architecture::arm::{
     communication_interface::Initialized, ApAddress, ArmCommunicationInterface, DapAccess,
 };
@@ -48,7 +49,7 @@ impl Nrf for Nrf5340 {
         arm_interface: &mut ArmCommunicationInterface<Initialized>,
         ahb_ap_address: ApAddress,
         _ctrl_ap_address: ApAddress,
-    ) -> Result<bool, crate::Error> {
+    ) -> Result<bool, ArmError> {
         let csw: CSW = arm_interface
             .read_raw_ap_register(ahb_ap_address, 0x00)?
             .try_into()

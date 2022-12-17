@@ -67,12 +67,11 @@ impl ArmDebugSequence for DefaultArmSequence {}
 fn armv7a_reset_catch_set(
     core: &mut dyn ArmProbe,
     debug_base: Option<u64>,
-) -> Result<(), crate::Error> {
+) -> Result<(), ArmError> {
     use crate::architecture::arm::core::armv7a_debug_regs::Dbgprcr;
 
-    let debug_base = debug_base.ok_or_else(|| {
-        crate::Error::architecture_specific(ArmDebugSequenceError::DebugBaseNotSpecified)
-    })?;
+    let debug_base =
+        debug_base.ok_or_else(|| ArmError::from(ArmDebugSequenceError::DebugBaseNotSpecified))?;
 
     let address = Dbgprcr::get_mmio_address(debug_base);
     let mut dbgprcr = Dbgprcr(core.read_word_32(address)?);
@@ -107,12 +106,11 @@ fn armv7a_reset_catch_clear(
 fn armv7a_reset_system(
     interface: &mut dyn ArmProbe,
     debug_base: Option<u64>,
-) -> Result<(), crate::Error> {
+) -> Result<(), ArmError> {
     use crate::architecture::arm::core::armv7a_debug_regs::{Dbgprcr, Dbgprsr};
 
-    let debug_base = debug_base.ok_or_else(|| {
-        crate::Error::architecture_specific(ArmDebugSequenceError::DebugBaseNotSpecified)
-    })?;
+    let debug_base =
+        debug_base.ok_or_else(|| ArmError::from(ArmDebugSequenceError::DebugBaseNotSpecified))?;
 
     // Request reset
     let address = Dbgprcr::get_mmio_address(debug_base);
@@ -177,12 +175,11 @@ fn armv7a_core_start(core: &mut dyn ArmProbe, debug_base: Option<u64>) -> Result
 fn armv8a_reset_catch_set(
     core: &mut dyn ArmProbe,
     debug_base: Option<u64>,
-) -> Result<(), crate::Error> {
+) -> Result<(), ArmError> {
     use crate::architecture::arm::core::armv8a_debug_regs::{Armv8DebugRegister, Edecr};
 
-    let debug_base = debug_base.ok_or_else(|| {
-        crate::Error::architecture_specific(ArmDebugSequenceError::DebugBaseNotSpecified)
-    })?;
+    let debug_base =
+        debug_base.ok_or_else(|| ArmError::from(ArmDebugSequenceError::DebugBaseNotSpecified))?;
 
     let address = Edecr::get_mmio_address(debug_base);
     let mut edecr = Edecr(core.read_word_32(address)?);
@@ -217,12 +214,11 @@ fn armv8a_reset_catch_clear(
 fn armv8a_reset_system(
     interface: &mut dyn ArmProbe,
     debug_base: Option<u64>,
-) -> Result<(), crate::Error> {
+) -> Result<(), ArmError> {
     use crate::architecture::arm::core::armv8a_debug_regs::{Armv8DebugRegister, Edprcr, Edprsr};
 
-    let debug_base = debug_base.ok_or_else(|| {
-        crate::Error::architecture_specific(ArmDebugSequenceError::DebugBaseNotSpecified)
-    })?;
+    let debug_base =
+        debug_base.ok_or_else(|| ArmError::from(ArmDebugSequenceError::DebugBaseNotSpecified))?;
 
     // Request reset
     let address = Edprcr::get_mmio_address(debug_base);
@@ -345,7 +341,7 @@ fn cortex_m_reset_catch_clear(core: &mut dyn ArmProbe) -> Result<(), ArmError> {
 }
 
 /// ResetCatchSet for Cortex-M devices
-fn cortex_m_reset_catch_set(core: &mut dyn ArmProbe) -> Result<(), crate::Error> {
+fn cortex_m_reset_catch_set(core: &mut dyn ArmProbe) -> Result<(), ArmError> {
     use crate::architecture::arm::core::armv7m::{Demcr, Dhcsr};
 
     // Request halt after reset
@@ -361,7 +357,7 @@ fn cortex_m_reset_catch_set(core: &mut dyn ArmProbe) -> Result<(), crate::Error>
 }
 
 /// ResetSystem for Cortex-M devices
-fn cortex_m_reset_system(interface: &mut dyn ArmProbe) -> Result<(), crate::Error> {
+fn cortex_m_reset_system(interface: &mut dyn ArmProbe) -> Result<(), ArmError> {
     use crate::architecture::arm::core::armv7m::{Aircr, Dhcsr};
 
     let mut aircr = Aircr(0);
@@ -380,7 +376,7 @@ fn cortex_m_reset_system(interface: &mut dyn ArmProbe) -> Result<(), crate::Erro
             // register read errors while the target is
             // resetting.
             Err(ArmError::AccessPort(AccessPortError::RegisterRead { .. })) => continue,
-            Err(err) => return Err(err.into()),
+            Err(err) => return Err(err),
         };
 
         // Wait until the S_RESET_ST bit is cleared on a read
@@ -389,7 +385,7 @@ fn cortex_m_reset_system(interface: &mut dyn ArmProbe) -> Result<(), crate::Erro
         }
     }
 
-    Err(crate::Error::Probe(DebugProbeError::Timeout))
+    Err(ArmError::Timeout)
 }
 
 /// A interface to operate debug sequences for ARM targets.
@@ -593,7 +589,7 @@ pub trait ArmDebugSequence: Send + Sync {
         core: &mut dyn ArmProbe,
         core_type: CoreType,
         debug_base: Option<u64>,
-    ) -> Result<(), crate::Error> {
+    ) -> Result<(), ArmError> {
         // Dispatch based on core type (Cortex-A vs M)
         match core_type {
             CoreType::Armv7a => armv7a_reset_catch_set(core, debug_base),
@@ -647,7 +643,7 @@ pub trait ArmDebugSequence: Send + Sync {
         interface: &mut dyn ArmProbeInterface,
         components: &[CoresightComponent],
         _sink: &TraceSink,
-    ) -> Result<(), crate::Error> {
+    ) -> Result<(), ArmError> {
         // As a default implementation, enable all of the slave port inputs of any trace funnels
         // found. This should enable _all_ sinks simultaneously. Device-specific implementations
         // can be written to properly configure the specified sink.
@@ -674,7 +670,7 @@ pub trait ArmDebugSequence: Send + Sync {
         interface: &mut dyn ArmProbe,
         core_type: CoreType,
         debug_base: Option<u64>,
-    ) -> Result<(), crate::Error> {
+    ) -> Result<(), ArmError> {
         // Dispatch based on core type (Cortex-A vs M)
         match core_type {
             CoreType::Armv7a => armv7a_reset_system(interface, debug_base),
@@ -701,7 +697,7 @@ pub trait ArmDebugSequence: Send + Sync {
         _interface: &mut dyn ArmProbeInterface,
         _default_ap: MemoryAp,
         _permissions: &crate::Permissions,
-    ) -> Result<(), crate::Error> {
+    ) -> Result<(), ArmError> {
         tracing::debug!("debug_device_unlock - empty by default");
         Ok(())
     }
@@ -711,7 +707,7 @@ pub trait ArmDebugSequence: Send + Sync {
     ///
     /// [ARM SVD Debug Description]: http://www.keil.com/pack/doc/cmsis/Pack/html/debug_description.html#recoverSupportStart
     #[doc(alias = "RecoverSupportStart")]
-    fn recover_support_start(&self, _interface: &mut dyn ArmProbe) -> Result<(), crate::Error> {
+    fn recover_support_start(&self, _interface: &mut dyn ArmProbe) -> Result<(), ArmError> {
         // Empty by default
         Ok(())
     }
@@ -722,7 +718,7 @@ pub trait ArmDebugSequence: Send + Sync {
     ///
     /// [ARM SVD Debug Description]: http://www.keil.com/pack/doc/cmsis/Pack/html/debug_description.html#recoverSupportStart
     #[doc(alias = "DebugCoreStop")]
-    fn debug_core_stop(&self, _interface: &mut dyn ArmProbeInterface) -> Result<(), crate::Error> {
+    fn debug_core_stop(&self, _interface: &mut dyn ArmProbeInterface) -> Result<(), ArmError> {
         // Empty by default
         Ok(())
     }
@@ -744,9 +740,10 @@ pub trait DebugEraseSequence: Send + Sync {
     /// May fail if the device is e.g. permanently locked or due to communication issues with the device.
     /// Some devices require the probe to be disconnected and re-attached after a successful chip-erase in
     /// which case it will return `Error::Probe(DebugProbeError::ReAttachRequired)`
-    fn erase_all(&self, _interface: &mut dyn ArmProbeInterface) -> Result<(), crate::Error> {
-        Err(crate::Error::Probe(DebugProbeError::NotImplemented(
-            "Debug erase sequence is not available on this device",
-        )))
+    fn erase_all(&self, _interface: &mut dyn ArmProbeInterface) -> Result<(), ArmError> {
+        Err(
+            DebugProbeError::NotImplemented("Debug erase sequence is not available on this device")
+                .into(),
+        )
     }
 }

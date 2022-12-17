@@ -498,19 +498,19 @@ impl FpRev1CompX {
         } else if fp1_val.replace() == 0b10 {
             Ok((fp1_val.comp() << 2) | 0x2)
         } else {
-            Err(Error::ArchitectureSpecific(Box::new(DebugProbeError::Other(anyhow::anyhow!("Unsupported breakpoint comparator value {:#08x} for HW breakpoint. Breakpoint must be on half-word boundaries", fp1_val.0)))))
+            Err(Error::Probe(DebugProbeError::Other(anyhow::anyhow!("Unsupported breakpoint comparator value {:#08x} for HW breakpoint. Breakpoint must be on half-word boundaries", fp1_val.0))))
         }
     }
     /// Get the correct register configuration which enables
     /// a hardware breakpoint at the given address.
     /// NOTE: Does not support a `replace` value of '11'
-    pub(crate) fn breakpoint_configuration(address: u32) -> Result<Self, Error> {
+    pub(crate) fn breakpoint_configuration(address: u32) -> Result<Self, ArmError> {
         let mut reg = FpRev1CompX::from(0);
 
         // The highest 3 bits of the address have to be zero, otherwise the breakpoint cannot
         // be set at the address.
         if address >= 0x2000_0000 {
-            return Err(Error::ArchitectureSpecific(Box::new(DebugProbeError::Other(anyhow::anyhow!("Unsupported address {:#08x} for HW breakpoint. Breakpoint must be at address < 0x2000_0000.", address)))));
+            return Err(ArmError::temporary(anyhow::anyhow!("Unsupported address {:#08x} for HW breakpoint. Breakpoint must be at address < 0x2000_0000.", address)));
         }
 
         let comp_val = (address & 0x1f_ff_ff_fc) >> 2;
@@ -730,7 +730,7 @@ impl<'probe> CoreInterface for Armv7m<'probe> {
             let val = super::cortex_m::read_core_reg(&mut *self.memory, address)?;
             Ok(val.into())
         } else {
-            Err(Error::architecture_specific(ArmError::CoreNotHalted))
+            Err(Error::Arm(ArmError::CoreNotHalted))
         }
     }
 
@@ -739,7 +739,7 @@ impl<'probe> CoreInterface for Armv7m<'probe> {
             super::cortex_m::write_core_reg(&mut *self.memory, address, value.try_into()?)?;
             Ok(())
         } else {
-            Err(Error::architecture_specific(ArmError::CoreNotHalted))
+            Err(Error::Arm(ArmError::CoreNotHalted))
         }
     }
 
@@ -853,7 +853,8 @@ impl<'probe> CoreInterface for Armv7m<'probe> {
 
     fn reset(&mut self) -> Result<(), Error> {
         self.sequence
-            .reset_system(&mut *self.memory, crate::CoreType::Armv7m, None)
+            .reset_system(&mut *self.memory, crate::CoreType::Armv7m, None)?;
+        Ok(())
     }
 
     fn reset_and_halt(&mut self, _timeout: Duration) -> Result<CoreInformation, Error> {

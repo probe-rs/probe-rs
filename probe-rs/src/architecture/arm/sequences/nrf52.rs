@@ -4,8 +4,9 @@ use std::sync::Arc;
 
 use super::ArmDebugSequence;
 use crate::{
-    architecture::arm::{component::TraceSink, memory::CoresightComponent, ArmProbeInterface},
-    Error,
+    architecture::arm::{
+        component::TraceSink, memory::CoresightComponent, ArmError, ArmProbeInterface,
+    },
 };
 
 /// An error when operating a core ROM table component occurred.
@@ -71,13 +72,11 @@ impl ArmDebugSequence for Nrf52 {
         interface: &mut dyn ArmProbeInterface,
         components: &[CoresightComponent],
         sink: &TraceSink,
-    ) -> Result<(), crate::Error> {
+    ) -> Result<(), ArmError> {
         let tpiu_clock = match sink {
             TraceSink::TraceMemory => {
                 tracing::error!("nRF52 does not have a trace buffer");
-                return Err(Error::architecture_specific(
-                    ComponentError::NordicNoTraceMem,
-                ));
+                return Err(ArmError::from(ComponentError::NordicNoTraceMem));
             }
 
             TraceSink::Tpiu(config) => config.tpiu_clk(),
@@ -92,7 +91,7 @@ impl ArmDebugSequence for Nrf52 {
             tpiu_clk => {
                 let e = ComponentError::NordicUnsupportedTPUICLKValue(tpiu_clk);
                 tracing::error!("{:?}", e);
-                return Err(Error::architecture_specific(e));
+                return Err(ArmError::from(e));
             }
         };
 
@@ -108,5 +107,11 @@ impl ArmDebugSequence for Nrf52 {
         config.write(&mut *memory)?;
 
         Ok(())
+    }
+}
+
+impl From<ComponentError> for ArmError {
+    fn from(value: ComponentError) -> ArmError {
+        ArmError::Common(Box::new(value))
     }
 }

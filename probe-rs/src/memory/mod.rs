@@ -1,4 +1,3 @@
-use crate::architecture::arm::ap::AccessPortError;
 use crate::error;
 
 use anyhow::{anyhow, Result};
@@ -200,9 +199,10 @@ pub trait MemoryInterface {
         if address % 4 != 0 || len % 4 != 0 {
             // If we do not support 8 bit transfers we have to bail because we can only do 32 bit word aligned transers.
             if !self.supports_8bit_transfers()? {
-                return Err(error::Error::ArchitectureSpecific(Box::new(
-                    AccessPortError::alignment_error(address, 4),
-                )));
+                return Err(error::Error::MemoryNotAligned {
+                    address,
+                    alignment: 4,
+                });
             }
 
             // We first do an 8 bit write of the first < 4 bytes up until the 4 byte aligned boundary.

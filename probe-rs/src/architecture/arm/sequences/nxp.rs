@@ -16,7 +16,7 @@ use crate::{
         ApAddress, ArmCommunicationInterface, ArmError, DapAccess, DpAddress,
     },
     core::MemoryMappedRegister,
-    CommunicationInterface, DebugProbeError,
+    CommunicationInterface,
 };
 
 use super::ArmDebugSequence;
@@ -120,7 +120,7 @@ impl ArmDebugSequence for LPC55S69 {
         interface: &mut dyn ArmProbe,
         _core_type: crate::CoreType,
         _debug_base: Option<u64>,
-    ) -> Result<(), crate::Error> {
+    ) -> Result<(), ArmError> {
         let mut reset_vector = 0xffff_ffff;
         let mut demcr = Demcr(interface.read_word_32(Demcr::ADDRESS)?);
 
@@ -159,7 +159,7 @@ impl ArmDebugSequence for LPC55S69 {
 
         if timeout {
             tracing::warn!("Failed: Wait for flash word read to finish");
-            return Err(crate::Error::Probe(DebugProbeError::Timeout));
+            return Err(ArmError::Timeout);
         }
 
         if (interface.read_word_32(0x4003_4fe0)? & 0xB) == 0 {
@@ -213,7 +213,7 @@ impl ArmDebugSequence for LPC55S69 {
         interface: &mut dyn ArmProbe,
         _core_type: crate::CoreType,
         _debug_base: Option<u64>,
-    ) -> Result<(), crate::Error> {
+    ) -> Result<(), ArmError> {
         let mut aircr = Aircr(0);
         aircr.vectkey();
         aircr.set_sysresetreq(true);
@@ -235,7 +235,7 @@ impl ArmDebugSequence for LPC55S69 {
     }
 }
 
-fn wait_for_stop_after_reset(memory: &mut dyn ArmProbe) -> Result<(), crate::Error> {
+fn wait_for_stop_after_reset(memory: &mut dyn ArmProbe) -> Result<(), ArmError> {
     tracing::info!("Wait for stop after reset");
 
     thread::sleep(Duration::from_millis(10));
@@ -261,7 +261,7 @@ fn wait_for_stop_after_reset(memory: &mut dyn ArmProbe) -> Result<(), crate::Err
     }
 
     if timeout {
-        return Err(crate::Error::Probe(DebugProbeError::Timeout));
+        return Err(ArmError::Timeout);
     }
 
     let dhcsr = Dhcsr(memory.read_word_32(Dhcsr::ADDRESS)?);
@@ -341,7 +341,7 @@ impl MIMXRT10xx {
     }
 
     /// Runtime validation of core type.
-    fn check_core_type(&self, core_type: crate::CoreType) -> Result<(), crate::Error> {
+    fn check_core_type(&self, core_type: crate::CoreType) -> Result<(), ArmError> {
         const EXPECTED: crate::CoreType = crate::CoreType::Armv7em;
         if core_type != EXPECTED {
             tracing::warn!(
@@ -359,7 +359,7 @@ impl ArmDebugSequence for MIMXRT10xx {
         interface: &mut dyn ArmProbe,
         core_type: crate::CoreType,
         _: Option<u64>,
-    ) -> Result<(), crate::Error> {
+    ) -> Result<(), ArmError> {
         self.check_core_type(core_type)?;
 
         let mut aircr = Aircr(0);
@@ -511,7 +511,7 @@ impl ArmDebugSequence for MIMXRT11xx {
         interface: &mut dyn ArmProbe,
         _: crate::CoreType,
         _: Option<u64>,
-    ) -> Result<(), crate::Error> {
+    ) -> Result<(), ArmError> {
         // It's unpredictable to VECTRESET a core if it's not halted and
         // in debug state.
         tracing::debug!("Halting MIMXRT11xx core before VECTRESET");

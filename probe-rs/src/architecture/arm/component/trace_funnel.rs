@@ -5,7 +5,6 @@
 use super::DebugRegister;
 use crate::architecture::arm::memory::romtable::CoresightComponent;
 use crate::architecture::arm::{ArmError, ArmProbeInterface};
-use crate::Error;
 use bitfield::bitfield;
 
 const REGISTER_OFFSET_ACCESS: u32 = 0xFB0;
@@ -29,7 +28,7 @@ impl<'a> TraceFunnel<'a> {
     }
 
     /// Unlock the funnel and enable it for tracing the target.
-    pub fn unlock(&mut self) -> Result<(), Error> {
+    pub fn unlock(&mut self) -> Result<(), ArmError> {
         self.component
             .write_reg(self.interface, REGISTER_OFFSET_ACCESS, 0xC5AC_CE55)?;
 

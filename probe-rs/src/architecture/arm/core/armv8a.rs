@@ -114,7 +114,7 @@ impl<'probe> Armv8a<'probe> {
     /// Execute an instruction
     fn execute_instruction(&mut self, instruction: u32) -> Result<Edscr, Error> {
         if !self.state.current_state.is_halted() {
-            return Err(Error::architecture_specific(Armv8aError::NotHalted));
+            return Err(Error::Arm(Armv8aError::NotHalted.into()));
         }
 
         let mut final_instruction = instruction;
@@ -144,7 +144,7 @@ impl<'probe> Armv8a<'probe> {
 
             self.memory.write_word_32(address, edrcr.into())?;
 
-            return Err(Error::architecture_specific(Armv8aError::DataAbort));
+            return Err(Error::Arm(Armv8aError::DataAbort.into()));
         }
 
         Ok(edscr)
@@ -490,8 +490,8 @@ impl<'probe> Armv8a<'probe> {
 
                 Ok(value.into())
             }
-            _ => Err(Error::architecture_specific(
-                Armv8aError::InvalidRegisterNumber(reg_num, 32),
+            _ => Err(Error::Arm(
+                Armv8aError::InvalidRegisterNumber(reg_num, 32).into(),
             )),
         }
     }
@@ -600,8 +600,8 @@ impl<'probe> Armv8a<'probe> {
 
                 Ok(fpsr.into())
             }
-            _ => Err(Error::architecture_specific(
-                Armv8aError::InvalidRegisterNumber(reg_num, 64),
+            _ => Err(Error::Arm(
+                Armv8aError::InvalidRegisterNumber(reg_num, 64).into(),
             )),
         }
     }
@@ -934,8 +934,8 @@ impl<'probe> CoreInterface for Armv8a<'probe> {
         let current_mode = if self.state.is_64_bit { 64 } else { 32 };
 
         if (reg_num as usize) >= self.state.register_cache.len() {
-            return Err(Error::architecture_specific(
-                Armv8aError::InvalidRegisterNumber(reg_num, current_mode),
+            return Err(Error::Arm(
+                Armv8aError::InvalidRegisterNumber(reg_num, current_mode).into(),
             ));
         }
         self.state.register_cache[reg_num as usize] = Some((value, true));

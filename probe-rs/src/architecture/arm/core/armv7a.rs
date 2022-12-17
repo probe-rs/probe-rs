@@ -4,6 +4,7 @@ use crate::architecture::arm::core::armv7a_debug_regs::*;
 use crate::architecture::arm::core::register;
 use crate::architecture::arm::memory::adi_v5_memory_interface::ArmProbe;
 use crate::architecture::arm::sequences::ArmDebugSequence;
+use crate::architecture::arm::ArmError;
 use crate::core::{RegisterFile, RegisterValue};
 use crate::error::Error;
 use crate::memory::valid_32bit_address;
@@ -130,7 +131,7 @@ impl<'probe> Armv7a<'probe> {
     /// Execute an instruction
     fn execute_instruction(&mut self, instruction: u32) -> Result<Dbgdscr, Error> {
         if !self.state.current_state.is_halted() {
-            return Err(Error::architecture_specific(Armv7aError::NotHalted));
+            return Err(Error::Arm(ArmError::CoreNotHalted));
         }
 
         // Enable ITR if needed
@@ -164,7 +165,7 @@ impl<'probe> Armv7a<'probe> {
 
             self.memory.write_word_32(address, dbgdrcr.into())?;
 
-            return Err(Error::architecture_specific(Armv7aError::DataAbort));
+            return Err(Error::Arm(Armv7aError::DataAbort.into()));
         }
 
         Ok(dbgdscr)
@@ -587,8 +588,8 @@ impl<'probe> CoreInterface for Armv7a<'probe> {
 
                 Ok(value.into())
             }
-            _ => Err(Error::architecture_specific(
-                Armv7aError::InvalidRegisterNumber(reg_num),
+            _ => Err(Error::Arm(
+                Armv7aError::InvalidRegisterNumber(reg_num).into(),
             )),
         };
 
@@ -605,8 +606,8 @@ impl<'probe> CoreInterface for Armv7a<'probe> {
         let reg_num = address.0;
 
         if (reg_num as usize) >= self.state.register_cache.len() {
-            return Err(Error::architecture_specific(
-                Armv7aError::InvalidRegisterNumber(reg_num),
+            return Err(Error::Arm(
+                Armv7aError::InvalidRegisterNumber(reg_num).into(),
             ));
         }
         self.state.register_cache[reg_num as usize] = Some((value, true));

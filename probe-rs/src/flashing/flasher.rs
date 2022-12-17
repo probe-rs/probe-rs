@@ -496,12 +496,6 @@ fn into_reg(val: u64) -> Result<u32, FlashError> {
     Ok(reg_value)
 }
 
-impl From<FlashError> for crate::Error {
-    fn from(err: FlashError) -> Self {
-        Self::ArchitectureSpecific(Box::new(err))
-    }
-}
-
 pub(super) struct ActiveFlasher<'probe, O: Operation> {
     core: Core<'probe>,
     flash_algorithm: FlashAlgorithm,
@@ -580,12 +574,12 @@ impl<'probe, O: Operation> ActiveFlasher<'probe, O> {
         registers: &Registers,
         init: bool,
         duration: Duration,
-    ) -> Result<u32, crate::Error> {
+    ) -> Result<u32, FlashError> {
         self.call_function(registers, init)?;
         self.wait_for_completion(duration)
     }
 
-    fn call_function(&mut self, registers: &Registers, init: bool) -> Result<(), crate::Error> {
+    fn call_function(&mut self, registers: &Registers, init: bool) -> Result<(), FlashError> {
         tracing::debug!("Calling routine {:?}, init={})", &registers, init);
 
         let algo = &self.flash_algorithm;
@@ -651,7 +645,7 @@ impl<'probe, O: Operation> ActiveFlasher<'probe, O> {
     }
 
     #[tracing::instrument(skip(self))]
-    pub(super) fn wait_for_completion(&mut self, timeout: Duration) -> Result<u32, crate::Error> {
+    pub(super) fn wait_for_completion(&mut self, timeout: Duration) -> Result<u32, FlashError> {
         tracing::debug!("Waiting for routine call completion.");
         let regs = self.core.registers();
 

@@ -2,8 +2,8 @@
 
 use crate::architecture::arm::ArmError;
 use crate::architecture::riscv::communication_interface::RiscvError;
+use crate::config::RegistryError;
 use crate::DebugProbeError;
-use crate::{architecture::arm::ap::AccessPortError, config::RegistryError};
 
 /// The overarching error type which contains all possible errors as variants.
 #[derive(thiserror::Error, Debug)]
@@ -11,9 +11,6 @@ pub enum Error {
     /// An error in the probe driver occurred.
     #[error("An error with the usage of the probe occurred")]
     Probe(#[from] DebugProbeError),
-    /// An architecture specific error occurred. Some error that is only possible with the current architecture.
-    #[error("A core architecture specific error occurred")]
-    ArchitectureSpecific(#[from] Box<dyn std::error::Error + Send + Sync>),
     /// An ARM specific error occured.
     #[error("A ARM specific error occured.")]
     Arm(#[from] ArmError),
@@ -41,17 +38,13 @@ pub enum Error {
     /// Any other error occurred.
     #[error(transparent)]
     Other(#[from] anyhow::Error),
-}
 
-impl Error {
-    /// Create an architecture specific error and automatically box its source.
-    pub fn architecture_specific(e: impl std::error::Error + Send + Sync + 'static) -> Self {
-        Self::ArchitectureSpecific(Box::new(e))
-    }
-}
-
-impl From<AccessPortError> for Error {
-    fn from(err: AccessPortError) -> Self {
-        Error::architecture_specific(err)
-    }
+    /// Unaligned memory access
+    #[error("Alignment error")]
+    MemoryNotAligned {
+        /// The address of the register.
+        address: u64,
+        /// The required alignment in bytes (address increments).
+        alignment: usize,
+    },
 }

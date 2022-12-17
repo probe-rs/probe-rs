@@ -193,10 +193,10 @@ impl Session {
                 match unlock_res {
                     Ok(()) => (),
                     // In case this happens after unlock. Try to re-attach the probe once.
-                    Err(crate::Error::Probe(crate::DebugProbeError::ReAttachRequired)) => {
+                    Err(ArmError::ReAttachRequired) => {
                         Self::reattach_arm_interface(&mut interface, &sequence_handle)?;
                     }
-                    Err(e) => return Err(e),
+                    Err(e) => return Err(Error::Arm(e)),
                 }
 
                 {
@@ -524,7 +524,7 @@ impl Session {
                     match erase_res {
                         Ok(()) => (),
                         // In case this happens after unlock. Try to re-attach the probe once.
-                        Err(crate::Error::Probe(crate::DebugProbeError::ReAttachRequired)) => {
+                        Err(ArmError::ReAttachRequired) => {
                             Self::reattach_arm_interface(interface, &debug_sequence)?;
                             // For re-setup debugging on all cores
                             for i in 0..self.target.cores.len() {
@@ -557,7 +557,7 @@ impl Session {
                                 )?;
                             }
                         }
-                        Err(e) => return Err(e),
+                        Err(e) => return Err(Error::Arm(e)),
                     }
                     tracing::info!("Device Erased Successfully");
                     Ok(())
@@ -895,11 +895,15 @@ impl Permissions {
         }
     }
 
-    pub(crate) fn erase_all(&self) -> Result<(), crate::Error> {
+    pub(crate) fn erase_all(&self) -> Result<(), MissingPermissions> {
         if self.erase_all {
             Ok(())
         } else {
-            Err(crate::Error::MissingPermissions("erase_all".into()))
+            Err(MissingPermissions("erase_all".into()))
         }
     }
 }
+
+#[derive(Debug, Clone, thiserror::Error)]
+#[error("An operation could not be performed because it lacked the permission to do so: {0}")]
+pub struct MissingPermissions(pub String);

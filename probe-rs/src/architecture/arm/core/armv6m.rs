@@ -297,7 +297,7 @@ impl BpCompx {
         } else if bp_val.bp_match() == 0b10 {
             Ok((bp_val.comp() << 2) | 0x2)
         } else {
-            Err(Error::ArchitectureSpecific(Box::new(DebugProbeError::Other(anyhow::anyhow!("Unsupported breakpoint comparator value {:#08x} for HW breakpoint. Breakpoint must be on half-word boundaries", bp_val.0)))))
+            Err(Error::Probe(DebugProbeError::Other(anyhow::anyhow!("Unsupported breakpoint comparator value {:#08x} for HW breakpoint. Breakpoint must be on half-word boundaries", bp_val.0))))
         }
     }
 }
@@ -616,7 +616,8 @@ impl<'probe> CoreInterface for Armv6m<'probe> {
 
     fn reset(&mut self) -> Result<(), Error> {
         self.sequence
-            .reset_system(&mut *self.memory, crate::CoreType::Armv6m, None)
+            .reset_system(&mut *self.memory, crate::CoreType::Armv6m, None)?;
+        Ok(())
     }
 
     fn reset_and_halt(&mut self, _timeout: Duration) -> Result<CoreInformation, Error> {
@@ -676,7 +677,7 @@ impl<'probe> CoreInterface for Armv6m<'probe> {
         // The highest 3 bits of the address have to be zero, otherwise the breakpoint cannot
         // be set at the address.
         if addr >= 0x2000_0000 {
-            return Err(Error::ArchitectureSpecific(Box::new(DebugProbeError::Other(anyhow::anyhow!("Unsupported address {:#08x} for HW breakpoint. Breakpoint must be at address < 0x2000_0000.", addr)))));
+            return Err(Error::Probe(DebugProbeError::Other(anyhow::anyhow!("Unsupported address {:#08x} for HW breakpoint. Breakpoint must be at address < 0x2000_0000.", addr))));
         }
 
         let mut value = BpCompx(0);
@@ -801,7 +802,7 @@ impl<'probe> CoreInterface for Armv6m<'probe> {
             let val = super::cortex_m::read_core_reg(&mut *self.memory, address)?;
             Ok(val.into())
         } else {
-            Err(Error::architecture_specific(ArmError::CoreNotHalted))
+            Err(Error::Arm(ArmError::CoreNotHalted))
         }
     }
 
@@ -810,7 +811,7 @@ impl<'probe> CoreInterface for Armv6m<'probe> {
             super::cortex_m::write_core_reg(&mut *self.memory, address, value.try_into()?)?;
             Ok(())
         } else {
-            Err(Error::architecture_specific(ArmError::CoreNotHalted))
+            Err(Error::Arm(ArmError::CoreNotHalted))
         }
     }
 

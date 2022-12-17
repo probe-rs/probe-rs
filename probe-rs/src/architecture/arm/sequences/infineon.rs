@@ -10,7 +10,6 @@ use std::thread;
 use std::time::{Duration, Instant};
 
 use crate::architecture::arm::communication_interface::DapProbe;
-use crate::Error;
 use crate::{DebugProbeError, MemoryMappedRegister};
 
 use super::ArmDebugSequence;
@@ -103,7 +102,7 @@ impl ArmDebugSequence for XMC4000 {
         core: &mut dyn ArmProbe,
         core_type: probe_rs_target::CoreType,
         debug_base: Option<u64>,
-    ) -> Result<(), Error> {
+    ) -> Result<(), ArmError> {
         tracing::trace!("performing XMC4000 ResetCatchSet");
 
         // Did we just come out of a cold reset?
@@ -129,7 +128,7 @@ impl ArmDebugSequence for XMC4000 {
 
             // See if we halted
             match spin_until_core_is_halted(core, Duration::from_millis(3)) {
-                Err(Error::Probe(DebugProbeError::Timeout)) => {
+                Err(ArmError::Timeout) => {
                     // We missed the boat
                     tracing::info!("Core did not halt after cold boot; performing a warm reset");
 
@@ -223,7 +222,7 @@ impl ArmDebugSequence for XMC4000 {
         } else if fp_ctrl.rev() == 1 {
             FpRev2CompX::breakpoint_configuration(application_entry).into()
         } else {
-            return Err(Error::Other(anyhow!(
+            return Err(ArmError::temporary(anyhow!(
                 "xmc4000: unexpected fp_ctrl.rev = {}",
                 fp_ctrl.rev()
             )));
@@ -278,7 +277,7 @@ impl ArmDebugSequence for XMC4000 {
         core: &mut dyn ArmProbe,
         _core_type: probe_rs_target::CoreType,
         _debug_base: Option<u64>,
-    ) -> Result<(), Error> {
+    ) -> Result<(), ArmError> {
         // XMC4700/XMC4800 reference manual v1.3 § 27.2.2.2:
         // > Since the Reset Status Information in register SCU.RSTSTAT is the accumulated reset
         // > type, it is necessary to clean the bitfield using the SCU register RSTCLR.RSCLR before
@@ -316,7 +315,7 @@ impl ArmDebugSequence for XMC4000 {
                 break;
             } else if start.elapsed() > Duration::from_millis(500) {
                 tracing::error!("XMC4000 did not reset as commanded");
-                return Err(crate::Error::Probe(DebugProbeError::Timeout));
+                return Err(ArmError::Timeout);
             }
         }
 
@@ -426,7 +425,7 @@ impl ArmDebugSequence for XMC4000 {
     }
 }
 
-fn spin_until_core_is_halted(core: &mut dyn ArmProbe, timeout: Duration) -> Result<(), Error> {
+fn spin_until_core_is_halted(core: &mut dyn ArmProbe, timeout: Duration) -> Result<(), ArmError> {
     let start = Instant::now();
     loop {
         let dhcsr = Dhcsr(core.read_word_32(Dhcsr::ADDRESS)?);
@@ -435,7 +434,7 @@ fn spin_until_core_is_halted(core: &mut dyn ArmProbe, timeout: Duration) -> Resu
             return Ok(());
         } else if start.elapsed() > timeout {
             tracing::error!("XMC4000 did not halt after reset");
-            return Err(crate::Error::Probe(DebugProbeError::Timeout));
+            return Err(ArmError::Timeout);
         }
     }
 }

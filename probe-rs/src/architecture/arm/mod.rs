@@ -19,6 +19,8 @@ pub use traits::*;
 use crate::DebugProbeError;
 
 use self::ap::AccessPortError;
+use self::armv7a::Armv7aError;
+use self::armv8a::Armv8aError;
 use self::communication_interface::RegisterParseError;
 pub use self::core::armv6m;
 pub use self::core::armv7a;
@@ -57,6 +59,16 @@ pub enum ArmError {
     /// The core has to be halted for the operation, but was not.
     #[error("The core needs to be halted for this operation but was not.")]
     CoreNotHalted,
+    /// Performing certain operations (e.g device unlock or Chip-Erase) can leave the device in a state
+    /// that requires a probe re-attach to resolve.
+    #[error("Probe and device internal state mismatch. A probe re-attach is required")]
+    ReAttachRequired,
+    /// An operation was not performed because the required permissions were not given.
+    ///
+    /// This can for example happen when the core is locked and needs to be erased to be unlocked.
+    /// Then the correct permission needs to be given to automatically unlock the core to prevent accidental erases.
+    #[error("An operation could not be performed because it lacked the permission to do so: {0}")]
+    MissingPermissions(String),
 }
 
 impl ArmError {
@@ -101,6 +113,18 @@ impl From<DapError> for ArmError {
 
 impl From<ArmDebugSequenceError> for ArmError {
     fn from(value: ArmDebugSequenceError) -> Self {
+        ArmError::Common(Box::new(value))
+    }
+}
+
+impl From<Armv7aError> for ArmError {
+    fn from(value: Armv7aError) -> Self {
+        ArmError::Common(Box::new(value))
+    }
+}
+
+impl From<Armv8aError> for ArmError {
+    fn from(value: Armv8aError) -> Self {
         ArmError::Common(Box::new(value))
     }
 }

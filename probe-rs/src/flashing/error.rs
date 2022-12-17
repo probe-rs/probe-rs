@@ -68,7 +68,7 @@ pub enum FlashError {
     },
     /// An error occurred during the interaction with the core.
     #[error("Something during the interaction with the core went wrong")]
-    Core(#[source] error::Error),
+    Core(#[from] error::Error),
     /// The RAM contents did not match the flash algorithm.
     #[error(
         "The RAM contents did not match the expected contents after loading the flash algorithm."

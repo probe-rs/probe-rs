@@ -4,8 +4,8 @@ use std::sync::Arc;
 
 use super::ArmDebugSequence;
 use crate::architecture::arm::{
-    ap::MemoryAp, component::TraceSink, memory::CoresightComponent, ApAddress, ArmProbeInterface,
-    DpAddress,
+    ap::MemoryAp, component::TraceSink, memory::CoresightComponent, ApAddress, ArmError,
+    ArmProbeInterface, DpAddress,
 };
 
 /// Marker structure for STM32F-series devices.
@@ -61,7 +61,7 @@ impl ArmDebugSequence for Stm32fSeries {
         interface: &mut dyn ArmProbeInterface,
         default_ap: MemoryAp,
         _permissions: &crate::Permissions,
-    ) -> Result<(), crate::Error> {
+    ) -> Result<(), ArmError> {
         let mut memory = interface.memory_interface(default_ap)?;
 
         let mut cr = dbgmcu::Control::read(&mut *memory)?;
@@ -73,7 +73,7 @@ impl ArmDebugSequence for Stm32fSeries {
         Ok(())
     }
 
-    fn debug_core_stop(&self, interface: &mut dyn ArmProbeInterface) -> Result<(), crate::Error> {
+    fn debug_core_stop(&self, interface: &mut dyn ArmProbeInterface) -> Result<(), ArmError> {
         // Power down the debug components
         let ap = MemoryAp::new(ApAddress {
             dp: DpAddress::Default,
@@ -96,7 +96,7 @@ impl ArmDebugSequence for Stm32fSeries {
         interface: &mut dyn ArmProbeInterface,
         components: &[CoresightComponent],
         sink: &TraceSink,
-    ) -> Result<(), crate::Error> {
+    ) -> Result<(), ArmError> {
         let mut memory = interface.memory_interface(components[0].ap)?;
         let mut cr = dbgmcu::Control::read(&mut *memory)?;
 

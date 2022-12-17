@@ -141,7 +141,8 @@ impl<'probe> CoreInterface for Armv8m<'probe> {
 
     fn reset(&mut self) -> Result<(), Error> {
         self.sequence
-            .reset_system(&mut *self.memory, crate::CoreType::Armv8m, None)
+            .reset_system(&mut *self.memory, crate::CoreType::Armv8m, None)?;
+        Ok(())
     }
 
     fn reset_and_halt(&mut self, _timeout: Duration) -> Result<CoreInformation, Error> {
@@ -230,7 +231,7 @@ impl<'probe> CoreInterface for Armv8m<'probe> {
             let value = super::cortex_m::read_core_reg(&mut *self.memory, address)?;
             Ok(value.into())
         } else {
-            Err(Error::architecture_specific(ArmError::CoreNotHalted))
+            Err(Error::Arm(ArmError::CoreNotHalted))
         }
     }
 
@@ -239,7 +240,7 @@ impl<'probe> CoreInterface for Armv8m<'probe> {
             super::cortex_m::write_core_reg(&mut *self.memory, address, value.try_into()?)?;
             Ok(())
         } else {
-            Err(Error::architecture_specific(ArmError::CoreNotHalted))
+            Err(Error::Arm(ArmError::CoreNotHalted))
         }
     }
 

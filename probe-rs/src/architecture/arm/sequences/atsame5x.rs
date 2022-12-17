@@ -9,7 +9,8 @@ use crate::{
             ArmProbeInterface, DpAddress,
         },
     },
-    DebugProbeError, Error, Permissions,
+    session::MissingPermissions,
+    DebugProbeError, Permissions,
 };
 use bitfield::bitfield;
 use std::sync::Arc;
@@ -208,22 +209,23 @@ impl AtSAME5x {
         &self,
         memory: &mut dyn ArmProbe,
         permissions: &Permissions,
-    ) -> Result<(), Error> {
+    ) -> Result<(), ArmError> {
         let dsu_status_a = DsuStatusA::from(memory.read_word_8(DsuStatusA::ADDRESS)?);
         let dsu_status_b = DsuStatusB::from(memory.read_word_8(DsuStatusB::ADDRESS)?);
 
         match (dsu_status_b.celck(), dsu_status_b.prot(), permissions.erase_all()) {
-            (true, _, _) => Err(Error::MissingPermissions(
+            (true, _, _) => Err(ArmError::MissingPermissions(
                 "Chip-Erase is locked. This can only be unlocked from within the device firmware by performing \
                 a Chip-Erase Unlock (CEULCK) command."
                     .into(),
             )),
-            (false, true, Err(_)) => Err(Error::MissingPermissions(
-                "Device is locked. A Chip-Erase operation is required to unlock. \
-                            Re-run with granting the 'erase-all' permission and connecting under reset"
-                    .into(),
+            (false, true, Err(MissingPermissions(permission))) => Err(ArmError::MissingPermissions(
+                format!("Device is locked. A Chip-Erase operation is required to unlock. \
+                            Re-run with granting the '{}' permission and connecting under reset"
+                    , permission),
             )),
-            (false, false, Err(e)) => Err(e),
+            // TODO: This seems wrong? Currently preserves the bevaiour before the change of the error type.
+            (false, false,Err(MissingPermissions(permission))) => Err(ArmError::MissingPermissions(permission)),
             (false, _, Ok(())) => Ok(()),
         }?;
 
@@ -248,15 +250,15 @@ impl AtSAME5x {
 
                 // We need to reconnect to target to finalize the unlock.
                 // Signal ReAttachRequired so that the session will try to re-connect
-                return Err(Error::Probe(DebugProbeError::ReAttachRequired));
+                return Err(ArmError::ReAttachRequired);
             } else if current_dsu_statusa.fail() {
-                return Err(Error::Other(anyhow::anyhow!("Chip-Erase Failed")));
+                return Err(ArmError::temporary(anyhow::anyhow!("Chip-Erase Failed")));
             }
             std::thread::sleep(std::time::Duration::from_millis(250));
         }
 
         tracing::error!("Chip-Erase failed to complete within 8 seconds");
-        Err(Error::Probe(DebugProbeError::Timeout))
+        Err(ArmError::Timeout)
     }
 
     /// Perform a hardware reset in a way that puts the core into CPU Reset Extension
@@ -322,7 +324,7 @@ impl AtSAME5x {
     pub fn reset_hardware(
         &self,
         interface: &mut dyn architecture::arm::communication_interface::SwdSequence,
-    ) -> Result<(), Error> {
+    ) -> Result<(), ArmError> {
         let mut pins = architecture::arm::Pins(0);
         pins.set_nreset(true);
         pins.set_swdio_tms(true);
@@ -389,7 +391,7 @@ impl ArmDebugSequence for AtSAME5x {
         interface: &mut dyn ArmProbeInterface,
         default_ap: architecture::arm::ap::MemoryAp,
         permissions: &Permissions,
-    ) -> Result<(), Error> {
+    ) -> Result<(), ArmError> {
         // First check if the device is locked
         let mut memory = interface.memory_interface(default_ap)?;
         let dsu_status_b = DsuStatusB::from(memory.read_word_8(DsuStatusB::ADDRESS)?);
@@ -408,7 +410,7 @@ impl ArmDebugSequence for AtSAME5x {
 }
 
 impl DebugEraseSequence for AtSAME5x {
-    fn erase_all(&self, interface: &mut dyn ArmProbeInterface) -> Result<(), Error> {
+    fn erase_all(&self, interface: &mut dyn ArmProbeInterface) -> Result<(), ArmError> {
         let mem_ap = MemoryAp::new(ApAddress {
             dp: DpAddress::Default,
             ap: 0,
