@@ -400,7 +400,7 @@ impl Session {
     /// Read available trace data from the specified data sink.
     ///
     /// This method is only supported for ARM-based targets, and will
-    /// return [Error::ArchitectureRequired] otherwise.
+    /// return [ArmError::ArchitectureRequired] otherwise.
     #[tracing::instrument(skip(self))]
     pub fn read_trace_data(&mut self) -> Result<Vec<u8>, ArmError> {
         let sink = self

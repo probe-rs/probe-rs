@@ -26,9 +26,6 @@ pub enum Error {
     /// The given chip does not exist.
     #[error("Unable to load specification for chip")]
     ChipNotFound(#[from] RegistryError),
-    /// The requested feature requires one of the architectures specified by this error.
-    #[error("This feature requires one of the following architectures: {0:?}")]
-    ArchitectureRequired(&'static [&'static str]),
     /// An operation was not performed because the required permissions were not given.
     ///
     /// This can for example happen when the core is locked and needs to be erased to be unlocked.

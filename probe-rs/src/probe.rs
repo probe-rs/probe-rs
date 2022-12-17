@@ -17,7 +17,7 @@ use crate::{
 use crate::{
     architecture::{
         arm::{
-            communication_interface::{DapProbe, RegisterParseError},
+            communication_interface::DapProbe,
             sequences::{ArmDebugSequence, DefaultArmSequence},
             DapError, PortType, SwoAccess,
         },
@@ -142,10 +142,6 @@ pub enum DebugProbeError {
     /// Check the wiring before continuing.
     #[error("Failed to find the target or attach to the target")]
     TargetNotFound,
-    /// Performing certain operations (e.g device unlock or Chip-Erase) can leave the device in a state
-    /// that requires a probe re-attach to resolve.
-    #[error("Probe and device internal state mismatch. A probe re-attach is required")]
-    ReAttachRequired,
     /// The variant of the function you called is not yet implemented.
     /// This can happen if some debug probe has some unimplemented functionality for a specific protocol or architecture.
     #[error("Some functionality was not implemented yet: {0}")]
@@ -162,12 +158,6 @@ pub enum DebugProbeError {
     /// This can happen when a probe does not allow for setting speed manually for example.
     #[error("Command not supported by probe: {0}")]
     CommandNotSupportedByProbe(&'static str),
-    /// The hardware breakpoint could not be set because all breakpoint units are in use.
-    #[error("Unable to set hardware breakpoint, all available breakpoint units are in use.")]
-    BreakpointUnitsExceeded,
-    /// Error parsing a register
-    #[error("Error parsing a register.")]
-    RegisterParse(#[from] RegisterParseError),
     /// A DAP error occured.
     #[error("A DAP error occured.")]
     DapError(DapError),
