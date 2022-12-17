@@ -9,7 +9,7 @@ use super::{
         Component,
     },
     sequences::{ArmDebugSequence, DefaultArmSequence},
-    ApAddress, ArmNewError, DapAccess, DpAddress, PortType, RawDapAccess, SwoAccess, SwoConfig,
+    ApAddress, ArmError, DapAccess, DpAddress, PortType, RawDapAccess, SwoAccess, SwoConfig,
 };
 use crate::{
     architecture::arm::ap::DataSize, CommunicationInterface, DebugProbe, DebugProbeError,
@@ -77,19 +77,19 @@ pub trait ArmProbeInterface: DapAccess + SwdSequence + SwoAccess + Send {
     fn memory_interface(
         &mut self,
         access_port: MemoryAp,
-    ) -> Result<Box<dyn ArmProbe + '_>, ArmNewError>;
+    ) -> Result<Box<dyn ArmProbe + '_>, ArmError>;
 
     /// Returns information about a specific access port.
-    fn ap_information(&mut self, access_port: GenericAp) -> Result<&ApInformation, ArmNewError>;
+    fn ap_information(&mut self, access_port: GenericAp) -> Result<&ApInformation, ArmError>;
 
     /// Returns the number of access ports the debug port has.
-    fn num_access_ports(&mut self, dp: DpAddress) -> Result<usize, ArmNewError>;
+    fn num_access_ports(&mut self, dp: DpAddress) -> Result<usize, ArmError>;
 
     /// Reads the chip info from the romtable of given debug port.
     fn read_chip_info_from_rom_table(
         &mut self,
         dp: DpAddress,
-    ) -> Result<Option<ArmChipInfo>, ArmNewError>;
+    ) -> Result<Option<ArmChipInfo>, ArmError>;
 
     /// Closes the interface and returns back the generic probe it consumed.
     fn close(self: Box<Self>) -> Probe;
@@ -203,7 +203,7 @@ impl ApInformation {
     pub(crate) fn read_from_target<P>(
         probe: &mut P,
         access_port: GenericAp,
-    ) -> Result<Self, ArmNewError>
+    ) -> Result<Self, ArmError>
     where
         P: ApAccess,
     {
@@ -327,22 +327,22 @@ impl ArmProbeInterface for ArmCommunicationInterface<Initialized> {
     fn memory_interface(
         &mut self,
         access_port: MemoryAp,
-    ) -> Result<Box<dyn ArmProbe + '_>, ArmNewError> {
+    ) -> Result<Box<dyn ArmProbe + '_>, ArmError> {
         ArmCommunicationInterface::memory_interface(self, access_port)
     }
 
-    fn ap_information(&mut self, access_port: GenericAp) -> Result<&ApInformation, ArmNewError> {
+    fn ap_information(&mut self, access_port: GenericAp) -> Result<&ApInformation, ArmError> {
         ArmCommunicationInterface::ap_information(self, access_port)
     }
 
     fn read_chip_info_from_rom_table(
         &mut self,
         dp: DpAddress,
-    ) -> Result<Option<ArmChipInfo>, ArmNewError> {
+    ) -> Result<Option<ArmChipInfo>, ArmError> {
         ArmCommunicationInterface::read_chip_info_from_rom_table(self, dp)
     }
 
-    fn num_access_ports(&mut self, dp: DpAddress) -> Result<usize, ArmNewError> {
+    fn num_access_ports(&mut self, dp: DpAddress) -> Result<usize, ArmError> {
         ArmCommunicationInterface::num_access_ports(self, dp)
     }
 
@@ -405,7 +405,7 @@ impl UninitializedArmProbe for ArmCommunicationInterface<Uninitialized> {
 }
 
 impl<S: ArmDebugState> ArmCommunicationInterface<S> {
-    fn _get_debug_port_version(&mut self) -> Result<DebugPortVersion, ArmNewError> {
+    fn _get_debug_port_version(&mut self) -> Result<DebugPortVersion, ArmError> {
         let dpidr = DPIDR(self.probe.raw_read_register(PortType::DebugPort, 0)?);
 
         Ok(DebugPortVersion::from(dpidr.version()))
@@ -430,7 +430,7 @@ impl<'interface> ArmCommunicationInterface<Initialized> {
     pub fn memory_interface(
         &'interface mut self,
         access_port: MemoryAp,
-    ) -> Result<Box<dyn ArmProbe + 'interface>, ArmNewError> {
+    ) -> Result<Box<dyn ArmProbe + 'interface>, ArmError> {
         let info = self.ap_information(access_port)?;
 
         match info {
@@ -443,14 +443,14 @@ impl<'interface> ArmCommunicationInterface<Initialized> {
 
                 Ok(Box::new(adi_v5_memory_interface))
             }
-            ApInformation::Other { address, .. } => Err(ArmNewError::temporary(anyhow!(
+            ApInformation::Other { address, .. } => Err(ArmError::temporary(anyhow!(
                 "AP {:x?} is not a memory AP",
                 address
             ))),
         }
     }
 
-    fn select_dp(&mut self, dp: DpAddress) -> Result<&mut DpState, ArmNewError> {
+    fn select_dp(&mut self, dp: DpAddress) -> Result<&mut DpState, ArmError> {
         if self.state.current_dp == Some(dp) {
             return Ok(self.state.dps.get_mut(&dp).unwrap());
         }
@@ -504,7 +504,7 @@ impl<'interface> ArmCommunicationInterface<Initialized> {
         &mut self,
         dp: DpAddress,
         dp_register_address: u8,
-    ) -> Result<(), ArmNewError> {
+    ) -> Result<(), ArmError> {
         let dp_state = self.select_dp(dp)?;
 
         // DP register addresses are 4 bank bits, 4 address bits. Lowest 2 address bits are
@@ -539,7 +539,7 @@ impl<'interface> ArmCommunicationInterface<Initialized> {
         &mut self,
         ap: ApAddress,
         ap_register_address: u8,
-    ) -> Result<(), ArmNewError> {
+    ) -> Result<(), ArmError> {
         let dp_state = self.select_dp(ap.dp)?;
 
         let port = ap.ap;
@@ -580,21 +580,21 @@ impl<'interface> ArmCommunicationInterface<Initialized> {
     pub(crate) fn ap_information(
         &mut self,
         access_port: impl AccessPort,
-    ) -> Result<&ApInformation, ArmNewError> {
+    ) -> Result<&ApInformation, ArmError> {
         let addr = access_port.ap_address();
 
         let state = self.select_dp(addr.dp)?;
 
         match state.ap_information.get(addr.ap as usize) {
             Some(res) => Ok(res),
-            None => Err(ArmNewError::temporary(anyhow!(
+            None => Err(ArmError::temporary(anyhow!(
                 "AP {:x?} does not exist",
                 addr
             ))),
         }
     }
 
-    fn num_access_ports(&mut self, dp: DpAddress) -> Result<usize, ArmNewError> {
+    fn num_access_ports(&mut self, dp: DpAddress) -> Result<usize, ArmError> {
         let state = self.select_dp(dp)?;
 
         Ok(state.ap_information.len())
@@ -602,7 +602,7 @@ impl<'interface> ArmCommunicationInterface<Initialized> {
 }
 
 impl CommunicationInterface for ArmCommunicationInterface<Initialized> {
-    fn flush(&mut self) -> Result<(), ArmNewError> {
+    fn flush(&mut self) -> Result<(), ArmError> {
         self.probe.raw_flush()
     }
 
@@ -614,30 +614,30 @@ impl CommunicationInterface for ArmCommunicationInterface<Initialized> {
 }
 
 impl SwoAccess for ArmCommunicationInterface<Initialized> {
-    fn enable_swo(&mut self, config: &SwoConfig) -> Result<(), ArmNewError> {
+    fn enable_swo(&mut self, config: &SwoConfig) -> Result<(), ArmError> {
         match self.probe.get_swo_interface_mut() {
             Some(interface) => interface.enable_swo(config),
-            None => Err(ArmNewError::ArchitectureRequired(&["ARMv7", "ARMv8"])),
+            None => Err(ArmError::ArchitectureRequired(&["ARMv7", "ARMv8"])),
         }
     }
 
-    fn disable_swo(&mut self) -> Result<(), ArmNewError> {
+    fn disable_swo(&mut self) -> Result<(), ArmError> {
         match self.probe.get_swo_interface_mut() {
             Some(interface) => interface.disable_swo(),
-            None => Err(ArmNewError::ArchitectureRequired(&["ARMv7", "ARMv8"])),
+            None => Err(ArmError::ArchitectureRequired(&["ARMv7", "ARMv8"])),
         }
     }
 
-    fn read_swo_timeout(&mut self, timeout: Duration) -> Result<Vec<u8>, ArmNewError> {
+    fn read_swo_timeout(&mut self, timeout: Duration) -> Result<Vec<u8>, ArmError> {
         match self.probe.get_swo_interface_mut() {
             Some(interface) => interface.read_swo_timeout(timeout),
-            None => Err(ArmNewError::ArchitectureRequired(&["ARMv7", "ARMv8"])),
+            None => Err(ArmError::ArchitectureRequired(&["ARMv7", "ARMv8"])),
         }
     }
 }
 
 impl DapAccess for ArmCommunicationInterface<Initialized> {
-    fn read_raw_dp_register(&mut self, dp: DpAddress, address: u8) -> Result<u32, ArmNewError> {
+    fn read_raw_dp_register(&mut self, dp: DpAddress, address: u8) -> Result<u32, ArmError> {
         self.select_dp_and_dp_bank(dp, address)?;
         let result = self.probe.raw_read_register(PortType::DebugPort, address)?;
         Ok(result)
@@ -648,14 +648,14 @@ impl DapAccess for ArmCommunicationInterface<Initialized> {
         dp: DpAddress,
         address: u8,
         value: u32,
-    ) -> Result<(), ArmNewError> {
+    ) -> Result<(), ArmError> {
         self.select_dp_and_dp_bank(dp, address)?;
         self.probe
             .raw_write_register(PortType::DebugPort, address, value)?;
         Ok(())
     }
 
-    fn read_raw_ap_register(&mut self, ap: ApAddress, address: u8) -> Result<u32, ArmNewError> {
+    fn read_raw_ap_register(&mut self, ap: ApAddress, address: u8) -> Result<u32, ArmError> {
         self.select_ap_and_ap_bank(ap, address)?;
 
         let result = self
@@ -670,7 +670,7 @@ impl DapAccess for ArmCommunicationInterface<Initialized> {
         ap: ApAddress,
         address: u8,
         values: &mut [u32],
-    ) -> Result<(), ArmNewError> {
+    ) -> Result<(), ArmError> {
         self.select_ap_and_ap_bank(ap, address)?;
 
         self.probe
@@ -683,7 +683,7 @@ impl DapAccess for ArmCommunicationInterface<Initialized> {
         ap: ApAddress,
         address: u8,
         value: u32,
-    ) -> Result<(), ArmNewError> {
+    ) -> Result<(), ArmError> {
         self.select_ap_and_ap_bank(ap, address)?;
 
         self.probe
@@ -695,7 +695,7 @@ impl DapAccess for ArmCommunicationInterface<Initialized> {
         ap: ApAddress,
         address: u8,
         values: &[u32],
-    ) -> Result<(), ArmNewError> {
+    ) -> Result<(), ArmError> {
         self.select_ap_and_ap_bank(ap, address)?;
 
         self.probe
@@ -723,7 +723,7 @@ impl ArmCommunicationInterface<Initialized> {
     pub fn read_chip_info_from_rom_table(
         &mut self,
         dp: DpAddress,
-    ) -> Result<Option<ArmChipInfo>, ArmNewError> {
+    ) -> Result<Option<ArmChipInfo>, ArmError> {
         // faults on some chips need to be cleaned up.
         let aps = valid_access_ports(self, dp);
 

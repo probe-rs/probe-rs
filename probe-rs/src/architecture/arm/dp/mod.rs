@@ -4,7 +4,7 @@
 mod register_generation;
 
 use super::{
-    communication_interface::RegisterParseError, ArmNewError, DapAccess, DpAddress, Register,
+    communication_interface::RegisterParseError, ArmError, DapAccess, DpAddress, Register,
 };
 use bitfield::bitfield;
 use jep106::JEP106Code;
@@ -32,11 +32,11 @@ pub enum DebugPortError {
     // TODO: The error below shouldn't exist
     /// A general ARM specific error occured
     #[error("A general ARM error occured")]
-    Arm(#[source] Box<ArmNewError>),
+    Arm(#[source] Box<ArmError>),
 }
 
-impl From<ArmNewError> for DebugPortError {
-    fn from(value: ArmNewError) -> Self {
+impl From<ArmError> for DebugPortError {
+    fn from(value: ArmError) -> Self {
         DebugPortError::Arm(Box::new(value))
     }
 }

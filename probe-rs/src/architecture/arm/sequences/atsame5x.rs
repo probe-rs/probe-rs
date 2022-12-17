@@ -5,7 +5,7 @@ use crate::{
     architecture::{
         self,
         arm::{
-            ap::MemoryAp, memory::adi_v5_memory_interface::ArmProbe, ApAddress, ArmNewError,
+            ap::MemoryAp, memory::adi_v5_memory_interface::ArmProbe, ApAddress, ArmError,
             ArmProbeInterface, DpAddress,
         },
     },
@@ -271,7 +271,7 @@ impl AtSAME5x {
     pub fn reset_hardware_with_extension(
         &self,
         interface: &mut dyn architecture::arm::communication_interface::SwdSequence,
-    ) -> Result<(), ArmNewError> {
+    ) -> Result<(), ArmError> {
         let mut pins = architecture::arm::Pins(0);
         pins.set_nreset(true);
         pins.set_swdio_tms(true);
@@ -298,7 +298,7 @@ impl AtSAME5x {
     ///
     /// # Errors
     /// Subject to probe communication errors
-    pub fn release_reset_extension(&self, memory: &mut dyn ArmProbe) -> Result<(), ArmNewError> {
+    pub fn release_reset_extension(&self, memory: &mut dyn ArmProbe) -> Result<(), ArmError> {
         // clear the reset extension bit
         let mut dsu_statusa = DsuStatusA(0);
         dsu_statusa.set_crstext(true);
@@ -312,7 +312,7 @@ impl AtSAME5x {
             }
         }
 
-        Err(ArmNewError::Timeout)
+        Err(ArmError::Timeout)
     }
 
     /// Perform a normal hardware reset without triggering a Reset extension
@@ -350,7 +350,7 @@ impl ArmDebugSequence for AtSAME5x {
     fn reset_hardware_assert(
         &self,
         interface: &mut dyn architecture::arm::communication_interface::DapProbe,
-    ) -> Result<(), ArmNewError> {
+    ) -> Result<(), ArmError> {
         let mut shim = SwdSequenceShim::from(interface);
         self.reset_hardware_with_extension(&mut shim)
     }
@@ -359,14 +359,14 @@ impl ArmDebugSequence for AtSAME5x {
     ///
     /// Instead of de-asserting `nReset` here (this was already done during the CPU Reset Extension process),
     /// the device is released from Reset Extension.
-    fn reset_hardware_deassert(&self, memory: &mut dyn ArmProbe) -> Result<(), ArmNewError> {
+    fn reset_hardware_deassert(&self, memory: &mut dyn ArmProbe) -> Result<(), ArmError> {
         let mut pins = architecture::arm::Pins(0);
         pins.set_nreset(true);
 
         let current_pins =
             architecture::arm::Pins(memory.swj_pins(pins.0 as u32, pins.0 as u32, 0)? as u8);
         if !current_pins.nreset() {
-            return Err(ArmNewError::temporary(anyhow::anyhow!(
+            return Err(ArmError::temporary(anyhow::anyhow!(
                 "Expected nReset to already be de-asserted"
             )));
         }

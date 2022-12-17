@@ -13,7 +13,7 @@ pub use memory_ap::{
     AddressIncrement, BaseaddrFormat, DataSize, MemoryAp, BASE, BASE2, CFG, CSW, DRW, TAR, TAR2,
 };
 
-use super::{ApAddress, ArmNewError, DapAccess, DpAddress, Register};
+use super::{ApAddress, ArmError, DapAccess, DpAddress, Register};
 
 /// Some error during AP handling occurred.
 #[derive(Debug, thiserror::Error)]
@@ -108,7 +108,7 @@ pub trait AccessPort {
 /// A trait to be implemented by access port drivers to implement access port operations.
 pub trait ApAccess {
     /// Read a register of the access port.
-    fn read_ap_register<PORT, R>(&mut self, port: impl Into<PORT>) -> Result<R, ArmNewError>
+    fn read_ap_register<PORT, R>(&mut self, port: impl Into<PORT>) -> Result<R, ArmError>
     where
         PORT: AccessPort,
         R: ApRegister<PORT>;
@@ -120,7 +120,7 @@ pub trait ApAccess {
         port: impl Into<PORT> + Clone,
         register: R,
         values: &mut [u32],
-    ) -> Result<(), ArmNewError>
+    ) -> Result<(), ArmError>
     where
         PORT: AccessPort,
         R: ApRegister<PORT>;
@@ -130,7 +130,7 @@ pub trait ApAccess {
         &mut self,
         port: impl Into<PORT>,
         register: R,
-    ) -> Result<(), ArmNewError>
+    ) -> Result<(), ArmError>
     where
         PORT: AccessPort,
         R: ApRegister<PORT>;
@@ -142,14 +142,14 @@ pub trait ApAccess {
         port: impl Into<PORT> + Clone,
         register: R,
         values: &[u32],
-    ) -> Result<(), ArmNewError>
+    ) -> Result<(), ArmError>
     where
         PORT: AccessPort,
         R: ApRegister<PORT>;
 }
 
 impl<T: DapAccess> ApAccess for T {
-    fn read_ap_register<PORT, R>(&mut self, port: impl Into<PORT>) -> Result<R, ArmNewError>
+    fn read_ap_register<PORT, R>(&mut self, port: impl Into<PORT>) -> Result<R, ArmError>
     where
         PORT: AccessPort,
         R: ApRegister<PORT>,
@@ -166,7 +166,7 @@ impl<T: DapAccess> ApAccess for T {
         &mut self,
         port: impl Into<PORT>,
         register: R,
-    ) -> Result<(), ArmNewError>
+    ) -> Result<(), ArmError>
     where
         PORT: AccessPort,
         R: ApRegister<PORT>,
@@ -180,7 +180,7 @@ impl<T: DapAccess> ApAccess for T {
         port: impl Into<PORT>,
         _register: R,
         values: &[u32],
-    ) -> Result<(), ArmNewError>
+    ) -> Result<(), ArmError>
     where
         PORT: AccessPort,
         R: ApRegister<PORT>,
@@ -198,7 +198,7 @@ impl<T: DapAccess> ApAccess for T {
         port: impl Into<PORT>,
         _register: R,
         values: &mut [u32],
-    ) -> Result<(), ArmNewError>
+    ) -> Result<(), ArmError>
     where
         PORT: AccessPort,
         R: ApRegister<PORT>,

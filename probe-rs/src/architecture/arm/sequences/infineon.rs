@@ -2,7 +2,7 @@
 
 use crate::architecture::arm::armv7m::{Aircr, Dhcsr, FpCtrl, FpRev1CompX, FpRev2CompX};
 use crate::architecture::arm::memory::adi_v5_memory_interface::ArmProbe;
-use crate::architecture::arm::ArmNewError;
+use crate::architecture::arm::ArmError;
 use anyhow::anyhow;
 use std::sync::Arc;
 use std::sync::Mutex;
@@ -241,7 +241,7 @@ impl ArmDebugSequence for XMC4000 {
         core: &mut dyn ArmProbe,
         _core_type: probe_rs_target::CoreType,
         _debug_base: Option<u64>,
-    ) -> Result<(), ArmNewError> {
+    ) -> Result<(), ArmError> {
         tracing::trace!("performing XMC4000 ResetCatchClear");
 
         // Grab the prior breakpoint state
@@ -348,7 +348,7 @@ impl ArmDebugSequence for XMC4000 {
         Ok(())
     }
 
-    fn reset_hardware_assert(&self, interface: &mut dyn DapProbe) -> Result<(), ArmNewError> {
+    fn reset_hardware_assert(&self, interface: &mut dyn DapProbe) -> Result<(), ArmError> {
         tracing::trace!("performing XMC4000 ResetHardwareAssert");
 
         use crate::architecture::arm::Pins;
@@ -413,7 +413,7 @@ impl ArmDebugSequence for XMC4000 {
         Ok(())
     }
 
-    fn reset_hardware_deassert(&self, memory: &mut dyn ArmProbe) -> Result<(), ArmNewError> {
+    fn reset_hardware_deassert(&self, memory: &mut dyn ArmProbe) -> Result<(), ArmError> {
         tracing::trace!("performing XMC4000 ResetHardwareDeassert");
 
         // We already deasserted nRST in ResetHardwareAssert, because that's how Cold Reset Halts
@@ -440,7 +440,7 @@ fn spin_until_core_is_halted(core: &mut dyn ArmProbe, timeout: Duration) -> Resu
     }
 }
 
-fn spin_until_dapsa_is_clear(core: &mut dyn ArmProbe) -> Result<(), ArmNewError> {
+fn spin_until_dapsa_is_clear(core: &mut dyn ArmProbe) -> Result<(), ArmError> {
     let start = Instant::now();
     loop {
         // DAPSA isn't directly accessible because of course it isn't.
@@ -456,7 +456,7 @@ fn spin_until_dapsa_is_clear(core: &mut dyn ArmProbe) -> Result<(), ArmNewError>
             tracing::trace!("DAPSA is clear");
             if start.elapsed() > Duration::from_millis(500) {
                 tracing::error!("timed out waiting for DAPSA to clear, indicating SSW hang");
-                break Err(ArmNewError::Timeout);
+                break Err(ArmError::Timeout);
             }
         }
     }

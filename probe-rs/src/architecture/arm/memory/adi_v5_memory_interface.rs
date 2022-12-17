@@ -6,20 +6,20 @@ use crate::architecture::arm::communication_interface::SwdSequence;
 use crate::architecture::arm::{
     communication_interface::Initialized, dp::DpAccess, MemoryApInformation,
 };
-use crate::architecture::arm::{ArmCommunicationInterface, ArmNewError};
+use crate::architecture::arm::{ArmCommunicationInterface, ArmError};
 use crate::{CommunicationInterface, DebugProbeError};
 use std::convert::TryInto;
 use std::ops::Range;
 
 pub trait ArmProbe: SwdSequence {
-    fn read_8(&mut self, address: u64, data: &mut [u8]) -> Result<(), ArmNewError>;
+    fn read_8(&mut self, address: u64, data: &mut [u8]) -> Result<(), ArmError>;
 
-    fn read_32(&mut self, address: u64, data: &mut [u32]) -> Result<(), ArmNewError>;
+    fn read_32(&mut self, address: u64, data: &mut [u32]) -> Result<(), ArmError>;
 
-    fn read_64(&mut self, address: u64, data: &mut [u64]) -> Result<(), ArmNewError>;
+    fn read_64(&mut self, address: u64, data: &mut [u64]) -> Result<(), ArmError>;
 
     /// Reads a 64 bit word from `address`.
-    fn read_word_64(&mut self, address: u64) -> Result<u64, ArmNewError> {
+    fn read_word_64(&mut self, address: u64) -> Result<u64, ArmError> {
         let mut buff = [0];
         self.read_64(address, &mut buff)?;
 
@@ -27,7 +27,7 @@ pub trait ArmProbe: SwdSequence {
     }
 
     /// Reads a 32 bit word from `address`.
-    fn read_word_32(&mut self, address: u64) -> Result<u32, ArmNewError> {
+    fn read_word_32(&mut self, address: u64) -> Result<u32, ArmError> {
         let mut buff = [0];
         self.read_32(address, &mut buff)?;
 
@@ -35,7 +35,7 @@ pub trait ArmProbe: SwdSequence {
     }
 
     /// Reads an 8 bit word from `address`.
-    fn read_word_8(&mut self, address: u64) -> Result<u8, ArmNewError> {
+    fn read_word_8(&mut self, address: u64) -> Result<u8, ArmError> {
         let mut buff = [0];
         self.read_8(address, &mut buff)?;
 
@@ -45,7 +45,7 @@ pub trait ArmProbe: SwdSequence {
     /// Read a block of 8bit words at `address`. May use 32 bit memory access,
     /// so should only be used if reading memory locations that don't have side
     /// effects. Generally faster than [`MemoryInterface::read_8`].
-    fn read(&mut self, address: u64, data: &mut [u8]) -> Result<(), ArmNewError> {
+    fn read(&mut self, address: u64, data: &mut [u8]) -> Result<(), ArmError> {
         let len = data.len();
         if address % 4 == 0 && len % 4 == 0 {
             let mut buffer = vec![0u32; len / 4];
@@ -68,31 +68,31 @@ pub trait ArmProbe: SwdSequence {
         Ok(())
     }
 
-    fn write_8(&mut self, address: u64, data: &[u8]) -> Result<(), ArmNewError>;
+    fn write_8(&mut self, address: u64, data: &[u8]) -> Result<(), ArmError>;
 
-    fn write_32(&mut self, address: u64, data: &[u32]) -> Result<(), ArmNewError>;
+    fn write_32(&mut self, address: u64, data: &[u32]) -> Result<(), ArmError>;
 
-    fn write_64(&mut self, address: u64, data: &[u64]) -> Result<(), ArmNewError>;
+    fn write_64(&mut self, address: u64, data: &[u64]) -> Result<(), ArmError>;
 
     /// Writes a 64 bit word to `address`.
-    fn write_word_64(&mut self, address: u64, data: u64) -> Result<(), ArmNewError> {
+    fn write_word_64(&mut self, address: u64, data: u64) -> Result<(), ArmError> {
         self.write_64(address, &[data])
     }
 
     /// Writes a 32 bit word to `address`.
-    fn write_word_32(&mut self, address: u64, data: u32) -> Result<(), ArmNewError> {
+    fn write_word_32(&mut self, address: u64, data: u32) -> Result<(), ArmError> {
         self.write_32(address, &[data])
     }
 
     /// Writes a 8 bit word to `address`.
-    fn write_word_8(&mut self, address: u64, data: u8) -> Result<(), ArmNewError> {
+    fn write_word_8(&mut self, address: u64, data: u8) -> Result<(), ArmError> {
         self.write_8(address, &[data])
     }
 
     /// Write a block of 8bit words to `address`. May use 32 bit memory access,
     /// so it should only be used if writing memory locations that don't have side
     /// effects. Generally faster than [`MemoryInterface::write_8`].
-    fn write(&mut self, address: u64, data: &[u8]) -> Result<(), ArmNewError> {
+    fn write(&mut self, address: u64, data: &[u8]) -> Result<(), ArmError> {
         let len = data.len();
         let start_extra_count = 4 - (address % 4) as usize;
         let end_extra_count = (len - start_extra_count) % 4;
@@ -128,11 +128,11 @@ pub trait ArmProbe: SwdSequence {
         Ok(())
     }
 
-    fn flush(&mut self) -> Result<(), ArmNewError>;
+    fn flush(&mut self) -> Result<(), ArmError>;
 
     fn supports_native_64bit_access(&mut self) -> bool;
 
-    fn supports_8bit_transfers(&self) -> Result<bool, ArmNewError>;
+    fn supports_8bit_transfers(&self) -> Result<bool, ArmError>;
 
     /// Returns the underlying [`ApAddress`].
     fn ap(&mut self) -> MemoryAp;
@@ -904,7 +904,7 @@ where
         self.ap_information.has_large_data_extension
     }
 
-    fn read_8(&mut self, address: u64, data: &mut [u8]) -> Result<(), ArmNewError> {
+    fn read_8(&mut self, address: u64, data: &mut [u8]) -> Result<(), ArmError> {
         if data.len() == 1 {
             data[0] = self.read_word_8(self.memory_ap, address)?;
         } else {
@@ -914,7 +914,7 @@ where
         Ok(())
     }
 
-    fn read_32(&mut self, address: u64, data: &mut [u32]) -> Result<(), ArmNewError> {
+    fn read_32(&mut self, address: u64, data: &mut [u32]) -> Result<(), ArmError> {
         if data.len() == 1 {
             data[0] = self.read_word_32(self.memory_ap, address)?;
         } else {
@@ -924,7 +924,7 @@ where
         Ok(())
     }
 
-    fn read_64(&mut self, address: u64, data: &mut [u64]) -> Result<(), ArmNewError> {
+    fn read_64(&mut self, address: u64, data: &mut [u64]) -> Result<(), ArmError> {
         for (i, d) in data.iter_mut().enumerate() {
             *d = self.read_word_64(self.memory_ap, address + (i as u64 * 8))?;
         }
@@ -932,7 +932,7 @@ where
         Ok(())
     }
 
-    fn write_8(&mut self, address: u64, data: &[u8]) -> Result<(), ArmNewError> {
+    fn write_8(&mut self, address: u64, data: &[u8]) -> Result<(), ArmError> {
         if data.len() == 1 {
             self.write_word_8(self.memory_ap, address, data[0])?;
         } else {
@@ -942,7 +942,7 @@ where
         Ok(())
     }
 
-    fn write_32(&mut self, address: u64, data: &[u32]) -> Result<(), ArmNewError> {
+    fn write_32(&mut self, address: u64, data: &[u32]) -> Result<(), ArmError> {
         if data.len() == 1 {
             self.write_word_32(self.memory_ap, address, data[0])?;
         } else {
@@ -952,7 +952,7 @@ where
         Ok(())
     }
 
-    fn write_64(&mut self, address: u64, data: &[u64]) -> Result<(), ArmNewError> {
+    fn write_64(&mut self, address: u64, data: &[u64]) -> Result<(), ArmError> {
         for (i, d) in data.iter().enumerate() {
             self.write_word_64(self.memory_ap, address + (i as u64 * 8), *d)?;
         }
@@ -960,11 +960,11 @@ where
         Ok(())
     }
 
-    fn supports_8bit_transfers(&self) -> Result<bool, ArmNewError> {
+    fn supports_8bit_transfers(&self) -> Result<bool, ArmError> {
         Ok(!self.ap_information.supports_only_32bit_data_size)
     }
 
-    fn flush(&mut self) -> Result<(), ArmNewError> {
+    fn flush(&mut self) -> Result<(), ArmError> {
         self.interface.flush()?;
 
         Ok(())

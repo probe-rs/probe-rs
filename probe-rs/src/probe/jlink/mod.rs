@@ -6,7 +6,7 @@ use std::convert::{TryFrom, TryInto};
 use std::iter;
 use std::time::{Duration, Instant};
 
-use crate::architecture::arm::{ArmNewError, RawDapAccess};
+use crate::architecture::arm::{ArmError, RawDapAccess};
 use crate::architecture::riscv::communication_interface::RiscvError;
 use crate::{
     architecture::{
@@ -682,19 +682,19 @@ impl JTAGAccess for JLink {
 impl DapProbe for JLink {}
 
 impl SwoAccess for JLink {
-    fn enable_swo(&mut self, config: &SwoConfig) -> Result<(), ArmNewError> {
+    fn enable_swo(&mut self, config: &SwoConfig) -> Result<(), ArmError> {
         self.swo_config = Some(*config);
         self.handle
             .swo_start(SwoMode::Uart, config.baud(), SWO_BUFFER_SIZE.into())
-            .map_err(|e| ArmNewError::from(DebugProbeError::ProbeSpecific(Box::new(e))))?;
+            .map_err(|e| ArmError::from(DebugProbeError::ProbeSpecific(Box::new(e))))?;
         Ok(())
     }
 
-    fn disable_swo(&mut self) -> Result<(), ArmNewError> {
+    fn disable_swo(&mut self) -> Result<(), ArmError> {
         self.swo_config = None;
         self.handle
             .swo_stop()
-            .map_err(|e| ArmNewError::from(DebugProbeError::ProbeSpecific(Box::new(e))))?;
+            .map_err(|e| ArmError::from(DebugProbeError::ProbeSpecific(Box::new(e))))?;
         Ok(())
     }
 
@@ -702,7 +702,7 @@ impl SwoAccess for JLink {
         Some(SWO_BUFFER_SIZE.into())
     }
 
-    fn read_swo_timeout(&mut self, timeout: std::time::Duration) -> Result<Vec<u8>, ArmNewError> {
+    fn read_swo_timeout(&mut self, timeout: std::time::Duration) -> Result<Vec<u8>, ArmError> {
         let end = std::time::Instant::now() + timeout;
         let mut buf = vec![0; SWO_BUFFER_SIZE.into()];
 
@@ -715,7 +715,7 @@ impl SwoAccess for JLink {
             let data = self
                 .handle
                 .swo_read(&mut buf)
-                .map_err(|e| ArmNewError::from(DebugProbeError::ProbeSpecific(Box::new(e))))?;
+                .map_err(|e| ArmError::from(DebugProbeError::ProbeSpecific(Box::new(e))))?;
             bytes.extend(data.as_ref());
             let now = std::time::Instant::now();
             if now + poll_interval < end {

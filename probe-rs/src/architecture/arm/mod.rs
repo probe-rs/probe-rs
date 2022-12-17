@@ -35,7 +35,7 @@ pub use communication_interface::ArmProbeInterface;
 /// ARM-specific errors
 #[derive(Debug, thiserror::Error)]
 #[error("An ARM specific error occured.")]
-pub enum ArmNewError {
+pub enum ArmError {
     /// The operation requires a specific architecture.
     #[error("The operation requires one of the following architectures: {0:?}")]
     ArchitectureRequired(&'static [&'static str]),
@@ -59,56 +59,56 @@ pub enum ArmNewError {
     CoreNotHalted,
 }
 
-impl ArmNewError {
+impl ArmError {
     /// Create a error based on an anyhow error.
     pub fn temporary(err: anyhow::Error) -> Self {
-        ArmNewError::Common(err.into())
+        ArmError::Common(err.into())
     }
 }
 
-impl From<DebugProbeError> for ArmNewError {
+impl From<DebugProbeError> for ArmError {
     fn from(value: DebugProbeError) -> Self {
-        ArmNewError::Common(Box::new(value))
+        ArmError::Common(Box::new(value))
     }
 }
 
-impl From<DebugPortError> for ArmNewError {
+impl From<DebugPortError> for ArmError {
     fn from(value: DebugPortError) -> Self {
         match value {
             DebugPortError::Arm(e) => *e,
-            other => ArmNewError::Common(Box::new(other)),
+            other => ArmError::Common(Box::new(other)),
         }
     }
 }
 
-impl From<RegisterParseError> for ArmNewError {
+impl From<RegisterParseError> for ArmError {
     fn from(value: RegisterParseError) -> Self {
-        ArmNewError::Common(Box::new(value))
+        ArmError::Common(Box::new(value))
     }
 }
 
-impl From<RomTableError> for ArmNewError {
+impl From<RomTableError> for ArmError {
     fn from(value: RomTableError) -> Self {
-        ArmNewError::Common(Box::new(value))
+        ArmError::Common(Box::new(value))
     }
 }
 
-impl From<DapError> for ArmNewError {
+impl From<DapError> for ArmError {
     fn from(value: DapError) -> Self {
-        ArmNewError::Common(Box::new(value))
+        ArmError::Common(Box::new(value))
     }
 }
 
-impl From<ArmDebugSequenceError> for ArmNewError {
+impl From<ArmDebugSequenceError> for ArmError {
     fn from(value: ArmDebugSequenceError) -> Self {
-        ArmNewError::Common(Box::new(value))
+        ArmError::Common(Box::new(value))
     }
 }
 
 /// Check if the address is a valid 32 bit address. This functions
 /// is ARM specific for ease of use, so that a specific error code can be returned.
-pub fn valid_32bit_arm_address(address: u64) -> Result<u32, ArmNewError> {
+pub fn valid_32bit_arm_address(address: u64) -> Result<u32, ArmError> {
     address
         .try_into()
-        .map_err(|_| ArmNewError::AddressOutOf32BitAddressSpace)
+        .map_err(|_| ArmError::AddressOutOf32BitAddressSpace)
 }

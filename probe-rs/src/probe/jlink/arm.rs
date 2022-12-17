@@ -3,7 +3,7 @@ use std::{iter, time::Duration};
 use crate::{
     architecture::arm::{
         dp::{Abort, Ctrl, RdBuff, DPIDR},
-        ArmNewError, DapError, DpAddress, Pins, PortType, RawDapAccess, Register,
+        ArmError, DapError, DpAddress, Pins, PortType, RawDapAccess, Register,
     },
     probe::JTAGAccess,
     DebugProbe, DebugProbeError,
@@ -923,7 +923,7 @@ impl RawProtocolIo for JLink {
 }
 
 impl<Probe: DebugProbe + RawProtocolIo + JTAGAccess + 'static> RawDapAccess for Probe {
-    fn select_dp(&mut self, dp: DpAddress) -> Result<(), ArmNewError> {
+    fn select_dp(&mut self, dp: DpAddress) -> Result<(), ArmError> {
         match dp {
             DpAddress::Default => Ok(()), // nop
             DpAddress::Multidrop(_) => Err(DebugProbeError::ProbeSpecific(
@@ -933,7 +933,7 @@ impl<Probe: DebugProbe + RawProtocolIo + JTAGAccess + 'static> RawDapAccess for 
         }
     }
 
-    fn raw_read_register(&mut self, port: PortType, address: u8) -> Result<u32, ArmNewError> {
+    fn raw_read_register(&mut self, port: PortType, address: u8) -> Result<u32, ArmError> {
         let dap_wait_retries = self.swd_settings().num_retries_after_wait;
         let mut idle_cycles = std::cmp::max(1, self.swd_settings().num_idle_cycles_between_writes);
 
@@ -1046,7 +1046,7 @@ impl<Probe: DebugProbe + RawProtocolIo + JTAGAccess + 'static> RawDapAccess for 
 
         // If we land here, the DAP operation timed out.
         tracing::error!("DAP read timeout.");
-        Err(ArmNewError::Timeout)
+        Err(ArmError::Timeout)
     }
 
     fn raw_read_block(
@@ -1054,7 +1054,7 @@ impl<Probe: DebugProbe + RawProtocolIo + JTAGAccess + 'static> RawDapAccess for 
         port: PortType,
         address: u8,
         values: &mut [u32],
-    ) -> Result<(), ArmNewError> {
+    ) -> Result<(), ArmError> {
         let mut succesful_transfers = 0;
 
         let mut idle_cycles = std::cmp::max(1, self.swd_settings().num_idle_cycles_between_writes);
@@ -1127,7 +1127,7 @@ impl<Probe: DebugProbe + RawProtocolIo + JTAGAccess + 'static> RawDapAccess for 
         port: PortType,
         address: u8,
         value: u32,
-    ) -> Result<(), ArmNewError> {
+    ) -> Result<(), ArmError> {
         let dap_wait_retries = self.swd_settings().num_retries_after_wait;
         let mut idle_cycles = std::cmp::max(1, self.swd_settings().num_idle_cycles_between_writes);
 
@@ -1229,7 +1229,7 @@ impl<Probe: DebugProbe + RawProtocolIo + JTAGAccess + 'static> RawDapAccess for 
 
         // If we land here, the DAP operation timed out.
         tracing::error!("DAP write timeout.");
-        Err(ArmNewError::Timeout)
+        Err(ArmError::Timeout)
     }
 
     fn raw_write_block(
@@ -1237,7 +1237,7 @@ impl<Probe: DebugProbe + RawProtocolIo + JTAGAccess + 'static> RawDapAccess for 
         port: PortType,
         address: u8,
         values: &[u32],
-    ) -> Result<(), ArmNewError> {
+    ) -> Result<(), ArmError> {
         let mut succesful_transfers = 0;
 
         let mut idle_cycles = std::cmp::max(1, self.swd_settings().num_idle_cycles_between_writes);

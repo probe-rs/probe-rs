@@ -1,6 +1,6 @@
 use crate::{
     architecture::arm::{
-        communication_interface::Initialized, ArmCommunicationInterface, ArmNewError,
+        communication_interface::Initialized, ArmCommunicationInterface, ArmError,
     },
     DebugProbeError,
 };
@@ -8,7 +8,7 @@ use crate::{
 /// A helper trait to get more specific interfaces.
 pub trait CommunicationInterface {
     /// Flush all remaining commands if the target driver implements batching.
-    fn flush(&mut self) -> Result<(), ArmNewError>;
+    fn flush(&mut self) -> Result<(), ArmError>;
 
     /// Tries to get the underlying [`ArmCommunicationInterface`].
     fn get_arm_communication_interface(

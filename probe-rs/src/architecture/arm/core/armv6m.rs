@@ -4,7 +4,7 @@ use super::{CortexMState, Dfsr, CORTEX_M_COMMON_REGS};
 
 use crate::architecture::arm::memory::adi_v5_memory_interface::ArmProbe;
 use crate::architecture::arm::sequences::ArmDebugSequence;
-use crate::architecture::arm::ArmNewError;
+use crate::architecture::arm::ArmError;
 use crate::core::{
     RegisterDataType, RegisterDescription, RegisterFile, RegisterKind, RegisterValue,
 };
@@ -463,7 +463,7 @@ impl<'probe> Armv6m<'probe> {
         mut memory: Box<dyn ArmProbe + 'probe>,
         state: &'probe mut CortexMState,
         sequence: Arc<dyn ArmDebugSequence>,
-    ) -> Result<Self, ArmNewError> {
+    ) -> Result<Self, ArmError> {
         if !state.initialized() {
             // determine current state
             let dhcsr = Dhcsr(memory.read_word_32(Dhcsr::ADDRESS)?);
@@ -801,7 +801,7 @@ impl<'probe> CoreInterface for Armv6m<'probe> {
             let val = super::cortex_m::read_core_reg(&mut *self.memory, address)?;
             Ok(val.into())
         } else {
-            Err(Error::architecture_specific(ArmNewError::CoreNotHalted))
+            Err(Error::architecture_specific(ArmError::CoreNotHalted))
         }
     }
 
@@ -810,7 +810,7 @@ impl<'probe> CoreInterface for Armv6m<'probe> {
             super::cortex_m::write_core_reg(&mut *self.memory, address, value.try_into()?)?;
             Ok(())
         } else {
-            Err(Error::architecture_specific(ArmNewError::CoreNotHalted))
+            Err(Error::architecture_specific(ArmError::CoreNotHalted))
         }
     }
 

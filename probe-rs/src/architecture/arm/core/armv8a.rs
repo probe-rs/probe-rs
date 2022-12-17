@@ -1227,7 +1227,7 @@ impl<'probe> MemoryInterface for Armv8a<'probe> {
 mod test {
     use crate::architecture::arm::{
         ap::MemoryAp, communication_interface::SwdSequence,
-        memory::adi_v5_memory_interface::ArmProbe, sequences::DefaultArmSequence, ArmNewError,
+        memory::adi_v5_memory_interface::ArmProbe, sequences::DefaultArmSequence, ArmError,
     };
 
     use super::*;
@@ -1276,11 +1276,11 @@ mod test {
     }
 
     impl ArmProbe for MockProbe {
-        fn read_8(&mut self, _address: u64, _data: &mut [u8]) -> Result<(), ArmNewError> {
+        fn read_8(&mut self, _address: u64, _data: &mut [u8]) -> Result<(), ArmError> {
             todo!()
         }
 
-        fn read_32(&mut self, address: u64, data: &mut [u32]) -> Result<(), ArmNewError> {
+        fn read_32(&mut self, address: u64, data: &mut [u32]) -> Result<(), ArmError> {
             if self.expected_ops.is_empty() {
                 panic!(
                     "Received unexpected read_32 op: register {:#}",
@@ -1311,11 +1311,11 @@ mod test {
             Ok(())
         }
 
-        fn write_8(&mut self, _address: u64, _data: &[u8]) -> Result<(), ArmNewError> {
+        fn write_8(&mut self, _address: u64, _data: &[u8]) -> Result<(), ArmError> {
             todo!()
         }
 
-        fn write_32(&mut self, address: u64, data: &[u32]) -> Result<(), ArmNewError> {
+        fn write_32(&mut self, address: u64, data: &[u32]) -> Result<(), ArmError> {
             if self.expected_ops.is_empty() {
                 panic!(
                     "Received unexpected write_32 op: register {:#}",
@@ -1345,7 +1345,7 @@ mod test {
             Ok(())
         }
 
-        fn flush(&mut self) -> Result<(), ArmNewError> {
+        fn flush(&mut self) -> Result<(), ArmError> {
             todo!()
         }
 
@@ -1364,15 +1364,15 @@ mod test {
             todo!()
         }
 
-        fn read_64(&mut self, _address: u64, _data: &mut [u64]) -> Result<(), ArmNewError> {
+        fn read_64(&mut self, _address: u64, _data: &mut [u64]) -> Result<(), ArmError> {
             todo!()
         }
 
-        fn write_64(&mut self, _address: u64, _data: &[u64]) -> Result<(), ArmNewError> {
+        fn write_64(&mut self, _address: u64, _data: &[u64]) -> Result<(), ArmError> {
             todo!()
         }
 
-        fn supports_8bit_transfers(&self) -> Result<bool, ArmNewError> {
+        fn supports_8bit_transfers(&self) -> Result<bool, ArmError> {
             Ok(false)
         }
 

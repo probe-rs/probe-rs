@@ -4,7 +4,7 @@
 pub(crate) mod mock;
 
 use super::{AccessPort, ApAccess, ApRegister, GenericAp, Register};
-use crate::{architecture::arm::{communication_interface::RegisterParseError, ApAddress, ArmNewError}};
+use crate::architecture::arm::{communication_interface::RegisterParseError, ApAddress, ArmError};
 use enum_primitive_derive::Primitive;
 use num_traits::{FromPrimitive, ToPrimitive};
 
@@ -18,7 +18,7 @@ define_ap!(
 
 impl MemoryAp {
     /// The base address of this AP which is used to then access all relative control registers.
-    pub fn base_address<A>(&self, interface: &mut A) -> Result<u64, ArmNewError>
+    pub fn base_address<A>(&self, interface: &mut A) -> Result<u64, ArmError>
     where
         A: ApAccess,
     {

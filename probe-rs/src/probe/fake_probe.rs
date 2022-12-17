@@ -8,7 +8,7 @@ use crate::{
         },
         memory::adi_v5_memory_interface::{ADIMemoryInterface, ArmProbe},
         sequences::ArmDebugSequence,
-        ApAddress, ArmNewError, ArmProbeInterface, DapAccess, DpAddress, MemoryApInformation,
+        ApAddress, ArmError, ArmProbeInterface, DapAccess, DpAddress, MemoryApInformation,
         PortType, RawDapAccess, SwoAccess,
     },
     DebugProbe, DebugProbeError, DebugProbeSelector, Error, Probe, WireProtocol,
@@ -20,10 +20,10 @@ pub struct FakeProbe {
     protocol: WireProtocol,
     speed: u32,
 
-    dap_register_read_handler: Option<Box<dyn Fn(PortType, u8) -> Result<u32, ArmNewError> + Send>>,
+    dap_register_read_handler: Option<Box<dyn Fn(PortType, u8) -> Result<u32, ArmError> + Send>>,
 
     dap_register_write_handler:
-        Option<Box<dyn Fn(PortType, u8, u32) -> Result<(), ArmNewError> + Send>>,
+        Option<Box<dyn Fn(PortType, u8, u32) -> Result<(), ArmError> + Send>>,
 }
 
 impl Debug for FakeProbe {
@@ -51,7 +51,7 @@ impl FakeProbe {
     /// Can be used to hook into the read.
     pub fn set_dap_register_read_handler(
         &mut self,
-        handler: Box<dyn Fn(PortType, u8) -> Result<u32, ArmNewError> + Send>,
+        handler: Box<dyn Fn(PortType, u8) -> Result<u32, ArmError> + Send>,
     ) {
         self.dap_register_read_handler = Some(handler);
     }
@@ -60,7 +60,7 @@ impl FakeProbe {
     /// Can be used to hook into the write.
     pub fn set_dap_register_write_handler(
         &mut self,
-        handler: Box<dyn Fn(PortType, u8, u32) -> Result<(), ArmNewError> + Send>,
+        handler: Box<dyn Fn(PortType, u8, u32) -> Result<(), ArmError> + Send>,
     ) {
         self.dap_register_write_handler = Some(handler);
     }
@@ -151,24 +151,19 @@ impl DebugProbe for FakeProbe {
 }
 
 impl RawDapAccess for FakeProbe {
-    fn select_dp(&mut self, _dp: DpAddress) -> Result<(), ArmNewError> {
+    fn select_dp(&mut self, _dp: DpAddress) -> Result<(), ArmError> {
         Err(DebugProbeError::CommandNotSupportedByProbe("select_dp").into())
     }
 
     /// Reads the DAP register on the specified port and address
-    fn raw_read_register(&mut self, port: PortType, addr: u8) -> Result<u32, ArmNewError> {
+    fn raw_read_register(&mut self, port: PortType, addr: u8) -> Result<u32, ArmError> {
         let handler = self.dap_register_read_handler.as_ref().unwrap();
 
         handler(port, addr)
     }
 
     /// Writes a value to the DAP register on the specified port and address
-    fn raw_write_register(
-        &mut self,
-        port: PortType,
-        addr: u8,
-        value: u32,
-    ) -> Result<(), ArmNewError> {
+    fn raw_write_register(&mut self, port: PortType, addr: u8, value: u32) -> Result<(), ArmError> {
         let handler = self.dap_register_write_handler.as_ref().unwrap();
 
         handler(port, addr, value)
@@ -276,7 +271,7 @@ impl ArmProbeInterface for FakeArmInterface<Initialized> {
     fn memory_interface(
         &mut self,
         access_port: MemoryAp,
-    ) -> Result<Box<dyn ArmProbe + '_>, ArmNewError> {
+    ) -> Result<Box<dyn ArmProbe + '_>, ArmError> {
         let ap_information = MemoryApInformation {
             address: access_port.ap_address(),
             supports_only_32bit_data_size: false,
@@ -295,18 +290,18 @@ impl ArmProbeInterface for FakeArmInterface<Initialized> {
     fn ap_information(
         &mut self,
         _access_port: crate::architecture::arm::ap::GenericAp,
-    ) -> Result<&crate::architecture::arm::ApInformation, ArmNewError> {
+    ) -> Result<&crate::architecture::arm::ApInformation, ArmError> {
         todo!()
     }
 
-    fn num_access_ports(&mut self, _dp: DpAddress) -> Result<usize, ArmNewError> {
+    fn num_access_ports(&mut self, _dp: DpAddress) -> Result<usize, ArmError> {
         Ok(1)
     }
 
     fn read_chip_info_from_rom_table(
         &mut self,
         _dp: DpAddress,
-    ) -> Result<Option<crate::architecture::arm::ArmChipInfo>, ArmNewError> {
+    ) -> Result<Option<crate::architecture::arm::ArmChipInfo>, ArmError> {
         Ok(None)
     }
 
@@ -319,21 +314,21 @@ impl SwoAccess for FakeArmInterface<Initialized> {
     fn enable_swo(
         &mut self,
         _config: &crate::architecture::arm::SwoConfig,
-    ) -> Result<(), ArmNewError> {
+    ) -> Result<(), ArmError> {
         unimplemented!()
     }
 
-    fn disable_swo(&mut self) -> Result<(), ArmNewError> {
+    fn disable_swo(&mut self) -> Result<(), ArmError> {
         unimplemented!()
     }
 
-    fn read_swo_timeout(&mut self, _timeout: std::time::Duration) -> Result<Vec<u8>, ArmNewError> {
+    fn read_swo_timeout(&mut self, _timeout: std::time::Duration) -> Result<Vec<u8>, ArmError> {
         unimplemented!()
     }
 }
 
 impl DapAccess for FakeArmInterface<Initialized> {
-    fn read_raw_dp_register(&mut self, _dp: DpAddress, _address: u8) -> Result<u32, ArmNewError> {
+    fn read_raw_dp_register(&mut self, _dp: DpAddress, _address: u8) -> Result<u32, ArmError> {
         todo!()
     }
 
@@ -342,11 +337,11 @@ impl DapAccess for FakeArmInterface<Initialized> {
         _dp: DpAddress,
         _address: u8,
         _value: u32,
-    ) -> Result<(), ArmNewError> {
+    ) -> Result<(), ArmError> {
         todo!()
     }
 
-    fn read_raw_ap_register(&mut self, _ap: ApAddress, _address: u8) -> Result<u32, ArmNewError> {
+    fn read_raw_ap_register(&mut self, _ap: ApAddress, _address: u8) -> Result<u32, ArmError> {
         todo!()
     }
 
@@ -355,7 +350,7 @@ impl DapAccess for FakeArmInterface<Initialized> {
         _ap: ApAddress,
         _address: u8,
         _values: &mut [u32],
-    ) -> Result<(), ArmNewError> {
+    ) -> Result<(), ArmError> {
         todo!()
     }
 
@@ -364,7 +359,7 @@ impl DapAccess for FakeArmInterface<Initialized> {
         _ap: ApAddress,
         _address: u8,
         _value: u32,
-    ) -> Result<(), ArmNewError> {
+    ) -> Result<(), ArmError> {
         todo!()
     }
 
@@ -373,7 +368,7 @@ impl DapAccess for FakeArmInterface<Initialized> {
         _ap: ApAddress,
         _address: u8,
         _values: &[u32],
-    ) -> Result<(), ArmNewError> {
+    ) -> Result<(), ArmError> {
         todo!()
     }
 }

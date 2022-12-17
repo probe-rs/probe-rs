@@ -5,7 +5,7 @@ mod usb_interface;
 use self::usb_interface::{StLinkUsb, StLinkUsbDevice};
 use super::{DebugProbe, DebugProbeError, ProbeCreationError, WireProtocol};
 use crate::architecture::arm::memory::adi_v5_memory_interface::ArmProbe;
-use crate::architecture::arm::{valid_32bit_arm_address, ArmNewError};
+use crate::architecture::arm::{valid_32bit_arm_address, ArmError};
 use crate::{
     architecture::arm::{
         ap::{valid_access_ports, AccessPort, ApAccess, ApClass, MemoryAp, IDR},
@@ -1052,7 +1052,7 @@ impl<D: StLinkUsb> StLink<D> {
 }
 
 impl<D: StLinkUsb> SwoAccess for StLink<D> {
-    fn enable_swo(&mut self, config: &SwoConfig) -> Result<(), ArmNewError> {
+    fn enable_swo(&mut self, config: &SwoConfig) -> Result<(), ArmError> {
         match config.mode() {
             SwoMode::Uart => {
                 self.start_trace_reception(config)?;
@@ -1065,12 +1065,12 @@ impl<D: StLinkUsb> SwoAccess for StLink<D> {
         }
     }
 
-    fn disable_swo(&mut self) -> Result<(), ArmNewError> {
+    fn disable_swo(&mut self) -> Result<(), ArmError> {
         self.stop_trace_reception()?;
         Ok(())
     }
 
-    fn read_swo_timeout(&mut self, timeout: Duration) -> Result<Vec<u8>, ArmNewError> {
+    fn read_swo_timeout(&mut self, timeout: Duration) -> Result<Vec<u8>, ArmError> {
         let data = self.read_swo_data(timeout)?;
         Ok(data)
     }
@@ -1155,7 +1155,7 @@ struct StlinkArmDebug {
 impl StlinkArmDebug {
     fn new(
         probe: Box<StLink<StLinkUsbDevice>>,
-    ) -> Result<Self, (Box<StLink<StLinkUsbDevice>>, ArmNewError)> {
+    ) -> Result<Self, (Box<StLink<StLinkUsbDevice>>, ArmError)> {
         // Determine the number and type of available APs.
 
         let mut interface = Self {
@@ -1179,7 +1179,7 @@ impl StlinkArmDebug {
 }
 
 impl DapAccess for StlinkArmDebug {
-    fn read_raw_dp_register(&mut self, dp: DpAddress, address: u8) -> Result<u32, ArmNewError> {
+    fn read_raw_dp_register(&mut self, dp: DpAddress, address: u8) -> Result<u32, ArmError> {
         if dp != DpAddress::Default {
             return Err(DebugProbeError::from(StlinkError::MultidropNotSupported).into());
         }
@@ -1192,7 +1192,7 @@ impl DapAccess for StlinkArmDebug {
         dp: DpAddress,
         address: u8,
         value: u32,
-    ) -> Result<(), ArmNewError> {
+    ) -> Result<(), ArmError> {
         if dp != DpAddress::Default {
             return Err(DebugProbeError::from(StlinkError::MultidropNotSupported).into());
         }
@@ -1201,7 +1201,7 @@ impl DapAccess for StlinkArmDebug {
         Ok(())
     }
 
-    fn read_raw_ap_register(&mut self, ap: ApAddress, address: u8) -> Result<u32, ArmNewError> {
+    fn read_raw_ap_register(&mut self, ap: ApAddress, address: u8) -> Result<u32, ArmError> {
         if ap.dp != DpAddress::Default {
             return Err(DebugProbeError::from(StlinkError::MultidropNotSupported).into());
         }
@@ -1216,7 +1216,7 @@ impl DapAccess for StlinkArmDebug {
         ap: ApAddress,
         address: u8,
         value: u32,
-    ) -> Result<(), ArmNewError> {
+    ) -> Result<(), ArmError> {
         if ap.dp != DpAddress::Default {
             return Err(DebugProbeError::from(StlinkError::MultidropNotSupported).into());
         }
@@ -1231,7 +1231,7 @@ impl ArmProbeInterface for StlinkArmDebug {
     fn memory_interface(
         &mut self,
         access_port: MemoryAp,
-    ) -> Result<Box<dyn ArmProbe + '_>, ArmNewError> {
+    ) -> Result<Box<dyn ArmProbe + '_>, ArmError> {
         let interface = StLinkMemoryInterface {
             probe: self,
             current_ap: access_port,
@@ -1243,8 +1243,7 @@ impl ArmProbeInterface for StlinkArmDebug {
     fn ap_information(
         &mut self,
         access_port: crate::architecture::arm::ap::GenericAp,
-    ) -> Result<&crate::architecture::arm::communication_interface::ApInformation, ArmNewError>
-    {
+    ) -> Result<&crate::architecture::arm::communication_interface::ApInformation, ArmError> {
         let addr = access_port.ap_address();
         if addr.dp != DpAddress::Default {
             return Err(DebugProbeError::from(StlinkError::MultidropNotSupported).into());
@@ -1252,7 +1251,7 @@ impl ArmProbeInterface for StlinkArmDebug {
 
         match self.ap_information.get(addr.ap as usize) {
             Some(res) => Ok(res),
-            None => Err(ArmNewError::temporary(anyhow!(
+            None => Err(ArmError::temporary(anyhow!(
                 "AP {} does not exist.",
                 addr.ap
             ))),
@@ -1262,7 +1261,7 @@ impl ArmProbeInterface for StlinkArmDebug {
     fn read_chip_info_from_rom_table(
         &mut self,
         dp: DpAddress,
-    ) -> Result<Option<crate::architecture::arm::ArmChipInfo>, ArmNewError> {
+    ) -> Result<Option<crate::architecture::arm::ArmChipInfo>, ArmError> {
         if dp != DpAddress::Default {
             return Err(DebugProbeError::from(StlinkError::MultidropNotSupported).into());
         }
@@ -1294,7 +1293,7 @@ impl ArmProbeInterface for StlinkArmDebug {
         Ok(None)
     }
 
-    fn num_access_ports(&mut self, dp: DpAddress) -> Result<usize, ArmNewError> {
+    fn num_access_ports(&mut self, dp: DpAddress) -> Result<usize, ArmError> {
         if dp != DpAddress::Default {
             return Err(DebugProbeError::from(StlinkError::MultidropNotSupported).into());
         }
@@ -1324,15 +1323,15 @@ impl SwdSequence for StlinkArmDebug {
 }
 
 impl SwoAccess for StlinkArmDebug {
-    fn enable_swo(&mut self, config: &SwoConfig) -> Result<(), ArmNewError> {
+    fn enable_swo(&mut self, config: &SwoConfig) -> Result<(), ArmError> {
         self.probe.enable_swo(config)
     }
 
-    fn disable_swo(&mut self) -> Result<(), ArmNewError> {
+    fn disable_swo(&mut self) -> Result<(), ArmError> {
         self.probe.disable_swo()
     }
 
-    fn read_swo_timeout(&mut self, timeout: Duration) -> Result<Vec<u8>, ArmNewError> {
+    fn read_swo_timeout(&mut self, timeout: Duration) -> Result<Vec<u8>, ArmError> {
         self.probe.read_swo_timeout(timeout)
     }
 }
@@ -1363,7 +1362,7 @@ impl ArmProbe for StLinkMemoryInterface<'_> {
         false
     }
 
-    fn read_64(&mut self, address: u64, data: &mut [u64]) -> Result<(), ArmNewError> {
+    fn read_64(&mut self, address: u64, data: &mut [u64]) -> Result<(), ArmError> {
         let address = valid_32bit_arm_address(address)?;
 
         for (i, d) in data.iter_mut().enumerate() {
@@ -1381,7 +1380,7 @@ impl ArmProbe for StLinkMemoryInterface<'_> {
         Ok(())
     }
 
-    fn read_32(&mut self, address: u64, data: &mut [u32]) -> Result<(), ArmNewError> {
+    fn read_32(&mut self, address: u64, data: &mut [u32]) -> Result<(), ArmError> {
         let address = valid_32bit_arm_address(address)?;
 
         // Read needs to be chunked into chunks with appropiate max length (see STLINK_MAX_READ_LEN).
@@ -1402,7 +1401,7 @@ impl ArmProbe for StLinkMemoryInterface<'_> {
         Ok(())
     }
 
-    fn read_8(&mut self, address: u64, data: &mut [u8]) -> Result<(), ArmNewError> {
+    fn read_8(&mut self, address: u64, data: &mut [u8]) -> Result<(), ArmError> {
         let address = valid_32bit_arm_address(address)?;
 
         // Read needs to be chunked into chunks of appropriate max length of the probe
@@ -1427,7 +1426,7 @@ impl ArmProbe for StLinkMemoryInterface<'_> {
         Ok(())
     }
 
-    fn write_64(&mut self, address: u64, data: &[u64]) -> Result<(), ArmNewError> {
+    fn write_64(&mut self, address: u64, data: &[u64]) -> Result<(), ArmError> {
         let address = valid_32bit_arm_address(address)?;
 
         let mut tx_buffer = vec![0u8; data.len() * 8];
@@ -1451,7 +1450,7 @@ impl ArmProbe for StLinkMemoryInterface<'_> {
         Ok(())
     }
 
-    fn write_32(&mut self, address: u64, data: &[u32]) -> Result<(), ArmNewError> {
+    fn write_32(&mut self, address: u64, data: &[u32]) -> Result<(), ArmError> {
         let address = valid_32bit_arm_address(address)?;
 
         let mut tx_buffer = vec![0u8; data.len() * 4];
@@ -1475,7 +1474,7 @@ impl ArmProbe for StLinkMemoryInterface<'_> {
         Ok(())
     }
 
-    fn write_8(&mut self, address: u64, data: &[u8]) -> Result<(), ArmNewError> {
+    fn write_8(&mut self, address: u64, data: &[u8]) -> Result<(), ArmError> {
         let address = valid_32bit_arm_address(address)?;
 
         // The underlying STLink command is limited to a single USB frame at a time
@@ -1560,11 +1559,11 @@ impl ArmProbe for StLinkMemoryInterface<'_> {
         Ok(())
     }
 
-    fn flush(&mut self) -> Result<(), ArmNewError> {
+    fn flush(&mut self) -> Result<(), ArmError> {
         Ok(())
     }
 
-    fn supports_8bit_transfers(&self) -> Result<bool, ArmNewError> {
+    fn supports_8bit_transfers(&self) -> Result<bool, ArmError> {
         Ok(true)
     }
 

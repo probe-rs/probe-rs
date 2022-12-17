@@ -7,7 +7,7 @@ use crate::{
         communication_interface::UninitializedArmProbe,
         dp::{Abort, Ctrl},
         swo::poll_interval_from_buf_size,
-        ArmCommunicationInterface, ArmNewError, DapError, DpAddress, Pins, PortType, RawDapAccess,
+        ArmCommunicationInterface, ArmError, DapError, DpAddress, Pins, PortType, RawDapAccess,
         Register, SwoAccess, SwoConfig, SwoMode,
     },
     probe::{
@@ -169,7 +169,7 @@ impl CmsisDap {
     ///
     /// This will ensure any pending writes are processed and errors from them
     /// raised if necessary.
-    fn process_batch(&mut self) -> Result<Option<u32>, ArmNewError> {
+    fn process_batch(&mut self) -> Result<Option<u32>, ArmError> {
         if self.batch.is_empty() {
             return Ok(None);
         }
@@ -265,7 +265,7 @@ impl CmsisDap {
     /// and return the read value. If the BatchCommand is a write, the write is
     /// executed immediately if the batch is full, otherwise it is queued for
     /// later execution.
-    fn batch_add(&mut self, command: BatchCommand) -> Result<Option<u32>, ArmNewError> {
+    fn batch_add(&mut self, command: BatchCommand) -> Result<Option<u32>, ArmError> {
         tracing::debug!("Adding command to batch: {}", command);
 
         self.batch.push(command);
@@ -572,7 +572,7 @@ impl DebugProbe for CmsisDap {
 }
 
 impl RawDapAccess for CmsisDap {
-    fn select_dp(&mut self, dp: DpAddress) -> Result<(), ArmNewError> {
+    fn select_dp(&mut self, dp: DpAddress) -> Result<(), ArmError> {
         match dp {
             DpAddress::Default => Ok(()), // nop
             DpAddress::Multidrop(targetsel) => {
@@ -626,7 +626,7 @@ impl RawDapAccess for CmsisDap {
     }
 
     /// Reads the DAP register on the specified port and address.
-    fn raw_read_register(&mut self, port: PortType, addr: u8) -> Result<u32, ArmNewError> {
+    fn raw_read_register(&mut self, port: PortType, addr: u8) -> Result<u32, ArmError> {
         let res = self.batch_add(BatchCommand::Read(port, addr as u16))?;
 
         // NOTE(unwrap): batch_add will always return Some if the last command is a read
@@ -635,12 +635,7 @@ impl RawDapAccess for CmsisDap {
     }
 
     /// Writes a value to the DAP register on the specified port and address.
-    fn raw_write_register(
-        &mut self,
-        port: PortType,
-        addr: u8,
-        value: u32,
-    ) -> Result<(), ArmNewError> {
+    fn raw_write_register(&mut self, port: PortType, addr: u8, value: u32) -> Result<(), ArmError> {
         self.batch_add(BatchCommand::Write(port, addr as u16, value))
             .map(|_| ())
     }
@@ -650,7 +645,7 @@ impl RawDapAccess for CmsisDap {
         port: PortType,
         register_address: u8,
         values: &[u32],
-    ) -> Result<(), ArmNewError> {
+    ) -> Result<(), ArmError> {
         self.process_batch()?;
 
         // the overhead for a single packet is 6 bytes
@@ -689,7 +684,7 @@ impl RawDapAccess for CmsisDap {
         port: PortType,
         register_address: u8,
         values: &mut [u32],
-    ) -> Result<(), ArmNewError> {
+    ) -> Result<(), ArmError> {
         self.process_batch()?;
 
         // the overhead for a single packet is 6 bytes
@@ -725,7 +720,7 @@ impl RawDapAccess for CmsisDap {
         Ok(())
     }
 
-    fn raw_flush(&mut self) -> Result<(), ArmNewError> {
+    fn raw_flush(&mut self) -> Result<(), ArmError> {
         self.process_batch()?;
         Ok(())
     }
@@ -763,7 +758,7 @@ impl RawDapAccess for CmsisDap {
 impl DapProbe for CmsisDap {}
 
 impl SwoAccess for CmsisDap {
-    fn enable_swo(&mut self, config: &SwoConfig) -> Result<(), ArmNewError> {
+    fn enable_swo(&mut self, config: &SwoConfig) -> Result<(), ArmError> {
         let caps = self.capabilities;
 
         // Check requested mode is available in probe capabilities
@@ -821,14 +816,14 @@ impl SwoAccess for CmsisDap {
         Ok(())
     }
 
-    fn disable_swo(&mut self) -> Result<(), ArmNewError> {
+    fn disable_swo(&mut self) -> Result<(), ArmError> {
         tracing::debug!("Stopping SWO capture");
         self.stop_swo_capture()?;
         self.swo_active = false;
         Ok(())
     }
 
-    fn read_swo_timeout(&mut self, timeout: Duration) -> Result<Vec<u8>, ArmNewError> {
+    fn read_swo_timeout(&mut self, timeout: Duration) -> Result<Vec<u8>, ArmError> {
         if self.swo_active {
             if self.swo_streaming {
                 let buffer = self
