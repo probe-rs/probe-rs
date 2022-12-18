@@ -829,7 +829,7 @@ pub trait RawProtocolIo {
 
     fn probe_statistics(&mut self) -> &mut ProbeStatistics;
 
-    /// Try to perform a line reset, followed by a read of the DPIDR register.
+    /// Try to perform a SWD line reset, followed by a read of the DPIDR register.
     ///
     /// Returns Ok if the read of the DPIDR register was succesful, and Err
     /// otherwise. In case of JLink Errors, the actual error is returned.
@@ -838,7 +838,7 @@ pub trait RawProtocolIo {
     /// might be in the middle of a transfer the first time we try the reset.
     ///
     /// See section B4.3.3 in the ADIv5 Specification.
-    fn line_reset(&mut self) -> Result<(), DebugProbeError>;
+    fn line_reset(&mut self) -> Result<(), ArmError>;
 }
 
 impl RawProtocolIo for JLink {
@@ -874,7 +874,7 @@ impl RawProtocolIo for JLink {
         Ok(iter.collect())
     }
 
-    fn line_reset(&mut self) -> Result<(), DebugProbeError> {
+    fn line_reset(&mut self) -> Result<(), ArmError> {
         tracing::debug!("Performing line reset!");
 
         const NUM_RESET_BITS: u8 = 50;
@@ -904,7 +904,7 @@ impl RawProtocolIo for JLink {
                 }
                 TransferStatus::Failed(e) => {
                     tracing::debug!("Error reading DPIDR register after line reset: {e:?}");
-                    result = Err(DebugProbeError::DapError(e.clone()));
+                    result = Err(ArmError::from(e.clone()));
                 }
             }
         }
@@ -1385,7 +1385,7 @@ mod test {
     use std::iter;
 
     use crate::{
-        architecture::arm::{PortType, RawDapAccess},
+        architecture::arm::{ArmError, PortType, RawDapAccess},
         probe::JTAGAccess,
         DebugProbe, DebugProbeError,
     };
@@ -1681,7 +1681,7 @@ mod test {
             Ok(transfer_response)
         }
 
-        fn line_reset(&mut self) -> Result<(), crate::DebugProbeError> {
+        fn line_reset(&mut self) -> Result<(), ArmError> {
             Ok(())
         }
 

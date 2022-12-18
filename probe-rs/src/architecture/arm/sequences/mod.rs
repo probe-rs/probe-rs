@@ -429,7 +429,7 @@ pub trait ArmDebugSequence: Send + Sync {
                 thread::sleep(Duration::from_millis(100));
             }
 
-            Err(DebugProbeError::Timeout.into())
+            Err(ArmError::Timeout)
         } else {
             thread::sleep(Duration::from_millis(100));
             Ok(())

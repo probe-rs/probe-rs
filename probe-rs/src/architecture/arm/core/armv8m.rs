@@ -6,9 +6,7 @@ use crate::architecture::arm::ArmError;
 use crate::core::RegisterFile;
 use crate::error::Error;
 use crate::memory::valid_32bit_address;
-use crate::{
-    architecture::arm::core::register, CoreStatus, DebugProbeError, HaltReason, MemoryInterface,
-};
+use crate::{architecture::arm::core::register, CoreStatus, HaltReason, MemoryInterface};
 use crate::{Architecture, CoreInformation};
 use crate::{CoreInterface, CoreType, InstructionSet, MemoryMappedRegister};
 use crate::{RegisterId, RegisterValue};
@@ -91,7 +89,7 @@ impl<'probe> CoreInterface for Armv8m<'probe> {
 
             std::thread::sleep(Duration::from_millis(1));
         }
-        Err(Error::Probe(DebugProbeError::Timeout))
+        Err(Error::Arm(ArmError::Timeout))
     }
 
     fn core_halted(&mut self) -> Result<bool, Error> {

@@ -19,7 +19,7 @@ use crate::{
         arm::{
             communication_interface::DapProbe,
             sequences::{ArmDebugSequence, DefaultArmSequence},
-            DapError, PortType, SwoAccess,
+            PortType, SwoAccess,
         },
         riscv::communication_interface::RiscvCommunicationInterface,
     },
@@ -111,10 +111,6 @@ pub enum DebugProbeError {
     /// The selected wire protocol is not supported with given probe.
     #[error("Probe does not support {0}")]
     UnsupportedProtocol(WireProtocol),
-    // TODO: This is core specific, so should probably be moved there.
-    /// A timeout occurred during an operation.
-    #[error("Operation timed out")]
-    Timeout,
     /// The selected probe does not support the selected interface.
     /// This happens if a probe does not support certain functionality, such as:
     /// - ARM debugging
@@ -158,12 +154,13 @@ pub enum DebugProbeError {
     /// This can happen when a probe does not allow for setting speed manually for example.
     #[error("Command not supported by probe: {0}")]
     CommandNotSupportedByProbe(&'static str),
-    /// A DAP error occured.
-    #[error("A DAP error occured.")]
-    DapError(DapError),
     /// Some other error occurred.
     #[error(transparent)]
     Other(#[from] anyhow::Error),
+
+    /// A timeout occured during probe operation.
+    #[error("Timeout occured during probe operation.")]
+    Timeout,
 }
 
 /// An error during probe creation accured.
@@ -354,7 +351,7 @@ impl Probe {
         self.attached = true;
         // The session will de-assert reset after connecting to the debug interface.
         Session::new(self, target.into(), AttachMethod::UnderReset, permissions).map_err(|e| {
-            if matches!(e, Error::Probe(DebugProbeError::Timeout)) {
+            if matches!(e, Error::Timeout) {
                 Error::Other(
                 anyhow::anyhow!("Timeout while attaching to target under reset. This can happen if the target is not responding to the reset sequence. Ensure the chip's reset pin is connected, or try attaching without reset."))
             } else {

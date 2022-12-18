@@ -13,7 +13,7 @@ pub enum Error {
     Probe(#[from] DebugProbeError),
     /// An ARM specific error occured.
     #[error("A ARM specific error occured.")]
-    Arm(#[from] ArmError),
+    Arm(#[source] ArmError),
     /// A RISCV specific error occured.
     #[error("A RISCV specific error occured.")]
     Riscv(#[source] RiscvError),
@@ -36,6 +36,11 @@ pub enum Error {
     #[error(transparent)]
     Other(#[from] anyhow::Error),
 
+    // TODO: Errors below should be core specific
+    /// A timeout occured during an operation
+    #[error("A timeout occured.")]
+    Timeout,
+
     /// Unaligned memory access
     #[error("Alignment error")]
     MemoryNotAligned {
@@ -44,4 +49,13 @@ pub enum Error {
         /// The required alignment in bytes (address increments).
         alignment: usize,
     },
+}
+
+impl From<ArmError> for Error {
+    fn from(value: ArmError) -> Self {
+        match value {
+            ArmError::Timeout => Error::Timeout,
+            other => Error::Arm(other),
+        }
+    }
 }

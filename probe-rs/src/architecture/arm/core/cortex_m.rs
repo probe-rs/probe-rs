@@ -1,8 +1,8 @@
 //! Common functions and data types for Cortex-M core variants
 
 use crate::{
-    architecture::arm::memory::adi_v5_memory_interface::ArmProbe, DebugProbeError, Error,
-    MemoryMappedRegister, RegisterId,
+    architecture::arm::{memory::adi_v5_memory_interface::ArmProbe, ArmError},
+    Error, MemoryMappedRegister, RegisterId,
 };
 
 use bitfield::bitfield;
@@ -200,7 +200,7 @@ pub(crate) fn write_core_reg(
 fn wait_for_core_register_transfer(
     memory: &mut dyn ArmProbe,
     timeout: Duration,
-) -> Result<(), Error> {
+) -> Result<(), ArmError> {
     // now we have to poll the dhcsr register, until the dhcsr.s_regrdy bit is set
     // (see C1-292, cortex m0 arm)
     let start = Instant::now();
@@ -212,5 +212,5 @@ fn wait_for_core_register_transfer(
             return Ok(());
         }
     }
-    Err(Error::Probe(DebugProbeError::Timeout))
+    Err(ArmError::Timeout)
 }

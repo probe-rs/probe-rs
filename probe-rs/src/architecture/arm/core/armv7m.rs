@@ -649,7 +649,7 @@ impl<'probe> CoreInterface for Armv7m<'probe> {
                 // Wait a bit before polling again.
                 std::thread::sleep(Duration::from_millis(1));
             } else {
-                return Err(Error::Probe(DebugProbeError::Timeout));
+                return Err(Error::Arm(ArmError::Timeout));
             }
         }
         Ok(())

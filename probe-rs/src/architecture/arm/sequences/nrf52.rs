@@ -3,10 +3,8 @@
 use std::sync::Arc;
 
 use super::ArmDebugSequence;
-use crate::{
-    architecture::arm::{
-        component::TraceSink, memory::CoresightComponent, ArmError, ArmProbeInterface,
-    },
+use crate::architecture::arm::{
+    component::TraceSink, memory::CoresightComponent, ArmError, ArmProbeInterface,
 };
 
 /// An error when operating a core ROM table component occurred.

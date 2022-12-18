@@ -10,7 +10,6 @@ use crate::error::Error;
 use crate::memory::valid_32bit_address;
 use crate::CoreInterface;
 use crate::CoreStatus;
-use crate::DebugProbeError;
 use crate::MemoryInterface;
 use crate::RegisterId;
 use crate::{Architecture, CoreInformation, CoreType, InstructionSet};
@@ -307,7 +306,7 @@ impl<'probe> CoreInterface for Armv7a<'probe> {
             }
             std::thread::sleep(Duration::from_millis(1));
         }
-        Err(Error::Probe(DebugProbeError::Timeout))
+        Err(Error::Arm(ArmError::Timeout))
     }
 
     fn core_halted(&mut self) -> Result<bool, Error> {
@@ -898,9 +897,12 @@ impl<'probe> MemoryInterface for Armv7a<'probe> {
 
 #[cfg(test)]
 mod test {
-    use crate::architecture::arm::{
-        ap::MemoryAp, communication_interface::SwdSequence,
-        memory::adi_v5_memory_interface::ArmProbe, sequences::DefaultArmSequence, ArmError,
+    use crate::{
+        architecture::arm::{
+            ap::MemoryAp, communication_interface::SwdSequence,
+            memory::adi_v5_memory_interface::ArmProbe, sequences::DefaultArmSequence, ArmError,
+        },
+        DebugProbeError,
     };
 
     use super::*;

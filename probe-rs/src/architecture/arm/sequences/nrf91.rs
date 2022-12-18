@@ -3,9 +3,9 @@
 use std::sync::Arc;
 
 use super::{nrf::Nrf, ArmDebugSequence};
-use crate::architecture::arm::ArmError;
 use crate::architecture::arm::ap::AccessPort;
 use crate::architecture::arm::memory::adi_v5_memory_interface::ArmProbe;
+use crate::architecture::arm::ArmError;
 use crate::architecture::arm::{
     communication_interface::Initialized, ApAddress, ArmCommunicationInterface, DapAccess,
 };
