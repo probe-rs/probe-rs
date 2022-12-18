@@ -76,6 +76,7 @@ impl From<RiscvError> for ProbeRsError {
     fn from(err: RiscvError) -> Self {
         match err {
             RiscvError::DebugProbe(e) => e.into(),
+            RiscvError::Timeout => ProbeRsError::Timeout,
             other => ProbeRsError::Riscv(other),
         }
     }
