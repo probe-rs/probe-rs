@@ -20,6 +20,17 @@ fn main() {
 
     let mut files = vec![];
     visit_dirs(Path::new("targets"), &mut files).unwrap();
+
+    // Check if there are any additional targets to generate for
+    match env::var("PROBE_RS_ADDITIONAL_TARGETS_DIR") {
+        Ok(additional_target_dir) => {
+            visit_dirs(Path::new(&additional_target_dir), &mut files).unwrap();
+        }
+        Err(_err) => {
+            // Do nothing as you dont have to add any other targets
+        }
+    }
+
     for file in files {
         let string = read_to_string(&file).expect(
             "Algorithm definition file could not be read. This is a bug. Please report it.",
