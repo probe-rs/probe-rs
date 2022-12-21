@@ -282,7 +282,8 @@ impl ArmProbeInterface for FakeArmInterface<Initialized> {
             device_enabled: true,
         };
 
-        let memory = ADIMemoryInterface::new(&mut self.memory_ap, ap_information)?;
+        let memory = ADIMemoryInterface::new(&mut self.memory_ap, ap_information)
+            .map_err(|e| ArmError::from_access_port(e, access_port))?;
 
         Ok(Box::new(memory) as _)
     }

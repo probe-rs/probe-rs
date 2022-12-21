@@ -375,7 +375,10 @@ fn cortex_m_reset_system(interface: &mut dyn ArmProbe) -> Result<(), ArmError> {
             // particular, hs-probe and ATSAMD21) result in
             // register read errors while the target is
             // resetting.
-            Err(ArmError::AccessPort(AccessPortError::RegisterRead { .. })) => continue,
+            Err(ArmError::AccessPort {
+                source: AccessPortError::RegisterRead { .. },
+                ..
+            }) => continue,
             Err(err) => return Err(err),
         };
 

@@ -18,6 +18,7 @@ pub use traits::*;
 
 use crate::DebugProbeError;
 
+use self::ap::AccessPort;
 use self::ap::AccessPortError;
 use self::armv7a::Armv7aError;
 use self::armv8a::Armv8aError;
@@ -54,8 +55,13 @@ pub enum ArmError {
     #[error("Target device is not an ARM device.")]
     NoArmTarget,
     /// Error using a specific AP.
-    #[error("Error using access port.")]
-    AccessPort(#[from] AccessPortError),
+    #[error("Error using access port")]
+    AccessPort {
+        /// Address of the access port
+        address: ApAddress,
+        /// Source of the error.
+        source: AccessPortError,
+    },
     /// The core has to be halted for the operation, but was not.
     #[error("The core needs to be halted for this operation but was not.")]
     CoreNotHalted,
@@ -69,6 +75,30 @@ pub enum ArmError {
     /// Then the correct permission needs to be given to automatically unlock the core to prevent accidental erases.
     #[error("An operation could not be performed because it lacked the permission to do so: {0}")]
     MissingPermissions(String),
+
+    // TODO: What is the "DAP" protocol?
+    /// An error occured in the DAP protocol.
+    #[error("An error occured in the DAP protocol.")]
+    Dap(#[from] DapError),
+    /// The debug probe encountered an error.
+    #[error("The debug probe encountered an error.")]
+    Probe(#[from] DebugProbeError),
+
+    /// The given register address to perform an access on was not memory aligned.
+    /// Make sure it is aligned to the size of the access (`address & access_size == 0`).
+    #[error("Failed to access address 0x{address:08x} as it is not aligned to the requirement of {alignment} bytes for this platform and API call.")]
+    MemoryNotAligned {
+        /// The address of the register.
+        address: u64,
+        /// The required alignment in bytes (address increments).
+        alignment: usize,
+    },
+    /// A region ouside of the AP address space was accessed.
+    #[error("Out of bounds access")]
+    OutOfBounds,
+    /// The requested memory transfer width is not supported on the current core.
+    #[error("{0} bit is not a supported memory transfer width on the current core")]
+    UnsupportedTransferWidth(usize),
 }
 
 impl ArmError {
@@ -76,11 +106,18 @@ impl ArmError {
     pub fn temporary(err: anyhow::Error) -> Self {
         ArmError::Common(err.into())
     }
-}
 
-impl From<DebugProbeError> for ArmError {
-    fn from(value: DebugProbeError) -> Self {
-        ArmError::Common(Box::new(value))
+    /// Constructs [`ArmError::MemoryNotAligned`] from the address and the required alignment.
+    pub fn from_access_port(err: AccessPortError, ap: impl AccessPort) -> Self {
+        ArmError::AccessPort {
+            address: ap.ap_address(),
+            source: err,
+        }
+    }
+
+    /// Constructs a [`AccessPortError::MemoryNotAligned`] from the address and the required alignment.
+    pub fn alignment_error(address: u64, alignment: usize) -> Self {
+        ArmError::MemoryNotAligned { address, alignment }
     }
 }
 
@@ -101,12 +138,6 @@ impl From<RegisterParseError> for ArmError {
 
 impl From<RomTableError> for ArmError {
     fn from(value: RomTableError) -> Self {
-        ArmError::Common(Box::new(value))
-    }
-}
-
-impl From<DapError> for ArmError {
-    fn from(value: DapError) -> Self {
         ArmError::Common(Box::new(value))
     }
 }

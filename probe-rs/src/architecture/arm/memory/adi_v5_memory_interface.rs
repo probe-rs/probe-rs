@@ -107,7 +107,7 @@ pub trait ArmProbe: SwdSequence {
         if address % 4 != 0 || len % 4 != 0 {
             // If we do not support 8 bit transfers we have to bail because we can only do 32 bit word aligned transers.
             if !self.supports_8bit_transfers()? {
-                return Err(AccessPortError::alignment_error(address, 4).into());
+                return Err(ArmError::alignment_error(address, 4));
             }
 
             // We first do an 8 bit write of the first < 4 bytes up until the 4 byte aligned boundary.
@@ -211,11 +211,7 @@ where
         }
     }
 
-    fn write_csw_register(
-        &mut self,
-        access_port: MemoryAp,
-        value: CSW,
-    ) -> Result<(), AccessPortError> {
+    fn write_csw_register(&mut self, access_port: MemoryAp, value: CSW) -> Result<(), ArmError> {
         // Check if the write is necessary
         match self.cached_csw_value {
             Some(cached_value) if cached_value == value => Ok(()),
@@ -229,11 +225,7 @@ where
         }
     }
 
-    fn write_tar_register(
-        &mut self,
-        access_port: MemoryAp,
-        address: u64,
-    ) -> Result<(), AccessPortError> {
+    fn write_tar_register(&mut self, access_port: MemoryAp, address: u64) -> Result<(), ArmError> {
         let address_lower = address as u32;
         let address_upper = (address >> 32) as u32;
 
@@ -248,14 +240,14 @@ where
             };
             self.write_ap_register(access_port, tar)?;
         } else if address_upper != 0 {
-            return Err(AccessPortError::OutOfBounds);
+            return Err(ArmError::OutOfBounds);
         }
 
         Ok(())
     }
 
     /// Read a 32 bit register on the given AP.
-    fn read_ap_register<R>(&mut self, access_port: MemoryAp) -> Result<R, AccessPortError>
+    fn read_ap_register<R>(&mut self, access_port: MemoryAp) -> Result<R, ArmError>
     where
         R: ApRegister<MemoryAp>,
         AP: ApAccess,
@@ -263,6 +255,7 @@ where
         self.interface
             .read_ap_register(access_port)
             .map_err(AccessPortError::register_read_error::<R, _>)
+            .map_err(|error| ArmError::from_access_port(error, access_port))
     }
 
     /// Read multiple 32 bit values from the same
@@ -272,7 +265,7 @@ where
         access_port: MemoryAp,
         register: R,
         values: &mut [u32],
-    ) -> Result<(), AccessPortError>
+    ) -> Result<(), ArmError>
     where
         R: ApRegister<MemoryAp>,
         AP: ApAccess,
@@ -280,14 +273,11 @@ where
         self.interface
             .read_ap_register_repeated(access_port, register, values)
             .map_err(AccessPortError::register_read_error::<R, _>)
+            .map_err(|err| ArmError::from_access_port(err, access_port))
     }
 
     /// Write a 32 bit register on the given AP.
-    fn write_ap_register<R>(
-        &mut self,
-        access_port: MemoryAp,
-        register: R,
-    ) -> Result<(), AccessPortError>
+    fn write_ap_register<R>(&mut self, access_port: MemoryAp, register: R) -> Result<(), ArmError>
     where
         R: ApRegister<MemoryAp>,
         AP: ApAccess,
@@ -295,6 +285,7 @@ where
         self.interface
             .write_ap_register(access_port, register)
             .map_err(AccessPortError::register_write_error::<R, _>)
+            .map_err(|e| ArmError::from_access_port(e, access_port))
     }
 
     /// Write multiple 32 bit values to the same
@@ -304,7 +295,7 @@ where
         access_port: MemoryAp,
         register: R,
         values: &[u32],
-    ) -> Result<(), AccessPortError>
+    ) -> Result<(), ArmError>
     where
         R: ApRegister<MemoryAp>,
         AP: ApAccess,
@@ -312,19 +303,16 @@ where
         self.interface
             .write_ap_register_repeated(access_port, register, values)
             .map_err(AccessPortError::register_write_error::<R, _>)
+            .map_err(|e| ArmError::from_access_port(e, access_port))
     }
 
     /// Read a 64bit word at `address`.
     ///
     /// The address where the read should be performed at has to be word aligned.
     /// Returns `AccessPortError::MemoryNotAligned` if this does not hold true.
-    pub fn read_word_64(
-        &mut self,
-        access_port: MemoryAp,
-        address: u64,
-    ) -> Result<u64, AccessPortError> {
+    pub fn read_word_64(&mut self, access_port: MemoryAp, address: u64) -> Result<u64, ArmError> {
         if (address % 8) != 0 {
-            return Err(AccessPortError::alignment_error(address, 4));
+            return Err(ArmError::alignment_error(address, 4));
         }
 
         if !self.ap_information.has_large_data_extension {
@@ -352,13 +340,9 @@ where
     ///
     /// The address where the read should be performed at has to be word aligned.
     /// Returns `AccessPortError::MemoryNotAligned` if this does not hold true.
-    pub fn read_word_32(
-        &mut self,
-        access_port: MemoryAp,
-        address: u64,
-    ) -> Result<u32, AccessPortError> {
+    pub fn read_word_32(&mut self, access_port: MemoryAp, address: u64) -> Result<u32, ArmError> {
         if (address % 4) != 0 {
-            return Err(AccessPortError::alignment_error(address, 4));
+            return Err(ArmError::alignment_error(address, 4));
         }
 
         let csw = self.build_csw_register(DataSize::U32);
@@ -371,13 +355,9 @@ where
     }
 
     /// Read an 8 bit word at `address`.
-    pub fn read_word_8(
-        &mut self,
-        access_port: MemoryAp,
-        address: u64,
-    ) -> Result<u8, AccessPortError> {
+    pub fn read_word_8(&mut self, access_port: MemoryAp, address: u64) -> Result<u8, ArmError> {
         if self.ap_information.supports_only_32bit_data_size {
-            return Err(AccessPortError::UnsupportedTransferWidth(8));
+            return Err(ArmError::UnsupportedTransferWidth(8));
         }
 
         let aligned = aligned_range(address, 1)?;
@@ -405,13 +385,13 @@ where
         access_port: MemoryAp,
         address: u64,
         data: &mut [u32],
-    ) -> Result<(), AccessPortError> {
+    ) -> Result<(), ArmError> {
         if data.is_empty() {
             return Ok(());
         }
 
         if (address % 4) != 0 {
-            return Err(AccessPortError::alignment_error(address, 4));
+            return Err(ArmError::alignment_error(address, 4));
         }
 
         // Second we read in 32 bit reads until we have less than 32 bits left to read.
@@ -449,7 +429,7 @@ where
         remaining_data_len -= first_chunk_size_transfer_unit;
         let mut address = address
             .checked_add((4 * first_chunk_size_transfer_unit) as u64)
-            .ok_or(AccessPortError::OutOfBounds)?;
+            .ok_or(ArmError::OutOfBounds)?;
         data_offset += first_chunk_size_transfer_unit;
 
         while remaining_data_len > 0 {
@@ -476,7 +456,7 @@ where
             remaining_data_len -= next_chunk_size_transfer_unit;
             address = address
                 .checked_add((4 * next_chunk_size_transfer_unit) as u64)
-                .ok_or(AccessPortError::OutOfBounds)?;
+                .ok_or(ArmError::OutOfBounds)?;
             data_offset += next_chunk_size_transfer_unit;
         }
 
@@ -493,9 +473,9 @@ where
         access_port: MemoryAp,
         address: u64,
         data: &mut [u8],
-    ) -> Result<(), AccessPortError> {
+    ) -> Result<(), ArmError> {
         if self.ap_information.supports_only_32bit_data_size {
-            return Err(AccessPortError::UnsupportedTransferWidth(8));
+            return Err(ArmError::UnsupportedTransferWidth(8));
         }
 
         if data.is_empty() {
@@ -541,7 +521,7 @@ where
         remaining_data_len -= first_chunk_size_transfer_unit;
         address = address
             .checked_add((first_chunk_size_transfer_unit) as u64)
-            .ok_or(AccessPortError::OutOfBounds)?;
+            .ok_or(ArmError::OutOfBounds)?;
         data_offset += first_chunk_size_transfer_unit;
 
         while remaining_data_len > 0 {
@@ -568,7 +548,7 @@ where
             remaining_data_len -= next_chunk_size_transfer_unit;
             address = address
                 .checked_add((next_chunk_size_transfer_unit) as u64)
-                .ok_or(AccessPortError::OutOfBounds)?;
+                .ok_or(ArmError::OutOfBounds)?;
             data_offset += next_chunk_size_transfer_unit;
         }
 
@@ -593,9 +573,9 @@ where
         access_port: MemoryAp,
         address: u64,
         data: u64,
-    ) -> Result<(), AccessPortError> {
+    ) -> Result<(), ArmError> {
         if (address % 8) != 0 {
-            return Err(AccessPortError::alignment_error(address, 4));
+            return Err(ArmError::alignment_error(address, 4));
         }
 
         let low_word = data as u32;
@@ -629,9 +609,9 @@ where
         access_port: MemoryAp,
         address: u64,
         data: u32,
-    ) -> Result<(), AccessPortError> {
+    ) -> Result<(), ArmError> {
         if (address % 4) != 0 {
-            return Err(AccessPortError::alignment_error(address, 4));
+            return Err(ArmError::alignment_error(address, 4));
         }
 
         let csw = self.build_csw_register(DataSize::U32);
@@ -651,9 +631,9 @@ where
         access_port: MemoryAp,
         address: u64,
         data: u8,
-    ) -> Result<(), AccessPortError> {
+    ) -> Result<(), ArmError> {
         if self.ap_information.supports_only_32bit_data_size {
-            return Err(AccessPortError::UnsupportedTransferWidth(8));
+            return Err(ArmError::UnsupportedTransferWidth(8));
         }
 
         let aligned = aligned_range(address, 1)?;
@@ -682,9 +662,9 @@ where
         access_port: MemoryAp,
         address: u64,
         data: &[u32],
-    ) -> Result<(), AccessPortError> {
+    ) -> Result<(), ArmError> {
         if (address % 4) != 0 {
-            return Err(AccessPortError::alignment_error(address, 4));
+            return Err(ArmError::alignment_error(address, 4));
         }
 
         if data.is_empty() {
@@ -733,7 +713,7 @@ where
         remaining_data_len -= first_chunk_size_transfer_unit;
         let mut address = address
             .checked_add((first_chunk_size_transfer_unit * 4) as u64)
-            .ok_or(AccessPortError::OutOfBounds)?;
+            .ok_or(ArmError::OutOfBounds)?;
         data_offset += first_chunk_size_transfer_unit;
 
         while remaining_data_len > 0 {
@@ -760,7 +740,7 @@ where
             remaining_data_len -= next_chunk_size_transfer_unit;
             address = address
                 .checked_add((next_chunk_size_transfer_unit * 4) as u64)
-                .ok_or(AccessPortError::OutOfBounds)?;
+                .ok_or(ArmError::OutOfBounds)?;
             data_offset += next_chunk_size_transfer_unit;
         }
 
@@ -777,9 +757,9 @@ where
         access_port: MemoryAp,
         address: u64,
         data: &[u8],
-    ) -> Result<(), AccessPortError> {
+    ) -> Result<(), ArmError> {
         if self.ap_information.supports_only_32bit_data_size {
-            return Err(AccessPortError::UnsupportedTransferWidth(8));
+            return Err(ArmError::UnsupportedTransferWidth(8));
         }
 
         if data.is_empty() {
@@ -839,7 +819,7 @@ where
         remaining_data_len -= first_chunk_size_transfer_unit;
         let mut address = address
             .checked_add((first_chunk_size_transfer_unit) as u64)
-            .ok_or(AccessPortError::OutOfBounds)?;
+            .ok_or(ArmError::OutOfBounds)?;
         data_offset += first_chunk_size_transfer_unit;
 
         while remaining_data_len > 0 {
@@ -866,7 +846,7 @@ where
             remaining_data_len -= next_chunk_size_transfer_unit;
             address = address
                 .checked_add((next_chunk_size_transfer_unit) as u64)
-                .ok_or(AccessPortError::OutOfBounds)?;
+                .ok_or(ArmError::OutOfBounds)?;
             data_offset += next_chunk_size_transfer_unit;
         }
 
@@ -983,7 +963,7 @@ where
 }
 
 /// Calculates a 32-bit word aligned range from an address/length pair.
-fn aligned_range(address: u64, len: usize) -> Result<Range<u64>, AccessPortError> {
+fn aligned_range(address: u64, len: usize) -> Result<Range<u64>, ArmError> {
     // Round start address down to the nearest multiple of 4
     let start = address - (address % 4);
 
@@ -991,12 +971,12 @@ fn aligned_range(address: u64, len: usize) -> Result<Range<u64>, AccessPortError
         .try_into()
         .ok()
         .and_then(|len: u64| len.checked_add(address))
-        .ok_or(AccessPortError::OutOfBounds)?;
+        .ok_or(ArmError::OutOfBounds)?;
 
     // Round end address up to the nearest multiple of 4
     let end = unaligned_end
         .checked_add((4 - (unaligned_end % 4)) % 4)
-        .ok_or(AccessPortError::OutOfBounds)?;
+        .ok_or(ArmError::OutOfBounds)?;
 
     Ok(Range { start, end })
 }

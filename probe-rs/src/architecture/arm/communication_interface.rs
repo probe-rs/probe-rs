@@ -439,7 +439,8 @@ impl<'interface> ArmCommunicationInterface<Initialized> {
                 let adi_v5_memory_interface = ADIMemoryInterface::<
                     'interface,
                     ArmCommunicationInterface<Initialized>,
-                >::new(self, information)?;
+                >::new(self, information)
+                .map_err(|e| ArmError::from_access_port(e, access_port))?;
 
                 Ok(Box::new(adi_v5_memory_interface))
             }

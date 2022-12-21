@@ -18,15 +18,6 @@ use super::{ApAddress, ArmError, DapAccess, DpAddress, Register};
 /// Some error during AP handling occurred.
 #[derive(Debug, thiserror::Error)]
 pub enum AccessPortError {
-    /// The given register address to perform an access on was not memory aligned.
-    /// Make sure it is aligned to the size of the access (`address & access_size == 0`).
-    #[error("Failed to access address 0x{address:08x} as it is not aligned to the requirement of {alignment} bytes for this platform and API call.")]
-    MemoryNotAligned {
-        /// The address of the register.
-        address: u64,
-        /// The required alignment in bytes (address increments).
-        alignment: usize,
-    },
     /// An error occurred when trying to read a register.
     #[error("Failed to read register {name} at address 0x{address:08x}")]
     RegisterRead {
@@ -49,18 +40,12 @@ pub enum AccessPortError {
         #[source]
         source: Box<dyn std::error::Error + Send + Sync>,
     },
-    /// A region ouside of the AP address space was accessed.
-    #[error("Out of bounds access")]
-    OutOfBounds,
     /// Some error with the operation of the APs DP occurred.
     #[error("Error while communicating with debug port")]
     DebugPort(#[from] DebugPortError),
     /// An error occurred when trying to flush batched writes of to the AP.
     #[error("Failed to flush batched writes")]
     Flush(#[from] DebugProbeError),
-    /// The requested memory transfer width is not supported on the current core.
-    #[error("{0} bit is not a supported memory transfer width on the current core")]
-    UnsupportedTransferWidth(usize),
 }
 
 impl AccessPortError {
@@ -84,11 +69,6 @@ impl AccessPortError {
             name: R::NAME,
             source: Box::new(source),
         }
-    }
-
-    /// Constructs a [`AccessPortError::MemoryNotAligned`] from the address and the required alignment.
-    pub fn alignment_error(address: u64, alignment: usize) -> Self {
-        AccessPortError::MemoryNotAligned { address, alignment }
     }
 }
 
