@@ -79,6 +79,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fix: Timeout during flashing when using connect under reset - regression from #1259. (#1286)
 - Fix: Validate RiscV CSR addresses to avoid unnecessary panics. (#1291)
 - Debugger: Fix unpredictable behaviour when breaking on, or stepping over macros. (#1230)
+- Fix: Extend fix for WFI instructions (#1177) to STM32F1
 
 ## [0.13.0]
 
