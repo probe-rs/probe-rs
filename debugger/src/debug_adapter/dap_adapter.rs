@@ -30,13 +30,18 @@ use std::{convert::TryInto, path::Path, str, string::ToString, time::Duration};
 type ProgressId = i64;
 
 pub struct DebugAdapter<P: ProtocolAdapter> {
-    /// Track the last_known_status of the probe.
-    /// The debug client needs to be notified when the probe changes state,
-    /// and the only way is to poll the probe status periodically.
-    /// For instance, when the client sets the probe running,
-    /// and the probe halts because of a breakpoint, we need to notify the client.
-    pub(crate) last_known_status: CoreStatus,
     pub(crate) halt_after_reset: bool,
+    /// NOTE: VSCode sends a 'threads' request when it receives the response from the `ConfigurationDone` request, irrespective of target state.
+    /// This can lead to duplicate `threads->stacktrace->etc.` sequences if & when the target halts and sends a 'stopped' event.
+    /// See [https://github.com/golang/vscode-go/issues/940] for more info.
+    /// In order to avoid overhead and duplicate responses, we will implement the following logic.
+    /// - `configuration_done` will ignore target status, and simply notify VSCode when it is done.
+    /// - `threads` will check for [DebugAdapter::configuration_done] and ...
+    ///   - If it is `false`, it will ...
+    ///     - send back a threads response, with `all_threds_stopped=Some(false)`, and set [DebugAdapter::configuration_done] to `true`.
+    ///   - If it is `true`, it will respond with thread information as expected.
+    pub(crate) configuration_done: bool,
+    /// Progress ID used for progress reporting when the debug adapter protocol is used.
     progress_id: ProgressId,
     /// Flag to indicate if the connected client supports progress reporting.
     pub(crate) supports_progress_reporting: bool,
@@ -51,8 +56,8 @@ pub struct DebugAdapter<P: ProtocolAdapter> {
 impl<P: ProtocolAdapter> DebugAdapter<P> {
     pub fn new(adapter: P) -> DebugAdapter<P> {
         DebugAdapter {
-            last_known_status: CoreStatus::Unknown,
             halt_after_reset: false,
+            configuration_done: false,
             progress_id: 0,
             supports_progress_reporting: false,
             lines_start_at_1: true,
@@ -61,47 +66,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         }
     }
 
-    pub(crate) fn status(&mut self, target_core: &mut CoreHandle, request: Request) -> Result<()> {
-        let status = match target_core.core.status() {
-            Ok(status) => {
-                self.last_known_status = status;
-                status
-            }
-            Err(error) => {
-                return self.send_response::<()>(
-                    request,
-                    Err(DebuggerError::Other(anyhow!(
-                        "Could not read core status. {:?}",
-                        error
-                    ))),
-                )
-            }
-        };
-        if status.is_halted() {
-            let pc: Result<u64, crate::Error> = target_core
-                .core
-                .read_core_reg(target_core.core.registers().program_counter());
-            match pc {
-                Ok(pc) => self.send_response(
-                    request,
-                    Ok(Some(format!(
-                        "Status: {:?} at address {:#010x}",
-                        status.short_long_status().1,
-                        pc
-                    ))),
-                ),
-
-                Err(error) => self
-                    .send_response::<()>(request, Err(DebuggerError::Other(anyhow!("{}", error)))),
-            }
-        } else {
-            self.send_response(request, Ok(Some(status.short_long_status().1.to_string())))
-        }
-    }
-
     pub(crate) fn pause(&mut self, target_core: &mut CoreHandle, request: Request) -> Result<()> {
-        // let args: PauseArguments = get_arguments(&request)?;
-
         match target_core.core.halt(Duration::from_millis(500)) {
             Ok(cpu_info) => {
                 let new_status = match target_core.core.status() {
@@ -111,17 +76,6 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                         return Err(anyhow!("Failed to retrieve core status"));
                     }
                 };
-                self.last_known_status = new_status;
-                let event_body = Some(StoppedEventBody {
-                    reason: "pause".to_owned(),
-                    description: Some(self.last_known_status.short_long_status().1.to_owned()),
-                    thread_id: Some(target_core.core.id() as i64),
-                    preserve_focus_hint: Some(false),
-                    text: None,
-                    all_threads_stopped: Some(false), // TODO: Implement multi-core logic here
-                    hit_breakpoint_ids: None,
-                });
-                self.send_event("stopped", event_body)?;
                 self.send_response(
                     request,
                     Ok(Some(format!(
@@ -129,8 +83,16 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                         cpu_info.pc
                     ))),
                 )?;
-                self.last_known_status = CoreStatus::Halted(HaltReason::Request);
-
+                let event_body = Some(StoppedEventBody {
+                    reason: "pause".to_owned(),
+                    description: Some(new_status.short_long_status(Some(cpu_info.pc)).1),
+                    thread_id: Some(target_core.core.id() as i64),
+                    preserve_focus_hint: Some(false),
+                    text: None,
+                    all_threads_stopped: Some(false), // TODO: Implement multi-core logic here
+                    hit_breakpoint_ids: None,
+                });
+                self.send_event("stopped", event_body)?;
                 Ok(())
             }
             Err(error) => {
@@ -501,9 +463,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         request: Option<Request>,
     ) -> Result<()> {
         match target_core.core.halt(Duration::from_millis(500)) {
-            Ok(_) => {
-                self.last_known_status = CoreStatus::Unknown;
-            }
+            Ok(_) => {}
             Err(error) => {
                 if let Some(request) = request {
                     return self.send_response::<()>(
@@ -516,6 +476,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             }
         }
 
+        target_core.core_data.last_known_status = CoreStatus::Unknown;
         // Different code paths if we invoke this from a request, versus an internal function.
         if let Some(request) = request {
             // Use reset_and_halt(), and then resume again afterwards, depending on the reset_after_halt flag.
@@ -525,12 +486,12 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                     target_core.core.debug_on_sw_breakpoint(true)?;
 
                     // For RISC-V, we need to re-enable any breakpoints that were previously set, because the core reset 'forgets' them.
-                    let saved_breakpoints = target_core
-                        .core_data
-                        .breakpoints
-                        .drain(..)
-                        .collect::<Vec<ActiveBreakpoint>>();
                     if target_core.core.architecture() == Riscv {
+                        let saved_breakpoints = target_core
+                            .core_data
+                            .breakpoints
+                            .drain(..)
+                            .collect::<Vec<ActiveBreakpoint>>();
                         for breakpoint in saved_breakpoints {
                             match target_core.set_breakpoint(
                                 breakpoint.breakpoint_address,
@@ -549,16 +510,17 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                         }
                     }
 
-                    // Now that we have the breakpoints re-enabled, we can decide if it is appropriat to resume the core.
+                    // Now that we have the breakpoints re-enabled, we can decide if it is appropriate to resume the core.
                     if !self.halt_after_reset {
                         match self.r#continue(target_core, request.clone()) {
                             Ok(_) => {
+                                self.send_response::<()>(request, Ok(None))?;
                                 let event_body = Some(ContinuedEventBody {
                                     all_threads_continued: Some(false), // TODO: Implement multi-core logic here
                                     thread_id: target_core.core.id() as i64,
                                 });
                                 self.send_event("continued", event_body)?;
-                                self.send_response::<()>(request, Ok(None))
+                                Ok(())
                             }
                             Err(error) => self.send_response::<()>(
                                 request,
@@ -566,13 +528,13 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                             ),
                         }
                     } else {
+                        self.send_response::<()>(request, Ok(None))?;
                         let event_body = Some(StoppedEventBody {
-                            reason: "reset".to_owned(),
+                            reason: "restart".to_owned(),
                             description: Some(
                                 CoreStatus::Halted(HaltReason::External)
-                                    .short_long_status()
-                                    .1
-                                    .to_string(),
+                                    .short_long_status(None)
+                                    .1,
                             ),
                             thread_id: Some(target_core.core.id() as i64),
                             preserve_focus_hint: None,
@@ -581,8 +543,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                             hit_breakpoint_ids: None,
                         });
                         self.send_event("stopped", event_body)?;
-                        self.last_known_status = CoreStatus::Halted(HaltReason::External);
-                        self.send_response::<()>(request, Ok(None))
+                        Ok(())
                     }
                 }
                 Err(error) => self
@@ -592,22 +553,18 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             // The DAP Client will always do a `reset_and_halt`, and then will consider `halt_after_reset` value after the `configuration_done` request.
             // Otherwise the probe will run past the `main()` before the DAP Client has had a chance to set breakpoints in `main()`.
             match target_core.core.reset_and_halt(Duration::from_millis(500)) {
-                Ok(_) => {
+                Ok(core_info) => {
                     // Ensure ebreak enters debug mode, this is necessary for soft breakpoints to work on architectures like RISC-V.
                     target_core.core.debug_on_sw_breakpoint(true)?;
 
-                    if let Some(request) = request {
-                        return self.send_response::<()>(request, Ok(None));
-                    }
-                    // Only notify the DAP client if we are NOT in initialization stage (`CoreStatus::Unknown`).
-                    if self.last_known_status != CoreStatus::Unknown {
+                    // Only notify the DAP client if we are NOT in initialization stage ([`DebugAdapter::configuration_done`]).
+                    if self.configuration_done {
                         let event_body = Some(StoppedEventBody {
-                            reason: "reset".to_owned(),
+                            reason: "restart".to_owned(),
                             description: Some(
                                 CoreStatus::Halted(HaltReason::External)
-                                    .short_long_status()
-                                    .1
-                                    .to_string(),
+                                    .short_long_status(Some(core_info.pc))
+                                    .1,
                             ),
                             thread_id: Some(target_core.core.id() as i64),
                             preserve_focus_hint: None,
@@ -616,7 +573,6 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                             hit_breakpoint_ids: None,
                         });
                         self.send_event("stopped", event_body)?;
-                        self.last_known_status = CoreStatus::Halted(HaltReason::External);
                     }
                     Ok(())
                 }
@@ -634,17 +590,6 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         }
     }
 
-    /// NOTE: VSCode sends a 'threads' request when it receives the response from this request, irrespective of target state.
-    /// This can lead to duplicate `threads->stacktrace->etc.` sequences if & when the target halts and sends a 'stopped' event.
-    /// See [https://github.com/golang/vscode-go/issues/940] for more info.
-    /// In order to avoid overhead and duplicate responses, we will implement the following logic.
-    /// - `configuration_done` will ignore target status, and simply notify VSCode that we're done.
-    /// - `threads` will check for [DebugAdapter::last_known_status] and ...
-    ///   - If it is `Unknown`, it will ...
-    ///     - send back a threads response, with `all_threds_stopped=Some(false)`
-    ///     - check on actual core status, and update [DebugAdapter::last_known_status] as well as synch status with the VSCode client.
-    ///   - If it is `Halted`, it will respond with thread information as expected.
-    ///   - Any other status will send and error.
     pub(crate) fn configuration_done(
         &mut self,
         _core_data: &mut CoreHandle,
@@ -902,59 +847,11 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
 
     pub(crate) fn threads(&mut self, target_core: &mut CoreHandle, request: Request) -> Result<()> {
         // TODO: Implement actual thread resolution. For now, we just use the core id as the thread id.
+        let current_core_status = target_core.core.status()?;
         let mut threads: Vec<Thread> = vec![];
-        match self.last_known_status {
-            CoreStatus::Unknown => {
-                // We are probably here because the `configuration_done` request just happened, so we can make sure the client and debugger are in synch.
-                match target_core.core.status() {
-                    Ok(core_status) => {
-                        self.last_known_status = core_status;
-                        // Make sure the DAP Client and the DAP Server are in sync with the status of the core.
-                        if core_status.is_halted() {
-                            if self.halt_after_reset
-                                || matches!(
-                                    core_status,
-                                    CoreStatus::Halted(HaltReason::Breakpoint(_))
-                                )
-                            {
-                                let event_body = Some(StoppedEventBody {
-                                    reason: core_status.short_long_status().0.to_owned(),
-                                    description: Some(
-                                        core_status.short_long_status().1.to_string(),
-                                    ),
-                                    thread_id: Some(target_core.core.id() as i64),
-                                    preserve_focus_hint: None,
-                                    text: None,
-                                    all_threads_stopped: Some(false), // TODO: Implement multi-core logic here
-                                    hit_breakpoint_ids: None,
-                                });
-                                self.send_event("stopped", event_body)?;
-                            } else {
-                                let single_thread = Thread {
-                                    id: target_core.core.id() as i64,
-                                    name: target_core.core_data.target_name.clone(),
-                                };
-                                threads.push(single_thread);
-                                self.send_response(
-                                    request.clone(),
-                                    Ok(Some(ThreadsResponseBody { threads })),
-                                )?;
-                                return self.r#continue(target_core, request);
-                            }
-                        }
-                    }
-                    Err(error) => {
-                        return self.send_response::<()>(
-                            request,
-                            Err(DebuggerError::Other(anyhow!(
-                                "Could not read core status to synchronize the client and the probe. {:?}",
-                                error
-                            ))),
-                        );
-                    }
-                }
-            }
-            CoreStatus::Halted(_) => {
+        if self.configuration_done {
+            // We can handle this request normally.
+            if current_core_status.is_halted() {
                 let single_thread = Thread {
                     id: target_core.core.id() as i64,
                     name: target_core.core_data.target_name.clone(),
@@ -979,18 +876,54 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                     .core_data
                     .debug_info
                     .unwind(&mut target_core.core, pc)?;
+                return self.send_response(request, Ok(Some(ThreadsResponseBody { threads })));
             }
-            CoreStatus::Running | CoreStatus::LockedUp | CoreStatus::Sleeping => {
-                return self.send_response::<()>(
-                    request,
-                    Err(DebuggerError::Other(anyhow!(
-                        "Received request for `threads`, while last known core status was {:?}",
-                        self.last_known_status
-                    ))),
-                );
+        } else {
+            // This is the initial call to `threads` that happens after the `configuration_done` request, and requires special handling. (see [`DebugAdapter.configuration_done`])
+            self.configuration_done = true;
+            // At startup, we have to make sure the DAP Client and the DAP Server are in sync with the status of the core.
+            if current_core_status.is_halted() {
+                if self.halt_after_reset
+                    || matches!(
+                        current_core_status,
+                        CoreStatus::Halted(HaltReason::Breakpoint(_))
+                    )
+                {
+                    let program_counter = target_core
+                        .core
+                        .read_core_reg(target_core.core.registers().program_counter())
+                        .ok();
+                    let event_body = Some(StoppedEventBody {
+                        reason: current_core_status
+                            .short_long_status(program_counter)
+                            .0
+                            .to_owned(),
+                        description: Some(current_core_status.short_long_status(program_counter).1),
+                        thread_id: Some(target_core.core.id() as i64),
+                        preserve_focus_hint: None,
+                        text: None,
+                        all_threads_stopped: Some(false), // TODO: Implement multi-core logic here
+                        hit_breakpoint_ids: None,
+                    });
+                    return self.send_event("stopped", event_body);
+                } else {
+                    let single_thread = Thread {
+                        id: target_core.core.id() as i64,
+                        name: target_core.core_data.target_name.clone(),
+                    };
+                    threads.push(single_thread);
+                    self.send_response(request.clone(), Ok(Some(ThreadsResponseBody { threads })))?;
+                    return self.r#continue(target_core, request);
+                }
             }
         }
-        self.send_response(request, Ok(Some(ThreadsResponseBody { threads })))
+        self.send_response::<()>(
+            request,
+            Err(DebuggerError::Other(anyhow!(
+                "Received request for `threads`, while last known core status was {:?}",
+                current_core_status
+            ))),
+        )
     }
 
     pub(crate) fn stack_trace(
@@ -1797,7 +1730,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
     ) -> Result<()> {
         match target_core.core.run() {
             Ok(_) => {
-                self.last_known_status = target_core.core.status().unwrap_or(CoreStatus::Unknown);
+                target_core.core_data.last_known_status = CoreStatus::Running;
                 if request.command.as_str() == "continue" {
                     // If this continue was initiated as part of some other request, then do not respond.
                     self.send_response(
@@ -1807,7 +1740,6 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                         })),
                     )?;
                 }
-
                 // We have to consider the fact that sometimes the `run()` is successfull,
                 // but "immediately" afterwards, the MCU hits a breakpoint or exception.
                 // So we have to check the status again to be sure.
@@ -1834,30 +1766,9 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                     }
                 }
 
-                let core_status = match target_core.core.status() {
-                    Ok(new_status) => match new_status {
-                        CoreStatus::Halted(_) => {
-                            let event_body = Some(StoppedEventBody {
-                                reason: new_status.short_long_status().0.to_owned(),
-                                description: Some(new_status.short_long_status().1.to_string()),
-                                thread_id: Some(target_core.core.id() as i64),
-                                preserve_focus_hint: None,
-                                text: None,
-                                all_threads_stopped: Some(false), // TODO: Implement multi-core logic here
-                                hit_breakpoint_ids: None,
-                            });
-                            self.send_event("stopped", event_body)?;
-                            new_status
-                        }
-                        other => other,
-                    },
-                    Err(_) => CoreStatus::Unknown,
-                };
-                self.last_known_status = core_status;
                 Ok(())
             }
             Err(error) => {
-                self.last_known_status = CoreStatus::Halted(HaltReason::Unknown);
                 self.send_response::<()>(request, Err(DebuggerError::Other(anyhow!("{}", error))))?;
                 Err(error.into())
             }
@@ -1916,6 +1827,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         target_core: &mut CoreHandle,
         request: Request,
     ) -> Result<(), anyhow::Error> {
+        target_core.core_data.last_known_status = CoreStatus::Running;
         let (new_status, program_counter) = match stepping_granularity
             .step(&mut target_core.core, &target_core.core_data.debug_info)
         {
@@ -1938,26 +1850,32 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             },
         };
 
-        self.last_known_status = new_status;
         self.send_response::<()>(request, Ok(None))?;
-        if matches!(self.last_known_status, CoreStatus::Halted(_)) {
+
+        // We override the halt reason because our implementation of stepping uses breakpoints and results in a "BreakPoint" halt reason, which is not appropriate here.
+        target_core.core_data.last_known_status = CoreStatus::Halted(HaltReason::Step);
+        if matches!(new_status, CoreStatus::Halted(_)) {
             let event_body = Some(StoppedEventBody {
-                reason: "step".to_owned(),
-                description: Some(format!(
-                    "{} at address {:#010x}",
-                    new_status.short_long_status().1,
-                    program_counter
-                )),
+                reason: target_core
+                    .core_data
+                    .last_known_status
+                    .short_long_status(None)
+                    .0
+                    .to_string(),
+                description: Some(
+                    CoreStatus::Halted(HaltReason::Step)
+                        .short_long_status(Some(program_counter))
+                        .1,
+                ),
                 thread_id: Some(target_core.core.id() as i64),
                 preserve_focus_hint: None,
                 text: None,
-                all_threads_stopped: Some(false), // TODO: Implement multi-core logic here
+                all_threads_stopped: Some(true), // TODO: Implement multi-core logic here
                 hit_breakpoint_ids: None,
             });
-            self.send_event("stopped", event_body)
-        } else {
-            Ok(())
+            self.send_event("stopped", event_body)?;
         }
+        Ok(())
     }
 
     /// The DAP protocol uses three related values to determine how to invoke the `Variables` request.
@@ -2247,40 +2165,64 @@ pub fn get_arguments<T: DeserializeOwned>(req: &Request) -> Result<T, crate::Deb
 }
 
 pub(crate) trait DapStatus {
-    fn short_long_status(&self) -> (&'static str, &'static str);
+    fn short_long_status(&self, program_counter: Option<u64>) -> (&'static str, String);
 }
 impl DapStatus for CoreStatus {
     /// Return a tuple with short and long descriptions of the core status for human machine interface / hmi. The short status matches with the strings implemented by the Microsoft DAP protocol, e.g. `let (short_status, long status) = CoreStatus::short_long_status(core_status)`
-    fn short_long_status(&self) -> (&'static str, &'static str) {
+    fn short_long_status(&self, program_counter: Option<u64>) -> (&'static str, String) {
         match self {
-            CoreStatus::Running => ("continued", "Core is running"),
-            CoreStatus::Sleeping => ("sleeping", "Core is in SLEEP mode"),
+            CoreStatus::Running => ("continued", "Core is running".to_string()),
+            CoreStatus::Sleeping => ("sleeping", "Core is in SLEEP mode".to_string()),
             CoreStatus::LockedUp => (
                 "lockedup",
-                "Core is in LOCKUP status - encountered an unrecoverable exception",
+                "Core is in LOCKUP status - encountered an unrecoverable exception".to_string(),
             ),
             CoreStatus::Halted(halt_reason) => match halt_reason {
-                HaltReason::Breakpoint(_) => (
+                HaltReason::Breakpoint(cause) => (
                     "breakpoint",
-                    "Core halted due to a breakpoint (software or hardware)",
+                    format!(
+                        "Halted on breakpoint ({:?}) @{}.",
+                        cause,
+                        if let Some(program_counter) = program_counter {
+                            format!("{:#010x}", program_counter)
+                        } else {
+                            "(unspecified location)".to_string()
+                        }
+                    ),
                 ),
                 HaltReason::Exception => (
                     "exception",
-                    "Core halted due to an exception, e.g. interupt handler",
+                    "Core halted due to an exception, e.g. interupt handler".to_string(),
                 ),
                 HaltReason::Watchpoint => (
                     "data breakpoint",
-                    "Core halted due to a watchpoint or data breakpoint",
+                    "Core halted due to a watchpoint or data breakpoint".to_string(),
                 ),
-                HaltReason::Step => ("step", "Core halted after a 'step' instruction"),
+                HaltReason::Step => (
+                    "step",
+                    format!(
+                        "Halted after a 'step' instruction @{}.",
+                        if let Some(program_counter) = program_counter {
+                            format!("{:#010x}", program_counter)
+                        } else {
+                            "(unspecified location)".to_string()
+                        }
+                    ),
+                ),
                 HaltReason::Request => (
                     "pause",
-                    "Core halted due to a user (debugger client) request",
+                    "Core halted due to a user (debugger client) request".to_string(),
                 ),
-                HaltReason::External => ("external", "Core halted due to an external request"),
-                _other => ("unrecognized", "Core halted: unrecognized cause"),
+                HaltReason::External => (
+                    "external",
+                    "Core halted due to an external request".to_string(),
+                ),
+                _other => (
+                    "unrecognized",
+                    "Core halted: unrecognized cause".to_string(),
+                ),
             },
-            CoreStatus::Unknown => ("unknown", "Core status cannot be determined"),
+            CoreStatus::Unknown => ("unknown", "Core status cannot be determined".to_string()),
         }
     }
 }

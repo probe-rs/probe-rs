@@ -1,17 +1,30 @@
 use super::session_data;
 use crate::{
-    debug_adapter::{dap_adapter::DebugAdapter, protocol::ProtocolAdapter},
+    debug_adapter::{
+        dap_adapter::{DapStatus, DebugAdapter},
+        dap_types::{ContinuedEventBody, MessageSeverity, StoppedEventBody},
+        protocol::ProtocolAdapter,
+    },
     debugger::debug_rtt,
     peripherals::svd_variables::SvdCache,
     DebuggerError,
 };
-use anyhow::Result;
-use probe_rs::{debug::debug_info::DebugInfo, Core};
+use anyhow::{anyhow, Result};
+use probe_rs::{debug::debug_info::DebugInfo, Core, CoreStatus, Error};
 use probe_rs_cli_util::rtt::{self, ChannelMode, DataFormat};
 
 /// [CoreData] is used to cache data needed by the debugger, on a per-core basis.
 pub struct CoreData {
     pub(crate) core_index: usize,
+    /// Track the last_known_status of the core.
+    /// The debug client needs to be notified when the core changes state, and this can happen in one of two ways:
+    /// 1. By polling the core status periodically (in [`Debugger::process_next_request()`]).
+    ///   For instance, when the client sets the core running, and the core halts because of a breakpoint, we need to notify the client.
+    /// 2. Some requests, like [`DebugAdapter::next()`], has an implicit action of setting the core running, before it waits for it to halt at the next statement.
+    ///   To ensure the [`CoreData::poll_core()`] behaves correctly, it will the `last_known_status` to [`CoreStatus::Running`],
+    ///   and execute the request normally, with the expectation that the core will be halted, and that #1 above will detect this new status.
+    ///   These 'implicit' updates of `last_known_status` will not(and should not) result in a notification to the client.
+    pub(crate) last_known_status: CoreStatus,
     pub(crate) target_name: String,
     pub(crate) debug_info: DebugInfo,
     pub(crate) core_peripherals: Option<SvdCache>,
@@ -29,6 +42,88 @@ pub struct CoreHandle<'p> {
 }
 
 impl<'p> CoreHandle<'p> {
+    /// - Whenever we check the status, we compare it against `last_known_status` and send the appropriate event to the client.
+    /// - If we cannot determine the core status, then there is no sense in continuing the debug session, so please propogate the error.
+    /// - If the core status has changed, then we update `last_known_status` to the new value, and return `true` as part of the Result<>.
+    pub(crate) fn poll_core<P: ProtocolAdapter>(
+        &mut self,
+        debug_adapter: &mut DebugAdapter<P>,
+    ) -> Result<CoreStatus, Error> {
+        if debug_adapter.configuration_done {
+            match self.core.status() {
+                Ok(status) => {
+                    let has_changed_state = status != self.core_data.last_known_status;
+                    if has_changed_state {
+                        match status {
+                            CoreStatus::Running | CoreStatus::Sleeping => {
+                                let event_body = Some(ContinuedEventBody {
+                                    all_threads_continued: Some(true), // TODO: Implement multi-core awareness here
+                                    thread_id: self.core.id() as i64,
+                                });
+                                debug_adapter.send_event("continued", event_body)?;
+                                tracing::debug!(
+                                    "Notified DAP client that the core continued: {:?}",
+                                    status
+                                );
+                            }
+                            CoreStatus::Halted(_) => {
+                                let program_counter = self
+                                    .core
+                                    .read_core_reg(self.core.registers().program_counter())
+                                    .ok();
+                                let event_body = Some(StoppedEventBody {
+                                    reason: status.short_long_status(program_counter).0.to_owned(),
+                                    description: Some(status.short_long_status(program_counter).1),
+                                    thread_id: Some(self.core.id() as i64),
+                                    preserve_focus_hint: Some(false),
+                                    text: None,
+                                    all_threads_stopped: Some(true), // TODO: Implement multi-core awareness here
+                                    hit_breakpoint_ids: None,
+                                });
+                                debug_adapter.send_event("stopped", event_body)?;
+                                tracing::debug!(
+                                    "Notified DAP client that the core halted: {:?}",
+                                    status
+                                );
+                            }
+                            CoreStatus::LockedUp => {
+                                debug_adapter.show_message(
+                                    MessageSeverity::Error,
+                                    status.short_long_status(None).1,
+                                );
+                                return Err(Error::Other(anyhow!(
+                                    status.short_long_status(None).1
+                                )));
+                            }
+                            CoreStatus::Unknown => {
+                                debug_adapter.send_error_response(&DebuggerError::Other(
+                                    anyhow!("Unknown Device status reveived from Probe-rs"),
+                                ))?;
+
+                                return Err(Error::Other(anyhow!(
+                                    "Unknown Device status reveived from Probe-rs"
+                                )));
+                            }
+                        }
+                    }
+                    self.core_data.last_known_status = status; // Update this unconditionally, because halted() can have more than one variant.
+                    Ok(status)
+                }
+                Err(error) => {
+                    self.core_data.last_known_status = CoreStatus::Unknown;
+                    Err(error)
+                }
+            }
+        } else {
+            tracing::debug!(
+                "Ignored last_known_status: {:?} during `configuration_done=false`, and reset it to {:?}.",
+                self.core_data.last_known_status,
+                CoreStatus::Unknown
+            );
+            Ok(CoreStatus::Unknown)
+        }
+    }
+
     /// Search available [StackFrame]'s for the given `id`
     pub(crate) fn get_stackframe(
         &'p self,
