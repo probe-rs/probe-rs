@@ -73,7 +73,7 @@ impl<'p> CoreHandle<'p> {
                                     thread_id: self.core.id() as i64,
                                 });
                                 debug_adapter.send_event("continued", event_body)?;
-                                tracing::debug!(
+                                tracing::trace!(
                                     "Notified DAP client that the core continued: {:?}",
                                     status
                                 );
@@ -93,7 +93,7 @@ impl<'p> CoreHandle<'p> {
                                     hit_breakpoint_ids: None,
                                 });
                                 debug_adapter.send_event("stopped", event_body)?;
-                                tracing::debug!(
+                                tracing::trace!(
                                     "Notified DAP client that the core halted: {:?}",
                                     status
                                 );
@@ -127,7 +127,7 @@ impl<'p> CoreHandle<'p> {
                 }
             }
         } else {
-            tracing::debug!(
+            tracing::trace!(
                 "Ignored last_known_status: {:?} during `configuration_done=false`, and reset it to {:?}.",
                 self.core_data.last_known_status,
                 CoreStatus::Unknown
