@@ -83,35 +83,36 @@ impl Debugger {
         session_data: &mut session_data::SessionData,
         debug_adapter: &mut DebugAdapter<P>,
     ) -> Result<DebuggerStatus, DebuggerError> {
-        // First, we poll ALL target cores for status, which includes synching status with the DAP client, and handling RTT data.
-        let (core_statuses, suggest_delay_required) =
-            session_data.poll_cores(&self.config, debug_adapter)?;
-
-        // TODO: Currently, we only use `poll_cores()` results from the first core and need to expand to a multi-core implementation that understands which MS DAP requests are core specific.
-        if let (core_id, Some(new_status)) = (0_usize, core_statuses.first().cloned()) {
-            match debug_adapter.listen_for_request()? {
-                None => {
+        match debug_adapter.listen_for_request()? {
+            None => {
+                if debug_adapter.all_cores_halted {
+                    // Once all cores are halted, then we can skip polling the core for status, and just wait for the next DAP Client request.
+                    tracing::trace!(
+                        "Sleeping (all cores are halted) for 100ms to reduce polling overheaads."
+                    );
+                    thread::sleep(Duration::from_millis(100)); // Medium delay to reduce fast looping costs.
+                } else {
+                    // Poll ALL target cores for status, which includes synching status with the DAP client, and handling RTT data.
+                    let (_, suggest_delay_required) =
+                        session_data.poll_cores(&self.config, debug_adapter)?;
                     // If there are no requests from the DAP Client, and there was no RTT data in the last poll, then we can sleep for a short period of time to reduce CPU usage.
                     if debug_adapter.configuration_done && suggest_delay_required {
-                        if new_status.is_halted() {
-                            // TODO: In an ideal world, we would stop calling 'poll_cores()' above while the core is halted, but we need to figure out how to handle RTT data in that case.
-                            tracing::debug!(
-                                "Sleeping (core is halted) for 250ms to reduce polling costs."
-                            );
-                            thread::sleep(Duration::from_millis(250)); // Medium delay to reduce fast looping costs.
-                        } else {
-                            tracing::debug!(
-                                "Sleeping (core is running) for 50ms to reduce polling costs."
-                            );
-                            thread::sleep(Duration::from_millis(50)); // Small delay to reduce fast looping costs.
-                        }
+                        tracing::trace!(
+                            "Sleeping (core is running) for 50ms to reduce polling overheads."
+                        );
+                        thread::sleep(Duration::from_millis(50)); // Small delay to reduce fast looping costs.
                     } else {
-                        tracing::debug!("Retrieving data from the core, no delay required between iterations of polling the core.");
+                        tracing::trace!("Retrieving data from the core, no delay required between iterations of polling the core.");
                     };
-
-                    Ok(DebuggerStatus::ContinueSession)
                 }
-                Some(request) => {
+
+                Ok(DebuggerStatus::ContinueSession)
+            }
+            Some(request) => {
+                // Poll ALL target cores for status, which includes synching status with the DAP client, and handling RTT data.
+                let (core_statuses, _) = session_data.poll_cores(&self.config, debug_adapter)?;
+                // TODO: Currently, we only use `poll_cores()` results from the first core and need to expand to a multi-core implementation that understands which MS DAP requests are core specific.
+                if let (core_id, Some(new_status)) = (0_usize, core_statuses.first().cloned()) {
                     // Attach to the core. so that we have the handle available for processing the request.
                     let mut target_core = if let Some(target_core_config) =
                         self.config.core_configs.get_mut(core_id)
@@ -290,16 +291,16 @@ impl Debugger {
                         }
                         Err(e) => Err(DebuggerError::Other(e.context("Error executing request."))),
                     }
+                } else if debug_adapter.configuration_done {
+                    // We've passed `configuration_done` and still do not have at least one core configured.
+                    Err(DebuggerError::Other(anyhow!(
+                        "Cannot continue unless one target core configuration is defined."
+                    )))
+                } else {
+                    // Keep processing "configuration" requests until we've passed `configuration_done` and have a valid `target_core`.
+                    Ok(DebuggerStatus::ContinueSession)
                 }
             }
-        } else if debug_adapter.configuration_done {
-            // We've passed `configuration_done` and still do not have at least one core configured.
-            Err(DebuggerError::Other(anyhow!(
-                "Cannot continue unless one target core configuration is defined."
-            )))
-        } else {
-            // Do nothing until we've passed `configuration_done` and have a valid `target_core`.
-            Ok(DebuggerStatus::ContinueSession)
         }
 
         // Now we can process the next (if any) DAP request.

@@ -42,6 +42,18 @@ pub struct CoreHandle<'p> {
 }
 
 impl<'p> CoreHandle<'p> {
+    /// Some MS DAP requests (e.g. `step`) implicitly expect the core to resume processing and then to optionally halt again, before the request completes.
+    ///
+    /// This method is used to set the `last_known_status` to [`CoreStatus::Unknown`] (because we cannot verify that it will indeed resume running until we have polled it again),
+    ///   as well as [`DebugAdapter::all_cores_halted`] = `false`, without notifying the client of any status changes.
+    pub(crate) fn reset_core_status<P: ProtocolAdapter>(
+        &mut self,
+        debug_adapter: &mut DebugAdapter<P>,
+    ) {
+        self.core_data.last_known_status = CoreStatus::Running;
+        debug_adapter.all_cores_halted = false;
+    }
+
     /// - Whenever we check the status, we compare it against `last_known_status` and send the appropriate event to the client.
     /// - If we cannot determine the core status, then there is no sense in continuing the debug session, so please propogate the error.
     /// - If the core status has changed, then we update `last_known_status` to the new value, and return `true` as part of the Result<>.
@@ -77,7 +89,7 @@ impl<'p> CoreHandle<'p> {
                                     thread_id: Some(self.core.id() as i64),
                                     preserve_focus_hint: Some(false),
                                     text: None,
-                                    all_threads_stopped: Some(true), // TODO: Implement multi-core awareness here
+                                    all_threads_stopped: Some(debug_adapter.all_cores_halted),
                                     hit_breakpoint_ids: None,
                                 });
                                 debug_adapter.send_event("stopped", event_body)?;

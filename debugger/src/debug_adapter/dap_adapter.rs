@@ -41,6 +41,9 @@ pub struct DebugAdapter<P: ProtocolAdapter> {
     ///     - send back a threads response, with `all_threds_stopped=Some(false)`, and set [DebugAdapter::configuration_done] to `true`.
     ///   - If it is `true`, it will respond with thread information as expected.
     pub(crate) configuration_done: bool,
+    /// Flag to indicate if all cores of the target are halted. This is used to accurately report the `all_threads_stopped` field in the DAP `StoppedEvent`, as well as to prevent unnecessary polling of core status.
+    /// The default is `true`, and will be set to `false` if any of the cores report a status other than `CoreStatus::Halted(_)`.
+    pub(crate) all_cores_halted: bool,
     /// Progress ID used for progress reporting when the debug adapter protocol is used.
     progress_id: ProgressId,
     /// Flag to indicate if the connected client supports progress reporting.
@@ -58,6 +61,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         DebugAdapter {
             halt_after_reset: false,
             configuration_done: false,
+            all_cores_halted: true,
             progress_id: 0,
             supports_progress_reporting: false,
             lines_start_at_1: true,
@@ -89,7 +93,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                     thread_id: Some(target_core.core.id() as i64),
                     preserve_focus_hint: Some(false),
                     text: None,
-                    all_threads_stopped: Some(false), // TODO: Implement multi-core logic here
+                    all_threads_stopped: Some(self.all_cores_halted),
                     hit_breakpoint_ids: None,
                 });
                 self.send_event("stopped", event_body)?;
@@ -476,7 +480,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             }
         }
 
-        target_core.core_data.last_known_status = CoreStatus::Unknown;
+        target_core.reset_core_status(self);
         // Different code paths if we invoke this from a request, versus an internal function.
         if let Some(request) = request {
             // Use reset_and_halt(), and then resume again afterwards, depending on the reset_after_halt flag.
@@ -539,7 +543,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                             thread_id: Some(target_core.core.id() as i64),
                             preserve_focus_hint: None,
                             text: None,
-                            all_threads_stopped: Some(false), // TODO: Implement multi-core logic here
+                            all_threads_stopped: Some(self.all_cores_halted),
                             hit_breakpoint_ids: None,
                         });
                         self.send_event("stopped", event_body)?;
@@ -569,7 +573,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                             thread_id: Some(target_core.core.id() as i64),
                             preserve_focus_hint: None,
                             text: None,
-                            all_threads_stopped: Some(false), // TODO: Implement multi-core logic here
+                            all_threads_stopped: Some(self.all_cores_halted),
                             hit_breakpoint_ids: None,
                         });
                         self.send_event("stopped", event_body)?;
@@ -902,7 +906,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                         thread_id: Some(target_core.core.id() as i64),
                         preserve_focus_hint: None,
                         text: None,
-                        all_threads_stopped: Some(false), // TODO: Implement multi-core logic here
+                        all_threads_stopped: Some(self.all_cores_halted),
                         hit_breakpoint_ids: None,
                     });
                     return self.send_event("stopped", event_body);
@@ -1730,7 +1734,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
     ) -> Result<()> {
         match target_core.core.run() {
             Ok(_) => {
-                target_core.core_data.last_known_status = CoreStatus::Running;
+                target_core.reset_core_status(self);
                 if request.command.as_str() == "continue" {
                     // If this continue was initiated as part of some other request, then do not respond.
                     self.send_response(
@@ -1827,7 +1831,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         target_core: &mut CoreHandle,
         request: Request,
     ) -> Result<(), anyhow::Error> {
-        target_core.core_data.last_known_status = CoreStatus::Running;
+        target_core.reset_core_status(self);
         let (new_status, program_counter) = match stepping_granularity
             .step(&mut target_core.core, &target_core.core_data.debug_info)
         {
@@ -1870,7 +1874,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                 thread_id: Some(target_core.core.id() as i64),
                 preserve_focus_hint: None,
                 text: None,
-                all_threads_stopped: Some(true), // TODO: Implement multi-core logic here
+                all_threads_stopped: Some(self.all_cores_halted),
                 hit_breakpoint_ids: None,
             });
             self.send_event("stopped", event_body)?;

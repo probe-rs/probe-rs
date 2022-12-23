@@ -224,6 +224,9 @@ impl SessionData {
         let mut suggest_delay_required = true;
         let mut status_of_cores: Vec<CoreStatus> = vec![];
         let target_memory_map = &self.session.target().memory_map.clone();
+
+        // Always set `all_cores_halted` to true, until one core is found to be running.
+        debug_adapter.all_cores_halted = true;
         for core_config in session_config.core_configs.iter() {
             if let Ok(mut target_core) = self.attach_core(core_config.core_index) {
                 // We need to poll the core to determine its status.
@@ -260,6 +263,11 @@ impl SessionData {
                             }
                         }
 
+                        // If the core is running, we set the flag to indicate that at least one core is not halted.
+                        // By setting it here, we ensure that RTT will be checked at least once after the core has halted.
+                        if !current_core_status.is_halted() {
+                            debug_adapter.all_cores_halted = false;
+                        }
                         status_of_cores.push(current_core_status);
                     }
                     Err(error) => {
