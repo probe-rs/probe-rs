@@ -1,9 +1,9 @@
 use super::{
     ap::{
-        valid_access_ports, AccessPort, ApAccess, ApClass, BaseaddrFormat, GenericAp, MemoryAp,
-        BASE, BASE2, CFG, CSW, IDR,
+        valid_access_ports, AccessPort, AccessPortError, ApAccess, ApClass, BaseaddrFormat,
+        GenericAp, MemoryAp, BASE, BASE2, CFG, CSW, IDR,
     },
-    dp::{Abort, Ctrl, DebugPortVersion, DpAccess, Select, DPIDR},
+    dp::{Abort, Ctrl, DebugPortError, DebugPortVersion, DpAccess, Select, DPIDR},
     memory::{
         adi_v5_memory_interface::{ADIMemoryInterface, ArmProbe},
         Component,
@@ -40,9 +40,6 @@ pub enum DapError {
     /// Target device responded with a WAIT response to the request.
     #[error("Target device responded with a WAIT response to the request.")]
     WaitResponse,
-    /// Powerup of the target device failed.
-    #[error("Target power-up failed.")]
-    TargetPowerUpFailed,
     /// The parity bit on the read request was incorrect.
     #[error("Incorrect parity on READ request.")]
     IncorrectParity,
@@ -203,7 +200,7 @@ impl ApInformation {
     pub(crate) fn read_from_target<P>(
         probe: &mut P,
         access_port: GenericAp,
-    ) -> Result<Self, ArmError>
+    ) -> Result<Self, AccessPortError>
     where
         P: ApAccess,
     {
@@ -451,7 +448,7 @@ impl<'interface> ArmCommunicationInterface<Initialized> {
         }
     }
 
-    fn select_dp(&mut self, dp: DpAddress) -> Result<&mut DpState, ArmError> {
+    fn select_dp(&mut self, dp: DpAddress) -> Result<&mut DpState, DebugPortError> {
         if self.state.current_dp == Some(dp) {
             return Ok(self.state.dps.get_mut(&dp).unwrap());
         }
@@ -505,7 +502,7 @@ impl<'interface> ArmCommunicationInterface<Initialized> {
         &mut self,
         dp: DpAddress,
         dp_register_address: u8,
-    ) -> Result<(), ArmError> {
+    ) -> Result<(), DebugPortError> {
         let dp_state = self.select_dp(dp)?;
 
         // DP register addresses are 4 bank bits, 4 address bits. Lowest 2 address bits are
@@ -649,7 +646,7 @@ impl DapAccess for ArmCommunicationInterface<Initialized> {
         dp: DpAddress,
         address: u8,
         value: u32,
-    ) -> Result<(), ArmError> {
+    ) -> Result<(), DebugPortError> {
         self.select_dp_and_dp_bank(dp, address)?;
         self.probe
             .raw_write_register(PortType::DebugPort, address, value)?;

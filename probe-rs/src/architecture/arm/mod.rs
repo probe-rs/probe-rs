@@ -123,10 +123,7 @@ impl ArmError {
 
 impl From<DebugPortError> for ArmError {
     fn from(value: DebugPortError) -> Self {
-        match value {
-            DebugPortError::Arm(e) => *e,
-            other => ArmError::Common(Box::new(other)),
-        }
+        ArmError::Common(Box::new(value))
     }
 }
 

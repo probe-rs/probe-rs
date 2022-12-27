@@ -1,6 +1,6 @@
 use crate::{DebugProbe, DebugProbeError};
 
-use super::ArmError;
+use super::{dp::DebugPortError, ArmError};
 
 /// The type of port we are using.
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
@@ -59,7 +59,7 @@ pub struct ApAddress {
 /// handle bank switching and AP selection.
 pub trait RawDapAccess {
     /// Select the debug port to operate on.
-    fn select_dp(&mut self, dp: DpAddress) -> Result<(), ArmError>;
+    fn select_dp(&mut self, dp: DpAddress) -> Result<(), DebugPortError>;
 
     /// Read a DAP register.
     ///
@@ -154,7 +154,7 @@ pub trait DapAccess {
     ///
     /// Highest 4 bits of `addr` are interpreted as the bank number, implementations
     /// will do bank switching if necessary.
-    fn read_raw_dp_register(&mut self, dp: DpAddress, addr: u8) -> Result<u32, ArmError>;
+    fn read_raw_dp_register(&mut self, dp: DpAddress, addr: u8) -> Result<u32, DebugPortError>;
 
     /// Write a Debug Port register.
     ///
@@ -165,7 +165,7 @@ pub trait DapAccess {
         dp: DpAddress,
         addr: u8,
         value: u32,
-    ) -> Result<(), ArmError>;
+    ) -> Result<(), DebugPortError>;
 
     /// Read an Access Port register.
     ///

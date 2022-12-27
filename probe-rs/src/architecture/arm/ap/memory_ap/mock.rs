@@ -2,6 +2,7 @@ use anyhow::anyhow;
 
 use super::super::{ApAccess, Register};
 use super::{AddressIncrement, ApRegister, DataSize, CSW, DRW, TAR};
+use crate::architecture::arm::ap::AccessPortError;
 use crate::DebugProbeError;
 use crate::{
     architecture::arm::{
@@ -58,7 +59,7 @@ impl ApAccess for MockMemoryAp {
     /// Mocks the read_register method of a AP.
     ///
     /// Returns an Error if any bad instructions or values are chosen.
-    fn read_ap_register<PORT, R>(&mut self, _port: impl Into<PORT>) -> Result<R, ArmError>
+    fn read_ap_register<PORT, R>(&mut self, _port: impl Into<PORT>) -> Result<R, AccessPortError>
     where
         PORT: AccessPort,
         R: ApRegister<PORT>,
@@ -230,7 +231,7 @@ impl ApAccess for MockMemoryAp {
         port: impl Into<PORT> + Clone,
         _register: R,
         values: &mut [u32],
-    ) -> Result<(), ArmError>
+    ) -> Result<(), AccessPortError>
     where
         PORT: AccessPort,
         R: ApRegister<PORT>,

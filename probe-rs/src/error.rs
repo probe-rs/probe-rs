@@ -55,6 +55,9 @@ impl From<ArmError> for Error {
     fn from(value: ArmError) -> Self {
         match value {
             ArmError::Timeout => Error::Timeout,
+            ArmError::MemoryNotAligned { address, alignment } => {
+                Error::MemoryNotAligned { address, alignment }
+            }
             other => Error::Arm(other),
         }
     }

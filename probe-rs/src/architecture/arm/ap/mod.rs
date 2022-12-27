@@ -88,7 +88,7 @@ pub trait AccessPort {
 /// A trait to be implemented by access port drivers to implement access port operations.
 pub trait ApAccess {
     /// Read a register of the access port.
-    fn read_ap_register<PORT, R>(&mut self, port: impl Into<PORT>) -> Result<R, ArmError>
+    fn read_ap_register<PORT, R>(&mut self, port: impl Into<PORT>) -> Result<R, AccessPortError>
     where
         PORT: AccessPort,
         R: ApRegister<PORT>;
@@ -129,7 +129,7 @@ pub trait ApAccess {
 }
 
 impl<T: DapAccess> ApAccess for T {
-    fn read_ap_register<PORT, R>(&mut self, port: impl Into<PORT>) -> Result<R, ArmError>
+    fn read_ap_register<PORT, R>(&mut self, port: impl Into<PORT>) -> Result<R, AccessPortError>
     where
         PORT: AccessPort,
         R: ApRegister<PORT>,

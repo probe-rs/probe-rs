@@ -3,9 +3,7 @@
 #[macro_use]
 mod register_generation;
 
-use super::{
-    communication_interface::RegisterParseError, ArmError, DapAccess, DpAddress, Register,
-};
+use super::{communication_interface::RegisterParseError, DapAccess, DpAddress, Register};
 use bitfield::bitfield;
 use jep106::JEP106Code;
 
@@ -29,18 +27,14 @@ pub enum DebugPortError {
     /// An error with operating the debug probe occurred.
     #[error("A Debug Probe Error occurred")]
     DebugProbe(#[from] DebugProbeError),
-    // TODO: The error below shouldn't exist
-    /// A general ARM specific error occured
-    #[error("A general ARM error occured")]
-    Arm(#[source] Box<ArmError>),
-}
 
-impl From<ArmError> for DebugPortError {
-    fn from(value: ArmError) -> Self {
-        DebugPortError::Arm(Box::new(value))
-    }
-}
+    #[error("Timeout occured")]
+    Timeout,
 
+    /// Powerup of the target device failed.
+    #[error("Target power-up failed.")]
+    TargetPowerUpFailed,
+}
 /// A typed interface to be implemented on drivers that can control a debug port.
 pub trait DpAccess {
     /// Reads a debug port register.

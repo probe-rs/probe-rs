@@ -11,7 +11,7 @@ use crate::{
         ap::{AccessPort, ApAccess, GenericAp, MemoryAp, DRW, IDR, TAR},
         communication_interface::Initialized,
         core::armv7m::{Aircr, Demcr, Dhcsr},
-        dp::{Abort, Ctrl, DpAccess, Select, DPIDR},
+        dp::{Abort, Ctrl, DebugPortError, DpAccess, Select, DPIDR},
         memory::adi_v5_memory_interface::ArmProbe,
         ApAddress, ArmCommunicationInterface, ArmError, DapAccess, DpAddress,
     },
@@ -30,7 +30,7 @@ fn debug_port_start(
     interface: &mut ArmCommunicationInterface<Initialized>,
     dp: DpAddress,
     select: Select,
-) -> Result<bool, ArmError> {
+) -> Result<bool, DebugPortError> {
     interface.write_dp_register(dp, select)?;
 
     let ctrl = interface.read_dp_register::<Ctrl>(dp)?;
@@ -58,7 +58,7 @@ fn debug_port_start(
         }
 
         if timeout {
-            return Err(ArmError::Timeout);
+            return Err(DebugPortError::Timeout);
         }
 
         // TODO: Handle JTAG Specific part
@@ -103,7 +103,7 @@ impl ArmDebugSequence for LPC55S69 {
         &self,
         interface: &mut ArmCommunicationInterface<Initialized>,
         dp: DpAddress,
-    ) -> Result<(), ArmError> {
+    ) -> Result<(), DebugPortError> {
         tracing::info!("debug_port_start");
 
         let powered_down = self::debug_port_start(interface, dp, Select(0))?;
@@ -281,7 +281,7 @@ fn wait_for_stop_after_reset(memory: &mut dyn ArmProbe) -> Result<(), ArmError> 
 fn enable_debug_mailbox(
     interface: &mut ArmCommunicationInterface<Initialized>,
     dp: DpAddress,
-) -> Result<(), ArmError> {
+) -> Result<(), AccessPortError> {
     tracing::info!("LPC55xx connect srcipt start");
 
     let ap = ApAddress { dp, ap: 2 };

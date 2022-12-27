@@ -21,17 +21,13 @@ use std::{
 use probe_rs_target::CoreType;
 
 use crate::architecture::arm::core::armv7a_debug_regs::Armv7DebugRegister;
-use crate::{
-    architecture::arm::{ArmProbeInterface, DapError},
-    core::MemoryMappedRegister,
-    DebugProbeError,
-};
+use crate::{architecture::arm::ArmProbeInterface, core::MemoryMappedRegister, DebugProbeError};
 
 use super::{
     ap::{AccessPortError, MemoryAp},
     communication_interface::{DapProbe, Initialized},
     component::{TraceFunnel, TraceSink},
-    dp::{Abort, Ctrl, DpAccess, Select, DPIDR},
+    dp::{Abort, Ctrl, DebugPortError, DpAccess, Select, DPIDR},
     memory::{
         adi_v5_memory_interface::ArmProbe,
         romtable::{CoresightComponent, PeripheralType},
@@ -494,7 +490,7 @@ pub trait ArmDebugSequence: Send + Sync {
         &self,
         interface: &mut ArmCommunicationInterface<Initialized>,
         dp: DpAddress,
-    ) -> Result<(), ArmError> {
+    ) -> Result<(), DebugPortError> {
         // Clear all errors.
         // CMSIS says this is only necessary to do inside the `if powered_down`, but
         // without it here, nRF52840 faults in the next access.
@@ -528,7 +524,7 @@ pub trait ArmDebugSequence: Send + Sync {
             }
 
             if timeout {
-                return Err(ArmError::Timeout);
+                return Err(DebugPortError::Timeout);
             }
 
             // TODO: Handle JTAG Specific part
@@ -545,7 +541,7 @@ pub trait ArmDebugSequence: Send + Sync {
             let ctrl_reg: Ctrl = interface.read_dp_register(dp)?;
             if !(ctrl_reg.csyspwrupack() && ctrl_reg.cdbgpwrupack()) {
                 tracing::error!("Debug power request failed");
-                return Err(DapError::TargetPowerUpFailed.into());
+                return Err(DebugPortError::TargetPowerUpFailed.into());
             }
 
             // According to CMSIS docs, here's where we would clear errors
