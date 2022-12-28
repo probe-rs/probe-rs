@@ -38,7 +38,7 @@ pub struct DebugAdapter<P: ProtocolAdapter> {
     /// - `configuration_done` will ignore target status, and simply notify VSCode when it is done.
     /// - `threads` will check for [DebugAdapter::configuration_done] and ...
     ///   - If it is `false`, it will ...
-    ///     - send back a threads response, with `all_threds_stopped=Some(false)`, and set [DebugAdapter::configuration_done] to `true`.
+    ///     - send back a threads response, with `all_threads_stopped=Some(false)`, and set [DebugAdapter::configuration_done] to `true`.
     ///   - If it is `true`, it will respond with thread information as expected.
     pub(crate) configuration_done: bool,
     /// Flag to indicate if all cores of the target are halted. This is used to accurately report the `all_threads_stopped` field in the DAP `StoppedEvent`, as well as to prevent unnecessary polling of core status.
