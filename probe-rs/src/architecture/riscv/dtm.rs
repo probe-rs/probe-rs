@@ -38,7 +38,13 @@ impl Dtm {
             Err(e) => return Err((probe, e.into())),
         };
 
-        let dtmcs = Dtmcs(u32::from_le_bytes((&dtmcs_raw[..]).try_into().unwrap()));
+        let raw_dtmcs = u32::from_le_bytes((&dtmcs_raw[..]).try_into().unwrap());
+
+        if raw_dtmcs == 0 {
+            return Err((probe, RiscvError::NotRiscV));
+        }
+
+        let dtmcs = Dtmcs(raw_dtmcs);
 
         tracing::debug!("Dtmcs: {:?}", dtmcs);
 
