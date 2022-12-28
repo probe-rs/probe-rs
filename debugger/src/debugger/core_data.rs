@@ -22,7 +22,7 @@ pub struct CoreData {
     ///   For instance, when the client sets the core running, and the core halts because of a breakpoint, we need to notify the client.
     /// 2. Some requests, like [`DebugAdapter::next()`], has an implicit action of setting the core running, before it waits for it to halt at the next statement.
     ///   To ensure the [`CoreData::poll_core()`] behaves correctly, it will set the `last_known_status` to [`CoreStatus::Running`],
-    ///   and execute the request normally, with the expectation that the core will be halted, and that #1 above will detect this new status.
+    ///   and execute the request normally, with the expectation that the core will be halted, and that 1. above will detect this new status.
     ///   These 'implicit' updates of `last_known_status` will not(and should not) result in a notification to the client.
     pub(crate) last_known_status: CoreStatus,
     pub(crate) target_name: String,
