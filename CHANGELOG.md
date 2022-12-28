@@ -80,7 +80,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fix: Validate RiscV CSR addresses to avoid unnecessary panics. (#1291)
 - Debugger: Fix unpredictable behaviour when breaking on, or stepping over macros. (#1230)
 - Fix: Extend fix for WFI instructions (#1177) to STM32F1
-- Debugger: Fix RTT data from target is not polled/reported in a timely manner - during stepping, and after breakpoint halting. (#1341)
+- Debugger: RTT data from target is now polled/reported in a timely manner, during stepping, and after breakpoint halting. (#1341)
 
 ## [0.13.0]
 
