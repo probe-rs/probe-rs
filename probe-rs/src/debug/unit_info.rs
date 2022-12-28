@@ -1369,16 +1369,16 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                 | gimli::DW_AT_data_member_location
                 | gimli::DW_AT_frame_base => match attr.value() {
                     gimli::AttributeValue::Exprloc(expression) => {
-                        match self.evaluate_expression(core, expression, stack_frame_registers, frame_base) {
-                            Ok(result) => return Ok(result),
+                        return match self.evaluate_expression(core, expression, stack_frame_registers, frame_base) {
+                            Ok(result) => Ok(result),
                             Err(error) => {
                                 if matches!(error, DebugError::Other(_)) {
-                                    return Ok(ExpressionResult::Location(VariableLocation::Unavailable));
+                                    Ok(ExpressionResult::Location(VariableLocation::Unavailable))
                                 } else {
-                                    return Err(error);
+                                    Err(error)
                                 }
                             },
-                        }
+                        };
                     }
                     gimli::AttributeValue::Udata(offset_from_parent) => match parent_location {
                         VariableLocation::Address(address) => {
@@ -1421,21 +1421,21 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                         }
                                     }
                                     if let Some(valid_expression) = expression {
-                                        match self.evaluate_expression(
+                                        return match self.evaluate_expression(
                                             core,
                                             valid_expression,
                                             stack_frame_registers,
                                             frame_base,
                                         ) {
-                                            Ok(result) => return Ok(result),
+                                            Ok(result) => Ok(result),
                                             Err(error) => {
                                                 if matches!(error, DebugError::Other(_)) {
-                                                    return Ok(ExpressionResult::Location(VariableLocation::Unavailable));
+                                                    Ok(ExpressionResult::Location(VariableLocation::Unavailable))
                                                 } else {
-                                                    return Err(error);
+                                                    Err(error)
                                                 }
                                             },
-                                        }
+                                        };
                                     } else {
                                         return Ok(ExpressionResult::Location(
                                             VariableLocation::Unavailable,

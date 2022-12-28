@@ -239,7 +239,7 @@ impl SessionData {
                                 if core_rtt.process_rtt_data(debug_adapter, &mut target_core.core) {
                                     suggest_delay_required = false;
                                 }
-                            } else if debug_adapter.configuration_done {
+                            } else if debug_adapter.configuration_is_done() {
                                 // We have not yet reached the point in the target application where the RTT buffers are initialized,
                                 // so, provided we have processed the MSDAP request for "configurationDone" , we should check again.
                                 {

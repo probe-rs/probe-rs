@@ -40,7 +40,7 @@ pub struct DebugAdapter<P: ProtocolAdapter> {
     ///   - If it is `false`, it will ...
     ///     - send back a threads response, with `all_threads_stopped=Some(false)`, and set [DebugAdapter::configuration_done] to `true`.
     ///   - If it is `true`, it will respond with thread information as expected.
-    pub(crate) configuration_done: bool,
+    configuration_done: bool,
     /// Flag to indicate if all cores of the target are halted. This is used to accurately report the `all_threads_stopped` field in the DAP `StoppedEvent`, as well as to prevent unnecessary polling of core status.
     /// The default is `true`, and will be set to `false` if any of the cores report a status other than `CoreStatus::Halted(_)`.
     pub(crate) all_cores_halted: bool,
@@ -68,6 +68,10 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             columns_start_at_1: true,
             adapter,
         }
+    }
+
+    pub(crate) fn configuration_is_done(&self) -> bool {
+        self.configuration_done
     }
 
     pub(crate) fn pause(&mut self, target_core: &mut CoreHandle, request: Request) -> Result<()> {
@@ -562,7 +566,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                     target_core.core.debug_on_sw_breakpoint(true)?;
 
                     // Only notify the DAP client if we are NOT in initialization stage ([`DebugAdapter::configuration_done`]).
-                    if self.configuration_done {
+                    if self.configuration_is_done() {
                         let event_body = Some(StoppedEventBody {
                             reason: "restart".to_owned(),
                             description: Some(
@@ -853,7 +857,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         // TODO: Implement actual thread resolution. For now, we just use the core id as the thread id.
         let current_core_status = target_core.core.status()?;
         let mut threads: Vec<Thread> = vec![];
-        if self.configuration_done {
+        if self.configuration_is_done() {
             // We can handle this request normally.
             if current_core_status.is_halted() {
                 let single_thread = Thread {

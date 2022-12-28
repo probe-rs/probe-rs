@@ -96,7 +96,7 @@ impl Debugger {
                     let (_, suggest_delay_required) =
                         session_data.poll_cores(&self.config, debug_adapter)?;
                     // If there are no requests from the DAP Client, and there was no RTT data in the last poll, then we can sleep for a short period of time to reduce CPU usage.
-                    if debug_adapter.configuration_done && suggest_delay_required {
+                    if debug_adapter.configuration_is_done() && suggest_delay_required {
                         tracing::trace!(
                             "Sleeping (core is running) for 50ms to reduce polling overheads."
                         );
@@ -291,7 +291,7 @@ impl Debugger {
                         }
                         Err(e) => Err(DebuggerError::Other(e.context("Error executing request."))),
                     }
-                } else if debug_adapter.configuration_done {
+                } else if debug_adapter.configuration_is_done() {
                     // We've passed `configuration_done` and still do not have at least one core configured.
                     Err(DebuggerError::Other(anyhow!(
                         "Cannot continue unless one target core configuration is defined."

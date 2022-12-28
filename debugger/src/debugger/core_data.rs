@@ -61,7 +61,7 @@ impl<'p> CoreHandle<'p> {
         &mut self,
         debug_adapter: &mut DebugAdapter<P>,
     ) -> Result<CoreStatus, Error> {
-        if debug_adapter.configuration_done {
+        if debug_adapter.configuration_is_done() {
             match self.core.status() {
                 Ok(status) => {
                     let has_changed_state = status != self.core_data.last_known_status;
