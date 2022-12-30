@@ -1,192 +1,172 @@
 {
-    // Use IntelliSense to learn about possible attributes.
-    // Hover to view descriptions of existing attributes.
-    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
-    "version": "0.2.0",
-    "configurations": [
-        {
-            "type": "lldb",
-            "request": "launch",
-            "name": "Launch smoke tester",
-            "cargo": {
-                "args": [
-                    "build",
-                    "--package=smoke_tester"
-                ]
-            },
-            "program": "${cargo:program}",
-            "args": [
-                "--dut-definitions=../dut-definitions/"
-            ]
-        },
-        {
-            "type": "lldb",
-            "request": "launch",
-            "name": "DAP-Server probe-rs-debugger", // Use this to test the dap server .
-            "cargo": {
-                "args": [
-                    "build",
-                    "--bin=probe-rs-debugger",
-                    "--package=probe-rs-debugger"
-                ],
-                "filter": {
-                    "name": "probe-rs-debugger",
-                    "kind": "bin"
-                }
-            },
-            "args": [
-                "debug",
-                "--port",
-                "50001"
-            ],
-            "cwd": "${workspaceFolder}/debugger"
-        },
-        {
-            "type": "lldb",
-            "request": "launch",
-            "name": "list supported chips",
-            "cargo": {
-                "args": [
-                    "build",
-                    "--bin=probe-rs-debugger",
-                    "--package=probe-rs-debugger"
-                ],
-                "filter": {
-                    "name": "probe-rs-debugger",
-                    "kind": "bin"
-                }
-            },
-            "args": [
-                "list-chips",
-            ],
-            "cwd": "${workspaceFolder}/debugger"
-        },
-        {
-            "type": "lldb",
-            "request": "launch",
-            "name": "list attached probes",
-            "cargo": {
-                "args": [
-                    "build",
-                    "--bin=probe-rs-debugger",
-                    "--package=probe-rs-debugger"
-                ],
-                "filter": {
-                    "name": "probe-rs-debugger",
-                    "kind": "bin"
-                }
-            },
-            "args": [
-                "list",
-            ],
-            "cwd": "${workspaceFolder}/debugger"
-        },
-        {
-            "type": "lldb",
-            "request": "launch",
-            "name": "display help text",
-            "cargo": {
-                "args": [
-                    "build",
-                    "--bin=probe-rs-debugger",
-                    "--package=probe-rs-debugger"
-                ],
-                "filter": {
-                    "name": "probe-rs-debugger",
-                    "kind": "bin"
-                }
-            },
-            "args": [
-                "help",
-            ],
-            "cwd": "${workspaceFolder}/debugger"
-        },
-        {
-            "type": "lldb",
-            "request": "launch",
-            "name": "display debug subcommand help text",
-            "cargo": {
-                "args": [
-                    "build",
-                    "--bin=probe-rs-debugger",
-                    "--package=probe-rs-debugger"
-                ],
-                "filter": {
-                    "name": "probe-rs-debugger",
-                    "kind": "bin"
-                }
-            },
-            "args": [
-                "help",
-                "debug",
-            ],
-            "cwd": "${workspaceFolder}/debugger"
-        },
-        {
-            "type": "lldb",
-            "request": "launch",
-            "name": "target-gen Download and Update supported ARM target definitions",
-            "cwd": "${workspaceFolder}/target-gen",
-            "cargo": {
-                "args": [
-                    "build",
-                    "--bin=target-gen",
-                    "--package=target-gen"
-                ],
-                "filter": {
-                    "name": "target-gen",
-                    "kind": "bin"
-                }
-            },
-            "args": [
-                "arm",
-                // "--list", // Use this to list the available targets before filtering by chipFamily.
-                "--filter",
-                "${input:chipFamily}",
-                "${input:yamlFile}"
-            ],
-        },
-        {
-            "type": "lldb",
-            "request": "launch",
-            "name": "target-gen Generate target yaml from single ARM CMSIS Pack file",
-            "cwd": "${workspaceFolder}/target-gen",
-            "cargo": {
-                "args": [
-                    "build",
-                    "--bin=target-gen",
-                    "--package=target-gen"
-                ],
-                "filter": {
-                    "name": "target-gen",
-                    "kind": "bin"
-                }
-            },
-            "args": [
-                "pack",
-                "${input:packFile}",
-                "${input:yamlFile}"
-            ],
-        },
-    ],
-    "inputs": [
-        {
-            "id": "packFile",
-            "type": "promptString",
-            "description": "Please enter the path to Pack file or the unzipped Pack directory.",
-            "default": "${workspaceFolder}/../pack_files/NXP.LPC55S69_DFP.15.0.0.pack"
-        },
-        {
-            "id": "yamlFile",
-            "type": "promptString",
-            "description": "Please enter the path to the output directory for yaml files.",
-            "default": "${workspaceFolder}/probe-rs/targets"
-        },
-        {
-            "id": "chipFamily",
-            "type": "promptString",
-            "description": "Please enter the name or part of a name to filter the list of chips to be generated.",
-            "default": "STM32H7xx_DFP"
+  // Use IntelliSense to learn about possible attributes.
+  // Hover to view descriptions of existing attributes.
+  // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Launch CLI",
+      "cargo": {
+        "args": ["build", "--package=probe-rs-cli"]
+      },
+      "program": "${cargo:program}",
+      "args": ["generate", "bash"]
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Launch smoke tester",
+      "cargo": {
+        "args": ["build", "--package=smoke_tester"]
+      },
+      "program": "${cargo:program}",
+      "args": ["--dut-definitions=../dut-definitions/"]
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "DAP-Server probe-rs-debugger", // Use this to test the dap server .
+      "cargo": {
+        "args": [
+          "build",
+          "--bin=probe-rs-debugger",
+          "--package=probe-rs-debugger"
+        ],
+        "filter": {
+          "name": "probe-rs-debugger",
+          "kind": "bin"
         }
-    ]
+      },
+      "args": ["debug", "--port", "50001"],
+      "cwd": "${workspaceFolder}/debugger"
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "list supported chips",
+      "cargo": {
+        "args": [
+          "build",
+          "--bin=probe-rs-debugger",
+          "--package=probe-rs-debugger"
+        ],
+        "filter": {
+          "name": "probe-rs-debugger",
+          "kind": "bin"
+        }
+      },
+      "args": ["list-chips"],
+      "cwd": "${workspaceFolder}/debugger"
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "list attached probes",
+      "cargo": {
+        "args": [
+          "build",
+          "--bin=probe-rs-debugger",
+          "--package=probe-rs-debugger"
+        ],
+        "filter": {
+          "name": "probe-rs-debugger",
+          "kind": "bin"
+        }
+      },
+      "args": ["list"],
+      "cwd": "${workspaceFolder}/debugger"
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "display help text",
+      "cargo": {
+        "args": [
+          "build",
+          "--bin=probe-rs-debugger",
+          "--package=probe-rs-debugger"
+        ],
+        "filter": {
+          "name": "probe-rs-debugger",
+          "kind": "bin"
+        }
+      },
+      "args": ["help"],
+      "cwd": "${workspaceFolder}/debugger"
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "display debug subcommand help text",
+      "cargo": {
+        "args": [
+          "build",
+          "--bin=probe-rs-debugger",
+          "--package=probe-rs-debugger"
+        ],
+        "filter": {
+          "name": "probe-rs-debugger",
+          "kind": "bin"
+        }
+      },
+      "args": ["help", "debug"],
+      "cwd": "${workspaceFolder}/debugger"
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "target-gen Download and Update supported ARM target definitions",
+      "cwd": "${workspaceFolder}/target-gen",
+      "cargo": {
+        "args": ["build", "--bin=target-gen", "--package=target-gen"],
+        "filter": {
+          "name": "target-gen",
+          "kind": "bin"
+        }
+      },
+      "args": [
+        "arm",
+        // "--list", // Use this to list the available targets before filtering by chipFamily.
+        "--filter",
+        "${input:chipFamily}",
+        "${input:yamlFile}"
+      ]
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "target-gen Generate target yaml from single ARM CMSIS Pack file",
+      "cwd": "${workspaceFolder}/target-gen",
+      "cargo": {
+        "args": ["build", "--bin=target-gen", "--package=target-gen"],
+        "filter": {
+          "name": "target-gen",
+          "kind": "bin"
+        }
+      },
+      "args": ["pack", "${input:packFile}", "${input:yamlFile}"]
+    }
+  ],
+  "inputs": [
+    {
+      "id": "packFile",
+      "type": "promptString",
+      "description": "Please enter the path to Pack file or the unzipped Pack directory.",
+      "default": "${workspaceFolder}/../pack_files/NXP.LPC55S69_DFP.15.0.0.pack"
+    },
+    {
+      "id": "yamlFile",
+      "type": "promptString",
+      "description": "Please enter the path to the output directory for yaml files.",
+      "default": "${workspaceFolder}/probe-rs/targets"
+    },
+    {
+      "id": "chipFamily",
+      "type": "promptString",
+      "description": "Please enter the name or part of a name to filter the list of chips to be generated.",
+      "default": "STM32H7xx_DFP"
+    }
+  ]
 }

@@ -1,5 +1,6 @@
 mod benchmark;
 mod common;
+mod completions;
 mod debugger;
 mod gdb;
 mod info;
@@ -17,6 +18,7 @@ use probe_rs::{
     MemoryInterface, Probe,
 };
 
+use clap_complete::Shell;
 use probe_rs_cli_util::{
     clap,
     clap::Parser,
@@ -33,9 +35,11 @@ use tracing_subscriber::{
     EnvFilter, Layer,
 };
 
-use std::{fs::File, path::PathBuf};
+use std::{fs::File, path::PathBuf, str::FromStr};
 use std::{io, time::Instant};
 use std::{num::ParseIntError, path::Path};
+
+use crate::completions::generate_completion;
 
 #[derive(clap::Parser)]
 #[clap(
@@ -196,6 +200,15 @@ enum Cli {
         #[clap(flatten)]
         options: BenchmarkOptions,
     },
+    #[clap(name = "complete")]
+    Complete {
+        #[clap()]
+        shell: Shell,
+        #[clap()]
+        kind: CompleteKind,
+        #[clap()]
+        input: String,
+    },
 }
 
 #[derive(clap::Parser)]
@@ -235,6 +248,45 @@ pub(crate) enum ItmSource {
         /// The desired baud rate of the SWO output.
         baud: u32,
     },
+}
+
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+#[non_exhaustive]
+pub enum GenerateKind {
+    AutocompleteScript,
+    ChipsList,
+}
+
+impl FromStr for GenerateKind {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(match s {
+            "chips-list" => Self::ChipsList,
+            _ => return Err(format!("Invalid variant: {}", s)),
+        })
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+#[non_exhaustive]
+pub enum CompleteKind {
+    GenerateScript,
+    ProbeList,
+    ChipList,
+}
+
+impl FromStr for CompleteKind {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(match s {
+            "generate-script" => Self::GenerateScript,
+            "chip-list" => Self::ChipList,
+            "probe-list" => Self::ProbeList,
+            _ => return Err(format!("Invalid variant: {}", s)),
+        })
+    }
 }
 
 fn main() -> Result<()> {
@@ -351,6 +403,7 @@ fn main() -> Result<()> {
         Cli::Chip(Chip::List) => print_families(io::stdout()).map_err(Into::into),
         Cli::Chip(Chip::Info { name }) => print_chip_info(name, io::stdout()),
         Cli::Benchmark { common, options } => benchmark(common, options),
+        Cli::Complete { shell, kind, input } => generate_completion(shell, kind, input),
     };
 
     tracing::info!("Wrote log to {:?}", log_path);

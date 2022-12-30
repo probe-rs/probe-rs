@@ -557,6 +557,17 @@ pub fn print_families(mut f: impl Write) -> Result<(), OperationError> {
     Ok(())
 }
 
+pub fn print_chips(mut f: impl Write, starts_with: String) -> Result<(), OperationError> {
+    for family in probe_rs::config::families().map_err(OperationError::FailedToReadFamilies)? {
+        for variant in family.variants() {
+            if variant.name.starts_with(&starts_with) {
+                writeln!(f, "{}", variant.name)?;
+            }
+        }
+    }
+    Ok(())
+}
+
 fn get_range_len(range: &std::ops::Range<u64>) -> u64 {
     range.end - range.start
 }

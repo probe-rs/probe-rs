@@ -22,7 +22,6 @@ ftdi = ["probe-rs/ftdi"]
 probe-rs = { workspace = true }
 probe-rs-cli-util = { workspace = true }
 gdb-server = { workspace = true }
-
 pretty_env_logger = { workspace = true }
 log = { workspace = true }
 scroll = "0.11.0"
@@ -47,3 +46,5 @@ serde = { version = "1.0.147", features = ["derive"] }
 termtree = "0.4.0"
 directories = "4"
 sanitize-filename = "0.4"
+clap_complete = "4"
+regex = "1.7"
