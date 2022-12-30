@@ -19,7 +19,7 @@ pub enum RomTableError {
     #[error("The CoreSight Component could not be identified")]
     CSComponentIdentification,
     #[error("Could not access romtable")]
-    Memory(#[source] ArmError),
+    Memory(#[source] Box<ArmError>),
     #[error("The requested component '{0}' was not found")]
     ComponentNotFound(PeripheralType),
     #[error("There are no components to operate on")]
@@ -81,7 +81,7 @@ impl<'probe, 'memory, 'reader> Iterator for RomTableIterator<'probe, 'memory, 'r
             .memory
             .read_32(component_address, &mut entry_data)
         {
-            return Some(Err(RomTableError::Memory(e)));
+            return Some(Err(RomTableError::Memory(Box::new(e))));
         }
 
         // End of entries is marked by an all zero entry
@@ -277,7 +277,7 @@ impl<'probe: 'memory, 'memory> ComponentInformationReader<'probe, 'memory> {
 
         self.memory
             .read_32(self.base_address + 0xFF0, &mut cidr)
-            .map_err(RomTableError::Memory)?;
+            .map_err(|e| RomTableError::Memory(Box::new(e)))?;
 
         tracing::debug!("CIDR: {:x?}", cidr);
 
@@ -321,10 +321,10 @@ impl<'probe: 'memory, 'memory> ComponentInformationReader<'probe, 'memory> {
 
         self.memory
             .read_32(self.base_address + 0xFD0, &mut data[4..])
-            .map_err(RomTableError::Memory)?;
+            .map_err(|e| RomTableError::Memory(Box::new(e)))?;
         self.memory
             .read_32(self.base_address + 0xFE0, &mut data[..4])
-            .map_err(RomTableError::Memory)?;
+            .map_err(|e| RomTableError::Memory(Box::new(e)))?;
 
         tracing::debug!("Raw peripheral id: {:x?}", data);
 
@@ -334,7 +334,7 @@ impl<'probe: 'memory, 'memory> ComponentInformationReader<'probe, 'memory> {
         let dev_type = self
             .memory
             .read_word_32(self.base_address + DEV_TYPE_OFFSET)
-            .map_err(RomTableError::Memory)
+            .map_err(|e| RomTableError::Memory(Box::new(e)))
             .map(|v| (v & DEV_TYPE_MASK) as u8)?;
 
         const ARCH_ID_OFFSET: u64 = 0xFBC;
@@ -344,7 +344,7 @@ impl<'probe: 'memory, 'memory> ComponentInformationReader<'probe, 'memory> {
         let arch_id = self
             .memory
             .read_word_32(self.base_address + ARCH_ID_OFFSET)
-            .map_err(RomTableError::Memory)
+            .map_err(|e| RomTableError::Memory(Box::new(e)))
             .map(|v| {
                 if v & ARCH_ID_PRESENT_BIT > 0 {
                     (v & ARCH_ID_MASK) as u16

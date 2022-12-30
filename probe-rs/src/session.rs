@@ -406,7 +406,7 @@ impl Session {
         let sink = self
             .configured_trace_sink
             .as_ref()
-            .ok_or_else(|| ArmError::temporary(anyhow!("Tracing has not been configured")))?;
+            .ok_or_else(|| ArmError::TracingUnconfigured)?;
 
         match sink {
             TraceSink::Swo(_) => {

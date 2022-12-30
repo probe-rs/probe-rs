@@ -2,7 +2,7 @@
 
 use std::sync::Arc;
 
-use super::ArmDebugSequence;
+use super::{ArmDebugSequence, ArmDebugSequenceError};
 use crate::architecture::arm::{
     component::TraceSink, memory::CoresightComponent, ArmError, ArmProbeInterface,
 };
@@ -110,6 +110,6 @@ impl ArmDebugSequence for Nrf52 {
 
 impl From<ComponentError> for ArmError {
     fn from(value: ComponentError) -> ArmError {
-        ArmError::Common(Box::new(value))
+        ArmError::DebugSequence(ArmDebugSequenceError::custom(value))
     }
 }

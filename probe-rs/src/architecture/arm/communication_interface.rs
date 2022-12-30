@@ -15,7 +15,6 @@ use crate::{
     architecture::arm::ap::DataSize, CommunicationInterface, DebugProbe, DebugProbeError,
     Error as ProbeRsError, Probe,
 };
-use anyhow::anyhow;
 use jep106::JEP106Code;
 
 use std::{
@@ -332,7 +331,9 @@ impl ArmProbeInterface for ArmCommunicationInterface<Initialized> {
     }
 
     fn ap_information(&mut self, access_port: GenericAp) -> Result<&ApInformation, ArmError> {
-        ArmCommunicationInterface::ap_information(self, access_port)
+        let info = ArmCommunicationInterface::ap_information(self, access_port)?;
+
+        info.ok_or_else(|| ArmError::ApDoesNotExist(access_port.ap_address()))
     }
 
     fn read_chip_info_from_rom_table(
@@ -431,7 +432,9 @@ impl<'interface> ArmCommunicationInterface<Initialized> {
         &'interface mut self,
         access_port: MemoryAp,
     ) -> Result<Box<dyn ArmProbe + 'interface>, ArmError> {
-        let info = self.ap_information(access_port)?;
+        let info = self
+            .ap_information(access_port)?
+            .ok_or_else(|| ArmError::ApDoesNotExist(access_port.ap_address()))?;
 
         match info {
             ApInformation::MemoryAp(ap_information) => {
@@ -444,10 +447,7 @@ impl<'interface> ArmCommunicationInterface<Initialized> {
 
                 Ok(Box::new(adi_v5_memory_interface))
             }
-            ApInformation::Other { address, .. } => Err(ArmError::temporary(anyhow!(
-                "AP {:x?} is not a memory AP",
-                address
-            ))),
+            ApInformation::Other { .. } => Err(ArmError::WrongApType),
         }
     }
 
@@ -578,21 +578,17 @@ impl<'interface> ArmCommunicationInterface<Initialized> {
     }
 
     /// Determine the type and additional information about an AP.
+    ///
+    /// If the AP doesn't exist, None is returned.
     pub(crate) fn ap_information(
         &mut self,
         access_port: impl AccessPort,
-    ) -> Result<&ApInformation, ArmError> {
+    ) -> Result<Option<&ApInformation>, ArmError> {
         let addr = access_port.ap_address();
 
         let state = self.select_dp(addr.dp)?;
 
-        match state.ap_information.get(addr.ap as usize) {
-            Some(res) => Ok(res),
-            None => Err(ArmError::temporary(anyhow!(
-                "AP {:x?} does not exist",
-                addr
-            ))),
-        }
+        Ok(state.ap_information.get(addr.ap as usize))
     }
 
     fn num_access_ports(&mut self, dp: DpAddress) -> Result<usize, ArmError> {

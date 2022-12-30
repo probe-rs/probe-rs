@@ -510,7 +510,7 @@ impl FpRev1CompX {
         // The highest 3 bits of the address have to be zero, otherwise the breakpoint cannot
         // be set at the address.
         if address >= 0x2000_0000 {
-            return Err(ArmError::temporary(anyhow::anyhow!("Unsupported address {:#08x} for HW breakpoint. Breakpoint must be at address < 0x2000_0000.", address)));
+            return Err(ArmError::UnsupportedBreakpointAddress(address));
         }
 
         let comp_val = (address & 0x1f_ff_ff_fc) >> 2;

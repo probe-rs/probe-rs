@@ -19,7 +19,6 @@ use crate::{
     },
     DebugProbeSelector, Error as ProbeRsError, Probe,
 };
-use anyhow::anyhow;
 use constants::{commands, JTagFrequencyToDivider, Mode, Status, SwdFrequencyToDelayCount};
 use scroll::{Pread, Pwrite, BE, LE};
 use std::{cmp::Ordering, convert::TryInto, sync::Arc, time::Duration};
@@ -1251,10 +1250,7 @@ impl ArmProbeInterface for StlinkArmDebug {
 
         match self.ap_information.get(addr.ap as usize) {
             Some(res) => Ok(res),
-            None => Err(ArmError::temporary(anyhow!(
-                "AP {} does not exist.",
-                addr.ap
-            ))),
+            None => Err(ArmError::ApDoesNotExist(addr)),
         }
     }
 

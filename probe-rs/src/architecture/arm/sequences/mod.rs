@@ -10,9 +10,8 @@ pub mod nxp;
 pub mod stm32f_series;
 pub mod stm32h7;
 
-use anyhow::anyhow;
-
 use std::{
+    error::Error,
     sync::Arc,
     thread,
     time::{Duration, Instant},
@@ -45,6 +44,16 @@ pub enum ArmDebugSequenceError {
     /// CTI base address is required but not specified
     #[error("Core access requries cti_base to be specified, but it is not")]
     CtiBaseNotSpecified,
+
+    /// An error occured in a debug sequence.
+    #[error("An error occured in a debug sequnce: {0}")]
+    SequenceSpecific(#[from] Box<dyn Error + Send + Sync + 'static>),
+}
+
+impl ArmDebugSequenceError {
+    fn custom(message: impl Into<Box<dyn Error + Send + Sync + 'static>>) -> Self {
+        ArmDebugSequenceError::SequenceSpecific(message.into())
+    }
 }
 
 /// The default sequences that is used for ARM chips that do not specify a specific sequence.
@@ -461,9 +470,10 @@ pub trait ArmDebugSequence: Send + Sync {
                 interface.swj_sequence(16, 0xE79E)?;
             }
             _ => {
-                return Err(ArmError::temporary(anyhow!(
-                    "Cannot detect current protocol"
-                )));
+                return Err(ArmDebugSequenceError::SequenceSpecific(
+                    "Cannot detect current protocol".into(),
+                )
+                .into());
             }
         }
 

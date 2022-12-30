@@ -48,9 +48,6 @@ pub enum ArmError {
     /// The address is too large for the 32 bit address space.
     #[error("Address is not in 32 bit address space.")]
     AddressOutOf32BitAddressSpace,
-    /// Temporary Placeholder error, should be removed.
-    #[error("Placeholder error")]
-    Common(#[source] Box<dyn std::error::Error + Send + Sync>),
     /// The current target device is not an ARM device.
     #[error("Target device is not an ARM device.")]
     NoArmTarget,
@@ -62,6 +59,9 @@ pub enum ArmError {
         /// Source of the error.
         source: AccessPortError,
     },
+    /// An error occured while using a debug port.
+    #[error("Error using a debug port.")]
+    DebugPort(#[from] DebugPortError),
     /// The core has to be halted for the operation, but was not.
     #[error("The core needs to be halted for this operation but was not.")]
     CoreNotHalted,
@@ -99,14 +99,41 @@ pub enum ArmError {
     /// The requested memory transfer width is not supported on the current core.
     #[error("{0} bit is not a supported memory transfer width on the current core")]
     UnsupportedTransferWidth(usize),
+
+    /// The AP with the specified address does not exist.
+    #[error("The AP with address {0:?} does not exist.")]
+    ApDoesNotExist(ApAddress),
+
+    /// The AP has the wrong type for the operation.
+    WrongApType,
+
+    /// It is not possible to create a breakpoint a the given address.
+    #[error("Unable to create a breakpoint at address {0:#010X}. Hardware breakpoints are only supported at addresses < 0x2000'0000.")]
+    UnsupportedBreakpointAddress(u32),
+
+    /// ARMv8a specifc erorr occured.
+    Armv8a(#[from] Armv8aError),
+
+    /// ARMv7a specifc erorr occured.
+    Armv7a(#[from] Armv7aError),
+
+    /// Error occured in a debug sequence.
+    DebugSequence(#[from] ArmDebugSequenceError),
+
+    /// Tracing has not been configured.
+    TracingUnconfigured,
+
+    /// Error parsing a register.
+    RegisterParse(#[from] RegisterParseError),
+
+    /// Error reading ROM table.
+    RomTable(#[source] RomTableError),
+
+    /// Failed to erase chip
+    ChipEraseFailed,
 }
 
 impl ArmError {
-    /// Create a error based on an anyhow error.
-    pub fn temporary(err: anyhow::Error) -> Self {
-        ArmError::Common(err.into())
-    }
-
     /// Constructs [`ArmError::MemoryNotAligned`] from the address and the required alignment.
     pub fn from_access_port(err: AccessPortError, ap: impl AccessPort) -> Self {
         ArmError::AccessPort {
@@ -121,39 +148,12 @@ impl ArmError {
     }
 }
 
-impl From<DebugPortError> for ArmError {
-    fn from(value: DebugPortError) -> Self {
-        ArmError::Common(Box::new(value))
-    }
-}
-
-impl From<RegisterParseError> for ArmError {
-    fn from(value: RegisterParseError) -> Self {
-        ArmError::Common(Box::new(value))
-    }
-}
-
 impl From<RomTableError> for ArmError {
     fn from(value: RomTableError) -> Self {
-        ArmError::Common(Box::new(value))
-    }
-}
-
-impl From<ArmDebugSequenceError> for ArmError {
-    fn from(value: ArmDebugSequenceError) -> Self {
-        ArmError::Common(Box::new(value))
-    }
-}
-
-impl From<Armv7aError> for ArmError {
-    fn from(value: Armv7aError) -> Self {
-        ArmError::Common(Box::new(value))
-    }
-}
-
-impl From<Armv8aError> for ArmError {
-    fn from(value: Armv8aError) -> Self {
-        ArmError::Common(Box::new(value))
+        match value {
+            RomTableError::Memory(err) => *err,
+            other => ArmError::RomTable(other),
+        }
     }
 }
 

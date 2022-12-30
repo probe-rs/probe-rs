@@ -2,8 +2,8 @@
 
 use crate::architecture::arm::armv7m::{Aircr, Dhcsr, FpCtrl, FpRev1CompX, FpRev2CompX};
 use crate::architecture::arm::memory::adi_v5_memory_interface::ArmProbe;
+use crate::architecture::arm::sequences::ArmDebugSequenceError;
 use crate::architecture::arm::ArmError;
-use anyhow::anyhow;
 use std::sync::Arc;
 use std::sync::Mutex;
 use std::thread;
@@ -222,10 +222,11 @@ impl ArmDebugSequence for XMC4000 {
         } else if fp_ctrl.rev() == 1 {
             FpRev2CompX::breakpoint_configuration(application_entry).into()
         } else {
-            return Err(ArmError::temporary(anyhow!(
+            return Err(ArmDebugSequenceError::custom(format!(
                 "xmc4000: unexpected fp_ctrl.rev = {}",
                 fp_ctrl.rev()
-            )));
+            ))
+            .into());
         };
         core.write_word_32(FpRev1CompX::ADDRESS, val)?;
         tracing::debug!("Set a breakpoint at {:08x}", application_entry);

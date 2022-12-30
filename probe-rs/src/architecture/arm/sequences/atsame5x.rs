@@ -1,6 +1,6 @@
 //! Sequences for ATSAM D5x/E5x target families
 
-use super::{ArmDebugSequence, DebugEraseSequence};
+use super::{ArmDebugSequence, ArmDebugSequenceError, DebugEraseSequence};
 use crate::{
     architecture::{
         self,
@@ -252,7 +252,7 @@ impl AtSAME5x {
                 // Signal ReAttachRequired so that the session will try to re-connect
                 return Err(ArmError::ReAttachRequired);
             } else if current_dsu_statusa.fail() {
-                return Err(ArmError::temporary(anyhow::anyhow!("Chip-Erase Failed")));
+                return Err(ArmError::ChipEraseFailed);
             }
             std::thread::sleep(std::time::Duration::from_millis(250));
         }
@@ -368,9 +368,10 @@ impl ArmDebugSequence for AtSAME5x {
         let current_pins =
             architecture::arm::Pins(memory.swj_pins(pins.0 as u32, pins.0 as u32, 0)? as u8);
         if !current_pins.nreset() {
-            return Err(ArmError::temporary(anyhow::anyhow!(
-                "Expected nReset to already be de-asserted"
-            )));
+            return Err(ArmDebugSequenceError::SequenceSpecific(
+                "Expected nReset to already be de-asserted".into(),
+            )
+            .into());
         }
 
         self.release_reset_extension(memory)

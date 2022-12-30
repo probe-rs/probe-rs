@@ -3,6 +3,7 @@
 use super::ArmDebugSequence;
 use crate::architecture::arm::ap::MemoryAp;
 use crate::architecture::arm::memory::adi_v5_memory_interface::ArmProbe;
+use crate::architecture::arm::sequences::ArmDebugSequenceError;
 use crate::architecture::arm::ArmError;
 use crate::architecture::arm::{
     communication_interface::Initialized, ApAddress, ArmCommunicationInterface, ArmProbeInterface,
@@ -100,10 +101,11 @@ impl<T: Nrf> ArmDebugSequence for T {
                 core_ahb_ap_address,
                 core_ctrl_ap_address,
             )? {
-                return Err(ArmError::temporary(anyhow::anyhow!(
+                return Err(ArmDebugSequenceError::custom(format!(
                     "Could not unlock core {}",
                     core_index
-                )));
+                ))
+                .into());
             }
         }
 
