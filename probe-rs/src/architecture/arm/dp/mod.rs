@@ -3,7 +3,9 @@
 #[macro_use]
 mod register_generation;
 
-use super::{communication_interface::RegisterParseError, DapAccess, DpAddress, Register};
+use super::{
+    communication_interface::RegisterParseError, ArmError, DapAccess, DapError, DpAddress, Register,
+};
 use bitfield::bitfield;
 use jep106::JEP106Code;
 
@@ -28,28 +30,45 @@ pub enum DebugPortError {
     #[error("A Debug Probe Error occurred")]
     DebugProbe(#[from] DebugProbeError),
 
+    /// A timeout occured.
     #[error("Timeout occured")]
     Timeout,
 
     /// Powerup of the target device failed.
     #[error("Target power-up failed.")]
     TargetPowerUpFailed,
+
+    /// The debug port is not supported.
+    #[error("Debug port not supported: {0}")]
+    Unsupported(String),
+
+    /// Error in DAP protocol occured.
+    #[error("Error in DAP protocol")]
+    Dap(#[from] DapError),
 }
 /// A typed interface to be implemented on drivers that can control a debug port.
 pub trait DpAccess {
     /// Reads a debug port register.
-    fn read_dp_register<R: DpRegister>(&mut self, dp: DpAddress) -> Result<R, DebugPortError>;
+    ///
+    /// If the target device has multiple debug ports, this will change the active debug port if necessary.
+    /// In this case all pending operations will be run, and errors returned by this function can also
+    /// be from these operations.
+    fn read_dp_register<R: DpRegister>(&mut self, dp: DpAddress) -> Result<R, ArmError>;
 
     /// Write a debug port register.
+    ///
+    /// If the target device has multiple debug ports, this will change the active debug port if necessary.
+    /// In this case all pending operations will be run, and errors returned by this function can also
+    /// be from these operations.
     fn write_dp_register<R: DpRegister>(
         &mut self,
         dp: DpAddress,
         register: R,
-    ) -> Result<(), DebugPortError>;
+    ) -> Result<(), ArmError>;
 }
 
 impl<T: DapAccess> DpAccess for T {
-    fn read_dp_register<R: DpRegister>(&mut self, dp: DpAddress) -> Result<R, DebugPortError> {
+    fn read_dp_register<R: DpRegister>(&mut self, dp: DpAddress) -> Result<R, ArmError> {
         tracing::debug!("Reading DP register {}", R::NAME);
         let result = self.read_raw_dp_register(dp, R::ADDRESS)?;
         tracing::debug!("Read    DP register {}, value=0x{:08x}", R::NAME, result);
@@ -60,7 +79,7 @@ impl<T: DapAccess> DpAccess for T {
         &mut self,
         dp: DpAddress,
         register: R,
-    ) -> Result<(), DebugPortError> {
+    ) -> Result<(), ArmError> {
         let value = register.into();
         tracing::debug!("Writing DP register {}, value=0x{:08x}", R::NAME, value);
         self.write_raw_dp_register(dp, R::ADDRESS, value)?;

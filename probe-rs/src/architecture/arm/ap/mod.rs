@@ -13,7 +13,10 @@ pub use memory_ap::{
     AddressIncrement, BaseaddrFormat, DataSize, MemoryAp, BASE, BASE2, CFG, CSW, DRW, TAR, TAR2,
 };
 
-use super::{ApAddress, ArmError, DapAccess, DpAddress, Register};
+use super::{
+    communication_interface::RegisterParseError, ApAddress, ArmError, DapAccess, DpAddress,
+    Register,
+};
 
 /// Some error during AP handling occurred.
 #[derive(Debug, thiserror::Error)]
@@ -46,6 +49,10 @@ pub enum AccessPortError {
     /// An error occurred when trying to flush batched writes of to the AP.
     #[error("Failed to flush batched writes")]
     Flush(#[from] DebugProbeError),
+
+    /// Error while parsing a register
+    #[error("Error parsing a register")]
+    RegisterParse(#[from] RegisterParseError),
 }
 
 impl AccessPortError {
@@ -74,12 +81,12 @@ impl AccessPortError {
 
 /// A trait to be implemented by access port register types.
 ///
-/// Use the [`register_generation::define_ap_register`] macro to implement this.
+/// Use the [`define_ap_register!`] macro to implement this.
 pub trait ApRegister<PORT: AccessPort>: Register + Sized {}
 
 /// A trait to be implemented on access port types.
 ///
-/// Use the [`register_generation::define_ap`] macro to implement this.
+/// Use the [`define_ap!`] macro to implement this.
 pub trait AccessPort {
     /// Returns the address of the access port.
     fn ap_address(&self) -> ApAddress;
@@ -88,7 +95,7 @@ pub trait AccessPort {
 /// A trait to be implemented by access port drivers to implement access port operations.
 pub trait ApAccess {
     /// Read a register of the access port.
-    fn read_ap_register<PORT, R>(&mut self, port: impl Into<PORT>) -> Result<R, AccessPortError>
+    fn read_ap_register<PORT, R>(&mut self, port: impl Into<PORT>) -> Result<R, ArmError>
     where
         PORT: AccessPort,
         R: ApRegister<PORT>;
@@ -129,7 +136,7 @@ pub trait ApAccess {
 }
 
 impl<T: DapAccess> ApAccess for T {
-    fn read_ap_register<PORT, R>(&mut self, port: impl Into<PORT>) -> Result<R, AccessPortError>
+    fn read_ap_register<PORT, R>(&mut self, port: impl Into<PORT>) -> Result<R, ArmError>
     where
         PORT: AccessPort,
         R: ApRegister<PORT>,

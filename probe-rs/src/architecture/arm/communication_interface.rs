@@ -1,9 +1,9 @@
 use super::{
     ap::{
-        valid_access_ports, AccessPort, AccessPortError, ApAccess, ApClass, BaseaddrFormat,
-        GenericAp, MemoryAp, BASE, BASE2, CFG, CSW, IDR,
+        valid_access_ports, AccessPort, ApAccess, ApClass, BaseaddrFormat, GenericAp, MemoryAp,
+        BASE, BASE2, CFG, CSW, IDR,
     },
-    dp::{Abort, Ctrl, DebugPortError, DebugPortVersion, DpAccess, Select, DPIDR},
+    dp::{Abort, Ctrl, DebugPortVersion, DpAccess, Select, DPIDR},
     memory::{
         adi_v5_memory_interface::{ADIMemoryInterface, ArmProbe},
         Component,
@@ -80,6 +80,9 @@ pub trait ArmProbeInterface: DapAccess + SwdSequence + SwoAccess + Send {
     fn ap_information(&mut self, access_port: GenericAp) -> Result<&ApInformation, ArmError>;
 
     /// Returns the number of access ports the debug port has.
+    ///
+    /// If the target device has multiple debug ports, this will switch the active debug port
+    /// if necessary. This will also  
     fn num_access_ports(&mut self, dp: DpAddress) -> Result<usize, ArmError>;
 
     /// Reads the chip info from the romtable of given debug port.
@@ -200,7 +203,7 @@ impl ApInformation {
     pub(crate) fn read_from_target<P>(
         probe: &mut P,
         access_port: GenericAp,
-    ) -> Result<Self, AccessPortError>
+    ) -> Result<Self, ArmError>
     where
         P: ApAccess,
     {
@@ -448,7 +451,7 @@ impl<'interface> ArmCommunicationInterface<Initialized> {
         }
     }
 
-    fn select_dp(&mut self, dp: DpAddress) -> Result<&mut DpState, DebugPortError> {
+    fn select_dp(&mut self, dp: DpAddress) -> Result<&mut DpState, ArmError> {
         if self.state.current_dp == Some(dp) {
             return Ok(self.state.dps.get_mut(&dp).unwrap());
         }
@@ -502,7 +505,7 @@ impl<'interface> ArmCommunicationInterface<Initialized> {
         &mut self,
         dp: DpAddress,
         dp_register_address: u8,
-    ) -> Result<(), DebugPortError> {
+    ) -> Result<(), ArmError> {
         let dp_state = self.select_dp(dp)?;
 
         // DP register addresses are 4 bank bits, 4 address bits. Lowest 2 address bits are
@@ -646,14 +649,18 @@ impl DapAccess for ArmCommunicationInterface<Initialized> {
         dp: DpAddress,
         address: u8,
         value: u32,
-    ) -> Result<(), DebugPortError> {
+    ) -> Result<(), ArmError> {
         self.select_dp_and_dp_bank(dp, address)?;
         self.probe
             .raw_write_register(PortType::DebugPort, address, value)?;
         Ok(())
     }
 
-    fn read_raw_ap_register(&mut self, ap: ApAddress, address: u8) -> Result<u32, ArmError> {
+    fn read_raw_ap_register(
+        &mut self,
+        ap: ApAddress,
+        address: u8,
+    ) -> std::result::Result<u32, ArmError> {
         self.select_ap_and_ap_bank(ap, address)?;
 
         let result = self
@@ -685,7 +692,9 @@ impl DapAccess for ArmCommunicationInterface<Initialized> {
         self.select_ap_and_ap_bank(ap, address)?;
 
         self.probe
-            .raw_write_register(PortType::AccessPort, address, value)
+            .raw_write_register(PortType::AccessPort, address, value)?;
+
+        Ok(())
     }
 
     fn write_raw_ap_register_repeated(

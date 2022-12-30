@@ -673,7 +673,7 @@ impl<'probe> MemoryInterface for Riscv32<'probe> {
 }
 
 #[derive(Debug)]
-/// Flags used to control the [`SpecificCoreState`] for RiscV architecture
+/// Flags used to control the [`SpecificCoreState`](crate::core::SpecificCoreState) for RiscV architecture
 pub struct RiscVState {
     /// A flag to remember whether we want to use hw_breakpoints during stepping of the core.
     hw_breakpoints_enabled: bool,

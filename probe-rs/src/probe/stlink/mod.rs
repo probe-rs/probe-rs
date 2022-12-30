@@ -4,7 +4,6 @@ mod usb_interface;
 
 use self::usb_interface::{StLinkUsb, StLinkUsbDevice};
 use super::{DebugProbe, DebugProbeError, ProbeCreationError, WireProtocol};
-use crate::architecture::arm::dp::DebugPortError;
 use crate::architecture::arm::memory::adi_v5_memory_interface::ArmProbe;
 use crate::architecture::arm::{valid_32bit_arm_address, ArmError};
 use crate::{
@@ -1167,7 +1166,7 @@ impl StlinkArmDebug {
         for ap in valid_access_ports(&mut interface, DpAddress::Default) {
             let ap_state = match ApInformation::read_from_target(&mut interface, ap) {
                 Ok(state) => state,
-                Err(e) => return Err((interface.probe, e)),
+                Err(err) => return Err((interface.probe, err)),
             };
 
             tracing::debug!("AP {:#x?}: {:?}", ap.ap_address(), ap_state);
@@ -1180,7 +1179,7 @@ impl StlinkArmDebug {
 }
 
 impl DapAccess for StlinkArmDebug {
-    fn read_raw_dp_register(&mut self, dp: DpAddress, address: u8) -> Result<u32, DebugPortError> {
+    fn read_raw_dp_register(&mut self, dp: DpAddress, address: u8) -> Result<u32, ArmError> {
         if dp != DpAddress::Default {
             return Err(DebugProbeError::from(StlinkError::MultidropNotSupported).into());
         }
@@ -1193,7 +1192,7 @@ impl DapAccess for StlinkArmDebug {
         dp: DpAddress,
         address: u8,
         value: u32,
-    ) -> Result<(), DebugPortError> {
+    ) -> Result<(), ArmError> {
         if dp != DpAddress::Default {
             return Err(DebugProbeError::from(StlinkError::MultidropNotSupported).into());
         }
@@ -1268,9 +1267,7 @@ impl ArmProbeInterface for StlinkArmDebug {
         }
 
         for access_port in valid_access_ports(self, dp) {
-            let idr: IDR = self
-                .read_ap_register(access_port)
-                .map_err(|err| ArmError::from_access_port(err, access_port))?;
+            let idr: IDR = self.read_ap_register(access_port)?;
             tracing::debug!("{:#x?}", idr);
 
             if idr.CLASS == ApClass::MemAp {

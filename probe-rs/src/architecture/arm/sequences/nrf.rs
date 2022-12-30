@@ -44,7 +44,9 @@ fn unlock_core(
         .map_err(|MissingPermissions(desc)| ArmError::MissingPermissions(desc))?;
 
     arm_interface.write_raw_ap_register(ap_address, ERASEALL, 1)?;
+
     while arm_interface.read_raw_ap_register(ap_address, ERASEALLSTATUS)? != 0 {}
+
     Ok(())
 }
 

@@ -59,8 +59,8 @@
 //! # Ok::<(), Error>(())
 //! ```
 //!
-//! probe-rs is built around 5 main interfaces: the [Probe],
-//! [Target], [Session], [Memory] and [Core] strucs.
+//! probe-rs is built around 4 main interfaces: the [Probe],
+//! [Target], [Session]  and [Core] structs.
 
 #![recursion_limit = "256"]
 

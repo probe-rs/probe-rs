@@ -362,16 +362,20 @@ impl CSW {
     ///
     /// The PROT bits are set as follows:
     ///
-    /// HNONSEC[30]          = 1  - Should be One, if not supported.\
-    /// MasterType, bit [29] = 1  - Access as default AHB Master\
+    /// ```text
+    /// HNONSEC[30]          = 1  - Should be One, if not supported.
+    /// MasterType, bit [29] = 1  - Access as default AHB Master
     /// HPROT[4]             = 0  - Non-allocating access
+    /// ```
     ///
     /// The CACHE bits are set for the following AHB access:
     ///
-    /// HPROT[0] == 1   - data           access\
-    /// HPROT[1] == 1   - privileged     access\
-    /// HPROT[2] == 0   - non-cacheable  access\
+    /// ```text
+    /// HPROT[0] == 1   - data           access
+    /// HPROT[1] == 1   - privileged     access
+    /// HPROT[2] == 0   - non-cacheable  access
     /// HPROT[3] == 0   - non-bufferable access
+    /// ```
     pub fn new(data_size: DataSize) -> Self {
         CSW {
             DbgSwEnable: 0b1,

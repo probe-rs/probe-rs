@@ -115,7 +115,7 @@ pub trait SwoAccess {
 
     /// Read any available SWO data without waiting.
     ///
-    /// Returns a Vec<u8> of received SWO bytes since the last `read_swo()` call.
+    /// Returns a `Vec<u8>` of received SWO bytes since the last `read_swo()` call.
     /// If no data was available, returns an empty Vec.
     fn read_swo(&mut self) -> Result<Vec<u8>, ArmError> {
         self.read_swo_timeout(std::time::Duration::from_millis(10))

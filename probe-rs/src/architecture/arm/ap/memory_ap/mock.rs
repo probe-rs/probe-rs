@@ -1,13 +1,10 @@
-use anyhow::anyhow;
-
 use super::super::{ApAccess, Register};
 use super::{AddressIncrement, ApRegister, DataSize, CSW, DRW, TAR};
-use crate::architecture::arm::ap::AccessPortError;
 use crate::DebugProbeError;
 use crate::{
     architecture::arm::{
         ap::AccessPort,
-        dp::{DebugPortError, DpAccess, DpRegister},
+        dp::{DpAccess, DpRegister},
         ArmError, DpAddress,
     },
     CommunicationInterface,
@@ -59,7 +56,7 @@ impl ApAccess for MockMemoryAp {
     /// Mocks the read_register method of a AP.
     ///
     /// Returns an Error if any bad instructions or values are chosen.
-    fn read_ap_register<PORT, R>(&mut self, _port: impl Into<PORT>) -> Result<R, AccessPortError>
+    fn read_ap_register<PORT, R>(&mut self, _port: impl Into<PORT>) -> Result<R, ArmError>
     where
         PORT: AccessPort,
         R: ApRegister<PORT>,
@@ -103,7 +100,7 @@ impl ApAccess for MockMemoryAp {
                             1,
                         )
                     }
-                    _ => return Err(ArmError::temporary(anyhow!("MockMemoryAp: unknown width"))),
+                    _ => panic!("MockMemoryAp: unknown width"),
                 };
 
                 self.store.insert(DRW::ADDRESS, new_drw);
@@ -122,9 +119,7 @@ impl ApAccess for MockMemoryAp {
             }
             CSW::ADDRESS => Ok(R::try_from(self.store[&R::ADDRESS]).unwrap()),
             TAR::ADDRESS => Ok(R::try_from(self.store[&R::ADDRESS]).unwrap()),
-            _ => Err(ArmError::temporary(anyhow!(
-                "MockMemoryAp: unknown register"
-            ))),
+            _ => panic!("MockMemoryAp: unknown register"),
         }
     }
 
@@ -156,6 +151,7 @@ impl ApAccess for MockMemoryAp {
                     DataSize::U128 => 16,
                     DataSize::U64 => 8,
                     DataSize::U32 => 4,
+
                     DataSize::U16 => 2,
                     DataSize::U8 => 1,
                 };
@@ -183,7 +179,7 @@ impl ApAccess for MockMemoryAp {
                         self.memory[address as usize] = value as u8;
                         Ok(1)
                     }
-                    _ => return Err(ArmError::temporary(anyhow!("MockMemoryAp: unknown width"))),
+                    _ => panic!("MockMemoryAp: unknown width"),
                 }
                 .map(|offset| match csw.AddrInc {
                     AddressIncrement::Single => {
@@ -203,9 +199,7 @@ impl ApAccess for MockMemoryAp {
                 self.store.insert(TAR::ADDRESS, value);
                 Ok(())
             }
-            _ => Err(ArmError::temporary(anyhow!(
-                "MockMemoryAp: unknown register"
-            ))),
+            _ => panic!("MockMemoryAp: unknown register"),
         }
     }
 
@@ -231,7 +225,7 @@ impl ApAccess for MockMemoryAp {
         port: impl Into<PORT> + Clone,
         _register: R,
         values: &mut [u32],
-    ) -> Result<(), AccessPortError>
+    ) -> Result<(), ArmError>
     where
         PORT: AccessPort,
         R: ApRegister<PORT>,
@@ -246,7 +240,7 @@ impl ApAccess for MockMemoryAp {
 }
 
 impl DpAccess for MockMemoryAp {
-    fn read_dp_register<R: DpRegister>(&mut self, _dp: DpAddress) -> Result<R, DebugPortError> {
+    fn read_dp_register<R: DpRegister>(&mut self, _dp: DpAddress) -> Result<R, ArmError> {
         // Ignore for Tests
         Ok(0.try_into().unwrap())
     }
@@ -255,7 +249,7 @@ impl DpAccess for MockMemoryAp {
         &mut self,
         _dp: DpAddress,
         _register: R,
-    ) -> Result<(), DebugPortError> {
+    ) -> Result<(), ArmError> {
         Ok(())
     }
 }

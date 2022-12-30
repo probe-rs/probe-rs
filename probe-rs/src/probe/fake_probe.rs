@@ -6,6 +6,7 @@ use crate::{
         communication_interface::{
             ArmDebugState, Initialized, SwdSequence, Uninitialized, UninitializedArmProbe,
         },
+        dp::DebugPortError,
         memory::adi_v5_memory_interface::{ADIMemoryInterface, ArmProbe},
         sequences::ArmDebugSequence,
         ApAddress, ArmError, ArmProbeInterface, DapAccess, DpAddress, MemoryApInformation,
@@ -152,7 +153,10 @@ impl DebugProbe for FakeProbe {
 
 impl RawDapAccess for FakeProbe {
     fn select_dp(&mut self, _dp: DpAddress) -> Result<(), ArmError> {
-        Err(DebugProbeError::CommandNotSupportedByProbe("select_dp").into())
+        Err(DebugPortError::Unsupported(
+            "Fake debug probe does not support DP selection.".to_string(),
+        )
+        .into())
     }
 
     /// Reads the DAP register on the specified port and address

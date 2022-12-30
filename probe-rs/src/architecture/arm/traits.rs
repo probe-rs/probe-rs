@@ -1,6 +1,6 @@
 use crate::{DebugProbe, DebugProbeError};
 
-use super::{dp::DebugPortError, ArmError};
+use super::ArmError;
 
 /// The type of port we are using.
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
@@ -59,7 +59,13 @@ pub struct ApAddress {
 /// handle bank switching and AP selection.
 pub trait RawDapAccess {
     /// Select the debug port to operate on.
-    fn select_dp(&mut self, dp: DpAddress) -> Result<(), DebugPortError>;
+    ///
+    /// If the probe is connected to a system with multiple debug ports,
+    /// this will process all queued commands which haven't been executed yet.
+    ///
+    /// This means that returned errors can also come from these commands,
+    /// not only from changing debug port.
+    fn select_dp(&mut self, dp: DpAddress) -> Result<(), ArmError>;
 
     /// Read a DAP register.
     ///
@@ -154,18 +160,26 @@ pub trait DapAccess {
     ///
     /// Highest 4 bits of `addr` are interpreted as the bank number, implementations
     /// will do bank switching if necessary.
-    fn read_raw_dp_register(&mut self, dp: DpAddress, addr: u8) -> Result<u32, DebugPortError>;
+    ///
+    /// If the device uses multiple debug ports, this will switch the active debug port if necessary.
+    /// In case this happens, all queued operations will be performed, and returned errors can be from
+    /// these operations as well.
+    fn read_raw_dp_register(&mut self, dp: DpAddress, addr: u8) -> Result<u32, ArmError>;
 
     /// Write a Debug Port register.
     ///
     /// Highest 4 bits of `addr` are interpreted as the bank number, implementations
     /// will do bank switching if necessary.
+    ///
+    /// If the device uses multiple debug ports, this will switch the active debug port if necessary.
+    /// In case this happens, all queued operations will be performed, and returned errors can be from
+    /// these operations as well.
     fn write_raw_dp_register(
         &mut self,
         dp: DpAddress,
         addr: u8,
         value: u32,
-    ) -> Result<(), DebugPortError>;
+    ) -> Result<(), ArmError>;
 
     /// Read an Access Port register.
     ///

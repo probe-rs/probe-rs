@@ -490,7 +490,7 @@ pub trait ArmDebugSequence: Send + Sync {
         &self,
         interface: &mut ArmCommunicationInterface<Initialized>,
         dp: DpAddress,
-    ) -> Result<(), DebugPortError> {
+    ) -> Result<(), ArmError> {
         // Clear all errors.
         // CMSIS says this is only necessary to do inside the `if powered_down`, but
         // without it here, nRF52840 faults in the next access.
@@ -524,7 +524,7 @@ pub trait ArmDebugSequence: Send + Sync {
             }
 
             if timeout {
-                return Err(DebugPortError::Timeout);
+                return Err(ArmError::Timeout);
             }
 
             // TODO: Handle JTAG Specific part
@@ -636,7 +636,7 @@ pub trait ArmDebugSequence: Send + Sync {
     /// trace funnels, to route trace data to the specified trace sink.
     ///
     /// This is based on the `TraceStart` function from the [ARM SVD Debug Description].
-    /// [ARM SVD Debug Description]: http://www.keil.com/pack/doc/cmsis/Pack/html/debug_description.html#resetCatchClear
+    /// [ARM SVD Debug Description]: <http://www.keil.com/pack/doc/cmsis/Pack/html/debug_description.html#resetCatchClear>
     fn trace_start(
         &self,
         interface: &mut dyn ArmProbeInterface,

@@ -115,7 +115,7 @@ impl ArmError {
         }
     }
 
-    /// Constructs a [`AccessPortError::MemoryNotAligned`] from the address and the required alignment.
+    /// Constructs a [`ArmError::MemoryNotAligned`] from the address and the required alignment.
     pub fn alignment_error(address: u64, alignment: usize) -> Self {
         ArmError::MemoryNotAligned { address, alignment }
     }

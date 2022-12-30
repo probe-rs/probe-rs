@@ -43,7 +43,7 @@ use commands::{
     CmsisDapDevice, Status,
 };
 
-use std::time::Duration;
+use std::{result::Result, time::Duration};
 
 pub struct CmsisDap {
     pub device: CmsisDapDevice,

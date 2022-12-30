@@ -76,7 +76,7 @@ impl RegisterDescription {
     }
 
     /// Get the width to format this register as a hex string
-    /// Assumes a format string like {:#0<width>x}
+    /// Assumes a format string like `{:#0<width>x}`
     pub fn format_hex_width(&self) -> usize {
         (self.size_in_bytes() * 2) + 2
     }
@@ -885,7 +885,7 @@ impl<'probe> Core<'probe> {
     /// it can be [RegisterValue] to allow the caller to support arbitrary
     /// length registers.
     ///
-    /// To add support to convert to a custom type implement [TryInto<CustomType>]
+    /// To add support to convert to a custom type implement [`TryInto<CustomType>`]
     /// for [RegisterValue]].
     ///
     /// # Errors
