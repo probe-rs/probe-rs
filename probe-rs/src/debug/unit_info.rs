@@ -554,9 +554,10 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
             {
                 program_counter.try_into()?
             } else {
-                return Err(DebugError::Other(anyhow::anyhow!(
-                    "Cannot unwind `Variable` without a valid PC (program_counter)"
-                )));
+                return Err(DebugError::UnwindIncompleteResults {
+                    message: "Cannot unwind `Variable` without a valid PC (program_counter)"
+                        .to_string(),
+                });
             };
 
             tracing::trace!("process_tree for parent {}", parent_variable.variable_key);
@@ -599,7 +600,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                             VariableName::Namespace(name) => {
                                             VariableName::Namespace(format!("{}::{}", name, extract_name(self.debug_info, attr.value())))
                                             }
-                                            other => return Err(DebugError::Other(anyhow::anyhow!("Unable to construct namespace variable, unexpected parent name: {:?}", other)))
+                                            other => return Err(DebugError::UnwindIncompleteResults {message: format!("Unable to construct namespace variable, unexpected parent name: {:?}", other)})
                                         }
 
                                     } else { VariableName::AnonymousNamespace};
@@ -888,9 +889,10 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                 );
 
                                 if has_overflowed {
-                                    return Err(DebugError::Other(anyhow::anyhow!(
-                                        "Overflow calculating variable address"
-                                    )));
+                                    return Err(DebugError::UnwindIncompleteResults {
+                                        message: "Overflow calculating variable address"
+                                            .to_string(),
+                                    });
                                 } else {
                                     child_variable.memory_location =
                                         VariableLocation::Address(location);
@@ -989,9 +991,10 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                 );
 
                                 if has_overflowed {
-                                    return Err(DebugError::Other(anyhow::anyhow!(
-                                        "Overflow calculating variable address"
-                                    )));
+                                    return Err(DebugError::UnwindIncompleteResults {
+                                        message: "Overflow calculating variable address"
+                                            .to_string(),
+                                    });
                                 } else {
                                     child_variable.memory_location =
                                         VariableLocation::Address(location);
@@ -1237,9 +1240,10 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                 );
 
                                 if has_overflowed {
-                                    return Err(DebugError::Other(anyhow::anyhow!(
-                                        "Overflow calculating variable address"
-                                    )));
+                                    return Err(DebugError::UnwindIncompleteResults {
+                                        message: "Overflow calculating variable address"
+                                            .to_string(),
+                                    });
                                 } else {
                                     child_variable.memory_location =
                                         VariableLocation::Address(location);
@@ -1369,7 +1373,16 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                 | gimli::DW_AT_data_member_location
                 | gimli::DW_AT_frame_base => match attr.value() {
                     gimli::AttributeValue::Exprloc(expression) => {
-                        return self.evaluate_expression(core, expression, stack_frame_registers, frame_base);
+                        return match self.evaluate_expression(core, expression, stack_frame_registers, frame_base) {
+                            Ok(result) => Ok(result),
+                            Err(error) => {
+                                if matches!(error, DebugError::UnwindIncompleteResults { message: _ }) {
+                                    Ok(ExpressionResult::Location(VariableLocation::Unavailable))
+                                } else {
+                                    Err(error)
+                                }
+                            },
+                        };
                     }
                     gimli::AttributeValue::Udata(offset_from_parent) => match parent_location {
                         VariableLocation::Address(address) => {
@@ -1412,12 +1425,21 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                         }
                                     }
                                     if let Some(valid_expression) = expression {
-                                        return self.evaluate_expression(
+                                        return match self.evaluate_expression(
                                             core,
                                             valid_expression,
                                             stack_frame_registers,
                                             frame_base,
-                                        );
+                                        ) {
+                                            Ok(result) => Ok(result),
+                                            Err(error) => {
+                                                if matches!(error, DebugError::UnwindIncompleteResults { message: _ }) {
+                                                    Ok(ExpressionResult::Location(VariableLocation::Unavailable))
+                                                } else {
+                                                    Err(error)
+                                                }
+                                            },
+                                        };
                                     } else {
                                         return Ok(ExpressionResult::Location(
                                             VariableLocation::Unavailable,
@@ -1592,7 +1614,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                     let mut buff = vec![0u8; size as usize];
                     if let Some(core) = core.as_mut() {
                         core.read(address, &mut buff).map_err(|_| {
-                        DebugError::Other(anyhow::anyhow!("Unexpected error while reading debug expressions from target memory. Please report this as a bug."))
+                        DebugError::UnwindIncompleteResults {message: "Unexpected error while reading debug expressions from target memory. Please report this as a bug.".to_string()}
                     })?;
                         match size {
                             1 => evaluation.resume_with_memory(gimli::Value::U8(buff[0]))?,
@@ -1608,32 +1630,34 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                 evaluation.resume_with_memory(gimli::Value::U32(val))?
                             }
                             x => {
-                                todo!(
-                                    "Requested memory with size {}, which is not supported yet.",
+                                return Err(DebugError::UnwindIncompleteResults {
+                            message: format!("Unimplemented: Requested memory with size {}, which is not supported yet.",
                                     x
-                                );
+                                )});
                             }
                         }
                     } else {
-                        return Err(DebugError::Other(anyhow::anyhow!(
-                            "Cannot unwind `Variable` location without a valid reference to the core."
-                        )));
+                        return Err(DebugError::UnwindIncompleteResults {
+                            message: "Cannot unwind `Variable` location without a valid reference to the core.".to_string()
+                    });
                     }
                 }
                 RequiresFrameBase => {
                     let frame_base = if let Some(frame_base) = frame_base {
                         frame_base
                     } else {
-                        return Err(DebugError::Other(anyhow::anyhow!("Cannot unwind `Variable` location without a valid frame base address.)")));
+                        return Err(DebugError::UnwindIncompleteResults {message: "Cannot unwind `Variable` location without a valid frame base address.)".to_string()});
                     };
 
                     match evaluation.resume_with_frame_base(frame_base) {
                         Ok(evaluation_result) => evaluation_result,
                         Err(error) => {
-                            return Err(DebugError::Other(anyhow::anyhow!(
-                                "Error while calculating `Variable::memory_location`:{}.",
-                                error
-                            )))
+                            return Err(DebugError::UnwindIncompleteResults {
+                                message: format!(
+                                    "Error while calculating `Variable::memory_location`:{}.",
+                                    error
+                                ),
+                            })
                         }
                     }
                 }
@@ -1647,18 +1671,18 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                     {
                         Some(raw_value) => {
                             if base_type != gimli::UnitOffset(0) {
-                                return Err(DebugError::Other(anyhow::anyhow!(
-                                    "Unimplemented: Support for type {:?} in `RequiresRegister` request is not yet implemented.",
+                                return Err(DebugError::UnwindIncompleteResults {
+                                    message: format!("Unimplemented: Support for type {:?} in `RequiresRegister` request is not yet implemented.",
                                     base_type
-                                )));
+                                )});
                             }
                             raw_value
                         }
                         None => {
-                            return Err(DebugError::Other(anyhow::anyhow!(
-                                    "Error while calculating `Variable::memory_location`. No value for register #:{}.",
+                            return Err(DebugError::UnwindIncompleteResults {
+                                    message: format!("Error while calculating `Variable::memory_location`. No value for register #:{}.",
                                     register.0
-                                )));
+                                )});
                         }
                     };
 
@@ -1669,10 +1693,10 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                     evaluation.resume_with_relocated_address(address_index)?
                 }
                 unimplemented_expression => {
-                    return Err(DebugError::Other(anyhow::anyhow!(
-                        "Unimplemented: Expressions that include {:?} are not currently supported.",
+                    return Err(DebugError::UnwindIncompleteResults {
+                        message: format!("Unimplemented: Expressions that include {:?} are not currently supported.",
                         unimplemented_expression
-                    )));
+                    )});
                 }
             }
         }
