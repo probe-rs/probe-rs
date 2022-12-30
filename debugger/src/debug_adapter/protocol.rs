@@ -52,7 +52,7 @@ impl<R: Read, W: Write> DapAdapter<R, W> {
             input: BufReader::new(reader),
             output: writer,
             seq: 1,
-            console_log_level: ConsoleLog::Warn,
+            console_log_level: ConsoleLog::Console,
             pending_requests: HashMap::new(),
         }
     }
@@ -143,14 +143,14 @@ impl<R: Read, W: Write> DapAdapter<R, W> {
 
                 // This is the SUCCESS request for new requests from the client.
                 match self.console_log_level {
-                    ConsoleLog::Error => {}
-                    ConsoleLog::Info | ConsoleLog::Warn => {
+                    ConsoleLog::Console => {}
+                    ConsoleLog::Info => {
                         self.log_to_console(format!(
                             "\nReceived DAP Request sequence #{} : {}",
                             request.seq, request.command
                         ));
                     }
-                    ConsoleLog::Debug | ConsoleLog::Trace => {
+                    ConsoleLog::Debug => {
                         self.log_to_console(format!("\nReceived DAP Request: {:#?}", request));
                     }
                 }
@@ -239,11 +239,11 @@ impl<R: Read, W: Write> ProtocolAdapter for DapAdapter<R, W> {
         if new_event.event != "output" {
             // This would result in an endless loop.
             match self.console_log_level {
-                ConsoleLog::Error => {}
-                ConsoleLog::Info | ConsoleLog::Warn => {
+                ConsoleLog::Console => {}
+                ConsoleLog::Info => {
                     self.log_to_console(format!("\nTriggered DAP Event: {}", new_event.event));
                 }
-                ConsoleLog::Debug | ConsoleLog::Trace => {
+                ConsoleLog::Debug => {
                     self.log_to_console(format!("INFO: Triggered DAP Event: {:#?}", new_event));
                 }
             }
@@ -365,14 +365,14 @@ impl<R: Read, W: Write> ProtocolAdapter for DapAdapter<R, W> {
             );
         } else {
             match self.console_log_level {
-                ConsoleLog::Error => {}
-                ConsoleLog::Info | ConsoleLog::Warn => {
+                ConsoleLog::Console => {}
+                ConsoleLog::Info => {
                     self.log_to_console(format!(
                         "   Sent DAP Response sequence #{} : {}",
                         resp.seq, resp.command
                     ));
                 }
-                ConsoleLog::Debug | ConsoleLog::Trace => {
+                ConsoleLog::Debug => {
                     self.log_to_console(format!("\nSent DAP Response: {:#?}", resp));
                 }
             }
@@ -434,6 +434,7 @@ mod test {
         let mut output = Vec::new();
 
         let mut adapter = DapAdapter::new(input.as_bytes(), &mut output);
+        adapter.console_log_level = super::ConsoleLog::Info;
 
         let request = adapter.listen_for_request().unwrap().unwrap();
 
@@ -454,6 +455,7 @@ mod test {
         let mut output = Vec::new();
 
         let mut adapter = DapAdapter::new(input.as_bytes(), &mut output);
+        adapter.console_log_level = super::ConsoleLog::Info;
 
         let _request = adapter.listen_for_request().unwrap_err();
 
@@ -471,6 +473,7 @@ mod test {
         let mut output = Vec::new();
 
         let mut adapter = DapAdapter::new(input.as_bytes(), &mut output);
+        adapter.console_log_level = super::ConsoleLog::Info;
 
         let _request = adapter.listen_for_request().unwrap_err();
 
@@ -491,6 +494,7 @@ mod test {
         let mut output = Vec::new();
 
         let mut adapter = DapAdapter::new(input, &mut output);
+        adapter.console_log_level = super::ConsoleLog::Info;
 
         let request = adapter.listen_for_request().unwrap();
 

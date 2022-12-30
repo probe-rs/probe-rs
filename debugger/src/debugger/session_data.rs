@@ -212,7 +212,6 @@ impl SessionData {
     /// - We check for RTT only when the core has an RTT connection configured, and one of the following is true:
     ///   - While the core is NOT halted, because core processing can generate new data at any time.
     ///   - The first time we have entered halted status, to ensure the buffers are drained. After that, for as long as we remain in halted state, we don't need to check RTT again.
-
     /// Return a Vec of [`CoreStatus`] (one entry per core) after this process has completed.
     pub(crate) fn poll_cores<P: ProtocolAdapter>(
         &mut self,
