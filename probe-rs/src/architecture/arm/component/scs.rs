@@ -6,7 +6,7 @@ use self::register::CPUID;
 
 use super::super::memory::romtable::CoresightComponent;
 use super::DebugRegister;
-use crate::architecture::arm::{ArmProbeInterface, ArmError};
+use crate::architecture::arm::{ArmError, ArmProbeInterface};
 
 /// An interface to control the SCS (System Control Space) of a MCU.
 pub struct Scs<'a> {
