@@ -1,3 +1,4 @@
+use crate::architecture::arm::component::get_arm_components;
 use crate::architecture::arm::sequences::{ArmDebugSequence, DefaultArmSequence};
 use crate::architecture::arm::{ApAddress, ArmError, DpAddress};
 use crate::architecture::riscv::communication_interface::RiscvError;
@@ -6,18 +7,14 @@ use crate::core::{Architecture, CoreState, SpecificCoreState};
 use crate::{
     architecture::{
         arm::{
-            ap::{GenericAp, MemoryAp},
-            communication_interface::{ArmProbeInterface, MemoryApInformation},
-            component::TraceSink,
-            memory::{Component, CoresightComponent},
-            ApInformation, SwoReader,
+            ap::MemoryAp, communication_interface::ArmProbeInterface, component::TraceSink,
+            memory::CoresightComponent, SwoReader,
         },
         riscv::communication_interface::RiscvCommunicationInterface,
     },
     config::DebugSequence,
 };
 use crate::{AttachMethod, Core, CoreType, Error, FakeProbe, Probe};
-use anyhow::anyhow;
 use std::ops::DerefMut;
 use std::{fmt, sync::Arc, time::Duration};
 
@@ -419,7 +416,7 @@ impl Session {
             }
 
             TraceSink::TraceMemory => {
-                let components = self.get_arm_components()?;
+                let components = self.get_arm_components(DpAddress::Default)?;
                 let interface = self.get_arm_interface()?;
                 crate::architecture::arm::component::read_trace_memory(interface, &components)
             }
@@ -577,54 +574,13 @@ impl Session {
     ///
     /// This will recursively parse the Romtable of the attached target
     /// and create a list of all the contained components.
-    pub fn get_arm_components(&mut self) -> Result<Vec<CoresightComponent>, ArmError> {
+    pub fn get_arm_components(
+        &mut self,
+        dp: DpAddress,
+    ) -> Result<Vec<CoresightComponent>, ArmError> {
         let interface = self.get_arm_interface()?;
 
-        let mut components = Vec::new();
-
-        // TODO
-        let dp = DpAddress::Default;
-
-        for ap_index in 0..(interface.num_access_ports(dp)? as u8) {
-            let ap_information = interface
-                .ap_information(GenericAp::new(ApAddress { dp, ap: ap_index }))?
-                .clone();
-
-            let component = match ap_information {
-                ApInformation::MemoryAp(MemoryApInformation {
-                    debug_base_address: 0,
-                    ..
-                }) => Err(Error::Other(anyhow!("AP has a base address of 0"))),
-                ApInformation::MemoryAp(MemoryApInformation {
-                    address,
-                    debug_base_address,
-                    ..
-                }) => {
-                    let ap = MemoryAp::new(address);
-                    let mut memory = interface.memory_interface(ap)?;
-                    let component = Component::try_parse(&mut *memory, debug_base_address)?;
-                    Ok(CoresightComponent::new(component, ap))
-                }
-                ApInformation::Other { address, .. } => {
-                    // Return an error, only possible to get Component from MemoryAP
-                    Err(Error::Other(anyhow!(
-                        "AP {:#x?} is not a MemoryAP, unable to get ARM component.",
-                        address
-                    )))
-                }
-            };
-
-            match component {
-                Ok(component) => {
-                    components.push(component);
-                }
-                Err(e) => {
-                    tracing::info!("Not counting AP {} because of: {}", ap_index, e);
-                }
-            }
-        }
-
-        Ok(components)
+        get_arm_components(interface, dp)
     }
 
     /// Get the target description of the connected target.
@@ -651,7 +607,7 @@ impl Session {
             }
         };
 
-        let components = self.get_arm_components()?;
+        let components = self.get_arm_components(DpAddress::Default)?;
         let interface = self.get_arm_interface()?;
 
         // Configure SWO on the probe when the trace sink is configured for a serial output. Note
@@ -682,7 +638,7 @@ impl Session {
 
     /// Begin tracing a memory address over SWV.
     pub fn add_swv_data_trace(&mut self, unit: usize, address: u32) -> Result<(), ArmError> {
-        let components = self.get_arm_components()?;
+        let components = self.get_arm_components(DpAddress::Default)?;
         let interface = self.get_arm_interface()?;
         crate::architecture::arm::component::add_swv_data_trace(
             interface,
@@ -694,7 +650,7 @@ impl Session {
 
     /// Stop tracing from a given SWV unit
     pub fn remove_swv_data_trace(&mut self, unit: usize) -> Result<(), ArmError> {
-        let components = self.get_arm_components()?;
+        let components = self.get_arm_components(DpAddress::Default)?;
         let interface = self.get_arm_interface()?;
         crate::architecture::arm::component::remove_swv_data_trace(interface, &components, unit)
     }

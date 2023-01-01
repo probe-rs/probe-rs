@@ -28,6 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added support for the Infineon XMC4000 family
 - Added support for the Infineon XMC4000 family (#1301)
 - Added debug support for viewing function arguments (#1333)
+- Added support for the EFM32GG11B family (#1346)
 
 ### Changed
 
@@ -51,6 +52,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Replace FTDI probe command creation with `ftdi-mpsse` library functions/enums (#1302)
 - Improved formatting of `probe-rs-cli info` output. (#1305)
 - Refactor FTDI probe impl to use all JtagCommand logic (#1307)
+- Refactor VSCode handling of logging and user messaging - see [VSCode PR #37](https://github.com/probe-rs/vscode/pull/37) (#1334)
 
 ### Fixed
 
@@ -79,6 +81,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fix: Timeout during flashing when using connect under reset - regression from #1259. (#1286)
 - Fix: Validate RiscV CSR addresses to avoid unnecessary panics. (#1291)
 - Debugger: Fix unpredictable behaviour when breaking on, or stepping over macros. (#1230)
+- Fix: Extend fix for WFI instructions (#1177) to STM32F1
+- Debugger: RTT data from target is now polled/reported in a timely manner, during stepping, and after breakpoint halting. (#1341)
 
 ## [0.13.0]
 

@@ -119,11 +119,12 @@ impl Target {
         } else if chip.name.starts_with("STM32H7") {
             tracing::warn!("Using custom sequence for STM32H7");
             debug_sequence = DebugSequence::Arm(Stm32h7::create());
-        } else if chip.name.starts_with("STM32F2")
+        } else if chip.name.starts_with("STM32F1")
+            || chip.name.starts_with("STM32F2")
             || chip.name.starts_with("STM32F4")
             || chip.name.starts_with("STM32F7")
         {
-            tracing::warn!("Using custom sequence for STM32F2/4/7");
+            tracing::warn!("Using custom sequence for STM32F1/2/4/7");
             debug_sequence = DebugSequence::Arm(Stm32fSeries::create());
         } else if chip.name.starts_with("ATSAMD5") || chip.name.starts_with("ATSAME5") {
             tracing::warn!("Using custom sequence for {}", chip.name);
