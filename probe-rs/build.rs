@@ -22,7 +22,7 @@ fn main() {
     visit_dirs(Path::new("targets"), &mut files).unwrap();
 
     // Check if there are any additional targets to generate for
-    match env::var("PROBE_RS_ADDITIONAL_TARGETS_DIR") {
+    match env::var("PROBE_RS_TARGETS_DIR") {
         Ok(additional_target_dir) => {
             visit_dirs(Path::new(&additional_target_dir), &mut files).unwrap();
         }
