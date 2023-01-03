@@ -6,8 +6,9 @@ use probe_rs::{
         arm::{
             ap::{GenericAp, MemoryAp},
             armv6m::Demcr,
+            component::Scs,
             dp::{DPIDR, TARGETID},
-            memory::Component,
+            memory::{Component, CoresightComponent, PeripheralType},
             sequences::DefaultArmSequence,
             ApAddress, ApInformation, ArmProbeInterface, DpAddress, MemoryApInformation, Register,
         },
@@ -30,6 +31,7 @@ pub(crate) fn show_info_of_device(common: &ProbeOptions) -> Result<()> {
     };
 
     for protocol in protocols {
+        println!("Probing target via {}", protocol);
         let (new_probe, result) = try_show_info(probe, protocol, common.connect_under_reset);
 
         probe = new_probe;
@@ -37,10 +39,9 @@ pub(crate) fn show_info_of_device(common: &ProbeOptions) -> Result<()> {
         probe.detach()?;
 
         if let Err(e) = result {
-            log::warn!(
+            println!(
                 "Error identifying target using protocol {}: {}",
-                protocol,
-                e
+                protocol, e
             );
         }
     }
@@ -91,7 +92,7 @@ fn try_show_info(
         );
     }
 
-    if probe.has_riscv_interface() {
+    if probe.has_riscv_interface() && protocol == WireProtocol::Jtag {
         match probe.try_into_riscv_interface() {
             Ok(mut interface) => {
                 if let Err(e) = show_riscv_info(&mut interface) {
@@ -111,6 +112,10 @@ fn try_show_info(
                 probe = interface_probe;
             }
         }
+    } else {
+        println!(
+            "No JTAG interface was found on the connected probe. Thus, RISC-V info cannot be printed."
+        );
     }
 
     (probe, Ok(()))
@@ -232,25 +237,32 @@ fn handle_memory_ap(
     base_address: u64,
     interface: &mut dyn ArmProbeInterface,
 ) -> Result<Tree<String>, anyhow::Error> {
-    let mut memory = interface.memory_interface(access_port)?;
-    let mut demcr = Demcr(memory.read_word_32(Demcr::ADDRESS)?);
-    demcr.set_dwtena(true);
-    memory.write_word_32(Demcr::ADDRESS, demcr.into())?;
-    let component = Component::try_parse(&mut *memory, base_address)?;
-    let component_tree = coresight_component_tree(&component)?;
+    let component = {
+        let mut memory = interface.memory_interface(access_port)?;
+        let mut demcr = Demcr(memory.read_word_32(Demcr::ADDRESS)?);
+        demcr.set_dwtena(true);
+        memory.write_word_32(Demcr::ADDRESS, demcr.into())?;
+        Component::try_parse(&mut *memory, base_address)?
+    };
+    let component_tree = coresight_component_tree(interface, component, access_port)?;
+
     Ok(component_tree)
 }
 
-fn coresight_component_tree(component: &Component) -> Result<Tree<String>> {
-    let tree = match component {
+fn coresight_component_tree(
+    interface: &mut dyn ArmProbeInterface,
+    component: Component,
+    access_port: MemoryAp,
+) -> Result<Tree<String>> {
+    let tree = match &component {
         Component::GenericVerificationComponent(_) => Tree::new("Generic".to_string()),
         Component::Class1RomTable(_, table) => {
             let mut rom_table = Tree::new("ROM Table (Class 1)".to_string());
 
             for entry in table.entries() {
-                let component = entry.component();
+                let component = entry.component().clone();
 
-                rom_table.push(coresight_component_tree(component)?);
+                rom_table.push(coresight_component_tree(interface, component, access_port)?);
             }
 
             rom_table
@@ -259,7 +271,7 @@ fn coresight_component_tree(component: &Component) -> Result<Tree<String>> {
             let peripheral_id = id.peripheral_id();
 
             let component_description = if let Some(part_info) = peripheral_id.determine_part() {
-                format!("{}  (Coresight Component)", part_info.name())
+                format!("{: <15} (Coresight Component)", part_info.name())
             } else {
                 format!(
                     "Coresight Component, Part: {:#06x}, Devtype: {:#04x}, Archid: {:#06x}, Designer: {}",
@@ -281,18 +293,48 @@ fn coresight_component_tree(component: &Component) -> Result<Tree<String>> {
             let peripheral_id = id.peripheral_id();
 
             let desc = if let Some(part_desc) = peripheral_id.determine_part() {
-                format!("{} (Generic IP component)", part_desc.name())
+                format!("{: <15} (Generic IP component)", part_desc.name())
             } else {
                 "Generic IP component".to_string()
             };
 
-            Tree::new(desc)
+            let mut tree = Tree::new(desc);
+
+            if peripheral_id.is_of_type(PeripheralType::Scs) {
+                let cc = &CoresightComponent::new(component, access_port);
+                let scs = &mut Scs::new(interface, cc);
+                let cpu_tree = cpu_info_tree(scs)?;
+
+                tree.push(cpu_tree);
+            }
+
+            tree
         }
 
         Component::CoreLinkOrPrimeCellOrSystemComponent(_) => {
             Tree::new("Core Link / Prime Cell / System component".to_string())
         }
     };
+
+    Ok(tree)
+}
+
+fn cpu_info_tree(scs: &mut Scs) -> Result<Tree<String>> {
+    let mut tree = Tree::new("CPUID".into());
+
+    let cpuid = scs.cpuid()?;
+
+    let implementer = cpuid.implementer();
+    let implementer = if implementer == 0x41 {
+        "ARM Ltd".into()
+    } else {
+        implementer.to_string()
+    };
+
+    tree.push(format!("IMPLEMENTER: {}", implementer));
+    tree.push(format!("VARIANT: {}", cpuid.variant()));
+    tree.push(format!("PARTNO: {}", cpuid.partno()));
+    tree.push(format!("REVISION: {}", cpuid.revision()));
 
     Ok(tree)
 }

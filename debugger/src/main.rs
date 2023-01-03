@@ -5,14 +5,19 @@ mod debug_adapter;
 mod debugger;
 mod peripherals;
 
-use anyhow::Result;
+use anyhow::{Context, Result};
+use chrono::Local;
 use clap::{crate_authors, crate_description, crate_name, crate_version, Parser};
 use debugger::debug_entry::{debug, list_connected_devices, list_supported_chips};
 use probe_rs::{
     architecture::arm::ap::AccessPortError, flashing::FileDownloadError, DebugProbeError, Error,
 };
-use std::io::stderr;
-use tracing_subscriber::EnvFilter;
+use std::{env::var, fs::File, io::stderr};
+use tracing::metadata::LevelFilter;
+use tracing_subscriber::{
+    fmt::format::FmtSpan, prelude::__tracing_subscriber_SubscriberExt, util::SubscriberInitExt,
+    EnvFilter, Layer,
+};
 
 #[derive(Debug, thiserror::Error)]
 pub enum DebuggerError {
@@ -85,20 +90,69 @@ enum CliCommands {
 }
 
 fn main() -> Result<()> {
-    tracing_subscriber::fmt::fmt()
-        .compact()
-        .with_ansi(false)
-        .without_time()
-        .with_env_filter(EnvFilter::from_default_env())
-        .with_writer(stderr)
-        .init();
+    let log_info_message = setup_logging()?;
 
     let matches = CliCommands::parse();
 
     match matches {
         CliCommands::List {} => list_connected_devices()?,
         CliCommands::ListChips {} => list_supported_chips()?,
-        CliCommands::Debug { port, vscode } => debug(port, vscode)?,
+        CliCommands::Debug { port, vscode } => debug(port, vscode, &log_info_message)?,
     }
     Ok(())
+}
+
+/// Setup logging, according to the following rules.
+/// 1. If the RUST_LOG environment variable is set, use it as a `LevelFilter` to configure a subscriber that logs to a file in the system's application data directory.
+/// 2. Irrespective of the RUST_LOG environment variable, configure a subscribe that will write with `LevelFilter::ERROR` to stderr, because these errors are picked up and reported to the user by the VSCode extension.
+fn setup_logging() -> Result<String, anyhow::Error> {
+    // We want to always log errors to stderr, but not to the log file.
+    let stderr_subscriber = tracing_subscriber::fmt::layer()
+        .compact()
+        .with_ansi(false)
+        .without_time()
+        .with_writer(stderr)
+        .with_filter(LevelFilter::ERROR);
+
+    match var("RUST_LOG") {
+        Ok(rust_log) => {
+            let project_dirs = directories::ProjectDirs::from("rs", "probe-rs", "probe-rs")
+                .context("Could not determine the application storage directory required for the log output files.")?;
+            let directory = project_dirs.data_dir();
+            let logname = sanitize_filename::sanitize_with_options(
+                format!("{}.log", Local::now().timestamp_millis()),
+                sanitize_filename::Options {
+                    replacement: "_",
+                    ..Default::default()
+                },
+            );
+            std::fs::create_dir_all(directory)
+                .context(format!("{directory:?} could not be created"))?;
+            let log_path = directory.join(logname);
+            let log_file = File::create(&log_path)?;
+            // The log file will respect the RUST_LOG environment variable as a filter.
+            let file_subscriber = tracing_subscriber::fmt::layer()
+                .json()
+                .with_file(true)
+                .with_line_number(true)
+                .with_span_events(FmtSpan::FULL)
+                .with_writer(log_file)
+                .with_filter(EnvFilter::from_default_env());
+            tracing_subscriber::registry()
+                .with(stderr_subscriber)
+                .with(file_subscriber)
+                .init();
+            Ok(format!(
+                "\"RUST_LOG={}\" output will be written to: {:?}",
+                rust_log,
+                log_path.to_string_lossy()
+            ))
+        }
+        Err(_) => {
+            tracing_subscriber::registry()
+                .with(stderr_subscriber)
+                .init();
+            Ok("No logging data will be written because the RUST_LOG environment variable is not set.".to_string())
+        }
+    }
 }

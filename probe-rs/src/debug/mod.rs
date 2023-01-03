@@ -75,6 +75,14 @@ pub enum DebugError {
         /// The value of the program counter for which a halt was requested.
         pc_at_error: u64,
     },
+    /// Non-terminal Errors encountered while unwinding the stack, e.g. Could not resolve the value of a variable in the stack.
+    /// These are distinct from other errors because they do not interrupt processing.
+    /// Instead, the cause of incomplete results are reported back/explained to the user, and the stack continues to unwind.
+    #[error("{message}")]
+    UnwindIncompleteResults {
+        /// A message that can be displayed to the user to help them understand the reason for the incomplete results.
+        message: String,
+    },
     /// Some other error occurred.
     #[error(transparent)]
     Other(#[from] anyhow::Error),

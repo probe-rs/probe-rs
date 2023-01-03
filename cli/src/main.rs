@@ -27,6 +27,7 @@ use probe_rs_cli_util::{
 use rustyline::Editor;
 
 use anyhow::{Context, Result};
+use tracing::metadata::LevelFilter;
 use tracing_subscriber::{
     fmt::format::FmtSpan, prelude::__tracing_subscriber_SubscriberExt, util::SubscriberInitExt,
     EnvFilter, Layer,
@@ -262,7 +263,11 @@ fn main() -> Result<()> {
     let stdout_subscriber = tracing_subscriber::fmt::layer()
         .compact()
         .without_time()
-        .with_filter(EnvFilter::from_default_env());
+        .with_filter(
+            EnvFilter::builder()
+                .with_default_directive(LevelFilter::OFF.into())
+                .from_env_lossy(),
+        );
 
     tracing_subscriber::registry()
         .with(stdout_subscriber)
@@ -347,6 +352,8 @@ fn main() -> Result<()> {
         Cli::Chip(Chip::Info { name }) => print_chip_info(name, io::stdout()),
         Cli::Benchmark { common, options } => benchmark(common, options),
     };
+
+    tracing::info!("Wrote log to {:?}", log_path);
 
     result
 }
