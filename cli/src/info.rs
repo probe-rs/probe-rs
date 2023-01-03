@@ -73,14 +73,21 @@ fn try_show_info(
     if probe.has_arm_interface() {
         match probe.try_into_arm_interface() {
             Ok(interface) => {
-                let mut interface = interface.initialize(DefaultArmSequence::create()).unwrap();
+                match interface.initialize(DefaultArmSequence::create()) {
+                    Ok(mut interface) => {
+                        if let Err(e) = show_arm_info(&mut *interface) {
+                            // Log error?
+                            log::warn!("Error showing ARM chip information: {}", e);
+                        }
 
-                if let Err(e) = show_arm_info(&mut *interface) {
-                    // Log error?
-                    log::warn!("Error showing ARM chip information: {}", e);
+                        probe = interface.close();
+                    }
+                    Err((interface, e)) => {
+                        log::warn!("Error showing ARM chip information: {}", e);
+
+                        probe = interface.close();
+                    }
                 }
-
-                probe = interface.close();
             }
             Err((interface_probe, _e)) => {
                 probe = interface_probe;

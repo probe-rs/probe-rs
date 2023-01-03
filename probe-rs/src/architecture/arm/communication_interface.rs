@@ -115,19 +115,25 @@ pub trait SwdSequence {
     ) -> Result<u32, ProbeRsError>;
 }
 
-pub trait UninitializedArmProbe: SwdSequence {
+pub trait UninitializedArmProbe: SwdSequence + Debug {
     fn initialize(
         self: Box<Self>,
         sequence: Arc<dyn ArmDebugSequence>,
-    ) -> Result<Box<dyn ArmProbeInterface>, ProbeRsError>;
+    ) -> Result<Box<dyn ArmProbeInterface>, (Box<dyn UninitializedArmProbe>, ProbeRsError)>;
 
-    fn initialize_unspecified(self: Box<Self>) -> Result<Box<dyn ArmProbeInterface>, ProbeRsError> {
+    fn initialize_unspecified(
+        self: Box<Self>,
+    ) -> Result<Box<dyn ArmProbeInterface>, (Box<dyn UninitializedArmProbe>, ProbeRsError)> {
         self.initialize(DefaultArmSequence::create())
     }
+
+    /// Closes the interface and returns back the generic probe it consumed.
+    fn close(self: Box<Self>) -> Probe;
 }
 
 pub trait ArmDebugState {}
 
+#[derive(Debug)]
 pub struct Uninitialized {
     /// Specify if overrun detect should be enabled when the probe is initialized.
     pub(crate) use_overrun_detect: bool,
@@ -384,7 +390,7 @@ impl ArmCommunicationInterface<Uninitialized> {
     fn into_initialized(
         self,
         sequence: Arc<dyn ArmDebugSequence>,
-    ) -> Result<ArmCommunicationInterface<Initialized>, (Self, DebugProbeError)> {
+    ) -> Result<ArmCommunicationInterface<Initialized>, (Box<Self>, DebugProbeError)> {
         let use_overrun_detect = self.state.use_overrun_detect;
 
         ArmCommunicationInterface::<Initialized>::from_uninitialized(
@@ -399,14 +405,23 @@ impl UninitializedArmProbe for ArmCommunicationInterface<Uninitialized> {
     fn initialize(
         mut self: Box<Self>,
         sequence: Arc<dyn ArmDebugSequence>,
-    ) -> Result<Box<dyn ArmProbeInterface>, ProbeRsError> {
+    ) -> Result<Box<dyn ArmProbeInterface>, (Box<dyn UninitializedArmProbe>, ProbeRsError)> {
         let setup_span = tracing::debug_span!("debug_port_setup").entered();
-        sequence.debug_port_setup(&mut *self.probe)?;
+        if let Err(e) = sequence.debug_port_setup(&mut *self.probe) {
+            return Err((self as Box<_>, e));
+        }
+
         drop(setup_span);
 
-        let interface = self.into_initialized(sequence).map_err(|(_s, err)| err)?;
+        let interface = self
+            .into_initialized(sequence)
+            .map_err(|(s, err)| (s as Box<_>, ProbeRsError::Probe(err)))?;
 
         Ok(Box::new(interface))
+    }
+
+    fn close(self: Box<Self>) -> Probe {
+        Probe::from_attached_probe(RawDapAccess::into_probe(self.probe))
     }
 }
 
@@ -423,7 +438,13 @@ impl<'interface> ArmCommunicationInterface<Initialized> {
         interface: ArmCommunicationInterface<Uninitialized>,
         sequence: Arc<dyn ArmDebugSequence>,
         use_overrun_detect: bool,
-    ) -> Result<Self, (ArmCommunicationInterface<Uninitialized>, DebugProbeError)> {
+    ) -> Result<
+        Self,
+        (
+            Box<ArmCommunicationInterface<Uninitialized>>,
+            DebugProbeError,
+        ),
+    > {
         let initialized_interface = ArmCommunicationInterface {
             probe: interface.probe,
             state: Initialized::new(sequence, use_overrun_detect),
