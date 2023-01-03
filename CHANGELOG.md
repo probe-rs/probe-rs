@@ -29,6 +29,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added support for the Infineon XMC4000 family (#1301)
 - Added debug support for viewing function arguments (#1333)
 - Added support for the EFM32GG11B family (#1346)
+- Added support for finding targets externally (#1338)
 
 ### Changed
 
