@@ -227,7 +227,7 @@ impl FakeArmInterface<Uninitialized> {
     fn into_initialized(
         self,
         sequence: Arc<dyn ArmDebugSequence>,
-    ) -> Result<FakeArmInterface<Initialized>, (Self, DebugProbeError)> {
+    ) -> Result<FakeArmInterface<Initialized>, (Box<Self>, DebugProbeError)> {
         Ok(FakeArmInterface::<Initialized>::from_uninitialized(
             self, sequence,
         ))
@@ -266,13 +266,19 @@ impl UninitializedArmProbe for FakeArmInterface<Uninitialized> {
     fn initialize(
         self: Box<Self>,
         sequence: Arc<dyn ArmDebugSequence>,
-    ) -> Result<Box<dyn ArmProbeInterface>, Error> {
+    ) -> Result<Box<dyn ArmProbeInterface>, (Box<dyn UninitializedArmProbe>, Error)> {
         // TODO: Do we need this?
         // sequence.debug_port_setup(&mut self.probe)?;
 
-        let interface = self.into_initialized(sequence).map_err(|(_s, err)| err)?;
+        let interface = self
+            .into_initialized(sequence)
+            .map_err(|(s, err)| (s as Box<_>, Error::Probe(err)))?;
 
         Ok(Box::new(interface))
+    }
+
+    fn close(self: Box<Self>) -> Probe {
+        Probe::from_attached_probe(self.probe)
     }
 }
 

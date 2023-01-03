@@ -16,7 +16,9 @@ fn main() -> Result<()> {
     probe.attach_to_unspecified()?;
     let iface = probe.try_into_arm_interface().unwrap();
 
-    let mut iface = iface.initialize(DefaultArmSequence::create())?;
+    let mut iface = iface
+        .initialize(DefaultArmSequence::create())
+        .map_err(|(_interface, e)| e)?;
 
     // This is an example on how to do a "recover" operation (erase+unlock a locked chip)
     // on an nRF52840 target.
