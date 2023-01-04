@@ -1,5 +1,5 @@
 [package]
-name = "library_project"
+name = "library_with_example_project"
 version = "0.1.0"
 authors = ["Dominik Boehi <dominik.boehi@gmail.com>"]
 edition = "2018"
