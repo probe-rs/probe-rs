@@ -175,7 +175,9 @@ impl Session {
 
                 let interface = probe.try_into_arm_interface().map_err(|(_, err)| err)?;
 
-                let mut interface = interface.initialize(sequence_handle.clone())?;
+                let mut interface = interface
+                    .initialize(sequence_handle.clone())
+                    .map_err(|(_interface, e)| e)?;
 
                 let unlock_span = tracing::debug_span!("debug_device_unlock").entered();
 
@@ -480,7 +482,9 @@ impl Session {
 
         let new_interface = probe.try_into_arm_interface().map_err(|(_, err)| err)?;
 
-        tmp_interface = new_interface.initialize(debug_sequence.clone())?;
+        tmp_interface = new_interface
+            .initialize(debug_sequence.clone())
+            .map_err(|(_interface, e)| e)?;
         // swap it back
         std::mem::swap(interface, &mut tmp_interface);
 
@@ -758,7 +762,9 @@ fn get_target_from_selector(
             if probe.has_arm_interface() {
                 match probe.try_into_arm_interface() {
                     Ok(interface) => {
-                        let mut interface = interface.initialize(DefaultArmSequence::create())?;
+                        let mut interface = interface
+                            .initialize(DefaultArmSequence::create())
+                            .map_err(|(_probe, err)| err)?;
 
                         // TODO:
                         let dp = DpAddress::Default;

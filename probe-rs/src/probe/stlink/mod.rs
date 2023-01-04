@@ -1111,6 +1111,7 @@ impl From<StlinkError> for ProbeCreationError {
     }
 }
 
+#[derive(Debug)]
 struct UninitializedStLink {
     probe: Box<StLink<StLinkUsbDevice>>,
 }
@@ -1119,10 +1120,15 @@ impl UninitializedArmProbe for UninitializedStLink {
     fn initialize(
         self: Box<Self>,
         _sequence: Arc<dyn ArmDebugSequence>,
-    ) -> Result<Box<dyn ArmProbeInterface>, ProbeRsError> {
-        let interface = StlinkArmDebug::new(self.probe).map_err(|(_s, e)| ProbeRsError::from(e))?;
+    ) -> Result<Box<dyn ArmProbeInterface>, (Box<dyn UninitializedArmProbe>, ProbeRsError)> {
+        let interface = StlinkArmDebug::new(self.probe)
+            .map_err(|(s, e)| (s as Box<_>, ProbeRsError::from(e)))?;
 
         Ok(Box::new(interface))
+    }
+
+    fn close(self: Box<Self>) -> Probe {
+        Probe::from_attached_probe(self.probe)
     }
 }
 
@@ -1154,7 +1160,7 @@ struct StlinkArmDebug {
 impl StlinkArmDebug {
     fn new(
         probe: Box<StLink<StLinkUsbDevice>>,
-    ) -> Result<Self, (Box<StLink<StLinkUsbDevice>>, ArmError)> {
+    ) -> Result<Self, (Box<UninitializedStLink>, ArmError)> {
         // Determine the number and type of available APs.
 
         let mut interface = Self {
@@ -1165,7 +1171,14 @@ impl StlinkArmDebug {
         for ap in valid_access_ports(&mut interface, DpAddress::Default) {
             let ap_state = match ApInformation::read_from_target(&mut interface, ap) {
                 Ok(state) => state,
-                Err(err) => return Err((interface.probe, err)),
+                Err(e) => {
+                    return Err((
+                        Box::new(UninitializedStLink {
+                            probe: interface.probe,
+                        }),
+                        e,
+                    ))
+                }
             };
 
             tracing::debug!("AP {:#x?}: {:?}", ap.ap_address(), ap_state);

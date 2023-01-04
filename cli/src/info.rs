@@ -73,14 +73,21 @@ fn try_show_info(
     if probe.has_arm_interface() {
         match probe.try_into_arm_interface() {
             Ok(interface) => {
-                let mut interface = interface.initialize(DefaultArmSequence::create()).unwrap();
+                match interface.initialize(DefaultArmSequence::create()) {
+                    Ok(mut interface) => {
+                        if let Err(e) = show_arm_info(&mut *interface) {
+                            // Log error?
+                            println!("Error showing ARM chip information: {}", e);
+                        }
 
-                if let Err(e) = show_arm_info(&mut *interface) {
-                    // Log error?
-                    log::warn!("Error showing ARM chip information: {}", e);
+                        probe = interface.close();
+                    }
+                    Err((interface, e)) => {
+                        println!("Error showing ARM chip information: {}", e);
+
+                        probe = interface.close();
+                    }
                 }
-
-                probe = interface.close();
             }
             Err((interface_probe, _e)) => {
                 probe = interface_probe;
@@ -92,30 +99,34 @@ fn try_show_info(
         );
     }
 
-    if probe.has_riscv_interface() && protocol == WireProtocol::Jtag {
-        match probe.try_into_riscv_interface() {
-            Ok(mut interface) => {
-                if let Err(e) = show_riscv_info(&mut interface) {
-                    log::warn!("Error showing RISCV chip information: {}", e);
+    if protocol == WireProtocol::Jtag {
+        if probe.has_riscv_interface() {
+            match probe.try_into_riscv_interface() {
+                Ok(mut interface) => {
+                    if let Err(e) = show_riscv_info(&mut interface) {
+                        log::warn!("Error showing RISCV chip information: {}", e);
+                    }
+
+                    probe = interface.close();
                 }
+                Err((interface_probe, e)) => {
+                    let mut source = Some(&e as &dyn Error);
 
-                probe = interface.close();
-            }
-            Err((interface_probe, e)) => {
-                let mut source = Some(&e as &dyn Error);
+                    while let Some(parent) = source {
+                        log::error!("Error: {}", parent);
+                        source = parent.source();
+                    }
 
-                while let Some(parent) = source {
-                    log::error!("Error: {}", parent);
-                    source = parent.source();
+                    probe = interface_probe;
                 }
-
-                probe = interface_probe;
             }
+        } else {
+            println!(
+            "Unable to debug RISC-V targets using the current probe. RISC-V specific information cannot be printed."
+        );
         }
     } else {
-        println!(
-            "No JTAG interface was found on the connected probe. Thus, RISC-V info cannot be printed."
-        );
+        tracing::info!("Debugging RISCV-Targets over SWD is not supported.");
     }
 
     (probe, Ok(()))

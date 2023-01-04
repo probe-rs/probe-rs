@@ -265,7 +265,7 @@ fn main() -> Result<()> {
         .without_time()
         .with_filter(
             EnvFilter::builder()
-                .with_default_directive(LevelFilter::OFF.into())
+                .with_default_directive(LevelFilter::ERROR.into())
                 .from_env_lossy(),
         );
 
