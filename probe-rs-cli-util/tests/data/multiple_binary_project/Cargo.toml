@@ -1,5 +1,5 @@
 [package]
-name = "binary_project"
+name = "multiple_binary_project"
 version = "0.1.0"
 authors = ["Dominik Boehi <dominik.boehi@gmail.com>"]
 edition = "2018"
