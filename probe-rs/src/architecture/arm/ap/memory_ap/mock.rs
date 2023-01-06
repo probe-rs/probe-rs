@@ -151,7 +151,6 @@ impl ApAccess for MockMemoryAp {
                     DataSize::U128 => 16,
                     DataSize::U64 => 8,
                     DataSize::U32 => 4,
-
                     DataSize::U16 => 2,
                     DataSize::U8 => 1,
                 };
