@@ -86,9 +86,9 @@ mod session;
 
 pub use crate::config::{CoreType, InstructionSet, Target};
 pub use crate::core::{
-    Architecture,  BreakpointCause, BreakpointId, Core, CoreInformation, CoreInterface,
-    CoreState, CoreStatus, HaltReason, MemoryMappedRegister, RegisterDescription, RegisterFile,
-    RegisterId, RegisterValue, SpecificCoreState,
+    Architecture, BreakpointCause, BreakpointId, Core, CoreInformation, CoreInterface, CoreState,
+    CoreStatus, HaltReason, MemoryMappedRegister, RegisterDescription, RegisterFile, RegisterId,
+    RegisterValue, SpecificCoreState,
 };
 pub use crate::error::Error;
 pub use crate::memory::MemoryInterface;
