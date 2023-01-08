@@ -1,9 +1,6 @@
-pub(crate) mod communication_interface;
-
 use crate::architecture::arm::memory::adi_v5_memory_interface::ArmProbe;
 use crate::architecture::riscv::RiscVState;
 use crate::{CoreType, InstructionSet};
-pub use communication_interface::CommunicationInterface;
 use num_traits::Zero;
 pub use probe_rs_target::{Architecture, CoreAccessOptions};
 
@@ -76,7 +73,7 @@ impl RegisterDescription {
     }
 
     /// Get the width to format this register as a hex string
-    /// Assumes a format string like {:#0<width>x}
+    /// Assumes a format string like `{:#0<width>x}`
     pub fn format_hex_width(&self) -> usize {
         (self.size_in_bytes() * 2) + 2
     }
@@ -885,7 +882,7 @@ impl<'probe> Core<'probe> {
     /// it can be [RegisterValue] to allow the caller to support arbitrary
     /// length registers.
     ///
-    /// To add support to convert to a custom type implement [TryInto<CustomType>]
+    /// To add support to convert to a custom type implement [`TryInto<CustomType>`]
     /// for [RegisterValue]].
     ///
     /// # Errors

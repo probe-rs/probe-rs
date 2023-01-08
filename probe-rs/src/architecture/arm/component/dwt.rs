@@ -10,7 +10,7 @@ use bitfield::bitfield;
 
 use super::super::memory::romtable::CoresightComponent;
 use super::DebugRegister;
-use crate::architecture::arm::ArmProbeInterface;
+use crate::architecture::arm::{ArmError, ArmProbeInterface};
 use crate::Error;
 
 /// A struct representing a DWT unit on target.
@@ -46,7 +46,7 @@ impl<'a> Dwt<'a> {
     }
 
     /// Enables the DWT component.
-    pub fn enable(&mut self) -> Result<(), Error> {
+    pub fn enable(&mut self) -> Result<(), ArmError> {
         let mut ctrl = Ctrl::load(self.component, self.interface)?;
         ctrl.set_synctap(0x01);
         ctrl.set_cyccntena(true);
@@ -54,7 +54,7 @@ impl<'a> Dwt<'a> {
     }
 
     /// Enables data tracing on a specific address in memory on a specific DWT unit.
-    pub fn enable_data_trace(&mut self, unit: usize, address: u32) -> Result<(), Error> {
+    pub fn enable_data_trace(&mut self, unit: usize, address: u32) -> Result<(), ArmError> {
         let mut comp = Comp::load_unit(self.component, self.interface, unit)?;
         comp.set_comp(address);
         comp.store_unit(self.component, self.interface, unit)?;
@@ -74,21 +74,21 @@ impl<'a> Dwt<'a> {
     }
 
     /// Disables data tracing on the given unit.
-    pub fn disable_data_trace(&mut self, unit: usize) -> Result<(), Error> {
+    pub fn disable_data_trace(&mut self, unit: usize) -> Result<(), ArmError> {
         let mut function = Function::load_unit(self.component, self.interface, unit)?;
         function.set_function(0x0);
         function.store_unit(self.component, self.interface, unit)
     }
 
     /// Enable exception tracing.
-    pub fn enable_exception_trace(&mut self) -> Result<(), Error> {
+    pub fn enable_exception_trace(&mut self) -> Result<(), ArmError> {
         let mut ctrl = Ctrl::load(self.component, self.interface)?;
         ctrl.set_exctrcena(true);
         ctrl.store(self.component, self.interface)
     }
 
     /// Disable exception tracing.
-    pub fn disable_exception_trace(&mut self) -> Result<(), Error> {
+    pub fn disable_exception_trace(&mut self) -> Result<(), ArmError> {
         let mut ctrl = Ctrl::load(self.component, self.interface)?;
         ctrl.set_exctrcena(false);
         ctrl.store(self.component, self.interface)

@@ -9,14 +9,13 @@ use std::{
 use crate::{
     architecture::arm::{
         ap::{AccessPort, ApAccess, GenericAp, MemoryAp, DRW, IDR, TAR},
-        communication_interface::Initialized,
+        communication_interface::{FlushableArmAccess, Initialized},
         core::armv7m::{Aircr, Demcr, Dhcsr},
         dp::{Abort, Ctrl, DpAccess, Select, DPIDR},
         memory::adi_v5_memory_interface::ArmProbe,
-        ApAddress, ArmCommunicationInterface, DapAccess, DpAddress,
+        ApAddress, ArmCommunicationInterface, ArmError, DapAccess, DpAddress,
     },
     core::MemoryMappedRegister,
-    CommunicationInterface, DebugProbeError,
 };
 
 use super::ArmDebugSequence;
@@ -30,7 +29,7 @@ fn debug_port_start(
     interface: &mut ArmCommunicationInterface<Initialized>,
     dp: DpAddress,
     select: Select,
-) -> Result<bool, DebugProbeError> {
+) -> Result<bool, ArmError> {
     interface.write_dp_register(dp, select)?;
 
     let ctrl = interface.read_dp_register::<Ctrl>(dp)?;
@@ -58,7 +57,7 @@ fn debug_port_start(
         }
 
         if timeout {
-            return Err(DebugProbeError::Timeout);
+            return Err(ArmError::Timeout);
         }
 
         // TODO: Handle JTAG Specific part
@@ -103,7 +102,7 @@ impl ArmDebugSequence for LPC55S69 {
         &self,
         interface: &mut ArmCommunicationInterface<Initialized>,
         dp: DpAddress,
-    ) -> Result<(), DebugProbeError> {
+    ) -> Result<(), ArmError> {
         tracing::info!("debug_port_start");
 
         let powered_down = self::debug_port_start(interface, dp, Select(0))?;
@@ -120,7 +119,7 @@ impl ArmDebugSequence for LPC55S69 {
         interface: &mut dyn ArmProbe,
         _core_type: crate::CoreType,
         _debug_base: Option<u64>,
-    ) -> Result<(), crate::Error> {
+    ) -> Result<(), ArmError> {
         let mut reset_vector = 0xffff_ffff;
         let mut demcr = Demcr(interface.read_word_32(Demcr::ADDRESS)?);
 
@@ -159,7 +158,7 @@ impl ArmDebugSequence for LPC55S69 {
 
         if timeout {
             tracing::warn!("Failed: Wait for flash word read to finish");
-            return Err(crate::Error::Probe(DebugProbeError::Timeout));
+            return Err(ArmError::Timeout);
         }
 
         if (interface.read_word_32(0x4003_4fe0)? & 0xB) == 0 {
@@ -197,7 +196,7 @@ impl ArmDebugSequence for LPC55S69 {
         interface: &mut dyn ArmProbe,
         _core_type: crate::CoreType,
         _debug_base: Option<u64>,
-    ) -> Result<(), crate::Error> {
+    ) -> Result<(), ArmError> {
         interface.write_word_32(0xE000_2008, 0x0)?;
         interface.write_word_32(0xE000_2000, 0x2)?;
 
@@ -213,7 +212,7 @@ impl ArmDebugSequence for LPC55S69 {
         interface: &mut dyn ArmProbe,
         _core_type: crate::CoreType,
         _debug_base: Option<u64>,
-    ) -> Result<(), crate::Error> {
+    ) -> Result<(), ArmError> {
         let mut aircr = Aircr(0);
         aircr.vectkey();
         aircr.set_sysresetreq(true);
@@ -235,7 +234,7 @@ impl ArmDebugSequence for LPC55S69 {
     }
 }
 
-fn wait_for_stop_after_reset(memory: &mut dyn ArmProbe) -> Result<(), crate::Error> {
+fn wait_for_stop_after_reset(memory: &mut dyn ArmProbe) -> Result<(), ArmError> {
     tracing::info!("Wait for stop after reset");
 
     thread::sleep(Duration::from_millis(10));
@@ -261,7 +260,7 @@ fn wait_for_stop_after_reset(memory: &mut dyn ArmProbe) -> Result<(), crate::Err
     }
 
     if timeout {
-        return Err(crate::Error::Probe(DebugProbeError::Timeout));
+        return Err(ArmError::Timeout);
     }
 
     let dhcsr = Dhcsr(memory.read_word_32(Dhcsr::ADDRESS)?);
@@ -281,7 +280,7 @@ fn wait_for_stop_after_reset(memory: &mut dyn ArmProbe) -> Result<(), crate::Err
 fn enable_debug_mailbox(
     interface: &mut ArmCommunicationInterface<Initialized>,
     dp: DpAddress,
-) -> Result<(), DebugProbeError> {
+) -> Result<(), ArmError> {
     tracing::info!("LPC55xx connect srcipt start");
 
     let ap = ApAddress { dp, ap: 2 };
@@ -341,7 +340,7 @@ impl MIMXRT10xx {
     }
 
     /// Runtime validation of core type.
-    fn check_core_type(&self, core_type: crate::CoreType) -> Result<(), crate::Error> {
+    fn check_core_type(&self, core_type: crate::CoreType) -> Result<(), ArmError> {
         const EXPECTED: crate::CoreType = crate::CoreType::Armv7em;
         if core_type != EXPECTED {
             tracing::warn!(
@@ -359,7 +358,7 @@ impl ArmDebugSequence for MIMXRT10xx {
         interface: &mut dyn ArmProbe,
         core_type: crate::CoreType,
         _: Option<u64>,
-    ) -> Result<(), crate::Error> {
+    ) -> Result<(), ArmError> {
         self.check_core_type(core_type)?;
 
         let mut aircr = Aircr(0);
@@ -395,7 +394,7 @@ impl MIMXRT11xx {
         &self,
         ap: MemoryAp,
         interface: &mut ArmCommunicationInterface<Initialized>,
-    ) -> Result<(), crate::DebugProbeError> {
+    ) -> Result<(), ArmError> {
         const START: u32 = 0x2001FF00;
         const IOMUX_LPSR_GPR26: u32 = 0x40C0C068;
 
@@ -419,7 +418,7 @@ impl MIMXRT11xx {
         &self,
         ap: MemoryAp,
         interface: &mut ArmCommunicationInterface<Initialized>,
-    ) -> Result<(), crate::DebugProbeError> {
+    ) -> Result<(), ArmError> {
         const START: u32 = 0x20250000;
         const IOMUX_LPSR_GPR0: u32 = 0x40c0c000;
         const IOMUX_LPSR_GPR1: u32 = 0x40c0c004;
@@ -456,7 +455,7 @@ impl MIMXRT11xx {
         &self,
         ap: MemoryAp,
         interface: &mut ArmCommunicationInterface<Initialized>,
-    ) -> Result<(), crate::DebugProbeError> {
+    ) -> Result<(), ArmError> {
         const SRC_SCR: u32 = 0x40c04000;
         interface.write_ap_register(ap, TAR { address: SRC_SCR })?;
         interface.write_ap_register(ap, DRW { data: 1 })?;
@@ -467,7 +466,7 @@ impl MIMXRT11xx {
         &self,
         ap: MemoryAp,
         interface: &mut ArmCommunicationInterface<Initialized>,
-    ) -> Result<(), anyhow::Error> {
+    ) -> Result<(), ArmError> {
         const SRC_SBMR: u32 = 0x40c04004;
         interface.write_ap_register(ap, TAR { address: SRC_SBMR })?;
         let DRW { data: mut src_sbmr } = interface.read_ap_register(ap)?;
@@ -482,7 +481,7 @@ impl ArmDebugSequence for MIMXRT11xx {
         &self,
         interface: &mut ArmCommunicationInterface<Initialized>,
         dp: DpAddress,
-    ) -> Result<(), crate::DebugProbeError> {
+    ) -> Result<(), ArmError> {
         tracing::debug!("debug_port_start");
         // Note that debug_port_start only supports SWD protocols,
         // which means the MIMXRT11xx only supports SWD right now.
@@ -511,7 +510,7 @@ impl ArmDebugSequence for MIMXRT11xx {
         interface: &mut dyn ArmProbe,
         _: crate::CoreType,
         _: Option<u64>,
-    ) -> Result<(), crate::Error> {
+    ) -> Result<(), ArmError> {
         // It's unpredictable to VECTRESET a core if it's not halted and
         // in debug state.
         tracing::debug!("Halting MIMXRT11xx core before VECTRESET");

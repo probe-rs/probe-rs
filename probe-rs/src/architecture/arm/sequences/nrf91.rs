@@ -5,6 +5,7 @@ use std::sync::Arc;
 use super::{nrf::Nrf, ArmDebugSequence};
 use crate::architecture::arm::ap::AccessPort;
 use crate::architecture::arm::memory::adi_v5_memory_interface::ArmProbe;
+use crate::architecture::arm::ArmError;
 use crate::architecture::arm::{
     communication_interface::Initialized, ApAddress, ArmCommunicationInterface, DapAccess,
 };
@@ -47,7 +48,7 @@ impl Nrf for Nrf9160 {
         arm_interface: &mut ArmCommunicationInterface<Initialized>,
         _ahb_ap_address: ApAddress,
         ctrl_ap_address: ApAddress,
-    ) -> Result<bool, crate::Error> {
+    ) -> Result<bool, ArmError> {
         let approtect_status = arm_interface.read_raw_ap_register(ctrl_ap_address, 0x00C)?;
         Ok(approtect_status != 0)
     }

@@ -1,7 +1,8 @@
 //! SWO tracing related functions.
 
 use crate::architecture::arm::communication_interface::ArmProbeInterface;
-use crate::Error;
+
+use super::ArmError;
 
 /// The protocol the SWO pin should use for data transmission.
 #[derive(Debug, Copy, Clone)]
@@ -107,16 +108,16 @@ impl SwoConfig {
 /// An interface to operate SWO to be implemented on drivers that support SWO.
 pub trait SwoAccess {
     /// Configure a SwoAccess interface for reading SWO data.
-    fn enable_swo(&mut self, config: &SwoConfig) -> Result<(), Error>;
+    fn enable_swo(&mut self, config: &SwoConfig) -> Result<(), ArmError>;
 
     /// Disable SWO reading on this SwoAccess interface.
-    fn disable_swo(&mut self) -> Result<(), Error>;
+    fn disable_swo(&mut self) -> Result<(), ArmError>;
 
     /// Read any available SWO data without waiting.
     ///
-    /// Returns a Vec<u8> of received SWO bytes since the last `read_swo()` call.
+    /// Returns a `Vec<u8>` of received SWO bytes since the last `read_swo()` call.
     /// If no data was available, returns an empty Vec.
-    fn read_swo(&mut self) -> Result<Vec<u8>, Error> {
+    fn read_swo(&mut self) -> Result<Vec<u8>, ArmError> {
         self.read_swo_timeout(std::time::Duration::from_millis(10))
     }
 
@@ -124,7 +125,7 @@ pub trait SwoAccess {
     ///
     /// If no data is received before the timeout, returns an empty Vec.
     /// May return earlier than `timeout` if the receive buffer fills up.
-    fn read_swo_timeout(&mut self, timeout: std::time::Duration) -> Result<Vec<u8>, Error>;
+    fn read_swo_timeout(&mut self, timeout: std::time::Duration) -> Result<Vec<u8>, ArmError>;
 
     /// Request an estimated best time to wait between polls of `read_swo`.
     ///

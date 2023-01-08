@@ -5,7 +5,7 @@ mod usb_interface;
 use self::usb_interface::{StLinkUsb, StLinkUsbDevice};
 use super::{DebugProbe, DebugProbeError, ProbeCreationError, WireProtocol};
 use crate::architecture::arm::memory::adi_v5_memory_interface::ArmProbe;
-use crate::memory::valid_32bit_address;
+use crate::architecture::arm::{valid_32bit_arm_address, ArmError};
 use crate::{
     architecture::arm::{
         ap::{valid_access_ports, AccessPort, ApAccess, ApClass, MemoryAp, IDR},
@@ -19,7 +19,6 @@ use crate::{
     },
     DebugProbeSelector, Error as ProbeRsError, Probe,
 };
-use anyhow::anyhow;
 use constants::{commands, JTagFrequencyToDivider, Mode, Status, SwdFrequencyToDelayCount};
 use scroll::{Pread, Pwrite, BE, LE};
 use std::{cmp::Ordering, convert::TryInto, sync::Arc, time::Duration};
@@ -194,13 +193,12 @@ impl DebugProbe for StLink<StLinkUsbDevice> {
         Ok(())
     }
 
-    fn detach(&mut self) -> Result<(), DebugProbeError> {
+    fn detach(&mut self) -> Result<(), crate::Error> {
         tracing::debug!("Detaching from STLink.");
         if self.swo_enabled {
-            self.disable_swo()
-                .map_err(|e| DebugProbeError::ProbeSpecific(e.into()))?;
+            self.disable_swo().map_err(crate::Error::Arm)?;
         }
-        self.enter_idle()
+        self.enter_idle().map_err(crate::Error::Probe)
     }
 
     fn target_reset(&mut self) -> Result<(), DebugProbeError> {
@@ -314,7 +312,7 @@ impl StLink<StLinkUsbDevice> {
         pin_out: u32,
         pin_select: u32,
         pin_wait: u32,
-    ) -> Result<u32, ProbeRsError> {
+    ) -> Result<u32, DebugProbeError> {
         let mut nreset = Pins(0);
         nreset.set_nreset(true);
         let nreset_mask = nreset.0 as u32;
@@ -337,7 +335,7 @@ impl StLink<StLinkUsbDevice> {
             Ok(0xFFFF_FFFF)
         } else {
             // This is not supported for ST-Links, unfortunately.
-            Err(DebugProbeError::CommandNotSupportedByProbe("swj_pins").into())
+            Err(DebugProbeError::CommandNotSupportedByProbe("swj_pins"))
         }
     }
 }
@@ -1053,7 +1051,7 @@ impl<D: StLinkUsb> StLink<D> {
 }
 
 impl<D: StLinkUsb> SwoAccess for StLink<D> {
-    fn enable_swo(&mut self, config: &SwoConfig) -> Result<(), ProbeRsError> {
+    fn enable_swo(&mut self, config: &SwoConfig) -> Result<(), ArmError> {
         match config.mode() {
             SwoMode::Uart => {
                 self.start_trace_reception(config)?;
@@ -1066,12 +1064,12 @@ impl<D: StLinkUsb> SwoAccess for StLink<D> {
         }
     }
 
-    fn disable_swo(&mut self) -> Result<(), ProbeRsError> {
+    fn disable_swo(&mut self) -> Result<(), ArmError> {
         self.stop_trace_reception()?;
         Ok(())
     }
 
-    fn read_swo_timeout(&mut self, timeout: Duration) -> Result<Vec<u8>, ProbeRsError> {
+    fn read_swo_timeout(&mut self, timeout: Duration) -> Result<Vec<u8>, ArmError> {
         let data = self.read_swo_data(timeout)?;
         Ok(data)
     }
@@ -1135,9 +1133,9 @@ impl UninitializedArmProbe for UninitializedStLink {
 }
 
 impl SwdSequence for UninitializedStLink {
-    fn swj_sequence(&mut self, _bit_len: u8, _bits: u64) -> Result<(), ProbeRsError> {
+    fn swj_sequence(&mut self, _bit_len: u8, _bits: u64) -> Result<(), DebugProbeError> {
         // This is not supported for ST-Links, unfortunately.
-        Err(DebugProbeError::CommandNotSupportedByProbe("swj_sequence").into())
+        Err(DebugProbeError::CommandNotSupportedByProbe("swj_sequence"))
     }
 
     fn swj_pins(
@@ -1145,7 +1143,7 @@ impl SwdSequence for UninitializedStLink {
         pin_out: u32,
         pin_select: u32,
         pin_wait: u32,
-    ) -> Result<u32, ProbeRsError> {
+    ) -> Result<u32, DebugProbeError> {
         self.probe.swj_pins(pin_out, pin_select, pin_wait)
     }
 }
@@ -1162,7 +1160,7 @@ struct StlinkArmDebug {
 impl StlinkArmDebug {
     fn new(
         probe: Box<StLink<StLinkUsbDevice>>,
-    ) -> Result<Self, (Box<UninitializedStLink>, DebugProbeError)> {
+    ) -> Result<Self, (Box<UninitializedStLink>, ArmError)> {
         // Determine the number and type of available APs.
 
         let mut interface = Self {
@@ -1193,9 +1191,9 @@ impl StlinkArmDebug {
 }
 
 impl DapAccess for StlinkArmDebug {
-    fn read_raw_dp_register(&mut self, dp: DpAddress, address: u8) -> Result<u32, DebugProbeError> {
+    fn read_raw_dp_register(&mut self, dp: DpAddress, address: u8) -> Result<u32, ArmError> {
         if dp != DpAddress::Default {
-            return Err(StlinkError::MultidropNotSupported.into());
+            return Err(DebugProbeError::from(StlinkError::MultidropNotSupported).into());
         }
         let result = self.probe.read_register(DP_PORT, address)?;
         Ok(result)
@@ -1206,21 +1204,23 @@ impl DapAccess for StlinkArmDebug {
         dp: DpAddress,
         address: u8,
         value: u32,
-    ) -> Result<(), DebugProbeError> {
+    ) -> Result<(), ArmError> {
         if dp != DpAddress::Default {
-            return Err(StlinkError::MultidropNotSupported.into());
+            return Err(DebugProbeError::from(StlinkError::MultidropNotSupported).into());
         }
 
         self.probe.write_register(DP_PORT, address, value)?;
         Ok(())
     }
 
-    fn read_raw_ap_register(&mut self, ap: ApAddress, address: u8) -> Result<u32, DebugProbeError> {
+    fn read_raw_ap_register(&mut self, ap: ApAddress, address: u8) -> Result<u32, ArmError> {
         if ap.dp != DpAddress::Default {
-            return Err(StlinkError::MultidropNotSupported.into());
+            return Err(DebugProbeError::from(StlinkError::MultidropNotSupported).into());
         }
 
-        self.probe.read_register(ap.ap as u16, address)
+        let value = self.probe.read_register(ap.ap as u16, address)?;
+
+        Ok(value)
     }
 
     fn write_raw_ap_register(
@@ -1228,12 +1228,14 @@ impl DapAccess for StlinkArmDebug {
         ap: ApAddress,
         address: u8,
         value: u32,
-    ) -> Result<(), DebugProbeError> {
+    ) -> Result<(), ArmError> {
         if ap.dp != DpAddress::Default {
-            return Err(StlinkError::MultidropNotSupported.into());
+            return Err(DebugProbeError::from(StlinkError::MultidropNotSupported).into());
         }
 
-        self.probe.write_register(ap.ap as u16, address, value)
+        self.probe.write_register(ap.ap as u16, address, value)?;
+
+        Ok(())
     }
 }
 
@@ -1241,7 +1243,7 @@ impl ArmProbeInterface for StlinkArmDebug {
     fn memory_interface(
         &mut self,
         access_port: MemoryAp,
-    ) -> Result<Box<dyn ArmProbe + '_>, ProbeRsError> {
+    ) -> Result<Box<dyn ArmProbe + '_>, ArmError> {
         let interface = StLinkMemoryInterface {
             probe: self,
             current_ap: access_port,
@@ -1253,8 +1255,7 @@ impl ArmProbeInterface for StlinkArmDebug {
     fn ap_information(
         &mut self,
         access_port: crate::architecture::arm::ap::GenericAp,
-    ) -> Result<&crate::architecture::arm::communication_interface::ApInformation, ProbeRsError>
-    {
+    ) -> Result<&crate::architecture::arm::communication_interface::ApInformation, ArmError> {
         let addr = access_port.ap_address();
         if addr.dp != DpAddress::Default {
             return Err(DebugProbeError::from(StlinkError::MultidropNotSupported).into());
@@ -1262,22 +1263,20 @@ impl ArmProbeInterface for StlinkArmDebug {
 
         match self.ap_information.get(addr.ap as usize) {
             Some(res) => Ok(res),
-            None => Err(anyhow!("AP {:#x?} does not exist", addr).into()),
+            None => Err(ArmError::ApDoesNotExist(addr)),
         }
     }
 
     fn read_chip_info_from_rom_table(
         &mut self,
         dp: DpAddress,
-    ) -> Result<Option<crate::architecture::arm::ArmChipInfo>, ProbeRsError> {
+    ) -> Result<Option<crate::architecture::arm::ArmChipInfo>, ArmError> {
         if dp != DpAddress::Default {
             return Err(DebugProbeError::from(StlinkError::MultidropNotSupported).into());
         }
 
         for access_port in valid_access_ports(self, dp) {
-            let idr: IDR = self
-                .read_ap_register(access_port)
-                .map_err(ProbeRsError::Probe)?;
+            let idr: IDR = self.read_ap_register(access_port)?;
             tracing::debug!("{:#x?}", idr);
 
             if idr.CLASS == ApClass::MemAp {
@@ -1285,12 +1284,9 @@ impl ArmProbeInterface for StlinkArmDebug {
 
                 let baseaddr = access_port.base_address(self)?;
 
-                let mut memory = self
-                    .memory_interface(access_port)
-                    .map_err(ProbeRsError::architecture_specific)?;
+                let mut memory = self.memory_interface(access_port)?;
 
-                let component = Component::try_parse(&mut *memory, baseaddr)
-                    .map_err(ProbeRsError::architecture_specific)?;
+                let component = Component::try_parse(&mut *memory, baseaddr)?;
 
                 if let Component::Class1RomTable(component_id, _) = component {
                     if let Some(jep106) = component_id.peripheral_id().jep106() {
@@ -1306,7 +1302,7 @@ impl ArmProbeInterface for StlinkArmDebug {
         Ok(None)
     }
 
-    fn num_access_ports(&mut self, dp: DpAddress) -> Result<usize, ProbeRsError> {
+    fn num_access_ports(&mut self, dp: DpAddress) -> Result<usize, ArmError> {
         if dp != DpAddress::Default {
             return Err(DebugProbeError::from(StlinkError::MultidropNotSupported).into());
         }
@@ -1320,9 +1316,9 @@ impl ArmProbeInterface for StlinkArmDebug {
 }
 
 impl SwdSequence for StlinkArmDebug {
-    fn swj_sequence(&mut self, _bit_len: u8, _bits: u64) -> Result<(), ProbeRsError> {
+    fn swj_sequence(&mut self, _bit_len: u8, _bits: u64) -> Result<(), DebugProbeError> {
         // This is not supported for ST-Links, unfortunately.
-        Err(DebugProbeError::CommandNotSupportedByProbe("swj_seqeunce").into())
+        Err(DebugProbeError::CommandNotSupportedByProbe("swj_seqeuence"))
     }
 
     fn swj_pins(
@@ -1330,21 +1326,21 @@ impl SwdSequence for StlinkArmDebug {
         pin_out: u32,
         pin_select: u32,
         pin_wait: u32,
-    ) -> Result<u32, ProbeRsError> {
+    ) -> Result<u32, DebugProbeError> {
         self.probe.swj_pins(pin_out, pin_select, pin_wait)
     }
 }
 
 impl SwoAccess for StlinkArmDebug {
-    fn enable_swo(&mut self, config: &SwoConfig) -> Result<(), ProbeRsError> {
+    fn enable_swo(&mut self, config: &SwoConfig) -> Result<(), ArmError> {
         self.probe.enable_swo(config)
     }
 
-    fn disable_swo(&mut self) -> Result<(), ProbeRsError> {
+    fn disable_swo(&mut self) -> Result<(), ArmError> {
         self.probe.disable_swo()
     }
 
-    fn read_swo_timeout(&mut self, timeout: Duration) -> Result<Vec<u8>, ProbeRsError> {
+    fn read_swo_timeout(&mut self, timeout: Duration) -> Result<Vec<u8>, ArmError> {
         self.probe.read_swo_timeout(timeout)
     }
 }
@@ -1356,7 +1352,7 @@ struct StLinkMemoryInterface<'probe> {
 }
 
 impl SwdSequence for StLinkMemoryInterface<'_> {
-    fn swj_sequence(&mut self, bit_len: u8, bits: u64) -> Result<(), ProbeRsError> {
+    fn swj_sequence(&mut self, bit_len: u8, bits: u64) -> Result<(), DebugProbeError> {
         self.probe.swj_sequence(bit_len, bits)
     }
 
@@ -1365,7 +1361,7 @@ impl SwdSequence for StLinkMemoryInterface<'_> {
         pin_out: u32,
         pin_select: u32,
         pin_wait: u32,
-    ) -> Result<u32, ProbeRsError> {
+    ) -> Result<u32, DebugProbeError> {
         self.probe.swj_pins(pin_out, pin_select, pin_wait)
     }
 }
@@ -1375,8 +1371,8 @@ impl ArmProbe for StLinkMemoryInterface<'_> {
         false
     }
 
-    fn read_64(&mut self, address: u64, data: &mut [u64]) -> Result<(), ProbeRsError> {
-        let address = valid_32bit_address(address)?;
+    fn read_64(&mut self, address: u64, data: &mut [u64]) -> Result<(), ArmError> {
+        let address = valid_32bit_arm_address(address)?;
 
         for (i, d) in data.iter_mut().enumerate() {
             let mut buff = vec![0u8; 8];
@@ -1393,8 +1389,8 @@ impl ArmProbe for StLinkMemoryInterface<'_> {
         Ok(())
     }
 
-    fn read_32(&mut self, address: u64, data: &mut [u32]) -> Result<(), ProbeRsError> {
-        let address = valid_32bit_address(address)?;
+    fn read_32(&mut self, address: u64, data: &mut [u32]) -> Result<(), ArmError> {
+        let address = valid_32bit_arm_address(address)?;
 
         // Read needs to be chunked into chunks with appropiate max length (see STLINK_MAX_READ_LEN).
         for (index, chunk) in data.chunks_mut(STLINK_MAX_READ_LEN / 4).enumerate() {
@@ -1414,8 +1410,8 @@ impl ArmProbe for StLinkMemoryInterface<'_> {
         Ok(())
     }
 
-    fn read_8(&mut self, address: u64, data: &mut [u8]) -> Result<(), ProbeRsError> {
-        let address = valid_32bit_address(address)?;
+    fn read_8(&mut self, address: u64, data: &mut [u8]) -> Result<(), ArmError> {
+        let address = valid_32bit_arm_address(address)?;
 
         // Read needs to be chunked into chunks of appropriate max length of the probe
         let chunk_size = if self.probe.probe.hw_version < 3 {
@@ -1439,8 +1435,8 @@ impl ArmProbe for StLinkMemoryInterface<'_> {
         Ok(())
     }
 
-    fn write_64(&mut self, address: u64, data: &[u64]) -> Result<(), ProbeRsError> {
-        let address = valid_32bit_address(address)?;
+    fn write_64(&mut self, address: u64, data: &[u64]) -> Result<(), ArmError> {
+        let address = valid_32bit_arm_address(address)?;
 
         let mut tx_buffer = vec![0u8; data.len() * 8];
 
@@ -1463,8 +1459,8 @@ impl ArmProbe for StLinkMemoryInterface<'_> {
         Ok(())
     }
 
-    fn write_32(&mut self, address: u64, data: &[u32]) -> Result<(), ProbeRsError> {
-        let address = valid_32bit_address(address)?;
+    fn write_32(&mut self, address: u64, data: &[u32]) -> Result<(), ArmError> {
+        let address = valid_32bit_arm_address(address)?;
 
         let mut tx_buffer = vec![0u8; data.len() * 4];
 
@@ -1487,8 +1483,8 @@ impl ArmProbe for StLinkMemoryInterface<'_> {
         Ok(())
     }
 
-    fn write_8(&mut self, address: u64, data: &[u8]) -> Result<(), ProbeRsError> {
-        let address = valid_32bit_address(address)?;
+    fn write_8(&mut self, address: u64, data: &[u8]) -> Result<(), ArmError> {
+        let address = valid_32bit_arm_address(address)?;
 
         // The underlying STLink command is limited to a single USB frame at a time
         // so we must manually chunk it into multiple command if it exceeds
@@ -1572,21 +1568,23 @@ impl ArmProbe for StLinkMemoryInterface<'_> {
         Ok(())
     }
 
-    fn flush(&mut self) -> Result<(), ProbeRsError> {
+    fn flush(&mut self) -> Result<(), ArmError> {
         Ok(())
     }
 
-    fn supports_8bit_transfers(&self) -> Result<bool, ProbeRsError> {
+    fn supports_8bit_transfers(&self) -> Result<bool, ArmError> {
         Ok(true)
     }
 
     fn get_arm_communication_interface(
         &mut self,
-    ) -> Result<&mut crate::architecture::arm::ArmCommunicationInterface<Initialized>, ProbeRsError>
-    {
-        Err(ProbeRsError::Probe(DebugProbeError::NotImplemented(
+    ) -> Result<
+        &mut crate::architecture::arm::ArmCommunicationInterface<Initialized>,
+        DebugProbeError,
+    > {
+        Err(DebugProbeError::NotImplemented(
             "ST-Links do not support raw SWD access.",
-        )))
+        ))
     }
 
     fn ap(&mut self) -> MemoryAp {

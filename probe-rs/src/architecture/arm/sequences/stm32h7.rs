@@ -3,17 +3,14 @@
 use std::sync::Arc;
 
 use super::ArmDebugSequence;
-use crate::{
-    architecture::arm::{
-        ap::MemoryAp,
-        component::{TraceFunnel, TraceSink},
-        memory::{
-            adi_v5_memory_interface::ArmProbe, romtable::RomTableError, CoresightComponent,
-            PeripheralType,
-        },
-        ApAddress, ArmProbeInterface, DpAddress,
+use crate::architecture::arm::{
+    ap::MemoryAp,
+    component::{TraceFunnel, TraceSink},
+    memory::{
+        adi_v5_memory_interface::ArmProbe, romtable::RomTableError, CoresightComponent,
+        PeripheralType,
     },
-    Error,
+    ApAddress, ArmError, ArmProbeInterface, DpAddress,
 };
 
 // Base address of the trace funnel that directs trace data to the SWO peripheral.
@@ -50,7 +47,7 @@ impl Stm32h7 {
         &self,
         memory: &mut (impl ArmProbe + ?Sized),
         enable: bool,
-    ) -> Result<(), crate::Error> {
+    ) -> Result<(), ArmError> {
         if enable {
             tracing::info!("Enabling STM32H7 debug components");
         } else {
@@ -79,7 +76,7 @@ impl Stm32h7 {
 }
 
 mod dbgmcu {
-    use crate::architecture::arm::memory::adi_v5_memory_interface::ArmProbe;
+    use crate::architecture::arm::{memory::adi_v5_memory_interface::ArmProbe, ArmError};
     use bitfield::bitfield;
 
     /// The base address of the DBGMCU component
@@ -105,13 +102,13 @@ mod dbgmcu {
         const ADDRESS: u64 = 0x04;
 
         /// Read the control register from memory.
-        pub fn read(memory: &mut (impl ArmProbe + ?Sized)) -> Result<Self, crate::Error> {
+        pub fn read(memory: &mut (impl ArmProbe + ?Sized)) -> Result<Self, ArmError> {
             let contents = memory.read_word_32(DBGMCU + Self::ADDRESS)?;
             Ok(Self(contents))
         }
 
         /// Write the control register to memory.
-        pub fn write(&mut self, memory: &mut (impl ArmProbe + ?Sized)) -> Result<(), crate::Error> {
+        pub fn write(&mut self, memory: &mut (impl ArmProbe + ?Sized)) -> Result<(), ArmError> {
             memory.write_word_32(DBGMCU + Self::ADDRESS, self.0)
         }
     }
@@ -128,7 +125,7 @@ mod dbgmcu {
 fn find_trace_funnel(
     components: &[CoresightComponent],
     trace_funnel: TraceFunnelId,
-) -> Result<&CoresightComponent, Error> {
+) -> Result<&CoresightComponent, ArmError> {
     components
         .iter()
         .find_map(|comp| {
@@ -139,7 +136,7 @@ fn find_trace_funnel(
             })
         })
         .ok_or_else(|| {
-            Error::architecture_specific(RomTableError::ComponentNotFound(
+            ArmError::from(RomTableError::ComponentNotFound(
                 PeripheralType::TraceFunnel,
             ))
         })
@@ -151,7 +148,7 @@ impl ArmDebugSequence for Stm32h7 {
         interface: &mut dyn ArmProbeInterface,
         _default_ap: MemoryAp,
         _permissions: &crate::Permissions,
-    ) -> Result<(), crate::Error> {
+    ) -> Result<(), ArmError> {
         // Power up the debug components through AP2, which is the defualt AP debug port.
         let ap = MemoryAp::new(ApAddress {
             dp: DpAddress::Default,
@@ -164,7 +161,7 @@ impl ArmDebugSequence for Stm32h7 {
         Ok(())
     }
 
-    fn debug_core_stop(&self, interface: &mut dyn ArmProbeInterface) -> Result<(), crate::Error> {
+    fn debug_core_stop(&self, interface: &mut dyn ArmProbeInterface) -> Result<(), ArmError> {
         // Power up the debug components through AP2, which is the defualt AP debug port.
         let ap = MemoryAp::new(ApAddress {
             dp: DpAddress::Default,
@@ -182,7 +179,7 @@ impl ArmDebugSequence for Stm32h7 {
         interface: &mut dyn ArmProbeInterface,
         components: &[CoresightComponent],
         sink: &TraceSink,
-    ) -> Result<(), crate::Error> {
+    ) -> Result<(), ArmError> {
         tracing::warn!("Enabling tracing for STM32H7");
 
         // Configure the two trace funnels in the H7 debug system to route trace data to the

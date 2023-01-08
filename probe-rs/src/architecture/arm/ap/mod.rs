@@ -13,20 +13,14 @@ pub use memory_ap::{
     AddressIncrement, BaseaddrFormat, DataSize, MemoryAp, BASE, BASE2, CFG, CSW, DRW, TAR, TAR2,
 };
 
-use super::{ApAddress, DapAccess, DpAddress, Register};
+use super::{
+    communication_interface::RegisterParseError, ApAddress, ArmError, DapAccess, DpAddress,
+    Register,
+};
 
 /// Some error during AP handling occurred.
 #[derive(Debug, thiserror::Error)]
 pub enum AccessPortError {
-    /// The given register address to perform an access on was not memory aligned.
-    /// Make sure it is aligned to the size of the access (`address & access_size == 0`).
-    #[error("Failed to access address 0x{address:08x} as it is not aligned to the requirement of {alignment} bytes for this platform and API call.")]
-    MemoryNotAligned {
-        /// The address of the register.
-        address: u64,
-        /// The required alignment in bytes (address increments).
-        alignment: usize,
-    },
     /// An error occurred when trying to read a register.
     #[error("Failed to read register {name} at address 0x{address:08x}")]
     RegisterRead {
@@ -49,18 +43,16 @@ pub enum AccessPortError {
         #[source]
         source: Box<dyn std::error::Error + Send + Sync>,
     },
-    /// A region ouside of the AP address space was accessed.
-    #[error("Out of bounds access")]
-    OutOfBounds,
     /// Some error with the operation of the APs DP occurred.
     #[error("Error while communicating with debug port")]
     DebugPort(#[from] DebugPortError),
     /// An error occurred when trying to flush batched writes of to the AP.
     #[error("Failed to flush batched writes")]
     Flush(#[from] DebugProbeError),
-    /// The requested memory transfer width is not supported on the current core.
-    #[error("{0} bit is not a supported memory transfer width on the current core")]
-    UnsupportedTransferWidth(usize),
+
+    /// Error while parsing a register
+    #[error("Error parsing a register")]
+    RegisterParse(#[from] RegisterParseError),
 }
 
 impl AccessPortError {
@@ -85,21 +77,16 @@ impl AccessPortError {
             source: Box::new(source),
         }
     }
-
-    /// Constructs a [`AccessPortError::MemoryNotAligned`] from the address and the required alignment.
-    pub fn alignment_error(address: u64, alignment: usize) -> Self {
-        AccessPortError::MemoryNotAligned { address, alignment }
-    }
 }
 
 /// A trait to be implemented by access port register types.
 ///
-/// Use the [`register_generation::define_ap_register`] macro to implement this.
+/// Use the [`define_ap_register!`] macro to implement this.
 pub trait ApRegister<PORT: AccessPort>: Register + Sized {}
 
 /// A trait to be implemented on access port types.
 ///
-/// Use the [`register_generation::define_ap`] macro to implement this.
+/// Use the [`define_ap!`] macro to implement this.
 pub trait AccessPort {
     /// Returns the address of the access port.
     fn ap_address(&self) -> ApAddress;
@@ -108,7 +95,7 @@ pub trait AccessPort {
 /// A trait to be implemented by access port drivers to implement access port operations.
 pub trait ApAccess {
     /// Read a register of the access port.
-    fn read_ap_register<PORT, R>(&mut self, port: impl Into<PORT>) -> Result<R, DebugProbeError>
+    fn read_ap_register<PORT, R>(&mut self, port: impl Into<PORT>) -> Result<R, ArmError>
     where
         PORT: AccessPort,
         R: ApRegister<PORT>;
@@ -120,7 +107,7 @@ pub trait ApAccess {
         port: impl Into<PORT> + Clone,
         register: R,
         values: &mut [u32],
-    ) -> Result<(), DebugProbeError>
+    ) -> Result<(), ArmError>
     where
         PORT: AccessPort,
         R: ApRegister<PORT>;
@@ -130,7 +117,7 @@ pub trait ApAccess {
         &mut self,
         port: impl Into<PORT>,
         register: R,
-    ) -> Result<(), DebugProbeError>
+    ) -> Result<(), ArmError>
     where
         PORT: AccessPort,
         R: ApRegister<PORT>;
@@ -142,14 +129,14 @@ pub trait ApAccess {
         port: impl Into<PORT> + Clone,
         register: R,
         values: &[u32],
-    ) -> Result<(), DebugProbeError>
+    ) -> Result<(), ArmError>
     where
         PORT: AccessPort,
         R: ApRegister<PORT>;
 }
 
 impl<T: DapAccess> ApAccess for T {
-    fn read_ap_register<PORT, R>(&mut self, port: impl Into<PORT>) -> Result<R, DebugProbeError>
+    fn read_ap_register<PORT, R>(&mut self, port: impl Into<PORT>) -> Result<R, ArmError>
     where
         PORT: AccessPort,
         R: ApRegister<PORT>,
@@ -166,7 +153,7 @@ impl<T: DapAccess> ApAccess for T {
         &mut self,
         port: impl Into<PORT>,
         register: R,
-    ) -> Result<(), DebugProbeError>
+    ) -> Result<(), ArmError>
     where
         PORT: AccessPort,
         R: ApRegister<PORT>,
@@ -180,7 +167,7 @@ impl<T: DapAccess> ApAccess for T {
         port: impl Into<PORT>,
         _register: R,
         values: &[u32],
-    ) -> Result<(), DebugProbeError>
+    ) -> Result<(), ArmError>
     where
         PORT: AccessPort,
         R: ApRegister<PORT>,
@@ -198,7 +185,7 @@ impl<T: DapAccess> ApAccess for T {
         port: impl Into<PORT>,
         _register: R,
         values: &mut [u32],
-    ) -> Result<(), DebugProbeError>
+    ) -> Result<(), ArmError>
     where
         PORT: AccessPort,
         R: ApRegister<PORT>,
@@ -219,7 +206,7 @@ pub fn access_port_is_valid<AP>(debug_port: &mut AP, access_port: GenericAp) -> 
 where
     AP: ApAccess,
 {
-    let idr_result: Result<IDR, DebugProbeError> = debug_port.read_ap_register(access_port);
+    let idr_result: Result<IDR, _> = debug_port.read_ap_register(access_port);
 
     match idr_result {
         Ok(idr) => u32::from(idr) != 0,

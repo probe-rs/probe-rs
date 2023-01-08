@@ -1,15 +1,16 @@
 //! Sequences for ATSAM D5x/E5x target families
 
-use super::{ArmDebugSequence, DebugEraseSequence};
+use super::{ArmDebugSequence, ArmDebugSequenceError, DebugEraseSequence};
 use crate::{
     architecture::{
         self,
         arm::{
-            ap::MemoryAp, memory::adi_v5_memory_interface::ArmProbe, ApAddress, ArmProbeInterface,
-            DpAddress,
+            ap::MemoryAp, memory::adi_v5_memory_interface::ArmProbe, ApAddress, ArmError,
+            ArmProbeInterface, DpAddress,
         },
     },
-    DebugProbeError, Error, Permissions,
+    session::MissingPermissions,
+    DebugProbeError, Permissions,
 };
 use bitfield::bitfield;
 use std::sync::Arc;
@@ -172,14 +173,17 @@ impl<'a> From<&'a mut dyn architecture::arm::communication_interface::DapProbe>
 }
 
 impl<'a> architecture::arm::communication_interface::SwdSequence for SwdSequenceShim<'a> {
-    fn swj_sequence(&mut self, bit_len: u8, bits: u64) -> Result<(), Error> {
-        self.0.swj_sequence(bit_len, bits).map_err(Error::Probe)
+    fn swj_sequence(&mut self, bit_len: u8, bits: u64) -> Result<(), DebugProbeError> {
+        self.0.swj_sequence(bit_len, bits)
     }
 
-    fn swj_pins(&mut self, pin_out: u32, pin_select: u32, pin_wait: u32) -> Result<u32, Error> {
-        self.0
-            .swj_pins(pin_out, pin_select, pin_wait)
-            .map_err(Error::Probe)
+    fn swj_pins(
+        &mut self,
+        pin_out: u32,
+        pin_select: u32,
+        pin_wait: u32,
+    ) -> Result<u32, DebugProbeError> {
+        self.0.swj_pins(pin_out, pin_select, pin_wait)
     }
 }
 
@@ -205,22 +209,23 @@ impl AtSAME5x {
         &self,
         memory: &mut dyn ArmProbe,
         permissions: &Permissions,
-    ) -> Result<(), Error> {
+    ) -> Result<(), ArmError> {
         let dsu_status_a = DsuStatusA::from(memory.read_word_8(DsuStatusA::ADDRESS)?);
         let dsu_status_b = DsuStatusB::from(memory.read_word_8(DsuStatusB::ADDRESS)?);
 
         match (dsu_status_b.celck(), dsu_status_b.prot(), permissions.erase_all()) {
-            (true, _, _) => Err(Error::MissingPermissions(
+            (true, _, _) => Err(ArmError::MissingPermissions(
                 "Chip-Erase is locked. This can only be unlocked from within the device firmware by performing \
                 a Chip-Erase Unlock (CEULCK) command."
                     .into(),
             )),
-            (false, true, Err(_)) => Err(Error::MissingPermissions(
-                "Device is locked. A Chip-Erase operation is required to unlock. \
-                            Re-run with granting the 'erase-all' permission and connecting under reset"
-                    .into(),
+            (false, true, Err(MissingPermissions(permission))) => Err(ArmError::MissingPermissions(
+                format!("Device is locked. A Chip-Erase operation is required to unlock. \
+                            Re-run with granting the '{}' permission and connecting under reset"
+                    , permission),
             )),
-            (false, false, Err(e)) => Err(e),
+            // TODO: This seems wrong? Currently preserves the bevaiour before the change of the error type.
+            (false, false,Err(MissingPermissions(permission))) => Err(ArmError::MissingPermissions(permission)),
             (false, _, Ok(())) => Ok(()),
         }?;
 
@@ -245,15 +250,15 @@ impl AtSAME5x {
 
                 // We need to reconnect to target to finalize the unlock.
                 // Signal ReAttachRequired so that the session will try to re-connect
-                return Err(Error::Probe(DebugProbeError::ReAttachRequired));
+                return Err(ArmError::ReAttachRequired);
             } else if current_dsu_statusa.fail() {
-                return Err(Error::Other(anyhow::anyhow!("Chip-Erase Failed")));
+                return Err(ArmError::ChipEraseFailed);
             }
             std::thread::sleep(std::time::Duration::from_millis(250));
         }
 
         tracing::error!("Chip-Erase failed to complete within 8 seconds");
-        Err(Error::Probe(DebugProbeError::Timeout))
+        Err(ArmError::Timeout)
     }
 
     /// Perform a hardware reset in a way that puts the core into CPU Reset Extension
@@ -268,7 +273,7 @@ impl AtSAME5x {
     pub fn reset_hardware_with_extension(
         &self,
         interface: &mut dyn architecture::arm::communication_interface::SwdSequence,
-    ) -> Result<(), Error> {
+    ) -> Result<(), ArmError> {
         let mut pins = architecture::arm::Pins(0);
         pins.set_nreset(true);
         pins.set_swdio_tms(true);
@@ -295,7 +300,7 @@ impl AtSAME5x {
     ///
     /// # Errors
     /// Subject to probe communication errors
-    pub fn release_reset_extension(&self, memory: &mut dyn ArmProbe) -> Result<(), Error> {
+    pub fn release_reset_extension(&self, memory: &mut dyn ArmProbe) -> Result<(), ArmError> {
         // clear the reset extension bit
         let mut dsu_statusa = DsuStatusA(0);
         dsu_statusa.set_crstext(true);
@@ -309,7 +314,7 @@ impl AtSAME5x {
             }
         }
 
-        Err(Error::Probe(DebugProbeError::Timeout))
+        Err(ArmError::Timeout)
     }
 
     /// Perform a normal hardware reset without triggering a Reset extension
@@ -319,7 +324,7 @@ impl AtSAME5x {
     pub fn reset_hardware(
         &self,
         interface: &mut dyn architecture::arm::communication_interface::SwdSequence,
-    ) -> Result<(), Error> {
+    ) -> Result<(), ArmError> {
         let mut pins = architecture::arm::Pins(0);
         pins.set_nreset(true);
         pins.set_swdio_tms(true);
@@ -347,7 +352,7 @@ impl ArmDebugSequence for AtSAME5x {
     fn reset_hardware_assert(
         &self,
         interface: &mut dyn architecture::arm::communication_interface::DapProbe,
-    ) -> Result<(), Error> {
+    ) -> Result<(), ArmError> {
         let mut shim = SwdSequenceShim::from(interface);
         self.reset_hardware_with_extension(&mut shim)
     }
@@ -356,16 +361,17 @@ impl ArmDebugSequence for AtSAME5x {
     ///
     /// Instead of de-asserting `nReset` here (this was already done during the CPU Reset Extension process),
     /// the device is released from Reset Extension.
-    fn reset_hardware_deassert(&self, memory: &mut dyn ArmProbe) -> Result<(), Error> {
+    fn reset_hardware_deassert(&self, memory: &mut dyn ArmProbe) -> Result<(), ArmError> {
         let mut pins = architecture::arm::Pins(0);
         pins.set_nreset(true);
 
         let current_pins =
             architecture::arm::Pins(memory.swj_pins(pins.0 as u32, pins.0 as u32, 0)? as u8);
         if !current_pins.nreset() {
-            return Err(Error::Probe(DebugProbeError::Other(anyhow::anyhow!(
-                "Expected nReset to already be de-asserted"
-            ))));
+            return Err(ArmDebugSequenceError::SequenceSpecific(
+                "Expected nReset to already be de-asserted".into(),
+            )
+            .into());
         }
 
         self.release_reset_extension(memory)
@@ -386,7 +392,7 @@ impl ArmDebugSequence for AtSAME5x {
         interface: &mut dyn ArmProbeInterface,
         default_ap: architecture::arm::ap::MemoryAp,
         permissions: &Permissions,
-    ) -> Result<(), Error> {
+    ) -> Result<(), ArmError> {
         // First check if the device is locked
         let mut memory = interface.memory_interface(default_ap)?;
         let dsu_status_b = DsuStatusB::from(memory.read_word_8(DsuStatusB::ADDRESS)?);
@@ -405,7 +411,7 @@ impl ArmDebugSequence for AtSAME5x {
 }
 
 impl DebugEraseSequence for AtSAME5x {
-    fn erase_all(&self, interface: &mut dyn ArmProbeInterface) -> Result<(), Error> {
+    fn erase_all(&self, interface: &mut dyn ArmProbeInterface) -> Result<(), ArmError> {
         let mem_ap = MemoryAp::new(ApAddress {
             dp: DpAddress::Default,
             ap: 0,

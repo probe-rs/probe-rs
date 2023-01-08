@@ -4,12 +4,12 @@ use crate::architecture::arm::core::armv7a_debug_regs::*;
 use crate::architecture::arm::core::register;
 use crate::architecture::arm::memory::adi_v5_memory_interface::ArmProbe;
 use crate::architecture::arm::sequences::ArmDebugSequence;
+use crate::architecture::arm::ArmError;
 use crate::core::{RegisterFile, RegisterValue};
 use crate::error::Error;
 use crate::memory::valid_32bit_address;
 use crate::CoreInterface;
 use crate::CoreStatus;
-use crate::DebugProbeError;
 use crate::MemoryInterface;
 use crate::RegisterId;
 use crate::{Architecture, CoreInformation, CoreType, InstructionSet};
@@ -130,7 +130,7 @@ impl<'probe> Armv7a<'probe> {
     /// Execute an instruction
     fn execute_instruction(&mut self, instruction: u32) -> Result<Dbgdscr, Error> {
         if !self.state.current_state.is_halted() {
-            return Err(Error::architecture_specific(Armv7aError::NotHalted));
+            return Err(Error::Arm(ArmError::CoreNotHalted));
         }
 
         // Enable ITR if needed
@@ -164,7 +164,7 @@ impl<'probe> Armv7a<'probe> {
 
             self.memory.write_word_32(address, dbgdrcr.into())?;
 
-            return Err(Error::architecture_specific(Armv7aError::DataAbort));
+            return Err(Error::Arm(Armv7aError::DataAbort.into()));
         }
 
         Ok(dbgdscr)
@@ -306,7 +306,7 @@ impl<'probe> CoreInterface for Armv7a<'probe> {
             }
             std::thread::sleep(Duration::from_millis(1));
         }
-        Err(Error::Probe(DebugProbeError::Timeout))
+        Err(Error::Arm(ArmError::Timeout))
     }
 
     fn core_halted(&mut self) -> Result<bool, Error> {
@@ -587,8 +587,8 @@ impl<'probe> CoreInterface for Armv7a<'probe> {
 
                 Ok(value.into())
             }
-            _ => Err(Error::architecture_specific(
-                Armv7aError::InvalidRegisterNumber(reg_num),
+            _ => Err(Error::Arm(
+                Armv7aError::InvalidRegisterNumber(reg_num).into(),
             )),
         };
 
@@ -605,8 +605,8 @@ impl<'probe> CoreInterface for Armv7a<'probe> {
         let reg_num = address.0;
 
         if (reg_num as usize) >= self.state.register_cache.len() {
-            return Err(Error::architecture_specific(
-                Armv7aError::InvalidRegisterNumber(reg_num),
+            return Err(Error::Arm(
+                Armv7aError::InvalidRegisterNumber(reg_num).into(),
             ));
         }
         self.state.register_cache[reg_num as usize] = Some((value, true));
@@ -897,9 +897,12 @@ impl<'probe> MemoryInterface for Armv7a<'probe> {
 
 #[cfg(test)]
 mod test {
-    use crate::architecture::arm::{
-        ap::MemoryAp, communication_interface::SwdSequence,
-        memory::adi_v5_memory_interface::ArmProbe, sequences::DefaultArmSequence,
+    use crate::{
+        architecture::arm::{
+            ap::MemoryAp, communication_interface::SwdSequence,
+            memory::adi_v5_memory_interface::ArmProbe, sequences::DefaultArmSequence, ArmError,
+        },
+        DebugProbeError,
     };
 
     use super::*;
@@ -945,11 +948,11 @@ mod test {
     }
 
     impl ArmProbe for MockProbe {
-        fn read_8(&mut self, _address: u64, _data: &mut [u8]) -> Result<(), Error> {
+        fn read_8(&mut self, _address: u64, _data: &mut [u8]) -> Result<(), ArmError> {
             todo!()
         }
 
-        fn read_32(&mut self, address: u64, data: &mut [u32]) -> Result<(), Error> {
+        fn read_32(&mut self, address: u64, data: &mut [u32]) -> Result<(), ArmError> {
             if self.expected_ops.is_empty() {
                 panic!(
                     "Received unexpected read_32 op: register {:#}",
@@ -980,15 +983,15 @@ mod test {
             Ok(())
         }
 
-        fn read(&mut self, address: u64, data: &mut [u8]) -> Result<(), Error> {
+        fn read(&mut self, address: u64, data: &mut [u8]) -> Result<(), ArmError> {
             self.read_8(address, data)
         }
 
-        fn write_8(&mut self, _address: u64, _data: &[u8]) -> Result<(), Error> {
+        fn write_8(&mut self, _address: u64, _data: &[u8]) -> Result<(), ArmError> {
             todo!()
         }
 
-        fn write_32(&mut self, address: u64, data: &[u32]) -> Result<(), Error> {
+        fn write_32(&mut self, address: u64, data: &[u32]) -> Result<(), ArmError> {
             if self.expected_ops.is_empty() {
                 panic!(
                     "Received unexpected write_32 op: register {:#}",
@@ -1022,15 +1025,15 @@ mod test {
             Ok(())
         }
 
-        fn write(&mut self, address: u64, data: &[u8]) -> Result<(), Error> {
+        fn write(&mut self, address: u64, data: &[u8]) -> Result<(), ArmError> {
             self.write_8(address, data)
         }
 
-        fn flush(&mut self) -> Result<(), Error> {
+        fn flush(&mut self) -> Result<(), ArmError> {
             todo!()
         }
 
-        fn supports_8bit_transfers(&self) -> Result<bool, Error> {
+        fn supports_8bit_transfers(&self) -> Result<bool, ArmError> {
             Ok(false)
         }
 
@@ -1040,16 +1043,16 @@ mod test {
             &mut crate::architecture::arm::ArmCommunicationInterface<
                 crate::architecture::arm::communication_interface::Initialized,
             >,
-            Error,
+            DebugProbeError,
         > {
             todo!()
         }
 
-        fn read_64(&mut self, _address: u64, _data: &mut [u64]) -> Result<(), Error> {
+        fn read_64(&mut self, _address: u64, _data: &mut [u64]) -> Result<(), ArmError> {
             todo!()
         }
 
-        fn write_64(&mut self, _address: u64, _data: &[u64]) -> Result<(), Error> {
+        fn write_64(&mut self, _address: u64, _data: &[u64]) -> Result<(), ArmError> {
             todo!()
         }
 
@@ -1063,7 +1066,7 @@ mod test {
     }
 
     impl SwdSequence for MockProbe {
-        fn swj_sequence(&mut self, _bit_len: u8, _bits: u64) -> Result<(), Error> {
+        fn swj_sequence(&mut self, _bit_len: u8, _bits: u64) -> Result<(), DebugProbeError> {
             todo!()
         }
 
@@ -1072,7 +1075,7 @@ mod test {
             _pin_out: u32,
             _pin_select: u32,
             _pin_wait: u32,
-        ) -> Result<u32, Error> {
+        ) -> Result<u32, DebugProbeError> {
             todo!()
         }
     }

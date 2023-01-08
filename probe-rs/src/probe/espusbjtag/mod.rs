@@ -12,7 +12,7 @@ use crate::{
             communication_interface::{DapProbe, UninitializedArmProbe},
             SwoAccess,
         },
-        riscv::communication_interface::RiscvCommunicationInterface,
+        riscv::communication_interface::{RiscvCommunicationInterface, RiscvError},
     },
     probe::jlink::bits_to_byte,
     DebugProbe, DebugProbeError, DebugProbeSelector, WireProtocol,
@@ -398,7 +398,7 @@ impl DebugProbe for EspUsbJtag {
         Ok(())
     }
 
-    fn detach(&mut self) -> Result<(), super::DebugProbeError> {
+    fn detach(&mut self) -> Result<(), crate::Error> {
         Ok(())
     }
 
@@ -420,7 +420,7 @@ impl DebugProbe for EspUsbJtag {
 
     fn try_get_riscv_interface(
         self: Box<Self>,
-    ) -> Result<RiscvCommunicationInterface, (Box<dyn DebugProbe>, DebugProbeError)> {
+    ) -> Result<RiscvCommunicationInterface, (Box<dyn DebugProbe>, RiscvError)> {
         // This probe is intended for RISC-V.
         match RiscvCommunicationInterface::new(self) {
             Ok(interface) => Ok(interface),

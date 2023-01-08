@@ -88,7 +88,7 @@ pub enum DebugError {
     Other(#[from] anyhow::Error),
 }
 
-/// A copy of [`gimli::ColumnType`] which uses [`u64`] instead of [`NonZeroU64`].
+/// A copy of [`gimli::ColumnType`] which uses [`u64`] instead of [`NonZeroU64`](std::num::NonZeroU64).
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum ColumnType {
     /// The `LeftEdge` means that the statement begins at the start of the new line.

@@ -3,7 +3,7 @@ use std::{iter, time::Duration};
 use crate::{
     architecture::arm::{
         dp::{Abort, Ctrl, RdBuff, DPIDR},
-        DapError, DpAddress, Pins, PortType, RawDapAccess, Register,
+        ArmError, DapError, DpAddress, Pins, PortType, RawDapAccess, Register,
     },
     probe::JTAGAccess,
     DebugProbe, DebugProbeError,
@@ -829,7 +829,7 @@ pub trait RawProtocolIo {
 
     fn probe_statistics(&mut self) -> &mut ProbeStatistics;
 
-    /// Try to perform a line reset, followed by a read of the DPIDR register.
+    /// Try to perform a SWD line reset, followed by a read of the DPIDR register.
     ///
     /// Returns Ok if the read of the DPIDR register was succesful, and Err
     /// otherwise. In case of JLink Errors, the actual error is returned.
@@ -838,7 +838,7 @@ pub trait RawProtocolIo {
     /// might be in the middle of a transfer the first time we try the reset.
     ///
     /// See section B4.3.3 in the ADIv5 Specification.
-    fn line_reset(&mut self) -> Result<(), DebugProbeError>;
+    fn line_reset(&mut self) -> Result<(), ArmError>;
 }
 
 impl RawProtocolIo for JLink {
@@ -874,7 +874,7 @@ impl RawProtocolIo for JLink {
         Ok(iter.collect())
     }
 
-    fn line_reset(&mut self) -> Result<(), DebugProbeError> {
+    fn line_reset(&mut self) -> Result<(), ArmError> {
         tracing::debug!("Performing line reset!");
 
         const NUM_RESET_BITS: u8 = 50;
@@ -904,7 +904,7 @@ impl RawProtocolIo for JLink {
                 }
                 TransferStatus::Failed(e) => {
                     tracing::debug!("Error reading DPIDR register after line reset: {e:?}");
-                    result = Err(DebugProbeError::ArchitectureSpecific(e.clone().into()));
+                    result = Err(ArmError::from(e.clone()));
                 }
             }
         }
@@ -923,16 +923,17 @@ impl RawProtocolIo for JLink {
 }
 
 impl<Probe: DebugProbe + RawProtocolIo + JTAGAccess + 'static> RawDapAccess for Probe {
-    fn select_dp(&mut self, dp: DpAddress) -> Result<(), DebugProbeError> {
+    fn select_dp(&mut self, dp: DpAddress) -> Result<(), ArmError> {
         match dp {
             DpAddress::Default => Ok(()), // nop
             DpAddress::Multidrop(_) => Err(DebugProbeError::ProbeSpecific(
                 anyhow::anyhow!("JLink doesn't support multidrop SWD yet").into(),
-            )),
+            )
+            .into()),
         }
     }
 
-    fn raw_read_register(&mut self, port: PortType, address: u8) -> Result<u32, DebugProbeError> {
+    fn raw_read_register(&mut self, port: PortType, address: u8) -> Result<u32, ArmError> {
         let dap_wait_retries = self.swd_settings().num_retries_after_wait;
         let mut idle_cycles = std::cmp::max(1, self.swd_settings().num_idle_cycles_between_writes);
 
@@ -1045,7 +1046,7 @@ impl<Probe: DebugProbe + RawProtocolIo + JTAGAccess + 'static> RawDapAccess for 
 
         // If we land here, the DAP operation timed out.
         tracing::error!("DAP read timeout.");
-        Err(DebugProbeError::Timeout)
+        Err(ArmError::Timeout)
     }
 
     fn raw_read_block(
@@ -1053,7 +1054,7 @@ impl<Probe: DebugProbe + RawProtocolIo + JTAGAccess + 'static> RawDapAccess for 
         port: PortType,
         address: u8,
         values: &mut [u32],
-    ) -> Result<(), DebugProbeError> {
+    ) -> Result<(), ArmError> {
         let mut succesful_transfers = 0;
 
         let mut idle_cycles = std::cmp::max(1, self.swd_settings().num_idle_cycles_between_writes);
@@ -1126,7 +1127,7 @@ impl<Probe: DebugProbe + RawProtocolIo + JTAGAccess + 'static> RawDapAccess for 
         port: PortType,
         address: u8,
         value: u32,
-    ) -> Result<(), DebugProbeError> {
+    ) -> Result<(), ArmError> {
         let dap_wait_retries = self.swd_settings().num_retries_after_wait;
         let mut idle_cycles = std::cmp::max(1, self.swd_settings().num_idle_cycles_between_writes);
 
@@ -1228,7 +1229,7 @@ impl<Probe: DebugProbe + RawProtocolIo + JTAGAccess + 'static> RawDapAccess for 
 
         // If we land here, the DAP operation timed out.
         tracing::error!("DAP write timeout.");
-        Err(DebugProbeError::Timeout)
+        Err(ArmError::Timeout)
     }
 
     fn raw_write_block(
@@ -1236,7 +1237,7 @@ impl<Probe: DebugProbe + RawProtocolIo + JTAGAccess + 'static> RawDapAccess for 
         port: PortType,
         address: u8,
         values: &[u32],
-    ) -> Result<(), DebugProbeError> {
+    ) -> Result<(), ArmError> {
         let mut succesful_transfers = 0;
 
         let mut idle_cycles = std::cmp::max(1, self.swd_settings().num_idle_cycles_between_writes);
@@ -1384,7 +1385,7 @@ mod test {
     use std::iter;
 
     use crate::{
-        architecture::arm::{PortType, RawDapAccess},
+        architecture::arm::{ArmError, PortType, RawDapAccess},
         probe::JTAGAccess,
         DebugProbe, DebugProbeError,
     };
@@ -1680,7 +1681,7 @@ mod test {
             Ok(transfer_response)
         }
 
-        fn line_reset(&mut self) -> Result<(), crate::DebugProbeError> {
+        fn line_reset(&mut self) -> Result<(), ArmError> {
             Ok(())
         }
 
@@ -1721,7 +1722,7 @@ mod test {
             todo!()
         }
 
-        fn detach(&mut self) -> Result<(), crate::DebugProbeError> {
+        fn detach(&mut self) -> Result<(), crate::Error> {
             todo!()
         }
 

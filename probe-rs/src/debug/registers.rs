@@ -16,7 +16,8 @@ pub enum RegisterGroup {
     Singleton,
 }
 
-/// Stores the relevant information from [`RegisterDescription`] as well as additional information required during debug.
+/// Stores the relevant information from [`RegisterDescription`](crate::core::RegisterDescription)
+/// as well as additional information required during debug.
 #[derive(Debug, Clone, PartialEq)]
 pub struct DebugRegister {
     /// To lookup platform specific details of register definitions.

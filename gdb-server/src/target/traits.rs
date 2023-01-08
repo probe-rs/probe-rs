@@ -43,7 +43,12 @@ impl<T> GdbErrorExt<T> for Result<T, Error> {
     fn into_target_result_non_fatal(self) -> TargetResult<T, RuntimeTarget<'static>> {
         match self {
             Ok(v) => Ok(v),
-            Err(Error::ArchitectureSpecific(e)) => {
+            Err(Error::Arm(e)) => {
+                log::debug!("Error: {:#}", e);
+                // EIO
+                Err(TargetError::Errno(122))
+            }
+            Err(Error::Riscv(e)) => {
                 log::debug!("Error: {:#}", e);
                 // EIO
                 Err(TargetError::Errno(122))

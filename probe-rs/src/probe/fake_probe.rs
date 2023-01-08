@@ -6,10 +6,11 @@ use crate::{
         communication_interface::{
             ArmDebugState, Initialized, SwdSequence, Uninitialized, UninitializedArmProbe,
         },
+        dp::DebugPortError,
         memory::adi_v5_memory_interface::{ADIMemoryInterface, ArmProbe},
         sequences::ArmDebugSequence,
-        ApAddress, ArmProbeInterface, DapAccess, DpAddress, MemoryApInformation, PortType,
-        RawDapAccess, SwoAccess,
+        ApAddress, ArmError, ArmProbeInterface, DapAccess, DpAddress, MemoryApInformation,
+        PortType, RawDapAccess, SwoAccess,
     },
     DebugProbe, DebugProbeError, DebugProbeSelector, Error, Probe, WireProtocol,
 };
@@ -20,11 +21,10 @@ pub struct FakeProbe {
     protocol: WireProtocol,
     speed: u32,
 
-    dap_register_read_handler:
-        Option<Box<dyn Fn(PortType, u8) -> Result<u32, DebugProbeError> + Send>>,
+    dap_register_read_handler: Option<Box<dyn Fn(PortType, u8) -> Result<u32, ArmError> + Send>>,
 
     dap_register_write_handler:
-        Option<Box<dyn Fn(PortType, u8, u32) -> Result<(), DebugProbeError> + Send>>,
+        Option<Box<dyn Fn(PortType, u8, u32) -> Result<(), ArmError> + Send>>,
 }
 
 impl Debug for FakeProbe {
@@ -52,7 +52,7 @@ impl FakeProbe {
     /// Can be used to hook into the read.
     pub fn set_dap_register_read_handler(
         &mut self,
-        handler: Box<dyn Fn(PortType, u8) -> Result<u32, DebugProbeError> + Send>,
+        handler: Box<dyn Fn(PortType, u8) -> Result<u32, ArmError> + Send>,
     ) {
         self.dap_register_read_handler = Some(handler);
     }
@@ -61,7 +61,7 @@ impl FakeProbe {
     /// Can be used to hook into the write.
     pub fn set_dap_register_write_handler(
         &mut self,
-        handler: Box<dyn Fn(PortType, u8, u32) -> Result<(), DebugProbeError> + Send>,
+        handler: Box<dyn Fn(PortType, u8, u32) -> Result<(), ArmError> + Send>,
     ) {
         self.dap_register_write_handler = Some(handler);
     }
@@ -118,7 +118,7 @@ impl DebugProbe for FakeProbe {
     }
 
     /// Leave debug mode
-    fn detach(&mut self) -> Result<(), DebugProbeError> {
+    fn detach(&mut self) -> Result<(), crate::Error> {
         Ok(())
     }
 
@@ -152,35 +152,25 @@ impl DebugProbe for FakeProbe {
 }
 
 impl RawDapAccess for FakeProbe {
-    fn select_dp(&mut self, _dp: DpAddress) -> Result<(), DebugProbeError> {
-        Err(DebugProbeError::CommandNotSupportedByProbe("select_dp"))
+    fn select_dp(&mut self, _dp: DpAddress) -> Result<(), ArmError> {
+        Err(DebugPortError::Unsupported(
+            "Fake debug probe does not support DP selection.".to_string(),
+        )
+        .into())
     }
 
     /// Reads the DAP register on the specified port and address
-    fn raw_read_register(&mut self, port: PortType, addr: u8) -> Result<u32, DebugProbeError> {
-        if let Some(handler) = &self.dap_register_read_handler {
-            handler(port, addr)
-        } else {
-            Err(DebugProbeError::CommandNotSupportedByProbe(
-                "raw_read_register",
-            ))
-        }
+    fn raw_read_register(&mut self, port: PortType, addr: u8) -> Result<u32, ArmError> {
+        let handler = self.dap_register_read_handler.as_ref().unwrap();
+
+        handler(port, addr)
     }
 
     /// Writes a value to the DAP register on the specified port and address
-    fn raw_write_register(
-        &mut self,
-        port: PortType,
-        addr: u8,
-        value: u32,
-    ) -> Result<(), DebugProbeError> {
-        if let Some(handler) = &self.dap_register_write_handler {
-            handler(port, addr, value)
-        } else {
-            Err(DebugProbeError::CommandNotSupportedByProbe(
-                "raw_write_register",
-            ))
-        }
+    fn raw_write_register(&mut self, port: PortType, addr: u8, value: u32) -> Result<(), ArmError> {
+        let handler = self.dap_register_write_handler.as_ref().unwrap();
+
+        handler(port, addr, value)
     }
 
     fn swj_sequence(&mut self, _bit_len: u8, _bits: u64) -> Result<(), DebugProbeError> {
@@ -249,13 +239,18 @@ impl FakeArmInterface<Initialized> {
 }
 
 impl<S: ArmDebugState> SwdSequence for FakeArmInterface<S> {
-    fn swj_sequence(&mut self, bit_len: u8, bits: u64) -> Result<(), Error> {
+    fn swj_sequence(&mut self, bit_len: u8, bits: u64) -> Result<(), DebugProbeError> {
         self.probe.swj_sequence(bit_len, bits)?;
 
         Ok(())
     }
 
-    fn swj_pins(&mut self, pin_out: u32, pin_select: u32, pin_wait: u32) -> Result<u32, Error> {
+    fn swj_pins(
+        &mut self,
+        pin_out: u32,
+        pin_select: u32,
+        pin_wait: u32,
+    ) -> Result<u32, DebugProbeError> {
         let value = self.probe.swj_pins(pin_out, pin_select, pin_wait)?;
 
         Ok(value)
@@ -283,7 +278,10 @@ impl UninitializedArmProbe for FakeArmInterface<Uninitialized> {
 }
 
 impl ArmProbeInterface for FakeArmInterface<Initialized> {
-    fn memory_interface(&mut self, access_port: MemoryAp) -> Result<Box<dyn ArmProbe + '_>, Error> {
+    fn memory_interface(
+        &mut self,
+        access_port: MemoryAp,
+    ) -> Result<Box<dyn ArmProbe + '_>, ArmError> {
         let ap_information = MemoryApInformation {
             address: access_port.ap_address(),
             supports_only_32bit_data_size: false,
@@ -294,7 +292,8 @@ impl ArmProbeInterface for FakeArmInterface<Initialized> {
             device_enabled: true,
         };
 
-        let memory = ADIMemoryInterface::new(&mut self.memory_ap, ap_information)?;
+        let memory = ADIMemoryInterface::new(&mut self.memory_ap, ap_information)
+            .map_err(|e| ArmError::from_access_port(e, access_port))?;
 
         Ok(Box::new(memory) as _)
     }
@@ -302,18 +301,18 @@ impl ArmProbeInterface for FakeArmInterface<Initialized> {
     fn ap_information(
         &mut self,
         _access_port: crate::architecture::arm::ap::GenericAp,
-    ) -> Result<&crate::architecture::arm::ApInformation, Error> {
+    ) -> Result<&crate::architecture::arm::ApInformation, ArmError> {
         todo!()
     }
 
-    fn num_access_ports(&mut self, _dp: DpAddress) -> Result<usize, Error> {
+    fn num_access_ports(&mut self, _dp: DpAddress) -> Result<usize, ArmError> {
         Ok(1)
     }
 
     fn read_chip_info_from_rom_table(
         &mut self,
         _dp: DpAddress,
-    ) -> Result<Option<crate::architecture::arm::ArmChipInfo>, Error> {
+    ) -> Result<Option<crate::architecture::arm::ArmChipInfo>, ArmError> {
         Ok(None)
     }
 
@@ -323,25 +322,24 @@ impl ArmProbeInterface for FakeArmInterface<Initialized> {
 }
 
 impl SwoAccess for FakeArmInterface<Initialized> {
-    fn enable_swo(&mut self, _config: &crate::architecture::arm::SwoConfig) -> Result<(), Error> {
+    fn enable_swo(
+        &mut self,
+        _config: &crate::architecture::arm::SwoConfig,
+    ) -> Result<(), ArmError> {
         unimplemented!()
     }
 
-    fn disable_swo(&mut self) -> Result<(), Error> {
+    fn disable_swo(&mut self) -> Result<(), ArmError> {
         unimplemented!()
     }
 
-    fn read_swo_timeout(&mut self, _timeout: std::time::Duration) -> Result<Vec<u8>, Error> {
+    fn read_swo_timeout(&mut self, _timeout: std::time::Duration) -> Result<Vec<u8>, ArmError> {
         unimplemented!()
     }
 }
 
 impl DapAccess for FakeArmInterface<Initialized> {
-    fn read_raw_dp_register(
-        &mut self,
-        _dp: DpAddress,
-        _address: u8,
-    ) -> Result<u32, DebugProbeError> {
+    fn read_raw_dp_register(&mut self, _dp: DpAddress, _address: u8) -> Result<u32, ArmError> {
         todo!()
     }
 
@@ -350,15 +348,11 @@ impl DapAccess for FakeArmInterface<Initialized> {
         _dp: DpAddress,
         _address: u8,
         _value: u32,
-    ) -> Result<(), DebugProbeError> {
+    ) -> Result<(), ArmError> {
         todo!()
     }
 
-    fn read_raw_ap_register(
-        &mut self,
-        _ap: ApAddress,
-        _address: u8,
-    ) -> Result<u32, DebugProbeError> {
+    fn read_raw_ap_register(&mut self, _ap: ApAddress, _address: u8) -> Result<u32, ArmError> {
         todo!()
     }
 
@@ -367,7 +361,7 @@ impl DapAccess for FakeArmInterface<Initialized> {
         _ap: ApAddress,
         _address: u8,
         _values: &mut [u32],
-    ) -> Result<(), DebugProbeError> {
+    ) -> Result<(), ArmError> {
         todo!()
     }
 
@@ -376,7 +370,7 @@ impl DapAccess for FakeArmInterface<Initialized> {
         _ap: ApAddress,
         _address: u8,
         _value: u32,
-    ) -> Result<(), DebugProbeError> {
+    ) -> Result<(), ArmError> {
         todo!()
     }
 
@@ -385,7 +379,7 @@ impl DapAccess for FakeArmInterface<Initialized> {
         _ap: ApAddress,
         _address: u8,
         _values: &[u32],
-    ) -> Result<(), DebugProbeError> {
+    ) -> Result<(), ArmError> {
         todo!()
     }
 }

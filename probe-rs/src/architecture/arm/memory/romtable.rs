@@ -1,7 +1,7 @@
 use super::adi_v5_memory_interface::ArmProbe;
 use super::AccessPortError;
+use crate::architecture::arm::ArmError;
 use crate::architecture::arm::{ap::MemoryAp, communication_interface::ArmProbeInterface};
-use crate::Error;
 use enum_primitive_derive::Primitive;
 use num_traits::cast::FromPrimitive;
 
@@ -19,11 +19,17 @@ pub enum RomTableError {
     #[error("The CoreSight Component could not be identified")]
     CSComponentIdentification,
     #[error("Could not access romtable")]
-    Memory(#[source] Error),
+    Memory(#[source] Box<ArmError>),
     #[error("The requested component '{0}' was not found")]
     ComponentNotFound(PeripheralType),
     #[error("There are no components to operate on")]
     NoComponents,
+}
+
+impl RomTableError {
+    fn memory(error: ArmError) -> Self {
+        RomTableError::Memory(Box::new(error))
+    }
 }
 
 /// A lazy romtable reader that is used to create an iterator over all romtable entries.
@@ -81,7 +87,7 @@ impl<'probe, 'memory, 'reader> Iterator for RomTableIterator<'probe, 'memory, 'r
             .memory
             .read_32(component_address, &mut entry_data)
         {
-            return Some(Err(RomTableError::Memory(e)));
+            return Some(Err(RomTableError::memory(e)));
         }
 
         // End of entries is marked by an all zero entry
@@ -277,7 +283,7 @@ impl<'probe: 'memory, 'memory> ComponentInformationReader<'probe, 'memory> {
 
         self.memory
             .read_32(self.base_address + 0xFF0, &mut cidr)
-            .map_err(RomTableError::Memory)?;
+            .map_err(RomTableError::memory)?;
 
         tracing::debug!("CIDR: {:x?}", cidr);
 
@@ -321,10 +327,10 @@ impl<'probe: 'memory, 'memory> ComponentInformationReader<'probe, 'memory> {
 
         self.memory
             .read_32(self.base_address + 0xFD0, &mut data[4..])
-            .map_err(RomTableError::Memory)?;
+            .map_err(RomTableError::memory)?;
         self.memory
             .read_32(self.base_address + 0xFE0, &mut data[..4])
-            .map_err(RomTableError::Memory)?;
+            .map_err(RomTableError::memory)?;
 
         tracing::debug!("Raw peripheral id: {:x?}", data);
 
@@ -334,7 +340,7 @@ impl<'probe: 'memory, 'memory> ComponentInformationReader<'probe, 'memory> {
         let dev_type = self
             .memory
             .read_word_32(self.base_address + DEV_TYPE_OFFSET)
-            .map_err(RomTableError::Memory)
+            .map_err(RomTableError::memory)
             .map(|v| (v & DEV_TYPE_MASK) as u8)?;
 
         const ARCH_ID_OFFSET: u64 = 0xFBC;
@@ -344,7 +350,7 @@ impl<'probe: 'memory, 'memory> ComponentInformationReader<'probe, 'memory> {
         let arch_id = self
             .memory
             .read_word_32(self.base_address + ARCH_ID_OFFSET)
-            .map_err(RomTableError::Memory)
+            .map_err(RomTableError::memory)
             .map(|v| {
                 if v & ARCH_ID_PRESENT_BIT > 0 {
                     (v & ARCH_ID_MASK) as u16
@@ -484,7 +490,7 @@ impl CoresightComponent {
         &self,
         interface: &mut dyn ArmProbeInterface,
         offset: u32,
-    ) -> Result<u32, Error> {
+    ) -> Result<u32, ArmError> {
         let mut memory = interface.memory_interface(self.ap)?;
         let value = memory.read_word_32(self.component.id().component_address + offset as u64)?;
         Ok(value)
@@ -496,7 +502,7 @@ impl CoresightComponent {
         interface: &mut dyn ArmProbeInterface,
         offset: u32,
         value: u32,
-    ) -> Result<(), Error> {
+    ) -> Result<(), ArmError> {
         let mut memory = interface.memory_interface(self.ap)?;
         memory.write_word_32(self.component.id().component_address + offset as u64, value)?;
         Ok(())

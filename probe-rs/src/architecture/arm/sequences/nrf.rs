@@ -3,10 +3,13 @@
 use super::ArmDebugSequence;
 use crate::architecture::arm::ap::MemoryAp;
 use crate::architecture::arm::memory::adi_v5_memory_interface::ArmProbe;
+use crate::architecture::arm::sequences::ArmDebugSequenceError;
+use crate::architecture::arm::ArmError;
 use crate::architecture::arm::{
     communication_interface::Initialized, ApAddress, ArmCommunicationInterface, ArmProbeInterface,
     DapAccess,
 };
+use crate::session::MissingPermissions;
 
 pub trait Nrf: Sync + Send {
     /// Returns the ahb_ap and ctrl_ap of every core
@@ -18,7 +21,7 @@ pub trait Nrf: Sync + Send {
         arm_interface: &mut ArmCommunicationInterface<Initialized>,
         ahb_ap_address: ApAddress,
         ctrl_ap_address: ApAddress,
-    ) -> Result<bool, crate::Error>;
+    ) -> Result<bool, ArmError>;
 
     /// Returns true if a network core is present
     fn has_network_core(&self) -> bool;
@@ -36,16 +39,20 @@ fn unlock_core(
     arm_interface: &mut ArmCommunicationInterface<Initialized>,
     ap_address: ApAddress,
     permissions: &crate::Permissions,
-) -> Result<(), crate::Error> {
-    permissions.erase_all()?;
+) -> Result<(), ArmError> {
+    permissions
+        .erase_all()
+        .map_err(|MissingPermissions(desc)| ArmError::MissingPermissions(desc))?;
 
     arm_interface.write_raw_ap_register(ap_address, ERASEALL, 1)?;
+
     while arm_interface.read_raw_ap_register(ap_address, ERASEALLSTATUS)? != 0 {}
+
     Ok(())
 }
 
 /// Sets the network core to active running.
-fn set_network_core_running(interface: &mut dyn ArmProbe) -> Result<(), crate::Error> {
+fn set_network_core_running(interface: &mut dyn ArmProbe) -> Result<(), ArmError> {
     interface.write_32(
         APPLICATION_RESET_S_NETWORK_FORCEOFF_REGISTER as u64,
         &[RELEASE_FORCEOFF],
@@ -59,7 +66,7 @@ impl<T: Nrf> ArmDebugSequence for T {
         interface: &mut dyn ArmProbeInterface,
         default_ap: MemoryAp,
         permissions: &crate::Permissions,
-    ) -> Result<(), crate::Error> {
+    ) -> Result<(), ArmError> {
         let mut interface = interface.memory_interface(default_ap)?;
 
         // TODO: Eraseprotect is not considered. If enabled, the debugger must set up the same keys as the firmware does
@@ -94,9 +101,11 @@ impl<T: Nrf> ArmDebugSequence for T {
                 core_ahb_ap_address,
                 core_ctrl_ap_address,
             )? {
-                return Err(crate::Error::ArchitectureSpecific(
-                    format!("Could not unlock core {}", core_index).into(),
-                ));
+                return Err(ArmDebugSequenceError::custom(format!(
+                    "Could not unlock core {}",
+                    core_index
+                ))
+                .into());
             }
         }
 

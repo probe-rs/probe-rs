@@ -1,9 +1,10 @@
 //! Register types and the core interface for armv6-M
 
-use super::{ArmError, CortexMState, Dfsr, CORTEX_M_COMMON_REGS};
+use super::{CortexMState, Dfsr, CORTEX_M_COMMON_REGS};
 
 use crate::architecture::arm::memory::adi_v5_memory_interface::ArmProbe;
 use crate::architecture::arm::sequences::ArmDebugSequence;
+use crate::architecture::arm::ArmError;
 use crate::core::{
     RegisterDataType, RegisterDescription, RegisterFile, RegisterKind, RegisterValue,
 };
@@ -296,7 +297,7 @@ impl BpCompx {
         } else if bp_val.bp_match() == 0b10 {
             Ok((bp_val.comp() << 2) | 0x2)
         } else {
-            Err(Error::ArchitectureSpecific(Box::new(DebugProbeError::Other(anyhow::anyhow!("Unsupported breakpoint comparator value {:#08x} for HW breakpoint. Breakpoint must be on half-word boundaries", bp_val.0)))))
+            Err(Error::Probe(DebugProbeError::Other(anyhow::anyhow!("Unsupported breakpoint comparator value {:#08x} for HW breakpoint. Breakpoint must be on half-word boundaries", bp_val.0))))
         }
     }
 }
@@ -462,7 +463,7 @@ impl<'probe> Armv6m<'probe> {
         mut memory: Box<dyn ArmProbe + 'probe>,
         state: &'probe mut CortexMState,
         sequence: Arc<dyn ArmDebugSequence>,
-    ) -> Result<Self, Error> {
+    ) -> Result<Self, ArmError> {
         if !state.initialized() {
             // determine current state
             let dhcsr = Dhcsr(memory.read_word_32(Dhcsr::ADDRESS)?);
@@ -510,7 +511,7 @@ impl<'probe> CoreInterface for Armv6m<'probe> {
             }
             std::thread::sleep(Duration::from_millis(1));
         }
-        Err(Error::Probe(DebugProbeError::Timeout))
+        Err(Error::Arm(ArmError::Timeout))
     }
 
     fn core_halted(&mut self) -> Result<bool, Error> {
@@ -615,7 +616,8 @@ impl<'probe> CoreInterface for Armv6m<'probe> {
 
     fn reset(&mut self) -> Result<(), Error> {
         self.sequence
-            .reset_system(&mut *self.memory, crate::CoreType::Armv6m, None)
+            .reset_system(&mut *self.memory, crate::CoreType::Armv6m, None)?;
+        Ok(())
     }
 
     fn reset_and_halt(&mut self, _timeout: Duration) -> Result<CoreInformation, Error> {
@@ -675,7 +677,7 @@ impl<'probe> CoreInterface for Armv6m<'probe> {
         // The highest 3 bits of the address have to be zero, otherwise the breakpoint cannot
         // be set at the address.
         if addr >= 0x2000_0000 {
-            return Err(Error::ArchitectureSpecific(Box::new(DebugProbeError::Other(anyhow::anyhow!("Unsupported address {:#08x} for HW breakpoint. Breakpoint must be at address < 0x2000_0000.", addr)))));
+            return Err(Error::Probe(DebugProbeError::Other(anyhow::anyhow!("Unsupported address {:#08x} for HW breakpoint. Breakpoint must be at address < 0x2000_0000.", addr))));
         }
 
         let mut value = BpCompx(0);
@@ -800,7 +802,7 @@ impl<'probe> CoreInterface for Armv6m<'probe> {
             let val = super::cortex_m::read_core_reg(&mut *self.memory, address)?;
             Ok(val.into())
         } else {
-            Err(Error::architecture_specific(ArmError::CoreNotHalted))
+            Err(Error::Arm(ArmError::CoreNotHalted))
         }
     }
 
@@ -809,7 +811,7 @@ impl<'probe> CoreInterface for Armv6m<'probe> {
             super::cortex_m::write_core_reg(&mut *self.memory, address, value.try_into()?)?;
             Ok(())
         } else {
-            Err(Error::architecture_specific(ArmError::CoreNotHalted))
+            Err(Error::Arm(ArmError::CoreNotHalted))
         }
     }
 
@@ -841,60 +843,76 @@ impl<'probe> MemoryInterface for Armv6m<'probe> {
         self.memory.supports_native_64bit_access()
     }
     fn read_word_64(&mut self, address: u64) -> Result<u64, crate::error::Error> {
-        self.memory.read_word_64(address)
+        let value = self.memory.read_word_64(address)?;
+        Ok(value)
     }
     fn read_word_32(&mut self, address: u64) -> Result<u32, Error> {
-        self.memory.read_word_32(address)
+        let value = self.memory.read_word_32(address)?;
+        Ok(value)
     }
     fn read_word_8(&mut self, address: u64) -> Result<u8, Error> {
-        self.memory.read_word_8(address)
+        let value = self.memory.read_word_8(address)?;
+        Ok(value)
     }
 
     fn read_64(&mut self, address: u64, data: &mut [u64]) -> Result<(), crate::error::Error> {
-        self.memory.read_64(address, data)
+        self.memory.read_64(address, data)?;
+        Ok(())
     }
 
     fn read_32(&mut self, address: u64, data: &mut [u32]) -> Result<(), Error> {
-        self.memory.read_32(address, data)
+        self.memory.read_32(address, data)?;
+        Ok(())
     }
 
     fn read_8(&mut self, address: u64, data: &mut [u8]) -> Result<(), Error> {
-        self.memory.read_8(address, data)
+        self.memory.read_8(address, data)?;
+        Ok(())
     }
 
     fn write_word_64(&mut self, address: u64, data: u64) -> Result<(), crate::error::Error> {
-        self.memory.write_word_64(address, data)
+        self.memory.write_word_64(address, data)?;
+        Ok(())
     }
 
     fn write_word_32(&mut self, address: u64, data: u32) -> Result<(), Error> {
-        self.memory.write_word_32(address, data)
+        self.memory.write_word_32(address, data)?;
+        Ok(())
     }
 
     fn write_word_8(&mut self, address: u64, data: u8) -> Result<(), Error> {
-        self.memory.write_word_8(address, data)
+        self.memory.write_word_8(address, data)?;
+        Ok(())
     }
 
     fn write_64(&mut self, address: u64, data: &[u64]) -> Result<(), crate::error::Error> {
-        self.memory.write_64(address, data)
+        self.memory.write_64(address, data)?;
+        Ok(())
     }
 
     fn write_32(&mut self, address: u64, data: &[u32]) -> Result<(), Error> {
-        self.memory.write_32(address, data)
+        self.memory.write_32(address, data)?;
+        Ok(())
     }
 
     fn write_8(&mut self, address: u64, data: &[u8]) -> Result<(), Error> {
-        self.memory.write_8(address, data)
+        self.memory.write_8(address, data)?;
+        Ok(())
     }
 
     fn write(&mut self, address: u64, data: &[u8]) -> Result<(), Error> {
-        self.memory.write(address, data)
+        self.memory.write(address, data)?;
+        Ok(())
     }
 
     fn supports_8bit_transfers(&self) -> Result<bool, Error> {
-        self.memory.supports_8bit_transfers()
+        let value = self.memory.supports_8bit_transfers()?;
+        Ok(value)
     }
 
     fn flush(&mut self) -> Result<(), Error> {
-        self.memory.flush()
+        self.memory.flush()?;
+
+        Ok(())
     }
 }

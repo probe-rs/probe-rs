@@ -1,6 +1,7 @@
 use crate::architecture::arm::component::get_arm_components;
 use crate::architecture::arm::sequences::{ArmDebugSequence, DefaultArmSequence};
-use crate::architecture::arm::{ApAddress, DpAddress};
+use crate::architecture::arm::{ApAddress, ArmError, DpAddress};
+use crate::architecture::riscv::communication_interface::RiscvError;
 use crate::config::{ChipInfo, RegistryError, Target, TargetSelector};
 use crate::core::{Architecture, CoreState, SpecificCoreState};
 use crate::{
@@ -13,8 +14,7 @@ use crate::{
     },
     config::DebugSequence,
 };
-use crate::{AttachMethod, Core, CoreType, DebugProbeError, Error, FakeProbe, Probe};
-use anyhow::anyhow;
+use crate::{AttachMethod, Core, CoreType, Error, FakeProbe, Probe};
 use std::ops::DerefMut;
 use std::{fmt, sync::Arc, time::Duration};
 
@@ -192,10 +192,10 @@ impl Session {
                 match unlock_res {
                     Ok(()) => (),
                     // In case this happens after unlock. Try to re-attach the probe once.
-                    Err(crate::Error::Probe(crate::DebugProbeError::ReAttachRequired)) => {
+                    Err(ArmError::ReAttachRequired) => {
                         Self::reattach_arm_interface(&mut interface, &sequence_handle)?;
                     }
-                    Err(e) => return Err(e),
+                    Err(e) => return Err(Error::Arm(e)),
                 }
 
                 {
@@ -255,11 +255,11 @@ impl Session {
                         if let Err(e) =
                             sequence_handle.reset_hardware_deassert(&mut *memory_interface)
                         {
-                            if matches!(e, Error::Probe(DebugProbeError::Timeout)) {
+                            if matches!(e, ArmError::Timeout) {
                                 tracing::warn!("Timeout while deasserting hardware reset pin. This indicates that the reset pin is not properly connected. Please check your hardware setup.");
                             }
 
-                            return Err(e);
+                            return Err(e.into());
                         }
                         drop(reset_hardware_deassert);
                     }
@@ -399,13 +399,13 @@ impl Session {
     /// Read available trace data from the specified data sink.
     ///
     /// This method is only supported for ARM-based targets, and will
-    /// return [Error::ArchitectureRequired] otherwise.
+    /// return [ArmError::ArchitectureRequired] otherwise.
     #[tracing::instrument(skip(self))]
-    pub fn read_trace_data(&mut self) -> Result<Vec<u8>, Error> {
+    pub fn read_trace_data(&mut self) -> Result<Vec<u8>, ArmError> {
         let sink = self
             .configured_trace_sink
             .as_ref()
-            .ok_or_else(|| anyhow!("Tracing has not been configured"))?;
+            .ok_or(ArmError::TracingUnconfigured)?;
 
         match sink {
             TraceSink::Swo(_) => {
@@ -439,19 +439,19 @@ impl Session {
     }
 
     /// Get the Arm probe interface.
-    pub fn get_arm_interface(&mut self) -> Result<&mut dyn ArmProbeInterface, Error> {
+    pub fn get_arm_interface(&mut self) -> Result<&mut dyn ArmProbeInterface, ArmError> {
         let interface = match &mut self.interface {
             ArchitectureInterface::Arm(state) => state.deref_mut(),
-            _ => return Err(Error::ArchitectureRequired(&["ARMv7", "ARMv8"])),
+            _ => return Err(ArmError::NoArmTarget),
         };
 
         Ok(interface)
     }
 
-    fn get_riscv_interface(&mut self) -> Result<&mut RiscvCommunicationInterface, Error> {
+    fn get_riscv_interface(&mut self) -> Result<&mut RiscvCommunicationInterface, RiscvError> {
         let interface = match &mut self.interface {
             ArchitectureInterface::Riscv(interface) => interface,
-            _ => return Err(Error::ArchitectureRequired(&["Riscv"])),
+            _ => return Err(RiscvError::NoRiscvTarget),
         };
 
         Ok(interface)
@@ -525,7 +525,7 @@ impl Session {
                     match erase_res {
                         Ok(()) => (),
                         // In case this happens after unlock. Try to re-attach the probe once.
-                        Err(crate::Error::Probe(crate::DebugProbeError::ReAttachRequired)) => {
+                        Err(ArmError::ReAttachRequired) => {
                             Self::reattach_arm_interface(interface, &debug_sequence)?;
                             // For re-setup debugging on all cores
                             for i in 0..self.target.cores.len() {
@@ -558,7 +558,7 @@ impl Session {
                                 )?;
                             }
                         }
-                        Err(e) => return Err(e),
+                        Err(e) => return Err(Error::Arm(e)),
                     }
                     tracing::info!("Device Erased Successfully");
                     Ok(())
@@ -578,7 +578,10 @@ impl Session {
     ///
     /// This will recursively parse the Romtable of the attached target
     /// and create a list of all the contained components.
-    pub fn get_arm_components(&mut self, dp: DpAddress) -> Result<Vec<CoresightComponent>, Error> {
+    pub fn get_arm_components(
+        &mut self,
+        dp: DpAddress,
+    ) -> Result<Vec<CoresightComponent>, ArmError> {
         let interface = self.get_arm_interface()?;
 
         get_arm_components(interface, dp)
@@ -638,7 +641,7 @@ impl Session {
     }
 
     /// Begin tracing a memory address over SWV.
-    pub fn add_swv_data_trace(&mut self, unit: usize, address: u32) -> Result<(), Error> {
+    pub fn add_swv_data_trace(&mut self, unit: usize, address: u32) -> Result<(), ArmError> {
         let components = self.get_arm_components(DpAddress::Default)?;
         let interface = self.get_arm_interface()?;
         crate::architecture::arm::component::add_swv_data_trace(
@@ -650,7 +653,7 @@ impl Session {
     }
 
     /// Stop tracing from a given SWV unit
-    pub fn remove_swv_data_trace(&mut self, unit: usize) -> Result<(), Error> {
+    pub fn remove_swv_data_trace(&mut self, unit: usize) -> Result<(), ArmError> {
         let components = self.get_arm_components(DpAddress::Default)?;
         let interface = self.get_arm_interface()?;
         crate::architecture::arm::component::remove_swv_data_trace(interface, &components, unit)
@@ -854,11 +857,15 @@ impl Permissions {
         }
     }
 
-    pub(crate) fn erase_all(&self) -> Result<(), crate::Error> {
+    pub(crate) fn erase_all(&self) -> Result<(), MissingPermissions> {
         if self.erase_all {
             Ok(())
         } else {
-            Err(crate::Error::MissingPermissions("erase_all".into()))
+            Err(MissingPermissions("erase_all".into()))
         }
     }
 }
+
+#[derive(Debug, Clone, thiserror::Error)]
+#[error("An operation could not be performed because it lacked the permission to do so: {0}")]
+pub struct MissingPermissions(pub String);

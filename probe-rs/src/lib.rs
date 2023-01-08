@@ -59,8 +59,8 @@
 //! # Ok::<(), Error>(())
 //! ```
 //!
-//! probe-rs is built around 5 main interfaces: the [Probe],
-//! [Target], [Session], [Memory] and [Core] strucs.
+//! probe-rs is built around 4 main interfaces: the [Probe],
+//! [Target], [Session]  and [Core] structs.
 
 #![recursion_limit = "256"]
 
@@ -86,9 +86,9 @@ mod session;
 
 pub use crate::config::{CoreType, InstructionSet, Target};
 pub use crate::core::{
-    Architecture, BreakpointCause, BreakpointId, CommunicationInterface, Core, CoreInformation,
-    CoreInterface, CoreState, CoreStatus, HaltReason, MemoryMappedRegister, RegisterDescription,
-    RegisterFile, RegisterId, RegisterValue, SpecificCoreState,
+    Architecture, BreakpointCause, BreakpointId, Core, CoreInformation, CoreInterface, CoreState,
+    CoreStatus, HaltReason, MemoryMappedRegister, RegisterDescription, RegisterFile, RegisterId,
+    RegisterValue, SpecificCoreState,
 };
 pub use crate::error::Error;
 pub use crate::memory::MemoryInterface;
