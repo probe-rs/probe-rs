@@ -1,7 +1,6 @@
 use std::io;
 
 use bitvec::{order::Lsb0, prelude::BitVec, slice::BitSlice};
-use ftdi_mpsse::*;
 
 use crate::{probe::CommandResult, DebugProbeError};
 
@@ -13,48 +12,6 @@ pub trait JtagCommand: std::fmt::Debug + Send {
     fn bytes_to_read(&self) -> usize;
 
     fn process_output(&self, data: &[u8]) -> Result<CommandResult, DebugProbeError>;
-}
-
-// ReadRegisterCommand and WriteRegisterCommand have same structure
-// save that ReadRegisterCommand passes None for data and WriteRegisterCommand
-// passes Some(Vec<u8>) in creating the TargetTransferCommand
-#[derive(Debug)]
-pub struct ReadRegisterCommand {
-    subcommands: [Box<dyn JtagCommand>; 2],
-}
-
-impl ReadRegisterCommand {
-    pub(super) fn new(
-        address: u32,
-        len: usize,
-        idle_cycles: usize,
-        chain_params: ChainParams,
-    ) -> io::Result<ReadRegisterCommand> {
-        let target_transfer = TargetTransferCommand::new(address, None, len, chain_params)?;
-        let idle = IdleCommand::new(idle_cycles);
-
-        Ok(ReadRegisterCommand {
-            subcommands: [Box::new(target_transfer), Box::new(idle)],
-        })
-    }
-}
-
-impl JtagCommand for ReadRegisterCommand {
-    fn add_bytes(&mut self, buffer: &mut Vec<u8>) {
-        for subcommand in &mut self.subcommands {
-            subcommand.add_bytes(buffer);
-        }
-    }
-
-    fn bytes_to_read(&self) -> usize {
-        self.subcommands.iter().map(|e| e.bytes_to_read()).sum()
-    }
-
-    fn process_output(&self, data: &[u8]) -> Result<CommandResult, DebugProbeError> {
-        let r = self.subcommands[0].process_output(&data[0..(self.subcommands[0].bytes_to_read())]);
-        self.subcommands[1].process_output(&data[self.subcommands[0].bytes_to_read()..])?;
-        r
-    }
 }
 
 #[derive(Debug)]
@@ -70,7 +27,7 @@ impl WriteRegisterCommand {
         idle_cycles: usize,
         chain_params: ChainParams,
     ) -> io::Result<WriteRegisterCommand> {
-        let target_transfer = TargetTransferCommand::new(address, Some(data), len, chain_params)?;
+        let target_transfer = TargetTransferCommand::new(address, data, len, chain_params)?;
         let idle = IdleCommand::new(idle_cycles);
 
         Ok(WriteRegisterCommand {
@@ -108,7 +65,7 @@ struct TargetTransferCommand {
 impl TargetTransferCommand {
     pub fn new(
         address: u32,
-        data: Option<Vec<u8>>,
+        data: Vec<u8>,
         len: usize,
         chain_params: ChainParams,
     ) -> io::Result<TargetTransferCommand> {
@@ -126,9 +83,8 @@ impl TargetTransferCommand {
         let shift_ir_cmd = ShiftIrCommand::new(ir.to_le_bytes().to_vec(), irbits);
 
         let drbits = params.drpre + len + params.drpost;
-        let request = if let Some(data_slice) = data {
-            // Write
-            let data = BitSlice::<u8, Lsb0>::from_slice(&data_slice);
+        let request = {
+            let data = BitSlice::<u8, Lsb0>::from_slice(&data);
             let mut data = BitVec::<u8, Lsb0>::from_bitslice(data);
             data.truncate(len);
 
@@ -138,9 +94,6 @@ impl TargetTransferCommand {
             buf.resize(buf.len() + params.drpost, false);
 
             buf.into_vec()
-        } else {
-            // Read
-            vec![0; (drbits + 7) / 8]
         };
 
         let transfer_dr = TransferDrCommand::new(request.to_vec(), drbits);
@@ -229,7 +182,7 @@ impl JtagCommand for ShiftIrCommand {
 }
 
 #[derive(Debug)]
-pub(super) struct TransferDrCommand {
+struct TransferDrCommand {
     subcommands: Vec<Box<dyn JtagCommand>>,
 }
 
@@ -278,55 +231,6 @@ impl JtagCommand for TransferDrCommand {
 }
 
 #[derive(Debug)]
-pub(super) struct TransferIrCommand {
-    subcommands: Vec<Box<dyn JtagCommand>>,
-}
-
-impl TransferIrCommand {
-    pub fn new(data: Vec<u8>, bits: usize) -> TransferIrCommand {
-        TransferIrCommand {
-            subcommands: vec![
-                Box::new(ShiftTmsCommand::new(vec![0b0011], 4)),
-                Box::new(TransferTdiCommand::new(data, bits)),
-                Box::new(ShiftTmsCommand::new(vec![0b01], 2)),
-            ],
-        }
-    }
-}
-
-impl JtagCommand for TransferIrCommand {
-    fn add_bytes(&mut self, buffer: &mut Vec<u8>) {
-        for subcommand in &mut self.subcommands {
-            subcommand.add_bytes(buffer);
-        }
-    }
-
-    fn bytes_to_read(&self) -> usize {
-        self.subcommands.iter().map(|e| e.bytes_to_read()).sum()
-    }
-
-    fn process_output(&self, data: &[u8]) -> Result<CommandResult, DebugProbeError> {
-        let mut start = 0usize;
-
-        let end = start + self.subcommands[0].bytes_to_read();
-        let cmd_data = data[start..end].to_vec();
-        self.subcommands[0].process_output(&cmd_data)?;
-        start += self.subcommands[0].bytes_to_read();
-
-        let end = start + self.subcommands[1].bytes_to_read();
-        let cmd_data = data[start..end].to_vec();
-        let reply = self.subcommands[1].process_output(&cmd_data);
-        start += self.subcommands[1].bytes_to_read();
-
-        let end = start + self.subcommands[2].bytes_to_read();
-        let cmd_data = data[start..end].to_vec();
-        self.subcommands[2].process_output(&cmd_data)?;
-
-        reply
-    }
-}
-
-#[derive(Debug)]
 struct ShiftTmsCommand {
     data: Vec<u8>,
     bits: usize,
@@ -343,31 +247,24 @@ impl ShiftTmsCommand {
 
 impl JtagCommand for ShiftTmsCommand {
     fn add_bytes(&mut self, buffer: &mut Vec<u8>) {
-        let mut command = MpsseCmdBuilder::new();
+        let mut command = vec![];
 
-        // Clock Data to TMS pin, no read.
-        //
-        // Can only clock 7 TMS bits at a time, as 8th bit reserved for TDI output.
-        // However, this is never called where we transfer TDI data at same time,
-        // so TDI arg always false in clock_tms_out()
-        //
-        // See https://www.ftdichip.com/Support/Documents/AppNotes/AN_108_Command_Processor_for_MPSSE_and_MCU_Host_Bus_Emulation_Modes.pdf
-        // section 3.5
         let mut bits = self.bits;
         let mut data: &[u8] = &self.data;
         while bits > 0 {
             if bits >= 8 {
-                command = command.clock_tms_out(ClockTMSOut::NegEdge, data[0], false, 7);
+                // 0x4b = Clock Data to TMS pin (no read)
+                // see https://www.ftdichip.com/Support/Documents/AppNotes/AN_108_Command_Processor_for_MPSSE_and_MCU_Host_Bus_Emulation_Modes.pdf
+                command.extend_from_slice(&[0x4b, 0x07, data[0]]);
                 data = &data[1..];
                 bits -= 8;
             } else {
-                command =
-                    command.clock_tms_out(ClockTMSOut::NegEdge, data[0], false, (bits - 1) as u8);
+                command.extend_from_slice(&[0x4b, (bits - 1) as u8, data[0]]);
                 bits = 0;
             }
         }
 
-        buffer.extend_from_slice(command.as_slice());
+        buffer.extend_from_slice(&command);
     }
 
     fn bytes_to_read(&self) -> usize {
@@ -396,7 +293,7 @@ impl JtagCommand for ShiftTdiCommand {
         assert!(self.bits > 0);
         assert!((self.bits + 7) / 8 <= self.data.len());
 
-        let mut command = MpsseCmdBuilder::new();
+        let mut command = vec![];
         let mut bits = self.bits;
         let mut data: &[u8] = &self.data;
 
@@ -404,29 +301,29 @@ impl JtagCommand for ShiftTdiCommand {
         if full_bytes > 0 {
             assert!(full_bytes <= 65536);
 
-            command = command.clock_data_out(ClockDataOut::LsbNeg, &data[..full_bytes]);
+            command.extend_from_slice(&[0x19]);
+            let n: u16 = (full_bytes - 1) as u16;
+            command.extend_from_slice(&n.to_le_bytes());
+            command.extend_from_slice(&data[..full_bytes]);
 
             bits -= full_bytes * 8;
             data = &data[full_bytes..];
         }
         assert!(bits <= 8);
 
-        // Leftover data less than full byte
         if bits > 0 {
             let byte = data[0];
             if bits > 1 {
                 let n = (bits - 2) as u8;
-                command = command.clock_bits_out(ClockBitsOut::LsbNeg, byte, n);
+                command.extend_from_slice(&[0x1b, n, byte]);
             }
 
-            // Use TMS command to clock out last bit of TDI, does not clock any TMS out (length is 0)
-            // In contrast to ClockTMSBitsOut commands, ClockTMS also reads TDO
             let last_bit = (byte >> (bits - 1)) & 0x01;
-            let tms_byte = 0x01 | (last_bit << 7); // Not sure why we or w/ 0x01 (only set bit in TMS component) if length is 0?
-            command = command.clock_tms_out(ClockTMSOut::NegEdge, tms_byte, true, 0);
+            let tms_byte = 0x01 | (last_bit << 7);
+            command.extend_from_slice(&[0x4b, 0x00, tms_byte]);
         }
 
-        buffer.extend_from_slice(command.as_slice());
+        buffer.extend_from_slice(&command);
     }
 
     fn bytes_to_read(&self) -> usize {
@@ -461,7 +358,7 @@ impl JtagCommand for TransferTdiCommand {
         assert!(self.bits > 0);
         assert!((self.bits + 7) / 8 <= self.data.len());
 
-        let mut command = MpsseCmdBuilder::new();
+        let mut command = vec![];
 
         let mut bits = self.bits;
         let mut data: &[u8] = &self.data;
@@ -470,7 +367,10 @@ impl JtagCommand for TransferTdiCommand {
         if full_bytes > 0 {
             assert!(full_bytes <= 65536);
 
-            command = command.clock_data(ClockData::LsbPosIn, &data[..full_bytes]);
+            command.extend_from_slice(&[0x39]);
+            let n: u16 = (full_bytes - 1) as u16;
+            command.extend_from_slice(&n.to_le_bytes());
+            command.extend_from_slice(&data[..full_bytes]);
 
             bits -= full_bytes * 8;
             data = &data[full_bytes..];
@@ -480,16 +380,14 @@ impl JtagCommand for TransferTdiCommand {
         let byte = data[0];
         if bits > 1 {
             let n = (bits - 2) as u8;
-            command = command.clock_bits(ClockBits::LsbPosIn, byte, n);
+            command.extend_from_slice(&[0x3b, n, byte]);
         }
 
-        // Use TMS command to clock out last bit of TDI, does not clock any TMS out (length is 0)
-        // In contrast to ClockTMSBitsOut commands, ClockTMS also reads TDO
         let last_bit = (byte >> (bits - 1)) & 0x01;
-        let tms_byte = 0x01 | (last_bit << 7); // Not sure why we or w/ 0x01 (only set bit in TMS component) if length is 0?
-        command = command.clock_tms(ClockTMS::NegTMSPosTDO, tms_byte, true, 0);
+        let tms_byte = 0x01 | (last_bit << 7);
+        command.extend_from_slice(&[0x6b, 0x00, tms_byte]);
 
-        buffer.extend_from_slice(command.as_slice());
+        buffer.extend_from_slice(&command);
 
         let mut expect_bytes = full_bytes + 1;
         if bits > 1 {
