@@ -2,12 +2,12 @@ use super::super::ap::{
     AccessPortError, AddressIncrement, ApAccess, ApRegister, DataSize, MemoryAp, CSW, DRW, TAR,
     TAR2,
 };
-use crate::architecture::arm::communication_interface::SwdSequence;
+use crate::architecture::arm::communication_interface::{FlushableArmAccess, SwdSequence};
 use crate::architecture::arm::{
     communication_interface::Initialized, dp::DpAccess, MemoryApInformation,
 };
 use crate::architecture::arm::{ArmCommunicationInterface, ArmError};
-use crate::{CommunicationInterface, DebugProbeError};
+use crate::DebugProbeError;
 use std::convert::TryInto;
 use std::ops::Range;
 
@@ -145,7 +145,7 @@ pub trait ArmProbe: SwdSequence {
 /// A struct to give access to a targets memory using a certain DAP.
 pub(crate) struct ADIMemoryInterface<'interface, AP>
 where
-    AP: CommunicationInterface + ApAccess + DpAccess,
+    AP: ApAccess + DpAccess,
 {
     interface: &'interface mut AP,
 
@@ -162,7 +162,7 @@ where
 
 impl<'interface, AP> ADIMemoryInterface<'interface, AP>
 where
-    AP: CommunicationInterface + ApAccess + DpAccess,
+    AP: ApAccess + DpAccess,
 {
     /// Creates a new MemoryInterface for given AccessPort.
     pub fn new(
@@ -181,7 +181,7 @@ where
 
 impl<AP> ADIMemoryInterface<'_, AP>
 where
-    AP: CommunicationInterface + ApAccess + DpAccess,
+    AP: ApAccess + DpAccess,
 {
     /// Build the correct CSW register for a memory access
     ///
@@ -858,7 +858,7 @@ where
 
 impl<AP> SwdSequence for ADIMemoryInterface<'_, AP>
 where
-    AP: CommunicationInterface + ApAccess + DpAccess,
+    AP: FlushableArmAccess + ApAccess + DpAccess,
 {
     fn swj_sequence(&mut self, bit_len: u8, bits: u64) -> Result<(), DebugProbeError> {
         self.get_arm_communication_interface()?
@@ -878,7 +878,7 @@ where
 
 impl<AP> ArmProbe for ADIMemoryInterface<'_, AP>
 where
-    AP: CommunicationInterface + ApAccess + DpAccess,
+    AP: FlushableArmAccess + ApAccess + DpAccess,
 {
     fn supports_native_64bit_access(&mut self) -> bool {
         self.ap_information.has_large_data_extension
@@ -958,7 +958,7 @@ where
     fn get_arm_communication_interface(
         &mut self,
     ) -> Result<&mut ArmCommunicationInterface<Initialized>, DebugProbeError> {
-        CommunicationInterface::get_arm_communication_interface(self.interface)
+        FlushableArmAccess::get_arm_communication_interface(self.interface)
     }
 }
 

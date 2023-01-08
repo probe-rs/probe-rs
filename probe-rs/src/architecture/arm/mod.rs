@@ -76,10 +76,10 @@ pub enum ArmError {
     #[error("An operation could not be performed because it lacked the permission to do so: {0}")]
     MissingPermissions(String),
 
-    // TODO: What is the "DAP" protocol?
-    /// An error occured in the DAP protocol.
-    #[error("An error occured in the DAP protocol.")]
+    /// An error occured in the communication with an access port or debug port.
+    #[error("An error occured in the communication with an access port or debug port.")]
     Dap(#[from] DapError),
+
     /// The debug probe encountered an error.
     #[error("The debug probe encountered an error.")]
     Probe(#[from] DebugProbeError),

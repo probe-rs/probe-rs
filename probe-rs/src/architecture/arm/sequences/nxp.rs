@@ -9,14 +9,13 @@ use std::{
 use crate::{
     architecture::arm::{
         ap::{AccessPort, ApAccess, GenericAp, MemoryAp, DRW, IDR, TAR},
-        communication_interface::Initialized,
+        communication_interface::{FlushableArmAccess, Initialized},
         core::armv7m::{Aircr, Demcr, Dhcsr},
         dp::{Abort, Ctrl, DpAccess, Select, DPIDR},
         memory::adi_v5_memory_interface::ArmProbe,
         ApAddress, ArmCommunicationInterface, ArmError, DapAccess, DpAddress,
     },
     core::MemoryMappedRegister,
-    CommunicationInterface,
 };
 
 use super::ArmDebugSequence;

@@ -12,8 +12,7 @@ use super::{
     ApAddress, ArmError, DapAccess, DpAddress, PortType, RawDapAccess, SwoAccess, SwoConfig,
 };
 use crate::{
-    architecture::arm::ap::DataSize, CommunicationInterface, DebugProbe, DebugProbeError,
-    Error as ProbeRsError, Probe,
+    architecture::arm::ap::DataSize, DebugProbe, DebugProbeError, Error as ProbeRsError, Probe,
 };
 use jep106::JEP106Code;
 
@@ -24,7 +23,8 @@ use std::{
     time::Duration,
 };
 
-/// An error with the DAP protocol occurred.
+/// An error in the communication with an access port or
+/// debug port.
 #[derive(Debug, thiserror::Error, Clone, PartialEq, Eq)]
 pub enum DapError {
     /// An error occurred during SWD communication.
@@ -619,7 +619,7 @@ impl<'interface> ArmCommunicationInterface<Initialized> {
     }
 }
 
-impl CommunicationInterface for ArmCommunicationInterface<Initialized> {
+impl FlushableArmAccess for ArmCommunicationInterface<Initialized> {
     fn flush(&mut self) -> Result<(), ArmError> {
         self.probe.raw_flush()
     }
@@ -806,4 +806,15 @@ impl std::fmt::Display for ArmChipInfo {
         };
         write!(f, "{} 0x{:04x}", manu, self.part)
     }
+}
+
+/// A helper trait to get more specific interfaces.
+pub trait FlushableArmAccess {
+    /// Flush all remaining commands if the target driver implements batching.
+    fn flush(&mut self) -> Result<(), ArmError>;
+
+    /// Tries to get the underlying [`ArmCommunicationInterface`].
+    fn get_arm_communication_interface(
+        &mut self,
+    ) -> Result<&mut ArmCommunicationInterface<Initialized>, DebugProbeError>;
 }

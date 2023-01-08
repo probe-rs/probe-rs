@@ -42,8 +42,8 @@ pub enum DebugPortError {
     #[error("Debug port not supported: {0}")]
     Unsupported(String),
 
-    /// Error in DAP protocol occured.
-    #[error("Error in DAP protocol")]
+    /// An error occured in the communication with an access port or debug port.
+    #[error("An error occured in the communication with an access port or debug port.")]
     Dap(#[from] DapError),
 }
 /// A typed interface to be implemented on drivers that can control a debug port.

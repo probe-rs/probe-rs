@@ -1,14 +1,12 @@
 use super::super::{ApAccess, Register};
 use super::{AddressIncrement, ApRegister, DataSize, CSW, DRW, TAR};
-use crate::DebugProbeError;
-use crate::{
-    architecture::arm::{
-        ap::AccessPort,
-        dp::{DpAccess, DpRegister},
-        ArmError, DpAddress,
-    },
-    CommunicationInterface,
+use crate::architecture::arm::communication_interface::FlushableArmAccess;
+use crate::architecture::arm::{
+    ap::AccessPort,
+    dp::{DpAccess, DpRegister},
+    ArmError, DpAddress,
 };
+use crate::DebugProbeError;
 use std::collections::HashMap;
 use std::convert::TryInto;
 
@@ -35,7 +33,7 @@ impl MockMemoryAp {
     }
 }
 
-impl CommunicationInterface for MockMemoryAp {
+impl FlushableArmAccess for MockMemoryAp {
     fn flush(&mut self) -> Result<(), ArmError> {
         Ok(())
     }

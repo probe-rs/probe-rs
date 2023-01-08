@@ -1,9 +1,6 @@
-pub(crate) mod communication_interface;
-
 use crate::architecture::arm::memory::adi_v5_memory_interface::ArmProbe;
 use crate::architecture::riscv::RiscVState;
 use crate::{CoreType, InstructionSet};
-pub use communication_interface::CommunicationInterface;
 use num_traits::Zero;
 pub use probe_rs_target::{Architecture, CoreAccessOptions};
 

@@ -405,7 +405,7 @@ impl Session {
         let sink = self
             .configured_trace_sink
             .as_ref()
-            .ok_or_else(|| ArmError::TracingUnconfigured)?;
+            .ok_or(ArmError::TracingUnconfigured)?;
 
         match sink {
             TraceSink::Swo(_) => {
