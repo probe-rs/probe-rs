@@ -15,48 +15,6 @@ pub trait JtagCommand: std::fmt::Debug + Send {
     fn process_output(&self, data: &[u8]) -> Result<CommandResult, DebugProbeError>;
 }
 
-// ReadRegisterCommand and WriteRegisterCommand have same structure
-// save that ReadRegisterCommand passes None for data and WriteRegisterCommand
-// passes Some(Vec<u8>) in creating the TargetTransferCommand
-#[derive(Debug)]
-pub struct ReadRegisterCommand {
-    subcommands: [Box<dyn JtagCommand>; 2],
-}
-
-impl ReadRegisterCommand {
-    pub(super) fn new(
-        address: u32,
-        len: usize,
-        idle_cycles: usize,
-        chain_params: ChainParams,
-    ) -> io::Result<ReadRegisterCommand> {
-        let target_transfer = TargetTransferCommand::new(address, None, len, chain_params)?;
-        let idle = IdleCommand::new(idle_cycles);
-
-        Ok(ReadRegisterCommand {
-            subcommands: [Box::new(target_transfer), Box::new(idle)],
-        })
-    }
-}
-
-impl JtagCommand for ReadRegisterCommand {
-    fn add_bytes(&mut self, buffer: &mut Vec<u8>) {
-        for subcommand in &mut self.subcommands {
-            subcommand.add_bytes(buffer);
-        }
-    }
-
-    fn bytes_to_read(&self) -> usize {
-        self.subcommands.iter().map(|e| e.bytes_to_read()).sum()
-    }
-
-    fn process_output(&self, data: &[u8]) -> Result<CommandResult, DebugProbeError> {
-        let r = self.subcommands[0].process_output(&data[0..(self.subcommands[0].bytes_to_read())]);
-        self.subcommands[1].process_output(&data[self.subcommands[0].bytes_to_read()..])?;
-        r
-    }
-}
-
 #[derive(Debug)]
 pub struct WriteRegisterCommand {
     subcommands: [Box<dyn JtagCommand>; 2],
@@ -70,7 +28,7 @@ impl WriteRegisterCommand {
         idle_cycles: usize,
         chain_params: ChainParams,
     ) -> io::Result<WriteRegisterCommand> {
-        let target_transfer = TargetTransferCommand::new(address, Some(data), len, chain_params)?;
+        let target_transfer = TargetTransferCommand::new(address, data, len, chain_params)?;
         let idle = IdleCommand::new(idle_cycles);
 
         Ok(WriteRegisterCommand {
@@ -108,7 +66,7 @@ struct TargetTransferCommand {
 impl TargetTransferCommand {
     pub fn new(
         address: u32,
-        data: Option<Vec<u8>>,
+        data: Vec<u8>,
         len: usize,
         chain_params: ChainParams,
     ) -> io::Result<TargetTransferCommand> {
@@ -126,9 +84,8 @@ impl TargetTransferCommand {
         let shift_ir_cmd = ShiftIrCommand::new(ir.to_le_bytes().to_vec(), irbits);
 
         let drbits = params.drpre + len + params.drpost;
-        let request = if let Some(data_slice) = data {
-            // Write
-            let data = BitSlice::<u8, Lsb0>::from_slice(&data_slice);
+        let request = {
+            let data = BitSlice::<u8, Lsb0>::from_slice(&data);
             let mut data = BitVec::<u8, Lsb0>::from_bitslice(data);
             data.truncate(len);
 
@@ -138,9 +95,6 @@ impl TargetTransferCommand {
             buf.resize(buf.len() + params.drpost, false);
 
             buf.into_vec()
-        } else {
-            // Read
-            vec![0; (drbits + 7) / 8]
         };
 
         let transfer_dr = TransferDrCommand::new(request.to_vec(), drbits);
@@ -229,7 +183,7 @@ impl JtagCommand for ShiftIrCommand {
 }
 
 #[derive(Debug)]
-pub(super) struct TransferDrCommand {
+struct TransferDrCommand {
     subcommands: Vec<Box<dyn JtagCommand>>,
 }
 
@@ -246,55 +200,6 @@ impl TransferDrCommand {
 }
 
 impl JtagCommand for TransferDrCommand {
-    fn add_bytes(&mut self, buffer: &mut Vec<u8>) {
-        for subcommand in &mut self.subcommands {
-            subcommand.add_bytes(buffer);
-        }
-    }
-
-    fn bytes_to_read(&self) -> usize {
-        self.subcommands.iter().map(|e| e.bytes_to_read()).sum()
-    }
-
-    fn process_output(&self, data: &[u8]) -> Result<CommandResult, DebugProbeError> {
-        let mut start = 0usize;
-
-        let end = start + self.subcommands[0].bytes_to_read();
-        let cmd_data = data[start..end].to_vec();
-        self.subcommands[0].process_output(&cmd_data)?;
-        start += self.subcommands[0].bytes_to_read();
-
-        let end = start + self.subcommands[1].bytes_to_read();
-        let cmd_data = data[start..end].to_vec();
-        let reply = self.subcommands[1].process_output(&cmd_data);
-        start += self.subcommands[1].bytes_to_read();
-
-        let end = start + self.subcommands[2].bytes_to_read();
-        let cmd_data = data[start..end].to_vec();
-        self.subcommands[2].process_output(&cmd_data)?;
-
-        reply
-    }
-}
-
-#[derive(Debug)]
-pub(super) struct TransferIrCommand {
-    subcommands: Vec<Box<dyn JtagCommand>>,
-}
-
-impl TransferIrCommand {
-    pub fn new(data: Vec<u8>, bits: usize) -> TransferIrCommand {
-        TransferIrCommand {
-            subcommands: vec![
-                Box::new(ShiftTmsCommand::new(vec![0b0011], 4)),
-                Box::new(TransferTdiCommand::new(data, bits)),
-                Box::new(ShiftTmsCommand::new(vec![0b01], 2)),
-            ],
-        }
-    }
-}
-
-impl JtagCommand for TransferIrCommand {
     fn add_bytes(&mut self, buffer: &mut Vec<u8>) {
         for subcommand in &mut self.subcommands {
             subcommand.add_bytes(buffer);

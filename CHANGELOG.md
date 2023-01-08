@@ -52,9 +52,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Replace `log` crate, with `tracing` in `probe-rs-debugger` executable, and in the `rtt` library. (#1297)
 - Replace FTDI probe command creation with `ftdi-mpsse` library functions/enums (#1302)
 - Improved formatting of `probe-rs-cli info` output. (#1305)
-- Refactor FTDI probe impl to use all JtagCommand logic (#1307)
 - Refactor VSCode handling of logging and user messaging - see [VSCode PR #37](https://github.com/probe-rs/vscode/pull/37) (#1334)
 - Refactor error handling, split `crate::Error::ArchitectureSpecific` into two separate variants for RISC-V and ARM, and create a new `ArmError` enum for ARM specific errors. (#1344)
+
 
 ### Fixed
 
