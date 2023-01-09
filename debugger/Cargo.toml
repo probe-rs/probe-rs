@@ -37,7 +37,7 @@ serde = { version = "1", features = ["derive"] }
 schemafy = "0.6"
 chrono = { version = "0.4", features = ["serde"] }
 goblin = "0.6.0"
-base64 = "0.20"
+base64 = "0.21"
 svd-parser = { version = "0.14.0", features = ["expand"] }
 directories = "4"
 sanitize-filename = "0.4"
