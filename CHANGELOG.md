@@ -6,8 +6,10 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/) and this p
 
 ## [Unreleased]
 
+- [#371] Add "missing drivers" to troubleshooting section
 - [#366] Update CI
 
+[#371]: https://github.com/knurling-rs/probe-run/pull/371
 [#366]: https://github.com/knurling-rs/probe-run/pull/366
 
 ## [v0.3.5] - 2022-10-07
