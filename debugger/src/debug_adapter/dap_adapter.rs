@@ -8,7 +8,7 @@ use crate::{
     DebuggerError,
 };
 use anyhow::{anyhow, Result};
-use base64::{engine::general_purpose, Engine as _};
+use base64::{engine::general_purpose as base64_engine, Engine as _};
 use capstone::{
     arch::arm::ArchMode as armArchMode, arch::arm64::ArchMode as aarch64ArchMode,
     arch::riscv::ArchMode as riscvArchMode, prelude::*, Capstone, Endian,
@@ -144,7 +144,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             }
         }
         if !buff.is_empty() || num_bytes_unread == 0 {
-            let response = general_purpose::STANDARD.encode(&buff);
+            let response = base64_engine::STANDARD.encode(&buff);
             self.send_response(
                 request,
                 Ok(Some(ReadMemoryResponseBody {
@@ -194,7 +194,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                 ))),
             );
         };
-        let data_bytes = match general_purpose::STANDARD.decode(&arguments.data) {
+        let data_bytes = match base64_engine::STANDARD.decode(&arguments.data) {
             Ok(decoded_bytes) => decoded_bytes,
             Err(error) => {
                 return self.send_response::<()>(

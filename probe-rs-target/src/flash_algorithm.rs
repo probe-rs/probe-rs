@@ -1,6 +1,6 @@
 use super::flash_properties::FlashProperties;
 use crate::serialize::{hex_option, hex_u_int};
-use base64::{engine::general_purpose, Engine as _};
+use base64::{engine::general_purpose as base64_engine, Engine as _};
 use serde::{Deserialize, Serialize};
 
 /// The raw flash algorithm is the description of a flash algorithm,
@@ -60,7 +60,7 @@ pub fn serialize<S>(bytes: &[u8], serializer: S) -> Result<S::Ok, S::Error>
 where
     S: serde::Serializer,
 {
-    serializer.serialize_str(general_purpose::STANDARD.encode(bytes).as_str())
+    serializer.serialize_str(base64_engine::STANDARD.encode(bytes).as_str())
 }
 
 pub fn deserialize<'de, D>(deserializer: D) -> Result<Vec<u8>, D::Error>
@@ -80,7 +80,7 @@ where
         where
             E: serde::de::Error,
         {
-            general_purpose::STANDARD
+            base64_engine::STANDARD
                 .decode(v)
                 .map_err(serde::de::Error::custom)
         }
