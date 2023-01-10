@@ -259,6 +259,7 @@ Some boards have a USB micro-B or Type-C connector but only come with *bootloade
 `probe-run` cannot be used with these boards.
 - make sure that it is connected to the right port on your development board
 - make sure that you are using a **data** cable– some cables are built for charging only! When in doubt, try using a different cable.
+- make sure you have the right drivers for the debugger installed (st-link or j-link)
 
 If this doesn't resolve the issue, try the following:
 

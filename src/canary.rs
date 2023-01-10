@@ -129,7 +129,7 @@ impl Canary {
         let min_stack_usage = match touched_address {
             Some(touched_address) => {
                 log::debug!("canary was touched at {touched_address:#010X}");
-                Some(elf.vector_table.initial_stack_pointer - touched_address as u32)
+                Some(elf.vector_table.initial_stack_pointer - touched_address)
             }
             None => None,
         };
