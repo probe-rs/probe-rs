@@ -15,12 +15,12 @@ use capstone::{
 use dap_types::*;
 use parse_int::parse;
 use probe_rs::{
+    architecture::{arm::ArmError, riscv::communication_interface::RiscvError},
     debug::{
         ColumnType, DebugRegisters, SourceLocation, SteppingMode, VariableName, VariableNodeType,
     },
     Architecture::Riscv,
-    CoreStatus, CoreType, DebugProbeError, Error, HaltReason, InstructionSet, MemoryInterface,
-    RegisterValue,
+    CoreStatus, CoreType, Error, HaltReason, InstructionSet, MemoryInterface, RegisterValue,
 };
 use probe_rs_cli_util::rtt;
 use serde::{de::DeserializeOwned, Serialize};
@@ -1765,7 +1765,10 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                         // The core has halted, so we can proceed.
                     }
                     Err(wait_error) => {
-                        if matches!(wait_error, Error::Probe(DebugProbeError::Timeout)) {
+                        if matches!(
+                            wait_error,
+                            Error::Arm(ArmError::Timeout) | Error::Riscv(RiscvError::Timeout)
+                        ) {
                             // The core is still running.
                         } else {
                             // Some other error occured, so we have to send an error response.
