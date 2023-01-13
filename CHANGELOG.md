@@ -195,6 +195,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fix nrf9160 target file so it can erase UICR section (#1151)
 - Fix connect under reset for CMSIS-DAP probes(#1159)
 - Fix double default algorithms for the stm32f7x line with 1MB flash (#1171)
+- Fixed detecting CMSIS-DAP probes that only say "CMSIS-DAP" in interface strings, not the product string (#1142/#1135/#995)
 
 ## [0.12.0]
 

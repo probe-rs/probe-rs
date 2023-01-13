@@ -62,48 +62,49 @@ fn get_cmsisdap_info(device: &Device<rusb::Context>) -> Option<DebugProbeInfo> {
         .read_serial_number_string(language, &d_desc, timeout)
         .ok();
 
-    // All CMSIS-DAP probes must have "CMSIS-DAP" in their product string.
-    if prod_str.contains("CMSIS-DAP") {
-        let config_descriptor = device.active_config_descriptor().ok()?;
+    // Most CMSIS-DAP probes say "CMSIS-DAP" in their product string.
+    let cmsis_dap_product = prod_str.contains("CMSIS-DAP");
 
+    // Iterate all interfaces, looking for:
+    // 1. Any with CMSIS-DAP in their interface string
+    // 2. Any that are HID, if the product string says CMSIS-DAP,
+    //    to save for potential HID-only operation.
+    let config_descriptor = device.active_config_descriptor().ok()?;
+    let mut cmsis_dap_interface = false;
+    let mut hid_interface = None;
+    for interface in config_descriptor.interfaces() {
+        for descriptor in interface.descriptors() {
+            let interface_desc = match handle.read_interface_string(language, &descriptor, timeout)
+            {
+                Ok(desc) => desc,
+                Err(_) => {
+                    tracing::trace!(
+                        "Could not read string for interface {}, skipping",
+                        interface.number()
+                    );
+                    continue;
+                }
+            };
+
+            if interface_desc.contains("CMSIS-DAP") {
+                tracing::trace!("  Interface {}: {}", interface.number(), interface_desc);
+                cmsis_dap_interface = true;
+                if descriptor.class_code() == LIBUSB_CLASS_HID {
+                    tracing::trace!("    HID interface found");
+                    hid_interface = Some(interface.number());
+                }
+            }
+        }
+    }
+
+    if cmsis_dap_interface || cmsis_dap_product {
         tracing::trace!(
             "{}: CMSIS-DAP device with {} interfaces",
             prod_str,
             config_descriptor.num_interfaces()
         );
 
-        let mut cmsis_dap_interface = None;
-
-        'interface_loop: for interface in config_descriptor.interfaces() {
-            for descriptor in interface.descriptors() {
-                // Check if this is a HID interface
-                if descriptor.class_code() != LIBUSB_CLASS_HID {
-                    tracing::trace!("Interface {} is not HID, skipping", interface.number());
-                    continue;
-                }
-
-                let interface_desc =
-                    match handle.read_interface_string(language, &descriptor, timeout) {
-                        Ok(desc) => desc,
-                        Err(_) => {
-                            tracing::trace!(
-                                "Could not read string for interface {}, skipping",
-                                interface.number()
-                            );
-                            continue;
-                        }
-                    };
-
-                tracing::trace!("  Interface {}: {}", interface.number(), interface_desc);
-
-                if interface_desc.contains("CMSIS-DAP") {
-                    cmsis_dap_interface = Some(interface.number());
-                    break 'interface_loop;
-                }
-            }
-        }
-
-        if let Some(interface) = cmsis_dap_interface {
+        if let Some(interface) = hid_interface {
             tracing::trace!("Will use interface number {} for CMSIS-DAPv1", interface);
         } else {
             tracing::trace!("No HID interface for CMSIS-DAP found.")
@@ -115,7 +116,7 @@ fn get_cmsisdap_info(device: &Device<rusb::Context>) -> Option<DebugProbeInfo> {
             product_id: d_desc.product_id(),
             serial_number: sn_str,
             probe_type: DebugProbeType::CmsisDap,
-            hid_interface: cmsis_dap_interface,
+            hid_interface,
         })
     } else {
         None
@@ -124,26 +125,27 @@ fn get_cmsisdap_info(device: &Device<rusb::Context>) -> Option<DebugProbeInfo> {
 
 /// Checks if a given HID device is a CMSIS-DAP v1 probe, returning Some(DebugProbeInfo) if so.
 fn get_cmsisdap_hid_info(device: &hidapi::DeviceInfo) -> Option<DebugProbeInfo> {
-    if let Some(prod_str) = device.product_string() {
-        if prod_str.contains("CMSIS-DAP") {
-            tracing::trace!("CMSIS-DAP device with USB path: {:?}", device.path());
-            tracing::trace!("                product_string: {:?}", prod_str);
-            tracing::trace!(
-                "                     interface: {}",
-                device.interface_number()
-            );
+    let prod_str = device.product_string().unwrap_or(&"");
+    let path = device.path().to_str().unwrap_or(&"");
+    if prod_str.contains("CMSIS-DAP") || path.contains("CMSIS-DAP") {
+        tracing::trace!("CMSIS-DAP device with USB path: {:?}", device.path());
+        tracing::trace!("                product_string: {:?}", prod_str);
+        tracing::trace!(
+            "                     interface: {}",
+            device.interface_number()
+        );
 
-            return Some(DebugProbeInfo {
-                identifier: prod_str.to_owned(),
-                vendor_id: device.vendor_id(),
-                product_id: device.product_id(),
-                serial_number: device.serial_number().map(|s| s.to_owned()),
-                probe_type: DebugProbeType::CmsisDap,
-                hid_interface: Some(device.interface_number() as u8),
-            });
-        }
+        Some(DebugProbeInfo {
+            identifier: prod_str.to_owned(),
+            vendor_id: device.vendor_id(),
+            product_id: device.product_id(),
+            serial_number: device.serial_number().map(|s| s.to_owned()),
+            probe_type: DebugProbeType::CmsisDap,
+            hid_interface: Some(device.interface_number() as u8),
+        })
+    } else {
+        None
     }
-    None
 }
 
 /// Attempt to open the given device in CMSIS-DAP v2 mode
