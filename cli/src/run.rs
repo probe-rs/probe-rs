@@ -27,7 +27,6 @@ pub fn run(
         &mut session,
         Path::new(path),
         &FlashOptions {
-            version: false,
             list_chips: false,
             list_probes: false,
             disable_progressbars: false,

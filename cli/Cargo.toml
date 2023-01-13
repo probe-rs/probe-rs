@@ -47,3 +47,6 @@ serde = { version = "1.0.147", features = ["derive"] }
 termtree = "0.4.0"
 directories = "4"
 sanitize-filename = "0.4"
+
+[build-dependencies]
+probe-rs-cli-util = { workspace = true }

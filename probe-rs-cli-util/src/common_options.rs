@@ -47,8 +47,6 @@ use probe_rs::{
 /// Common options when flashing a target device.
 #[derive(Debug, clap::Parser)]
 pub struct FlashOptions {
-    #[clap(short = 'V', long = "version")]
-    pub version: bool,
     #[clap(name = "list-chips", long = "list-chips")]
     pub list_chips: bool,
     #[clap(
