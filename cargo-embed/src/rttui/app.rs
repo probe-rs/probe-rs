@@ -437,7 +437,7 @@ impl App {
                 KeyCode::F(n) => {
                     let n = n as usize - 1;
                     if n < self.tabs.len() {
-                        self.current_tab = n as usize;
+                        self.current_tab = n;
                     }
                     false
                 }
