@@ -73,6 +73,7 @@ jobs:
           - gdb-server
           - target-gen
           - rtthost
+          - cargo-embed
           ---
           Use \`bors r+\` to merge."
         env:
