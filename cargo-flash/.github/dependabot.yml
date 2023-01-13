@@ -1,0 +1,15 @@
+version: 2
+updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "daily"
+  - package-ecosystem: cargo
+    directory: "/"
+    schedule:
+      interval: daily
+    ignore:
+      # Ignore probe-rs dependencies to avoid unecessary updates
+      # for all new commmits in the probe-rs repo.
+      - dependency-name: "probe-rs"
+      - dependency-name: "probe-rs-cli-util"
