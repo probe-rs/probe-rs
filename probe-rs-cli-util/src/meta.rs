@@ -5,7 +5,7 @@
 /// # Examples
 ///
 /// ```no_run
-/// probe_rs_cli_util::meta::generate_meta(crate_version, git_version);
+/// probe_rs_cli_util::meta::generate_meta();
 /// println!("cargo:rerun-if-changed=build.rs");
 /// ```
 pub fn generate_meta() {
