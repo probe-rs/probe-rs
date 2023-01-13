@@ -60,6 +60,7 @@ jobs:
         run: |
           gh pr create -B master -H "${BRANCH_NAME}"\
             --title "Release ${BRANCH_NAME}"\
+            --label "release"
             --body "This is the release PR for **${{ inputs.version }}**.
           ---
           It releases:
@@ -74,6 +75,7 @@ jobs:
           - target-gen
           - rtthost
           - cargo-embed
+          - cargo-flash
           ---
           Use \`bors r+\` to merge."
         env:
