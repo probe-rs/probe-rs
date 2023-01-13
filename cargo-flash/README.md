@@ -8,7 +8,7 @@ Various chip families including but not limited to **nRF5x**, **STM32** and **LP
 
 ## Support
 
-If you think cargo-flash makes your embedded journey more enjoyable or even earns you money, please consider supporting the project on [Github Sponsors](https://github.com/sponsors/probe-rs/) for better support and more features.
+If you think `cargo-flash` makes your embedded journey more enjoyable or even earns you money, please consider supporting the project on [Github Sponsors](https://github.com/sponsors/probe-rs/) for better support and more features.
 
 ## Installation
 
