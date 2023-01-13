@@ -6,6 +6,8 @@ mod info;
 mod run;
 mod trace;
 
+include!(concat!(env!("OUT_DIR"), "/meta.rs"));
+
 use benchmark::{benchmark, BenchmarkOptions};
 use chrono::Local;
 use debugger::CliState;
@@ -41,7 +43,9 @@ use std::{num::ParseIntError, path::Path};
 #[clap(
     name = "probe-rs CLI",
     about = "A CLI for on top of the debug probe capabilities provided by probe-rs",
-    author = "Noah Hüsser <yatekii@yatekii.ch> / Dominik Böhi <dominik.boehi@gmail.ch>"
+    author = "Noah Hüsser <yatekii@yatekii.ch> / Dominik Böhi <dominik.boehi@gmail.ch>",
+    version = meta::CARGO_VERSION,
+    long_version = meta::LONG_VERSION
 )]
 enum Cli {
     /// List all connected debug probes
@@ -276,6 +280,7 @@ fn main() -> Result<()> {
 
     tracing::info!("Writing log to {:?}", log_path);
 
+    // Parse the commandline options with structopt.
     let matches = Cli::parse();
 
     let result = match matches {
@@ -436,7 +441,6 @@ fn download_program_fast(
         &mut session,
         Path::new(path),
         &FlashOptions {
-            version: false,
             list_chips: false,
             list_probes: false,
             disable_progressbars,

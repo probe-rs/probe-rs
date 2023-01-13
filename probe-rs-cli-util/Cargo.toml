@@ -42,3 +42,4 @@ chrono = { version = "0.4", features = ["serde"] }
 goblin = "0.6.0"
 num-traits = "0.2.14"
 defmt-decoder = { version = "0.3.1", features = ["unstable"] }
+git-version = { version = "0.3" }
