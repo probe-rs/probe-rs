@@ -2,6 +2,8 @@ mod config;
 mod error;
 mod rttui;
 
+include!(concat!(env!("OUT_DIR"), "/meta.rs"));
+
 use anyhow::{anyhow, Context, Result};
 use chrono::Local;
 use colored::*;
@@ -40,23 +42,22 @@ use crate::rttui::channel::DataFormat;
 
 lazy_static::lazy_static! {
     static ref METADATA: Arc<Mutex<Metadata>> = Arc::new(Mutex::new(Metadata {
-        release: CARGO_VERSION.to_string(),
+        release: meta::CARGO_VERSION.to_string(),
         chip: None,
         probe: None,
         speed: None,
-        commit: GIT_VERSION.to_string()
+        commit: meta::GIT_VERSION.to_string()
     }));
 }
 
-const CARGO_NAME: &str = env!("CARGO_PKG_NAME");
-const CARGO_VERSION: &str = env!("CARGO_PKG_VERSION");
-const GIT_VERSION: &str = git_version::git_version!(fallback = "crates.io");
-
 #[derive(Debug, clap::Parser)]
-#[clap(disable_version_flag = true)]
+#[clap(
+    name = "cargo embed",
+    author = "Noah Hüsser <yatekii@yatekii.ch> / Dominik Böhi <dominik.boehi@gmail.ch>",
+    version = meta::CARGO_VERSION,
+    long_version = meta::LONG_VERSION
+)]
 struct Opt {
-    #[clap(short = 'V', long = "version")]
-    pub version: bool,
     #[clap(name = "config")]
     config: Option<String>,
     #[clap(name = "chip", long = "chip")]
@@ -80,7 +81,7 @@ fn main() {
     panic::set_hook(Box::new(move |info| {
         #[cfg(feature = "sentry")]
         if ask_to_log_crash() {
-            capture_panic(&METADATA.lock().unwrap(), &info)
+            capture_panic(&METADATA.lock().unwrap(), info)
         }
         #[cfg(not(feature = "sentry"))]
         log::info!("{:#?}", &METADATA.lock().unwrap());
@@ -142,14 +143,6 @@ fn main_try() -> Result<()> {
 
     // Get commandline options.
     let opt = Opt::parse_from(&args);
-
-    if opt.version {
-        println!(
-            "{} {}\ngit commit: {}",
-            CARGO_NAME, CARGO_VERSION, GIT_VERSION
-        );
-        return Ok(());
-    }
 
     let work_dir = std::env::current_dir()?;
 
@@ -352,9 +345,9 @@ fn main_try() -> Result<()> {
                         let total_fill_size: u64 =
                             flash_layout.fills().iter().map(|s| s.size()).sum();
                         if let Some(fp) = fill_progress.as_ref() {
-                            fp.set_length(total_fill_size as u64)
+                            fp.set_length(total_fill_size)
                         }
-                        erase_progress.set_length(total_sector_size as u64);
+                        erase_progress.set_length(total_sector_size);
                         program_progress.set_length(total_page_size as u64);
                         let visualizer = flash_layout.visualize();
                         flash_layout_output_path
@@ -381,11 +374,11 @@ fn main_try() -> Result<()> {
                         program_progress.inc(size as u64);
                     }
                     SectorErased { size, .. } => {
-                        erase_progress.inc(size as u64);
+                        erase_progress.inc(size);
                     }
                     PageFilled { size, .. } => {
                         if let Some(fp) = fill_progress.as_ref() {
-                            fp.inc(size as u64)
+                            fp.inc(size)
                         };
                     }
                     FailedErasing => {

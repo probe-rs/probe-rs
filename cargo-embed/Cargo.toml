@@ -41,3 +41,8 @@ anyhow = "1.0.68"
 textwrap = "0.16.0"
 defmt-decoder = { version = "0.3.3", features = ["unstable"] }
 sanitize-filename = "0.4"
+
+[build-dependencies]
+probe-rs-cli-util = { version = "0.13.0", git = "https://github.com/probe-rs/probe-rs", default-features = false, features = [
+    "anyhow",
+] }
