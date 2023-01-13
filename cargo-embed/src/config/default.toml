@@ -1,0 +1,82 @@
+[default.probe]
+# USB vendor ID
+# usb_vid = "1337"
+# USB product ID
+# usb_pid = "1337"
+# Serial number
+# serial = "12345678"
+# The protocol to be used for communicating with the target.
+protocol = "Swd"
+# The speed in kHz of the data link to the target.
+# speed = 1337
+
+[default.flashing]
+# Whether or not the target should be flashed.
+enabled = true
+# Whether or not the target should be halted after reset.
+# DEPRECATED, moved to reset section
+halt_afterwards = false
+# Whether or not bytes erased but not rewritten with data from the ELF
+# should be restored with their contents before erasing.
+restore_unwritten_bytes = false
+# The path where an SVG of the assembled flash layout should be written to.
+# flash_layout_output_path = "out.svg"
+# Triggers a full chip erase instead of a page by page erase.
+do_chip_erase = false
+
+[default.reset]
+# Whether or not the target should be reset.
+# When flashing is enabled as well, the target will be reset after flashing.
+enabled = true
+# Whether or not the target should be halted after reset.
+halt_afterwards = false
+
+[default.general]
+# The chip name of the chip to be debugged.
+# chip = "name"
+# A list of chip descriptions to be loaded during runtime.
+chip_descriptions = []
+# The default log level to be used. Possible values are one of:
+#   "OFF", "ERROR", "WARN", "INFO", "DEBUG", "TRACE"
+log_level = "WARN"
+# Use this flag to assert the nreset & ntrst pins during attaching the probe to the chip.
+connect_under_reset = false
+
+[default.rtt]
+# Whether or not an RTTUI should be opened after flashing.
+enabled = false
+# How the target handles RTT outputs that won't fit in the buffer.  This can be
+# overridden per-channel. If left unset, the firmware will determine the default
+# for each RTT up channel.
+#   NoBlockSkip - Skip writing the data completely if it doesn't fit in its
+#                 entirety.
+#   NoBlockTrim - Write as much as possible of the data and ignore the rest.
+#   BlockIfFull - Spin until the host reads data.  Can result in app freezing.
+#
+# up_mode = "BlockIfFull"
+
+# A list of channel associations to be displayed. If left empty, all channels are displayed.
+# up, down (Optional) - RTT channel numbers
+# name     (Optional) - String to be displayed in the RTTUI tab
+# up_mode  (Optional) - RTT channel specific as described above
+# format   (Required) - How to interpret data from target firmware.  One of:
+#              String - Directly show output from the target 
+#              Defmt  - Format output on the host, see https://defmt.ferrous-systems.com/
+#              BinaryLE - Display as raw hex
+channels = [
+    # { up = 0, down = 0, name = "name", up_mode = "BlockIfFull", format = "Defmt" },
+]
+# The duration in ms for which the logger should retry to attach to RTT.
+timeout = 3000
+# Whether timestamps in the RTTUI are enabled
+show_timestamps = true
+# Whether to save rtt history buffer on exit.
+log_enabled = false
+# Where to save rtt history buffer relative to manifest path.
+log_path = "./logs"
+
+[default.gdb]
+# Whether or not a GDB server should be opened after flashing.
+enabled = false
+# The connection string in host:port format wher the GDB server will open a socket.
+gdb_connection_string = "127.0.0.1:1337"
