@@ -1,11 +1,13 @@
 mod diagnostics;
 
+include!(concat!(env!("OUT_DIR"), "/meta.rs"));
+
 use colored::*;
 use diagnostics::render_diagnostics;
 use std::{env, path::PathBuf, process, sync::Arc};
 use std::{panic, sync::Mutex};
 
-use probe_rs_cli_util::clap::{FromArgMatches, IntoApp};
+use probe_rs_cli_util::clap::{CommandFactory, FromArgMatches};
 use probe_rs_cli_util::common_options::{CargoOptions, FlashOptions, OperationError};
 use probe_rs_cli_util::flash;
 
@@ -14,12 +16,9 @@ use probe_rs_cli_util::logging::{ask_to_log_crash, capture_panic};
 
 use probe_rs_cli_util::{build_artifact, log, logging, logging::Metadata};
 
-const CARGO_VERSION: &str = env!("CARGO_PKG_VERSION");
-const GIT_VERSION: &str = git_version::git_version!(fallback = "crates.io");
-
 lazy_static::lazy_static! {
     static ref METADATA: Arc<Mutex<Metadata>> = Arc::new(Mutex::new(Metadata {
-        release: CARGO_VERSION.to_string(),
+        release: meta::CARGO_VERSION.to_string(),
         chip: None,
         probe: None,
         speed: None,
@@ -71,13 +70,17 @@ fn main_try() -> Result<(), OperationError> {
     }
 
     // Parse the commandline options with structopt.
-    let matches = FlashOptions::into_app()
-        .bin_name("cargo flash")
-        .after_help(CargoOptions::help_message("cargo flash").as_str())
-        .version(CARGO_VERSION)
-        .long_version(&*format!("{}\ngit commit: {}", CARGO_VERSION, GIT_VERSION))
-        .get_matches_from(&args);
-    let opt = FlashOptions::from_arg_matches(&matches)?;
+    let opt = {
+        let matches = FlashOptions::command()
+            .bin_name("cargo flash")
+            .display_name("cargo-flash")
+            .after_help(CargoOptions::help_message("cargo flash"))
+            .version(meta::CARGO_VERSION)
+            .long_version(meta::LONG_VERSION)
+            .get_matches_from(&args);
+
+        FlashOptions::from_arg_matches(&matches)?
+    };
 
     // Initialize the logger with the loglevel given on the commandline.
     logging::init(opt.log);
