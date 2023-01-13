@@ -51,5 +51,5 @@ search = "## \\[Unreleased\\]"
 replace = "## [Unreleased]\n\n## v{{version}}\n\nReleased {{date}}"
 [[package.metadata.release.pre-release-replacements]]
 file = "CHANGELOG.md"
-search = "\\[unreleased\\]: https://github.com/probe-rs/probe-rs/compare/v([a-z0-9.-]+)\\.\\.\\.master"
-replace = "[unreleased]: https://github.com/probe-rs/probe-rs/compare/v{{version}}...master\n[v{{version}}]: https://github.com/probe-rs/probe-rs/compare/v$1...v{{version}}"
+search = "\\[unreleased\\]: https://github.com/probe-rs/cargo-flash/compare/v([a-z0-9.-]+)\\.\\.\\.master"
+replace = "[unreleased]: https://github.com/probe-rs/cargo-flash/compare/v{{version}}...master\n[v{{version}}]: https://github.com/probe-rs/cargo-flash/compare/v$1...v{{version}}"

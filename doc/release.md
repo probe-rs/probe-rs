@@ -1,12 +1,6 @@
-# Prerequisites for running probe-rs release scripts
-
-Install `cargo-workspaces` (`cargo install cargo-workspaces`) and the GH cli (see https://github.com/cli/cli for install instructions).
-
 # Releasing probe-rs Crates
 
 For a release the following steps are required:
-
-Repeat for the `[probe-rs, cargo-embed, cargo-flash]` repositories:
 
 1. Run `cargo xtask fetch-prs` in the respective repo. This will open a list of all merged GH PRs since the last release that have not yet received a changelog entry. Make sure all PRs from that list are included in the `CHANGELOG.md` and remove the `needs-changelog` label from the PRs as you go.
 
