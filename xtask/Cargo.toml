@@ -8,3 +8,4 @@ publish = false
 [dependencies]
 xshell = "0.2"
 regex = "1.7"
+clap = { version = "*", features = ["derive"] }
