@@ -12,6 +12,7 @@ license = "MIT OR Apache-2.0"
 [workspace]
 members = [
     "cli",
+    "cargo-flash",
     "debugger",
     "gdb-server",
     "probe-rs",

@@ -1,15 +1,15 @@
 [package]
 name = "cargo-flash"
-version = "0.13.0"
+version.workspace = true
 authors = [
     "Noah Hüsser <yatekii@yatekii.ch>",
     "Dominik Boehi <dominik.boehi@gmail.com>",
 ]
-edition = "2021"
+edition.workspace = true
 description = "A utility to flash ARM cores with ELFs directly from within cargo."
 documentation = "https://docs.rs/cargo-flash/"
-homepage = "https://github.com/probe-rs/cargo-flash"
-repository = "https://github.com/probe-rs/cargo-flash"
+homepage.workspace = true
+repository.workspace = true
 readme = "README.md"
 categories = ["embedded", "hardware-support", "development-tools::debugging"]
 keywords = ["embedded"]
@@ -24,8 +24,8 @@ sentry = ["probe-rs-cli-util/sentry"]
 env_logger = "0.10"
 lazy_static = "1"
 colored = "2"
-probe-rs = { version = "0.13", git = "https://github.com/probe-rs/probe-rs" }
-probe-rs-cli-util = { version = "0.13", git = "https://github.com/probe-rs/probe-rs", default-features = false, features = [
+probe-rs = { workspace = true }
+probe-rs-cli-util = { workspace = true, default-features = false, features = [
     "anyhow",
 ] }
 git-version = "0.3"
@@ -41,6 +41,6 @@ predicates = "2"
 
 [build-dependencies]
 git-version = "0.3"
-probe-rs-cli-util = { version = "0.13", git = "https://github.com/probe-rs/probe-rs", default-features = false, features = [
+probe-rs-cli-util = { workspace = true, default-features = false, features = [
     "anyhow",
 ] }
