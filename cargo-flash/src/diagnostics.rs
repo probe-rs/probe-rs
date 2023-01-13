@@ -215,7 +215,7 @@ pub(crate) fn render_diagnostics(error: OperationError) {
     use std::io::Write;
     let mut stderr = std::io::stderr();
 
-    let _ = write_with_offset(&mut stderr, "Error".red().bold(), &selected_error);
+    write_with_offset(&mut stderr, "Error".red().bold(), &selected_error);
 
     // print cause chain
     // TODO: use 'anyhow' for all this?
@@ -281,7 +281,7 @@ fn generate_flash_error_hints(
                                 "  {:#010x} - {:#010x} ({})",
                                 flash.range.start,
                                 flash.range.end,
-                                ByteSize((flash.range.end - flash.range.start) as u64)
+                                ByteSize(flash.range.end - flash.range.start)
                                     .to_string_as(true)
                             );
                         }
