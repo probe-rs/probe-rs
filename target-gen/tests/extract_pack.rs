@@ -11,7 +11,7 @@ fn missing_output_directory() {
     cmd.arg("pack").arg(NORDIC_SAMPLE_PACK);
 
     cmd.assert().failure().stderr(predicates::str::contains(
-        "The following required arguments were not provided:",
+        "the following required arguments were not provided:",
     ));
 }
 
