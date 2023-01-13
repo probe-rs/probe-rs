@@ -1,6 +1,6 @@
 # cargo-embed
 
-[![crates.io](https://img.shields.io/crates/v/cargo-embed.svg)](https://crates.io/crates/cargo-embed) [![documentation](https://docs.rs/cargo-embed/badge.svg)](https://docs.rs/cargo-embed) [![Actions Status](https://github.com/probe-rs/cargo-embed/workflows/CI/badge.svg)](https://github.com/probe-rs/cargo-embed/actions) [![chat](https://img.shields.io/badge/chat-probe--rs%3Amatrix.org-brightgreen)](https://matrix.to/#/!vhKMWjizPZBgKeknOo:matrix.org)
+[![crates.io](https://img.shields.io/crates/v/cargo-embed.svg)](https://crates.io/crates/cargo-embed) [![documentation](https://docs.rs/cargo-embed/badge.svg)](https://docs.rs/cargo-embed) [![Actions Status](https://github.com/probe-rs/probe-rs/workflows/CI/badge.svg)](https://github.com/probe-rs/probe-rs/actions) [![chat](https://img.shields.io/badge/chat-probe--rs%3Amatrix.org-brightgreen)](https://matrix.to/#/!vhKMWjizPZBgKeknOo:matrix.org)
 
 This crate provides a cargo subcommand to work with embedded targets.
 
@@ -70,7 +70,7 @@ Config file precedence:
 
 Instead of a TOML file, you can also use a JSON or YAML file. Choose what suits you best!
 
-You can find all available options in the [default.toml](https://github.com/probe-rs/cargo-embed/blob/master/src/config/default.toml). Commented out options are the ones that are `None` by default.
+You can find all available options in the [default.toml](https://github.com/probe-rs/probe-rs/blob/master/cargo-embed/src/config/default.toml). Commented out options are the ones that are `None` by default.
 
 ## Building
 
