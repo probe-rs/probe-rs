@@ -334,7 +334,7 @@ impl DebugInfo {
         }
         match parent_variable.variable_node_type {
             VariableNodeType::ReferenceOffset(reference_offset) => {
-                // Only attempt this part if the parent is a pointer and we have not yet resolved the referenced children.
+                // Only attempt this part if we have not yet resolved the referenced children.
                 if !cache.has_children(parent_variable)? {
                     if let Some(header_offset) = parent_variable.unit_header_offset {
                         let unit_header =
@@ -358,6 +358,48 @@ impl DebugInfo {
                             core,
                         )?;
 
+                        if let VariableType::Pointer(_parent_pointer_type) =
+                            &parent_variable.type_name
+                        {
+                            // If the deferred parent is a pointer, then we need to read the address pointed to by the parent, as the memory location.
+                            if referenced_variable.memory_location == VariableLocation::Unknown {
+                                match &parent_variable.memory_location {
+                                    VariableLocation::Address(address) => {
+                                        // Now, retrieve the location by reading the adddress pointed to by the parent variable.
+                                        referenced_variable.memory_location = match core
+                                            .read_word_32(*address)
+                                        {
+                                            Ok(memory_location) => {
+                                                VariableLocation::Address(memory_location as u64)
+                                            }
+                                            Err(error) => {
+                                                tracing::error!("Failed to read referenced variable address from memory location {} : {}.", parent_variable.memory_location , error);
+                                                VariableLocation::Error(format!("Failed to read referenced variable address from memory location {} : {}.", parent_variable.memory_location, error))
+                                            }
+                                        };
+                                    }
+                                    other => {
+                                        referenced_variable.memory_location =
+                                            VariableLocation::Unsupported(format!(
+                                            "Location {:?} not supported for referenced variables.",
+                                            other
+                                        ));
+                                    }
+                                }
+                            }
+                        } else {
+                            // If the parent is not a pointer, then we need to use the parent's memory location.
+                            // The parent variable needs a memory location and byte size before we extract the type.
+                            // self.process_memory_location(
+                            //     array_member_type_node.entry(),
+                            //     &child_variable,
+                            //     &mut array_member_variable,
+                            //     Some(core),
+                            //     stack_frame_registers,
+                            //     frame_base,
+                            // )?;
+                        }
+
                         match &parent_variable.name {
                                 VariableName::Named(name) => {
                                     if name.starts_with("Some") {
@@ -370,29 +412,6 @@ impl DebugInfo {
                                 }
                                 other => referenced_variable.name = VariableName::Named(format!("Error: Unable to generate name, parent variable does not have a name but is special variable {other:?}")),
                             }
-
-                        match &parent_variable.memory_location {
-                            VariableLocation::Address(address) => {
-                                // Now, retrieve the location by reading the adddress pointed to by the parent variable.
-                                referenced_variable.memory_location = match core
-                                    .read_word_32(*address)
-                                {
-                                    Ok(memory_location) => {
-                                        VariableLocation::Address(memory_location as u64)
-                                    }
-                                    Err(error) => {
-                                        tracing::error!("Failed to read referenced variable address from memory location {} : {}.", parent_variable.memory_location , error);
-                                        VariableLocation::Error(format!("Failed to read referenced variable address from memory location {} : {}.", parent_variable.memory_location, error))
-                                    }
-                                };
-                            }
-                            other => {
-                                referenced_variable.memory_location =
-                                    VariableLocation::Unsupported(format!(
-                                        "Location {other:?} not supported for referenced variables."
-                                    ));
-                            }
-                        }
 
                         referenced_variable = cache.cache_variable(
                             referenced_variable.parent_key,

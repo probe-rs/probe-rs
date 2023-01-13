@@ -39,10 +39,12 @@
                 "--port",
                 "50001"
             ],
-            "env": {
-                "RUST_LOG": "error",
-                "DEFMT_LOG": "info"
-            },
+            // "env": {
+            // Use this to test the dap server writing to a log file.
+            //     "RUST_LOG": "debug",
+            // Use this to test the dap server using RTT defmt.
+            //     "DEFMT_LOG": "info"
+            // },
             "cwd": "${workspaceFolder}/debugger"
         },
         {
