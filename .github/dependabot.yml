@@ -10,6 +10,11 @@ updates:
       interval: daily
     open-pull-requests-limit: 10
   - package-ecosystem: cargo
+    directory: "/cargo-embed"
+    schedule:
+      interval: daily
+    open-pull-requests-limit: 10
+  - package-ecosystem: cargo
     directory: "/cargo-flash"
     schedule:
       interval: daily
