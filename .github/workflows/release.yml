@@ -40,8 +40,8 @@ jobs:
       - name: Generate Release Notes
         id: notes
         run: |
-          NOTES=$(python -c 'import re; print(re.search("## \\[\\d+.\\d+.\\d+\\]\n\n(?:Released \\d+-\\d+-\\d+)?\n?\n?((?:[\n]|.)*?)(?=## \\[\\d+.\\d+.\\d+\\])", open("CHANGELOG.md", "r").read()).group(1).strip().replace("%", "%25").replace("\n", "%0A"))')
-          echo "::set-output name=notes::$NOTES"
+          NOTES=$(cargo xtask generate-release-changelog)
+          echo "notes=$NOTES" >> $GITHUB_OUTPUT
 
       - name: Create a GitHub release
         uses: actions/create-release@v1

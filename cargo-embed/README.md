@@ -11,7 +11,7 @@ It supports all the targets & probes [probe-rs](https://github.com/probe-rs/prob
 
 ## Support
 
-If you think cargo-embedded makes your embedded journey more enjoyable or even earns you money, please consider supporting the project on [Github Sponsors](https://github.com/sponsors/probe-rs/) for better support and more features.
+If you think `cargo-embed` makes your embedded journey more enjoyable or even earns you money, please consider supporting the project on [Github Sponsors](https://github.com/sponsors/probe-rs/) for better support and more features.
 
 ## Installation
 
@@ -30,6 +30,7 @@ cargo embed <args>
 ```
 
 This will do following in sequence:
+
 1. build your binary
 2. detect a probe
 3. (if enabled) upload the contents onto the connected target
@@ -43,16 +44,16 @@ If you've enabled rtt (see [Configuration](#configuration)) the RTT UI will appe
 
 #### Keyboard shortcuts
 
-| Command | Action |
-| - | - |
-| `^c` | Quit |
-| `Fn{n}` | Switch to tab `n` |
-| Any character | Add the character to the pending input |
-| `Backspace` | Delete the last character of the pending input |
-| `Enter` | Send the pending input |
-| `PgUp` | Scroll up |
-| `PgDn` | Scroll Down |
-| `^l` | Clear current tab |
+| Command       | Action                                         |
+| ------------- | ---------------------------------------------- |
+| `^c`          | Quit                                           |
+| `Fn{n}`       | Switch to tab `n`                              |
+| Any character | Add the character to the pending input         |
+| `Backspace`   | Delete the last character of the pending input |
+| `Enter`       | Send the pending input                         |
+| `PgUp`        | Scroll up                                      |
+| `PgDn`        | Scroll Down                                    |
+| `^l`          | Clear current tab                              |
 
 ## Configuration
 
