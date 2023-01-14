@@ -31,18 +31,21 @@ jobs:
           sudo apt install -y libusb-1.0-0-dev libudev-dev
       - name: Install SSH
         run: |
+          apt-get update -y && apt-get install openssh-client -y
+          eval $(ssh-agent -s -a $SSH_AUTH_SOCK)
           echo "$SSH_SIGNING_KEY" | tr -d '\r' | ssh-add -
           mkdir -p ~/.ssh
           chmod 700 ~/.ssh
         env:
           SSH_SIGNING_KEY: ${{ secrets.SSH_SIGNING_KEY }}
+          SSH_AUTH_SOCK: /tmp/ssh_agent.sock
 
       - name: Git setup
         run: |
           git config user.name "probe-rs"
           git config user.email "bot@probe.rs"
           git config --global gpg.format ssh
-          git config --global user.signingkey "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGr8+OZiQ6EHlhZcsPbnbkiW0wBtgNYGR2J5SI+QOw9Q bot@probe.rs"
+          git config --global user.signingkey 'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGr8+OZiQ6EHlhZcsPbnbkiW0wBtgNYGR2J5SI+QOw9Q bot@probe.rs'
           git fetch --unshallow
           git fetch --tags
 
@@ -56,6 +59,8 @@ jobs:
           cargo release replace --execute --verbose --no-confirm
           cargo release hook --execute --verbose --no-confirm
           cargo release commit --execute --verbose --no-confirm --sign-commit
+        env:
+          SSH_AUTH_SOCK: /tmp/ssh_agent.sock
 
       - name: Check semver compliance
         run: |
@@ -69,7 +74,7 @@ jobs:
         run: |
           gh pr create -B master -H "${BRANCH_NAME}"\
             --title "Release ${BRANCH_NAME}"\
-            --label "release"
+            --label "release"\
             --body "This is the release PR for **${{ inputs.version }}**.
           ---
           It releases:
