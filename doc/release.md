@@ -8,13 +8,11 @@ For a release the following steps are required:
 
 3. Update the versions in the `CHANGELOG.md` accordingly.
 
-4. Comment `bors r+` on the MR.
+4. Let GHA take its course.
 
-5. Let GHA take its course.
+5. Optionally, fix issues on the created PR. But of course, we do not make mistakes here.
 
-6. Optionally, fix issues on the created PR. But of course, we do not make mistakes here.
-
-7. Add the changelog to to the newly created Github release.
+6. Merge the PR and wait until the release pipeline is done. Pay attention to potential issues.
 
 # Required changelog entry for PRs
 
