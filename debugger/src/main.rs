@@ -77,7 +77,7 @@ enum CliCommands {
     #[clap(name = "list-chips")]
     ListChips {},
     /// Open target in debug mode and accept debug commands.
-    /// This only works as a [protocol::DapAdapter] and uses DAP Protocol debug commands (enables connections from clients such as Microsoft Visual Studio Code).
+    /// This only works as a [debug_adapter::protocol::DapAdapter] and uses DAP Protocol debug commands (enables connections from clients such as Microsoft Visual Studio Code).
     Debug {
         /// IP port number to listen for incoming DAP connections, e.g. "50000"
         #[clap(long)]

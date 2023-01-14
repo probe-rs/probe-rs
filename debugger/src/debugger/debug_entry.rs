@@ -75,7 +75,7 @@ impl Debugger {
     /// - While we are waiting for DAP-Client, we have to continuously check in on the status of the probe.
     /// - Initally, while [`DebugAdapter::configuration_done`] = `false`, we do nothing.
     /// - Once [`DebugAdapter::configuration_done`] = `true`, we can start polling the probe for status, as follows:
-    ///   - If the [`CoreData::last_known_status`] is `Halted(_)`, then we stop polling the Probe until the next DAP-Client request attempts an action
+    ///   - If the [`super::core_data::CoreData::last_known_status`] is `Halted(_)`, then we stop polling the Probe until the next DAP-Client request attempts an action
     ///   - If the `new_status` is an Err, then the probe is no longer available, and we  end the debugging session
     ///   - If the `new_status` is `Running`, then we have to poll on a regular basis, until the Probe stops for good reasons like breakpoints, or bad reasons like panics.
     pub(crate) fn process_next_request<P: ProtocolAdapter>(

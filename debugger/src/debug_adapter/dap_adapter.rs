@@ -34,7 +34,7 @@ pub struct DebugAdapter<P: ProtocolAdapter> {
     pub(crate) halt_after_reset: bool,
     /// NOTE: VSCode sends a 'threads' request when it receives the response from the `ConfigurationDone` request, irrespective of target state.
     /// This can lead to duplicate `threads->stacktrace->etc.` sequences if & when the target halts and sends a 'stopped' event.
-    /// See [https://github.com/golang/vscode-go/issues/940] for more info.
+    /// See <https://github.com/golang/vscode-go/issues/940> for more info.
     /// In order to avoid overhead and duplicate responses, we will implement the following logic.
     /// - `configuration_done` will ignore target status, and simply notify VSCode when it is done.
     /// - `threads` will check for [DebugAdapter::configuration_done] and ...
@@ -50,9 +50,9 @@ pub struct DebugAdapter<P: ProtocolAdapter> {
     /// Flag to indicate if the connected client supports progress reporting.
     pub(crate) supports_progress_reporting: bool,
     /// Flags to improve breakpoint accuracy.
-    /// [DWARF] spec at Sect 2.14 uses 1 based numbering, with a 0 indicating not-specified. We will follow that standard, and translate incoming requests depending on the DAP Client treatment of 0 or 1 based numbering.
+    /// DWARF spec at Sect 2.14 uses 1 based numbering, with a 0 indicating not-specified. We will follow that standard, and translate incoming requests depending on the DAP Client treatment of 0 or 1 based numbering.
     pub(crate) lines_start_at_1: bool,
-    /// [DWARF] spec at Sect 2.14 uses 1 based numbering, with a 0 indicating not-specified. We will follow that standard, and translate incoming requests depending on the DAP Client treatment of 0 or 1 based numbering.
+    /// DWARF spec at Sect 2.14 uses 1 based numbering, with a 0 indicating not-specified. We will follow that standard, and translate incoming requests depending on the DAP Client treatment of 0 or 1 based numbering.
     pub(crate) columns_start_at_1: bool,
     adapter: P,
 }
@@ -1525,7 +1525,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         }
     }
 
-    /// The MS DAP Specification only gives us the unique reference of the variable, and does not tell us which StackFrame it belongs to, nor does it specify if this variable is in the local, register or static scope. Unfortunately this means we have to search through all the available [VariableCache]'s until we find it. To minimize the impact of this, we will search in the most 'likely' places first (first stack frame's locals, then statics, then registers, then move to next stack frame, and so on ...)
+    /// The MS DAP Specification only gives us the unique reference of the variable, and does not tell us which StackFrame it belongs to, nor does it specify if this variable is in the local, register or static scope. Unfortunately this means we have to search through all the available [`probe_rs::debug::variable_cache::VariableCache`]'s until we find it. To minimize the impact of this, we will search in the most 'likely' places first (first stack frame's locals, then statics, then registers, then move to next stack frame, and so on ...)
     pub(crate) fn variables(
         &mut self,
         target_core: &mut CoreHandle,
