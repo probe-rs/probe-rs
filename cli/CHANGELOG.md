@@ -5,6 +5,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.14.0]
+
 For changes until 0.14.0 see the main CHANGELOG.md with the probe-rs library.
 
 ## [0.13.0]

@@ -80,10 +80,10 @@ fn generate_release_changelog(local: bool) -> Result<(), DynError> {
         local,
         &std::fs::read_to_string("cargo-embed/CHANGELOG.md").unwrap(),
     );
-    // let cli_changelog = extract_changelog_for_newest_version(
-    //     local,
-    //     std::fs::read_to_string("cli/CHANGELOG.md").unwrap(),
-    // );
+    let cli_changelog = extract_changelog_for_newest_version(
+        local,
+        &std::fs::read_to_string("cli/CHANGELOG.md").unwrap(),
+    );
 
     println!("# probe-rs (library)");
     println!("{probe_rs_changelog}");
@@ -91,8 +91,8 @@ fn generate_release_changelog(local: bool) -> Result<(), DynError> {
     println!("{cargo_flash_changelog}");
     println!("# cargo-embed (cargo extension)");
     println!("{cargo_embed_changelog}");
-    // println!("# probe-rs-cli (CLI)");
-    // println!("{cli_changelog}");
+    println!("# probe-rs-cli (CLI)");
+    println!("{cli_changelog}");
 
     Ok(())
 }
