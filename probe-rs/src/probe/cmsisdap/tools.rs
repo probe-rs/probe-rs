@@ -125,8 +125,8 @@ fn get_cmsisdap_info(device: &Device<rusb::Context>) -> Option<DebugProbeInfo> {
 
 /// Checks if a given HID device is a CMSIS-DAP v1 probe, returning Some(DebugProbeInfo) if so.
 fn get_cmsisdap_hid_info(device: &hidapi::DeviceInfo) -> Option<DebugProbeInfo> {
-    let prod_str = device.product_string().unwrap_or(&"");
-    let path = device.path().to_str().unwrap_or(&"");
+    let prod_str = device.product_string().unwrap_or("");
+    let path = device.path().to_str().unwrap_or("");
     if prod_str.contains("CMSIS-DAP") || path.contains("CMSIS-DAP") {
         tracing::trace!("CMSIS-DAP device with USB path: {:?}", device.path());
         tracing::trace!("                product_string: {:?}", prod_str);
