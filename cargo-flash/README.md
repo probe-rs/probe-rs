@@ -1,6 +1,6 @@
 # cargo-flash
 
-[![crates.io](https://img.shields.io/crates/v/cargo-flash.svg)](https://crates.io/crates/cargo-flash) [![documentation](https://docs.rs/cargo-flash/badge.svg)](https://docs.rs/cargo-flash) [![Actions Status](https://github.com/probe-rs/cargo-flash/workflows/CI/badge.svg)](https://github.com/probe-rs/cargo-flash/actions) [![chat](https://img.shields.io/badge/chat-probe--rs%3Amatrix.org-brightgreen)](https://matrix.to/#/!vhKMWjizPZBgKeknOo:matrix.org)
+[![crates.io](https://img.shields.io/crates/v/cargo-flash.svg)](https://crates.io/crates/cargo-flash) [![Actions Status](https://img.shields.io/github/actions/workflow/status/probe-rs/probe-rs/ci.yml?branch=master)](https://github.com/probe-rs/probe-rs/actions) [![chat](https://img.shields.io/badge/chat-probe--rs%3Amatrix.org-brightgreen)](https://matrix.to/#/!vhKMWjizPZBgKeknOo:matrix.org)
 
 This crate provides a cargo subcommand to flash ELF binaries onto ARM chips.
 
