@@ -18,10 +18,10 @@ pub struct CoreData {
     pub(crate) core_index: usize,
     /// Track the last_known_status of the core.
     /// The debug client needs to be notified when the core changes state, and this can happen in one of two ways:
-    /// 1. By polling the core status periodically (in [`Debugger::process_next_request()`]).
+    /// 1. By polling the core status periodically (in [`super::debug_entry::Debugger::process_next_request()`]).
     ///   For instance, when the client sets the core running, and the core halts because of a breakpoint, we need to notify the client.
     /// 2. Some requests, like [`DebugAdapter::next()`], has an implicit action of setting the core running, before it waits for it to halt at the next statement.
-    ///   To ensure the [`CoreData::poll_core()`] behaves correctly, it will set the `last_known_status` to [`CoreStatus::Running`],
+    ///   To ensure the [`CoreHandle::poll_core()`] behaves correctly, it will set the `last_known_status` to [`CoreStatus::Running`],
     ///   and execute the request normally, with the expectation that the core will be halted, and that 1. above will detect this new status.
     ///   These 'implicit' updates of `last_known_status` will not(and should not) result in a notification to the client.
     pub(crate) last_known_status: CoreStatus,
@@ -33,9 +33,9 @@ pub struct CoreData {
     pub(crate) rtt_connection: Option<debug_rtt::RttConnection>,
 }
 
-/// [CoreHandle] provides handles to various data structures required to debug a single instance of a core. The actual state is stored in [SessionData].
+/// [CoreHandle] provides handles to various data structures required to debug a single instance of a core. The actual state is stored in [session_data::SessionData].
 ///
-/// Usage: To get access to this structure please use the [SessionData::attach_core] method. Please keep access/locks to this to a minumum duration.
+/// Usage: To get access to this structure please use the [session_data::SessionData::attach_core] method. Please keep access/locks to this to a minumum duration.
 pub struct CoreHandle<'p> {
     pub(crate) core: Core<'p>,
     pub(crate) core_data: &'p mut CoreData,
@@ -136,7 +136,7 @@ impl<'p> CoreHandle<'p> {
         }
     }
 
-    /// Search available [StackFrame]'s for the given `id`
+    /// Search available [`probe_rs::debug::StackFrame`]'s for the given `id`
     pub(crate) fn get_stackframe(
         &'p self,
         id: i64,
@@ -193,7 +193,7 @@ impl<'p> CoreHandle<'p> {
         Ok(())
     }
 
-    /// Set a single breakpoint in target configuration as well as [`CoreHandle::breakpoints`]
+    /// Set a single breakpoint in target configuration as well as [`super::core_data::CoreHandle`]
     pub(crate) fn set_breakpoint(
         &mut self,
         address: u64,
@@ -211,7 +211,7 @@ impl<'p> CoreHandle<'p> {
         Ok(())
     }
 
-    /// Clear a single breakpoint from target configuration as well as [`CoreHandle::breakpoints`]
+    /// Clear a single breakpoint from target configuration.
     pub(crate) fn clear_breakpoint(&mut self, address: u64) -> Result<()> {
         self.core
             .clear_hw_breakpoint(address)
@@ -229,7 +229,7 @@ impl<'p> CoreHandle<'p> {
         Ok(())
     }
 
-    /// Clear all breakpoints of a specified [`BreakpointType`]. Affects target configuration as well as [`CoreHandle::breakpoints`]
+    /// Clear all breakpoints of a specified [`super::session_data::BreakpointType`]. Affects target configuration as well as [`super::core_data::CoreHandle`]
     pub(crate) fn clear_breakpoints(
         &mut self,
         breakpoint_type: session_data::BreakpointType,

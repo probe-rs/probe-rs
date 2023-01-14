@@ -20,7 +20,7 @@ pub enum BreakpointType {
     SourceBreakpoint(Source),
 }
 
-/// Provide the storage and methods to handle various [`BreakPointType`]
+/// Provide the storage and methods to handle various [`BreakpointType`]
 #[derive(Debug)]
 pub struct ActiveBreakpoint {
     pub(crate) breakpoint_type: BreakpointType,
@@ -28,7 +28,7 @@ pub struct ActiveBreakpoint {
 }
 
 /// SessionData is designed to be similar to [probe_rs::Session], in as much that it provides handles to the [CoreHandle] instances for each of the available [probe_rs::Core] involved in the debug session.
-/// To get access to the [CoreHandle] for a specific [Core], the
+/// To get access to the [CoreHandle] for a specific [probe_rs::Core], the
 /// TODO: Adjust [SessionConfig] to allow multiple cores (and if appropriate, their binaries) to be specified.
 pub struct SessionData {
     pub(crate) session: Session,

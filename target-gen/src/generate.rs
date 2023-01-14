@@ -430,7 +430,7 @@ enum MemoryType {
     Generic,
 }
 
-/// A struct to combine essential information from [`cmsis_pack::pdsc::device::Device::Memories`].
+/// A struct to combine essential information from [`cmsis_pack::pdsc::Device::memories`].
 /// This is used to apply the necessary sorting and filtering in creating [`MemoryRegion`]s.
 // The sequence of the fields is important for the sorting by derived natural order.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
