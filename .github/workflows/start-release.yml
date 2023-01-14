@@ -32,8 +32,8 @@ jobs:
 
       - name: Git setup
         run: |
-          git config user.name "releasebot"
-          git config user.email "release@probe.rs"
+          git config user.name "probe-rs"
+          git config user.email "bot@probe.rs"
           git fetch --unshallow
           git fetch --tags
 
