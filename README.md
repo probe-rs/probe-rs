@@ -35,11 +35,11 @@ If you think probe-rs makes your embedded journey more enjoyable or even earns y
 
 ## Downloading a file
 
-The `cargo-flash` utility can be used as a cargo subcommand to download a compiled Rust program onto a target device. It can also be used to download arbitrary ELF files that might come out of a C/C++ compiler. Have a look at [cargo-flash](https://github.com/probe-rs/cargo-flash) for more information.
+The `cargo-flash` utility can be used as a cargo subcommand to download a compiled Rust program onto a target device. It can also be used to download arbitrary ELF files that might come out of a C/C++ compiler. Have a look at [cargo-flash](./cargo-flash) for more information.
 
 ## Better debugging with probe-rs
 
-If you are looking for a more extended debugging experience, please head over to [cargo-embed](https://github.com/probe-rs/cargo-embed) which provides support for GDB, RTT, and config files.
+If you are looking for a more extended debugging experience, please have a look at [cargo-embed](./cargo-embed) which provides support for GDB, RTT, and config files.
 
 ## VSCode
 
@@ -127,10 +127,10 @@ Building requires Rust and Cargo which can be installed [using rustup](https://r
 
 ```console
 # Ubuntu
-> sudo apt install -y libusb-1.0-0-dev libftdi1-dev libudev-dev
+> sudo apt install -y libusb-1.0-0-dev libftdi1-dev libudev-dev libssl-dev
 
 # Fedora
-> sudo dnf install -y libusbx-devel libftdi-devel libudev-devel
+> sudo dnf install -y libusbx-devel libftdi-devel libudev-devel openssl-devel
 ```
 
 On Windows you can use [vcpkg](https://github.com/microsoft/vcpkg#quick-start-windows):
