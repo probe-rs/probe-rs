@@ -138,6 +138,8 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           args: --all-features
+        env:
+          RUSTFLAGS: '-D warnings'
 
   doc:
     name: Check docs
@@ -162,3 +164,5 @@ jobs:
         with:
           command: doc
           args: --all-features
+        env:
+          RUSTDOCFLAGS: '-D warnings'
