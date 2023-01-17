@@ -621,12 +621,14 @@ impl<D: StLinkUsb> StLink<D> {
 
         let mut buf = [0; 2];
         tracing::trace!("JTAG_INIT_AP {}", apsel);
-        self.send_jtag_command(
-            &[commands::JTAG_COMMAND, commands::JTAG_INIT_AP, apsel],
-            &[],
-            &mut buf,
-            TIMEOUT,
-        )
+        retry_on_wait(|| {
+            self.send_jtag_command(
+                &[commands::JTAG_COMMAND, commands::JTAG_INIT_AP, apsel],
+                &[],
+                &mut buf,
+                TIMEOUT,
+            )
+        })
     }
 
     /// Close a specific AP, which was opened with `open_ap`.
@@ -641,12 +643,14 @@ impl<D: StLinkUsb> StLink<D> {
 
         let mut buf = [0; 2];
         tracing::trace!("JTAG_CLOSE_AP {}", apsel);
-        self.send_jtag_command(
-            &[commands::JTAG_COMMAND, commands::JTAG_CLOSE_AP_DBG, apsel],
-            &[],
-            &mut buf,
-            TIMEOUT,
-        )
+        retry_on_wait(|| {
+            self.send_jtag_command(
+                &[commands::JTAG_COMMAND, commands::JTAG_CLOSE_AP_DBG, apsel],
+                &[],
+                &mut buf,
+                TIMEOUT,
+            )
+        })
     }
 
     fn send_jtag_command(
@@ -656,32 +660,14 @@ impl<D: StLinkUsb> StLink<D> {
         read_data: &mut [u8],
         timeout: Duration,
     ) -> Result<(), DebugProbeError> {
-        for attempt in 0..13 {
-            self.device.write(cmd, write_data, read_data, timeout)?;
-
-            match Status::from(read_data[0]) {
-                Status::JtagOk => return Ok(()),
-                Status::SwdDpWait => {
-                    tracing::warn!("send_jtag_command {} got SwdDpWait, retrying", cmd[0])
-                }
-                Status::SwdApWait => {
-                    tracing::warn!("send_jtag_command {} got SwdApWait, retrying", cmd[0])
-                }
-                status => {
-                    tracing::warn!("send_jtag_command {} failed: {:?}", cmd[0], status);
-                    return Err(StlinkError::CommandFailed(status).into());
-                }
+        self.device.write(cmd, write_data, read_data, timeout)?;
+        match Status::from(read_data[0]) {
+            Status::JtagOk => Ok(()),
+            status => {
+                tracing::warn!("send_jtag_command {} failed: {:?}", cmd[0], status);
+                Err(StlinkError::CommandFailed(status).into())
             }
-
-            // Sleep with exponential backoff.
-            std::thread::sleep(Duration::from_micros(100 << attempt));
         }
-
-        tracing::warn!("too many retries, giving up");
-
-        // Return the last error (will be SwdDpWait or SwdApWait)
-        let status = Status::from(read_data[0]);
-        Err(StlinkError::CommandFailed(status).into())
     }
 
     pub fn start_trace_reception(&mut self, config: &SwoConfig) -> Result<(), DebugProbeError> {
@@ -770,7 +756,7 @@ impl<D: StLinkUsb> StLink<D> {
             0, // Maximum address for DAP registers is 0xFC
         ];
         let mut buf = [0; 8];
-        self.send_jtag_command(cmd, &[], &mut buf, TIMEOUT)?;
+        retry_on_wait(|| self.send_jtag_command(cmd, &[], &mut buf, TIMEOUT))?;
         // Unwrap is ok!
         Ok(buf[4..8].pread_with(0, LE).unwrap())
     }
@@ -801,7 +787,8 @@ impl<D: StLinkUsb> StLink<D> {
             bytes[3],
         ];
         let mut buf = [0; 2];
-        self.send_jtag_command(cmd, &[], &mut buf, TIMEOUT)
+
+        retry_on_wait(|| self.send_jtag_command(cmd, &[], &mut buf, TIMEOUT))
     }
 
     fn read_mem_32bit(
@@ -837,24 +824,27 @@ impl<D: StLinkUsb> StLink<D> {
         let data_length = data.len().to_le_bytes();
 
         let addbytes = address.to_le_bytes();
-        self.device.write(
-            &[
-                commands::JTAG_COMMAND,
-                commands::JTAG_READMEM_32BIT,
-                addbytes[0],
-                addbytes[1],
-                addbytes[2],
-                addbytes[3],
-                data_length[0],
-                data_length[1],
-                apsel,
-            ],
-            &[],
-            data,
-            TIMEOUT,
-        )?;
 
-        self.get_last_rw_status()
+        retry_on_wait(|| {
+            self.device.write(
+                &[
+                    commands::JTAG_COMMAND,
+                    commands::JTAG_READMEM_32BIT,
+                    addbytes[0],
+                    addbytes[1],
+                    addbytes[2],
+                    addbytes[3],
+                    data_length[0],
+                    data_length[1],
+                    apsel,
+                ],
+                &[],
+                data,
+                TIMEOUT,
+            )?;
+
+            self.get_last_rw_status()
+        })
     }
 
     fn read_mem_8bit(
@@ -893,28 +883,31 @@ impl<D: StLinkUsb> StLink<D> {
 
         let addbytes = address.to_le_bytes();
         let lenbytes = length.to_le_bytes();
-        self.device.write(
-            &[
-                commands::JTAG_COMMAND,
-                commands::JTAG_READMEM_8BIT,
-                addbytes[0],
-                addbytes[1],
-                addbytes[2],
-                addbytes[3],
-                lenbytes[0],
-                lenbytes[1],
-                apsel,
-            ],
-            &[],
-            &mut receive_buffer,
-            TIMEOUT,
-        )?;
 
-        if length == 1 {
-            receive_buffer.resize(length as usize, 0)
-        }
+        retry_on_wait(|| {
+            self.device.write(
+                &[
+                    commands::JTAG_COMMAND,
+                    commands::JTAG_READMEM_8BIT,
+                    addbytes[0],
+                    addbytes[1],
+                    addbytes[2],
+                    addbytes[3],
+                    lenbytes[0],
+                    lenbytes[1],
+                    apsel,
+                ],
+                &[],
+                &mut receive_buffer,
+                TIMEOUT,
+            )?;
 
-        self.get_last_rw_status()?;
+            if length == 1 {
+                receive_buffer.resize(length as usize, 0)
+            }
+
+            self.get_last_rw_status()
+        })?;
 
         Ok(receive_buffer)
     }
@@ -948,24 +941,26 @@ impl<D: StLinkUsb> StLink<D> {
 
         let addbytes = address.to_le_bytes();
         let lenbytes = length.to_le_bytes();
-        self.device.write(
-            &[
-                commands::JTAG_COMMAND,
-                commands::JTAG_WRITEMEM_32BIT,
-                addbytes[0],
-                addbytes[1],
-                addbytes[2],
-                addbytes[3],
-                lenbytes[0],
-                lenbytes[1],
-                apsel,
-            ],
-            data,
-            &mut [],
-            TIMEOUT,
-        )?;
+        retry_on_wait(|| {
+            self.device.write(
+                &[
+                    commands::JTAG_COMMAND,
+                    commands::JTAG_WRITEMEM_32BIT,
+                    addbytes[0],
+                    addbytes[1],
+                    addbytes[2],
+                    addbytes[3],
+                    lenbytes[0],
+                    lenbytes[1],
+                    apsel,
+                ],
+                data,
+                &mut [],
+                TIMEOUT,
+            )?;
 
-        self.get_last_rw_status()
+            self.get_last_rw_status()
+        })
     }
 
     fn write_mem_8bit(
@@ -993,24 +988,26 @@ impl<D: StLinkUsb> StLink<D> {
 
         let addbytes = address.to_le_bytes();
         let lenbytes = byte_length.to_le_bytes();
-        self.device.write(
-            &[
-                commands::JTAG_COMMAND,
-                commands::JTAG_WRITEMEM_8BIT,
-                addbytes[0],
-                addbytes[1],
-                addbytes[2],
-                addbytes[3],
-                lenbytes[0],
-                lenbytes[1],
-                apsel,
-            ],
-            data,
-            &mut [],
-            TIMEOUT,
-        )?;
+        retry_on_wait(|| {
+            self.device.write(
+                &[
+                    commands::JTAG_COMMAND,
+                    commands::JTAG_WRITEMEM_8BIT,
+                    addbytes[0],
+                    addbytes[1],
+                    addbytes[2],
+                    addbytes[3],
+                    lenbytes[0],
+                    lenbytes[1],
+                    apsel,
+                ],
+                data,
+                &mut [],
+                TIMEOUT,
+            )?;
 
-        self.get_last_rw_status()
+            self.get_last_rw_status()
+        })
     }
 
     fn _read_debug_reg(&mut self, address: u32) -> Result<u32, DebugProbeError> {
@@ -1592,11 +1589,50 @@ impl ArmProbe for StLinkMemoryInterface<'_> {
     }
 }
 
+fn is_wait_error(e: &DebugProbeError) -> bool {
+    if let DebugProbeError::ProbeSpecific(e) = e {
+        matches!(
+            e.downcast_ref(),
+            Some(StlinkError::CommandFailed(
+                Status::SwdDpWait | Status::SwdApWait
+            ))
+        )
+    } else {
+        false
+    }
+}
+
+fn retry_on_wait<R>(
+    mut f: impl FnMut() -> Result<R, DebugProbeError>,
+) -> Result<R, DebugProbeError> {
+    let mut last_err = None;
+    for attempt in 0..13 {
+        match f() {
+            Ok(res) => return Ok(res),
+            Err(e) => {
+                if is_wait_error(&e) {
+                    tracing::warn!("got SwdDpWait/SwdApWait, retrying.");
+                    last_err = Some(e);
+                } else {
+                    return Err(e);
+                }
+            }
+        }
+
+        // Sleep with exponential backoff.
+        std::thread::sleep(Duration::from_micros(100 << attempt));
+    }
+
+    tracing::warn!("too many retries, giving up");
+
+    // Return the last error (will be SwdDpWait or SwdApWait)
+    Err(last_err.unwrap())
+}
+
 #[cfg(test)]
 mod test {
 
-    use super::{constants::commands, usb_interface::StLinkUsb, StLink};
-    use crate::{DebugProbeError, WireProtocol};
+    use super::*;
 
     use scroll::Pwrite;
 
@@ -1751,5 +1787,29 @@ mod test {
         probe
             .select_ap(1)
             .expect("Selecting AP other than AP 0 should work");
+    }
+
+    #[test]
+    fn test_is_wait_error() {
+        assert_eq!(
+            is_wait_error(&DebugProbeError::InterfaceNotAvailable("foo").into()),
+            false
+        );
+        assert_eq!(
+            is_wait_error(&StlinkError::BanksNotAllowedOnDPRegister.into()),
+            false
+        );
+        assert_eq!(
+            is_wait_error(&StlinkError::CommandFailed(Status::JtagFreqNotSupported).into()),
+            false
+        );
+        assert_eq!(
+            is_wait_error(&StlinkError::CommandFailed(Status::SwdDpWait).into()),
+            true
+        );
+        assert_eq!(
+            is_wait_error(&StlinkError::CommandFailed(Status::SwdApWait).into()),
+            true
+        );
     }
 }
