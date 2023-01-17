@@ -5,6 +5,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- stlink: fix retries on DP/AP WAIT errors. (#1406)
+
 ## [0.14.1]
 
 Released 2023-01-14
