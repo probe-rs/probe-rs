@@ -5,6 +5,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Added STM32С0 target (STM32С011 and STM32С031). (#1403)
+
 ### Fixed
 
 - stlink: fix retries on DP/AP WAIT errors. (#1406)
