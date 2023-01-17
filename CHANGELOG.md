@@ -6,9 +6,11 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/) and this p
 
 ## [Unreleased]
 
+- [#373] Update probe-rs to v0.14
 - [#371] Add "missing drivers" to troubleshooting section
 - [#366] Update CI
 
+[#373]: https://github.com/knurling-rs/probe-run/pull/373
 [#371]: https://github.com/knurling-rs/probe-run/pull/371
 [#366]: https://github.com/knurling-rs/probe-run/pull/366
 
