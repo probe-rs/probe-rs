@@ -5,6 +5,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.14.2]
+
+Released 2023-01-18
+
 ## [0.14.1]
 
 Released 2023-01-14
@@ -173,7 +177,8 @@ Improved flashing for `cargo-flash` considering speed and useability.
 
 - Introduce cargo-flash which can automatically build & flash the target elf file.
 
-[unreleased]: https://github.com/probe-rs/cargo-flash/compare/v0.14.1...master
+[unreleased]: https://github.com/probe-rs/cargo-flash/compare/v0.14.2...master
+[v0.14.2]: https://github.com/probe-rs/cargo-flash/compare/v0.14.1...v0.14.2
 [v0.14.1]: https://github.com/probe-rs/cargo-flash/compare/v0.14.0...v0.14.1
 [v0.14.0]: https://github.com/probe-rs/cargo-flash/compare/v0.13.0...v0.14.0
 [0.13.0]: https://github.com/probe-rs/cargo-flash/releases/tag/v0.12.1..v0.13.0

@@ -5,6 +5,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.14.2]
+
+Released 2023-01-18
+
 - Added STM32С0 target (STM32С011 and STM32С031). (#1403)
 
 ### Fixed
@@ -689,7 +693,8 @@ Initial release on crates.io
 - Working basic flash downloader with nRF51.
 - Introduce cargo-flash which can automatically build & flash the target elf file.
 
-[unreleased]: https://github.com/probe-rs/probe-rs/compare/v0.14.1...master
+[unreleased]: https://github.com/probe-rs/probe-rs/compare/v0.14.2...master
+[v0.14.2]: https://github.com/probe-rs/probe-rs/compare/v0.14.1...v0.14.2
 [v0.14.1]: https://github.com/probe-rs/probe-rs/compare/v0.14.0...v0.14.1
 [v0.14.0]: https://github.com/probe-rs/probe-rs/compare/v0.13.0...v0.14.0
 [0.13.0]: https://github.com/probe-rs/probe-rs/compare/v0.12.0...v0.13.0
