@@ -17,7 +17,7 @@ license.workspace = true
 [dependencies]
 probe-rs = { path = "../probe-rs", version = "0.14.1", default-features = true }
 probe-rs-target = { path = "../probe-rs-target", version = "0.14.1", default-features = false }
-cmsis-pack = { version = "0.6", git = "https://github.com/pyocd/cmsis-pack-manager" }
+cmsis-pack = { version = "0.6.1" }
 goblin = "0.6.0"
 scroll = "0.11.0"
 serde_yaml = "^0.9"
