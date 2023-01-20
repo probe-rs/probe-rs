@@ -1791,25 +1791,20 @@ mod test {
 
     #[test]
     fn test_is_wait_error() {
-        assert_eq!(
-            is_wait_error(&DebugProbeError::InterfaceNotAvailable("foo").into()),
-            false
-        );
-        assert_eq!(
-            is_wait_error(&StlinkError::BanksNotAllowedOnDPRegister.into()),
-            false
-        );
-        assert_eq!(
-            is_wait_error(&StlinkError::CommandFailed(Status::JtagFreqNotSupported).into()),
-            false
-        );
-        assert_eq!(
-            is_wait_error(&StlinkError::CommandFailed(Status::SwdDpWait).into()),
-            true
-        );
-        assert_eq!(
-            is_wait_error(&StlinkError::CommandFailed(Status::SwdApWait).into()),
-            true
-        );
+        assert!(!is_wait_error(&DebugProbeError::InterfaceNotAvailable(
+            "foo"
+        )));
+        assert!(!is_wait_error(
+            &StlinkError::BanksNotAllowedOnDPRegister.into()
+        ));
+        assert!(!is_wait_error(
+            &StlinkError::CommandFailed(Status::JtagFreqNotSupported).into()
+        ));
+        assert!(!is_wait_error(
+            &StlinkError::CommandFailed(Status::SwdDpWait).into()
+        ));
+        assert!(!is_wait_error(
+            &StlinkError::CommandFailed(Status::SwdApWait).into()
+        ));
     }
 }
