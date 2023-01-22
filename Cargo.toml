@@ -19,7 +19,6 @@ members = [
     "probe-rs",
     "probe-rs-target",
     "probe-rs-cli-util",
-    "rtt",
     "rtthost",
     "smoke-tester",
     "xtask",

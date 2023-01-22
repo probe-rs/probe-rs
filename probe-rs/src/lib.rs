@@ -82,6 +82,9 @@ mod memory;
 #[warn(missing_docs)]
 mod probe;
 #[warn(missing_docs)]
+#[cfg(feature = "rtt")]
+pub mod rtt;
+#[warn(missing_docs)]
 mod session;
 
 pub use crate::config::{CoreType, InstructionSet, Target};

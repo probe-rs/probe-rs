@@ -4,8 +4,8 @@ use crossterm::{
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
+use probe_rs::rtt::RttChannel;
 use probe_rs::Core;
-use probe_rs_rtt::RttChannel;
 use std::{fmt::write, path::PathBuf, sync::mpsc::RecvTimeoutError};
 use std::{
     io::{Read, Seek, Write},
@@ -49,7 +49,7 @@ fn pull_channel<C: RttChannel>(channels: &mut Vec<C>, n: usize) -> Option<C> {
 
 impl App {
     pub fn new(
-        mut rtt: probe_rs_rtt::Rtt,
+        mut rtt: probe_rs::rtt::Rtt,
         config: &crate::config::Config,
         logname: String,
     ) -> Result<Self> {

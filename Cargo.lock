@@ -359,7 +359,6 @@ dependencies = [
  "log",
  "probe-rs",
  "probe-rs-cli-util",
- "probe-rs-rtt",
  "sanitize-filename",
  "serde",
  "serde_json",
@@ -1225,7 +1224,7 @@ checksum = "572564d6cba7d09775202c8e7eebc4d534d5ae36578ab402fb21e182a0ac9505"
 dependencies = [
  "log",
  "plain",
- "scroll 0.11.0",
+ "scroll",
 ]
 
 [[package]]
@@ -2218,7 +2217,7 @@ dependencies = [
  "probe-rs-target",
  "rand",
  "rusb",
- "scroll 0.11.0",
+ "scroll",
  "serde",
  "serde_json",
  "serde_yaml",
@@ -2253,7 +2252,7 @@ dependencies = [
  "ron",
  "rustyline",
  "sanitize-filename",
- "scroll 0.11.0",
+ "scroll",
  "serde",
  "termtree",
  "thiserror",
@@ -2282,7 +2281,6 @@ dependencies = [
  "num-traits",
  "once_cell",
  "probe-rs",
- "probe-rs-rtt",
  "sentry",
  "serde",
  "simplelog",
@@ -2309,24 +2307,13 @@ dependencies = [
  "probe-rs-cli-util",
  "sanitize-filename",
  "schemafy",
- "scroll 0.11.0",
+ "scroll",
  "serde",
  "serde_json",
  "svd-parser",
  "thiserror",
  "tracing",
  "tracing-subscriber",
-]
-
-[[package]]
-name = "probe-rs-rtt"
-version = "0.14.2"
-dependencies = [
- "probe-rs",
- "scroll 0.10.2",
- "serde",
- "thiserror",
- "tracing",
 ]
 
 [[package]]
@@ -2612,7 +2599,6 @@ dependencies = [
  "clap",
  "pretty_env_logger",
  "probe-rs",
- "probe-rs-rtt",
 ]
 
 [[package]]
@@ -2786,12 +2772,6 @@ name = "scratch"
 version = "1.0.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ddccb15bcce173023b3fedd9436f882a0739b8dfb45e4f6b6002bee5929f61b2"
-
-[[package]]
-name = "scroll"
-version = "0.10.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fda28d4b4830b807a8b43f7b0e6b5df875311b3e7621d84577188c175b6ec1ec"
 
 [[package]]
 name = "scroll"
@@ -3248,7 +3228,7 @@ dependencies = [
  "probe-rs",
  "probe-rs-target",
  "reqwest",
- "scroll 0.11.0",
+ "scroll",
  "serde",
  "serde_yaml",
  "tokio",

@@ -34,7 +34,7 @@ use probe_rs_cli_util::{
     logging::{self, Metadata},
 };
 
-use probe_rs_rtt::{Rtt, ScanRegion};
+use probe_rs::rtt::{Rtt, ScanRegion};
 
 use probe_rs_gdb_server::GdbInstanceConfiguration;
 

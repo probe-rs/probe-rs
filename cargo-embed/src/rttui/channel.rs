@@ -1,8 +1,8 @@
 use std::fmt;
 
 use chrono::Local;
+use probe_rs::rtt::{ChannelMode, DownChannel, UpChannel};
 use probe_rs::Core;
-use probe_rs_rtt::{ChannelMode, DownChannel, UpChannel};
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum DataFormat {

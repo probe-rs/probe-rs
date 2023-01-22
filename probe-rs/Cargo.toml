@@ -16,7 +16,9 @@ keywords = ["embedded"]
 license.workspace = true
 
 [features]
-default = ["builtin-targets"]
+default = ["builtin-targets", "rtt"]
+
+rtt = []
 
 vendored-libusb = ["rusb/vendored"]
 

@@ -4,8 +4,8 @@ use figment::{
     providers::{Format, Json, Toml, Yaml},
     Figment,
 };
+use probe_rs::rtt::ChannelMode;
 use probe_rs::WireProtocol;
-use probe_rs_rtt::ChannelMode;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
