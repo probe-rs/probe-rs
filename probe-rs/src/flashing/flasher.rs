@@ -6,7 +6,9 @@ use super::{
 };
 use crate::config::NvmRegion;
 use crate::memory::MemoryInterface;
+use crate::rtt::Rtt;
 use crate::{core::RegisterFile, session::Session, Core, InstructionSet};
+use std::time::Instant;
 use std::{fmt::Debug, time::Duration};
 
 pub(super) trait Operation {
@@ -163,15 +165,26 @@ impl<'session> Flasher<'session> {
         &mut self,
         clock: Option<u32>,
     ) -> Result<ActiveFlasher<'_, O>, FlashError> {
+        let memory_map = self.session.target().memory_map.clone();
         // Attach to memory and core.
-        let core = self
+        let mut core = self
             .session
             .core(self.core_index)
             .map_err(FlashError::Core)?;
 
+        let rtt = match Rtt::attach(&mut core, &memory_map) {
+            Ok(rtt) => Some(rtt),
+            Err(error) => {
+                tracing::debug!("RTT could not be initialized: {error}");
+                None
+            }
+        };
+
         tracing::debug!("Preparing Flasher for operation {}", O::operation_name());
         let mut flasher = ActiveFlasher::<O> {
             core,
+            #[cfg(feature = "rtt")]
+            rtt,
             flash_algorithm: self.flash_algorithm.clone(),
             _operation: core::marker::PhantomData,
         };
@@ -499,6 +512,8 @@ fn into_reg(val: u64) -> Result<u32, FlashError> {
 
 pub(super) struct ActiveFlasher<'probe, O: Operation> {
     core: Core<'probe>,
+    #[cfg(feature = "rtt")]
+    rtt: Option<Rtt>,
     flash_algorithm: FlashAlgorithm,
     _operation: core::marker::PhantomData<O>,
 }
@@ -652,7 +667,33 @@ impl<'probe, O: Operation> ActiveFlasher<'probe, O> {
         tracing::debug!("Waiting for routine call completion.");
         let regs = self.core.registers();
 
-        self.core.wait_for_core_halted(timeout)?;
+        // Wait until halted state is active again.
+        let start = Instant::now();
+
+        let mut timeout_ocurred = true;
+        while start.elapsed() < timeout {
+            if let Some(rtt) = &mut self.rtt {
+                for channel in rtt.up_channels().iter() {
+                    let mut buffer = vec![0; channel.buffer_size()];
+                    match channel.read(&mut self.core, &mut buffer) {
+                        Ok(read) => {
+                            tracing::debug!("RTT: {}", String::from_utf8_lossy(&buffer[..read]))
+                        }
+                        Err(error) => tracing::debug!("Reading RTT failed: {error}"),
+                    };
+                }
+            }
+
+            if self.core.core_halted()? {
+                timeout_ocurred = false;
+            }
+
+            std::thread::sleep(Duration::from_millis(1));
+        }
+
+        if timeout_ocurred {
+            return Err(FlashError::Core(crate::Error::Timeout));
+        }
 
         let r: u32 = self.core.read_core_reg(regs.result_register(0).id)?;
         Ok(r)
