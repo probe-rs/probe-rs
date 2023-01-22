@@ -4,8 +4,10 @@ use std::sync::Arc;
 
 use super::{ArmDebugSequence, ArmDebugSequenceError};
 use crate::architecture::arm::{
-    component::TraceSink, memory::CoresightComponent, ArmError, ArmProbeInterface,
+    ap::MemoryAp, component::TraceSink, memory::CoresightComponent, ApAddress, ArmError,
+    ArmProbeInterface, DpAddress,
 };
+use crate::session::MissingPermissions;
 
 /// An error when operating a core ROM table component occurred.
 #[derive(thiserror::Error, Debug)]
@@ -19,6 +21,11 @@ pub enum ComponentError {
     NordicNoTraceMem,
 }
 
+const RESET: u8 = 0x00;
+const ERASEALL: u8 = 0x04;
+const ERASEALLSTATUS: u8 = 0x08;
+const APPROTECTSTATUS: u8 = 0x0C;
+
 /// Marker struct indicating initialization sequencing for nRF52 family parts.
 pub struct Nrf52 {}
 
@@ -26,6 +33,15 @@ impl Nrf52 {
     /// Create the sequencer for the nRF52 family of parts.
     pub fn create() -> Arc<Self> {
         Arc::new(Self {})
+    }
+
+    fn is_core_unlocked(
+        &self,
+        iface: &mut dyn ArmProbeInterface,
+        ctrl_ap: ApAddress,
+    ) -> Result<bool, ArmError> {
+        let status = iface.read_raw_ap_register(ctrl_ap, APPROTECTSTATUS)?;
+        Ok(status != 0)
     }
 }
 
@@ -65,6 +81,49 @@ mod clock {
 }
 
 impl ArmDebugSequence for Nrf52 {
+    fn debug_device_unlock(
+        &self,
+        iface: &mut dyn ArmProbeInterface,
+        _default_ap: MemoryAp,
+        permissions: &crate::Permissions,
+    ) -> Result<(), ArmError> {
+        let ctrl_ap = ApAddress {
+            ap: 1,
+            dp: DpAddress::Default,
+        };
+
+        tracing::info!("Checking if core is unlocked");
+        if self.is_core_unlocked(iface, ctrl_ap)? {
+            tracing::info!("Core is already unlocked");
+            return Ok(());
+        }
+
+        tracing::warn!("Core is locked. Erase procedure will be started to unlock it.");
+        permissions
+            .erase_all()
+            .map_err(|MissingPermissions(desc)| ArmError::MissingPermissions(desc))?;
+
+        // Reset
+        iface.write_raw_ap_register(ctrl_ap, RESET, 1)?;
+        iface.write_raw_ap_register(ctrl_ap, RESET, 0)?;
+
+        // Start erase
+        iface.write_raw_ap_register(ctrl_ap, ERASEALL, 1)?;
+
+        // Wait for erase done
+        while iface.read_raw_ap_register(ctrl_ap, ERASEALLSTATUS)? != 0 {}
+
+        // Reset again
+        iface.write_raw_ap_register(ctrl_ap, RESET, 1)?;
+        iface.write_raw_ap_register(ctrl_ap, RESET, 0)?;
+
+        if !self.is_core_unlocked(iface, ctrl_ap)? {
+            return Err(ArmDebugSequenceError::custom("Could not unlock core").into());
+        }
+
+        Err(ArmError::ReAttachRequired)
+    }
+
     fn trace_start(
         &self,
         interface: &mut dyn ArmProbeInterface,
