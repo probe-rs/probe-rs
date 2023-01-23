@@ -1800,10 +1800,10 @@ mod test {
         assert!(!is_wait_error(
             &StlinkError::CommandFailed(Status::JtagFreqNotSupported).into()
         ));
-        assert!(!is_wait_error(
+        assert!(is_wait_error(
             &StlinkError::CommandFailed(Status::SwdDpWait).into()
         ));
-        assert!(!is_wait_error(
+        assert!(is_wait_error(
             &StlinkError::CommandFailed(Status::SwdApWait).into()
         ));
     }
