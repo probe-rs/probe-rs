@@ -252,34 +252,31 @@ impl Rtt {
             }
         };
 
-        let mut mem: Vec<u8> = Vec::new();
-        let mut instances: Vec<Rtt> = Vec::new();
-
-        for range in ranges.iter() {
-            if range.len() < Self::MIN_SIZE {
-                continue;
-            }
-
-            mem.resize(range.len(), 0);
-            {
-                core.read(range.start.into(), mem.as_mut())?;
-            }
-
-            for offset in 0..(mem.len() - Self::MIN_SIZE) {
-                if let Ok(Some(rtt)) = Rtt::from(
-                    core,
-                    memory_map,
-                    range.start + offset as u32,
-                    Some(&mem[offset..]),
-                ) {
-                    instances.push(rtt);
-
-                    if instances.len() >= 5 {
-                        break;
-                    }
+        let mut instances = ranges
+            .into_iter()
+            .filter_map(|range| {
+                if range.len() < Self::MIN_SIZE {
+                    return None;
                 }
-            }
-        }
+
+                let mut mem = vec![0; range.len()];
+                {
+                    core.read(range.start.into(), mem.as_mut()).ok()?;
+                }
+
+                println!("{}", String::from_utf8_lossy(&mem));
+                match kmp::kmp_find(&Self::RTT_ID, mem.as_slice()) {
+                    Some(offset) => Rtt::from(
+                        core,
+                        memory_map,
+                        range.start + offset as u32,
+                        Some(&mem[offset..]),
+                    )
+                    .transpose(),
+                    None => None,
+                }
+            })
+            .collect::<Result<Vec<_>, _>>()?;
 
         if instances.is_empty() {
             return Err(Error::ControlBlockNotFound);

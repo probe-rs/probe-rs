@@ -165,26 +165,21 @@ impl<'session> Flasher<'session> {
         &mut self,
         clock: Option<u32>,
     ) -> Result<ActiveFlasher<'_, O>, FlashError> {
+        #[cfg(feature = "rtt")]
         let memory_map = self.session.target().memory_map.clone();
         // Attach to memory and core.
-        let mut core = self
+        let core = self
             .session
             .core(self.core_index)
             .map_err(FlashError::Core)?;
-
-        let rtt = match Rtt::attach(&mut core, &memory_map) {
-            Ok(rtt) => Some(rtt),
-            Err(error) => {
-                tracing::debug!("RTT could not be initialized: {error}");
-                None
-            }
-        };
 
         tracing::debug!("Preparing Flasher for operation {}", O::operation_name());
         let mut flasher = ActiveFlasher::<O> {
             core,
             #[cfg(feature = "rtt")]
-            rtt,
+            rtt: None,
+            #[cfg(feature = "rtt")]
+            memory_map,
             flash_algorithm: self.flash_algorithm.clone(),
             _operation: core::marker::PhantomData,
         };
@@ -514,6 +509,8 @@ pub(super) struct ActiveFlasher<'probe, O: Operation> {
     core: Core<'probe>,
     #[cfg(feature = "rtt")]
     rtt: Option<Rtt>,
+    #[cfg(feature = "rtt")]
+    memory_map: Vec<MemoryRegion>,
     flash_algorithm: FlashAlgorithm,
     _operation: core::marker::PhantomData<O>,
 }
@@ -672,6 +669,16 @@ impl<'probe, O: Operation> ActiveFlasher<'probe, O> {
 
         let mut timeout_ocurred = true;
         while start.elapsed() < timeout {
+            if self.rtt.is_none() {
+                let rtt = match Rtt::attach(&mut self.core, &self.memory_map) {
+                    Ok(rtt) => Some(rtt),
+                    Err(error) => {
+                        tracing::error!("RTT could not be initialized: {error}");
+                        None
+                    }
+                };
+                self.rtt = rtt;
+            }
             if let Some(rtt) = &mut self.rtt {
                 for channel in rtt.up_channels().iter() {
                     let mut buffer = vec![0; channel.buffer_size()];
