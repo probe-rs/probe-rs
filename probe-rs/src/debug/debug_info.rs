@@ -387,19 +387,7 @@ impl DebugInfo {
                                     }
                                 }
                             }
-                        } else {
-                            // If the parent is not a pointer, then we need to use the parent's memory location.
-                            // The parent variable needs a memory location and byte size before we extract the type.
-                            // self.process_memory_location(
-                            //     array_member_type_node.entry(),
-                            //     &child_variable,
-                            //     &mut array_member_variable,
-                            //     Some(core),
-                            //     stack_frame_registers,
-                            //     frame_base,
-                            // )?;
                         }
-
                         match &parent_variable.name {
                                 VariableName::Named(name) => {
                                     if name.starts_with("Some") {

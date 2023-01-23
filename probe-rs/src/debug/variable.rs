@@ -375,10 +375,7 @@ impl Variable {
     }
 
     /// Handle memory_location for special cases, such as array members, pointers, and intermediate nodes.
-    pub fn handle_memory_location_special_cases(
-        &mut self,
-        parent_variable: &Variable,
-    ) -> Result<(), DebugError> {
+    pub fn handle_memory_location_special_cases(&mut self, parent_variable: &Variable) {
         if let Some(child_member_index) = self.member_index {
             // If this variable is a member of an array type, and needs special handling to calculate the `memory_location`.
             if let VariableLocation::Address(address) = parent_variable.memory_location {
@@ -387,32 +384,27 @@ impl Variable {
                         address.overflowing_add(child_member_index as u64 * byte_size);
 
                     if has_overflowed {
-                        Err(DebugError::UnwindIncompleteResults {
-                            message: "Overflow calculating variable address".to_string(),
-                        })
+                        self.value = VariableValue::Error(
+                            "Overflow calculating variable address".to_string(),
+                        );
                     } else {
                         self.memory_location = VariableLocation::Address(location);
-                        Ok(())
                     }
                 } else {
-                    Err(DebugError::UnwindIncompleteResults {
-                        message: "Unable to calculate variable address with byte_size = 0"
-                            .to_string(),
-                    })
+                    // If this array member doesn't have a byte_size, it may be because it is the first member of an array itself.
+                    // In this case, the byte_size will be calculated when the nested array members are resolved.
+                    // The first member of an array will have a memory location of the same as it's parent.
+                    self.memory_location = parent_variable.memory_location.clone();
                 }
             } else {
                 self.memory_location = VariableLocation::Unavailable;
-                Ok(())
             }
-        } else {
+        } else if self.memory_location == VariableLocation::Unknown
+            && parent_variable.memory_location.valid()
+        {
             // Non-array members can inherit their memory location from their parent.
-            if self.memory_location == VariableLocation::Unknown
-                && parent_variable.memory_location.valid()
-            {
-                // There are debuginfo entries that implies a variable's memory location is carried forward from it's parent (usually pointer data types).
-                self.memory_location = parent_variable.memory_location.clone();
-            }
-            Ok(())
+            // There are debuginfo entries that implies a variable's memory location is carried forward from it's parent (usually pointer data types).
+            self.memory_location = parent_variable.memory_location.clone();
         }
     }
 
@@ -790,8 +782,8 @@ impl Variable {
                     VariableType::Array { .. } => {
                         // Arrays
                         compound_value = format!(
-                            "{}{}{:\t<indentation$}{}: {} = [",
-                            compound_value, line_feed, "", self.name, self.type_name,
+                            "{}{}{:\t<indentation$}: {} = [",
+                            compound_value, line_feed, "", self.type_name,
                         );
                         let mut child_count: usize = 0;
                         for child in children.iter() {
