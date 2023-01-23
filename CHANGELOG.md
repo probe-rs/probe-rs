@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/) and this p
 
 ## [Unreleased]
 
+## [v0.3.6] - 2023-01-23
+
 - [#373] Update probe-rs to v0.14
 - [#371] Add "missing drivers" to troubleshooting section
 - [#366] Update CI
@@ -444,8 +446,9 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/) and this p
 
 Initial release
 
-[Unreleased]: https://github.com/knurling-rs/probe-run/compare/v0.3.5...main
-[v0.3.4]: https://github.com/knurling-rs/probe-run/compare/v0.3.4...v0.3.5
+[Unreleased]: https://github.com/knurling-rs/probe-run/compare/v0.3.6...main
+[v0.3.6]: https://github.com/knurling-rs/probe-run/compare/v0.3.5...v0.3.6
+[v0.3.5]: https://github.com/knurling-rs/probe-run/compare/v0.3.4...v0.3.5
 [v0.3.4]: https://github.com/knurling-rs/probe-run/compare/v0.3.3...v0.3.4
 [v0.3.3]: https://github.com/knurling-rs/probe-run/compare/v0.3.2...v0.3.3
 [v0.3.2]: https://github.com/knurling-rs/probe-run/compare/v0.3.1...v0.3.2
