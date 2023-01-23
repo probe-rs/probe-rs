@@ -4,14 +4,14 @@ version = 3
 
 [[package]]
 name = "addr2line"
-version = "0.18.0"
+version = "0.19.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6ca9b76e919fd83ccfb509f51b28c333c0e03f2221616e347a129215cec4e4a9"
+checksum = "a76fd60b23679b7d19bd066031410fb7e458ccc5e958eb5c325888ce4baedc97"
 dependencies = [
  "cpp_demangle",
  "fallible-iterator",
- "gimli 0.26.2",
- "object 0.29.0",
+ "gimli 0.27.0",
+ "object 0.30.2",
  "rustc-demangle",
 ]
 
@@ -206,9 +206,9 @@ checksum = "5827cebf4670468b8772dd191856768aedcb1b0278a04f989f7766351917b9dc"
 
 [[package]]
 name = "cpp_demangle"
-version = "0.3.5"
+version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "eeaa953eaad386a53111e47172c2fedba671e5684c8dd601a5f474f4f118710f"
+checksum = "b446fd40bcc17eddd6a4a78f24315eb90afdb3334999ddfd4909985c47722442"
 dependencies = [
  "cfg-if",
 ]
@@ -753,7 +753,6 @@ version = "0.29.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "21158b2c33aa6d4561f1c0a6ea283ca92bc54802a93b263e910746d679a7eb53"
 dependencies = [
- "flate2",
  "memchr",
 ]
 
@@ -763,6 +762,7 @@ version = "0.30.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2b8c786513eb403643f2a88c244c2aaa270ef2153f55094587d0c48a3cf22a83"
 dependencies = [
+ "flate2",
  "memchr",
 ]
 
@@ -915,12 +915,12 @@ dependencies = [
  "colored",
  "defmt-decoder",
  "dirs",
- "gimli 0.26.2",
+ "gimli 0.27.0",
  "git-version",
  "insta",
  "log",
  "nix",
- "object 0.29.0",
+ "object 0.30.2",
  "os_pipe",
  "pretty_assertions",
  "probe-rs",
