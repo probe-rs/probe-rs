@@ -62,6 +62,7 @@ pub fn extract_flash_algo(
     mut file: impl std::io::Read,
     file_name: &std::path::Path,
     default: bool,
+    fixed_load_address: bool,
 ) -> Result<RawFlashAlgorithm> {
     let mut buffer = vec![];
     file.read_to_end(&mut buffer)?;
@@ -93,6 +94,19 @@ pub fn extract_flash_algo(
             "ProgramPage" => algo.pc_program_page = sym.st_value - code_section_offset as u64,
             _ => {}
         }
+    }
+
+    if fixed_load_address {
+        log::debug!(
+            "Flash algorithm will be loaded at fixed address {:#010x}",
+            algorithm_binary.code_section.load_address
+        );
+
+        anyhow::ensure!(algorithm_binary.is_continuous_in_ram(), 
+            "If the flash algorithm is not position independent, all sections have to follow each other in RAM. \
+            Please check your linkerscript.");
+
+        algo.load_address = Some(algorithm_binary.code_section.load_address as u64);
     }
 
     algo.description = flash_device.name;

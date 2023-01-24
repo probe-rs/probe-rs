@@ -70,6 +70,12 @@ enum TargetGen {
         /// ELF file containing a flash algorithm
         #[clap(value_parser)]
         elf: PathBuf,
+        /// Specify a fixed load address for the flash algorithm
+        ///
+        /// If the flash algorithm should be loaded to a fixed address, this flag can be set.
+        /// The load address will be read from the ELF file.
+        #[clap(long)]
+        fixed_load_address: bool,
         /// Name of the extracted flash algorithm
         #[clap(long = "name", short = 'n')]
         name: Option<String>,
@@ -104,7 +110,8 @@ fn main() -> Result<()> {
             output,
             update,
             name,
-        } => cmd_elf(elf, output, update, name)?,
+            fixed_load_address,
+        } => cmd_elf(elf, fixed_load_address, output, update, name)?,
         TargetGen::Arm {
             output_dir,
             pack_filter: chip_family,
@@ -120,13 +127,14 @@ fn main() -> Result<()> {
 /// Prepare a target config based on an ELF file containing a flash algorithm.
 fn cmd_elf(
     file: PathBuf,
+    fixed_load_address: bool,
     output: Option<PathBuf>,
     update: bool,
     name: Option<String>,
 ) -> Result<()> {
     let elf_file = File::open(&file)?;
 
-    let mut algorithm = extract_flash_algo(elf_file, &file, true)?;
+    let mut algorithm = extract_flash_algo(elf_file, &file, true, fixed_load_address)?;
 
     if let Some(name) = name {
         algorithm.name = name;

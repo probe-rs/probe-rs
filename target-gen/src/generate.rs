@@ -86,11 +86,13 @@ where
                         archive.by_name(&flash_algorithm.file_name.as_path().to_string_lossy())?,
                         &flash_algorithm.file_name,
                         flash_algorithm.default,
+                        false, // Algorithms from CMSIS-Pack files are position independent
                     ),
                     Kind::Directory(path) => crate::parser::extract_flash_algo(
                         std::fs::File::open(path.join(&flash_algorithm.file_name))?,
                         &flash_algorithm.file_name,
                         flash_algorithm.default,
+                        false, // Algorithms from CMSIS-Pack files are position independent
                     ),
                 }?;
 
