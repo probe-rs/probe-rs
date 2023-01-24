@@ -8,10 +8,12 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/) and this p
 
 ## [v0.3.6] - 2023-01-23
 
+- [#375] Release `probe-run v0.3.6`
 - [#373] Update probe-rs to v0.14
 - [#371] Add "missing drivers" to troubleshooting section
 - [#366] Update CI
 
+[#375]: https://github.com/knurling-rs/probe-run/pull/375
 [#373]: https://github.com/knurling-rs/probe-run/pull/373
 [#371]: https://github.com/knurling-rs/probe-run/pull/371
 [#366]: https://github.com/knurling-rs/probe-run/pull/366
