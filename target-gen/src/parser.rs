@@ -102,7 +102,8 @@ pub fn extract_flash_algo(
             algorithm_binary.code_section.load_address
         );
 
-        anyhow::ensure!(algorithm_binary.is_continuous_in_ram(), 
+        anyhow::ensure!(
+            algorithm_binary.is_continuous_in_ram(),
             "If the flash algorithm is not position independent, all sections have to follow each other in RAM. \
             Please check your linkerscript.");
 
