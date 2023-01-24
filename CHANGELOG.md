@@ -5,6 +5,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- target-gen: Add new `--fixed-load-address` flag to the `target-gen elf` subcommand. (#1419)
+
+  This can be used when the flash algorithm needs to be loaded at a specific address.
+  The address is determined automatically from the ELF file.
+
+
 ## [0.14.2]
 
 Released 2023-01-18
