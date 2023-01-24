@@ -12,6 +12,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   This can be used when the flash algorithm needs to be loaded at a specific address.
   The address is determined automatically from the ELF file.
 
+### Fixed
+
+- probe-rs: Avoid nested calls to tracing macros, otherwise filtering doesn't work properly. (#1415)
+
 
 ## [0.14.2]
 
