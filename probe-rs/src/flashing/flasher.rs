@@ -1,4 +1,5 @@
 use probe_rs_target::{MemoryRegion, RawFlashAlgorithm};
+use tracing::Level;
 
 use super::{
     FlashAlgorithm, FlashBuilder, FlashError, FlashFill, FlashLayout, FlashPage, FlashProgress,
@@ -622,16 +623,18 @@ impl<'probe, O: Operation> ActiveFlasher<'probe, O> {
         for (description, value) in &registers {
             if let Some(v) = value {
                 self.core.write_core_reg(description.id, *v)?;
-                tracing::debug!(
-                    "content of {} {:#x}: 0x{:08x} should be: 0x{:08x}",
-                    description.name,
-                    description.id.0,
-                    {
-                        let value: u32 = self.core.read_core_reg(description.id)?;
-                        value
-                    },
-                    *v
-                );
+
+                if tracing::enabled!(Level::DEBUG) {
+                    let value: u32 = self.core.read_core_reg(description.id)?;
+
+                    tracing::debug!(
+                        "content of {} {:#x}: 0x{:08x} should be: 0x{:08x}",
+                        description.name,
+                        description.id.0,
+                        value,
+                        *v
+                    );
+                }
             }
         }
 
