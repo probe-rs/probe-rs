@@ -1083,103 +1083,40 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                                 subrange_variable.variable_key,
                                             )?;
 
-                                            // - Next, process this DW_TAG_array_type's DW_AT_type full tree.
-                                            // - We have to do this repeatedly, for every array member in the range.
-                                            for array_member_index in child_variable
-                                                .range_lower_bound
-                                                ..child_variable.range_upper_bound
+                                            if child_variable.range_upper_bound
+                                                - child_variable.range_lower_bound
+                                                == 0
                                             {
-                                                let mut array_member_type_tree =
-                                                    self.unit.header.entries_tree(
-                                                        &self.unit.abbreviations,
-                                                        Some(unit_ref),
-                                                    )?;
-                                                if let Ok(array_member_type_node) =
-                                                    array_member_type_tree.root()
+                                                // Gracefully handle the case where the array is empty.
+                                                // - Resolve a 'dummy' child, to determine the type of child_variable.
+                                                self.expand_array_member(
+                                                    unit_ref,
+                                                    cache,
+                                                    &mut child_variable,
+                                                    core,
+                                                    0,
+                                                    stack_frame_registers,
+                                                    frame_base,
+                                                )?;
+                                                // - Delete the dummy child that was created above.
+                                                cache.remove_cache_entry_children(
+                                                    child_variable.variable_key,
+                                                )?;
+                                            } else {
+                                                // - Next, process this DW_TAG_array_type's DW_AT_type full tree.
+                                                // - We have to do this repeatedly, for every array member in the range.
+                                                for array_member_index in child_variable
+                                                    .range_lower_bound
+                                                    ..child_variable.range_upper_bound
                                                 {
-                                                    let mut array_member_variable = cache
-                                                        .cache_variable(
-                                                            Some(child_variable.variable_key),
-                                                            Variable::new(
-                                                                self.unit
-                                                                    .header
-                                                                    .offset()
-                                                                    .as_debug_info_offset(),
-                                                                Some(
-                                                                    array_member_type_node
-                                                                        .entry()
-                                                                        .offset(),
-                                                                ),
-                                                            ),
-                                                            core,
-                                                        )?;
-                                                    array_member_variable.member_index =
-                                                        Some(array_member_index);
-                                                    // Override the calculated member name with a more 'array-like' name.
-                                                    array_member_variable.name =
-                                                        VariableName::Named(format!(
-                                                            "__{}",
-                                                            array_member_index
-                                                        ));
-                                                    array_member_variable.source_location =
-                                                        child_variable.source_location.clone();
-                                                    self.process_memory_location(
-                                                        array_member_type_node.entry(),
-                                                        &child_variable,
-                                                        &mut array_member_variable,
-                                                        Some(core),
-                                                        stack_frame_registers,
-                                                        frame_base,
-                                                    )?;
-                                                    array_member_variable = self.extract_type(
-                                                        array_member_type_node,
-                                                        &child_variable,
-                                                        array_member_variable,
-                                                        core,
-                                                        stack_frame_registers,
-                                                        frame_base,
+                                                    self.expand_array_member(
+                                                        unit_ref,
                                                         cache,
-                                                    )?;
-                                                    if array_member_index
-                                                        == child_variable.range_lower_bound
-                                                    {
-                                                        // Once we know the type of the first member, we can set the array type.
-                                                        child_variable.type_name =
-                                                            VariableType::Array {
-                                                                count: child_variable
-                                                                    .range_upper_bound
-                                                                    as usize,
-                                                                entry_type: array_member_variable
-                                                                    .type_name
-                                                                    .clone()
-                                                                    .to_string(),
-                                                            };
-                                                        // Once we know the byte_size of the first member, we can set the array byte_size.
-                                                        if let Some(array_member_byte_size) =
-                                                            array_member_variable.byte_size
-                                                        {
-                                                            child_variable.byte_size = Some(
-                                                                array_member_byte_size
-                                                                    * (child_variable
-                                                                        .range_upper_bound
-                                                                        - child_variable
-                                                                            .range_lower_bound)
-                                                                        as u64,
-                                                            );
-                                                        }
-                                                        // Make sure the array variable has no value if its own.
-                                                        child_variable
-                                                            .set_value(VariableValue::Empty);
-                                                    }
-                                                    array_member_variable
-                                                        .handle_memory_location_special_cases(
-                                                            &child_variable,
-                                                            core,
-                                                        );
-                                                    cache.cache_variable(
-                                                        Some(child_variable.variable_key),
-                                                        array_member_variable,
+                                                        &mut child_variable,
                                                         core,
+                                                        array_member_index,
+                                                        stack_frame_registers,
+                                                        frame_base,
                                                     )?;
                                                 }
                                             }
@@ -1307,6 +1244,79 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
         cache
             .cache_variable(Some(parent_variable.variable_key), child_variable, core)
             .map_err(|error| error.into())
+    }
+
+    /// Create child variable entries to represent array members and their values.
+    #[allow(clippy::too_many_arguments)]
+    fn expand_array_member(
+        &self,
+        unit_ref: UnitOffset,
+        cache: &mut VariableCache,
+        child_variable: &mut Variable,
+        core: &mut Core,
+        array_member_index: i64,
+        stack_frame_registers: &DebugRegisters,
+        frame_base: Option<u64>,
+    ) -> Result<(), DebugError> {
+        let mut array_member_type_tree = self
+            .unit
+            .header
+            .entries_tree(&self.unit.abbreviations, Some(unit_ref))?;
+        if let Ok(array_member_type_node) = array_member_type_tree.root() {
+            let mut array_member_variable = cache.cache_variable(
+                Some(child_variable.variable_key),
+                Variable::new(
+                    self.unit.header.offset().as_debug_info_offset(),
+                    Some(array_member_type_node.entry().offset()),
+                ),
+                core,
+            )?;
+            array_member_variable.member_index = Some(array_member_index);
+            // Override the calculated member name with a more 'array-like' name.
+            array_member_variable.name = VariableName::Named(format!("__{}", array_member_index));
+            array_member_variable.source_location = child_variable.source_location.clone();
+            self.process_memory_location(
+                array_member_type_node.entry(),
+                &*child_variable,
+                &mut array_member_variable,
+                Some(core),
+                stack_frame_registers,
+                frame_base,
+            )?;
+            array_member_variable = self.extract_type(
+                array_member_type_node,
+                &*child_variable,
+                array_member_variable,
+                core,
+                stack_frame_registers,
+                frame_base,
+                cache,
+            )?;
+            if array_member_index == child_variable.range_lower_bound {
+                // Once we know the type of the first member, we can set the array type.
+                child_variable.type_name = VariableType::Array {
+                    count: child_variable.range_upper_bound as usize,
+                    entry_type: array_member_variable.type_name.clone().to_string(),
+                };
+                // Once we know the byte_size of the first member, we can set the array byte_size.
+                if let Some(array_member_byte_size) = array_member_variable.byte_size {
+                    child_variable.byte_size = Some(
+                        array_member_byte_size
+                            * (child_variable.range_upper_bound - child_variable.range_lower_bound)
+                                as u64,
+                    );
+                }
+                // Make sure the array variable has no value if its own.
+                child_variable.set_value(VariableValue::Empty);
+            }
+            array_member_variable.handle_memory_location_special_cases(&*child_variable, core);
+            cache.cache_variable(
+                Some(child_variable.variable_key),
+                array_member_variable,
+                core,
+            )?;
+        }
+        Ok(())
     }
 
     /// Process a memory location for a variable, by first evaluating the `byte_size`, and then calling the `self.extract_location`.

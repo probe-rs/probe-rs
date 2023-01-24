@@ -595,6 +595,9 @@ impl Variable {
                         }
                     } else if self.type_name == VariableType::Struct("None".to_string()) {
                         "None".to_string()
+                    } else if matches!(self.type_name.clone(), VariableType::Array{entry_type: _,  count} if count == 0)
+                    {
+                        self.formatted_variable_value(variable_cache, 0_usize, false)
                     } else {
                         format!(
                             "Unimplemented: Evaluate type {:?} of ({:?} bytes) at location 0x{:08x?}",
