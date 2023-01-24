@@ -234,10 +234,6 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
             child_variable.name = VariableName::Named(extract_name(self.debug_info, name));
         }
 
-        if child_variable.name == VariableName::Named("raw".to_string()) {
-            println!("raw");
-        }
-
         if let Some(attributes_entry) = attributes_entry {
             let mut variable_attributes = attributes_entry.attrs();
 
@@ -844,13 +840,27 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
         if child_variable.is_valid() {
             match node.entry().tag() {
                 gimli::DW_TAG_base_type => {
-                    child_variable.handle_memory_location_special_cases(parent_variable);
                     child_variable.type_name =
                         VariableType::Base(type_name.unwrap_or_else(|| "<unnamed>".to_string()));
+                    self.process_memory_location(
+                        node.entry(),
+                        parent_variable,
+                        &mut child_variable,
+                        Some(core),
+                        stack_frame_registers,
+                        frame_base,
+                    )?;
                 }
-
                 gimli::DW_TAG_pointer_type => {
                     child_variable.type_name = VariableType::Pointer(type_name);
+                    self.process_memory_location(
+                        node.entry(),
+                        parent_variable,
+                        &mut child_variable,
+                        Some(core),
+                        stack_frame_registers,
+                        frame_base,
+                    )?;
 
                     // This needs to resolve the pointer before the regular recursion can continue.
                     match node.entry().attr(gimli::DW_AT_type) {
@@ -926,6 +936,14 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                 gimli::DW_TAG_structure_type => {
                     child_variable.type_name =
                         VariableType::Struct(type_name.unwrap_or_else(|| "<unnamed>".to_string()));
+                    self.process_memory_location(
+                        node.entry(),
+                        parent_variable,
+                        &mut child_variable,
+                        Some(core),
+                        stack_frame_registers,
+                        frame_base,
+                    )?;
 
                     if child_variable.memory_location != VariableLocation::Unavailable {
                         if let VariableType::Struct(name) = &child_variable.type_name {
@@ -1065,15 +1083,6 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                                 subrange_variable.variable_key,
                                             )?;
 
-                                            if child_variable.name
-                                                == VariableName::Named("raw".to_string())
-                                            {
-                                                println!(
-                                                    "Extracting children for {:?}, ",
-                                                    child_variable.name
-                                                );
-                                            }
-
                                             // - Next, process this DW_TAG_array_type's DW_AT_type full tree.
                                             // - We have to do this repeatedly, for every array member in the range.
                                             for array_member_index in child_variable
@@ -1165,6 +1174,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                                     array_member_variable
                                                         .handle_memory_location_special_cases(
                                                             &child_variable,
+                                                            core,
                                                         );
                                                     cache.cache_variable(
                                                         Some(child_variable.variable_key),
@@ -1199,9 +1209,9 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                     }
                 }
                 gimli::DW_TAG_union_type => {
-                    child_variable.handle_memory_location_special_cases(parent_variable);
                     child_variable.type_name =
                         VariableType::Base(type_name.unwrap_or_else(|| "<unnamed>".to_string()));
+                    child_variable.handle_memory_location_special_cases(parent_variable, core);
                     // Recursively process a child types.
                     // TODO: The DWARF does not currently hold information that allows decoding of which UNION arm is instantiated, so we have to display all available.
                     child_variable = self.process_tree(
@@ -1305,7 +1315,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
         node_die: &gimli::DebuggingInformationEntry<GimliReader>,
         parent_variable: &Variable,
         child_variable: &mut Variable,
-        core: Option<&mut Core<'_>>,
+        mut core: Option<&mut Core<'_>>,
         stack_frame_registers: &registers::DebugRegisters,
         frame_base: Option<u64>,
     ) -> Result<(), DebugError> {
@@ -1327,49 +1337,59 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                 })
             });
 
-        // We need to process the location attribute to ensure that location is known before we calculate type.
-        match self.extract_location(
-            node_die,
-            &parent_variable.memory_location,
-            core,
-            stack_frame_registers,
-            frame_base,
-        ) {
-            Ok(location) => match location {
-                // Any expected errors should be handled by one of the variants in the Ok() result.
-                ExpressionResult::Value(value_from_expression) => {
-                    if let VariableValue::Valid(_) = &value_from_expression {
-                        // The ELF contained the actual value, not just a location to it.
-                        child_variable.memory_location = VariableLocation::Value;
+        if child_variable.memory_location == VariableLocation::Unknown {
+            match self.extract_location(
+                node_die,
+                &parent_variable.memory_location,
+                core.as_deref_mut(),
+                stack_frame_registers,
+                frame_base,
+            ) {
+                Ok(location) => match location {
+                    // Any expected errors should be handled by one of the variants in the Ok() result.
+                    ExpressionResult::Value(value_from_expression) => {
+                        if let VariableValue::Valid(_) = &value_from_expression {
+                            // The ELF contained the actual value, not just a location to it.
+                            child_variable.memory_location = VariableLocation::Value;
+                        }
+                        child_variable.set_value(value_from_expression);
                     }
-                    child_variable.set_value(value_from_expression);
-                }
-                ExpressionResult::Location(location_from_expression) => {
-                    match &location_from_expression {
-                        VariableLocation::Unavailable => {
-                            child_variable.set_value(VariableValue::Error(
-                                "<value optimized away by compiler, out of scope, or dropped>"
-                                    .to_string(),
-                            ));
-                        }
-                        VariableLocation::Error(error_message)
-                        | VariableLocation::Unsupported(error_message) => {
-                            child_variable.set_value(VariableValue::Error(error_message.clone()));
-                        }
-                        VariableLocation::Address(_) | VariableLocation::Value => {
-                            child_variable.memory_location = location_from_expression;
-                        }
-                        VariableLocation::Unknown => {
-                            child_variable.handle_memory_location_special_cases(parent_variable);
+                    ExpressionResult::Location(location_from_expression) => {
+                        match &location_from_expression {
+                            VariableLocation::Unavailable => {
+                                child_variable.set_value(VariableValue::Error(
+                                    "<value optimized away by compiler, out of scope, or dropped>"
+                                        .to_string(),
+                                ));
+                            }
+                            VariableLocation::Error(error_message)
+                            | VariableLocation::Unsupported(error_message) => {
+                                child_variable
+                                    .set_value(VariableValue::Error(error_message.clone()));
+                            }
+                            VariableLocation::Address(_) | VariableLocation::Value => {
+                                child_variable.memory_location = location_from_expression;
+                            }
+
+                            VariableLocation::Unknown => {
+                                if let Some(core) = core {
+                                    child_variable.handle_memory_location_special_cases(
+                                        parent_variable,
+                                        core,
+                                    );
+                                }
+                            }
                         }
                     }
+                },
+                Err(debug_error) => {
+                    // An Err() result indicates something happened that we have not accounted for, and therefore will propogate upwards to terminate the process in an ungraceful manner. This should be treated as a bug.
+                    tracing::error!("Encounted an unexpected error while resolving the location for variable {:?}. Please report this as a bug", child_variable.name);
+                    return Err(debug_error);
                 }
-            },
-            Err(debug_error) => {
-                // An Err() result indicates something happened that we have not accounted for, and therefore will propogate upwards to terminate the process in an ungraceful manner. This should be treated as a bug.
-                tracing::error!("Encounted an unexpected error while resolving the location for variable {:?}. Please report this as a bug", child_variable.name);
-                return Err(debug_error);
             }
+        } else if let Some(core) = core {
+            child_variable.handle_memory_location_special_cases(parent_variable, core);
         }
         Ok(())
     }

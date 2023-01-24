@@ -375,7 +375,13 @@ impl Variable {
     }
 
     /// Handle memory_location for special cases, such as array members, pointers, and intermediate nodes.
-    pub fn handle_memory_location_special_cases(&mut self, parent_variable: &Variable) {
+    /// Normally, the memory_location is calculated before the type is calculated,
+    ///     but special cases require the type related info of the variable to correctly compute the memory_location.
+    pub fn handle_memory_location_special_cases(
+        &mut self,
+        parent_variable: &Variable,
+        core: &mut Core<'_>,
+    ) {
         if let Some(child_member_index) = self.member_index {
             // If this variable is a member of an array type, and needs special handling to calculate the `memory_location`.
             if let VariableLocation::Address(address) = parent_variable.memory_location {
@@ -404,7 +410,41 @@ impl Variable {
         {
             // Non-array members can inherit their memory location from their parent.
             // There are debuginfo entries that implies a variable's memory location is carried forward from it's parent (usually pointer data types).
-            self.memory_location = parent_variable.memory_location.clone();
+            // If the parent is a pointer, AND the child_variable is the dereferenced pointer (i.e. the variable name starts with '*')),
+            //  then we need to read the address pointed to by the parent, as the memory location.
+            if let VariableType::Pointer(_) = &parent_variable.type_name {
+                if matches!(self.name.clone(), VariableName::Named(var_name) if var_name.starts_with('*'))
+                {
+                    match &parent_variable.memory_location {
+                        VariableLocation::Address(address) => {
+                            // Now, retrieve the location by reading the adddress pointed to by the parent variable.
+                            self.memory_location = match core.read_word_32(*address) {
+                                Ok(memory_location) => {
+                                    VariableLocation::Address(memory_location as u64)
+                                }
+                                Err(error) => {
+                                    tracing::error!("Failed to read referenced variable address from memory location {} : {}.", parent_variable.memory_location , error);
+                                    VariableLocation::Error(format!("Failed to read referenced variable address from memory location {} : {}.", parent_variable.memory_location, error))
+                                }
+                            };
+                        }
+                        other => {
+                            self.memory_location = VariableLocation::Unsupported(format!(
+                                "Location {:?} not supported for referenced variables.",
+                                other
+                            ));
+                        }
+                    }
+                } else {
+                    // If the parent variable is a pointer, but the child variable is not the dereferenced value,
+                    //  i.e. It is an intermediate node before the dereferenced pointer,
+                    //  then it can inherit it's memory location from it's parent.
+                    self.memory_location = parent_variable.memory_location.clone();
+                }
+            } else {
+                // If the parent variable is not a pointer, then it can inherit it's memory location from it's parent.
+                self.memory_location = parent_variable.memory_location.clone();
+            }
         }
     }
 
