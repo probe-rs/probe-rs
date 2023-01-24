@@ -31,9 +31,9 @@ struct RawDutDefinition {
 impl RawDutDefinition {
     /// Try to parse a DUT definition from a file.
     fn from_file(file: &Path) -> Result<Self> {
-        let file_content = std::fs::read(file)?;
+        let file_content = std::fs::read_to_string(file)?;
 
-        let definition: RawDutDefinition = toml::from_slice(&file_content)?;
+        let definition: RawDutDefinition = toml::from_str(&file_content)?;
 
         Ok(definition)
     }
