@@ -103,9 +103,9 @@ checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
 
 [[package]]
 name = "clap"
-version = "4.1.1"
+version = "4.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4ec7a4128863c188deefe750ac1d1dfe66c236909f845af04beed823638dc1b2"
+checksum = "d8d93d855ce6a0aa87b8473ef9169482f40abaa2e9e0993024c35c902cbd5920"
 dependencies = [
  "bitflags",
  "clap_derive",
@@ -344,9 +344,9 @@ dependencies = [
 
 [[package]]
 name = "gimli"
-version = "0.27.0"
+version = "0.27.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dec7af912d60cdbd3677c1af9352ebae6fb8394d165568a2234df0fa00f87793"
+checksum = "221996f774192f0f718773def8201c4ae31f02616a54ccfc2d358bb0e5cefdec"
 dependencies = [
  "fallible-iterator",
  "stable_deref_trait",
@@ -406,9 +406,9 @@ dependencies = [
 
 [[package]]
 name = "hidapi"
-version = "2.1.1"
+version = "2.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "41cd9e1a4d30b483574da670f07701c87469a4919062b4236f0147a7df805cab"
+checksum = "be8f12c6c547a4c0fdda0b833cbae77a1e6ed24163d5aab792ce860125badc53"
 dependencies = [
  "cc",
  "libc",
@@ -600,9 +600,9 @@ dependencies = [
 
 [[package]]
 name = "object"
-version = "0.30.2"
+version = "0.30.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2b8c786513eb403643f2a88c244c2aaa270ef2153f55094587d0c48a3cf22a83"
+checksum = "ea86265d3d3dcb6a27fc51bd29a4bf387fae9d2986b823079d4986af253eb439"
 dependencies = [
  "flate2",
  "memchr",
@@ -694,9 +694,9 @@ dependencies = [
 
 [[package]]
 name = "probe-rs"
-version = "0.14.1"
+version = "0.14.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e41696b745231616a6c6d92ce2ab52b771371b1d9c8416c6c29305bd1d5f8f35"
+checksum = "717926460dbc3ff7bc366fd0502433a064eea2a2aa189dbb4abd5396de3716a8"
 dependencies = [
  "anyhow",
  "base64",
@@ -716,7 +716,7 @@ dependencies = [
  "rusb",
  "scroll 0.11.0",
  "serde",
- "serde_yaml 0.9.16",
+ "serde_yaml 0.9.17",
  "static_assertions",
  "svg",
  "thiserror",
@@ -725,9 +725,9 @@ dependencies = [
 
 [[package]]
 name = "probe-rs-rtt"
-version = "0.14.1"
+version = "0.14.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d68a1443ec521daf74ede535be045010c45477900a2e9ca1498eae832fff85a2"
+checksum = "6768fd3c3fdc2661e2542d443bfa2ed7f48d27159e36409e65b9db955c1c60fd"
 dependencies = [
  "probe-rs",
  "scroll 0.10.2",
@@ -738,9 +738,9 @@ dependencies = [
 
 [[package]]
 name = "probe-rs-target"
-version = "0.14.1"
+version = "0.14.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "447e12c668f766a9e1bed1d44c54bf3b37991e8ac472749db946077c77616f22"
+checksum = "f01903e24b4187015ab2c3214e009b67de6658b4fc86c8ab9876808060f7a953"
 dependencies = [
  "base64",
  "jep106",
@@ -897,9 +897,9 @@ dependencies = [
 
 [[package]]
 name = "rustix"
-version = "0.36.6"
+version = "0.36.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4feacf7db682c6c329c4ede12649cd36ecab0f3be5b7d74e6a20304725db4549"
+checksum = "d4fdebc4b395b7fbb9ab11e462e20ed9051e7b16e42d24042c776eca0ac81b03"
 dependencies = [
  "bitflags",
  "errno",
@@ -984,9 +984,9 @@ dependencies = [
 
 [[package]]
 name = "serde_yaml"
-version = "0.9.16"
+version = "0.9.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "92b5b431e8907b50339b51223b97d102db8d987ced36f6e4d03621db9316c834"
+checksum = "8fb06d4b6cdaef0e0c51fa881acb721bed3c924cfaa71d9c94a3b771dfdf6567"
 dependencies = [
  "indexmap",
  "itoa",
