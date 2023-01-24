@@ -20,7 +20,7 @@ addr2line = { version = "0.19", default-features = false, features = [
 anyhow = "1"
 clap = { version = "4.0", features = ["derive", "env"] }
 colored = "2"
-defmt-decoder = { version = "=0.3.3", features = ["unstable"] }
+defmt-decoder = { version = "=0.3.4", features = ["unstable"] }
 gimli = { version = "0.27", default-features = false }
 git-version = "0.3"
 log = "0.4"
@@ -35,6 +35,6 @@ dirs = "4"
 insta = "~1.11"
 os_pipe = "1.0"
 pretty_assertions = "1"
-rstest = { version = "0.15", default-features = false }
-nix = "0.25"
-serial_test = { version = "0.9", default-features = false }
+rstest = { version = "0.16", default-features = false }
+nix = "0.26"
+serial_test = { version = "1", default-features = false }
