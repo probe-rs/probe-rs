@@ -33,7 +33,7 @@ anyhow = "1"
 bytesize = "1"
 thiserror = "1"
 dunce = "1"
-clap = { version = "4.1.0", features = ["string"] }
+clap = { version = "4.1.4", features = ["string"] }
 
 [dev-dependencies]
 assert_cmd = "2"
