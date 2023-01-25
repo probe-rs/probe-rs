@@ -18,7 +18,7 @@ version = "0.19.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a76fd60b23679b7d19bd066031410fb7e458ccc5e958eb5c325888ce4baedc97"
 dependencies = [
- "gimli 0.27.1",
+ "gimli",
 ]
 
 [[package]]
@@ -159,7 +159,7 @@ dependencies = [
  "cfg-if",
  "libc",
  "miniz_oxide",
- "object 0.30.3",
+ "object",
  "rustc-demangle",
 ]
 
@@ -416,7 +416,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0f1204fe51a1e56042b8ec31d6407547ecd18f596b66f470dadb9abd9be9c843"
 dependencies = [
  "serde",
- "toml",
+ "toml 0.5.11",
 ]
 
 [[package]]
@@ -710,23 +710,23 @@ dependencies = [
 
 [[package]]
 name = "defmt-decoder"
-version = "0.3.3"
+version = "0.3.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3d1405280032c1be7fcad411f7ba7b24de9dcea89fd77ae043dae1b2b9dd1254"
+checksum = "cd42b0840c8f17cb4c5e48f82a32dff037b7dc6cbabbf933cb1188c2068790a0"
 dependencies = [
  "anyhow",
  "byteorder",
- "chrono",
  "colored",
  "defmt-json-schema",
  "defmt-parser",
- "difference",
- "gimli 0.26.2",
+ "dissimilar",
+ "gimli",
  "log",
- "object 0.29.0",
+ "object",
  "ryu",
  "serde",
  "serde_json",
+ "time 0.3.17",
 ]
 
 [[package]]
@@ -744,12 +744,6 @@ name = "defmt-parser"
 version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0db23d29972d99baa3de2ee2ae3f104c10564a6d05a346eb3f4c4f2c0525a06e"
-
-[[package]]
-name = "difference"
-version = "2.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "524cbf6897b527295dff137cec09ecf3a05f4fddffd7dfcd1585403449e74198"
 
 [[package]]
 name = "difflib"
@@ -808,6 +802,12 @@ dependencies = [
  "redox_users",
  "winapi",
 ]
+
+[[package]]
+name = "dissimilar"
+version = "1.0.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "210ec60ae7d710bed8683e333e9d2855a8a56a3e9892b38bad3bb0d4d29b0d5e"
 
 [[package]]
 name = "doc-comment"
@@ -965,7 +965,7 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_yaml",
- "toml",
+ "toml 0.5.11",
  "uncased",
  "version_check",
 ]
@@ -1159,16 +1159,6 @@ dependencies = [
  "cfg-if",
  "libc",
  "wasi 0.11.0+wasi-snapshot-preview1",
-]
-
-[[package]]
-name = "gimli"
-version = "0.26.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "22030e2c5a68ec659fde1e949a745124b48e6fa8b045b7ed5bd1fe4ccc5c4e5d"
-dependencies = [
- "fallible-iterator",
- "stable_deref_trait",
 ]
 
 [[package]]
@@ -1879,6 +1869,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "nom8"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ae01545c9c7fc4486ab7debaf2aad7003ac19431791868fb2e8066df97fad2f8"
+dependencies = [
+ "memchr",
+]
+
+[[package]]
 name = "normalize-line-endings"
 version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1937,15 +1936,6 @@ name = "number_prefix"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "830b246a0e5f20af87141b25c173cd1b609bd7779a4617d6ec582abaf90870f3"
-
-[[package]]
-name = "object"
-version = "0.29.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "21158b2c33aa6d4561f1c0a6ea283ca92bc54802a93b263e910746d679a7eb53"
-dependencies = [
- "memchr",
-]
 
 [[package]]
 name = "object"
@@ -2213,7 +2203,7 @@ dependencies = [
  "bitvec",
  "clap",
  "enum-primitive-derive",
- "gimli 0.27.1",
+ "gimli",
  "hexdump",
  "hidapi",
  "ihex",
@@ -2222,7 +2212,7 @@ dependencies = [
  "jep106",
  "libftdi1-sys",
  "num-traits",
- "object 0.30.3",
+ "object",
  "once_cell",
  "pretty_env_logger",
  "probe-rs-target",
@@ -3003,6 +2993,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "serde_spanned"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2c68e921cef53841b8925c2abadd27c9b891d9613bdc43d6b823062866df38e8"
+dependencies = [
+ "serde",
+]
+
+[[package]]
 name = "serde_urlencoded"
 version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3137,7 +3136,7 @@ dependencies = [
  "pretty_env_logger",
  "probe-rs",
  "serde",
- "toml",
+ "toml 0.6.0",
 ]
 
 [[package]]
@@ -3462,6 +3461,40 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f4f7f0dd8d50a853a531c426359045b1998f04219d88799810762cd4ad314234"
 dependencies = [
  "serde",
+]
+
+[[package]]
+name = "toml"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4fb9d890e4dc9298b70f740f615f2e05b9db37dce531f6b24fb77ac993f9f217"
+dependencies = [
+ "serde",
+ "serde_spanned",
+ "toml_datetime",
+ "toml_edit",
+]
+
+[[package]]
+name = "toml_datetime"
+version = "0.5.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4553f467ac8e3d374bc9a177a26801e5d0f9b211aa1673fb137a403afd1c9cf5"
+dependencies = [
+ "serde",
+]
+
+[[package]]
+name = "toml_edit"
+version = "0.18.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "729bfd096e40da9c001f778f5cdecbd2957929a24e10e5883d9392220a751581"
+dependencies = [
+ "indexmap",
+ "nom8",
+ "serde",
+ "serde_spanned",
+ "toml_datetime",
 ]
 
 [[package]]
