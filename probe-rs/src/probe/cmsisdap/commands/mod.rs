@@ -97,7 +97,7 @@ impl CmsisDapDevice {
     /// Read from the probe into `buf`, returning the number of bytes read on success.
     fn read(&self, buf: &mut [u8]) -> Result<usize, SendError> {
         match self {
-            CmsisDapDevice::V1 { handle, .. } => match handle.read_timeout(buf, 100)? {
+            CmsisDapDevice::V1 { handle, .. } => match handle.read_timeout(buf, 1000)? {
                 // Timeout is not indicated by error, but by returning 0 read bytes
                 0 => Err(SendError::Timeout),
                 n => Ok(n),
