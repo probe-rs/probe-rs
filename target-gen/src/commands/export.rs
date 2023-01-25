@@ -13,7 +13,7 @@ pub fn cmd_export() -> Result<()> {
     cmd!(sh, "cp template.yaml {DEFINITION_EXPORT_PATH}").run()?;
     cmd!(
         sh,
-        "target-gen elf -n algorithm-test -u {target_artifact} {DEFINITION_EXPORT_PATH}"
+        "target-gen elf -n algorithm-test -u --fixed-load-address {target_artifact} {DEFINITION_EXPORT_PATH}"
     )
     .run()?;
 

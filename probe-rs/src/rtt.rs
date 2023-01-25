@@ -264,7 +264,6 @@ impl Rtt {
                     core.read(range.start.into(), mem.as_mut()).ok()?;
                 }
 
-                println!("{}", String::from_utf8_lossy(&mem));
                 match kmp::kmp_find(&Self::RTT_ID, mem.as_slice()) {
                     Some(offset) => Rtt::from(
                         core,

@@ -6,7 +6,7 @@ use super::{
 };
 use crate::config::NvmRegion;
 use crate::memory::MemoryInterface;
-use crate::rtt::Rtt;
+use crate::rtt::{Rtt, ScanRegion};
 use crate::{core::RegisterFile, session::Session, Core, InstructionSet};
 use std::time::Instant;
 use std::{fmt::Debug, time::Duration};
@@ -656,6 +656,28 @@ impl<'probe, O: Operation> ActiveFlasher<'probe, O> {
         // Resume target operation.
         self.core.run()?;
 
+        if let Some(rtt_address) = self.flash_algorithm.rtt_control_block {
+            let now = std::time::Instant::now();
+            while self.rtt.is_none() {
+                let rtt = match Rtt::attach_region(
+                    &mut self.core,
+                    &self.memory_map,
+                    &ScanRegion::Exact(rtt_address as u32),
+                ) {
+                    Ok(rtt) => Some(rtt),
+                    Err(error) => {
+                        tracing::error!("RTT could not be initialized: {error}");
+                        None
+                    }
+                };
+                self.rtt = rtt;
+
+                if now.elapsed() > std::time::Duration::from_secs(1) {
+                    break;
+                }
+            }
+        }
+
         Ok(())
     }
 
@@ -669,23 +691,14 @@ impl<'probe, O: Operation> ActiveFlasher<'probe, O> {
 
         let mut timeout_ocurred = true;
         while start.elapsed() < timeout {
-            if self.rtt.is_none() {
-                let rtt = match Rtt::attach(&mut self.core, &self.memory_map) {
-                    Ok(rtt) => Some(rtt),
-                    Err(error) => {
-                        tracing::error!("RTT could not be initialized: {error}");
-                        None
-                    }
-                };
-                self.rtt = rtt;
-            }
             if let Some(rtt) = &mut self.rtt {
                 for channel in rtt.up_channels().iter() {
                     let mut buffer = vec![0; channel.buffer_size()];
                     match channel.read(&mut self.core, &mut buffer) {
-                        Ok(read) => {
-                            tracing::debug!("RTT: {}", String::from_utf8_lossy(&buffer[..read]))
+                        Ok(read) if read > 0 => {
+                            tracing::info!("RTT: {}", String::from_utf8_lossy(&buffer[..read]))
                         }
+                        Ok(_) => (),
                         Err(error) => tracing::debug!("Reading RTT failed: {error}"),
                     };
                 }
