@@ -43,6 +43,11 @@ pub struct FlashAlgorithm {
     /// the list, then double buffered programming will be enabled.
     pub page_buffers: Vec<u64>,
 
+    /// Location of optional RTT control block.
+    ///
+    /// If this is present, the flash algorithm supports debug output over RTT.
+    pub rtt_control_block: Option<u64>,
+
     /// The properties of the flash on the device.
     pub flash_properties: FlashProperties,
 }
@@ -298,6 +303,7 @@ impl FlashAlgorithm {
             begin_stack: addr_stack,
             begin_data: page_buffers[0],
             page_buffers: page_buffers.clone(),
+            rtt_control_block: raw.rtt_location,
             flash_properties: raw.flash_properties.clone(),
         })
     }

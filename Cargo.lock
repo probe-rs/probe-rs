@@ -3251,8 +3251,8 @@ dependencies = [
  "scroll 0.11.0",
  "serde",
  "serde_yaml",
- "simplelog",
  "tokio",
+ "tracing-subscriber",
  "zip",
 ]
 

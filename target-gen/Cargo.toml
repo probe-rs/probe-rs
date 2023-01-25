@@ -31,12 +31,12 @@ log = "0.4.16"
 zip = "0.6.2"
 clap = { version = "4.1", features = ["derive"] }
 base64 = "0.21.0"
-simplelog = "0.12.0"
 anyhow = "1.0.57"
 reqwest = { version = "0.11.10", features = ["json", "blocking"] }
 serde = { version = "1", features = ["derive"] }
 futures = "0.3.21"
 tokio = { version = "1.18.0", features = ["macros", "rt", "rt-multi-thread"] }
+tracing-subscriber = { version = "0.3.16", features = ["env-filter"] }
 
 [dev-dependencies]
 assert_cmd = "2.0.4"
