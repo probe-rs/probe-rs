@@ -24,6 +24,11 @@ pub(crate) struct Section {
     pub(crate) start: u32,
     pub(crate) length: u32,
     pub(crate) data: Vec<u8>,
+
+    /// Load address for this section.
+    ///
+    /// For position independent code, this will not be used.
+    pub(crate) load_address: u32,
 }
 
 /// A struct to hold all the binary sections of a flash algorithm ELF that go into flash.
@@ -50,6 +55,8 @@ impl AlgorithmBinary {
             if ph.p_type == PT_LOAD && ph.p_filesz > 0 {
                 let sector = ph.p_offset..ph.p_offset + ph.p_filesz;
 
+                log::debug!("Program header: LOAD to VMA {:#010x}", ph.p_vaddr);
+
                 // Scan all sectors if they contain any part of the sections found.
                 for sh in &elf.section_headers {
                     let range = sh.sh_offset..sh.sh_offset + sh.sh_size;
@@ -61,6 +68,7 @@ impl AlgorithmBinary {
                             start: sh.sh_addr as u32,
                             length: sh.sh_size as u32,
                             data,
+                            load_address: (ph.p_vaddr + sh.sh_offset - ph.p_offset) as u32,
                         });
 
                         // Make sure we store the section contents under the right name.
@@ -101,9 +109,11 @@ impl AlgorithmBinary {
             start: code_section.start + code_section.length,
             length: 0,
             data: Vec::new(),
+            load_address: code_section.load_address + code_section.length,
         });
 
         let zi_start = data_section.start + data_section.length;
+        let zi_address = data_section.load_address + data_section.length;
 
         Ok(Self {
             code_section,
@@ -112,6 +122,7 @@ impl AlgorithmBinary {
                 start: zi_start,
                 length: 0,
                 data: Vec::new(),
+                load_address: zi_address,
             }),
         })
     }
@@ -125,5 +136,18 @@ impl AlgorithmBinary {
         blob.extend(&vec![0; self.bss_section.length as usize]);
 
         blob
+    }
+
+    /// The current implementation assumes that all three sections follow each other
+    /// directly in RAM.
+    ///
+    /// This is especially important when the code is not position independent,
+    /// since it depends on the linker in this case. If the code *is* position independent,
+    /// it can be freely rearranged, and this is not an issue.
+    pub(crate) fn is_continuous_in_ram(&self) -> bool {
+        (self.code_section.load_address + self.code_section.length
+            == self.data_section.load_address)
+            && (self.data_section.load_address + self.data_section.length
+                == self.bss_section.load_address)
     }
 }
