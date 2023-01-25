@@ -649,9 +649,9 @@ dependencies = [
 
 [[package]]
 name = "cxx"
-version = "1.0.87"
+version = "1.0.86"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b61a7545f753a88bcbe0a70de1fcc0221e10bfc752f576754fa91e663db1622e"
+checksum = "51d1075c37807dcf850c379432f0df05ba52cc30f279c5cfc43cc221ce7f8579"
 dependencies = [
  "cc",
  "cxxbridge-flags",
@@ -661,9 +661,9 @@ dependencies = [
 
 [[package]]
 name = "cxx-build"
-version = "1.0.87"
+version = "1.0.86"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f464457d494b5ed6905c63b0c4704842aba319084a0a3561cdc1359536b53200"
+checksum = "5044281f61b27bc598f2f6647d480aed48d2bf52d6eb0b627d84c0361b17aa70"
 dependencies = [
  "cc",
  "codespan-reporting",
@@ -676,15 +676,15 @@ dependencies = [
 
 [[package]]
 name = "cxxbridge-flags"
-version = "1.0.87"
+version = "1.0.86"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "43c7119ce3a3701ed81aca8410b9acf6fc399d2629d057b87e2efa4e63a3aaea"
+checksum = "61b50bc93ba22c27b0d31128d2d130a0a6b3d267ae27ef7e4fae2167dfe8781c"
 
 [[package]]
 name = "cxxbridge-macro"
-version = "1.0.87"
+version = "1.0.86"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "65e07508b90551e610910fa648a1878991d367064997a596135b86df30daf07e"
+checksum = "39e61fda7e62115119469c7b3591fd913ecca96fb766cfd3f2e2502ab7bc87a5"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1665,6 +1665,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "kmp"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "131bddab59a64213cc1e9f0c5be010d7eb485951358ab7e52017888dec482028"
+
+[[package]]
 name = "lazy_static"
 version = "1.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2209,6 +2215,7 @@ dependencies = [
  "itm",
  "jaylink",
  "jep106",
+ "kmp",
  "libftdi1-sys",
  "num-traits",
  "object",
@@ -3219,13 +3226,17 @@ dependencies = [
  "assert_cmd",
  "assert_fs",
  "base64 0.21.0",
+ "cargo_metadata",
  "clap",
  "cmsis-pack",
+ "colored",
  "futures",
  "goblin",
+ "indicatif",
  "log",
  "predicates",
  "probe-rs",
+ "probe-rs-cli-util",
  "probe-rs-target",
  "reqwest",
  "scroll",
@@ -3233,6 +3244,7 @@ dependencies = [
  "serde_yaml",
  "tokio",
  "tracing-subscriber",
+ "xshell",
  "zip",
 ]
 
