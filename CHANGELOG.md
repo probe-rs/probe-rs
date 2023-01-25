@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Avoid nested calls to tracing macros, otherwise filtering doesn't work properly. (#1415)
-
+- cmsisdap: change read timeout from 100ms to 1000ms
 
 ## [0.14.2]
 
