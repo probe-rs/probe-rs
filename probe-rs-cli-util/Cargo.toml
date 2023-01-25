@@ -36,10 +36,10 @@ dunce = "1.0.1"
 sentry = { version = "0.29.0", features = ["anyhow"], optional = true }
 simplelog = "0.12.0"
 terminal_size = "0.2.0"
-clap = { version = "4.0", features = ["derive"] }
+clap = { version = "4.1", features = ["derive"] }
 byte-unit = "4.0.13"
 chrono = { version = "0.4", features = ["serde"] }
 goblin = "0.6.0"
 num-traits = "0.2.14"
-defmt-decoder = { version = "0.3.1", features = ["unstable"] }
+defmt-decoder = { version = "0.3.4", features = ["unstable"] }
 git-version = { version = "0.3" }

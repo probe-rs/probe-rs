@@ -29,7 +29,7 @@ scroll = "0.11.0"
 serde_yaml = "^0.9"
 log = "0.4.16"
 zip = "0.6.2"
-clap = { version = "4.0", features = ["derive"] }
+clap = { version = "4.1", features = ["derive"] }
 base64 = "0.21.0"
 simplelog = "0.12.0"
 anyhow = "1.0.57"
