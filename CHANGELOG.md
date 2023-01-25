@@ -11,6 +11,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
   This can be used when the flash algorithm needs to be loaded at a specific address.
   The address is determined automatically from the ELF file.
+
+- target-gen: Extract RTT control block address from flash algorithm. (#1427)
+
+  Check if the flash algorithm supports RTT, and if it does, store the RTT control block
+  address in the target YAML file.
   
 ### Changed
 
