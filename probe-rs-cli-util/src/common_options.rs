@@ -493,7 +493,7 @@ pub enum OperationError {
         source: DebugProbeError,
         protocol: WireProtocol,
     },
-    #[error("The protocol speed coudl not be set to '{speed}' kHz.")]
+    #[error("The protocol speed could not be set to '{speed}' kHz.")]
     FailedToSelectProtocolSpeed {
         #[source]
         source: DebugProbeError,
