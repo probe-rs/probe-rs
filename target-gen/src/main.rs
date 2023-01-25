@@ -15,13 +15,13 @@ use probe_rs::{
     CoreType,
 };
 use probe_rs_target::{ArmCoreAccessOptions, CoreAccessOptions};
-use simplelog::*;
 use std::{
     env::current_dir,
     fs::{create_dir, File, OpenOptions},
     io::{BufRead, Write},
     path::{Path, PathBuf},
 };
+use tracing_subscriber::EnvFilter;
 
 #[derive(clap::Parser)]
 enum TargetGen {
@@ -89,15 +89,10 @@ enum TargetGen {
 }
 
 fn main() -> Result<()> {
-    let logger = TermLogger::init(
-        LevelFilter::Info,
-        Config::default(),
-        TerminalMode::Mixed,
-        ColorChoice::Auto,
-    );
-    if logger.is_err() {
-        eprintln!("Logging backend could not be initialized.");
-    }
+    tracing_subscriber::fmt()
+        .compact()
+        .with_env_filter(EnvFilter::from_default_env())
+        .init();
 
     let options = TargetGen::parse();
 

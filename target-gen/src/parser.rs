@@ -82,7 +82,8 @@ pub fn extract_flash_algo(
 
     let code_section_offset = algorithm_binary.code_section.start;
 
-    // Extract the function pointers.
+    // Extract the function pointers,
+    // and check if a RTT szmbol is present.
     for sym in elf.syms.iter() {
         let name = &elf.strtab[sym.st_name];
 
@@ -92,6 +93,11 @@ pub fn extract_flash_algo(
             "EraseChip" => algo.pc_erase_all = Some(sym.st_value - code_section_offset as u64),
             "EraseSector" => algo.pc_erase_sector = sym.st_value - code_section_offset as u64,
             "ProgramPage" => algo.pc_program_page = sym.st_value - code_section_offset as u64,
+            "_SEGGER_RTT" => {
+                algo.rtt_location = Some(sym.st_value);
+                log::debug!("Found RTT control block at address {:#010x}", sym.st_value);
+            }
+
             _ => {}
         }
     }

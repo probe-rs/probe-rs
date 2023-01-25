@@ -43,6 +43,12 @@ pub struct RawFlashAlgorithm {
     /// The offset from the start of RAM to the data section.
     #[serde(serialize_with = "hex_u_int")]
     pub data_section_offset: u64,
+    /// Location of the RTT control block in RAM.
+    ///
+    /// If this is set, the flash algorithm supports RTT output
+    /// and debug messages will be read over RTT.
+    #[serde(serialize_with = "hex_option")]
+    pub rtt_location: Option<u64>,
     /// The properties of the flash on the device.
     pub flash_properties: FlashProperties,
     /// List of cores that can use this algorithm
