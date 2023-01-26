@@ -27,7 +27,7 @@ pub fn cmd_test() -> Result<()> {
         .collect::<Vec<_>>();
     loader.add_data(0x0, &data)?;
 
-    run_flash_download(&mut session, loader, false)?;
+    run_flash_download(&mut session, loader, false, false)?;
 
     Ok(())
 }
@@ -38,6 +38,7 @@ pub fn run_flash_download(
     session: &mut Session,
     loader: FlashLoader,
     do_chip_erase: bool,
+    disable_double_buffering: bool,
 ) -> Result<()> {
     // Start timer.
     let instant = Instant::now();
@@ -45,7 +46,7 @@ pub fn run_flash_download(
     let mut download_option = DownloadOptions::default();
     download_option.keep_unwritten_bytes = false;
     download_option.do_chip_erase = do_chip_erase;
-    download_option.disable_double_buffering = true;
+    download_option.disable_double_buffering = disable_double_buffering;
 
     // Create progress bars.
     let multi_progress = MultiProgress::new();
