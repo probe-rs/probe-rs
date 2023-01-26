@@ -33,7 +33,6 @@ colored = "2.0.0"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = { version = "1.0.91" }
 figment = { version = "0.10", features = ["toml", "json", "yaml", "env"] }
-chrono = "0.4"
 crossterm = "<= 0.25.1"
 goblin = "0.6.0"
 tui = { version = "0.19.0", default-features = false, features = ["crossterm"] }
@@ -41,6 +40,7 @@ anyhow = "1.0.68"
 textwrap = "0.16.0"
 defmt-decoder = { version = "0.3.4", features = ["unstable"] }
 sanitize-filename = "0.4"
+time = { version = "0.3.17", features = ["local-offset"] }
 
 [build-dependencies]
 probe-rs-cli-util = { workspace = true, default-features = false, features = [

@@ -481,10 +481,16 @@ impl App {
     }
 
     /// Polls the RTT target for new data on all channels.
-    pub fn poll_rtt(&mut self, core: &mut Core) {
+    ///
+    /// # Errors
+    /// If getting the current time or formatting a timestamp fails,
+    /// this function will abort and return a [`time::Error`].
+    pub fn poll_rtt(&mut self, core: &mut Core) -> Result<(), time::Error> {
         for channel in self.tabs.iter_mut() {
-            channel.poll_rtt(core);
+            channel.poll_rtt(core)?;
         }
+
+        Ok(())
     }
 
     pub fn push_rtt(&mut self, core: &mut Core) {

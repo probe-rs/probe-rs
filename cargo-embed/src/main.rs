@@ -5,7 +5,6 @@ mod rttui;
 include!(concat!(env!("OUT_DIR"), "/meta.rs"));
 
 use anyhow::{anyhow, Context, Result};
-use chrono::Local;
 use colored::*;
 use std::{
     env, fs,
@@ -17,6 +16,7 @@ use std::{
     sync::{Arc, Mutex},
     time::{Duration, Instant},
 };
+use time::OffsetDateTime;
 
 use probe_rs::{
     config::TargetSelector,
@@ -597,13 +597,18 @@ fn main_try() -> Result<()> {
                     }));
 
                     let chip_name = config.general.chip.as_deref().unwrap_or_default();
-                    let logname =
-                        format!("{}_{}_{}", name, chip_name, Local::now().timestamp_millis());
+
+                    let timestamp_millis =
+                        OffsetDateTime::now_local()?.unix_timestamp_nanos() / 1_000_000;
+
+                    let logname = format!("{}_{}_{}", name, chip_name, timestamp_millis);
                     let mut app = rttui::app::App::new(rtt, &config, logname)?;
                     loop {
                         let mut session_handle = session.lock().unwrap();
                         let mut core = session_handle.core(0)?;
-                        app.poll_rtt(&mut core);
+
+                        app.poll_rtt(&mut core)?;
+
                         app.render(&defmt_state);
                         if app.handle_event(&mut core) {
                             logging::println("Shutting down.");
