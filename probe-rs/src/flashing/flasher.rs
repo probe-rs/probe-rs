@@ -672,7 +672,7 @@ impl<'probe, O: Operation> ActiveFlasher<'probe, O> {
                 };
                 self.rtt = rtt;
 
-                if now.elapsed() > std::time::Duration::from_secs(1) {
+                if self.rtt.is_some() || now.elapsed() > std::time::Duration::from_secs(1) {
                     break;
                 }
             }
@@ -691,6 +691,7 @@ impl<'probe, O: Operation> ActiveFlasher<'probe, O> {
 
         let mut timeout_ocurred = true;
         while start.elapsed() < timeout {
+            #[cfg(feature = "rtt")]
             if let Some(rtt) = &mut self.rtt {
                 for channel in rtt.up_channels().iter() {
                     let mut buffer = vec![0; channel.buffer_size()];
