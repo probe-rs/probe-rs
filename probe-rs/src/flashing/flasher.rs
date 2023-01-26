@@ -723,6 +723,7 @@ impl<'probe, 'progress, O: Operation> ActiveFlasher<'probe, 'progress, O> {
             println!("Elapsed 1: {:?}", start.elapsed());
             if self.core.core_halted()? {
                 timeout_ocurred = false;
+                break;
             }
 
             std::thread::sleep(Duration::from_millis(1));
