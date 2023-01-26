@@ -77,14 +77,14 @@ impl std::fmt::Debug for StLinkUsbDevice {
     }
 }
 
-pub trait StLinkUsb: std::fmt::Debug {
+pub(crate) trait StLinkUsb: std::fmt::Debug {
     fn write(
         &mut self,
         cmd: &[u8],
         write_data: &[u8],
         read_data: &mut [u8],
         timeout: Duration,
-    ) -> Result<(), DebugProbeError>;
+    ) -> Result<(), StlinkError>;
 
     /// Reset the USB device. This can be used to recover when the
     /// STLink does not respond to USB requests.
@@ -212,7 +212,7 @@ impl StLinkUsb for StLinkUsbDevice {
         write_data: &[u8],
         read_data: &mut [u8],
         timeout: Duration,
-    ) -> Result<(), DebugProbeError> {
+    ) -> Result<(), StlinkError> {
         tracing::trace!(
             "Sending command {:x?} to STLink, timeout: {:?}",
             cmd,
@@ -229,8 +229,7 @@ impl StLinkUsb for StLinkUsbDevice {
 
         let written_bytes = self
             .device_handle
-            .write_bulk(ep_out, &padded_cmd, timeout)
-            .map_err(|e| DebugProbeError::Usb(Some(Box::new(e))))?;
+            .write_bulk(ep_out, &padded_cmd, timeout)?;
 
         if written_bytes != CMD_LEN {
             return Err(StlinkError::NotEnoughBytesWritten {
@@ -247,10 +246,9 @@ impl StLinkUsb for StLinkUsbDevice {
             let mut write_index = 0;
 
             while remaining_bytes > 0 {
-                let written_bytes = self
-                    .device_handle
-                    .write_bulk(ep_out, &write_data[write_index..], timeout)
-                    .map_err(|e| DebugProbeError::Usb(Some(Box::new(e))))?;
+                let written_bytes =
+                    self.device_handle
+                        .write_bulk(ep_out, &write_data[write_index..], timeout)?;
 
                 remaining_bytes -= written_bytes;
                 write_index += written_bytes;
@@ -271,10 +269,9 @@ impl StLinkUsb for StLinkUsbDevice {
             let mut read_index = 0;
 
             while remaining_bytes > 0 {
-                let read_bytes = self
-                    .device_handle
-                    .read_bulk(ep_in, &mut read_data[read_index..], timeout)
-                    .map_err(|e| DebugProbeError::Usb(Some(Box::new(e))))?;
+                let read_bytes =
+                    self.device_handle
+                        .read_bulk(ep_in, &mut read_data[read_index..], timeout)?;
 
                 read_index += read_bytes;
                 remaining_bytes -= read_bytes;
