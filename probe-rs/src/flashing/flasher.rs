@@ -6,7 +6,6 @@ use super::{
 };
 use crate::config::NvmRegion;
 use crate::memory::MemoryInterface;
-use crate::rtt::{Rtt, ScanRegion};
 use crate::{core::RegisterFile, session::Session, Core, InstructionSet};
 use std::time::Instant;
 use std::{fmt::Debug, time::Duration};
@@ -508,7 +507,7 @@ fn into_reg(val: u64) -> Result<u32, FlashError> {
 pub(super) struct ActiveFlasher<'probe, O: Operation> {
     core: Core<'probe>,
     #[cfg(feature = "rtt")]
-    rtt: Option<Rtt>,
+    rtt: Option<crate::rtt::Rtt>,
     #[cfg(feature = "rtt")]
     memory_map: Vec<MemoryRegion>,
     flash_algorithm: FlashAlgorithm,
@@ -656,13 +655,14 @@ impl<'probe, O: Operation> ActiveFlasher<'probe, O> {
         // Resume target operation.
         self.core.run()?;
 
+        #[cfg(feature = "rtt")]
         if let Some(rtt_address) = self.flash_algorithm.rtt_control_block {
             let now = std::time::Instant::now();
             while self.rtt.is_none() {
-                let rtt = match Rtt::attach_region(
+                let rtt = match crate::rtt::Rtt::attach_region(
                     &mut self.core,
                     &self.memory_map,
-                    &ScanRegion::Exact(rtt_address as u32),
+                    &crate::rtt::ScanRegion::Exact(rtt_address as u32),
                 ) {
                     Ok(rtt) => Some(rtt),
                     Err(error) => {
