@@ -1,8 +1,8 @@
 use std::fmt;
 
-use chrono::Local;
 use probe_rs::Core;
 use probe_rs_rtt::{ChannelMode, DownChannel, UpChannel};
+use time::{macros::format_description, OffsetDateTime};
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum DataFormat {
@@ -125,14 +125,17 @@ impl ChannelState {
     /// Polls the RTT target for new data on the specified channel.
     ///
     /// Processes all the new data and adds it to the linebuffer of the respective channel.
-    pub fn poll_rtt(&mut self, core: &mut Core) {
+    ///
+    /// # Errors
+    /// This function can return a [`time::Error`] if getting the local time or formatting a timestamp fails.
+    pub fn poll_rtt(&mut self, core: &mut Core) -> Result<(), time::Error> {
         // TODO: Proper error handling.
         let count = if let Some(channel) = self.up_channel.as_mut() {
             match channel.read(core, self.rtt_buffer.0.as_mut()) {
                 Ok(count) => count,
                 Err(err) => {
                     log::error!("\nError reading from RTT: {}", err);
-                    return;
+                    return Ok(());
                 }
             }
         } else {
@@ -140,12 +143,12 @@ impl ChannelState {
         };
 
         if count == 0 {
-            return;
+            return Ok(());
         }
 
         match self.format {
             DataFormat::String => {
-                let now = Local::now();
+                let now = OffsetDateTime::now_local()?;
 
                 // First, convert the incoming bytes to UTF8.
                 let mut incoming = String::from_utf8_lossy(&self.rtt_buffer.0[..count]).to_string();
@@ -167,7 +170,7 @@ impl ChannelState {
                 // matters.
                 for (i, line) in incoming.split_terminator('\n').enumerate() {
                     if self.show_timestamps && (last_line_done || i > 0) {
-                        let ts = now.format("%H:%M:%S%.3f");
+                        let ts = now.format(format_description!("%H:%M:%S%.3f"))?;
                         self.messages.push(format!("{ts} {line}"));
                     } else {
                         self.messages.push(line.to_string());
@@ -182,6 +185,8 @@ impl ChannelState {
                 self.data.extend_from_slice(&self.rtt_buffer.0[..count]);
             }
         };
+
+        Ok(())
     }
 
     pub fn push_rtt(&mut self, core: &mut Core) {
