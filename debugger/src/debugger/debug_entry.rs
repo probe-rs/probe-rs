@@ -38,8 +38,7 @@ impl std::str::FromStr for TargetSessionType {
             "attach" => Ok(TargetSessionType::AttachRequest),
             "launch" => Ok(TargetSessionType::LaunchRequest),
             _ => Err(format!(
-                "'{}' is not a valid target session type. Can be either 'attach' or 'launch'].",
-                s
+                "'{s}' is not a valid target session type. Can be either 'attach' or 'launch']."
             )),
         }
     }
@@ -424,10 +423,8 @@ impl Debugger {
                     break current_request;
                 }
                 other => {
-                    let error_msg = format!(
-                        "Expected request 'launch' or 'attach', but received' {}'",
-                        other
-                    );
+                    let error_msg =
+                        format!("Expected request 'launch' or 'attach', but received' {other}'");
 
                     debug_adapter.send_response::<()>(
                         current_request,
@@ -604,7 +601,7 @@ impl Debugger {
                                         debug_adapter
                                             .update_progress(
                                                 Some(progress),
-                                                Some(format!("Reading Old Pages ({})", progress)),
+                                                Some(format!("Reading Old Pages ({progress})")),
                                                 id,
                                             )
                                             .ok();
@@ -646,7 +643,7 @@ impl Debugger {
                                         debug_adapter
                                             .update_progress(
                                                 Some(progress),
-                                                Some(format!("Erasing Sectors ({})", progress)),
+                                                Some(format!("Erasing Sectors ({progress})")),
                                                 id,
                                             )
                                             .ok();
@@ -834,10 +831,7 @@ impl Debugger {
                 Err(e) => {
                     debug_adapter.show_message(
                         MessageSeverity::Error,
-                        format!(
-                            "Debug Adapter terminated unexpectedly with an error: {:?}",
-                            e
-                        ),
+                        format!("Debug Adapter terminated unexpectedly with an error: {e:?}"),
                     );
                     debug_adapter
                         .send_event("terminated", Some(TerminatedEventBody { restart: None }))?;
@@ -861,7 +855,7 @@ pub fn list_connected_devices() -> Result<()> {
         connected_devices
             .iter()
             .enumerate()
-            .for_each(|(num, device)| println!("[{}]: {:?}", num, device));
+            .for_each(|(num, device)| println!("[{num}]: {device:?}"));
     } else {
         println!("No devices were found.");
     }
@@ -911,12 +905,11 @@ pub fn debug(port: Option<u16>, vscode: bool, log_info_message: &String) -> Resu
                     Ok((socket, addr)) => {
                         socket.set_nonblocking(true).with_context(|| {
                             format!(
-                                "Failed to negotiate non-blocking socket with request from :{}",
-                                addr
+                                "Failed to negotiate non-blocking socket with request from :{addr}"
                             )
                         })?;
 
-                        log_to_console_and_tracing(format!("..Starting session from   :{}", addr));
+                        log_to_console_and_tracing(format!("..Starting session from   :{addr}"));
 
                         let reader = socket
                             .try_clone()
@@ -933,8 +926,7 @@ pub fn debug(port: Option<u16>, vscode: bool, log_info_message: &String) -> Resu
                             }
                             Ok(DebuggerStatus::TerminateSession) => {
                                 log_to_console_and_tracing(format!(
-                                    "....Closing session from  :{}",
-                                    addr
+                                    "....Closing session from  :{addr}"
                                 ));
                             }
                             Ok(DebuggerStatus::ContinueSession) => {

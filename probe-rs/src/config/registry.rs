@@ -37,7 +37,7 @@ pub enum RegistryError {
     Yaml(#[from] serde_yaml::Error),
     /// An invalid [`ChipFamily`] was encountered.
     #[error("Invalid chip family definition ({})", .0.name)]
-    InvalidChipFamilyDefinition(ChipFamily, String),
+    InvalidChipFamilyDefinition(Box<ChipFamily>, String),
 }
 
 fn add_generic_targets(vec: &mut Vec<ChipFamily>) {
@@ -126,10 +126,7 @@ impl Registry {
 
         let mut families: Vec<ChipFamily> = match bincode::deserialize(BUILTIN_TARGETS) {
             Ok(families) => families,
-            Err(err) => panic!(
-                "Failed to deserialize builtin targets. This is a bug : {:?}",
-                err
-            ),
+            Err(err) => panic!("Failed to deserialize builtin targets. This is a bug : {err:?}"),
         };
 
         add_generic_targets(&mut families);
@@ -287,7 +284,7 @@ impl Registry {
 
         family
             .validate()
-            .map_err(|e| RegistryError::InvalidChipFamilyDefinition(family.clone(), e))?;
+            .map_err(|e| RegistryError::InvalidChipFamilyDefinition(Box::new(family.clone()), e))?;
 
         let index = self
             .families

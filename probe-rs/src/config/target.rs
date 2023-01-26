@@ -72,7 +72,7 @@ impl Target {
         // Make sure we are given a valid family:
         family
             .validate()
-            .map_err(|e| RegistryError::InvalidChipFamilyDefinition(family.clone(), e))?;
+            .map_err(|e| RegistryError::InvalidChipFamilyDefinition(Box::new(family.clone()), e))?;
 
         let chip = family
             .variants

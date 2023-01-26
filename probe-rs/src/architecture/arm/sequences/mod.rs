@@ -580,10 +580,7 @@ pub trait ArmDebugSequence: Send + Sync {
             CoreType::Armv6m | CoreType::Armv7m | CoreType::Armv7em | CoreType::Armv8m => {
                 cortex_m_core_start(core)
             }
-            _ => panic!(
-                "Logic inconsistency bug - non ARM core type passed {:?}",
-                core_type
-            ),
+            _ => panic!("Logic inconsistency bug - non ARM core type passed {core_type:?}"),
         }
     }
 
@@ -606,10 +603,7 @@ pub trait ArmDebugSequence: Send + Sync {
             CoreType::Armv6m | CoreType::Armv7m | CoreType::Armv7em | CoreType::Armv8m => {
                 cortex_m_reset_catch_set(core)
             }
-            _ => panic!(
-                "Logic inconsistency bug - non ARM core type passed {:?}",
-                core_type
-            ),
+            _ => panic!("Logic inconsistency bug - non ARM core type passed {core_type:?}"),
         }
     }
 
@@ -632,10 +626,7 @@ pub trait ArmDebugSequence: Send + Sync {
             CoreType::Armv6m | CoreType::Armv7m | CoreType::Armv7em | CoreType::Armv8m => {
                 cortex_m_reset_catch_clear(core)
             }
-            _ => panic!(
-                "Logic inconsistency bug - non ARM core type passed {:?}",
-                core_type
-            ),
+            _ => panic!("Logic inconsistency bug - non ARM core type passed {core_type:?}"),
         }
     }
 
@@ -687,10 +678,7 @@ pub trait ArmDebugSequence: Send + Sync {
             CoreType::Armv6m | CoreType::Armv7m | CoreType::Armv7em | CoreType::Armv8m => {
                 cortex_m_reset_system(interface)
             }
-            _ => panic!(
-                "Logic inconsistency bug - non ARM core type passed {:?}",
-                core_type
-            ),
+            _ => panic!("Logic inconsistency bug - non ARM core type passed {core_type:?}"),
         }
     }
 

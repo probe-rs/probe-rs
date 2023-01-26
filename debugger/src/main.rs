@@ -54,7 +54,7 @@ pub enum DebuggerError {
     NonBlockingReadError { original_error: std::io::Error },
     #[error(transparent)]
     StdIO(#[from] std::io::Error),
-    #[error("Unable to open probe{}", .0.map(|s| format!(": {}", s)).as_deref().unwrap_or("."))]
+    #[error("Unable to open probe{}", .0.map(|s| format!(": {s}")).as_deref().unwrap_or("."))]
     UnableToOpenProbe(Option<&'static str>),
     #[error("Request not implemented")]
     Unimplemented,

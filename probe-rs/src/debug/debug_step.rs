@@ -457,7 +457,7 @@ fn step_to_address(
                     break;
                 }
                 // This is a recoverable error kind, and can be reported to the user higher up in the call stack.
-                other_halt_reason => return Err(DebugError::NoValidHaltLocation{message: format!("Target halted unexpectedly before we reached the destination address of a step operation: {:?}", other_halt_reason), pc_at_error: core.read_core_reg(core.registers().program_counter())?}),
+                other_halt_reason => return Err(DebugError::NoValidHaltLocation{message: format!("Target halted unexpectedly before we reached the destination address of a step operation: {other_halt_reason:?}"), pc_at_error: core.read_core_reg(core.registers().program_counter())?}),
             },
             // This is not a recoverable error, and will result in the debug session ending (we have no predicatable way of successfully continuing the session)
             other_status => return Err(DebugError::Other(anyhow::anyhow!("Target failed to reach the destination address of a step operation: {:?}", other_status))),

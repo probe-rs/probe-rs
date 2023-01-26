@@ -292,7 +292,7 @@ impl<'probe> Armv8a<'probe> {
                             self.execute_instruction(instruction)?;
                         }
                         _ => {
-                            panic!("Logic missing for writeback of register {}", i);
+                            panic!("Logic missing for writeback of register {i}");
                         }
                     }
                 }
@@ -347,7 +347,7 @@ impl<'probe> Armv8a<'probe> {
                             self.execute_instruction(instruction)?;
                         }
                         _ => {
-                            panic!("Logic missing for writeback of register {}", i);
+                            panic!("Logic missing for writeback of register {i}");
                         }
                     }
                 }

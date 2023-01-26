@@ -808,8 +808,7 @@ impl<D: StLinkUsb> StLink<D> {
         // Ensure maximum read length is not exceeded.
         assert!(
             data.len() <= STLINK_MAX_READ_LEN,
-            "Maximum read length for STLink is {} bytes",
-            STLINK_MAX_READ_LEN
+            "Maximum read length for STLink is {STLINK_MAX_READ_LEN} bytes"
         );
 
         assert!(
@@ -926,8 +925,7 @@ impl<D: StLinkUsb> StLink<D> {
         // Maximum supported read length is 2^16 bytes.
         assert!(
             length <= STLINK_MAX_WRITE_LEN,
-            "Maximum write length for STLink is {} bytes",
-            STLINK_MAX_WRITE_LEN
+            "Maximum write length for STLink is {STLINK_MAX_WRITE_LEN} bytes"
         );
 
         assert!(
@@ -1735,7 +1733,7 @@ mod test {
 
         match init_result.unwrap_err() {
             DebugProbeError::ProbeFirmwareOutdated => (),
-            other => panic!("Expected firmware outdated error, got {}", other),
+            other => panic!("Expected firmware outdated error, got {other}"),
         }
     }
 

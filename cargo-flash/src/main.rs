@@ -98,7 +98,7 @@ fn main_try() -> Result<(), OperationError> {
 
     // Store the chip name in the metadata stuct so we can print it as debug information when cargo-flash crashes.
     if let Some(ref chip) = opt.probe_options.chip {
-        METADATA.lock().unwrap().chip = Some(format!("{:?}", chip));
+        METADATA.lock().unwrap().chip = Some(format!("{chip:?}"));
     }
 
     // Change the work dir if the user asked to do so.
@@ -158,7 +158,7 @@ fn main_try() -> Result<(), OperationError> {
 
         // Store probe speed and name in the metadata struct to be able to
         // print it in case of a crash.
-        METADATA.lock().unwrap().speed = Some(format!("{:?}", protocol_speed));
+        METADATA.lock().unwrap().speed = Some(format!("{protocol_speed:?}"));
         METADATA.lock().unwrap().probe = Some(format!("{:?}", probe.get_name()));
 
         log::info!("Protocol speed {} kHz", protocol_speed);

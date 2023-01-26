@@ -85,7 +85,7 @@ fn main() -> Result<(), Error> {
 
                 // Finally print all due lines!
                 for line in lines {
-                    println!("{}> {}", id, line);
+                    println!("{id}> {line}");
                 }
             }
             _ => {

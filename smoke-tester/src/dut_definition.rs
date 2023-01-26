@@ -146,7 +146,7 @@ impl DutDefinition {
         match &self.probe_selector {
             Some(selector) => {
                 let probe = Probe::open(selector.clone())
-                    .with_context(|| format!("Failed to open probe with selector {}", selector))?;
+                    .with_context(|| format!("Failed to open probe with selector {selector}"))?;
 
                 Ok(probe)
             }
@@ -202,7 +202,7 @@ fn lookup_unique_target(chip: &str) -> Result<Target> {
         );
 
         for target in &targets {
-            eprintln!("\t{}", target);
+            eprintln!("\t{target}");
         }
 
         bail!("Chip definition does not match exactly.");

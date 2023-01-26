@@ -615,7 +615,7 @@ impl Display for DebugPortVersion {
             DPv0 => write!(f, "DPv0"),
             DPv1 => write!(f, "DPv1"),
             DPv2 => write!(f, "DPv2"),
-            Unsupported(version) => write!(f, "<unsupported Debugport Version {}>", version),
+            Unsupported(version) => write!(f, "<unsupported Debugport Version {version}>"),
         }
     }
 }

@@ -10,7 +10,7 @@ where
         Some(val) => {
             let check_for_human_readable = serializer.is_human_readable();
             if check_for_human_readable {
-                serializer.serialize_some(format!("{:#x}", val).as_str())
+                serializer.serialize_some(format!("{val:#x}").as_str())
             } else {
                 serializer.serialize_some(&val)
             }
