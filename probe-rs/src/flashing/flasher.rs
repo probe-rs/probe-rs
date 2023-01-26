@@ -675,6 +675,8 @@ impl<'probe, O: Operation> ActiveFlasher<'probe, O> {
                 if self.rtt.is_some() || now.elapsed() > std::time::Duration::from_secs(1) {
                     break;
                 }
+
+                std::thread::sleep(Duration::from_millis(1));
             }
         }
 
