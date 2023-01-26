@@ -18,7 +18,7 @@ pub fn cmd_run(target_artifact: PathBuf) -> Result<()> {
 
     probe_rs::config::add_target_from_yaml(Path::new(DEFINITION_EXPORT_PATH))?;
     let mut session =
-        probe_rs::Session::auto_attach("nrf51822_xxaa", Permissions::new().allow_erase_all())?;
+        probe_rs::Session::auto_attach("algorithm-test", Permissions::new().allow_erase_all())?;
 
     let mut loader = session.target().flash_loader();
     let data = (0..0x401)
