@@ -1,10 +1,10 @@
+use std::cell::RefCell;
 use std::path::Path;
-use std::sync::Arc;
-use std::time::{Duration, Instant};
+use std::rc::Rc;
+use std::time::Instant;
 
 use anyhow::Result;
 use colored::Colorize;
-use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use probe_rs::{
     flashing::{DownloadOptions, FlashLoader, FlashProgress},
     Permissions, Session,
@@ -48,69 +48,32 @@ pub fn run_flash_download(
     download_option.do_chip_erase = do_chip_erase;
     download_option.disable_double_buffering = disable_double_buffering;
 
-    // Create progress bars.
-    let multi_progress = MultiProgress::new();
-    let style = ProgressStyle::default_bar()
-                    .tick_chars("⠁⠁⠉⠙⠚⠒⠂⠂⠒⠲⠴⠤⠄⠄⠤⠠⠠⠤⠦⠖⠒⠐⠐⠒⠓⠋⠉⠈⠈✔")
-                    .progress_chars("##-")
-                    .template("{msg:.green.bold} {spinner} [{elapsed_precise}] [{wide_bar}] {bytes:>8}/{total_bytes:>8} @ {bytes_per_sec:>10}").expect("Error in progress bar creation. This is a bug, please report it.");
-
-    // Create a new progress bar for the erase progress.
-    let erase_progress = Arc::new(multi_progress.add(ProgressBar::new(0)));
-    {
-        probe_rs_cli_util::logging::set_progress_bar(erase_progress.clone());
-    }
-    erase_progress.set_style(style.clone());
-    erase_progress.set_message("     Erasing sectors");
-
-    // Create a new progress bar for the program progress.
-    let program_progress = multi_progress.add(ProgressBar::new(0));
-    program_progress.set_style(style);
-    program_progress.set_message(" Programming pages  ");
-
     // Register callback to update the progress.
+    let t = Rc::new(RefCell::new(Instant::now()));
     let progress = FlashProgress::new(move |event| {
         use probe_rs::flashing::ProgressEvent::*;
         match event {
-            Initialized { flash_layout } => {
-                let total_page_size: u32 = flash_layout.pages().iter().map(|s| s.size()).sum();
-
-                let total_sector_size: u64 = flash_layout.sectors().iter().map(|s| s.size()).sum();
-
-                erase_progress.set_length(total_sector_size);
-                program_progress.set_length(total_page_size as u64);
-            }
             StartedProgramming => {
-                program_progress.enable_steady_tick(Duration::from_millis(100));
-                program_progress.reset_elapsed();
+                let mut t = t.borrow_mut();
+                *t = Instant::now();
             }
             StartedErasing => {
-                erase_progress.enable_steady_tick(Duration::from_millis(100));
-                erase_progress.reset_elapsed();
+                let mut t = t.borrow_mut();
+                *t = Instant::now();
             }
-            StartedFilling => {}
-            PageProgrammed { size, .. } => {
-                program_progress.inc(size as u64);
-            }
-            SectorErased { size, .. } => {
-                erase_progress.inc(size);
-            }
-            PageFilled { .. } => {}
             FailedErasing => {
-                erase_progress.abandon();
-                program_progress.abandon();
+                println!("Failed erasing in {:?}", t.borrow().elapsed());
             }
             FinishedErasing => {
-                erase_progress.finish();
+                println!("Finished erasing in {:?}", t.borrow().elapsed());
             }
             FailedProgramming => {
-                program_progress.abandon();
+                println!("Failed programming in {:?}", t.borrow().elapsed());
             }
             FinishedProgramming => {
-                program_progress.finish();
+                println!("Finished programming in {:?}", t.borrow().elapsed());
             }
-            FailedFilling => {}
-            FinishedFilling => {}
+            _ => (),
         }
     });
 

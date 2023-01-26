@@ -95,6 +95,11 @@ impl FlashProgress {
     pub(super) fn finished_filling(&self) {
         self.emit(ProgressEvent::FinishedFilling);
     }
+
+    #[cfg(feature = "rtt")]
+    pub(super) fn rtt(&self, channel: String, message: String) {
+        self.emit(ProgressEvent::Rtt { channel, message });
+    }
 }
 
 /// Possible events during the flashing process.
@@ -164,4 +169,12 @@ pub enum ProgressEvent {
     FailedProgramming,
     /// Programming of the flash has finished successfully.
     FinishedProgramming,
+    #[cfg(feature = "rtt")]
+    /// Rtt message was received.
+    Rtt {
+        /// The channel this RTT message was emitted from.
+        channel: String,
+        /// The RTT message that was emitted.
+        message: String,
+    },
 }

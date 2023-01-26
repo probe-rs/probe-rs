@@ -135,6 +135,7 @@ pub fn run_flash_download(
                         fp.finish()
                     };
                 }
+                Rtt { .. } => (),
             }
         });
 

@@ -49,17 +49,20 @@ impl Operation for Verify {
 /// A structure to control the flash of an attached microchip.
 ///
 /// Once constructed it can be used to program date to the flash.
-pub(super) struct Flasher<'session> {
+pub(super) struct Flasher<'session, 'progress> {
     session: &'session mut Session,
     core_index: usize,
     flash_algorithm: FlashAlgorithm,
+    #[allow(dead_code)]
+    progress: Option<&'progress FlashProgress>,
 }
 
-impl<'session> Flasher<'session> {
+impl<'session, 'progress> Flasher<'session, 'progress> {
     pub(super) fn new(
         session: &'session mut Session,
         core_index: usize,
         raw_flash_algorithm: &RawFlashAlgorithm,
+        progress: Option<&'progress FlashProgress>,
     ) -> Result<Self, FlashError> {
         let target = session.target();
 
@@ -88,6 +91,7 @@ impl<'session> Flasher<'session> {
             session,
             core_index,
             flash_algorithm,
+            progress,
         };
 
         this.load()?;
@@ -163,7 +167,7 @@ impl<'session> Flasher<'session> {
     pub(super) fn init<O: Operation>(
         &mut self,
         clock: Option<u32>,
-    ) -> Result<ActiveFlasher<'_, O>, FlashError> {
+    ) -> Result<ActiveFlasher<'_, '_, O>, FlashError> {
         #[cfg(feature = "rtt")]
         let memory_map = self.session.target().memory_map.clone();
         // Attach to memory and core.
@@ -179,6 +183,8 @@ impl<'session> Flasher<'session> {
             rtt: None,
             #[cfg(feature = "rtt")]
             memory_map,
+            #[cfg(feature = "rtt")]
+            progress: self.progress,
             flash_algorithm: self.flash_algorithm.clone(),
             _operation: core::marker::PhantomData,
         };
@@ -205,7 +211,7 @@ impl<'session> Flasher<'session> {
 
     pub(super) fn run_erase<T, F>(&mut self, f: F) -> Result<T, FlashError>
     where
-        F: FnOnce(&mut ActiveFlasher<'_, Erase>) -> Result<T, FlashError> + Sized,
+        F: FnOnce(&mut ActiveFlasher<'_, '_, Erase>) -> Result<T, FlashError> + Sized,
     {
         // TODO: Fix those values (None, None).
         let mut active = self.init(None)?;
@@ -216,7 +222,7 @@ impl<'session> Flasher<'session> {
 
     pub(super) fn run_program<T, F>(&mut self, f: F) -> Result<T, FlashError>
     where
-        F: FnOnce(&mut ActiveFlasher<'_, Program>) -> Result<T, FlashError> + Sized,
+        F: FnOnce(&mut ActiveFlasher<'_, '_, Program>) -> Result<T, FlashError> + Sized,
     {
         // TODO: Fix those values (None, None).
         let mut active = self.init(None)?;
@@ -227,7 +233,7 @@ impl<'session> Flasher<'session> {
 
     pub(super) fn run_verify<T, F>(&mut self, f: F) -> Result<T, FlashError>
     where
-        F: FnOnce(&mut ActiveFlasher<'_, Verify>) -> Result<T, FlashError> + Sized,
+        F: FnOnce(&mut ActiveFlasher<'_, '_, Verify>) -> Result<T, FlashError> + Sized,
     {
         // TODO: Fix those values (None, None).
         let mut active = self.init(None)?;
@@ -504,17 +510,19 @@ fn into_reg(val: u64) -> Result<u32, FlashError> {
     Ok(reg_value)
 }
 
-pub(super) struct ActiveFlasher<'probe, O: Operation> {
+pub(super) struct ActiveFlasher<'probe, 'progress, O: Operation> {
     core: Core<'probe>,
     #[cfg(feature = "rtt")]
     rtt: Option<crate::rtt::Rtt>,
     #[cfg(feature = "rtt")]
     memory_map: Vec<MemoryRegion>,
+    #[cfg(feature = "rtt")]
+    progress: Option<&'progress FlashProgress>,
     flash_algorithm: FlashAlgorithm,
     _operation: core::marker::PhantomData<O>,
 }
 
-impl<'probe, O: Operation> ActiveFlasher<'probe, O> {
+impl<'probe, 'progress, O: Operation> ActiveFlasher<'probe, 'progress, O> {
     #[tracing::instrument(name = "Call to flash algorithm init", skip(self, clock))]
     pub(super) fn init(&mut self, clock: Option<u32>) -> Result<(), FlashError> {
         let algo = &self.flash_algorithm;
@@ -678,6 +686,7 @@ impl<'probe, O: Operation> ActiveFlasher<'probe, O> {
 
                 std::thread::sleep(Duration::from_millis(1));
             }
+            println!("Elapsed: {:?}", now.elapsed());
         }
 
         Ok(())
@@ -699,7 +708,11 @@ impl<'probe, O: Operation> ActiveFlasher<'probe, O> {
                     let mut buffer = vec![0; channel.buffer_size()];
                     match channel.read(&mut self.core, &mut buffer) {
                         Ok(read) if read > 0 => {
-                            tracing::info!("RTT: {}", String::from_utf8_lossy(&buffer[..read]))
+                            let message = String::from_utf8_lossy(&buffer[..read]).to_string();
+                            tracing::info!("RTT: {}", message);
+                            if let Some(progress) = self.progress {
+                                progress.rtt(channel.name().unwrap_or("unnamed").into(), message);
+                            }
                         }
                         Ok(_) => (),
                         Err(error) => tracing::debug!("Reading RTT failed: {error}"),
@@ -723,7 +736,7 @@ impl<'probe, O: Operation> ActiveFlasher<'probe, O> {
     }
 }
 
-impl<'probe> ActiveFlasher<'probe, Erase> {
+impl<'probe, 'progress> ActiveFlasher<'probe, 'progress, Erase> {
     pub(super) fn erase_all(&mut self) -> Result<(), FlashError> {
         tracing::debug!("Erasing entire chip.");
         let flasher = self;
@@ -800,7 +813,7 @@ impl<'probe> ActiveFlasher<'probe, Erase> {
     }
 }
 
-impl<'p> ActiveFlasher<'p, Program> {
+impl<'p, 'progress> ActiveFlasher<'p, 'progress, Program> {
     pub(super) fn program_page(&mut self, address: u64, bytes: &[u8]) -> Result<(), FlashError> {
         let t1 = std::time::Instant::now();
 

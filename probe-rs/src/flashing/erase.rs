@@ -5,8 +5,13 @@ use probe_rs_target::{MemoryRange, MemoryRegion, NvmRegion};
 use crate::flashing::{flasher::Flasher, FlashError, FlashLoader};
 use crate::Session;
 
+use super::FlashProgress;
+
 /// Mass-erase all nonvolatile memory.
-pub fn erase_all(session: &mut Session) -> Result<(), FlashError> {
+pub fn erase_all(
+    session: &mut Session,
+    progress: Option<&FlashProgress>,
+) -> Result<(), FlashError> {
     tracing::debug!("Erasing all...");
 
     let mut algos: HashMap<(String, String), Vec<NvmRegion>> = HashMap::new();
@@ -45,7 +50,7 @@ pub fn erase_all(session: &mut Session) -> Result<(), FlashError> {
         let algo = algo.unwrap().clone();
 
         let core_index = session.target().core_index_by_name(&core_name).unwrap();
-        let mut flasher = Flasher::new(session, core_index, &algo)?;
+        let mut flasher = Flasher::new(session, core_index, &algo, progress)?;
 
         if flasher.is_chip_erase_supported() {
             tracing::debug!("     -- chip erase supported, doing it.");
