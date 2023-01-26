@@ -383,11 +383,10 @@ CARGO BUILD OPTIONS:
     Additionally, all options passed after a sentinel '--'
     are also forwarded.
 
-    For example, if you run the command '{} --release -- \
+    For example, if you run the command '{bin} --release -- \
     --some-cargo-flag', this means that 'cargo build \
     --release --some-cargo-flag' will be called.
-"#,
-            bin
+"#
         )
     }
 
@@ -457,7 +456,7 @@ pub enum OperationError {
     FlashingFailed {
         #[source]
         source: FlashError,
-        target: Target,
+        target: Box<Target>, // Box to reduce enum size
         target_spec: Option<String>,
         path: PathBuf,
     },
@@ -532,7 +531,7 @@ pub fn list_connected_probes(mut f: impl Write) -> Result<(), std::io::Error> {
     if !probes.is_empty() {
         writeln!(f, "The following debug probes were found:")?;
         for (num, link) in probes.iter().enumerate() {
-            writeln!(f, "[{}]: {:?}", num, link)?;
+            writeln!(f, "[{num}]: {link:?}")?;
         }
     } else {
         writeln!(f, "No debug probes were found.")?;

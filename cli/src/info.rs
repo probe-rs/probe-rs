@@ -31,7 +31,7 @@ pub(crate) fn show_info_of_device(common: &ProbeOptions) -> Result<()> {
     };
 
     for protocol in protocols {
-        println!("Probing target via {}", protocol);
+        println!("Probing target via {protocol}");
         let (new_probe, result) = try_show_info(probe, protocol, common.connect_under_reset);
 
         probe = new_probe;
@@ -39,10 +39,7 @@ pub(crate) fn show_info_of_device(common: &ProbeOptions) -> Result<()> {
         probe.detach()?;
 
         if let Err(e) = result {
-            println!(
-                "Error identifying target using protocol {}: {}",
-                protocol, e
-            );
+            println!("Error identifying target using protocol {protocol}: {e}");
         }
     }
 
@@ -77,13 +74,13 @@ fn try_show_info(
                     Ok(mut interface) => {
                         if let Err(e) = show_arm_info(&mut *interface) {
                             // Log error?
-                            println!("Error showing ARM chip information: {}", e);
+                            println!("Error showing ARM chip information: {e}");
                         }
 
                         probe = interface.close();
                     }
                     Err((interface, e)) => {
-                        println!("Error showing ARM chip information: {}", e);
+                        println!("Error showing ARM chip information: {e}");
 
                         probe = interface.close();
                     }
@@ -166,8 +163,8 @@ fn show_arm_info(interface: &mut dyn ArmProbeInterface) -> Result<()> {
             ", Designer: {}",
             designer.get().unwrap_or("<unknown>")
         )?;
-        write!(dp_node, ", Part: {:#x}", part_no)?;
-        write!(dp_node, ", Revision: {:#x}", revision)?;
+        write!(dp_node, ", Part: {part_no:#x}")?;
+        write!(dp_node, ", Revision: {revision:#x}")?;
     } else {
         write!(
             dp_node,
@@ -202,7 +199,7 @@ fn show_arm_info(interface: &mut dyn ArmProbeInterface) -> Result<()> {
                 if *device_enabled {
                     match handle_memory_ap(access_port.into(), *debug_base_address, interface) {
                         Ok(component_tree) => ap_nodes.push(component_tree),
-                        Err(e) => ap_nodes.push(format!("Error during access: {}", e)),
+                        Err(e) => ap_nodes.push(format!("Error during access: {e}")),
                     };
                 } else {
                     ap_nodes.push("Access disabled".to_string());
@@ -238,7 +235,7 @@ fn show_arm_info(interface: &mut dyn ArmProbeInterface) -> Result<()> {
         }
     }
 
-    println!("{}", tree);
+    println!("{tree}");
 
     Ok(())
 }
@@ -342,7 +339,7 @@ fn cpu_info_tree(scs: &mut Scs) -> Result<Tree<String>> {
         implementer.to_string()
     };
 
-    tree.push(format!("IMPLEMENTER: {}", implementer));
+    tree.push(format!("IMPLEMENTER: {implementer}"));
     tree.push(format!("VARIANT: {}", cpuid.variant()));
     tree.push(format!("PARTNO: {}", cpuid.partno()));
     tree.push(format!("REVISION: {}", cpuid.revision()));
@@ -363,10 +360,10 @@ fn show_riscv_info(interface: &mut RiscvCommunicationInterface) -> Result<()> {
     let jep_id = jep106::JEP106Code::new(jep_cc as u8, jep_id as u8);
 
     println!("RISCV Chip:");
-    println!("\tIDCODE: {:010x}", idcode);
-    println!("\t Version:      {}", version);
-    println!("\t Part:         {}", part_number);
-    println!("\t Manufacturer: {} ({})", manufacturer_id, jep_id);
+    println!("\tIDCODE: {idcode:010x}");
+    println!("\t Version:      {version}");
+    println!("\t Part:         {part_number}");
+    println!("\t Manufacturer: {manufacturer_id} ({jep_id})");
 
     Ok(())
 }

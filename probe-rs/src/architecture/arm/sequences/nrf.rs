@@ -102,8 +102,7 @@ impl<T: Nrf> ArmDebugSequence for T {
                 core_ctrl_ap_address,
             )? {
                 return Err(ArmDebugSequenceError::custom(format!(
-                    "Could not unlock core {}",
-                    core_index
+                    "Could not unlock core {core_index}"
                 ))
                 .into());
             }

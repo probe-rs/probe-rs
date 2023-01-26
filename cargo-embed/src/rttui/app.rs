@@ -283,7 +283,7 @@ impl App {
                                 messages_wrapped.push(data.iter().fold(
                                     String::new(),
                                     |mut output, byte| {
-                                        let _ = write(&mut output, format_args!("{:#04x}, ", byte));
+                                        let _ = write(&mut output, format_args!("{byte:#04x}, "));
                                         output
                                     },
                                 ));
@@ -388,12 +388,11 @@ impl App {
                                     match tab.format() {
                                         DataFormat::String => {
                                             for line in tab.messages() {
-                                                match writeln!(file, "{}", line) {
+                                                match writeln!(file, "{line}") {
                                                     Ok(_) => {}
                                                     Err(e) => {
                                                         eprintln!(
-                                                            "\nError writing log channel {}: {}",
-                                                            i, e
+                                                            "\nError writing log channel {i}: {e}"
                                                         );
                                                         continue;
                                                     }
@@ -403,10 +402,7 @@ impl App {
                                         DataFormat::BinaryLE => match file.write(tab.data()) {
                                             Ok(_) => {}
                                             Err(e) => {
-                                                eprintln!(
-                                                    "\nError writing log channel {}: {}",
-                                                    i, e
-                                                );
+                                                eprintln!("\nError writing log channel {i}: {e}");
                                                 continue;
                                             }
                                         },
@@ -415,7 +411,7 @@ impl App {
 
                                     // Flush file
                                     if let Err(e) = file.flush() {
-                                        eprintln!("Error writing log channel {}: {}", i, e)
+                                        eprintln!("Error writing log channel {i}: {e}")
                                     }
                                 }
                                 Err(e) => {

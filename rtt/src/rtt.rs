@@ -103,8 +103,7 @@ impl Rtt {
         // *Very* conservative sanity check, most people
         if max_up_channels > 255 || max_down_channels > 255 {
             return Err(Error::ControlBlockCorrupted(format!(
-                "Nonsensical array sizes at {:08x}: max_up_channels={} max_down_channels={}",
-                ptr, max_up_channels, max_down_channels
+                "Nonsensical array sizes at {ptr:08x}: max_up_channels={max_up_channels} max_down_channels={max_down_channels}"
             )));
         }
 

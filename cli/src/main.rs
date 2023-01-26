@@ -371,7 +371,7 @@ fn list_connected_devices() -> Result<()> {
         links
             .iter()
             .enumerate()
-            .for_each(|(num, link)| println!("[{}]: {:?}", num, link));
+            .for_each(|(num, link)| println!("[{num}]: {link:?}"));
     } else {
         println!("No devices were found.");
     }
@@ -409,7 +409,7 @@ fn dump_memory(
         );
     }
     // Print stats.
-    println!("Read {:?} words in {:?}", words, elapsed);
+    println!("Read {words:?} words in {elapsed:?}");
 
     Ok(())
 }
@@ -567,7 +567,7 @@ fn debug(shared_options: &CoreOptions, common: &ProbeOptions, exe: Option<PathBu
                     ReadlineError::Eof | ReadlineError::Interrupted => return Ok(()),
                     actual_error => {
                         // Show error message and quit
-                        println!("Error handling input: {:?}", actual_error);
+                        println!("Error handling input: {actual_error:?}");
                         break;
                     }
                 }

@@ -211,7 +211,7 @@ fn extract_name(
             }
         }
         gimli::AttributeValue::String(name) => String::from_utf8_lossy(&name).to_string(),
-        other => format!("Unimplemented: Evaluate name from {:?}", other),
+        other => format!("Unimplemented: Evaluate name from {other:?}"),
     }
 }
 
@@ -235,7 +235,7 @@ pub(crate) fn _print_all_attributes(
         use gimli::AttributeValue::*;
 
         match attr.value() {
-            Addr(a) => println!("{:#010x}", a),
+            Addr(a) => println!("{a:#010x}"),
             DebugStrRef(_) => {
                 let val = dwarf.attr_string(unit, attr.value()).unwrap();
                 println!("{}", std::str::from_utf8(&val).unwrap());
@@ -310,7 +310,7 @@ pub(crate) fn _print_all_attributes(
                                 .unwrap()
                         }
                         x => {
-                            println!("print_all_attributes {:?}", x);
+                            println!("print_all_attributes {x:?}");
                             // x
                             todo!()
                         }

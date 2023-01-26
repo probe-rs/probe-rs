@@ -171,7 +171,7 @@ impl ChannelState {
                 for (i, line) in incoming.split_terminator('\n').enumerate() {
                     if self.show_timestamps && (last_line_done || i > 0) {
                         let ts = now.format(format_description!("%H:%M:%S%.3f"))?;
-                        self.messages.push(format!("{} {}", ts, line));
+                        self.messages.push(format!("{ts} {line}"));
                     } else {
                         self.messages.push(line.to_string());
                     }

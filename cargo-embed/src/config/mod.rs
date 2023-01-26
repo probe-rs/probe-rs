@@ -121,16 +121,16 @@ impl Configs {
 
         for file in &config_files {
             let mut toml_path: std::path::PathBuf = conf_dir.clone();
-            toml_path.push(format!("{}.toml", file));
+            toml_path.push(format!("{file}.toml"));
 
             let mut json_path = conf_dir.clone();
-            json_path.push(format!("{}.json", file));
+            json_path.push(format!("{file}.json"));
 
             let mut yaml_path = conf_dir.clone();
-            yaml_path.push(format!("{}.yaml", file));
+            yaml_path.push(format!("{file}.yaml"));
 
             let mut yml_path = conf_dir.clone();
-            yml_path.push(format!("{}.yml", file));
+            yml_path.push(format!("{file}.yml"));
 
             figments = Figment::from(figments)
                 .merge(Toml::file(toml_path).nested())

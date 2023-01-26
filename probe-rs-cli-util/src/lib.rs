@@ -144,7 +144,7 @@ pub fn build_artifact(work_dir: &Path, args: &[String]) -> Result<Artifact, Arti
             }
             Message::CompilerMessage(message) => {
                 if let Some(rendered) = message.message.rendered {
-                    print!("{}", rendered);
+                    print!("{rendered}");
                 }
             }
             // Ignore other messages.

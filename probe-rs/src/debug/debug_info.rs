@@ -365,10 +365,10 @@ impl DebugInfo {
                                             VariableName::Named(name.replacen('&', "*", 1));
                                     } else {
                                         referenced_variable.name =
-                                            VariableName::Named(format!("*{}", name));
+                                            VariableName::Named(format!("*{name}"));
                                     }
                                 }
-                                other => referenced_variable.name = VariableName::Named(format!("Error: Unable to generate name, parent variable does not have a name but is special variable {:?}", other)),
+                                other => referenced_variable.name = VariableName::Named(format!("Error: Unable to generate name, parent variable does not have a name but is special variable {other:?}")),
                             }
 
                         match &parent_variable.memory_location {
@@ -389,8 +389,7 @@ impl DebugInfo {
                             other => {
                                 referenced_variable.memory_location =
                                     VariableLocation::Unsupported(format!(
-                                        "Location {:?} not supported for referenced variables.",
-                                        other
+                                        "Location {other:?} not supported for referenced variables."
                                     ));
                             }
                         }
@@ -1177,7 +1176,7 @@ fn unwind_register(
             unwind_info.map(|unwind_info| unwind_info.register(gimli::Register(register_position)))
         })
         .unwrap_or(gimli::RegisterRule::Undefined);
-    let mut register_rule_string = format!("{:?}", register_rule);
+    let mut register_rule_string = format!("{register_rule:?}");
     let new_value = match register_rule {
         Undefined => {
             // In many cases, the DWARF has `Undefined` rules for variables like frame pointer, program counter, etc., so we hard-code some rules here to make sure unwinding can continue. If there is a valid rule, it will bypass these hardcoded ones.
@@ -1249,7 +1248,7 @@ fn unwind_register(
             if let Some(unwind_cfa) = unwind_cfa {
                 let previous_frame_register_address = add_to_address(unwind_cfa, address_offset);
                 let address_size = callee_frame_registers.get_address_size_bytes();
-                register_rule_string = format!("CFA {:?}", register_rule);
+                register_rule_string = format!("CFA {register_rule:?}");
                 let result = match address_size {
                     4 => {
                         let mut buff = [0u8; 4];
