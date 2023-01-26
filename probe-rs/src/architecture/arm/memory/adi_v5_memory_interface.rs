@@ -1066,11 +1066,7 @@ mod tests {
 
             mi.write_word_32(DUMMY_AP, address, DATA32[0])
                 .unwrap_or_else(|_| panic!("write_word_32 failed, address = {address}"));
-            assert_eq!(
-                mi.mock_memory(),
-                expected.as_slice(),
-                "address = {address}"
-            );
+            assert_eq!(mi.mock_memory(), expected.as_slice(), "address = {address}");
         }
     }
 
@@ -1085,11 +1081,7 @@ mod tests {
 
             mi.write_word_8(DUMMY_AP, address as u64, DATA8[0])
                 .unwrap_or_else(|_| panic!("write_word_8 failed, address = {address}"));
-            assert_eq!(
-                mi.mock_memory(),
-                expected.as_slice(),
-                "address = {address}"
-            );
+            assert_eq!(mi.mock_memory(), expected.as_slice(), "address = {address}");
         }
     }
 
@@ -1103,9 +1095,7 @@ mod tests {
             for len in 0..3 {
                 let mut data = vec![0u32; len];
                 mi.read_32(DUMMY_AP, address, &mut data)
-                    .unwrap_or_else(|_| {
-                        panic!("read_32 failed, address = {address}, len = {len}")
-                    });
+                    .unwrap_or_else(|_| panic!("read_32 failed, address = {address}, len = {len}"));
 
                 assert_eq!(
                     data.as_slice(),
@@ -1159,9 +1149,8 @@ mod tests {
         for address in 0..4 {
             for len in 0..12 {
                 let mut data = vec![0u8; len];
-                mi.read_8(DUMMY_AP, address, &mut data).unwrap_or_else(|_| {
-                    panic!("read_8 failed, address = {address}, len = {len}")
-                });
+                mi.read_8(DUMMY_AP, address, &mut data)
+                    .unwrap_or_else(|_| panic!("read_8 failed, address = {address}, len = {len}"));
 
                 assert_eq!(
                     data.as_slice(),
@@ -1220,9 +1209,8 @@ mod tests {
                 expected[address as usize..(address as usize) + len].copy_from_slice(&DATA8[..len]);
 
                 let data = &DATA8[..len];
-                mi.write_8(DUMMY_AP, address, data).unwrap_or_else(|_| {
-                    panic!("write_8 failed, address = {address}, len = {len}")
-                });
+                mi.write_8(DUMMY_AP, address, data)
+                    .unwrap_or_else(|_| panic!("write_8 failed, address = {address}, len = {len}"));
 
                 assert_eq!(
                     mi.mock_memory(),

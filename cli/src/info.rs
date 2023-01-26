@@ -39,9 +39,7 @@ pub(crate) fn show_info_of_device(common: &ProbeOptions) -> Result<()> {
         probe.detach()?;
 
         if let Err(e) = result {
-            println!(
-                "Error identifying target using protocol {protocol}: {e}"
-            );
+            println!("Error identifying target using protocol {protocol}: {e}");
         }
     }
 

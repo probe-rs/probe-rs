@@ -1569,10 +1569,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                             memory_reference: variable
                                 .memory_location
                                 .memory_address()
-                                .map_or_else(
-                                    |_| None,
-                                    |address| Some(format!("{address:#010x}")),
-                                ),
+                                .map_or_else(|_| None, |address| Some(format!("{address:#010x}"))),
                             indexed_variables: Some(indexed_child_variables_cnt),
                             named_variables: Some(named_child_variables_cnt),
                             presentation_hint: None,

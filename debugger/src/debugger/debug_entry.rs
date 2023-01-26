@@ -423,9 +423,8 @@ impl Debugger {
                     break current_request;
                 }
                 other => {
-                    let error_msg = format!(
-                        "Expected request 'launch' or 'attach', but received' {other}'"
-                    );
+                    let error_msg =
+                        format!("Expected request 'launch' or 'attach', but received' {other}'");
 
                     debug_adapter.send_response::<()>(
                         current_request,
@@ -832,9 +831,7 @@ impl Debugger {
                 Err(e) => {
                     debug_adapter.show_message(
                         MessageSeverity::Error,
-                        format!(
-                            "Debug Adapter terminated unexpectedly with an error: {e:?}"
-                        ),
+                        format!("Debug Adapter terminated unexpectedly with an error: {e:?}"),
                     );
                     debug_adapter
                         .send_event("terminated", Some(TerminatedEventBody { restart: None }))?;

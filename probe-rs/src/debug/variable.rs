@@ -264,9 +264,7 @@ impl VariableLocation {
         match self {
             VariableLocation::Address(address) => Ok(*address),
             other => Err(DebugError::UnwindIncompleteResults {
-                message: format!(
-                    "Variable does not have a memory location: location={other:?}"
-                ),
+                message: format!("Variable does not have a memory location: location={other:?}"),
             }),
         }
     }
@@ -1130,9 +1128,7 @@ impl Value for i16 {
     ) -> Result<(), DebugError> {
         let buff = i16::to_le_bytes(<i16 as FromStr>::from_str(new_value).map_err(|error| {
             DebugError::UnwindIncompleteResults {
-                message: format!(
-                    "Invalid data conversion from value: {new_value:?}. {error:?}"
-                ),
+                message: format!("Invalid data conversion from value: {new_value:?}. {error:?}"),
             }
         })?);
         core.write_8(variable.memory_location.memory_address()?, &buff)
@@ -1160,9 +1156,7 @@ impl Value for i32 {
     ) -> Result<(), DebugError> {
         let buff = i32::to_le_bytes(<i32 as FromStr>::from_str(new_value).map_err(|error| {
             DebugError::UnwindIncompleteResults {
-                message: format!(
-                    "Invalid data conversion from value: {new_value:?}. {error:?}"
-                ),
+                message: format!("Invalid data conversion from value: {new_value:?}. {error:?}"),
             }
         })?);
         core.write_8(variable.memory_location.memory_address()?, &buff)
@@ -1190,9 +1184,7 @@ impl Value for i64 {
     ) -> Result<(), DebugError> {
         let buff = i64::to_le_bytes(<i64 as FromStr>::from_str(new_value).map_err(|error| {
             DebugError::UnwindIncompleteResults {
-                message: format!(
-                    "Invalid data conversion from value: {new_value:?}. {error:?}"
-                ),
+                message: format!("Invalid data conversion from value: {new_value:?}. {error:?}"),
             }
         })?);
         core.write_8(variable.memory_location.memory_address()?, &buff)
@@ -1220,9 +1212,7 @@ impl Value for i128 {
     ) -> Result<(), DebugError> {
         let buff = i128::to_le_bytes(<i128 as FromStr>::from_str(new_value).map_err(|error| {
             DebugError::UnwindIncompleteResults {
-                message: format!(
-                    "Invalid data conversion from value: {new_value:?}. {error:?}"
-                ),
+                message: format!("Invalid data conversion from value: {new_value:?}. {error:?}"),
             }
         })?);
         core.write_8(variable.memory_location.memory_address()?, &buff)
@@ -1314,9 +1304,7 @@ impl Value for u16 {
     ) -> Result<(), DebugError> {
         let buff = u16::to_le_bytes(<u16 as FromStr>::from_str(new_value).map_err(|error| {
             DebugError::UnwindIncompleteResults {
-                message: format!(
-                    "Invalid data conversion from value: {new_value:?}. {error:?}"
-                ),
+                message: format!("Invalid data conversion from value: {new_value:?}. {error:?}"),
             }
         })?);
         core.write_8(variable.memory_location.memory_address()?, &buff)
@@ -1344,9 +1332,7 @@ impl Value for u32 {
     ) -> Result<(), DebugError> {
         let buff = u32::to_le_bytes(<u32 as FromStr>::from_str(new_value).map_err(|error| {
             DebugError::UnwindIncompleteResults {
-                message: format!(
-                    "Invalid data conversion from value: {new_value:?}. {error:?}"
-                ),
+                message: format!("Invalid data conversion from value: {new_value:?}. {error:?}"),
             }
         })?);
         core.write_8(variable.memory_location.memory_address()?, &buff)
@@ -1374,9 +1360,7 @@ impl Value for u64 {
     ) -> Result<(), DebugError> {
         let buff = u64::to_le_bytes(<u64 as FromStr>::from_str(new_value).map_err(|error| {
             DebugError::UnwindIncompleteResults {
-                message: format!(
-                    "Invalid data conversion from value: {new_value:?}. {error:?}"
-                ),
+                message: format!("Invalid data conversion from value: {new_value:?}. {error:?}"),
             }
         })?);
         core.write_8(variable.memory_location.memory_address()?, &buff)
@@ -1404,9 +1388,7 @@ impl Value for u128 {
     ) -> Result<(), DebugError> {
         let buff = u128::to_le_bytes(<u128 as FromStr>::from_str(new_value).map_err(|error| {
             DebugError::UnwindIncompleteResults {
-                message: format!(
-                    "Invalid data conversion from value: {new_value:?}. {error:?}"
-                ),
+                message: format!("Invalid data conversion from value: {new_value:?}. {error:?}"),
             }
         })?);
         core.write_8(variable.memory_location.memory_address()?, &buff)
@@ -1466,9 +1448,7 @@ impl Value for f32 {
     ) -> Result<(), DebugError> {
         let buff = f32::to_le_bytes(<f32 as FromStr>::from_str(new_value).map_err(|error| {
             DebugError::UnwindIncompleteResults {
-                message: format!(
-                    "Invalid data conversion from value: {new_value:?}. {error:?}"
-                ),
+                message: format!("Invalid data conversion from value: {new_value:?}. {error:?}"),
             }
         })?);
         core.write_8(variable.memory_location.memory_address()?, &buff)
@@ -1496,9 +1476,7 @@ impl Value for f64 {
     ) -> Result<(), DebugError> {
         let buff = f64::to_le_bytes(<f64 as FromStr>::from_str(new_value).map_err(|error| {
             DebugError::UnwindIncompleteResults {
-                message: format!(
-                    "Invalid data conversion from value: {new_value:?}. {error:?}"
-                ),
+                message: format!("Invalid data conversion from value: {new_value:?}. {error:?}"),
             }
         })?);
         core.write_8(variable.memory_location.memory_address()?, &buff)

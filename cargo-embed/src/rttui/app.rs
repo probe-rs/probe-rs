@@ -402,9 +402,7 @@ impl App {
                                         DataFormat::BinaryLE => match file.write(tab.data()) {
                                             Ok(_) => {}
                                             Err(e) => {
-                                                eprintln!(
-                                                    "\nError writing log channel {i}: {e}"
-                                                );
+                                                eprintln!("\nError writing log channel {i}: {e}");
                                                 continue;
                                             }
                                         },
