@@ -259,17 +259,17 @@ const SENTRY_SUCCESS: &str = r"Your error was reported successfully. If you don'
 fn print_uuid(uuid: Uuid) {
     let size = terminal_size::terminal_size();
     if let Some((Width(w), Height(_h))) = size {
-        let lines = chunk_string(&format!("{} {}", SENTRY_SUCCESS, uuid), w as usize - 14);
+        let lines = chunk_string(&format!("{SENTRY_SUCCESS} {uuid}"), w as usize - 14);
 
         for (i, l) in lines.iter().enumerate() {
             if i == 0 {
                 println!("  {} {}", "Thank You!".cyan().bold(), l);
             } else {
-                println!("             {}", l);
+                println!("             {l}");
             }
         }
     } else {
-        print!("{}", SENTRY_HINT);
+        print!("{SENTRY_HINT}");
     }
 }
 

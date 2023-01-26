@@ -166,7 +166,7 @@ impl Device {
         match result {
             0 => (),
             -1 => unreachable!("uninitialized context"),
-            err => panic!("unknown set_write_chunksize retval {:?}", err),
+            err => panic!("unknown set_write_chunksize retval {err:?}"),
         }
     }
 
@@ -176,7 +176,7 @@ impl Device {
         match result {
             0 => value,
             -1 => unreachable!("uninitialized context"),
-            err => panic!("unknown get_write_chunksize retval {:?}", err),
+            err => panic!("unknown get_write_chunksize retval {err:?}"),
         }
     }
 
@@ -185,7 +185,7 @@ impl Device {
         match result {
             0 => (),
             -1 => unreachable!("uninitialized context"),
-            err => panic!("unknown set_write_chunksize retval {:?}", err),
+            err => panic!("unknown set_write_chunksize retval {err:?}"),
         }
     }
 
@@ -195,7 +195,7 @@ impl Device {
         match result {
             0 => value,
             -1 => unreachable!("uninitialized context"),
-            err => panic!("unknown get_write_chunksize retval {:?}", err),
+            err => panic!("unknown get_write_chunksize retval {err:?}"),
         }
     }
 
@@ -345,5 +345,5 @@ pub struct LibFtdiError {
 
 // Ideally this should be using libusb bindings, but we don't depend on any specific USB crate yet
 pub(crate) fn libusb_to_io(code: i32) -> io::Error {
-    io::Error::new(io::ErrorKind::Other, format!("libusb error code {}", code))
+    io::Error::new(io::ErrorKind::Other, format!("libusb error code {code}"))
 }
