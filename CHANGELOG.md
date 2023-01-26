@@ -16,16 +16,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
   Check if the flash algorithm supports RTT, and if it does, store the RTT control block
   address in the target YAML file.
-  
+
+- probe-rs: Read RTT during flashing procedures if the algorithm supports RTT.
+
+  This enables better debugging for flash-algorithms and should encourage development of said algorithms.
+
 ### Changed
 
 - cmsisdap: Increased read timeout from 100ms to 1000ms.
+- rtt: Moved RTT to the probe-rs library instead of having it in its own library. (#1411)
 
 ### Fixed
 
 - probe-rs: Avoid nested calls to tracing macros, otherwise filtering doesn't work properly. (#1415)
-
-Moved RTT to the probe-rs library instead of having it in its own library. (#1411)
 
 ## [0.14.2]
 
