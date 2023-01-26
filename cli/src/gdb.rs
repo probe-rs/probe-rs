@@ -34,7 +34,7 @@ pub fn run_gdb_server(
 
     if let Err(e) = probe_rs_gdb_server::run(&session, instances.iter()) {
         eprintln!("During the execution of GDB an error was encountered:");
-        eprintln!("{:?}", e);
+        eprintln!("{e:?}");
     }
 
     Ok(())

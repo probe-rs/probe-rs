@@ -109,11 +109,11 @@ impl DebugCli {
                 match cs.disasm_all(&code, cpu_info.pc) {
                     Ok(instructions) => {
                         for i in instructions.iter() {
-                            println!("{}", i);
+                            println!("{i}");
                         }
                     }
                     Err(e) => {
-                        println!("Error disassembling instructions: {}", e);
+                        println!("Error disassembling instructions: {e}");
 
                         // Fallback to raw output
                         for (offset, instruction) in code.iter().enumerate() {
@@ -169,7 +169,7 @@ impl DebugCli {
                                     let exception_number = xpsr & 0xff;
 
                                     if exception_number != 0 {
-                                        println!("Currently handling exception {}", exception_number);
+                                        println!("Currently handling exception {exception_number}");
 
                                         if exception_number == 3 {
                                             println!("Hard Fault!");
@@ -177,7 +177,7 @@ impl DebugCli {
 
                                             let return_address: u64 = cli_data.core.read_core_reg(cli_data.core.registers().return_address())?;
 
-                                            println!("Return address (LR): {:#010x}", return_address);
+                                            println!("Return address (LR): {return_address:#010x}");
 
                                             // Get reason for hard fault
                                             let hfsr = cli_data.core.read_word_32(0xE000_ED2C)?;
@@ -195,21 +195,21 @@ impl DebugCli {
 
 
                                                 if ufsr != 0 {
-                                                    println!("\tUsage Fault     - UFSR: {:#06x}", ufsr);
+                                                    println!("\tUsage Fault     - UFSR: {ufsr:#06x}");
                                                 }
 
                                                 if bfsr != 0 {
-                                                    println!("\tBus Fault       - BFSR: {:#04x}", bfsr);
+                                                    println!("\tBus Fault       - BFSR: {bfsr:#04x}");
 
                                                     if bfsr & (1 << 7) == (1 << 7) {
                                                         // Read address from BFAR
                                                         let bfar = cli_data.core.read_word_32(0xE000_ED38)?;
-                                                        println!("\t Location       - BFAR: {:#010x}", bfar);
+                                                        println!("\t Location       - BFAR: {bfar:#010x}");
                                                     }
                                                 }
 
                                                 if mmfsr != 0 {
-                                                    println!("\tMemManage Fault - BFSR: {:04x}", bfsr);
+                                                    println!("\tMemManage Fault - BFSR: {bfsr:04x}");
                                                 }
 
                                             }
@@ -383,7 +383,7 @@ impl DebugCli {
 
                 cli_data.core.set_hw_breakpoint(address)?;
 
-                println!("Set new breakpoint at address {:#08x}", address);
+                println!("Set new breakpoint at address {address:#08x}");
 
                 Ok(CliState::Continue)
             },
@@ -437,10 +437,10 @@ impl DebugCli {
                                         }
 
                                         if let Some(file) = &location.file {
-                                            print!("/{}", file);
+                                            print!("/{file}");
 
                                             if let Some(line) = location.line {
-                                                print!(":{}", line);
+                                                print!(":{line}");
 
                                                 if let Some(col) = location.column {
                                                     match col {
@@ -448,7 +448,7 @@ impl DebugCli {
                                                             print!(":1")
                                                         }
                                                         probe_rs::debug::ColumnType::Column(c) => {
-                                                            print!(":{}", c)
+                                                            print!(":{c}")
                                                         }
                                                     }
                                                 }
@@ -592,7 +592,7 @@ impl DebugCli {
                                         current_frame.frame_base,
                                     )
                                 {
-                                    println!("Failed to cache local variables: {}", error);
+                                    println!("Failed to cache local variables: {error}");
                                     return Ok(CliState::Continue);
                                 }
                             }
@@ -742,7 +742,7 @@ impl DebugCli {
 
                     Self::execute_command(cli_data, cmd, &remaining_args)
                 } else {
-                    println!("Unknown command '{}'", command);
+                    println!("Unknown command '{command}'");
                     println!("Enter 'help' for a list of commands");
 
                     Ok(CliState::Continue)

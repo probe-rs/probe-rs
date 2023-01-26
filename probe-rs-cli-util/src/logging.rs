@@ -373,13 +373,13 @@ pub fn ask_to_log_crash() -> bool {
                 if i == 0 {
                     println!("        {} {}", "Hint".blue().bold(), l);
                 } else if i == lines.len() - 1 {
-                    print!("             {}", l);
+                    print!("             {l}");
                 } else {
-                    println!("             {}", l);
+                    println!("             {l}");
                 }
             }
         } else {
-            print!("{}", SENTRY_HINT);
+            print!("{SENTRY_HINT}");
         }
 
         std::io::stdout().flush().ok();

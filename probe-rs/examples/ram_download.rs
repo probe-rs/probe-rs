@@ -117,8 +117,7 @@ fn main() -> Result<()> {
             let mismatch_address = matches.address + index as u64 * 4;
 
             eprintln!(
-                "Readback data differs at address {:08x}: expected word {:08x}, got word {:08x}",
-                mismatch_address, sample_data, readback_data
+                "Readback data differs at address {mismatch_address:08x}: expected word {sample_data:08x}, got word {readback_data:08x}"
             );
 
             error_count += 1;

@@ -148,7 +148,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             self.send_response(
                 request,
                 Ok(Some(ReadMemoryResponseBody {
-                    address: format!("{:#010x}", address),
+                    address: format!("{address:#010x}"),
                     data: Some(response),
                     unreadable_bytes: None,
                 })),
@@ -225,7 +225,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                     "memory",
                     Some(MemoryEventBody {
                         count: data_bytes.len() as i64,
-                        memory_reference: format!("{:#010x}", address),
+                        memory_reference: format!("{address:#010x}"),
                         offset: 0,
                     }),
                 )
@@ -281,7 +281,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                 .and_then(|reg| reg.value)
             {
                 response_body.type_ = Some(format!("{}", VariableName::RegistersRoot));
-                response_body.result = format!("{}", register_value);
+                response_body.result = format!("{register_value}");
             } else {
                 // If the expression wasn't pointing to a register, then check if is a local or static variable in our stack_frame
                 let mut variable: Option<probe_rs::debug::Variable> = None;
@@ -681,19 +681,18 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                                         Some(valid_breakpoint_location),
                                         breakpoint_source_location,
                                         format!(
-                                            "Source breakpoint at memory address: {:#010X}",
-                                            valid_breakpoint_location
+                                            "Source breakpoint at memory address: {valid_breakpoint_location:#010X}"
                                         ),
                                     ),
                                     Err(err) => {
-                                        (None, None, format!("Warning: Could not set breakpoint at memory address: {:#010x}: {}", valid_breakpoint_location, err))
+                                        (None, None, format!("Warning: Could not set breakpoint at memory address: {valid_breakpoint_location:#010x}: {err}"))
                                     }
                                 }
                             }
                         Ok(_) => {
                             (None, None, "Cannot set breakpoint here. Try reducing `opt-level` in `Cargo.toml`, or choose a different source location".to_string())
                         }
-                        Err(error) => (None, None, format!("Cannot set breakpoint here. Try reducing `opt-level` in `Cargo.toml`, or choose a different source location: {:?}", error)),
+                        Err(error) => (None, None, format!("Cannot set breakpoint here. Try reducing `opt-level` in `Cargo.toml`, or choose a different source location: {error:?}")),
                     }
                 } else {
                     (None, None, "No source path provided for set_breakpoints(). Please report this as a bug.".to_string())
@@ -714,13 +713,13 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                             .and_then(|sl| sl.line.map(|line| line as i64)),
                         message: Some(reason_msg),
                         source: None,
-                        instruction_reference: Some(format!("{:#010X}", verified_breakpoint)),
+                        instruction_reference: Some(format!("{verified_breakpoint:#010X}")),
                         offset: None,
                         verified: true,
                     });
                 } else {
                     // In addition to sending the error to the 'Hover' message, also write it to the Debug Console Log.
-                    self.log_to_console(format!("WARNING: {}", reason_msg));
+                    self.log_to_console(format!("WARNING: {reason_msg}"));
                     self.show_message(MessageSeverity::Warning, reason_msg.clone());
                     created_breakpoints.push(Breakpoint {
                         column: bp.column,
@@ -801,7 +800,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                     Ok(_) => {
                         breakpoint_response.verified = true;
                         breakpoint_response.instruction_reference =
-                            Some(format!("{:#010x}", memory_reference));
+                            Some(format!("{memory_reference:#010x}"));
                         // Try to resolve the source location for this breakpoint.
                         match target_core
                             .core_data
@@ -825,16 +824,15 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                     }
                     Err(error) => {
                         let message = format!(
-                            "Warning: Could not set breakpoint at memory address: {:#010x}: {}",
-                            memory_reference, error
+                            "Warning: Could not set breakpoint at memory address: {memory_reference:#010x}: {error}"
                         )
                         .to_string();
                         // In addition to sending the error to the 'Hover' message, also write it to the Debug Console Log.
-                        self.log_to_console(format!("Warning: {}", message));
+                        self.log_to_console(format!("Warning: {message}"));
                         self.show_message(MessageSeverity::Warning, message.clone());
                         breakpoint_response.message = Some(message);
                         breakpoint_response.instruction_reference =
-                            Some(format!("{:#010x}", memory_reference));
+                            Some(format!("{memory_reference:#010x}"));
                     }
                 }
             } else {
@@ -1327,7 +1325,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         let mut instruction_pointer = if let Some(read_pointer) = read_pointer {
             read_pointer
         } else {
-            let error_message = format!("Unable to calculate starting address for disassembly request with memory reference:{:#010X}, byte offset:{:#010X}, and instruction offset:{:#010X}.", memory_reference, byte_offset, instruction_offset);
+            let error_message = format!("Unable to calculate starting address for disassembly request with memory reference:{memory_reference:#010X}, byte offset:{byte_offset:#010X}, and instruction offset:{instruction_offset:#010X}.");
             return Err(DebuggerError::Other(anyhow!(error_message)));
         };
 
@@ -1359,13 +1357,12 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                         Err(memory_read_error) => {
                             // If we can't read data at a given address, then create a "invalid instruction" record, and keep trying.
                             assembly_lines.push(dap_types::DisassembledInstruction {
-                                address: format!("{:#010X}", current_read_pointer),
+                                address: format!("{current_read_pointer:#010X}"),
                                 column: None,
                                 end_column: None,
                                 end_line: None,
                                 instruction: format!(
-                                    "<instruction address not readable : {:?}>",
-                                    memory_read_error
+                                    "<instruction address not readable : {memory_read_error:?}>"
                                 ),
                                 instruction_bytes: None,
                                 line: None,
@@ -1574,7 +1571,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                                 .memory_address()
                                 .map_or_else(
                                     |_| None,
-                                    |address| Some(format!("{:#010x}", address)),
+                                    |address| Some(format!("{address:#010x}")),
                                 ),
                             indexed_variables: Some(indexed_child_variables_cnt),
                             named_variables: Some(named_child_variables_cnt),
@@ -1851,7 +1848,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                 } => {
                     self.show_message(
                         MessageSeverity::Information,
-                        format!("Step error @{:#010X}: {}", pc_at_error, message),
+                        format!("Step error @{pc_at_error:#010X}: {message}"),
                     );
                     (target_core.core.status()?, *pc_at_error)
                 }
@@ -1957,9 +1954,9 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                 std::error::Error::source(&response);
             while let Some(source_error) = child_error {
                 offset_iterations += 1;
-                response_message = format!("{}\n", response_message,);
+                response_message = format!("{response_message}\n",);
                 for _offset_counter in 0..offset_iterations {
-                    response_message = format!("{}\t", response_message);
+                    response_message = format!("{response_message}\t");
                 }
                 response_message = format!(
                     "{}{}",
@@ -2144,7 +2141,7 @@ fn get_dap_source(source_location: &SourceLocation) -> Option<Source> {
                 name: source_location
                     .file
                     .clone()
-                    .map(|file_name| format!("<unavailable>: {}", file_name)),
+                    .map(|file_name| format!("<unavailable>: {file_name}")),
                 path: Some(path.to_string_lossy().to_string()),
                 source_reference: None,
                 presentation_hint: Some("deemphasize".to_string()),
@@ -2196,7 +2193,7 @@ impl DapStatus for CoreStatus {
                         "Halted on breakpoint ({:?}) @{}.",
                         cause,
                         if let Some(program_counter) = program_counter {
-                            format!("{:#010x}", program_counter)
+                            format!("{program_counter:#010x}")
                         } else {
                             "(unspecified location)".to_string()
                         }
@@ -2215,7 +2212,7 @@ impl DapStatus for CoreStatus {
                     format!(
                         "Halted after a 'step' instruction @{}.",
                         if let Some(program_counter) = program_counter {
-                            format!("{:#010x}", program_counter)
+                            format!("{program_counter:#010x}")
                         } else {
                             "(unspecified location)".to_string()
                         }

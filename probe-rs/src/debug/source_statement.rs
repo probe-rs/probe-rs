@@ -17,7 +17,7 @@ pub struct SourceStatements {
 impl Debug for SourceStatements {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         for statement in &self.statements {
-            writeln!(f, "{:?}", statement)?;
+            writeln!(f, "{statement:?}")?;
         }
         Ok(())
     }

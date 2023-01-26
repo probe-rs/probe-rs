@@ -221,8 +221,8 @@ impl AtSAME5x {
             )),
             (false, true, Err(MissingPermissions(permission))) => Err(ArmError::MissingPermissions(
                 format!("Device is locked. A Chip-Erase operation is required to unlock. \
-                            Re-run with granting the '{}' permission and connecting under reset"
-                    , permission),
+                            Re-run with granting the '{permission}' permission and connecting under reset"
+                    ),
             )),
             // TODO: This seems wrong? Currently preserves the bevaiour before the change of the error type.
             (false, false,Err(MissingPermissions(permission))) => Err(ArmError::MissingPermissions(permission)),

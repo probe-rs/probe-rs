@@ -62,8 +62,7 @@ impl std::str::FromStr for WireProtocol {
             "swd" => Ok(WireProtocol::Swd),
             "jtag" => Ok(WireProtocol::Jtag),
             _ => Err(format!(
-                "'{}' is not a valid protocol. Choose from [swd, jtag].",
-                s
+                "'{s}' is not a valid protocol. Choose from [swd, jtag]."
             )),
         }
     }
@@ -82,11 +81,10 @@ pub enum BatchCommand {
 impl fmt::Display for BatchCommand {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            BatchCommand::Read(port, addr) => write!(f, "Read(port={:?}, addr={})", port, addr),
+            BatchCommand::Read(port, addr) => write!(f, "Read(port={port:?}, addr={addr})"),
             BatchCommand::Write(port, addr, data) => write!(
                 f,
-                "Write(port={:?}, addr={}, data=0x{:08x}",
-                port, addr, data
+                "Write(port={port:?}, addr={addr}, data=0x{data:08x}"
             ),
         }
     }
@@ -675,7 +673,7 @@ impl std::fmt::Debug for DebugProbeInfo {
             self.product_id,
             self.serial_number
                 .clone()
-                .map_or("".to_owned(), |v| format!("Serial: {}, ", v)),
+                .map_or("".to_owned(), |v| format!("Serial: {v}, ")),
             self.probe_type
         )
     }
@@ -796,7 +794,7 @@ impl fmt::Display for DebugProbeSelector {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{:04x}:{:04x}", self.vendor_id, self.product_id)?;
         if let Some(ref sn) = self.serial_number {
-            write!(f, ":{}", sn)?;
+            write!(f, ":{sn}")?;
         }
         Ok(())
     }

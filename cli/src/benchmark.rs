@@ -149,7 +149,7 @@ pub fn benchmark(common_options: ProbeOptions, options: BenchmarkOptions) -> any
             const BASE_URL: &str = "https://perf.probe.rs/add";
             client
                 .post(if let Some(pr) = options.pr {
-                    format!("{}?pr={}", BASE_URL, pr)
+                    format!("{BASE_URL}?pr={pr}")
                 } else {
                     BASE_URL.to_string()
                 })
@@ -167,7 +167,7 @@ pub fn benchmark(common_options: ProbeOptions, options: BenchmarkOptions) -> any
                     write_speed: write_throughput as i32,
                 })
                 .send()
-                .with_context(|| format!("Failed to upload results to {}", BASE_URL))?;
+                .with_context(|| format!("Failed to upload results to {BASE_URL}"))?;
         }
 
         Ok(())

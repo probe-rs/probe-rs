@@ -102,18 +102,18 @@ fn main() {
             let first_line_prefix = "Error".red().bold();
             let other_line_prefix: String = " ".repeat(first_line_prefix.chars().count());
 
-            let error = format!("{:?}", e);
+            let error = format!("{e:?}");
 
             for (i, line) in error.lines().enumerate() {
                 let _ = write!(stderr, "       ");
 
                 if i == 0 {
-                    let _ = write!(stderr, "{}", first_line_prefix);
+                    let _ = write!(stderr, "{first_line_prefix}");
                 } else {
-                    let _ = write!(stderr, "{}", other_line_prefix);
+                    let _ = write!(stderr, "{other_line_prefix}");
                 };
 
-                let _ = writeln!(stderr, " {}", line);
+                let _ = writeln!(stderr, " {line}");
             }
 
             let _ = stderr.flush();
@@ -156,7 +156,7 @@ fn main_try() -> Result<()> {
     // Make sure we load the config given in the cli parameters.
     for cdp in &config.general.chip_descriptions {
         probe_rs::config::add_target_from_yaml(Path::new(cdp))
-            .with_context(|| format!("failed to load the chip description from {}", cdp))?;
+            .with_context(|| format!("failed to load the chip description from {cdp}"))?;
     }
 
     let chip = if opt.list_chips {
@@ -169,7 +169,7 @@ fn main_try() -> Result<()> {
             .unwrap_or(TargetSelector::Auto)
     };
 
-    METADATA.lock().unwrap().chip = Some(format!("{:?}", chip));
+    METADATA.lock().unwrap().chip = Some(format!("{chip:?}"));
 
     // Remove executable name from the arguments list.
     args.remove(0);
@@ -234,7 +234,7 @@ fn main_try() -> Result<()> {
                                     You can also set the [default.probe] config attribute \
                                     (in your Embed.toml) to select which probe to use. \
                                     For usage examples see https://github.com/probe-rs/cargo-embed/blob/master/src/config/default.toml .",
-                                    list.iter().enumerate().map(|(num, link)| format!("[{}]: {:?}\n", num, link)).collect::<String>()));
+                                    list.iter().enumerate().map(|(num, link)| format!("[{num}]: {link:?}\n")).collect::<String>()));
                 }
                 Probe::open(
                     list.first()
@@ -268,7 +268,7 @@ fn main_try() -> Result<()> {
         probe.speed_khz()
     };
 
-    METADATA.lock().unwrap().speed = Some(format!("{:?}", protocol_speed));
+    METADATA.lock().unwrap().speed = Some(format!("{protocol_speed:?}"));
 
     log::info!("Protocol speed {} kHz", protocol_speed);
 
@@ -474,7 +474,7 @@ fn main_try() -> Result<()> {
             };
             if let Err(e) = probe_rs_gdb_server::run(&session, instances.iter()) {
                 logging::eprintln("During the execution of GDB an error was encountered:");
-                logging::eprintln(format!("{:?}", e));
+                logging::eprintln(format!("{e:?}"));
             }
         }));
     }

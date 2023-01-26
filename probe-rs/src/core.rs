@@ -233,9 +233,9 @@ impl PartialEq for RegisterValue {
 impl core::fmt::Display for RegisterValue {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
-            RegisterValue::U32(register_value) => write!(f, "{:#010x}", register_value),
-            RegisterValue::U64(register_value) => write!(f, "{:#018x}", register_value),
-            RegisterValue::U128(register_value) => write!(f, "{:#034x}", register_value),
+            RegisterValue::U32(register_value) => write!(f, "{register_value:#010x}"),
+            RegisterValue::U64(register_value) => write!(f, "{register_value:#018x}"),
+            RegisterValue::U128(register_value) => write!(f, "{register_value:#034x}"),
         }
     }
 }
@@ -896,7 +896,7 @@ impl<'probe> Core<'probe> {
     {
         let address = address.into();
 
-        tracing::Span::current().record("address", format!("{:?}", address));
+        tracing::Span::current().record("address", format!("{address:?}"));
 
         let value = self.inner.read_core_reg(address)?;
 

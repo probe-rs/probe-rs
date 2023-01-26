@@ -213,8 +213,7 @@ impl std::str::FromStr for ConsoleLog {
             "info" => Ok(ConsoleLog::Info),
             "debug" => Ok(ConsoleLog::Debug),
             _ => Err(format!(
-                "'{}' is not a valid console log level. Choose from [console, info, or debug].",
-                s
+                "'{s}' is not a valid console log level. Choose from [console, info, or debug]."
             )),
         }
     }

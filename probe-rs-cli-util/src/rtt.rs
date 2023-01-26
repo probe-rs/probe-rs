@@ -72,7 +72,7 @@ impl FromStr for DataFormat {
             "string" => Ok(Self::String),
             "binaryle" => Ok(Self::BinaryLE),
             "defmt" => Ok(Self::Defmt),
-            _ => Err(format!("{} is not a valid format", src)),
+            _ => Err(format!("{src} is not a valid format")),
         }
     }
 }
@@ -247,13 +247,13 @@ impl RttActiveChannel {
                                         write!(formatted_data, "{} :", Local::now())
                                             .map_or_else(|err| log::error!("Failed to format RTT data - {:?}", err), |r|r);
                                     }
-                                    writeln!(formatted_data, "{}", line).map_or_else(|err| log::error!("Failed to format RTT data - {:?}", err), |r|r);
+                                    writeln!(formatted_data, "{line}").map_or_else(|err| log::error!("Failed to format RTT data - {:?}", err), |r|r);
                                 }
                             }
                             DataFormat::BinaryLE => {
                                 for element in &self.rtt_buffer.0[..bytes_read] {
                                     // Width of 4 allows 0xFF to be printed.
-                                    write!(formatted_data, "{:#04x}", element).map_or_else(|err| log::error!("Failed to format RTT data - {:?}", err), |r|r);
+                                    write!(formatted_data, "{element:#04x}").map_or_else(|err| log::error!("Failed to format RTT data - {:?}", err), |r|r);
                                 }
                             }
                             DataFormat::Defmt => {

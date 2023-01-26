@@ -70,11 +70,11 @@ pub fn test_stepping(core: &mut Core, memory_regions: &[MemoryRegion]) -> Result
 
             let pc: u64 = core.read_core_reg(registers.program_counter())?;
 
-            println!("Core stopped at: {:#08x}", pc);
+            println!("Core stopped at: {pc:#08x}");
 
             let r2_val: u64 = core.read_core_reg(registers.platform_register(2))?;
 
-            println!("$r2 = {:#08x}", r2_val);
+            println!("$r2 = {r2_val:#08x}");
         }
         Err(other) => anyhow::bail!(other),
     }
@@ -93,7 +93,7 @@ pub fn test_stepping(core: &mut Core, memory_regions: &[MemoryRegion]) -> Result
 
     assert_eq!(pc, break_address);
 
-    println!("Core halted at {:#08x}, now trying to run...", pc);
+    println!("Core halted at {pc:#08x}, now trying to run...");
 
     // Increase PC by 2 to skip breakpoint.
     core.write_core_reg(registers.program_counter().into(), pc + 2)?;
@@ -115,11 +115,11 @@ pub fn test_stepping(core: &mut Core, memory_regions: &[MemoryRegion]) -> Result
 
             let pc: u64 = core.read_core_reg(registers.program_counter())?;
 
-            println!("Core stopped at: {:#08x}", pc);
+            println!("Core stopped at: {pc:#08x}");
 
             let r2_val: u64 = core.read_core_reg(registers.platform_register(2))?;
 
-            println!("$r2 = {:#08x}", r2_val);
+            println!("$r2 = {r2_val:#08x}");
         }
         Err(other) => anyhow::bail!(other),
     }
@@ -134,7 +134,7 @@ pub fn test_stepping(core: &mut Core, memory_regions: &[MemoryRegion]) -> Result
 
     let pc: u64 = core.read_core_reg(registers.program_counter())?;
 
-    assert_eq!(pc, break_address, "{:#08x} != {:#08x}", pc, break_address);
+    assert_eq!(pc, break_address, "{pc:#08x} != {break_address:#08x}");
 
     // Register r2 should be 1 to indicate end of test.
     let r2_val: u64 = core.read_core_reg(registers.platform_register(2))?;
