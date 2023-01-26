@@ -667,6 +667,7 @@ impl<'probe, 'progress, O: Operation> ActiveFlasher<'probe, 'progress, O> {
         if let Some(rtt_address) = self.flash_algorithm.rtt_control_block {
             let now = std::time::Instant::now();
             while self.rtt.is_none() {
+                std::thread::sleep(Duration::from_millis(1));
                 let rtt = match crate::rtt::Rtt::attach_region(
                     &mut self.core,
                     &self.memory_map,
@@ -683,8 +684,6 @@ impl<'probe, 'progress, O: Operation> ActiveFlasher<'probe, 'progress, O> {
                 if self.rtt.is_some() || now.elapsed() > std::time::Duration::from_secs(1) {
                     break;
                 }
-
-                std::thread::sleep(Duration::from_millis(1));
             }
             println!("Elapsed: {:?}", now.elapsed());
         }
