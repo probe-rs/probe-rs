@@ -1,7 +1,7 @@
-use std::cell::RefCell;
 use std::path::Path;
 use std::rc::Rc;
 use std::time::Instant;
+use std::{cell::RefCell, path::PathBuf};
 
 use anyhow::Result;
 use colored::Colorize;
@@ -12,9 +12,9 @@ use probe_rs::{
 
 use super::export::{cmd_export, DEFINITION_EXPORT_PATH};
 
-pub fn cmd_test() -> Result<()> {
+pub fn cmd_run(target_artifact: PathBuf) -> Result<()> {
     // Generate the binary
-    cmd_export()?;
+    cmd_export(target_artifact)?;
 
     probe_rs::config::add_target_from_yaml(Path::new(DEFINITION_EXPORT_PATH))?;
     let mut session =

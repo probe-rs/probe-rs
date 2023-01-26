@@ -1,5 +1,4 @@
 pub mod algorithm_binary;
-pub mod cargo;
 pub mod commands;
 pub mod fetch;
 pub mod flash_device;
@@ -19,7 +18,7 @@ use tracing_subscriber::EnvFilter;
 use crate::commands::{
     elf::{cmd_elf, serialize_to_yaml_file},
     export::cmd_export,
-    test::cmd_test,
+    run::cmd_run,
 };
 
 #[derive(clap::Parser)]
@@ -89,14 +88,20 @@ enum TargetGen {
     ///
     /// It builds the project, extracts parameters and functions from the ELF and generates
     /// the target yaml file.
-    Export {},
+    Export {
+        /// The path to the ELF.
+        target_artifact: PathBuf,
+    },
     /// Generates a target yaml from a flash algorithm Rust project.
     ///
     /// It builds the project, extracts parameters and functions from the ELF and generates
     /// the target yaml file and runs the flash algorithm on the given attached target.
     ///
     /// Works like `target-gen export` but also runs the flash algorithm.
-    Test {},
+    Test {
+        /// The path to the ELF.
+        target_artifact: PathBuf,
+    },
 }
 
 fn main() -> Result<()> {
@@ -123,8 +128,8 @@ fn main() -> Result<()> {
             pack_filter: chip_family,
             list,
         } => cmd_arm(output_dir, chip_family, list)?,
-        TargetGen::Export {} => cmd_export()?,
-        TargetGen::Test {} => cmd_test()?,
+        TargetGen::Export { target_artifact } => cmd_export(target_artifact)?,
+        TargetGen::Test { target_artifact } => cmd_run(target_artifact)?,
     }
 
     println!("Finished in {:?}", t.elapsed());
