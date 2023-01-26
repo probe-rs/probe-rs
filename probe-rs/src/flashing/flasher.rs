@@ -516,7 +516,7 @@ pub(super) struct ActiveFlasher<'probe, 'progress, O: Operation> {
     rtt: Option<crate::rtt::Rtt>,
     #[cfg(feature = "rtt")]
     memory_map: Vec<MemoryRegion>,
-    #[cfg(feature = "rtt")]
+    #[allow(dead_code)]
     progress: Option<&'progress FlashProgress>,
     flash_algorithm: FlashAlgorithm,
     _operation: core::marker::PhantomData<O>,
