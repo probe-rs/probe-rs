@@ -98,7 +98,7 @@ enum TargetGen {
     /// the target yaml file and runs the flash algorithm on the given attached target.
     ///
     /// Works like `target-gen export` but also runs the flash algorithm.
-    Test {
+    Run {
         /// The path to the ELF.
         target_artifact: PathBuf,
     },
@@ -129,7 +129,7 @@ fn main() -> Result<()> {
             list,
         } => cmd_arm(output_dir, chip_family, list)?,
         TargetGen::Export { target_artifact } => cmd_export(target_artifact)?,
-        TargetGen::Test { target_artifact } => cmd_run(target_artifact)?,
+        TargetGen::Run { target_artifact } => cmd_run(target_artifact)?,
     }
 
     println!("Finished in {:?}", t.elapsed());
