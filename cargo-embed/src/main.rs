@@ -601,7 +601,7 @@ fn main_try() -> Result<()> {
                     let timestamp_millis =
                         OffsetDateTime::now_local()?.unix_timestamp_nanos() / 1_000_000;
 
-                    let logname = format!("{}_{}_{}", name, chip_name, timestamp_millis);
+                    let logname = format!("{name}_{chip_name}_{timestamp_millis}");
                     let mut app = rttui::app::App::new(rtt, &config, logname)?;
                     loop {
                         let mut session_handle = session.lock().unwrap();
