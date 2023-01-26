@@ -255,7 +255,7 @@ impl<'probe> Armv7a<'probe> {
                             self.execute_instruction(instruction)?;
                         }
                         _ => {
-                            panic!("Logic missing for writeback of register {}", i);
+                            panic!("Logic missing for writeback of register {i}");
                         }
                     }
                 }

@@ -144,7 +144,7 @@ pub fn run_flash_download(
         loader.commit(session, download_option).map_err(|error| {
             OperationError::FlashingFailed {
                 source: error,
-                target: session.target().clone(),
+                target: Box::new(session.target().clone()),
                 target_spec: opt.probe_options.chip.clone(),
                 path: path.to_path_buf(),
             }
@@ -153,7 +153,7 @@ pub fn run_flash_download(
         loader.commit(session, download_option).map_err(|error| {
             OperationError::FlashingFailed {
                 source: error,
-                target: session.target().clone(),
+                target: Box::new(session.target().clone()),
                 target_spec: opt.probe_options.chip.clone(),
                 path: path.to_path_buf(),
             }

@@ -767,7 +767,7 @@ pub(crate) fn list_jlink_devices() -> Vec<DebugProbeInfo> {
                 DebugProbeInfo::new(
                     format!(
                         "J-Link{}",
-                        product.map(|p| format!(" ({})", p)).unwrap_or_default()
+                        product.map(|p| format!(" ({p})")).unwrap_or_default()
                     ),
                     vid,
                     pid,

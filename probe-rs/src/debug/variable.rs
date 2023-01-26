@@ -49,7 +49,7 @@ impl std::fmt::Display for VariableValue {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             VariableValue::Valid(value) => value.fmt(f),
-            VariableValue::Error(error) => write!(f, "< {} >", error,),
+            VariableValue::Error(error) => write!(f, "< {error} >",),
             VariableValue::Empty => write!(
                 f,
                 "Value not set. Please use Variable::get_value() to infer a human readable variable value"
@@ -234,7 +234,7 @@ impl std::fmt::Display for VariableType {
                 .clone()
                 .unwrap_or_else(|| "<unnamed>".to_string())
                 .fmt(f),
-            VariableType::Array { entry_type, count } => write!(f, "[{}; {}]", entry_type, count),
+            VariableType::Array { entry_type, count } => write!(f, "[{entry_type}; {count}]"),
             VariableType::Unknown => "<unknown>".fmt(f),
             VariableType::Other(other) => other.fmt(f),
         }
@@ -264,10 +264,7 @@ impl VariableLocation {
         match self {
             VariableLocation::Address(address) => Ok(*address),
             other => Err(DebugError::UnwindIncompleteResults {
-                message: format!(
-                    "Variable does not have a memory location: location={:?}",
-                    other
-                ),
+                message: format!("Variable does not have a memory location: location={other:?}"),
             }),
         }
     }
@@ -288,7 +285,7 @@ impl std::fmt::Display for VariableLocation {
         match self {
             VariableLocation::Unknown => "<unknown value>".fmt(f),
             VariableLocation::Unavailable => "<value not available>".fmt(f),
-            VariableLocation::Address(address) => write!(f, "{:#010X}", address),
+            VariableLocation::Address(address) => write!(f, "{address:#010X}"),
             VariableLocation::Value => "<not applicable - statically stored value>".fmt(f),
             VariableLocation::Error(error) => error.fmt(f),
             VariableLocation::Unsupported(reason) => reason.fmt(f),
@@ -421,10 +418,10 @@ impl Variable {
                     "f32" => f32::update_value(self, core, new_value.as_str()),
                     "f64" => f64::update_value(self, core, new_value.as_str()),
                     other => Err(DebugError::UnwindIncompleteResults {
-                        message: format!("Unsupported datatype: {}. Please only update variables with a base data type.", other),
+                        message: format!("Unsupported datatype: {other}. Please only update variables with a base data type."),
                     }),
                 },
-                other => Err(DebugError::UnwindIncompleteResults { message: format!("Unsupported variable type {:?}. Only base variables can be updated.", other)}),
+                other => Err(DebugError::UnwindIncompleteResults { message: format!("Unsupported variable type {other:?}. Only base variables can be updated.")}),
             };
 
             match update_result {
@@ -441,7 +438,7 @@ impl Variable {
                 }
                 Err(error) => {
                     return Err(DebugError::UnwindIncompleteResults {
-                        message: format!("Invalid data value={:?}: {}", new_value, error),
+                        message: format!("Invalid data value={new_value:?}: {error}"),
                     });
                 }
             }
@@ -462,7 +459,7 @@ impl Variable {
                         self.memory_location.memory_address().unwrap_or(u64::MAX) // We should never encounter a memory location that is invalid if we already used it to read the register value.
                     )
                 } else {
-                    format!("Invalid register value {}", register_value)
+                    format!("Invalid register value {register_value}")
                 }
             } else {
                 format!("{}", self.value)
@@ -595,67 +592,67 @@ impl Variable {
                     "!" => VariableValue::Valid("<Never returns>".to_string()),
                     "()" => VariableValue::Valid("()".to_string()),
                     "bool" => bool::get_value(self, core, variable_cache).map_or_else(
-                        |err| VariableValue::Error(format!("{:?}", err)),
+                        |err| VariableValue::Error(format!("{err:?}")),
                         |value| VariableValue::Valid(value.to_string()),
                     ),
                     "char" => char::get_value(self, core, variable_cache).map_or_else(
-                        |err| VariableValue::Error(format!("{:?}", err)),
+                        |err| VariableValue::Error(format!("{err:?}")),
                         |value| VariableValue::Valid(value.to_string()),
                     ),
                     "i8" => i8::get_value(self, core, variable_cache).map_or_else(
-                        |err| VariableValue::Error(format!("{:?}", err)),
+                        |err| VariableValue::Error(format!("{err:?}")),
                         |value| VariableValue::Valid(value.to_string()),
                     ),
                     "i16" => i16::get_value(self, core, variable_cache).map_or_else(
-                        |err| VariableValue::Error(format!("{:?}", err)),
+                        |err| VariableValue::Error(format!("{err:?}")),
                         |value| VariableValue::Valid(value.to_string()),
                     ),
                     "i32" => i32::get_value(self, core, variable_cache).map_or_else(
-                        |err| VariableValue::Error(format!("{:?}", err)),
+                        |err| VariableValue::Error(format!("{err:?}")),
                         |value| VariableValue::Valid(value.to_string()),
                     ),
                     "i64" => i64::get_value(self, core, variable_cache).map_or_else(
-                        |err| VariableValue::Error(format!("{:?}", err)),
+                        |err| VariableValue::Error(format!("{err:?}")),
                         |value| VariableValue::Valid(value.to_string()),
                     ),
                     "i128" => i128::get_value(self, core, variable_cache).map_or_else(
-                        |err| VariableValue::Error(format!("{:?}", err)),
+                        |err| VariableValue::Error(format!("{err:?}")),
                         |value| VariableValue::Valid(value.to_string()),
                     ),
                     "isize" => isize::get_value(self, core, variable_cache).map_or_else(
-                        |err| VariableValue::Error(format!("{:?}", err)),
+                        |err| VariableValue::Error(format!("{err:?}")),
                         |value| VariableValue::Valid(value.to_string()),
                     ),
                     "u8" => u8::get_value(self, core, variable_cache).map_or_else(
-                        |err| VariableValue::Error(format!("{:?}", err)),
+                        |err| VariableValue::Error(format!("{err:?}")),
                         |value| VariableValue::Valid(value.to_string()),
                     ),
                     "u16" => u16::get_value(self, core, variable_cache).map_or_else(
-                        |err| VariableValue::Error(format!("{:?}", err)),
+                        |err| VariableValue::Error(format!("{err:?}")),
                         |value| VariableValue::Valid(value.to_string()),
                     ),
                     "u32" => u32::get_value(self, core, variable_cache).map_or_else(
-                        |err| VariableValue::Error(format!("{:?}", err)),
+                        |err| VariableValue::Error(format!("{err:?}")),
                         |value| VariableValue::Valid(value.to_string()),
                     ),
                     "u64" => u64::get_value(self, core, variable_cache).map_or_else(
-                        |err| VariableValue::Error(format!("{:?}", err)),
+                        |err| VariableValue::Error(format!("{err:?}")),
                         |value| VariableValue::Valid(value.to_string()),
                     ),
                     "u128" => u128::get_value(self, core, variable_cache).map_or_else(
-                        |err| VariableValue::Error(format!("{:?}", err)),
+                        |err| VariableValue::Error(format!("{err:?}")),
                         |value| VariableValue::Valid(value.to_string()),
                     ),
                     "usize" => usize::get_value(self, core, variable_cache).map_or_else(
-                        |err| VariableValue::Error(format!("{:?}", err)),
+                        |err| VariableValue::Error(format!("{err:?}")),
                         |value| VariableValue::Valid(value.to_string()),
                     ),
                     "f32" => f32::get_value(self, core, variable_cache).map_or_else(
-                        |err| VariableValue::Error(format!("{:?}", err)),
+                        |err| VariableValue::Error(format!("{err:?}")),
                         |value| VariableValue::Valid(value.to_string()),
                     ),
                     "f64" => f64::get_value(self, core, variable_cache).map_or_else(
-                        |err| VariableValue::Error(format!("{:?}", err)),
+                        |err| VariableValue::Error(format!("{err:?}")),
                         |value| VariableValue::Valid(value.to_string()),
                     ),
                     "None" => VariableValue::Valid("None".to_string()),
@@ -664,7 +661,7 @@ impl Variable {
             }
             VariableType::Struct(name) if name == "&str" => {
                 String::get_value(self, core, variable_cache).map_or_else(
-                    |err| VariableValue::Error(format!("{:?}", err)),
+                    |err| VariableValue::Error(format!("{err:?}")),
                     VariableValue::Valid,
                 )
             }
@@ -872,7 +869,7 @@ impl Variable {
                                     }
                                 };
                                 if let Some(pre_fix) = &pre_fix {
-                                    compound_value = format!("{}{}", compound_value, pre_fix);
+                                    compound_value = format!("{compound_value}{pre_fix}");
                                 };
                             }
 
@@ -902,7 +899,7 @@ impl Variable {
                             }
                         }
                         if let Some(post_fix) = &post_fix {
-                            compound_value = format!("{}{}", compound_value, post_fix);
+                            compound_value = format!("{compound_value}{post_fix}");
                         };
                         compound_value
                         }
@@ -958,14 +955,13 @@ impl Value for bool {
             <bool as FromStr>::from_str(new_value).map_err(|error| {
                 DebugError::UnwindIncompleteResults {
                     message: format!(
-                        "Invalid data conversion from value: {:?}. {:?}",
-                        new_value, error
+                        "Invalid data conversion from value: {new_value:?}. {error:?}"
                     ),
                 }
             })? as u8,
         )
         .map_err(|error| DebugError::UnwindIncompleteResults {
-            message: format!("{:?}", error),
+            message: format!("{error:?}"),
         })
     }
 }
@@ -993,14 +989,13 @@ impl Value for char {
             <char as FromStr>::from_str(new_value).map_err(|error| {
                 DebugError::UnwindIncompleteResults {
                     message: format!(
-                        "Invalid data conversion from value: {:?}. {:?}",
-                        new_value, error
+                        "Invalid data conversion from value: {new_value:?}. {error:?}"
                     ),
                 }
             })? as u32,
         )
         .map_err(|error| DebugError::UnwindIncompleteResults {
-            message: format!("{:?}", error),
+            message: format!("{error:?}"),
         })
     }
 }
@@ -1104,14 +1099,13 @@ impl Value for i8 {
             <i8 as FromStr>::from_str(new_value).map_err(|error| {
                 DebugError::UnwindIncompleteResults {
                     message: format!(
-                        "Invalid data conversion from value: {:?}. {:?}",
-                        new_value, error
+                        "Invalid data conversion from value: {new_value:?}. {error:?}"
                     ),
                 }
             })? as u8,
         )
         .map_err(|error| DebugError::UnwindIncompleteResults {
-            message: format!("{:?}", error),
+            message: format!("{error:?}"),
         })
     }
 }
@@ -1134,15 +1128,12 @@ impl Value for i16 {
     ) -> Result<(), DebugError> {
         let buff = i16::to_le_bytes(<i16 as FromStr>::from_str(new_value).map_err(|error| {
             DebugError::UnwindIncompleteResults {
-                message: format!(
-                    "Invalid data conversion from value: {:?}. {:?}",
-                    new_value, error
-                ),
+                message: format!("Invalid data conversion from value: {new_value:?}. {error:?}"),
             }
         })?);
         core.write_8(variable.memory_location.memory_address()?, &buff)
             .map_err(|error| DebugError::UnwindIncompleteResults {
-                message: format!("{:?}", error),
+                message: format!("{error:?}"),
             })
     }
 }
@@ -1165,15 +1156,12 @@ impl Value for i32 {
     ) -> Result<(), DebugError> {
         let buff = i32::to_le_bytes(<i32 as FromStr>::from_str(new_value).map_err(|error| {
             DebugError::UnwindIncompleteResults {
-                message: format!(
-                    "Invalid data conversion from value: {:?}. {:?}",
-                    new_value, error
-                ),
+                message: format!("Invalid data conversion from value: {new_value:?}. {error:?}"),
             }
         })?);
         core.write_8(variable.memory_location.memory_address()?, &buff)
             .map_err(|error| DebugError::UnwindIncompleteResults {
-                message: format!("{:?}", error),
+                message: format!("{error:?}"),
             })
     }
 }
@@ -1196,15 +1184,12 @@ impl Value for i64 {
     ) -> Result<(), DebugError> {
         let buff = i64::to_le_bytes(<i64 as FromStr>::from_str(new_value).map_err(|error| {
             DebugError::UnwindIncompleteResults {
-                message: format!(
-                    "Invalid data conversion from value: {:?}. {:?}",
-                    new_value, error
-                ),
+                message: format!("Invalid data conversion from value: {new_value:?}. {error:?}"),
             }
         })?);
         core.write_8(variable.memory_location.memory_address()?, &buff)
             .map_err(|error| DebugError::UnwindIncompleteResults {
-                message: format!("{:?}", error),
+                message: format!("{error:?}"),
             })
     }
 }
@@ -1227,15 +1212,12 @@ impl Value for i128 {
     ) -> Result<(), DebugError> {
         let buff = i128::to_le_bytes(<i128 as FromStr>::from_str(new_value).map_err(|error| {
             DebugError::UnwindIncompleteResults {
-                message: format!(
-                    "Invalid data conversion from value: {:?}. {:?}",
-                    new_value, error
-                ),
+                message: format!("Invalid data conversion from value: {new_value:?}. {error:?}"),
             }
         })?);
         core.write_8(variable.memory_location.memory_address()?, &buff)
             .map_err(|error| DebugError::UnwindIncompleteResults {
-                message: format!("{:?}", error),
+                message: format!("{error:?}"),
             })
     }
 }
@@ -1261,14 +1243,13 @@ impl Value for isize {
             isize::to_le_bytes(<isize as FromStr>::from_str(new_value).map_err(|error| {
                 DebugError::UnwindIncompleteResults {
                     message: format!(
-                        "Invalid data conversion from value: {:?}. {:?}",
-                        new_value, error
+                        "Invalid data conversion from value: {new_value:?}. {error:?}"
                     ),
                 }
             })?);
         core.write_8(variable.memory_location.memory_address()?, &buff)
             .map_err(|error| DebugError::UnwindIncompleteResults {
-                message: format!("{:?}", error),
+                message: format!("{error:?}"),
             })
     }
 }
@@ -1294,14 +1275,13 @@ impl Value for u8 {
             <u8 as FromStr>::from_str(new_value).map_err(|error| {
                 DebugError::UnwindIncompleteResults {
                     message: format!(
-                        "Invalid data conversion from value: {:?}. {:?}",
-                        new_value, error
+                        "Invalid data conversion from value: {new_value:?}. {error:?}"
                     ),
                 }
             })?,
         )
         .map_err(|error| DebugError::UnwindIncompleteResults {
-            message: format!("{:?}", error),
+            message: format!("{error:?}"),
         })
     }
 }
@@ -1324,15 +1304,12 @@ impl Value for u16 {
     ) -> Result<(), DebugError> {
         let buff = u16::to_le_bytes(<u16 as FromStr>::from_str(new_value).map_err(|error| {
             DebugError::UnwindIncompleteResults {
-                message: format!(
-                    "Invalid data conversion from value: {:?}. {:?}",
-                    new_value, error
-                ),
+                message: format!("Invalid data conversion from value: {new_value:?}. {error:?}"),
             }
         })?);
         core.write_8(variable.memory_location.memory_address()?, &buff)
             .map_err(|error| DebugError::UnwindIncompleteResults {
-                message: format!("{:?}", error),
+                message: format!("{error:?}"),
             })
     }
 }
@@ -1355,15 +1332,12 @@ impl Value for u32 {
     ) -> Result<(), DebugError> {
         let buff = u32::to_le_bytes(<u32 as FromStr>::from_str(new_value).map_err(|error| {
             DebugError::UnwindIncompleteResults {
-                message: format!(
-                    "Invalid data conversion from value: {:?}. {:?}",
-                    new_value, error
-                ),
+                message: format!("Invalid data conversion from value: {new_value:?}. {error:?}"),
             }
         })?);
         core.write_8(variable.memory_location.memory_address()?, &buff)
             .map_err(|error| DebugError::UnwindIncompleteResults {
-                message: format!("{:?}", error),
+                message: format!("{error:?}"),
             })
     }
 }
@@ -1386,15 +1360,12 @@ impl Value for u64 {
     ) -> Result<(), DebugError> {
         let buff = u64::to_le_bytes(<u64 as FromStr>::from_str(new_value).map_err(|error| {
             DebugError::UnwindIncompleteResults {
-                message: format!(
-                    "Invalid data conversion from value: {:?}. {:?}",
-                    new_value, error
-                ),
+                message: format!("Invalid data conversion from value: {new_value:?}. {error:?}"),
             }
         })?);
         core.write_8(variable.memory_location.memory_address()?, &buff)
             .map_err(|error| DebugError::UnwindIncompleteResults {
-                message: format!("{:?}", error),
+                message: format!("{error:?}"),
             })
     }
 }
@@ -1417,15 +1388,12 @@ impl Value for u128 {
     ) -> Result<(), DebugError> {
         let buff = u128::to_le_bytes(<u128 as FromStr>::from_str(new_value).map_err(|error| {
             DebugError::UnwindIncompleteResults {
-                message: format!(
-                    "Invalid data conversion from value: {:?}. {:?}",
-                    new_value, error
-                ),
+                message: format!("Invalid data conversion from value: {new_value:?}. {error:?}"),
             }
         })?);
         core.write_8(variable.memory_location.memory_address()?, &buff)
             .map_err(|error| DebugError::UnwindIncompleteResults {
-                message: format!("{:?}", error),
+                message: format!("{error:?}"),
             })
     }
 }
@@ -1451,14 +1419,13 @@ impl Value for usize {
             usize::to_le_bytes(<usize as FromStr>::from_str(new_value).map_err(|error| {
                 DebugError::UnwindIncompleteResults {
                     message: format!(
-                        "Invalid data conversion from value: {:?}. {:?}",
-                        new_value, error
+                        "Invalid data conversion from value: {new_value:?}. {error:?}"
                     ),
                 }
             })?);
         core.write_8(variable.memory_location.memory_address()?, &buff)
             .map_err(|error| DebugError::UnwindIncompleteResults {
-                message: format!("{:?}", error),
+                message: format!("{error:?}"),
             })
     }
 }
@@ -1481,15 +1448,12 @@ impl Value for f32 {
     ) -> Result<(), DebugError> {
         let buff = f32::to_le_bytes(<f32 as FromStr>::from_str(new_value).map_err(|error| {
             DebugError::UnwindIncompleteResults {
-                message: format!(
-                    "Invalid data conversion from value: {:?}. {:?}",
-                    new_value, error
-                ),
+                message: format!("Invalid data conversion from value: {new_value:?}. {error:?}"),
             }
         })?);
         core.write_8(variable.memory_location.memory_address()?, &buff)
             .map_err(|error| DebugError::UnwindIncompleteResults {
-                message: format!("{:?}", error),
+                message: format!("{error:?}"),
             })
     }
 }
@@ -1512,15 +1476,12 @@ impl Value for f64 {
     ) -> Result<(), DebugError> {
         let buff = f64::to_le_bytes(<f64 as FromStr>::from_str(new_value).map_err(|error| {
             DebugError::UnwindIncompleteResults {
-                message: format!(
-                    "Invalid data conversion from value: {:?}. {:?}",
-                    new_value, error
-                ),
+                message: format!("Invalid data conversion from value: {new_value:?}. {error:?}"),
             }
         })?);
         core.write_8(variable.memory_location.memory_address()?, &buff)
             .map_err(|error| DebugError::UnwindIncompleteResults {
-                message: format!("{:?}", error),
+                message: format!("{error:?}"),
             })
     }
 }

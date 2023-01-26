@@ -48,8 +48,8 @@ impl std::fmt::Display for StackFrame {
 
             if let (Some(column), Some(line)) = (si.column, si.line) {
                 match column {
-                    ColumnType::Column(c) => write!(f, ":{}:{}", line, c)?,
-                    ColumnType::LeftEdge => write!(f, ":{}", line)?,
+                    ColumnType::Column(c) => write!(f, ":{line}:{c}")?,
+                    ColumnType::LeftEdge => write!(f, ":{line}")?,
                 }
             }
         }

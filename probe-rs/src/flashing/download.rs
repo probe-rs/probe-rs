@@ -42,7 +42,7 @@ impl FromStr for Format {
             })),
             "hex" | "ihex" | "intelhex" => Ok(Format::Hex),
             "elf" => Ok(Format::Elf),
-            _ => Err(format!("Format '{}' is unknown.", s)),
+            _ => Err(format!("Format '{s}' is unknown.")),
         }
     }
 }

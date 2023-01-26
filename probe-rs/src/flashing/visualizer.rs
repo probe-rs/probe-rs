@@ -49,7 +49,7 @@ impl<'layout> FlashVisualizer<'layout> {
                 .set("font-size", 5)
                 .set("font-family", "Arial")
                 .set("fill", "Black")
-                .add(Content::new(format!("{:#08X?}", address))),
+                .add(Content::new(format!("{address:#08X?}"))),
         );
 
         group.append(
@@ -109,7 +109,7 @@ impl<'layout> FlashVisualizer<'layout> {
         document.append(group);
         document.assign("viewBox", (0, -20, 300, 140));
 
-        format!("{}", document)
+        format!("{document}")
     }
 
     /// Generates an SVG which visualizes the given flash contents

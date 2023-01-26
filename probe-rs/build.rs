@@ -40,7 +40,7 @@ fn main() {
 
         match yaml {
             Ok(familiy) => families.push(familiy),
-            Err(e) => panic!("Failed to parse target file: {:?} because:\n{}", file, e),
+            Err(e) => panic!("Failed to parse target file: {file:?} because:\n{e}"),
         }
     }
 
@@ -54,8 +54,7 @@ fn main() {
     let _: Vec<ChipFamily> = match bincode::deserialize(&families_bin) {
         Ok(chip_families) => chip_families,
         Err(deserialize_error) => panic!(
-            "Failed to deserialize supported target definitions from bincode: {:?}",
-            deserialize_error
+            "Failed to deserialize supported target definitions from bincode: {deserialize_error:?}"
         ),
     };
 }

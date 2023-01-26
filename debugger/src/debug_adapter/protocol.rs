@@ -151,7 +151,7 @@ impl<R: Read, W: Write> DapAdapter<R, W> {
                         ));
                     }
                     ConsoleLog::Debug => {
-                        self.log_to_console(format!("\nReceived DAP Request: {:#?}", request));
+                        self.log_to_console(format!("\nReceived DAP Request: {request:#?}"));
                     }
                 }
 
@@ -244,7 +244,7 @@ impl<R: Read, W: Write> ProtocolAdapter for DapAdapter<R, W> {
                     self.log_to_console(format!("\nTriggered DAP Event: {}", new_event.event));
                 }
                 ConsoleLog::Debug => {
-                    self.log_to_console(format!("INFO: Triggered DAP Event: {:#?}", new_event));
+                    self.log_to_console(format!("INFO: Triggered DAP Event: {new_event:#?}"));
                 }
             }
         }
@@ -321,9 +321,9 @@ impl<R: Read, W: Write> ProtocolAdapter for DapAdapter<R, W> {
                         std::error::Error::source(&debugger_error);
                     while let Some(source_error) = child_error {
                         offset_iterations += 1;
-                        response_message = format!("{}\n", response_message,);
+                        response_message = format!("{response_message}\n",);
                         for _offset_counter in 0..offset_iterations {
-                            response_message = format!("{}\t", response_message);
+                            response_message = format!("{response_message}\t");
                         }
                         response_message = format!(
                             "{}{:?}",
@@ -373,7 +373,7 @@ impl<R: Read, W: Write> ProtocolAdapter for DapAdapter<R, W> {
                     ));
                 }
                 ConsoleLog::Debug => {
-                    self.log_to_console(format!("\nSent DAP Response: {:#?}", resp));
+                    self.log_to_console(format!("\nSent DAP Response: {resp:#?}"));
                 }
             }
         }

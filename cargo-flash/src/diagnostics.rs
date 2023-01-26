@@ -169,7 +169,7 @@ pub(crate) fn render_diagnostics(error: OperationError) {
         OperationError::FailedToSelectProtocolSpeed { speed, .. } => (
             error.to_string(),
             vec![
-                format!("Try specifying a speed lower than {} kHz", speed)
+                format!("Try specifying a speed lower than {speed} kHz")
             ],
         ),
         OperationError::AttachingFailed { source, connect_under_reset } => match source {
@@ -301,10 +301,10 @@ fn generate_flash_error_hints(
                     );
 
                     if matching_chips.len() > 1 {
-                        let mut non_unique_target_hint = format!("The specified chip '{}' did match multiple possible targets. Try to specify your chip more exactly. The following possible targets were found:\n", target_spec);
+                        let mut non_unique_target_hint = format!("The specified chip '{target_spec}' did match multiple possible targets. Try to specify your chip more exactly. The following possible targets were found:\n");
 
                         for target in matching_chips {
-                            non_unique_target_hint.push_str(&format!("\t{}\n", target));
+                            non_unique_target_hint.push_str(&format!("\t{target}\n"));
                         }
 
                         hints.push(non_unique_target_hint)
@@ -328,10 +328,10 @@ fn write_with_offset(mut output: impl std::io::Write, header: ColoredString, msg
     let mut lines = msg.lines();
 
     if let Some(first_line) = lines.next() {
-        let _ = writeln!(output, "{}", first_line);
+        let _ = writeln!(output, "{first_line}");
     }
 
     for line in lines {
-        let _ = writeln!(output, "            {}", line);
+        let _ = writeln!(output, "            {line}");
     }
 }

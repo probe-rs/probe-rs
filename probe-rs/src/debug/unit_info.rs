@@ -224,8 +224,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                 ),
                 other_attribute_value => {
                     child_variable.set_value(VariableValue::Error(format!(
-                        "Unimplemented: Attribute Value for DW_AT_abstract_origin {:?}",
-                        other_attribute_value
+                        "Unimplemented: Attribute Value for DW_AT_abstract_origin {other_attribute_value:?}"
                     )));
                     None
                 }
@@ -379,8 +378,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                             }
                             other_attribute_value => {
                                 child_variable.set_value(VariableValue::Error(format!(
-                                    "Unimplemented: Attribute Value for DW_AT_type {:?}",
-                                    other_attribute_value
+                                    "Unimplemented: Attribute Value for DW_AT_type {other_attribute_value:?}"
                                 )));
                             }
                         }
@@ -394,15 +392,13 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                 )));
                             } else {
                                 child_variable.set_value(VariableValue::Error(format!(
-                                    "Unimplemented: Flag Value for DW_AT_enum_class {:?}",
-                                    is_enum_class
+                                    "Unimplemented: Flag Value for DW_AT_enum_class {is_enum_class:?}"
                                 )));
                             }
                         }
                         other_attribute_value => {
                             child_variable.set_value(VariableValue::Error(format!(
-                                "Unimplemented: Attribute Value for DW_AT_enum_class: {:?}",
-                                other_attribute_value
+                                "Unimplemented: Attribute Value for DW_AT_enum_class: {other_attribute_value:?}"
                             )));
                         }
                     },
@@ -412,8 +408,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                         }
                         other_attribute_value => {
                             child_variable.set_value(VariableValue::Error(format!(
-                                "Unimplemented: Attribute Value for DW_AT_const_value: {:?}",
-                                other_attribute_value
+                                "Unimplemented: Attribute Value for DW_AT_const_value: {other_attribute_value:?}"
                             )));
                         }
                     },
@@ -463,8 +458,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                         }
                         other_attribute_value => {
                             child_variable.set_value(VariableValue::Error(format!(
-                                "Unimplemented: Attribute Value for DW_AT_discr {:?}",
-                                other_attribute_value
+                                "Unimplemented: Attribute Value for DW_AT_discr {other_attribute_value:?}"
                             )));
                         }
                     },
@@ -600,7 +594,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                             VariableName::Namespace(name) => {
                                             VariableName::Namespace(format!("{}::{}", name, extract_name(self.debug_info, attr.value())))
                                             }
-                                            other => return Err(DebugError::UnwindIncompleteResults {message: format!("Unable to construct namespace variable, unexpected parent name: {:?}", other)})
+                                            other => return Err(DebugError::UnwindIncompleteResults {message: format!("Unable to construct namespace variable, unexpected parent name: {other:?}")})
                                         }
 
                                     } else { VariableName::AnonymousNamespace};
@@ -825,7 +819,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                     VariantRole::Variant(const_value as u64)
                                 }
                                 other_attribute_value => {
-                                    variable.set_value(VariableValue::Error(format!("Unimplemented: Attribute Value for DW_AT_discr_value: {:.100}", format!("{:?}", other_attribute_value))));
+                                    variable.set_value(VariableValue::Error(format!("Unimplemented: Attribute Value for DW_AT_discr_value: {:.100}", format!("{other_attribute_value:?}"))));
                                     VariantRole::Variant(u64::MAX)
                                 }
                             }
@@ -838,8 +832,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                 }
                 Err(_error) => {
                     variable.set_value(VariableValue::Error(format!(
-                        "Error: Retrieving DW_AT_discr_value for variable {:?}",
-                        variable
+                        "Error: Retrieving DW_AT_discr_value for variable {variable:?}"
                     )));
                     VariantRole::NonVariant
                 }
@@ -869,7 +862,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                 optional_name_attr.map(|name_attr| extract_name(self.debug_info, name_attr.value()))
             }
             Err(error) => {
-                let message = format!("Error: evaluating type name: {:?} ", error);
+                let message = format!("Error: evaluating type name: {error:?} ");
                 child_variable.set_value(VariableValue::Error(message.clone()));
                 Some(message)
             }
@@ -959,7 +952,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                             child_variable.set_value(VariableValue::Error(
                                                 format!(
                                             "Unimplemented: Attribute Value for DW_AT_type {:.100}",
-                                            format!("{:?}", other_attribute_value)
+                                            format!("{other_attribute_value:?}")
                                         ),
                                             ));
                                         }
@@ -975,8 +968,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                         }
                         Err(error) => {
                             child_variable.set_value(VariableValue::Error(format!(
-                                "Error: Failed to decode pointer reference: {:?}",
-                                error
+                                "Error: Failed to decode pointer reference: {error:?}"
                             )));
                         }
                     }
@@ -1186,8 +1178,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                                             Some(array_member_index);
                                                         array_member_variable.name =
                                                             VariableName::Named(format!(
-                                                                "__{}",
-                                                                array_member_index
+                                                                "__{array_member_index}"
                                                             ));
                                                         array_member_variable.source_location =
                                                             child_variable.source_location.clone();
@@ -1207,8 +1198,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                         other_attribute_value => {
                                             child_variable.set_value(VariableValue::Error(
                                                 format!(
-                                                    "Unimplemented: Attribute Value for DW_AT_type {:?}",
-                                                    other_attribute_value
+                                                    "Unimplemented: Attribute Value for DW_AT_type {other_attribute_value:?}"
                                                 ),
                                             ));
                                         }
@@ -1224,8 +1214,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                         }
                         Err(error) => {
                             child_variable.set_value(VariableValue::Error(format!(
-                                "Error: Failed to decode pointer reference: {:?}",
-                                error
+                                "Error: Failed to decode pointer reference: {error:?}"
                             )));
                         }
                     }
@@ -1297,15 +1286,14 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                                 None => VariableType::Unknown,
                                             },
                                             Err(error) => VariableType::Other(format!(
-                                                "Error: evaluating subroutine type name: {:?} ",
-                                                error
+                                                "Error: evaluating subroutine type name: {error:?} "
                                             )),
                                         };
                                     }
                                     other_attribute_value => {
                                         child_variable.set_value(VariableValue::Error(format!(
                                             "Unimplemented: Attribute Value for DW_AT_type {:.100}",
-                                            format!("{:?}", other_attribute_value)
+                                            format!("{other_attribute_value:?}")
                                         )));
                                     }
                                 },
@@ -1320,8 +1308,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                         }
                         Err(error) => {
                             child_variable.set_value(VariableValue::Error(format!(
-                                "Error: Failed to decode subroutine type reference: {:?}",
-                                error
+                                "Error: Failed to decode subroutine type reference: {error:?}"
                             )));
                         }
                     }
@@ -1458,7 +1445,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                     }
                     other_attribute_value => {
                         return Ok(ExpressionResult::Location(VariableLocation::Unsupported(
-                            format!( "Unimplemented: extract_location() Could not extract location from: {:.100}", format!("{:?}", other_attribute_value)))))
+                            format!( "Unimplemented: extract_location() Could not extract location from: {:.100}", format!("{other_attribute_value:?}")))))
                     }
                 },
                 gimli::DW_AT_address_class => {
@@ -1467,15 +1454,14 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                             // Nothing to do in this case where it is zero
                             if address_class != gimli::DwAddr(0) {
                                 return Ok(ExpressionResult::Location(VariableLocation::Unsupported(format!(
-                                    "Unimplemented: extract_location() found unsupported DW_AT_address_class(gimli::DwAddr({:?}))",
-                                    address_class
+                                    "Unimplemented: extract_location() found unsupported DW_AT_address_class(gimli::DwAddr({address_class:?}))"
                                 ))))
                             }
                         }
                         other_attribute_value => {
                             return Ok(ExpressionResult::Location(VariableLocation::Unsupported(format!(
                                 "Unimplemented: extract_location() found invalid DW_AT_address_class: {:.100}",
-                                format!("{:?}", other_attribute_value)
+                                format!("{other_attribute_value:?}")
                             ))))
                         }
                     }
@@ -1505,7 +1491,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
             self.expression_to_piece(core, expression, stack_frame_registers, frame_base)?;
         if pieces.is_empty() {
             Ok(ExpressionResult::Location(VariableLocation::Error(
-                format!("Error: expr_to_piece() returned 0 results: {:?}", pieces),
+                format!("Error: expr_to_piece() returned 0 results: {pieces:?}"),
             )))
         } else if pieces.len() > 1 {
             Ok(ExpressionResult::Location(VariableLocation::Error(
@@ -1572,21 +1558,20 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                             )),
                             Err(error) => Ok(ExpressionResult::Location(
                                 VariableLocation::Error(format!(
-                                    "Error: Cannot convert register value to location address: {:?}",
-                                    error
+                                    "Error: Cannot convert register value to location address: {error:?}"
                                 )),
                             )),
                         }
                     } else {
                         Ok(ExpressionResult::Location(VariableLocation::Error(
-                            format!("Error: Cannot resolve register: {:?}", register),
+                            format!("Error: Cannot resolve register: {register:?}"),
                         )))
                     }
                 }
                 l => Ok(ExpressionResult::Location(VariableLocation::Error(
                     format!(
                         "Unimplemented: extract_location() found a location type: {:.100}",
-                        format!("{:?}", l)
+                        format!("{l:?}")
                     ),
                 ))),
             }
@@ -1631,8 +1616,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                             }
                             x => {
                                 return Err(DebugError::UnwindIncompleteResults {
-                            message: format!("Unimplemented: Requested memory with size {}, which is not supported yet.",
-                                    x
+                            message: format!("Unimplemented: Requested memory with size {x}, which is not supported yet."
                                 )});
                             }
                         }
@@ -1654,8 +1638,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                         Err(error) => {
                             return Err(DebugError::UnwindIncompleteResults {
                                 message: format!(
-                                    "Error while calculating `Variable::memory_location`:{}.",
-                                    error
+                                    "Error while calculating `Variable::memory_location`:{error}."
                                 ),
                             })
                         }
@@ -1672,8 +1655,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                         Some(raw_value) => {
                             if base_type != gimli::UnitOffset(0) {
                                 return Err(DebugError::UnwindIncompleteResults {
-                                    message: format!("Unimplemented: Support for type {:?} in `RequiresRegister` request is not yet implemented.",
-                                    base_type
+                                    message: format!("Unimplemented: Support for type {base_type:?} in `RequiresRegister` request is not yet implemented."
                                 )});
                             }
                             raw_value
@@ -1694,8 +1676,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                 }
                 unimplemented_expression => {
                     return Err(DebugError::UnwindIncompleteResults {
-                        message: format!("Unimplemented: Expressions that include {:?} are not currently supported.",
-                        unimplemented_expression
+                        message: format!("Unimplemented: Expressions that include {unimplemented_expression:?} are not currently supported."
                     )});
                 }
             }
