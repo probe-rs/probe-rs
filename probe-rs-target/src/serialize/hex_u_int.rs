@@ -9,7 +9,7 @@ where
     // We serialize the range as hex strings when generating human-readable formats such as YAML,
     let check_for_human_readable = serializer.is_human_readable();
     if check_for_human_readable {
-        serializer.serialize_str(format!("{:#x}", memory_address).as_str())
+        serializer.serialize_str(format!("{memory_address:#x}").as_str())
     } else {
         memory_address.serialize_int(serializer)
     }
