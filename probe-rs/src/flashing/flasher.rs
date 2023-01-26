@@ -700,7 +700,6 @@ impl<'probe, 'progress, O: Operation> ActiveFlasher<'probe, 'progress, O> {
 
         let mut timeout_ocurred = true;
         while start.elapsed() < timeout {
-            println!("Elapsed 0: {:?}", start.elapsed());
             #[cfg(feature = "rtt")]
             if let Some(rtt) = &mut self.rtt {
                 for channel in rtt.up_channels().iter() {
@@ -720,7 +719,6 @@ impl<'probe, 'progress, O: Operation> ActiveFlasher<'probe, 'progress, O> {
                 }
             }
 
-            println!("Elapsed 1: {:?}", start.elapsed());
             if self.core.core_halted()? {
                 timeout_ocurred = false;
                 break;

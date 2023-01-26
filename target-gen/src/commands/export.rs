@@ -8,9 +8,7 @@ use super::elf::cmd_elf;
 pub const DEFINITION_EXPORT_PATH: &str = "target/definition.yaml";
 
 pub fn cmd_export(target_artifact: PathBuf) -> Result<()> {
-    let sh = Shell::new()?;
-
-    cmd!(sh, "cp template.yaml {DEFINITION_EXPORT_PATH}").run()?;
+    std::fs::copy("template.yaml", DEFINITION_EXPORT_PATH)?;
     cmd_elf(
         target_artifact.clone(),
         true,
@@ -19,12 +17,16 @@ pub fn cmd_export(target_artifact: PathBuf) -> Result<()> {
         Some(String::from("algorithm-test")),
     )?;
 
-    generate_debug_info(&sh, target_artifact.as_path())?;
+    if let Err(error) = generate_debug_info(target_artifact.as_path()) {
+        println!("Generating debug artifacts failed because:");
+        println!("{error}");
+    }
 
     Ok(())
 }
 
-fn generate_debug_info(sh: &Shell, target_artifact: &Path) -> Result<()> {
+fn generate_debug_info(target_artifact: &Path) -> Result<()> {
+    let sh = Shell::new()?;
     std::fs::write(
         "target/disassembly.s",
         cmd!(sh, "rust-objdump --disassemble {target_artifact}")
