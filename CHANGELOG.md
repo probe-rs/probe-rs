@@ -17,6 +17,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Check if the flash algorithm supports RTT, and if it does, store the RTT control block
   address in the target YAML file.
   
+- Add support for FT4232HL probe.
+  
 ### Changed
 
 - cmsisdap: Increased read timeout from 100ms to 1000ms.
