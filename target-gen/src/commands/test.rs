@@ -73,6 +73,13 @@ pub fn run_flash_download(
             FinishedProgramming => {
                 println!("Finished programming in {:?}", t.borrow().elapsed());
             }
+            Rtt { channel, message } => {
+                if message.ends_with('\n') {
+                    print!("RTT({channel}): {message}");
+                } else {
+                    println!("RTT({channel}): {message}");
+                }
+            }
             _ => (),
         }
     });
