@@ -464,7 +464,7 @@ fn download_program_fast(
 fn erase(common: &ProbeOptions) -> Result<()> {
     let mut session = common.simple_attach()?;
 
-    erase_all(&mut session)?;
+    erase_all(&mut session, None)?;
 
     Ok(())
 }

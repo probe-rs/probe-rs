@@ -685,7 +685,6 @@ impl<'probe, 'progress, O: Operation> ActiveFlasher<'probe, 'progress, O> {
                     break;
                 }
             }
-            println!("Elapsed: {:?}", now.elapsed());
         }
 
         Ok(())
@@ -701,6 +700,7 @@ impl<'probe, 'progress, O: Operation> ActiveFlasher<'probe, 'progress, O> {
 
         let mut timeout_ocurred = true;
         while start.elapsed() < timeout {
+            println!("Elapsed 0: {:?}", start.elapsed());
             #[cfg(feature = "rtt")]
             if let Some(rtt) = &mut self.rtt {
                 for channel in rtt.up_channels().iter() {
@@ -708,9 +708,10 @@ impl<'probe, 'progress, O: Operation> ActiveFlasher<'probe, 'progress, O> {
                     match channel.read(&mut self.core, &mut buffer) {
                         Ok(read) if read > 0 => {
                             let message = String::from_utf8_lossy(&buffer[..read]).to_string();
-                            tracing::info!("RTT: {}", message);
+                            let channel = channel.name().unwrap_or("unnamed").into();
+                            tracing::debug!("RTT({channel}): {message}");
                             if let Some(progress) = self.progress {
-                                progress.rtt(channel.name().unwrap_or("unnamed").into(), message);
+                                progress.rtt(channel, message);
                             }
                         }
                         Ok(_) => (),
@@ -719,6 +720,7 @@ impl<'probe, 'progress, O: Operation> ActiveFlasher<'probe, 'progress, O> {
                 }
             }
 
+            println!("Elapsed 1: {:?}", start.elapsed());
             if self.core.core_halted()? {
                 timeout_ocurred = false;
             }

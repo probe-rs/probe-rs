@@ -1,7 +1,7 @@
 use std::fmt;
 
+use probe_rs::rtt::{ChannelMode, DownChannel, UpChannel};
 use probe_rs::Core;
-use probe_rs_rtt::{ChannelMode, DownChannel, UpChannel};
 use time::{macros::format_description, OffsetDateTime};
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]

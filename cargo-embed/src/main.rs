@@ -404,6 +404,7 @@ fn main_try() -> Result<()> {
                             fp.finish()
                         };
                     }
+                    Rtt { .. } => (),
                 }
             });
 
