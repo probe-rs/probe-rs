@@ -7,7 +7,7 @@ use probe_rs_target::{
 use std::{
     fs::{File, OpenOptions},
     io::{BufRead, Write},
-    path::{Path, PathBuf},
+    path::Path,
 };
 
 use crate::parser::extract_flash_algo;
@@ -16,7 +16,7 @@ use crate::parser::extract_flash_algo;
 pub fn cmd_elf(
     file: &Path,
     fixed_load_address: bool,
-    output: Option<PathBuf>,
+    output: Option<&Path>,
     update: bool,
     name: Option<String>,
 ) -> Result<()> {
@@ -33,7 +33,7 @@ pub fn cmd_elf(
 
         let target_description_file = output.unwrap(); // Argument is checked by structopt, so we now its present.
 
-        let target_description = File::open(&target_description_file).context(format!(
+        let target_description = File::open(target_description_file).context(format!(
             "Unable to open target specification '{}'",
             target_description_file.display()
         ))?;
@@ -63,7 +63,7 @@ pub fn cmd_elf(
             },
         }
 
-        let target_description = File::create(&target_description_file)?;
+        let target_description = File::create(target_description_file)?;
         serialize_to_yaml_file(&family, &target_description)?;
     } else {
         // Create a complete target specification, with place holder values
@@ -114,7 +114,7 @@ pub fn cmd_elf(
                 let file = OpenOptions::new()
                     .write(true)
                     .create_new(true)
-                    .open(&output)
+                    .open(output)
                     .context(format!(
                         "Failed to create target file '{}'.",
                         output.display()

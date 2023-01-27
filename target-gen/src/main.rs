@@ -89,6 +89,12 @@ enum TargetGen {
     /// It builds the project, extracts parameters and functions from the ELF and generates
     /// the target yaml file.
     Export {
+        /// The path of the template YAML definition file.
+        /// This file plus the information of the ELF will be merged
+        /// and stored into the `definition_export_path` file.
+        template_path: PathBuf,
+        /// The path of the completed YAML definition file.
+        definition_export_path: PathBuf,
         /// The path to the ELF.
         target_artifact: PathBuf,
     },
@@ -99,6 +105,12 @@ enum TargetGen {
     ///
     /// Works like `target-gen export` but also runs the flash algorithm.
     Run {
+        /// The path of the template YAML definition file.
+        /// This file plus the information of the ELF will be merged
+        /// and stored into the `definition_export_path` file.
+        template_path: PathBuf,
+        /// The path of the completed YAML definition file.
+        definition_export_path: PathBuf,
         /// The path to the ELF.
         target_artifact: PathBuf,
     },
@@ -122,14 +134,36 @@ fn main() -> Result<()> {
             update,
             name,
             fixed_load_address,
-        } => cmd_elf(elf.as_path(), fixed_load_address, output, update, name)?,
+        } => cmd_elf(
+            elf.as_path(),
+            fixed_load_address,
+            output.as_deref(),
+            update,
+            name,
+        )?,
         TargetGen::Arm {
             output_dir,
             pack_filter: chip_family,
             list,
         } => cmd_arm(output_dir, chip_family, list)?,
-        TargetGen::Export { target_artifact } => cmd_export(target_artifact.as_path())?,
-        TargetGen::Run { target_artifact } => cmd_run(target_artifact.as_path())?,
+        TargetGen::Export {
+            target_artifact,
+            template_path,
+            definition_export_path,
+        } => cmd_export(
+            target_artifact.as_path(),
+            template_path.as_path(),
+            definition_export_path.as_path(),
+        )?,
+        TargetGen::Run {
+            target_artifact,
+            template_path,
+            definition_export_path,
+        } => cmd_run(
+            target_artifact.as_path(),
+            template_path.as_path(),
+            definition_export_path.as_path(),
+        )?,
     }
 
     println!("Finished in {:?}", t.elapsed());

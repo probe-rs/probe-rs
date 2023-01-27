@@ -1,18 +1,20 @@
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 use anyhow::Result;
 use xshell::{cmd, Shell};
 
 use super::elf::cmd_elf;
 
-pub const DEFINITION_EXPORT_PATH: &str = "target/definition.yaml";
-
-pub fn cmd_export(target_artifact: &Path) -> Result<()> {
-    std::fs::copy("template.yaml", DEFINITION_EXPORT_PATH)?;
+pub fn cmd_export(
+    target_artifact: &Path,
+    template_path: &Path,
+    definition_export_path: &Path,
+) -> Result<()> {
+    std::fs::copy(template_path, definition_export_path)?;
     cmd_elf(
         target_artifact,
         true,
-        Some(PathBuf::from(DEFINITION_EXPORT_PATH)),
+        Some(definition_export_path),
         true,
         Some(String::from("algorithm-test")),
     )?;

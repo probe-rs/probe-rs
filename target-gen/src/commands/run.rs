@@ -13,14 +13,18 @@ use probe_rs::{
 };
 use probe_rs_cli_util::logging::println;
 
-use super::export::{cmd_export, DEFINITION_EXPORT_PATH};
+use super::export::cmd_export;
 
-pub fn cmd_run(target_artifact: &Path) -> Result<()> {
+pub fn cmd_run(
+    target_artifact: &Path,
+    template_path: &Path,
+    definition_export_path: &Path,
+) -> Result<()> {
     // Generate the binary
-    println("Generating the YAML file in `target/definition.yaml`");
-    cmd_export(target_artifact)?;
+    println("Generating the YAML file in `{definition_export_path}`");
+    cmd_export(target_artifact, template_path, definition_export_path)?;
 
-    probe_rs::config::add_target_from_yaml(Path::new(DEFINITION_EXPORT_PATH))?;
+    probe_rs::config::add_target_from_yaml(definition_export_path)?;
     let mut session =
         probe_rs::Session::auto_attach("algorithm-test", Permissions::new().allow_erase_all())?;
 
