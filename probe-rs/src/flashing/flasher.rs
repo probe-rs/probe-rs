@@ -257,7 +257,6 @@ impl<'session, 'progress> Flasher<'session, 'progress> {
         restore_unwritten_bytes: bool,
         enable_double_buffering: bool,
         skip_erasing: bool,
-        progress: &FlashProgress,
     ) -> Result<(), FlashError> {
         tracing::debug!("Starting program procedure.");
         // Convert the list of flash operations into flash sectors and pages.
@@ -267,7 +266,9 @@ impl<'session, 'progress> Flasher<'session, 'progress> {
             restore_unwritten_bytes,
         )?;
 
-        progress.initialized(flash_layout.clone());
+        if let Some(progress) = self.progress {
+            progress.initialized(flash_layout.clone())
+        };
 
         tracing::debug!("Double Buffering enabled: {:?}", enable_double_buffering);
         tracing::debug!(
@@ -276,7 +277,9 @@ impl<'session, 'progress> Flasher<'session, 'progress> {
         );
 
         // Read all fill areas from the flash.
-        progress.started_filling();
+        if let Some(progress) = self.progress {
+            progress.started_filling();
+        }
 
         if restore_unwritten_bytes {
             let fills = flash_layout.fills().to_vec();
@@ -287,28 +290,32 @@ impl<'session, 'progress> Flasher<'session, 'progress> {
 
                 // If we encounter an error, catch it, gracefully report the failure and return the error.
                 if result.is_err() {
-                    progress.failed_filling();
+                    if let Some(progress) = self.progress {
+                        progress.failed_filling();
+                    }
                     return result;
-                } else {
+                } else if let Some(progress) = self.progress {
                     progress.page_filled(fill.size(), t.elapsed());
                 }
             }
         }
 
         // We successfully finished filling.
-        progress.finished_filling();
+        if let Some(progress) = self.progress {
+            progress.finished_filling();
+        }
 
         // Skip erase if necessary
         if !skip_erasing {
             // Erase all necessary sectors
-            self.sector_erase(&flash_layout, progress)?;
+            self.sector_erase(&flash_layout)?;
         }
 
         // Flash all necessary pages.
         if self.double_buffering_supported() && enable_double_buffering {
-            self.program_double_buffer(&flash_layout, progress)?;
+            self.program_double_buffer(&flash_layout)?;
         } else {
-            self.program_simple(&flash_layout, progress)?;
+            self.program_simple(&flash_layout)?;
         };
 
         Ok(())
@@ -335,12 +342,10 @@ impl<'session, 'progress> Flasher<'session, 'progress> {
     }
 
     /// Programs the pages given in `flash_layout` into the flash.
-    fn program_simple(
-        &mut self,
-        flash_layout: &FlashLayout,
-        progress: &FlashProgress,
-    ) -> Result<(), FlashError> {
-        progress.started_programming();
+    fn program_simple(&mut self, flash_layout: &FlashLayout) -> Result<(), FlashError> {
+        if let Some(progress) = self.progress {
+            progress.started_programming();
+        }
 
         let mut t = std::time::Instant::now();
         let result = self.run_program(|active| {
@@ -351,15 +356,19 @@ impl<'session, 'progress> Flasher<'session, 'progress> {
                         page_address: page.address(),
                         source: Box::new(error),
                     })?;
-                progress.page_programmed(page.size(), t.elapsed());
+                if let Some(progress) = active.progress {
+                    progress.page_programmed(page.size(), t.elapsed());
+                }
                 t = std::time::Instant::now();
             }
             Ok(())
         });
 
         if result.is_ok() {
-            progress.finished_programming();
-        } else {
+            if let Some(progress) = self.progress {
+                progress.finished_programming();
+            }
+        } else if let Some(progress) = self.progress {
             progress.failed_programming();
         }
 
@@ -367,12 +376,10 @@ impl<'session, 'progress> Flasher<'session, 'progress> {
     }
 
     /// Perform an erase of all sectors given in `flash_layout`.
-    fn sector_erase(
-        &mut self,
-        flash_layout: &FlashLayout,
-        progress: &FlashProgress,
-    ) -> Result<(), FlashError> {
-        progress.started_erasing();
+    fn sector_erase(&mut self, flash_layout: &FlashLayout) -> Result<(), FlashError> {
+        if let Some(progress) = self.progress {
+            progress.started_erasing();
+        }
 
         let mut t = std::time::Instant::now();
         let result = self.run_erase(|active| {
@@ -383,16 +390,19 @@ impl<'session, 'progress> Flasher<'session, 'progress> {
                         sector_address: sector.address(),
                         source: Box::new(e),
                     })?;
-
-                progress.sector_erased(sector.size(), t.elapsed());
+                if let Some(progress) = active.progress {
+                    progress.sector_erased(sector.size(), t.elapsed());
+                }
                 t = std::time::Instant::now();
             }
             Ok(())
         });
 
         if result.is_ok() {
-            progress.finished_erasing();
-        } else {
+            if let Some(progress) = self.progress {
+                progress.finished_erasing();
+            }
+        } else if let Some(progress) = self.progress {
             progress.failed_erasing();
         }
 
@@ -408,14 +418,11 @@ impl<'session, 'progress> Flasher<'session, 'progress> {
     ///
     /// This is only possible if the RAM is large enough to
     /// fit at least two page buffers. See [Flasher::double_buffering_supported].
-    fn program_double_buffer(
-        &mut self,
-        flash_layout: &FlashLayout,
-        progress: &FlashProgress,
-    ) -> Result<(), FlashError> {
+    fn program_double_buffer(&mut self, flash_layout: &FlashLayout) -> Result<(), FlashError> {
         let mut current_buf = 0;
-
-        progress.started_programming();
+        if let Some(progress) = self.progress {
+            progress.started_programming();
+        }
 
         let mut t = std::time::Instant::now();
         let result = self.run_program(|active| {
@@ -435,7 +442,9 @@ impl<'session, 'progress> Flasher<'session, 'progress> {
                         })?;
 
                 last_page_address = page.address();
-                progress.page_programmed(page.size(), t.elapsed());
+                if let Some(progress) = active.progress {
+                    progress.page_programmed(page.size(), t.elapsed());
+                }
                 t = std::time::Instant::now();
                 if result != 0 {
                     return Err(FlashError::RoutineCallFailed {
@@ -473,9 +482,13 @@ impl<'session, 'progress> Flasher<'session, 'progress> {
         });
 
         if result.is_ok() {
-            progress.finished_programming();
+            if let Some(progress) = self.progress {
+                progress.finished_programming();
+            }
         } else {
-            progress.failed_programming();
+            if let Some(progress) = self.progress {
+                progress.failed_programming();
+            }
             result?;
         }
 

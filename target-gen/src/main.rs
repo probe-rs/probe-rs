@@ -104,7 +104,7 @@ enum TargetGen {
     /// and runs the flash algorithm on the given attached target.
     ///
     /// Works like `target-gen export` but also runs the flash algorithm.
-    Run {
+    Test {
         /// The path of the template YAML definition file.
         /// This file plus the information of the ELF will be merged
         /// and stored into the `definition_export_path` file.
@@ -155,7 +155,7 @@ fn main() -> Result<()> {
             template_path.as_path(),
             definition_export_path.as_path(),
         )?,
-        TargetGen::Run {
+        TargetGen::Test {
             target_artifact,
             template_path,
             definition_export_path,

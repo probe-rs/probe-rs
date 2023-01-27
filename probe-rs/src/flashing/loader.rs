@@ -8,8 +8,7 @@ use std::ops::Range;
 
 use super::builder::FlashBuilder;
 use super::{
-    extract_from_elf, BinOptions, DownloadOptions, FileDownloadError, FlashError, FlashProgress,
-    Flasher,
+    extract_from_elf, BinOptions, DownloadOptions, FileDownloadError, FlashError, Flasher,
 };
 use crate::memory::MemoryInterface;
 use crate::session::Session;
@@ -343,7 +342,6 @@ impl FlashLoader {
                     options.keep_unwritten_bytes,
                     do_use_double_buffering,
                     options.skip_erase || do_chip_erase,
-                    options.progress.unwrap_or(&FlashProgress::new(|_| {})),
                 )?;
             }
         }
