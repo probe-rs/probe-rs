@@ -832,6 +832,7 @@ impl<D: StLinkUsb> StLink<D> {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, data, apsel), fields(ap=apsel, length= data.len()))]
     fn read_mem_32bit(
         &mut self,
         address: u32,
@@ -839,12 +840,6 @@ impl<D: StLinkUsb> StLink<D> {
         apsel: u8,
     ) -> Result<(), DebugProbeError> {
         self.select_ap(apsel)?;
-
-        tracing::debug!(
-            "Read mem 32 bit, address={:08x}, length={}",
-            address,
-            data.len()
-        );
 
         // Ensure maximum read length is not exceeded.
         assert!(
@@ -885,6 +880,8 @@ impl<D: StLinkUsb> StLink<D> {
 
             self.get_last_rw_status()
         })?;
+
+        tracing::debug!("Read ok");
 
         Ok(value)
     }
