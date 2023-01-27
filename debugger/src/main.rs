@@ -6,13 +6,13 @@ mod debugger;
 mod peripherals;
 
 use anyhow::{Context, Result};
-use chrono::Local;
 use clap::{crate_authors, crate_description, crate_name, crate_version, Parser};
 use debugger::debug_entry::{debug, list_connected_devices, list_supported_chips};
 use probe_rs::{
     architecture::arm::ap::AccessPortError, flashing::FileDownloadError, DebugProbeError, Error,
 };
 use std::{env::var, fs::File, io::stderr};
+use time::OffsetDateTime;
 use tracing::metadata::LevelFilter;
 use tracing_subscriber::{
     fmt::format::FmtSpan, prelude::__tracing_subscriber_SubscriberExt, util::SubscriberInitExt,
@@ -120,7 +120,10 @@ fn setup_logging() -> Result<String, anyhow::Error> {
                 .context("Could not determine the application storage directory required for the log output files.")?;
             let directory = project_dirs.data_dir();
             let logname = sanitize_filename::sanitize_with_options(
-                format!("{}.log", Local::now().timestamp_millis()),
+                format!(
+                    "{}.log",
+                    OffsetDateTime::now_local()?.unix_timestamp_nanos() / 1_000_000
+                ),
                 sanitize_filename::Options {
                     replacement: "_",
                     ..Default::default()
