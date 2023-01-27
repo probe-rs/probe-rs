@@ -86,8 +86,8 @@ enum TargetGen {
     },
     /// Generates a target yaml from a flash algorithm Rust project.
     ///
-    /// It builds the project, extracts parameters and functions from the ELF and generates
-    /// the target yaml file.
+    /// It extracts parameters and functions from the ELF
+    /// and generates the target yaml file.
     Export {
         /// The path of the template YAML definition file.
         /// This file plus the information of the ELF will be merged
@@ -100,8 +100,8 @@ enum TargetGen {
     },
     /// Generates a target yaml from a flash algorithm Rust project.
     ///
-    /// It builds the project, extracts parameters and functions from the ELF and generates
-    /// the target yaml file and runs the flash algorithm on the given attached target.
+    /// Extracts parameters and functions from the ELF, generates the target yaml file
+    /// and runs the flash algorithm on the given attached target.
     ///
     /// Works like `target-gen export` but also runs the flash algorithm.
     Run {
