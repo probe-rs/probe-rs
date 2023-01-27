@@ -2269,7 +2269,6 @@ dependencies = [
  "byte-unit",
  "cargo_metadata",
  "cargo_toml",
- "chrono",
  "clap",
  "colored",
  "defmt-decoder",
@@ -2288,6 +2287,7 @@ dependencies = [
  "simplelog",
  "terminal_size",
  "thiserror",
+ "time 0.3.17",
 ]
 
 [[package]]
