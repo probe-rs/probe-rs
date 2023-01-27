@@ -7,22 +7,22 @@ use probe_rs_target::{
 use std::{
     fs::{File, OpenOptions},
     io::{BufRead, Write},
-    path::PathBuf,
+    path::{Path, PathBuf},
 };
 
 use crate::parser::extract_flash_algo;
 
 /// Prepare a target config based on an ELF file containing a flash algorithm.
 pub fn cmd_elf(
-    file: PathBuf,
+    file: &Path,
     fixed_load_address: bool,
     output: Option<PathBuf>,
     update: bool,
     name: Option<String>,
 ) -> Result<()> {
-    let elf_file = File::open(&file)?;
+    let elf_file = File::open(file)?;
 
-    let mut algorithm = extract_flash_algo(elf_file, &file, true, fixed_load_address)?;
+    let mut algorithm = extract_flash_algo(elf_file, file, true, fixed_load_address)?;
 
     if let Some(name) = name {
         algorithm.name = name;

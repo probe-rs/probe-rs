@@ -122,14 +122,14 @@ fn main() -> Result<()> {
             update,
             name,
             fixed_load_address,
-        } => cmd_elf(elf, fixed_load_address, output, update, name)?,
+        } => cmd_elf(elf.as_path(), fixed_load_address, output, update, name)?,
         TargetGen::Arm {
             output_dir,
             pack_filter: chip_family,
             list,
         } => cmd_arm(output_dir, chip_family, list)?,
-        TargetGen::Export { target_artifact } => cmd_export(target_artifact)?,
-        TargetGen::Run { target_artifact } => cmd_run(target_artifact)?,
+        TargetGen::Export { target_artifact } => cmd_export(target_artifact.as_path())?,
+        TargetGen::Run { target_artifact } => cmd_run(target_artifact.as_path())?,
     }
 
     println!("Finished in {:?}", t.elapsed());

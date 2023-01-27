@@ -7,17 +7,17 @@ use super::elf::cmd_elf;
 
 pub const DEFINITION_EXPORT_PATH: &str = "target/definition.yaml";
 
-pub fn cmd_export(target_artifact: PathBuf) -> Result<()> {
+pub fn cmd_export(target_artifact: &Path) -> Result<()> {
     std::fs::copy("template.yaml", DEFINITION_EXPORT_PATH)?;
     cmd_elf(
-        target_artifact.clone(),
+        target_artifact,
         true,
         Some(PathBuf::from(DEFINITION_EXPORT_PATH)),
         true,
         Some(String::from("algorithm-test")),
     )?;
 
-    if let Err(error) = generate_debug_info(target_artifact.as_path()) {
+    if let Err(error) = generate_debug_info(target_artifact) {
         println!("Generating debug artifacts failed because:");
         println!("{error}");
     }

@@ -1,7 +1,7 @@
+use std::cell::RefCell;
 use std::path::Path;
 use std::rc::Rc;
 use std::time::Instant;
-use std::{cell::RefCell, path::PathBuf};
 
 use anyhow::Result;
 use colored::Colorize;
@@ -15,7 +15,7 @@ use probe_rs_cli_util::logging::println;
 
 use super::export::{cmd_export, DEFINITION_EXPORT_PATH};
 
-pub fn cmd_run(target_artifact: PathBuf) -> Result<()> {
+pub fn cmd_run(target_artifact: &Path) -> Result<()> {
     // Generate the binary
     println("Generating the YAML file in `target/definition.yaml`");
     cmd_export(target_artifact)?;
