@@ -6,12 +6,12 @@ use std::{
 };
 
 use anyhow::Context;
-use chrono::NaiveDateTime;
 use probe_rs::MemoryInterface;
 use probe_rs_cli_util::{clap, common_options::ProbeOptions};
 
 use rand::prelude::*;
 use serde::{Deserialize, Serialize};
+use time::OffsetDateTime;
 
 const SIZE: usize = 0x1000;
 
@@ -160,8 +160,7 @@ pub fn benchmark(common_options: ProbeOptions, options: BenchmarkOptions) -> any
                     protocol: protocol_name,
                     protocol_speed,
                     commit_hash: commit_name,
-                    timestamp: NaiveDateTime::from_timestamp_opt(since_the_epoch as i64, 0)
-                        .unwrap(),
+                    timestamp: OffsetDateTime::from_unix_timestamp(since_the_epoch as i64).unwrap(),
                     kind: "ram".into(),
                     read_speed: read_throughput as i32,
                     write_speed: write_throughput as i32,
@@ -183,28 +182,28 @@ pub struct NewLog {
     pub protocol_speed: i32,
     pub commit_hash: String,
     #[serde(with = "timestamp")]
-    pub timestamp: NaiveDateTime,
+    pub timestamp: OffsetDateTime,
     pub kind: String,
     pub read_speed: i32,
     pub write_speed: i32,
 }
 
 mod timestamp {
-    use chrono::NaiveDateTime;
     use serde::{self, Deserialize, Deserializer, Serializer};
+    use time::OffsetDateTime;
 
-    pub fn serialize<S>(date: &NaiveDateTime, serializer: S) -> Result<S::Ok, S::Error>
+    pub fn serialize<S>(date: &OffsetDateTime, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
-        serializer.serialize_i64(date.timestamp())
+        serializer.serialize_i64(date.unix_timestamp())
     }
 
-    pub fn deserialize<'de, D>(deserializer: D) -> Result<NaiveDateTime, D::Error>
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<OffsetDateTime, D::Error>
     where
         D: Deserializer<'de>,
     {
         let s = i64::deserialize(deserializer)?;
-        Ok(NaiveDateTime::from_timestamp_opt(s, 0).unwrap())
+        Ok(OffsetDateTime::from_unix_timestamp(s).unwrap())
     }
 }
