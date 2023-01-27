@@ -183,7 +183,6 @@ impl<'session, 'progress> Flasher<'session, 'progress> {
             rtt: None,
             #[cfg(feature = "rtt")]
             memory_map,
-            #[cfg(feature = "rtt")]
             progress: self.progress,
             flash_algorithm: self.flash_algorithm.clone(),
             _operation: core::marker::PhantomData,
