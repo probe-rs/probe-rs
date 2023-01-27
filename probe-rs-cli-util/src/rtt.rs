@@ -1,6 +1,5 @@
 use crate::*;
 use anyhow::{anyhow, Result};
-use chrono::Local;
 use defmt_decoder::DecodeError;
 use num_traits::Zero;
 use probe_rs::config::MemoryRegion;
@@ -17,6 +16,7 @@ use std::{
     io::{Read, Seek},
     str::FromStr,
 };
+use time::OffsetDateTime;
 
 pub fn attach_to_rtt(
     core: &mut Core,
@@ -244,7 +244,7 @@ impl RttActiveChannel {
                                 let incoming = String::from_utf8_lossy(&self.rtt_buffer.0[..bytes_read]).to_string();
                                 for (_i, line) in incoming.split_terminator('\n').enumerate() {
                                     if self.show_timestamps {
-                                        write!(formatted_data, "{} :", Local::now())
+                                        write!(formatted_data, "{} :", OffsetDateTime::now_local().unwrap())
                                             .map_or_else(|err| log::error!("Failed to format RTT data - {:?}", err), |r|r);
                                     }
                                     writeln!(formatted_data, "{line}").map_or_else(|err| log::error!("Failed to format RTT data - {:?}", err), |r|r);

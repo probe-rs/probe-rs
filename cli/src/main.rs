@@ -9,7 +9,6 @@ mod trace;
 include!(concat!(env!("OUT_DIR"), "/meta.rs"));
 
 use benchmark::{benchmark, BenchmarkOptions};
-use chrono::Local;
 use debugger::CliState;
 
 use probe_rs::{
@@ -29,6 +28,7 @@ use probe_rs_cli_util::{
 use rustyline::Editor;
 
 use anyhow::{Context, Result};
+use time::OffsetDateTime;
 use tracing::metadata::LevelFilter;
 use tracing_subscriber::{
     fmt::format::FmtSpan, prelude::__tracing_subscriber_SubscriberExt, util::SubscriberInitExt,
@@ -246,7 +246,10 @@ fn main() -> Result<()> {
         .context("the application storage directory could not be determined")?;
     let directory = project_dirs.data_dir();
     let logname = sanitize_filename::sanitize_with_options(
-        format!("{}.log", Local::now().timestamp_millis()),
+        format!(
+            "{}.log",
+            OffsetDateTime::now_local().unwrap().unix_timestamp_nanos() / 1_000_000
+        ),
         sanitize_filename::Options {
             replacement: "_",
             ..Default::default()
