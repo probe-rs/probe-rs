@@ -950,7 +950,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                             // The default behaviour is to defer the processing of child types.
                             child_variable.variable_node_type =
                                 VariableNodeType::TypeOffset(node.entry().offset());
-                            // In some cases, it really simplifies the UX if we can auto resolve the children and dreive a value that is visible at first glance to the user.
+                            // In some cases, it really simplifies the UX if we can auto resolve the children and derive a value that is visible at first glance to the user.
                             if name.starts_with("&str")
                                 || name.starts_with("Option")
                                 || name.starts_with("Some")
@@ -980,6 +980,15 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                 gimli::DW_TAG_enumeration_type => {
                     child_variable.type_name =
                         VariableType::Enum(type_name.unwrap_or_else(|| "<unnamed>".to_string()));
+                    self.process_memory_location(
+                        node.entry(),
+                        parent_variable,
+                        &mut child_variable,
+                        Some(core),
+                        stack_frame_registers,
+                        frame_base,
+                    )?;
+
                     // Recursively process a child types.
                     child_variable = self.process_tree(
                         node,
@@ -1040,12 +1049,14 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                     match data_type_attribute.value() {
                                         gimli::AttributeValue::UnitRef(unit_ref) => {
                                             // The memory location of array members build on top of the memory location of the child_variable.
-                                            if child_variable.memory_location
-                                                == VariableLocation::Unknown
-                                            {
-                                                child_variable.memory_location =
-                                                    parent_variable.memory_location.clone();
-                                            }
+                                            self.process_memory_location(
+                                                node.entry(),
+                                                parent_variable,
+                                                &mut child_variable,
+                                                Some(core),
+                                                stack_frame_registers,
+                                                frame_base,
+                                            )?;
                                             // Now we can explode the array members.
                                             // First get the DW_TAG_subrange child of this node. It has a DW_AT_type that points to DW_TAG_base_type:__ARRAY_SIZE_TYPE__.
                                             let mut subrange_variable = cache.cache_variable(
@@ -1148,7 +1159,14 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                 gimli::DW_TAG_union_type => {
                     child_variable.type_name =
                         VariableType::Base(type_name.unwrap_or_else(|| "<unnamed>".to_string()));
-                    child_variable.handle_memory_location_special_cases(parent_variable, core);
+                    self.process_memory_location(
+                        node.entry(),
+                        parent_variable,
+                        &mut child_variable,
+                        Some(core),
+                        stack_frame_registers,
+                        frame_base,
+                    )?;
                     // Recursively process a child types.
                     // TODO: The DWARF does not currently hold information that allows decoding of which UNION arm is instantiated, so we have to display all available.
                     child_variable = self.process_tree(
@@ -1267,7 +1285,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                 Some(child_variable.variable_key),
                 Variable::new(
                     self.unit.header.offset().as_debug_info_offset(),
-                    Some(array_member_type_node.entry().offset()),
+                    Some(unit_ref),
                 ),
                 core,
             )?;
@@ -1277,7 +1295,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
             array_member_variable.source_location = child_variable.source_location.clone();
             self.process_memory_location(
                 array_member_type_node.entry(),
-                &*child_variable,
+                child_variable,
                 &mut array_member_variable,
                 Some(core),
                 stack_frame_registers,
@@ -1285,7 +1303,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
             )?;
             array_member_variable = self.extract_type(
                 array_member_type_node,
-                &*child_variable,
+                child_variable,
                 array_member_variable,
                 core,
                 stack_frame_registers,
@@ -1309,7 +1327,12 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                 // Make sure the array variable has no value if its own.
                 child_variable.set_value(VariableValue::Empty);
             }
-            array_member_variable.handle_memory_location_special_cases(&*child_variable, core);
+            self.handle_memory_location_special_cases(
+                unit_ref,
+                &mut array_member_variable,
+                child_variable,
+                core,
+            );
             cache.cache_variable(
                 Some(child_variable.variable_key),
                 array_member_variable,
@@ -1333,7 +1356,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
         // For nested types, the `byte_size` may need to be calculated as the product of the `byte_size` and array upper bound.
         child_variable.byte_size = child_variable
             .byte_size
-            .or_else(|| extract_byte_size(self.debug_info, node_die))
+            .or_else(|| extract_byte_size(node_die))
             .or_else(|| {
                 parent_variable.byte_size.map(|byte_size| {
                     let array_member_count = (parent_variable.range_upper_bound
@@ -1383,7 +1406,9 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
 
                             VariableLocation::Unknown => {
                                 if let Some(core) = core {
-                                    child_variable.handle_memory_location_special_cases(
+                                    self.handle_memory_location_special_cases(
+                                        node_die.offset(),
+                                        child_variable,
                                         parent_variable,
                                         core,
                                     );
@@ -1399,7 +1424,12 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                 }
             }
         } else if let Some(core) = core {
-            child_variable.handle_memory_location_special_cases(parent_variable, core);
+            self.handle_memory_location_special_cases(
+                node_die.offset(),
+                child_variable,
+                parent_variable,
+                core,
+            );
         }
         Ok(())
     }
@@ -1782,5 +1812,122 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
             }
         }
         Ok(evaluation.result())
+    }
+
+    /// A helper function, to handle memory_location for special cases, such as array members, pointers, and intermediate nodes.
+    /// Normally, the memory_location is calculated before the type is calculated,
+    ///     but special cases require the type related info of the variable to correctly compute the memory_location.
+    fn handle_memory_location_special_cases(
+        &self,
+        unit_ref: UnitOffset,
+        child_variable: &mut Variable,
+        parent_variable: &Variable,
+        core: &mut Core<'_>,
+    ) {
+        if let Some(child_member_index) = child_variable.member_index {
+            // If this variable is a member of an array type, and needs special handling to calculate the `memory_location`.
+            if let VariableLocation::Address(address) = parent_variable.memory_location {
+                if let Some(byte_size) = child_variable.byte_size {
+                    let (location, has_overflowed) =
+                        address.overflowing_add(child_member_index as u64 * byte_size);
+
+                    if has_overflowed {
+                        child_variable.set_value(VariableValue::Error(
+                            "Overflow calculating variable address".to_string(),
+                        ));
+                    } else {
+                        child_variable.memory_location = VariableLocation::Address(location);
+                    }
+                } else {
+                    // If this array member doesn't have a byte_size, it may be because it is the first member of an array itself.
+                    // In this case, the byte_size will be calculated when the nested array members are resolved.
+                    // The first member of an array will have a memory location of the same as it's parent.
+                    child_variable.memory_location = parent_variable.memory_location.clone();
+                }
+            } else {
+                child_variable.memory_location = VariableLocation::Unavailable;
+            }
+        } else if child_variable.memory_location == VariableLocation::Unknown
+            && parent_variable.memory_location.valid()
+        {
+            // Non-array members can inherit their memory location from their parent, but only if the parent has a valid memory location.
+            if let VariableType::Pointer(optional_pointer_name) = &parent_variable.type_name {
+                // If the parent is a pointer, then we need to check the conditions below, in case the parent memory location
+                //  is a pointer to a the referenced variable's value, or a pointer to the referenced variable's address.
+                let pointer_name = optional_pointer_name
+                    .clone()
+                    .unwrap_or_else(|| "Unnamed Pointer Type".to_string());
+                // if matches!(self.name.clone(), VariableName::Named(var_name) if var_name.starts_with('*'))
+
+                // Address Pointer Conditions:
+                // Pointer names that start with '*' (e.g. '*const u8')
+                // Overriding clippy, to defer the processing of `self.has_address_pointer()` until after the `||` conditions.
+                #[allow(clippy::blocks_in_if_conditions)]
+                if pointer_name.starts_with('*')
+                    || // Pointers to base types (includes &str types) 
+                        (matches!(child_variable.type_name, VariableType::Base(_))
+                        || matches!(child_variable.type_name.clone(), VariableType::Struct(type_name) if type_name.starts_with("&str")))
+                    || // Pointers to types with refrenced memory addresses (e.g. variants, generics, arrays, etc.)
+                        self.has_address_pointer(unit_ref).unwrap_or_else(|error| {
+                            child_variable.set_value(VariableValue::Error(
+                            format!("Failed to determine if a struct has variant or generic type fields: {}", error),
+                        ));
+                        false
+                        })
+                {
+                    match &parent_variable.memory_location {
+                        VariableLocation::Address(address) => {
+                            // Now, retrieve the location by reading the adddress pointed to by the parent variable.
+                            child_variable.memory_location = match core.read_word_32(*address) {
+                                Ok(memory_location) => {
+                                    VariableLocation::Address(memory_location as u64)
+                                }
+                                Err(error) => {
+                                    tracing::error!("Failed to read referenced variable address from memory location {} : {}.", parent_variable.memory_location , error);
+                                    VariableLocation::Error(format!("Failed to read referenced variable address from memory location {} : {}.", parent_variable.memory_location, error))
+                                }
+                            };
+                        }
+                        other => {
+                            child_variable.memory_location =
+                                VariableLocation::Unsupported(format!(
+                                    "Location {:?} not supported for referenced variables.",
+                                    other
+                                ));
+                        }
+                    }
+                } else {
+                    // If the parent variable is a pointer, but the child variable is not the dereferenced value,
+                    //  i.e. It is an intermediate node before the dereferenced pointer,
+                    //  then it can inherit it's memory location from it's parent.
+                    child_variable.memory_location = parent_variable.memory_location.clone();
+                }
+            } else {
+                // If the parent variable is not a pointer, then it can inherit it's memory location from it's parent.
+                child_variable.memory_location = parent_variable.memory_location.clone();
+            }
+        }
+    }
+
+    /// A helper function to determine if the type we are referencing requires a pointer to the address of the referenced variable (e.g. variants, generics, arrays, etc.)
+    fn has_address_pointer(&self, unit_ref: UnitOffset) -> Result<bool, DebugError> {
+        let mut entries_tree = self
+            .unit
+            .header
+            .entries_tree(&self.unit.abbreviations, Some(unit_ref))?;
+        let entry_node = entries_tree.root()?;
+        if matches!(
+            entry_node.entry().tag(),
+            gimli::DW_TAG_array_type | gimli::DW_TAG_enumeration_type | gimli::DW_TAG_union_type
+        ) {
+            return Ok(true);
+        }
+        let mut child_nodes = entry_node.children();
+        while let Some(child_node) = child_nodes.next()? {
+            if child_node.entry().tag() == gimli::DW_TAG_variant_part {
+                return Ok(true);
+            }
+        }
+        Ok(false)
     }
 }
