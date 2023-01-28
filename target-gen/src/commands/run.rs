@@ -12,8 +12,9 @@ use probe_rs::{
     Permissions, Session,
 };
 use probe_rs_cli_util::logging::println;
+use xshell::{cmd, Shell};
 
-use super::export::cmd_export;
+use crate::commands::elf::cmd_elf;
 
 pub fn cmd_run(
     target_artifact: &Path,
@@ -22,7 +23,19 @@ pub fn cmd_run(
 ) -> Result<()> {
     // Generate the binary
     println("Generating the YAML file in `{definition_export_path}`");
-    cmd_export(target_artifact, template_path, definition_export_path)?;
+    std::fs::copy(template_path, definition_export_path)?;
+    cmd_elf(
+        target_artifact,
+        true,
+        Some(definition_export_path),
+        true,
+        Some(String::from("algorithm-test")),
+    )?;
+
+    if let Err(error) = generate_debug_info(target_artifact) {
+        println!("Generating debug artifacts failed because:");
+        println!("{error}");
+    }
 
     probe_rs::config::add_target_from_yaml(definition_export_path)?;
     let mut session =
@@ -170,6 +183,28 @@ pub fn run_flash_erase(
     } else {
         erase_sectors(session, Some(progress), 0, 2)?;
     }
+
+    Ok(())
+}
+
+fn generate_debug_info(target_artifact: &Path) -> Result<()> {
+    let sh = Shell::new()?;
+    std::fs::write(
+        "target/disassembly.s",
+        cmd!(sh, "rust-objdump --disassemble {target_artifact}")
+            .output()?
+            .stdout,
+    )?;
+    std::fs::write(
+        "target/dump.txt",
+        cmd!(sh, "rust-objdump -x {target_artifact}")
+            .output()?
+            .stdout,
+    )?;
+    std::fs::write(
+        "target/nm.txt",
+        cmd!(sh, "rust-nm {target_artifact} -n").output()?.stdout,
+    )?;
 
     Ok(())
 }

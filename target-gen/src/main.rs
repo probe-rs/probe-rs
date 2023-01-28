@@ -17,7 +17,6 @@ use tracing_subscriber::EnvFilter;
 
 use crate::commands::{
     elf::{cmd_elf, serialize_to_yaml_file},
-    export::cmd_export,
     run::cmd_run,
 };
 
@@ -86,24 +85,10 @@ enum TargetGen {
     },
     /// Generates a target yaml from a flash algorithm Rust project.
     ///
-    /// It extracts parameters and functions from the ELF
-    /// and generates the target yaml file.
-    Export {
-        /// The path of the template YAML definition file.
-        /// This file plus the information of the ELF will be merged
-        /// and stored into the `definition_export_path` file.
-        template_path: PathBuf,
-        /// The path of the completed YAML definition file.
-        definition_export_path: PathBuf,
-        /// The path to the ELF.
-        target_artifact: PathBuf,
-    },
-    /// Generates a target yaml from a flash algorithm Rust project.
-    ///
     /// Extracts parameters and functions from the ELF, generates the target yaml file
     /// and runs the flash algorithm on the given attached target.
     ///
-    /// Works like `target-gen export` but also runs the flash algorithm.
+    /// This can be used as a cargo runner.
     Test {
         /// The path of the template YAML definition file.
         /// This file plus the information of the ELF will be merged
@@ -146,15 +131,6 @@ fn main() -> Result<()> {
             pack_filter: chip_family,
             list,
         } => cmd_arm(output_dir, chip_family, list)?,
-        TargetGen::Export {
-            target_artifact,
-            template_path,
-            definition_export_path,
-        } => cmd_export(
-            target_artifact.as_path(),
-            template_path.as_path(),
-            definition_export_path.as_path(),
-        )?,
         TargetGen::Test {
             target_artifact,
             template_path,
