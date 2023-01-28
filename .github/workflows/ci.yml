@@ -39,7 +39,7 @@ jobs:
         # Only install on Ubuntu
         if: (matrix.os == 'ubuntu-latest') || (matrix.os == 'ubuntu-20.04')
 
-      - uses: ./github/workflows/setup
+      - uses: ./github/actions/setup
 
       - name: Cache Dependencies
         uses: Swatinem/rust-cache@v2.2.0
@@ -83,7 +83,7 @@ jobs:
         # Only install on Ubuntu
         if: matrix.os == 'ubuntu-latest'
 
-      - uses: ./github/workflows/setup
+      - uses: ./github/actions/setup
         with:
           targets: thumbv7m-none-eabi
       
@@ -103,7 +103,7 @@ jobs:
       - name: Checkout sources
         uses: actions/checkout@v3
 
-      - uses: ./github/workflows/setup
+      - uses: ./github/actions/setup
         with:
           components: rustfmt
 
@@ -125,7 +125,7 @@ jobs:
           sudo apt update
           sudo apt install -y libusb-1.0-0-dev libudev-dev
 
-      - uses: ./github/workflows/setup
+      - uses: ./github/actions/setup
         with:
           components: clippy
 
@@ -156,7 +156,7 @@ jobs:
           sudo apt update
           sudo apt install -y libusb-1.0-0-dev libudev-dev
 
-      - uses: ./github/workflows/setup
+      - uses: ./github/actions/setup
 
       - name: Cache Dependencies
         uses: Swatinem/rust-cache@v2.2.0
