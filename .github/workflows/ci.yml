@@ -10,9 +10,6 @@ on:
 
 name: Run CI
 
-env:
-  TOOLCHAIN: Monday
-
 jobs:
   check:
     name: Check

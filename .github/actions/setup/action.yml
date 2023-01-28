@@ -6,7 +6,7 @@ inputs:
     description: "The targets to install"
     required: false
   components:
-    description: "The targets to install"
+    description: "The components to install"
     required: false
 runs:
   using: "composite"
