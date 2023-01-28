@@ -93,6 +93,8 @@ pub fn cmd_test(
     println!("{test}: Erasing sectorwise and writing two pages ...");
 
     run_flash_erase(&mut session, &progress, false)?;
+    // TODO: The sector used here is not necessarily the sector the flash algorithm targets.
+    // Make this configurable.
     let mut readback = vec![0; flash_properties.sectors[0].size as usize];
     session.core(0)?.read_8(0x0, &mut readback)?;
     assert!(
@@ -113,6 +115,8 @@ pub fn cmd_test(
 
     println!("{test}: Erasing the entire chip and writing two pages ...");
     run_flash_erase(&mut session, &progress, true)?;
+    // TODO: The sector used here is not necessarily the sector the flash algorithm targets.
+    // Make this configurable.
     let mut readback = vec![0; flash_properties.sectors[0].size as usize];
     session.core(0)?.read_8(0x0, &mut readback)?;
     assert!(
@@ -133,6 +137,8 @@ pub fn cmd_test(
 
     println!("{test}: Erasing sectorwise and writing two pages double buffered ...");
     run_flash_erase(&mut session, &progress, false)?;
+    // TODO: The sector used here is not necessarily the sector the flash algorithm targets.
+    // Make this configurable.
     let mut readback = vec![0; flash_properties.sectors[0].size as usize];
     session.core(0)?.read_8(0x0, &mut readback)?;
     assert!(
