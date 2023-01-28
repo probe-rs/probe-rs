@@ -22,7 +22,6 @@ sentry = ["probe-rs-cli-util/sentry"]
 
 [dependencies]
 env_logger = "0.10"
-lazy_static = "1"
 colored = "2"
 probe-rs = { workspace = true }
 probe-rs-cli-util = { workspace = true, default-features = false, features = [
