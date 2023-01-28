@@ -19,8 +19,6 @@ jobs:
       - name: Checkout sources
         uses: actions/checkout@v3
 
-      - run: echo ${{ github.event.type }}
-
       - name: Install libusb and libftdi (linux)
         run: |
           sudo apt update
