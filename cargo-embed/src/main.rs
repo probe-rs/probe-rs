@@ -120,7 +120,7 @@ fn main() {
 
             #[cfg(feature = "sentry")]
             if ask_to_log_crash() {
-                capture_anyhow(&METADATA.lock().unwrap(), &e)
+                capture_anyhow(&metadata.lock().unwrap(), &e)
             }
             #[cfg(not(feature = "sentry"))]
             log::info!("{:#?}", &metadata.lock().unwrap());

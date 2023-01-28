@@ -38,11 +38,14 @@ fn main() {
         next(info);
     }));
 
-    match main_try(metadata.clone()) {
+    #[cfg(not(feature = "sentry"))]
+    let metadata_log = metadata.clone();
+
+    match main_try(metadata) {
         Ok(_) => (),
         Err(e) => {
             #[cfg(not(feature = "sentry"))]
-            log::info!("{:#?}", &metadata.lock().unwrap());
+            log::info!("{:#?}", &metadata_log.lock().unwrap());
 
             // Ensure stderr is flushed before calling process::exit,
             // otherwise the process might panic, because it tries
