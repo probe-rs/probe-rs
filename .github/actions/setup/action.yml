@@ -14,5 +14,5 @@ runs:
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@1.67.0
         with:
-          targets: ${{ input.targets }}
-          components: ${{ input.components }}
+          targets: ${{ inputs.targets }}
+          components: ${{ inputs.components }}
