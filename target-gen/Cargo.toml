@@ -16,7 +16,6 @@ license.workspace = true
 
 [dependencies]
 probe-rs = { path = "../probe-rs", version = "0.14.2", default-features = false }
-probe-rs-cli-util = { workspace = true }
 probe-rs-target = { path = "../probe-rs-target", version = "0.14.2", default-features = false }
 cmsis-pack = { version = "0.6.1" }
 goblin = { version = "0.6.0", default-features = false, features = [

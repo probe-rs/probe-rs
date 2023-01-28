@@ -3106,7 +3106,6 @@ dependencies = [
  "log",
  "predicates",
  "probe-rs",
- "probe-rs-cli-util",
  "probe-rs-target",
  "reqwest",
  "scroll",

@@ -11,7 +11,6 @@ use probe_rs::{
     flashing::{erase_sectors, DownloadOptions, FlashLoader, FlashProgress},
     Permissions, Session,
 };
-use probe_rs_cli_util::logging::println;
 use xshell::{cmd, Shell};
 
 use crate::commands::elf::cmd_elf;
@@ -24,7 +23,7 @@ pub fn cmd_test(
     definition_export_path: &Path,
 ) -> Result<()> {
     // Generate the binary
-    println("Generating the YAML file in `{definition_export_path}`");
+    println!("Generating the YAML file in `{definition_export_path:?}`");
     std::fs::copy(template_path, definition_export_path)?;
     cmd_elf(
         target_artifact,
