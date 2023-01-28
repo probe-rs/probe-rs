@@ -3,7 +3,11 @@ name: Install toolchain
 description: Install toolchain
 inputs:
   targets:
+    description: "The targets to install"
+    required: false
   components:
+    description: "The targets to install"
+    required: false
 runs:
   using: "composite"
   steps:
