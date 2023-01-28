@@ -165,7 +165,7 @@ fn main_try(metadata: Arc<Mutex<Metadata>>) -> Result<()> {
     } else {
         opt.chip
             .as_ref()
-            .or_else(|| config.general.chip.as_ref())
+            .or(config.general.chip.as_ref())
             .map(|chip| chip.into())
             .unwrap_or(TargetSelector::Auto)
     };
@@ -548,7 +548,7 @@ fn rtt_attach(
             let memory_map = session_handle.target().memory_map.clone();
             let mut core = session_handle.core(0)?;
 
-            match Rtt::attach_region(&mut core, &memory_map, &rtt_region) {
+            match Rtt::attach_region(&mut core, &memory_map, rtt_region) {
                 Ok(rtt) => return Ok(rtt),
                 Err(e) => last_error = Some(e),
             }
