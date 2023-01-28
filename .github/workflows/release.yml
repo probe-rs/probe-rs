@@ -61,7 +61,7 @@ jobs:
           tag_name: $( echo '${{ github.head_ref }}' | sed 's?release/??' )
           release_name: $( echo '${{ github.head_ref }}' | sed 's?release/??' )
           body: ${{ steps.notes.outputs.notes }}
-          draft: false
+          draft: true
           prerelease: false
 
       - name: release to crates.io
