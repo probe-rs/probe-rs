@@ -47,14 +47,6 @@ jobs:
           git config --global gpg.format ssh
           git config --global user.signingkey "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGr8+OZiQ6EHlhZcsPbnbkiW0wBtgNYGR2J5SI+QOw9Q bot@probe.rs"
 
-      - name: release to crates.io
-        run: |
-          git checkout master
-          cargo login ${{ secrets.CARGO_REGISTRY_TOKEN }}
-          cargo release --no-confirm --execute --sign $( echo '${{ github.head_ref }}' | sed 's?release/??' )
-        env:
-          SSH_AUTH_SOCK: /tmp/ssh_agent.sock
-
       - name: Generate Release Notes
         id: notes
         run: |
@@ -71,3 +63,11 @@ jobs:
           body: ${{ steps.notes.outputs.notes }}
           draft: false
           prerelease: false
+
+      - name: release to crates.io
+        run: |
+          git checkout master
+          cargo login ${{ secrets.CARGO_REGISTRY_TOKEN }}
+          cargo release --no-confirm --execute --sign $( echo '${{ github.head_ref }}' | sed 's?release/??' )
+        env:
+          SSH_AUTH_SOCK: /tmp/ssh_agent.sock
