@@ -10,6 +10,9 @@ on:
 
 name: Run CI
 
+env:
+  TOOLCHAIN: Monday
+
 jobs:
   check:
     name: Check
@@ -36,8 +39,7 @@ jobs:
         # Only install on Ubuntu
         if: (matrix.os == 'ubuntu-latest') || (matrix.os == 'ubuntu-20.04')
 
-      - name: Install stable toolchain
-        uses: dtolnay/rust-toolchain@stable
+      - uses: ./github/workflows/setup
 
       - name: Cache Dependencies
         uses: Swatinem/rust-cache@v2.2.0
@@ -81,8 +83,7 @@ jobs:
         # Only install on Ubuntu
         if: matrix.os == 'ubuntu-latest'
 
-      - name: Install stable toolchain
-        uses: dtolnay/rust-toolchain@stable
+      - uses: ./github/workflows/setup
         with:
           targets: thumbv7m-none-eabi
       
@@ -102,8 +103,7 @@ jobs:
       - name: Checkout sources
         uses: actions/checkout@v3
 
-      - name: Install stable toolchain
-        uses: dtolnay/rust-toolchain@stable
+      - uses: ./github/workflows/setup
         with:
           components: rustfmt
 
@@ -125,8 +125,7 @@ jobs:
           sudo apt update
           sudo apt install -y libusb-1.0-0-dev libudev-dev
 
-      - name: Install stable toolchain
-        uses: dtolnay/rust-toolchain@stable
+      - uses: ./github/workflows/setup
         with:
           components: clippy
 
@@ -137,9 +136,7 @@ jobs:
         uses: actions-rs/clippy-check@v1.0.7
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          args: --all-features --locked
-        env:
-          RUSTFLAGS: '-D warnings'
+          args: --all-features --locked -- -D warnings
 
   cargo-deny:
     runs-on: ubuntu-latest
@@ -159,8 +156,7 @@ jobs:
           sudo apt update
           sudo apt install -y libusb-1.0-0-dev libudev-dev
 
-      - name: Install stable toolchain
-        uses: dtolnay/rust-toolchain@stable
+      - uses: ./github/workflows/setup
 
       - name: Cache Dependencies
         uses: Swatinem/rust-cache@v2.2.0

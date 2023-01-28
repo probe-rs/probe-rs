@@ -1,0 +1,14 @@
+
+name: Install toolchain
+description: Install toolchain
+inputs:
+  targets:
+  components:
+runs:
+  using: "composite"
+  steps:
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@1.67.0
+        with:
+          targets: ${{ input.targets }}
+          components: ${{ input.components }}
