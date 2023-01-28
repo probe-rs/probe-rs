@@ -23,6 +23,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
   
 - Add support for FT4232HL probe.
+
+- probe-rs-cli: Add `--log-file` option to specify where the log file should be placed.
   
 ### Changed
 
@@ -32,6 +34,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - probe-rs: Avoid nested calls to tracing macros, otherwise filtering doesn't work properly. (#1415)
+
+- probe-rs-cli: Reduce RTT polling frequency in run command to avoid USB instability issues.
+
 
 ## [0.14.2]
 
