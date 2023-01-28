@@ -8,9 +8,11 @@ use crate::Session;
 use super::FlashProgress;
 
 /// Mass-erase all nonvolatile memory.
+///
+/// The optional progress will only be used to emit RTT messages.
+/// No actual indication for the state of the erase all operation will be given.
 pub fn erase_all(
     session: &mut Session,
-    // This progress will only be used to emit RTT messages.
     progress: Option<&FlashProgress>,
 ) -> Result<(), FlashError> {
     tracing::debug!("Erasing all...");
