@@ -57,13 +57,12 @@ pub fn cmd_run(
             FinishedProgramming => {
                 println!("Finished programming in {:?}", t.borrow().elapsed());
             }
-            Rtt { channel, message } => {
-                let rtt = "RTT".yellow();
-                let channel = channel.blue();
+            DiagnosticMessage { message } => {
+                let prefix = "Message".yellow();
                 if message.ends_with('\n') {
-                    print!("{rtt}[{channel}]: {message}");
+                    print!("{prefix}: {message}");
                 } else {
-                    println!("{rtt}[{channel}]: {message}");
+                    println!("{prefix}: {message}");
                 }
             }
             _ => (),

@@ -719,10 +719,10 @@ impl<'probe, 'progress, O: Operation> ActiveFlasher<'probe, 'progress, O> {
                     match channel.read(&mut self.core, &mut buffer) {
                         Ok(read) if read > 0 => {
                             let message = String::from_utf8_lossy(&buffer[..read]).to_string();
-                            let channel = channel.name().unwrap_or("unnamed").into();
+                            let channel = channel.name().unwrap_or("unnamed");
                             tracing::debug!("RTT({channel}): {message}");
                             if let Some(progress) = self.progress {
-                                progress.rtt(channel, message);
+                                progress.message(message);
                             }
                         }
                         Ok(_) => (),

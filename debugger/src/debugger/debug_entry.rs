@@ -711,7 +711,9 @@ impl Debugger {
                                             )
                                             .ok();
                                     }
-                                    probe_rs::flashing::ProgressEvent::Rtt { .. } => (),
+                                    probe_rs::flashing::ProgressEvent::DiagnosticMessage {
+                                        ..
+                                    } => (),
                                 }
                             })
                         } else {

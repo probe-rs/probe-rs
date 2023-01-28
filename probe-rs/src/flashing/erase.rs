@@ -10,6 +10,7 @@ use super::FlashProgress;
 /// Mass-erase all nonvolatile memory.
 pub fn erase_all(
     session: &mut Session,
+    // This progress will only be used to emit RTT messages.
     progress: Option<&FlashProgress>,
 ) -> Result<(), FlashError> {
     tracing::debug!("Erasing all...");
