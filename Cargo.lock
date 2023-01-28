@@ -348,7 +348,6 @@ dependencies = [
  "log",
  "probe-rs",
  "probe-rs-cli-util",
- "probe-rs-rtt",
  "sanitize-filename",
  "serde",
  "serde_json",
@@ -1144,7 +1143,7 @@ checksum = "572564d6cba7d09775202c8e7eebc4d534d5ae36578ab402fb21e182a0ac9505"
 dependencies = [
  "log",
  "plain",
- "scroll 0.11.0",
+ "scroll",
 ]
 
 [[package]]
@@ -1559,6 +1558,12 @@ checksum = "49409df3e3bf0856b916e2ceaca09ee28e6871cf7d9ce97a692cacfdb2a25a47"
 dependencies = [
  "wasm-bindgen",
 ]
+
+[[package]]
+name = "kmp"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "131bddab59a64213cc1e9f0c5be010d7eb485951358ab7e52017888dec482028"
 
 [[package]]
 name = "lazy_static"
@@ -2086,6 +2091,7 @@ dependencies = [
  "itm",
  "jaylink",
  "jep106",
+ "kmp",
  "libftdi1-sys",
  "num-traits",
  "object",
@@ -2094,7 +2100,7 @@ dependencies = [
  "probe-rs-target",
  "rand",
  "rusb",
- "scroll 0.11.0",
+ "scroll",
  "serde",
  "serde_json",
  "serde_yaml",
@@ -2128,7 +2134,7 @@ dependencies = [
  "ron",
  "rustyline",
  "sanitize-filename",
- "scroll 0.11.0",
+ "scroll",
  "serde",
  "termtree",
  "thiserror",
@@ -2157,7 +2163,6 @@ dependencies = [
  "num-traits",
  "once_cell",
  "probe-rs",
- "probe-rs-rtt",
  "sentry",
  "serde",
  "simplelog",
@@ -2184,7 +2189,7 @@ dependencies = [
  "probe-rs-cli-util",
  "sanitize-filename",
  "schemafy",
- "scroll 0.11.0",
+ "scroll",
  "serde",
  "serde_json",
  "svd-parser",
@@ -2192,17 +2197,6 @@ dependencies = [
  "time",
  "tracing",
  "tracing-subscriber",
-]
-
-[[package]]
-name = "probe-rs-rtt"
-version = "0.14.2"
-dependencies = [
- "probe-rs",
- "scroll 0.10.2",
- "serde",
- "thiserror",
- "tracing",
 ]
 
 [[package]]
@@ -2488,7 +2482,6 @@ dependencies = [
  "clap",
  "pretty_env_logger",
  "probe-rs",
- "probe-rs-rtt",
 ]
 
 [[package]]
@@ -2656,12 +2649,6 @@ name = "scopeguard"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d29ab0c6d3fc0ee92fe66e2d99f700eab17a8d57d1c1d3b748380fb20baa78cd"
-
-[[package]]
-name = "scroll"
-version = "0.10.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fda28d4b4830b807a8b43f7b0e6b5df875311b3e7621d84577188c175b6ec1ec"
 
 [[package]]
 name = "scroll"
@@ -3109,20 +3096,24 @@ dependencies = [
  "assert_cmd",
  "assert_fs",
  "base64 0.21.0",
+ "cargo_metadata",
  "clap",
  "cmsis-pack",
+ "colored",
  "futures",
  "goblin",
+ "indicatif",
  "log",
  "predicates",
  "probe-rs",
  "probe-rs-target",
  "reqwest",
- "scroll 0.11.0",
+ "scroll",
  "serde",
  "serde_yaml",
  "tokio",
  "tracing-subscriber",
+ "xshell",
  "zip",
 ]
 
@@ -3345,9 +3336,9 @@ dependencies = [
 
 [[package]]
 name = "toml_edit"
-version = "0.18.0"
+version = "0.18.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "729bfd096e40da9c001f778f5cdecbd2957929a24e10e5883d9392220a751581"
+checksum = "56c59d8dd7d0dcbc6428bf7aa2f0e823e26e43b3c9aca15bbc9475d23e5fa12b"
 dependencies = [
  "indexmap",
  "nom8",

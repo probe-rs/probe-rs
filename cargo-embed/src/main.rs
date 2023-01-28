@@ -34,7 +34,7 @@ use probe_rs_cli_util::{
     logging::{self, Metadata},
 };
 
-use probe_rs_rtt::{Rtt, ScanRegion};
+use probe_rs::rtt::{Rtt, ScanRegion};
 
 use probe_rs_gdb_server::GdbInstanceConfiguration;
 
@@ -404,12 +404,13 @@ fn main_try(metadata: Arc<Mutex<Metadata>>) -> Result<()> {
                             fp.finish()
                         };
                     }
+                    DiagnosticMessage { .. } => (),
                 }
             });
 
             let mut options = DownloadOptions::new();
 
-            options.progress = Some(&progress);
+            options.progress = Some(progress);
             options.keep_unwritten_bytes = config.flashing.restore_unwritten_bytes;
             options.do_chip_erase = config.flashing.do_chip_erase;
 

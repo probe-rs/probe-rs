@@ -711,12 +711,15 @@ impl Debugger {
                                             )
                                             .ok();
                                     }
+                                    probe_rs::flashing::ProgressEvent::DiagnosticMessage {
+                                        ..
+                                    } => (),
                                 }
                             })
                         } else {
                             FlashProgress::new(|_event| {})
                         };
-                        download_options.progress = Some(&flash_progress);
+                        download_options.progress = Some(flash_progress);
                         download_file_with_options(
                             &mut session_data.session,
                             path_to_elf,

@@ -16,7 +16,9 @@ keywords = ["embedded"]
 license.workspace = true
 
 [features]
-default = ["builtin-targets"]
+default = ["builtin-targets", "rtt"]
+
+rtt = ["kmp"]
 
 vendored-libusb = ["rusb/vendored"]
 
@@ -44,6 +46,7 @@ hidapi = { version = "2.0.2", default-features = false, features = [
 ihex = "3.0.0"
 jaylink = "0.3.0"
 jep106 = "0.2.6"
+kmp = { version = "0.1", optional = true }
 once_cell = "1.7.2"
 num-traits = "0.2.11"
 object = { version = "0.30.0", default-features = false, features = [

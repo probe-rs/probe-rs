@@ -3,9 +3,9 @@ use anyhow::{anyhow, Result};
 use defmt_decoder::DecodeError;
 use num_traits::Zero;
 use probe_rs::config::MemoryRegion;
+pub use probe_rs::rtt::ChannelMode;
+use probe_rs::rtt::{DownChannel, Rtt, ScanRegion, UpChannel};
 use probe_rs::Core;
-pub use probe_rs_rtt::ChannelMode;
-use probe_rs_rtt::{DownChannel, Rtt, ScanRegion, UpChannel};
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::fs::File;
@@ -211,7 +211,7 @@ impl RttActiveChannel {
                         }
                     }
                     Err(err) => {
-                        if matches!(err, probe_rs_rtt::Error::Probe(_)) {
+                        if matches!(err, probe_rs::rtt::Error::Probe(_)) {
                             std::thread::sleep(std::time::Duration::from_millis(50));
                         } else {
                             log::error!("\nError reading from RTT: {}", err);
@@ -334,7 +334,7 @@ pub struct RttActiveTarget {
 impl RttActiveTarget {
     /// RttActiveTarget collects references to all the `RttActiveChannel`s, for latter polling/pushing of data.
     pub fn new(
-        mut rtt: probe_rs_rtt::Rtt,
+        mut rtt: probe_rs::rtt::Rtt,
         elf_file: &Path,
         rtt_config: &RttConfig,
     ) -> Result<Self> {

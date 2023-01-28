@@ -1,5 +1,5 @@
-use crate::Error;
-use probe_rs::{config::MemoryRegion, Core, MemoryInterface};
+use crate::rtt::Error;
+use crate::{config::MemoryRegion, Core, MemoryInterface};
 use scroll::{Pread, LE};
 use std::cmp::min;
 

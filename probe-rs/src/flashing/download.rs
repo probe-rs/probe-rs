@@ -92,9 +92,9 @@ pub enum FileDownloadError {
 /// ```
 #[derive(Default)]
 #[non_exhaustive]
-pub struct DownloadOptions<'progress> {
+pub struct DownloadOptions {
     /// An optional progress reporter which is used if this argument is set to `Some(...)`.
-    pub progress: Option<&'progress FlashProgress>,
+    pub progress: Option<FlashProgress>,
     /// If `keep_unwritten_bytes` is `true`, erased portions of the flash that are not overwritten by the ELF data
     /// are restored afterwards, such that the old contents are untouched.
     ///
@@ -117,7 +117,7 @@ pub struct DownloadOptions<'progress> {
     pub disable_double_buffering: bool,
 }
 
-impl<'progress> DownloadOptions<'progress> {
+impl DownloadOptions {
     /// DownloadOptions with default values.
     pub fn new() -> Self {
         Self::default()
@@ -146,7 +146,7 @@ pub fn download_file_with_options<P: AsRef<Path>>(
     session: &mut Session,
     path: P,
     format: Format,
-    options: DownloadOptions<'_>,
+    options: DownloadOptions,
 ) -> Result<(), FileDownloadError> {
     let mut file = match File::open(path.as_ref()) {
         Ok(file) => file,

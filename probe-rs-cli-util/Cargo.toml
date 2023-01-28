@@ -19,7 +19,6 @@ license.workspace = true
 default = ["anyhow"]
 
 [dependencies]
-probe-rs-rtt = { workspace = true }
 probe-rs = { workspace = true }
 
 thiserror = "1.0"
