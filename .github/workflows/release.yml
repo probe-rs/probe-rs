@@ -13,7 +13,7 @@ jobs:
   release:
     name: Release
     runs-on: ubuntu-latest
-    if: github.event.type != "PullRequestEvent" || (github.event.pull_request.merged == true && contains(github.event.pull_request.labels.*.name, 'release'))
+    if: github.event.type != 'PullRequestEvent' || (github.event.pull_request.merged == true && contains(github.event.pull_request.labels.*.name, 'release'))
 
     steps:
       - name: Checkout sources
