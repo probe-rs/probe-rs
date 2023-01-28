@@ -712,29 +712,18 @@ impl<'probe, 'progress, O: Operation> ActiveFlasher<'probe, 'progress, O> {
 
         let mut timeout_ocurred = true;
         while start.elapsed() < timeout {
-            #[cfg(feature = "rtt")]
-            if let Some(rtt) = &mut self.rtt {
-                for channel in rtt.up_channels().iter() {
-                    let mut buffer = vec![0; channel.buffer_size()];
-                    match channel.read(&mut self.core, &mut buffer) {
-                        Ok(read) if read > 0 => {
-                            let message = String::from_utf8_lossy(&buffer[..read]).to_string();
-                            let channel = channel.name().unwrap_or("unnamed");
-                            tracing::debug!("RTT({channel}): {message}");
-                            if let Some(progress) = self.progress {
-                                progress.message(message);
-                            }
-                        }
-                        Ok(_) => (),
-                        Err(error) => tracing::debug!("Reading RTT failed: {error}"),
-                    };
-                }
-            }
-
             if self.core.core_halted()? {
                 timeout_ocurred = false;
+                // Once the core is halted we know for sure all RTT data is written
+                // so we can read all of it.
+                #[cfg(feature = "rtt")]
+                self.read_rtt()?;
                 break;
             }
+
+            // Periodically read RTT.
+            #[cfg(feature = "rtt")]
+            self.read_rtt()?;
 
             std::thread::sleep(Duration::from_millis(1));
         }
@@ -745,6 +734,28 @@ impl<'probe, 'progress, O: Operation> ActiveFlasher<'probe, 'progress, O> {
 
         let r: u32 = self.core.read_core_reg(regs.result_register(0).id)?;
         Ok(r)
+    }
+
+    #[cfg(feature = "rtt")]
+    fn read_rtt(&mut self) -> Result<(), FlashError> {
+        if let Some(rtt) = &mut self.rtt {
+            for channel in rtt.up_channels().iter() {
+                let mut buffer = vec![0; channel.buffer_size()];
+                match channel.read(&mut self.core, &mut buffer) {
+                    Ok(read) if read > 0 => {
+                        let message = String::from_utf8_lossy(&buffer[..read]).to_string();
+                        let channel = channel.name().unwrap_or("unnamed");
+                        tracing::debug!("RTT({channel}): {message}");
+                        if let Some(progress) = self.progress {
+                            progress.message(message);
+                        }
+                    }
+                    Ok(_) => (),
+                    Err(error) => tracing::debug!("Reading RTT failed: {error}"),
+                };
+            }
+        }
+        Ok(())
     }
 }
 
