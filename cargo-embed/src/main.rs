@@ -21,7 +21,7 @@ use time::OffsetDateTime;
 use probe_rs::{
     config::TargetSelector,
     flashing::{download_file_with_options, DownloadOptions, FlashProgress, Format, ProgressEvent},
-    DebugProbeSelector, Permissions, Probe,
+    DebugProbeSelector, Permissions, Probe, Session,
 };
 #[cfg(feature = "sentry")]
 use probe_rs_cli_util::logging::{ask_to_log_crash, capture_anyhow, capture_panic};
@@ -357,126 +357,71 @@ fn main_try(metadata: Arc<Mutex<Metadata>>) -> Result<()> {
             .any(|elem| elem.format == DataFormat::Defmt);
 
         let defmt_state = if defmt_enable {
-            read_defmt_information(path)?
+            log::debug!(
+                "Found RTT channels with format = defmt, trying to intialize defmt parsing."
+            );
+            DefmtInformation::try_read_from_elf(path)?
         } else {
             None
         };
 
-        let t = std::time::Instant::now();
-        let mut error = None;
-
-        let mut rtt_init_attempt = 1;
-
-        while t.elapsed() < config.rtt.timeout {
-            log::info!("Initializing RTT (attempt {})...", rtt_init_attempt);
-            rtt_init_attempt += 1;
-
-            let rtt_header_address = if let Ok(mut file) = File::open(path) {
-                if let Some(address) = rttui::app::App::get_rtt_symbol(&mut file) {
-                    ScanRegion::Exact(address as u32)
-                } else {
-                    ScanRegion::Ram
-                }
+        let rtt_header_address = if let Ok(mut file) = File::open(path) {
+            if let Some(address) = rttui::app::App::get_rtt_symbol(&mut file) {
+                ScanRegion::Exact(address as u32)
             } else {
                 ScanRegion::Ram
-            };
+            }
+        } else {
+            ScanRegion::Ram
+        };
 
-            let mut session_handle = session.lock().unwrap();
-            let memory_map = session_handle.target().memory_map.clone();
-            let mut core = session_handle.core(0)?;
+        let mut rtt = rtt_attach(session.clone(), config.rtt.timeout, &rtt_header_address)
+            .context("Failed to attach to RTT")?;
 
-            match Rtt::attach_region(&mut core, &memory_map, &rtt_header_address) {
-                Ok(mut rtt) => {
-                    // RTT supports three different "modes" for channels, which
-                    // describe how the firmware should handle writes that won't
-                    // fit in the available buffer.  The config file can
-                    // optionally specify a mode to use for all up channels,
-                    // and/or a mode for specific channels.
-                    let default_up_mode = config.rtt.up_mode;
+        // Configure rtt channels according to configuration
+        rtt_config(session.clone(), &config, &mut rtt)?;
 
-                    for up_channel in rtt.up_channels().iter() {
-                        let mut specific_mode = None;
-                        for channel_config in config
-                            .rtt
-                            .channels
-                            .iter()
-                            .filter(|ch_conf| ch_conf.up == Some(up_channel.number()))
-                        {
-                            if let Some(mode) = channel_config.up_mode {
-                                if specific_mode.is_some()
-                                    && specific_mode != channel_config.up_mode
-                                {
-                                    // Can't safely resolve this generally...
-                                    return Err(anyhow!("Conflicting modes specified for RTT up channel {}: {:?} and {:?}",
-                                        up_channel.number(), specific_mode.unwrap(), mode));
-                                }
+        log::info!("RTT initialized.");
 
-                                specific_mode = Some(mode);
-                            }
-                        }
+        // Check if the terminal supports x
 
-                        if let Some(mode) = specific_mode.or(default_up_mode) {
-                            // Only set the mode when the config file says to,
-                            // when not set explicitly, the firmware picks.
-                            log::debug!(
-                                "Setting RTT channel {} to {:?}",
-                                up_channel.number(),
-                                &mode
-                            );
-                            up_channel.set_mode(&mut core, mode)?;
-                        }
-                    }
+        // `App` puts the terminal into a special state, as required
+        // by the text-based UI. If a panic happens while the
+        // terminal is in that state, this will completely mess up
+        // the user's terminal (misformatted panic message, newlines
+        // being ignored, input characters not being echoed, ...).
+        //
+        // The following panic hook cleans up the terminal, while
+        // otherwise preserving the behavior of the default panic
+        // hook (or whichever custom hook might have been registered
+        // before).
+        let previous_panic_hook = panic::take_hook();
+        panic::set_hook(Box::new(move |panic_info| {
+            rttui::app::clean_up_terminal();
+            previous_panic_hook(panic_info);
+        }));
 
-                    drop(core);
-                    drop(session_handle);
-                    log::info!("RTT initialized.");
+        let chip_name = config.general.chip.as_deref().unwrap_or_default();
 
-                    // `App` puts the terminal into a special state, as required
-                    // by the text-based UI. If a panic happens while the
-                    // terminal is in that state, this will completely mess up
-                    // the user's terminal (misformatted panic message, newlines
-                    // being ignored, input characters not being echoed, ...).
-                    //
-                    // The following panic hook cleans up the terminal, while
-                    // otherwise preserving the behavior of the default panic
-                    // hook (or whichever custom hook might have been registered
-                    // before).
-                    let previous_panic_hook = panic::take_hook();
-                    panic::set_hook(Box::new(move |panic_info| {
-                        rttui::app::clean_up_terminal();
-                        previous_panic_hook(panic_info);
-                    }));
+        let timestamp_millis = OffsetDateTime::now_local()?.unix_timestamp_nanos() / 1_000_000;
 
-                    let chip_name = config.general.chip.as_deref().unwrap_or_default();
+        let logname = format!("{name}_{chip_name}_{timestamp_millis}");
+        let mut app = rttui::app::App::new(rtt, &config, logname)?;
+        loop {
+            {
+                let mut session_handle = session.lock().unwrap();
+                let mut core = session_handle.core(0)?;
 
-                    let timestamp_millis =
-                        OffsetDateTime::now_local()?.unix_timestamp_nanos() / 1_000_000;
+                app.poll_rtt(&mut core)?;
 
-                    let logname = format!("{name}_{chip_name}_{timestamp_millis}");
-                    let mut app = rttui::app::App::new(rtt, &config, logname)?;
-                    loop {
-                        let mut session_handle = session.lock().unwrap();
-                        let mut core = session_handle.core(0)?;
+                app.render(defmt_state.as_ref());
+                if app.handle_event(&mut core) {
+                    logging::println("Shutting down.");
+                    return Ok(());
+                };
+            }
 
-                        app.poll_rtt(&mut core)?;
-
-                        app.render(defmt_state.as_ref());
-                        if app.handle_event(&mut core) {
-                            logging::println("Shutting down.");
-                            return Ok(());
-                        };
-                        std::thread::sleep(Duration::from_millis(10));
-                    }
-                }
-                Err(err) => {
-                    error = Some(anyhow!("Error attaching to RTT: {}", err));
-                }
-            };
-
-            log::debug!("Failed to initialize RTT. Retrying until timeout.");
-        }
-        if let Some(error) = error {
-            return Err(error);
+            std::thread::sleep(Duration::from_millis(10));
         }
     }
 
@@ -493,6 +438,48 @@ fn main_try(metadata: Arc<Mutex<Metadata>>) -> Result<()> {
     Ok(())
 }
 
+fn rtt_config(
+    session: Arc<Mutex<Session>>,
+    config: &config::Config,
+    rtt: &mut Rtt,
+) -> Result<(), anyhow::Error> {
+    let mut session_handle = session.lock().unwrap();
+    let mut core = session_handle.core(0)?;
+    let default_up_mode = config.rtt.up_mode;
+
+    for up_channel in rtt.up_channels().iter() {
+        let mut specific_mode = None;
+        for channel_config in config
+            .rtt
+            .channels
+            .iter()
+            .filter(|ch_conf| ch_conf.up == Some(up_channel.number()))
+        {
+            if let Some(mode) = channel_config.up_mode {
+                if specific_mode.is_some() && specific_mode != channel_config.up_mode {
+                    // Can't safely resolve this generally...
+                    return Err(anyhow!(
+                        "Conflicting modes specified for RTT up channel {}: {:?} and {:?}",
+                        up_channel.number(),
+                        specific_mode.unwrap(),
+                        mode
+                    ));
+                }
+
+                specific_mode = Some(mode);
+            }
+        }
+
+        if let Some(mode) = specific_mode.or(default_up_mode) {
+            // Only set the mode when the config file says to,
+            // when not set explicitly, the firmware picks.
+            log::debug!("Setting RTT channel {} to {:?}", up_channel.number(), &mode);
+            up_channel.set_mode(&mut core, mode)?;
+        }
+    }
+    Ok(())
+}
+
 #[derive(Debug)]
 pub struct DefmtInformation {
     table: defmt_decoder::Table,
@@ -502,38 +489,81 @@ pub struct DefmtInformation {
     location_information: Option<std::collections::BTreeMap<u64, defmt_decoder::Location>>,
 }
 
-fn read_defmt_information(path: &Path) -> Result<Option<DefmtInformation>, anyhow::Error> {
-    log::debug!("Found RTT channels with format = defmt, trying to intialize defmt parsing.");
+impl DefmtInformation {
+    pub fn try_read_from_elf(path: &Path) -> Result<Option<DefmtInformation>, anyhow::Error> {
+        let elf = fs::read(path).with_context(|| {
+            format!("Failed to read ELF file from location '{}'", path.display())
+        })?;
 
-    let elf = fs::read(path)
-        .with_context(|| format!("Failed to read ELF file from location '{}'", path.display()))?;
+        let defmt_state = if let Some(table) = defmt_decoder::Table::parse(&elf)? {
+            let locs = {
+                let locs = table.get_locations(&elf)?;
 
-    let defmt_state = if let Some(table) = defmt_decoder::Table::parse(&elf)? {
-        let locs = {
-            let locs = table.get_locations(&elf)?;
-
-            if !table.is_empty() && locs.is_empty() {
-                log::warn!("Insufficient DWARF info; compile your program with `debug = 2` to enable location info.");
-                None
-            } else if table.indices().all(|idx| locs.contains_key(&(idx as u64))) {
-                Some(locs)
-            } else {
-                log::warn!("Location info is incomplete; it will be omitted from the output.");
-                None
-            }
-        };
-        Some(DefmtInformation {
-            table,
-            location_information: locs,
-        })
-    } else {
-        log::error!(
+                if !table.is_empty() && locs.is_empty() {
+                    log::warn!("Insufficient DWARF info; compile your program with `debug = 2` to enable location info.");
+                    None
+                } else if table.indices().all(|idx| locs.contains_key(&(idx as u64))) {
+                    Some(locs)
+                } else {
+                    log::warn!("Location info is incomplete; it will be omitted from the output.");
+                    None
+                }
+            };
+            Some(DefmtInformation {
+                table,
+                location_information: locs,
+            })
+        } else {
+            log::error!(
             "Defmt enabled in rtt channel config, but defmt table couldn't be loaded from binary."
         );
-        None
-    };
+            None
+        };
 
-    Ok(defmt_state)
+        Ok(defmt_state)
+    }
+}
+
+/// Try to attach to RTT, with the given timeout
+fn rtt_attach(
+    session: Arc<Mutex<Session>>,
+    timeout: Duration,
+    rtt_region: &ScanRegion,
+) -> Result<Rtt> {
+    let t = std::time::Instant::now();
+
+    let mut rtt_init_attempt = 1;
+
+    let mut last_error = None;
+
+    while t.elapsed() < timeout {
+        log::info!("Initializing RTT (attempt {})...", rtt_init_attempt);
+        rtt_init_attempt += 1;
+
+        // Lock the session mutex in a block, so it gets dropped as soon as possible.
+        //
+        // GDB is also using the session
+        {
+            let mut session_handle = session.lock().unwrap();
+            let memory_map = session_handle.target().memory_map.clone();
+            let mut core = session_handle.core(0)?;
+
+            match Rtt::attach_region(&mut core, &memory_map, &rtt_region) {
+                Ok(rtt) => return Ok(rtt),
+                Err(e) => last_error = Some(e),
+            }
+        }
+
+        log::debug!("Failed to initialize RTT. Retrying until timeout.");
+        std::thread::sleep(Duration::from_millis(10));
+    }
+
+    // Timeout
+    if let Some(err) = last_error {
+        Err(err.into())
+    } else {
+        Err(anyhow!("Error setting up RTT"))
+    }
 }
 
 fn flash(
