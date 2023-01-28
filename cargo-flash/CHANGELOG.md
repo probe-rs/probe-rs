@@ -8,24 +8,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.15.0]
 
 Released 2023-01-28
+### Changed
+
+- Updated probe-rs to 0.15.0.
 
 ## [0.14.2]
 
 Released 2023-01-18
 
+### Changed
+
+- Updated probe-rs to 0.14.2.
+
 ## [0.14.1]
 
 Released 2023-01-14
+
+### Changed
+
+- Updated probe-rs to 0.14.1.
 
 ## [0.14.0]
 
 Released 2023-01-13
 
-### Added
-
 ### Changed
 
-### Fixed
+- Updated probe-rs to 0.14.0.
 
 ## [0.13.0]
 
