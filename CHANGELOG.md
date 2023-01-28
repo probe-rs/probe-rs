@@ -27,6 +27,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - probe-rs: Avoid nested calls to tracing macros, otherwise filtering doesn't work properly. (#1415)
 
+- probe-rs-cli: Reduce RTT polling frequency in run command to avoid USB instability issues.
+
 
 ## [0.14.2]
 
