@@ -322,56 +322,42 @@ fn main_try() -> Result<()> {
     let session = Arc::new(Mutex::new(session));
 
     let mut gdb_thread_handle = None;
+
     if config.gdb.enabled {
         let gdb_connection_string = config.gdb.gdb_connection_string.clone();
         let session = session.clone();
+
         gdb_thread_handle = Some(std::thread::spawn(move || {
-            let gdb_connection_string = gdb_connection_string.as_deref().or(Some("127.0.0.1:1337"));
-            // This next unwrap will always resolve as the connection string is always Some(T).
+            let gdb_connection_string =
+                gdb_connection_string.as_deref().unwrap_or("127.0.0.1:1337");
+
             logging::println(format!(
                 "    {} listening at {}",
                 "GDB stub".green().bold(),
-                gdb_connection_string.as_ref().unwrap(),
+                gdb_connection_string,
             ));
+
             let instances = {
                 let session = session.lock().unwrap();
-                GdbInstanceConfiguration::from_session(&session, gdb_connection_string)
+                GdbInstanceConfiguration::from_session(&session, Some(gdb_connection_string))
             };
+
             if let Err(e) = probe_rs_gdb_server::run(&session, instances.iter()) {
                 logging::eprintln("During the execution of GDB an error was encountered:");
                 logging::eprintln(format!("{e:?}"));
             }
         }));
     }
+
     if config.rtt.enabled {
         let defmt_enable = config
             .rtt
             .channels
             .iter()
             .any(|elem| elem.format == DataFormat::Defmt);
-        let defmt_state = if defmt_enable {
-            let elf = fs::read(path).unwrap();
-            if let Some(table) = defmt_decoder::Table::parse(&elf)? {
-                let locs = {
-                    let locs = table.get_locations(&elf)?;
 
-                    if !table.is_empty() && locs.is_empty() {
-                        log::warn!("Insufficient DWARF info; compile your program with `debug = 2` to enable location info.");
-                        None
-                    } else if table.indices().all(|idx| locs.contains_key(&(idx as u64))) {
-                        Some(locs)
-                    } else {
-                        log::warn!(
-                            "Location info is incomplete; it will be omitted from the output."
-                        );
-                        None
-                    }
-                };
-                Some((table, locs))
-            } else {
-                log::error!("Defmt enabled in rtt channel config, but defmt table couldn't be loaded from binary.");
-                None
-            }
+        let defmt_state = if defmt_enable {
+            read_defmt_information(path)?
         } else {
             None
         };
@@ -379,11 +365,11 @@ fn main_try() -> Result<()> {
         let t = std::time::Instant::now();
         let mut error = None;
 
-        let mut i = 1;
+        let mut rtt_init_attempt = 1;
 
-        while (t.elapsed().as_millis() as usize) < config.rtt.timeout {
-            log::info!("Initializing RTT (attempt {})...", i);
-            i += 1;
+        while t.elapsed() < config.rtt.timeout {
+            log::info!("Initializing RTT (attempt {})...", rtt_init_attempt);
+            rtt_init_attempt += 1;
 
             let rtt_header_address = if let Ok(mut file) = File::open(path) {
                 if let Some(address) = rttui::app::App::get_rtt_symbol(&mut file) {
@@ -474,7 +460,7 @@ fn main_try() -> Result<()> {
 
                         app.poll_rtt(&mut core)?;
 
-                        app.render(&defmt_state);
+                        app.render(defmt_state.as_ref());
                         if app.handle_event(&mut core) {
                             logging::println("Shutting down.");
                             return Ok(());
@@ -505,6 +491,49 @@ fn main_try() -> Result<()> {
     ));
 
     Ok(())
+}
+
+#[derive(Debug)]
+pub struct DefmtInformation {
+    table: defmt_decoder::Table,
+    /// Location information for defmt
+    ///
+    /// Optional, defmt decoding is also possible without it.
+    location_information: Option<std::collections::BTreeMap<u64, defmt_decoder::Location>>,
+}
+
+fn read_defmt_information(path: &Path) -> Result<Option<DefmtInformation>, anyhow::Error> {
+    log::debug!("Found RTT channels with format = defmt, trying to intialize defmt parsing.");
+
+    let elf = fs::read(path)
+        .with_context(|| format!("Failed to read ELF file from location '{}'", path.display()))?;
+
+    let defmt_state = if let Some(table) = defmt_decoder::Table::parse(&elf)? {
+        let locs = {
+            let locs = table.get_locations(&elf)?;
+
+            if !table.is_empty() && locs.is_empty() {
+                log::warn!("Insufficient DWARF info; compile your program with `debug = 2` to enable location info.");
+                None
+            } else if table.indices().all(|idx| locs.contains_key(&(idx as u64))) {
+                Some(locs)
+            } else {
+                log::warn!("Location info is incomplete; it will be omitted from the output.");
+                None
+            }
+        };
+        Some(DefmtInformation {
+            table,
+            location_information: locs,
+        })
+    } else {
+        log::error!(
+            "Defmt enabled in rtt channel config, but defmt table couldn't be loaded from binary."
+        );
+        None
+    };
+
+    Ok(defmt_state)
 }
 
 fn flash(
