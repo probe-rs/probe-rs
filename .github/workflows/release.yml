@@ -19,6 +19,8 @@ jobs:
       - name: Checkout sources
         uses: actions/checkout@v3
 
+      - uses: echo ${{ github.event.type }}
+
       - name: Install libusb and libftdi (linux)
         run: |
           sudo apt update
@@ -51,7 +53,7 @@ jobs:
       - name: Generate Release Notes
         id: notes
         run: |
-          cargo xtask generate-release-changelog > GENERATED_CHANGELOG.md
+          cargo xtask generate-release-changelog > /tmp/GENERATED_CHANGELOG.md
 
       - name: Create a GitHub release
         uses: actions/create-release@v1
@@ -60,7 +62,7 @@ jobs:
         with:
           tag_name: "$( cargo pkgid -p probe-rs | cut -d# -f2 | cut -d: -f2 )"
           release_name: "$( cargo pkgid -p probe-rs | cut -d# -f2 | cut -d: -f2 )"
-          body_path: GENERATED_CHANGELOG.md
+          body_path: /tmp/GENERATED_CHANGELOG.md
           draft: true
           prerelease: false
 
