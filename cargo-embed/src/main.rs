@@ -40,16 +40,6 @@ use probe_rs_gdb_server::GdbInstanceConfiguration;
 
 use crate::rttui::channel::DataFormat;
 
-lazy_static::lazy_static! {
-    static ref METADATA: Arc<Mutex<Metadata>> = Arc::new(Mutex::new(Metadata {
-        release: meta::CARGO_VERSION.to_string(),
-        chip: None,
-        probe: None,
-        speed: None,
-        commit: meta::GIT_VERSION.to_string()
-    }));
-}
-
 #[derive(Debug, clap::Parser)]
 #[clap(
     name = "cargo embed",
@@ -77,18 +67,28 @@ struct Opt {
 }
 
 fn main() {
+    let metadata: Arc<Mutex<Metadata>> = Arc::new(Mutex::new(Metadata {
+        release: meta::CARGO_VERSION.to_string(),
+        chip: None,
+        probe: None,
+        speed: None,
+        commit: meta::GIT_VERSION.to_string(),
+    }));
+
+    let metadata_panic = metadata.clone();
+
     let next = panic::take_hook();
     panic::set_hook(Box::new(move |info| {
         #[cfg(feature = "sentry")]
         if ask_to_log_crash() {
-            capture_panic(&METADATA.lock().unwrap(), info)
+            capture_panic(&metadata_panic.lock().unwrap(), info)
         }
         #[cfg(not(feature = "sentry"))]
-        log::info!("{:#?}", &METADATA.lock().unwrap());
+        log::info!("{:#?}", &metadata_panic.lock().unwrap());
         next(info);
     }));
 
-    match main_try() {
+    match main_try(metadata.clone()) {
         Ok(_) => (),
         Err(e) => {
             // Ensure stderr is flushed before calling proces::exit,
@@ -123,14 +123,14 @@ fn main() {
                 capture_anyhow(&METADATA.lock().unwrap(), &e)
             }
             #[cfg(not(feature = "sentry"))]
-            log::info!("{:#?}", &METADATA.lock().unwrap());
+            log::info!("{:#?}", &metadata.lock().unwrap());
 
             process::exit(1);
         }
     }
 }
 
-fn main_try() -> Result<()> {
+fn main_try(metadata: Arc<Mutex<Metadata>>) -> Result<()> {
     let mut args = std::env::args();
 
     // When called by Cargo, the first argument after the binary name will be `embed`. If that's the
@@ -169,7 +169,7 @@ fn main_try() -> Result<()> {
             .unwrap_or(TargetSelector::Auto)
     };
 
-    METADATA.lock().unwrap().chip = Some(format!("{chip:?}"));
+    metadata.lock().unwrap().chip = Some(format!("{chip:?}"));
 
     // Remove executable name from the arguments list.
     args.remove(0);
@@ -239,7 +239,7 @@ fn main_try() -> Result<()> {
                 Probe::open(
                     list.first()
                         .map(|info| {
-                            METADATA.lock().unwrap().probe = Some(format!("{:?}", info.probe_type));
+                            metadata.lock().unwrap().probe = Some(format!("{:?}", info.probe_type));
                             info
                         })
                         .ok_or_else(|| anyhow!("No supported probe was found"))?,
@@ -268,7 +268,7 @@ fn main_try() -> Result<()> {
         probe.speed_khz()
     };
 
-    METADATA.lock().unwrap().speed = Some(format!("{protocol_speed:?}"));
+    metadata.lock().unwrap().speed = Some(format!("{protocol_speed:?}"));
 
     log::info!("Protocol speed {} kHz", protocol_speed);
 
