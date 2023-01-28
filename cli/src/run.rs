@@ -6,6 +6,7 @@ use probe_rs_cli_util::rtt;
 use std::fs::File;
 use std::io::Write;
 use std::path::Path;
+use std::time::Duration;
 
 pub fn run(
     common: ProbeOptions,
@@ -63,8 +64,14 @@ pub fn run(
         let mut stdout = std::io::stdout();
         loop {
             for (_ch, data) in rtta.poll_rtt_fallible(&mut core)? {
-                stdout.write_all(data.as_bytes()).unwrap();
+                stdout.write_all(data.as_bytes())?;
             }
+
+            // Poll RTT with a frequency of 10 Hz
+            //
+            // If the polling frequency is too high,
+            // the USB connection to the probe can become unstable.
+            std::thread::sleep(Duration::from_millis(100));
         }
     }
 
