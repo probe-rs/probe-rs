@@ -21,6 +21,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
   This enables better debugging for flash-algorithms and should encourage development of said algorithms.
 
+  
+- Add support for FT4232HL probe.
+  
 ### Changed
 
 - cmsisdap: Increased read timeout from 100ms to 1000ms.
