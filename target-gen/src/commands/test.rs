@@ -180,7 +180,8 @@ pub fn run_flash_download(
     Ok(())
 }
 
-/// Erases the flash.
+/// Erases the entire flash if `do_chip_erase` is true,
+/// Otherwise it erases sectors 0 and 1.
 pub fn run_flash_erase(
     session: &mut Session,
     progress: &FlashProgress,
