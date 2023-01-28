@@ -18,6 +18,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   address in the target YAML file.
   
 - Add support for FT4232HL probe.
+
+- probe-rs-cli: Add `--log-file` option to specify where the log file should be placed.
   
 ### Changed
 
