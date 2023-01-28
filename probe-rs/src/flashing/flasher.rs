@@ -53,7 +53,6 @@ pub(super) struct Flasher<'session> {
     session: &'session mut Session,
     core_index: usize,
     flash_algorithm: FlashAlgorithm,
-    #[allow(dead_code)]
     progress: FlashProgress,
 }
 
@@ -503,7 +502,6 @@ pub(super) struct ActiveFlasher<'probe, O: Operation> {
     rtt: Option<crate::rtt::Rtt>,
     #[cfg(feature = "rtt")]
     memory_map: Vec<MemoryRegion>,
-    #[allow(dead_code)]
     progress: FlashProgress,
     flash_algorithm: FlashAlgorithm,
     _operation: core::marker::PhantomData<O>,
