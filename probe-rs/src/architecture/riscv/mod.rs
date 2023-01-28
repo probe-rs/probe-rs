@@ -2,7 +2,7 @@
 
 #![allow(clippy::inconsistent_digit_grouping)]
 
-use crate::core::Architecture;
+use crate::core::{Architecture, BreakpointCause};
 use crate::{CoreInterface, CoreType, InstructionSet};
 use anyhow::{anyhow, Result};
 use communication_interface::{
@@ -10,7 +10,7 @@ use communication_interface::{
 };
 
 use crate::core::{CoreInformation, RegisterFile, RegisterValue};
-use crate::memory::valid_32_address;
+use crate::memory::valid_32bit_address;
 use crate::{CoreStatus, Error, HaltReason, MemoryInterface, RegisterId};
 
 use bitfield::bitfield;
@@ -47,13 +47,13 @@ impl<'probe> Riscv32<'probe> {
         // write needs to be clear
         // transfer has to be set
 
-        log::debug!("Reading CSR {:#x}", address);
+        tracing::debug!("Reading CSR {:#x}", address);
 
         // always try to read register with abstract command, fallback to program buffer,
         // if not supported
         match self.interface.abstract_cmd_register_read(address) {
             Err(RiscvError::AbstractCommand(AbstractCommandErrorKind::NotSupported)) => {
-                log::debug!("Could not read core register {:#x} with abstract command, falling back to program buffer", address);
+                tracing::debug!("Could not read core register {:#x} with abstract command, falling back to program buffer", address);
                 self.interface.read_csr_progbuf(address)
             }
             other => other,
@@ -61,11 +61,11 @@ impl<'probe> Riscv32<'probe> {
     }
 
     fn write_csr(&mut self, address: u16, value: u32) -> Result<(), RiscvError> {
-        log::debug!("Writing CSR {:#x}", address);
+        tracing::debug!("Writing CSR {:#x}", address);
 
         match self.interface.abstract_cmd_register_write(address, value) {
             Err(RiscvError::AbstractCommand(AbstractCommandErrorKind::NotSupported)) => {
-                log::debug!("Could not write core register {:#x} with abstract command, falling back to program buffer", address);
+                tracing::debug!("Could not write core register {:#x} with abstract command, falling back to program buffer", address);
                 self.interface.write_csr_progbuf(address, value)
             }
             other => other,
@@ -102,14 +102,14 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
         while start.elapsed() < timeout {
             let dmstatus: Dmstatus = self.interface.read_dm_register()?;
 
-            log::trace!("{:?}", dmstatus);
+            tracing::trace!("{:?}", dmstatus);
 
             if dmstatus.allhalted() {
                 return Ok(());
             }
         }
 
-        Err(RiscvError::Timeout.into())
+        Err(Error::Riscv(RiscvError::Timeout))
     }
 
     fn core_halted(&mut self) -> Result<bool, crate::Error> {
@@ -122,7 +122,7 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
         // write 1 to the haltreq register, which is part
         // of the dmcontrol register
 
-        log::debug!(
+        tracing::debug!(
             "Before requesting halt, the Dmcontrol register value was: {:?}",
             self.interface.read_dm_register::<Dmcontrol>()?
         );
@@ -175,7 +175,7 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
         &mut self,
         _timeout: Duration,
     ) -> Result<crate::core::CoreInformation, crate::Error> {
-        log::debug!("Resetting core, setting hartreset bit");
+        tracing::debug!("Resetting core, setting hartreset bit");
 
         let mut dmcontrol = Dmcontrol(0);
         dmcontrol.set_dmactive(true);
@@ -188,7 +188,7 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
         let readback: Dmcontrol = self.interface.read_dm_register()?;
 
         if readback.hartreset() {
-            log::debug!("Clearing hartreset bit");
+            tracing::debug!("Clearing hartreset bit");
             // Reset is performed by setting the bit high, and then low again
             let mut dmcontrol = Dmcontrol(0);
             dmcontrol.set_dmactive(true);
@@ -200,7 +200,7 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
             // Hartreset is not supported, whole core needs to be reset
             //
             // TODO: Cache this
-            log::debug!("Hartreset bit not supported, using ndmreset");
+            tracing::debug!("Hartreset bit not supported, using ndmreset");
             let mut dmcontrol = Dmcontrol(0);
             dmcontrol.set_dmactive(true);
             dmcontrol.set_ndmreset(true);
@@ -208,7 +208,7 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
 
             self.interface.write_dm_register(dmcontrol)?;
 
-            log::debug!("Clearing ndmreset bit");
+            tracing::debug!("Clearing ndmreset bit");
             let mut dmcontrol = Dmcontrol(0);
             dmcontrol.set_dmactive(true);
             dmcontrol.set_ndmreset(false);
@@ -237,15 +237,32 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
     }
 
     fn step(&mut self) -> Result<crate::core::CoreInformation, crate::Error> {
-        // First check if we stopped on a breakpoint, because this requires special handling before we can continue.
-        let was_breakpoint = if self.hw_breakpoints_enabled()
-            && self.status()? == CoreStatus::Halted(HaltReason::Breakpoint)
+        let halt_reason = self.status()?;
+        if matches!(
+            halt_reason,
+            CoreStatus::Halted(HaltReason::Breakpoint(BreakpointCause::Software))
+        ) && self.state.hw_breakpoints_enabled
         {
+            // If we are halted on a software breakpoint AND we have passed the flashing operation, we can skip the single step and manually advance the dpc.
+            let mut debug_pc = self.read_core_reg(RegisterId(0x7b1))?;
+            // Advance the dpc by the size of the EBREAK (ebreak or c.ebreak) instruction.
+            if matches!(self.instruction_set()?, InstructionSet::RV32C) {
+                debug_pc.incremenet_address(2)?;
+            } else {
+                debug_pc.incremenet_address(4)?;
+            }
+
+            self.write_core_reg(RegisterId(0x7b1), debug_pc)?;
+            return Ok(CoreInformation {
+                pc: debug_pc.try_into()?,
+            });
+        } else if matches!(
+            halt_reason,
+            CoreStatus::Halted(HaltReason::Breakpoint(BreakpointCause::Hardware))
+        ) {
+            // If we are halted on a hardware breakpoint.
             self.enable_breakpoints(false)?;
-            true
-        } else {
-            false
-        };
+        }
 
         let mut dcsr = Dcsr(self.read_core_reg(RegisterId(0x7b0))?.try_into()?);
         // Set it up, so that the next `self.run()` will only do a single step
@@ -270,7 +287,11 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
         self.write_csr(0x7b0, dcsr.0)?;
 
         // Re-enable breakpoints before we continue.
-        if was_breakpoint {
+        if matches!(
+            halt_reason,
+            CoreStatus::Halted(HaltReason::Breakpoint(BreakpointCause::Hardware))
+        ) {
+            // If we are halted on a hardware breakpoint.
             self.enable_breakpoints(true)?;
         }
 
@@ -283,7 +304,11 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
             .map_err(|e| e.into())
     }
 
-    fn write_core_reg(&mut self, address: crate::RegisterId, value: RegisterValue) -> Result<()> {
+    fn write_core_reg(
+        &mut self,
+        address: crate::RegisterId,
+        value: RegisterValue,
+    ) -> Result<(), crate::Error> {
         let value: u32 = value.try_into()?;
         self.write_csr(address.0, value).map_err(|e| e.into())
     }
@@ -291,7 +316,7 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
     fn available_breakpoint_units(&mut self) -> Result<u32, crate::Error> {
         // TODO: This should probably only be done once, when initialising
 
-        log::debug!("Determining number of HW breakpoints supported");
+        tracing::debug!("Determining number of HW breakpoints supported");
 
         let tselect = 0x7a0;
         let tdata1 = 0x7a1;
@@ -301,7 +326,7 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
 
         // These steps follow the debug specification 0.13, section 5.1 Enumeration
         loop {
-            log::debug!("Trying tselect={}", tselect_index);
+            tracing::debug!("Trying tselect={}", tselect_index);
             if let Err(e) = self.write_csr(tselect, tselect_index) {
                 match e {
                     RiscvError::AbstractCommand(AbstractCommandErrorKind::Exception) => break,
@@ -321,7 +346,7 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
                         // Trigger doesn't exist, break the loop
                         break;
                     } else {
-                        log::info!(
+                        tracing::info!(
                             "Discovered trigger with index {} and type {}",
                             tselect_index,
                             tinfo_val & 0xffff
@@ -332,8 +357,9 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
                     // An exception means we have to read tdata1 to discover the type
                     let tdata_val = self.read_csr(tdata1)?;
 
-                    // TODO: Proper handle xlen
-                    let xlen = 32;
+                    // Read the mxl field from the misa register (see RISC-V Privileged Spec, 3.1.1)
+                    let misa_value = Misa(self.read_csr(0x301)?);
+                    let xlen = u32::pow(2, misa_value.mxl() + 4);
 
                     let trigger_type = tdata_val >> (xlen - 4);
 
@@ -341,7 +367,7 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
                         break;
                     }
 
-                    log::info!(
+                    tracing::info!(
                         "Discovered trigger with index {} and type {}",
                         tselect_index,
                         trigger_type,
@@ -353,7 +379,7 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
             tselect_index += 1;
         }
 
-        log::debug!("Target supports {} breakpoints.", tselect_index);
+        tracing::debug!("Target supports {} breakpoints.", tselect_index);
 
         Ok(tselect_index)
     }
@@ -377,14 +403,13 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
                 && tdata_value.execute()
                 && ((tdata_value.m() && tdata_value.u()) || (!tdata_value.m() && !tdata_value.u()))
             {
-                log::debug!(
+                tracing::debug!(
                     "Will modify breakpoint enabled={} for {}: {:?}",
                     state,
                     bp_unit_index,
                     tdata_value
                 );
                 tdata_value.set_m(state);
-                tdata_value.set_s(state);
                 tdata_value.set_u(state);
                 self.write_csr(tdata1, tdata_value.0)?;
             }
@@ -395,7 +420,7 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
     }
 
     fn set_hw_breakpoint(&mut self, bp_unit_index: usize, addr: u64) -> Result<(), crate::Error> {
-        let addr = valid_32_address(addr)?;
+        let addr = valid_32bit_address(addr)?;
 
         if !self.hw_breakpoints_enabled() {
             self.enable_breakpoints(true)?;
@@ -406,7 +431,7 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
         let tdata1 = 0x7a1;
         let tdata2 = 0x7a2;
 
-        log::warn!("Setting breakpoint {}", bp_unit_index);
+        tracing::warn!("Setting breakpoint {}", bp_unit_index);
 
         self.write_csr(tselect, bp_unit_index as u32)?;
 
@@ -477,7 +502,14 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
     }
 
     fn instruction_set(&mut self) -> Result<InstructionSet, Error> {
-        Ok(InstructionSet::RV32)
+        let misa_value = Misa(self.read_csr(0x301)?);
+
+        // Check if the Bit at position 2 (signifies letter C, for compressed) is set.
+        if misa_value.extensions() & (1 << 2) != 0 {
+            Ok(InstructionSet::RV32C)
+        } else {
+            Ok(InstructionSet::RV32)
+        }
     }
 
     fn status(&mut self) -> Result<crate::core::CoreStatus, crate::Error> {
@@ -492,9 +524,9 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
 
             let reason = match dcsr.cause() {
                 // An ebreak instruction was hit
-                1 => HaltReason::Breakpoint,
+                1 => HaltReason::Breakpoint(BreakpointCause::Software),
                 // Trigger module caused halt
-                2 => HaltReason::Breakpoint,
+                2 => HaltReason::Breakpoint(BreakpointCause::Hardware),
                 // Debugger requested a halt
                 3 => HaltReason::Request,
                 // Core halted after single step
@@ -532,7 +564,7 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
             // Read the trigger "configuration" data.
             let tdata_value = Mcontrol(self.read_csr(tdata1)?);
 
-            log::warn!("Breakpoint {}: {:?}", bp_unit_index, tdata_value);
+            tracing::warn!("Breakpoint {}: {:?}", bp_unit_index, tdata_value);
 
             // The trigger must be active in at least a single mode
             let trigger_any_mode_active = tdata_value.m() || tdata_value.s() || tdata_value.u();
@@ -578,49 +610,70 @@ impl<'probe> MemoryInterface for Riscv32<'probe> {
     fn supports_native_64bit_access(&mut self) -> bool {
         self.interface.supports_native_64bit_access()
     }
+
     fn read_word_64(&mut self, address: u64) -> Result<u64, crate::error::Error> {
         self.interface.read_word_64(address)
     }
+
     fn read_word_32(&mut self, address: u64) -> Result<u32, Error> {
         self.interface.read_word_32(address)
     }
+
     fn read_word_8(&mut self, address: u64) -> Result<u8, Error> {
         self.interface.read_word_8(address)
     }
+
     fn read_64(&mut self, address: u64, data: &mut [u64]) -> Result<(), Error> {
         self.interface.read_64(address, data)
     }
+
     fn read_32(&mut self, address: u64, data: &mut [u32]) -> Result<(), Error> {
         self.interface.read_32(address, data)
     }
+
     fn read_8(&mut self, address: u64, data: &mut [u8]) -> Result<(), Error> {
         self.interface.read_8(address, data)
     }
+
     fn write_word_64(&mut self, address: u64, data: u64) -> Result<(), Error> {
         self.interface.write_word_64(address, data)
     }
+
     fn write_word_32(&mut self, address: u64, data: u32) -> Result<(), Error> {
         self.interface.write_word_32(address, data)
     }
+
     fn write_word_8(&mut self, address: u64, data: u8) -> Result<(), Error> {
         self.interface.write_word_8(address, data)
     }
+
     fn write_64(&mut self, address: u64, data: &[u64]) -> Result<(), Error> {
         self.interface.write_64(address, data)
     }
+
     fn write_32(&mut self, address: u64, data: &[u32]) -> Result<(), Error> {
         self.interface.write_32(address, data)
     }
+
     fn write_8(&mut self, address: u64, data: &[u8]) -> Result<(), Error> {
         self.interface.write_8(address, data)
     }
+
+    fn write(&mut self, address: u64, data: &[u8]) -> Result<(), Error> {
+        self.interface.write(address, data)
+    }
+
+    fn supports_8bit_transfers(&self) -> Result<bool, Error> {
+        self.interface.supports_8bit_transfers()
+    }
+
     fn flush(&mut self) -> Result<(), Error> {
         self.interface.flush()
     }
 }
 
 #[derive(Debug)]
-/// Flags used to control the [`SpecificCoreState`] for RiscV architecture
+/// Flags used to control the [`SpecificCoreState`](crate::core::SpecificCoreState) for RiscV architecture
 pub struct RiscVState {
     /// A flag to remember whether we want to use hw_breakpoints during stepping of the core.
     hw_breakpoints_enabled: bool,
@@ -743,7 +796,7 @@ bitfield! {
         stepie, set_stepie: 11;
         stopcount, set_stopcount: 10;
         stoptime, set_stoptime: 9;
-        cause, _: 8, 6;
+        cause, set_cause: 8, 6;
         mprven, set_mprven: 4;
         nmip, _: 3;
         step, set_step: 2;
@@ -858,4 +911,15 @@ bitfield! {
     execute, set_execute: 2;
     store, set_store: 1;
     load, set_load: 0;
+}
+
+bitfield! {
+    /// Isa and Extensions (see RISC-V Privileged Spec, 3.1.1)
+    pub struct Misa(u32);
+    impl Debug;
+
+    /// Machine XLEN
+    mxl, _: 31, 30;
+    /// Standard RISC-V extensions
+    extensions, _: 25, 0;
 }

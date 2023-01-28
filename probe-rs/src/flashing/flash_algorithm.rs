@@ -43,6 +43,11 @@ pub struct FlashAlgorithm {
     /// the list, then double buffered programming will be enabled.
     pub page_buffers: Vec<u64>,
 
+    /// Location of optional RTT control block.
+    ///
+    /// If this is present, the flash algorithm supports debug output over RTT.
+    pub rtt_control_block: Option<u64>,
+
     /// The properties of the flash on the device.
     pub flash_properties: FlashProperties,
 }
@@ -55,7 +60,7 @@ impl FlashAlgorithm {
     /// be returned.
     pub fn sector_info(&self, address: u64) -> Option<SectorInfo> {
         if !self.flash_properties.address_range.contains(&address) {
-            log::trace!("Address {:08x} not contained in this flash device", address);
+            tracing::trace!("Address {:08x} not contained in this flash device", address);
             return None;
         }
 
@@ -218,7 +223,27 @@ impl FlashAlgorithm {
         let mut code_start = 0;
 
         // Try to find a stack size that fits with at least one page of data.
-        for i in 0..Self::FLASH_ALGO_STACK_SIZE / Self::FLASH_ALGO_STACK_DECREMENT {
+        let stack_size = {
+            let stack_size = raw.stack_size.unwrap_or(Self::FLASH_ALGO_STACK_SIZE);
+            if stack_size < Self::FLASH_ALGO_STACK_DECREMENT {
+                // If the stack size is less than one decrement, we
+                // won't enter the loop (below), and we'll produce a variety
+                // of addresses that all start at zero (above).
+                // Let's make sure we have a chance to compute other addresses
+                // by using a reasonable minimum stack size.
+                tracing::warn!(
+                    "Stack size of {} bytes is too small; overriding to {} bytes",
+                    stack_size,
+                    Self::FLASH_ALGO_STACK_DECREMENT
+                );
+                Self::FLASH_ALGO_STACK_DECREMENT
+            } else {
+                stack_size
+            }
+        };
+        tracing::debug!("The flash algorithm will be configured with {stack_size} bytes of stack");
+
+        for i in 0..stack_size / Self::FLASH_ALGO_STACK_DECREMENT {
             // Load address
             addr_load = raw
                 .load_address
@@ -237,7 +262,10 @@ impl FlashAlgorithm {
             // Stack start address (desc)
             addr_stack = addr_load
                 + offset
-                + (Self::FLASH_ALGO_STACK_SIZE - Self::FLASH_ALGO_STACK_DECREMENT * i) as u64;
+                + (stack_size
+                    .checked_sub(Self::FLASH_ALGO_STACK_DECREMENT * i)
+                    .expect("Overflow never happens; decrement multiples are always less than stack size."))
+                    as u64;
 
             // Data buffer 1
             addr_data = addr_stack;
@@ -275,6 +303,7 @@ impl FlashAlgorithm {
             begin_stack: addr_stack,
             begin_data: page_buffers[0],
             page_buffers: page_buffers.clone(),
+            rtt_control_block: raw.rtt_location,
             flash_properties: raw.flash_properties.clone(),
         })
     }

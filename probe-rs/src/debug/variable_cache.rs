@@ -54,7 +54,7 @@ impl VariableCache {
             // The caller is telling us this is definitely a new `Variable`
             variable_to_add.variable_key = get_sequential_key();
 
-            log::trace!(
+            tracing::trace!(
                 "VariableCache: Add Variable: key={}, parent={:?}, name={:?}",
                 variable_to_add.variable_key,
                 variable_to_add.parent_key,
@@ -71,7 +71,7 @@ impl VariableCache {
             new_entry_key
         } else {
             // Attempt to update an existing `Variable` in the cache
-            log::trace!(
+            tracing::trace!(
                 "VariableCache: Update Variable, key={}, name={:?}",
                 variable_to_add.variable_key,
                 &variable_to_add.name
@@ -83,8 +83,8 @@ impl VariableCache {
                 .get_mut(&variable_to_add.variable_key)
             {
                 if &variable_to_add != prev_entry {
-                    log::trace!("Updated:  {:?}", variable_to_add);
-                    log::trace!("Previous: {:?}", prev_entry);
+                    tracing::trace!("Updated:  {:?}", variable_to_add);
+                    tracing::trace!("Previous: {:?}", prev_entry);
                 }
 
                 *prev_entry = variable_to_add
@@ -129,7 +129,7 @@ impl VariableCache {
     }
 
     /// Retrieve a clone of a specific `Variable`, using the `name` and `parent_key`.
-    /// If there is more than one, it will be logged (log::error!), and only the last will be returned.
+    /// If there is more than one, it will be logged (tracing::error!), and only the last will be returned.
     pub fn get_variable_by_name_and_parent(
         &self,
         variable_name: &VariableName,
@@ -147,14 +147,14 @@ impl VariableCache {
             0 => None,
             1 => child_variables.first().cloned(),
             child_count => {
-                log::error!("Found {} variables with parent_key={:?} and name={}. Please report this as a bug.", child_count, parent_key, variable_name);
+                tracing::error!("Found {} variables with parent_key={:?} and name={}. Please report this as a bug.", child_count, parent_key, variable_name);
                 child_variables.last().cloned()
             }
         }
     }
 
     /// Retrieve a clone of a specific `Variable`, using the `name`.
-    /// If there is more than one, it will be logged (log::warn!), and only the first will be returned.
+    /// If there is more than one, it will be logged (tracing::warn!), and only the first will be returned.
     /// It is possible for a hierarchy of variables in a cache to have duplicate names under different parents.
     pub fn get_variable_by_name(&self, variable_name: &VariableName) -> Option<Variable> {
         let child_variables = self
@@ -167,7 +167,7 @@ impl VariableCache {
             0 => None,
             1 => child_variables.first().cloned(),
             child_count => {
-                log::warn!(
+                tracing::warn!(
                     "Found {} variables with name={}. Please report this as a bug.",
                     child_count,
                     variable_name

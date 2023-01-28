@@ -1,12 +1,14 @@
 [package]
 name = "rtthost"
-version = "0.13.0"
-edition = "2021"
+description = "RTT (Real-Time Transfer) client"
+version.workspace = true
+edition.workspace = true
 license = "MIT"
 authors = ["Matti Virkkunen <mvirkkunen@gmail.com>"]
+repository.workspace = true
 
 [dependencies]
 pretty_env_logger = "0.4.0"
-probe-rs = { version = "0.13.0", path = "../probe-rs" }
-probe-rs-rtt = { version = "0.13.0", path = "../rtt" }
-clap = { version = "3.0", features = ["derive"] }
+probe-rs = { workspace = true }
+probe-rs-rtt = { workspace = true }
+clap = { version = "4.1", features = ["derive"] }

@@ -33,7 +33,7 @@ pub use self::{
 };
 use crate::{core::Core, MemoryInterface};
 use gimli::DebuggingInformationEntry;
-use num_traits::Zero;
+
 use std::{
     io,
     path::PathBuf,
@@ -75,12 +75,20 @@ pub enum DebugError {
         /// The value of the program counter for which a halt was requested.
         pc_at_error: u64,
     },
+    /// Non-terminal Errors encountered while unwinding the stack, e.g. Could not resolve the value of a variable in the stack.
+    /// These are distinct from other errors because they do not interrupt processing.
+    /// Instead, the cause of incomplete results are reported back/explained to the user, and the stack continues to unwind.
+    #[error("{message}")]
+    UnwindIncompleteResults {
+        /// A message that can be displayed to the user to help them understand the reason for the incomplete results.
+        message: String,
+    },
     /// Some other error occurred.
     #[error(transparent)]
     Other(#[from] anyhow::Error),
 }
 
-/// A copy of [`gimli::ColumnType`] which uses [`u64`] instead of [`NonZeroU64`].
+/// A copy of [`gimli::ColumnType`] which uses [`u64`] instead of [`NonZeroU64`](std::num::NonZeroU64).
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum ColumnType {
     /// The `LeftEdge` means that the statement begins at the start of the new line.
@@ -138,16 +146,16 @@ fn extract_file(
                 {
                     Some((path, file))
                 } else {
-                    log::warn!("Unable to extract file or path from {:?}.", attribute_value);
+                    tracing::warn!("Unable to extract file or path from {:?}.", attribute_value);
                     None
                 }
             } else {
-                log::warn!("Unable to extract file entry for {:?}.", attribute_value);
+                tracing::warn!("Unable to extract file entry for {:?}.", attribute_value);
                 None
             }
         }),
         other => {
-            log::warn!(
+            tracing::warn!(
                 "Unable to extract file information from attribute value {:?}: Not implemented.",
                 other
             );
@@ -166,14 +174,14 @@ fn extract_byte_size(
             Some(byte_size_attr) => match byte_size_attr.value() {
                 gimli::AttributeValue::Udata(byte_size) => byte_size,
                 other => {
-                    log::warn!("Unimplemented: DW_AT_byte_size value: {:?} ", other);
+                    tracing::warn!("Unimplemented: DW_AT_byte_size value: {:?} ", other);
                     0
                 }
             },
             None => 0,
         },
         Err(error) => {
-            log::warn!(
+            tracing::warn!(
                 "Failed to extract byte_size: {:?} for debug_entry {:?}",
                 error,
                 di_entry.tag().static_string()
@@ -203,7 +211,7 @@ fn extract_name(
             }
         }
         gimli::AttributeValue::String(name) => String::from_utf8_lossy(&name).to_string(),
-        other => format!("Unimplemented: Evaluate name from {:?}", other),
+        other => format!("Unimplemented: Evaluate name from {other:?}"),
     }
 }
 
@@ -227,7 +235,7 @@ pub(crate) fn _print_all_attributes(
         use gimli::AttributeValue::*;
 
         match attr.value() {
-            Addr(a) => println!("{:#010x}", a),
+            Addr(a) => println!("{a:#010x}"),
             DebugStrRef(_) => {
                 let val = dwarf.attr_string(unit, attr.value()).unwrap();
                 println!("{}", std::str::from_utf8(&val).unwrap());
@@ -267,7 +275,7 @@ pub(crate) fn _print_all_attributes(
                                         .unwrap()
                                 }
                                 x => {
-                                    log::error!(
+                                    tracing::error!(
                                         "Requested memory with size {}, which is not supported yet.",
                                         x
                                     );
@@ -283,7 +291,7 @@ pub(crate) fn _print_all_attributes(
                             base_type,
                         } => {
                             let raw_value: u64 = core
-                                .read_core_reg(register.0 as u16)
+                                .read_core_reg(register.0)
                                 .expect("Failed to read memory");
 
                             if base_type != gimli::UnitOffset(0) {
@@ -296,18 +304,13 @@ pub(crate) fn _print_all_attributes(
                                 .unwrap()
                         }
                         RequiresRelocatedAddress(address_index) => {
-                            if address_index.is_zero() {
-                                // This is a rust-lang bug for statics ... https://github.com/rust-lang/rust/issues/32574;
-                                evaluation.resume_with_relocated_address(u64::MAX).unwrap()
-                            } else {
-                                // Use the address_index as an offset from 0, so just pass it into the next step.
-                                evaluation
-                                    .resume_with_relocated_address(address_index)
-                                    .unwrap()
-                            }
+                            // Use the address_index as an offset from 0, so just pass it into the next step.
+                            evaluation
+                                .resume_with_relocated_address(address_index)
+                                .unwrap()
                         }
                         x => {
-                            println!("print_all_attributes {:?}", x);
+                            println!("print_all_attributes {x:?}");
                             // x
                             todo!()
                         }

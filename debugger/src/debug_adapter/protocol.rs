@@ -52,7 +52,7 @@ impl<R: Read, W: Write> DapAdapter<R, W> {
             input: BufReader::new(reader),
             output: writer,
             seq: 1,
-            console_log_level: ConsoleLog::Warn,
+            console_log_level: ConsoleLog::Console,
             pending_requests: HashMap::new(),
         }
     }
@@ -68,7 +68,7 @@ impl<R: Read, W: Write> DapAdapter<R, W> {
             Ok(_) => {}
             Err(error) => {
                 // TODO: Implement catch of errorkind "WouldBlock" and retry
-                log::error!("send_data - body: {:?}", error);
+                tracing::error!("send_data - body: {:?}", error);
                 self.output.flush().ok();
                 return Err(error);
             }
@@ -139,19 +139,19 @@ impl<R: Read, W: Write> DapAdapter<R, W> {
     fn listen_for_request_and_respond(&mut self) -> anyhow::Result<Option<Request>> {
         match self.receive_msg_content() {
             Ok(Some(request)) => {
-                log::debug!("Received request: {:?}", request);
+                tracing::debug!("Received request: {:?}", request);
 
                 // This is the SUCCESS request for new requests from the client.
                 match self.console_log_level {
-                    ConsoleLog::Error => {}
-                    ConsoleLog::Info | ConsoleLog::Warn => {
+                    ConsoleLog::Console => {}
+                    ConsoleLog::Info => {
                         self.log_to_console(format!(
                             "\nReceived DAP Request sequence #{} : {}",
                             request.seq, request.command
                         ));
                     }
-                    ConsoleLog::Debug | ConsoleLog::Trace => {
-                        self.log_to_console(format!("\nReceived DAP Request: {:#?}", request));
+                    ConsoleLog::Debug => {
+                        self.log_to_console(format!("\nReceived DAP Request: {request:#?}"));
                     }
                 }
 
@@ -163,7 +163,7 @@ impl<R: Read, W: Write> DapAdapter<R, W> {
             }
             Ok(None) => Ok(None),
             Err(e) => {
-                log::warn!("Error while listening to request: {:?}", e);
+                tracing::warn!("Error while listening to request: {:?}", e);
                 self.log_to_console(e.to_string());
                 self.show_message(MessageSeverity::Error, e.to_string());
 
@@ -239,12 +239,12 @@ impl<R: Read, W: Write> ProtocolAdapter for DapAdapter<R, W> {
         if new_event.event != "output" {
             // This would result in an endless loop.
             match self.console_log_level {
-                ConsoleLog::Error => {}
-                ConsoleLog::Info | ConsoleLog::Warn => {
+                ConsoleLog::Console => {}
+                ConsoleLog::Info => {
                     self.log_to_console(format!("\nTriggered DAP Event: {}", new_event.event));
                 }
-                ConsoleLog::Debug | ConsoleLog::Trace => {
-                    self.log_to_console(format!("INFO: Triggered DAP Event: {:#?}", new_event));
+                ConsoleLog::Debug => {
+                    self.log_to_console(format!("INFO: Triggered DAP Event: {new_event:#?}"));
                 }
             }
         }
@@ -253,7 +253,7 @@ impl<R: Read, W: Write> ProtocolAdapter for DapAdapter<R, W> {
     }
 
     fn show_message(&mut self, severity: MessageSeverity, message: impl Into<String>) -> bool {
-        log::debug!("show_message");
+        tracing::debug!("show_message");
 
         let event_body = match serde_json::to_value(ShowMessageEventBody {
             severity,
@@ -269,7 +269,7 @@ impl<R: Read, W: Write> ProtocolAdapter for DapAdapter<R, W> {
     }
 
     fn log_to_console<S: Into<String>>(&mut self, message: S) -> bool {
-        log::debug!("log_to_console");
+        tracing::debug!("log_to_console");
         let event_body = match serde_json::to_value(OutputEventBody {
             output: format!("{}\n", message.into()),
             category: Some("console".to_owned()),
@@ -321,9 +321,9 @@ impl<R: Read, W: Write> ProtocolAdapter for DapAdapter<R, W> {
                         std::error::Error::source(&debugger_error);
                     while let Some(source_error) = child_error {
                         offset_iterations += 1;
-                        response_message = format!("{}\n", response_message,);
+                        response_message = format!("{response_message}\n",);
                         for _offset_counter in 0..offset_iterations {
-                            response_message = format!("{}\t", response_message);
+                            response_message = format!("{response_message}\t");
                         }
                         response_message = format!(
                             "{}{:?}",
@@ -337,13 +337,13 @@ impl<R: Read, W: Write> ProtocolAdapter for DapAdapter<R, W> {
             }
         };
 
-        log::debug!("send_response: {:?}", resp);
+        tracing::debug!("send_response: {:?}", resp);
 
         // Check if we got a request for this response
         if let Some(request_command) = self.pending_requests.remove(&resp.request_seq) {
             assert_eq!(request_command, resp.command);
         } else {
-            log::error!("Trying to send a response to non-existing request! Response {:?} has no pending request", resp);
+            tracing::error!("Trying to send a response to non-existing request! Response {:?} has no pending request", resp);
         }
 
         let encoded_resp = serde_json::to_vec(&resp)?;
@@ -365,15 +365,15 @@ impl<R: Read, W: Write> ProtocolAdapter for DapAdapter<R, W> {
             );
         } else {
             match self.console_log_level {
-                ConsoleLog::Error => {}
-                ConsoleLog::Info | ConsoleLog::Warn => {
+                ConsoleLog::Console => {}
+                ConsoleLog::Info => {
                     self.log_to_console(format!(
                         "   Sent DAP Response sequence #{} : {}",
                         resp.seq, resp.command
                     ));
                 }
-                ConsoleLog::Debug | ConsoleLog::Trace => {
-                    self.log_to_console(format!("\nSent DAP Response: {:#?}", resp));
+                ConsoleLog::Debug => {
+                    self.log_to_console(format!("\nSent DAP Response: {resp:#?}"));
                 }
             }
         }
@@ -434,6 +434,7 @@ mod test {
         let mut output = Vec::new();
 
         let mut adapter = DapAdapter::new(input.as_bytes(), &mut output);
+        adapter.console_log_level = super::ConsoleLog::Info;
 
         let request = adapter.listen_for_request().unwrap().unwrap();
 
@@ -454,6 +455,7 @@ mod test {
         let mut output = Vec::new();
 
         let mut adapter = DapAdapter::new(input.as_bytes(), &mut output);
+        adapter.console_log_level = super::ConsoleLog::Info;
 
         let _request = adapter.listen_for_request().unwrap_err();
 
@@ -471,6 +473,7 @@ mod test {
         let mut output = Vec::new();
 
         let mut adapter = DapAdapter::new(input.as_bytes(), &mut output);
+        adapter.console_log_level = super::ConsoleLog::Info;
 
         let _request = adapter.listen_for_request().unwrap_err();
 
@@ -491,6 +494,7 @@ mod test {
         let mut output = Vec::new();
 
         let mut adapter = DapAdapter::new(input, &mut output);
+        adapter.console_log_level = super::ConsoleLog::Info;
 
         let request = adapter.listen_for_request().unwrap();
 

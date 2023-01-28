@@ -8,7 +8,7 @@ use std::io::{stdin, stdout};
 use std::sync::mpsc::{channel, Receiver};
 use std::thread;
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 enum ProbeInfo {
     Number(usize),
     List,
@@ -95,7 +95,7 @@ struct Opts {
     #[clap(
         long,
         default_value="",
-        parse(try_from_str=parse_scan_region),
+        value_parser = parse_scan_region,
         help = "Memory region to scan for control block. You can specify either an exact starting address '0x1000' or a range such as '0x0000..0x1000'. Both decimal and hex are accepted.")]
     scan_region: ScanRegion,
 }
@@ -125,7 +125,7 @@ fn run() -> i32 {
     };
 
     if probe_number >= probes.len() {
-        eprintln!("Probe {} does not exist.", probe_number);
+        eprintln!("Probe {probe_number} does not exist.");
         list_probes(std::io::stderr(), &probes);
         return 1;
     }
@@ -133,7 +133,7 @@ fn run() -> i32 {
     let probe = match probes[probe_number].open() {
         Ok(probe) => probe,
         Err(err) => {
-            eprintln!("Error opening probe: {}", err);
+            eprintln!("Error opening probe: {err}");
             return 1;
         }
     };
@@ -147,7 +147,7 @@ fn run() -> i32 {
     let mut session = match probe.attach(target_selector, Permissions::default()) {
         Ok(session) => session,
         Err(err) => {
-            eprintln!("Error creating debug session: {}", err);
+            eprintln!("Error creating debug session: {err}");
 
             if opts.chip.is_none() {
                 if let probe_rs::Error::ChipNotFound(_) = err {
@@ -164,7 +164,7 @@ fn run() -> i32 {
     let mut core = match session.core(0) {
         Ok(core) => core,
         Err(err) => {
-            eprintln!("Error attaching to core # 0 {}", err);
+            eprintln!("Error attaching to core # 0 {err}");
             return 1;
         }
     };
@@ -174,7 +174,7 @@ fn run() -> i32 {
     let mut rtt = match Rtt::attach_region(&mut core, &memory_map, &opts.scan_region) {
         Ok(rtt) => rtt,
         Err(err) => {
-            eprintln!("Error attaching to RTT: {}", err);
+            eprintln!("Error attaching to RTT: {err}");
             return 1;
         }
     };
@@ -193,7 +193,7 @@ fn run() -> i32 {
         let chan = rtt.up_channels().take(up);
 
         if chan.is_none() {
-            eprintln!("Error: up channel {} does not exist.", up);
+            eprintln!("Error: up channel {up} does not exist.");
             return 1;
         }
 
@@ -206,7 +206,7 @@ fn run() -> i32 {
         let chan = rtt.down_channels().take(down);
 
         if chan.is_none() {
-            eprintln!("Error: up channel {} does not exist.", down);
+            eprintln!("Error: up channel {down} does not exist.");
             return 1;
         }
 
@@ -227,7 +227,7 @@ fn run() -> i32 {
             let count = match up_channel.read(&mut core, up_buf.as_mut()) {
                 Ok(count) => count,
                 Err(err) => {
-                    eprintln!("\nError reading from RTT: {}", err);
+                    eprintln!("\nError reading from RTT: {err}");
                     return 1;
                 }
             };
@@ -237,7 +237,7 @@ fn run() -> i32 {
                     stdout().flush().ok();
                 }
                 Err(err) => {
-                    eprintln!("Error writing to stdout: {}", err);
+                    eprintln!("Error writing to stdout: {err}");
                     return 1;
                 }
             }
@@ -252,7 +252,7 @@ fn run() -> i32 {
                 let count = match down_channel.write(&mut core, down_buf.as_mut()) {
                     Ok(count) => count,
                     Err(err) => {
-                        eprintln!("\nError writing to RTT: {}", err);
+                        eprintln!("\nError writing to RTT: {err}");
                         return 1;
                     }
                 };
@@ -311,7 +311,7 @@ fn stdin_channel() -> Receiver<Vec<u8>> {
                     tx.send(buf[..count].to_vec()).unwrap();
                 }
                 Err(err) => {
-                    eprintln!("Error reading from stdin, input disabled: {}", err);
+                    eprintln!("Error reading from stdin, input disabled: {err}");
                     break;
                 }
             }

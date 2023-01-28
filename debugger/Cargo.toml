@@ -1,46 +1,51 @@
 [package]
 name = "probe-rs-debugger"
-version = "0.13.0"
+version.workspace = true
 authors = [
     "Noah Hüsser <yatekii@yatekii.ch>",
     "Dominik Boehi <dominik.boehi@gmail.ch>",
     "Jack Noppe <noppej@hotmail.com>",
 ]
-edition = "2021"
+edition.workspace = true
 description = "An MS DAP Server built on top of the debug probe capabilities provided by probe-rs."
-documentation = "https://docs.rs/probe-rs/"
-homepage = "https://github.com/probe-rs/probe-rs"
-repository = "https://github.com/probe-rs/probe-rs"
+documentation.workspace = true
+homepage.workspace = true
+repository.workspace = true
 readme = "README.md"
 categories = ["embedded", "hardware-support", "development-tools::debugging"]
 keywords = ["embedded"]
-license = "MIT OR Apache-2.0"
+license.workspace = true
 
 [features]
 ftdi = ["probe-rs/ftdi"]
 
 [dependencies]
-probe-rs = { version = "0.13.0", path = "../probe-rs" }
-probe-rs-cli-util = { version = "0.13.0", path = "../probe-rs-cli-util" }
-
-env_logger = "0.9.0"
-log = "0.4.6"
+probe-rs = { workspace = true }
+probe-rs-cli-util = { workspace = true }
+tracing-subscriber = { version = "0.3.16", features = ["env-filter", "json"] }
+tracing = { version = "0.1.37", features = ["log"] }
 scroll = "0.11.0"
-clap = { version = "3.0", features = ["derive", "cargo"] }
+clap = { version = "4.1", features = ["derive", "cargo"] }
 capstone = "0.11.0"
-thiserror = "1.0"
-anyhow = "1.0.34"
+thiserror = { workspace = true }
+anyhow = { workspace = true }
 parse_int = "0.6.0"
 num-traits = "0.2.14"
 bitfield = "0.14.0"
-serde_json = "^1.0"
-serde = { version = "^1.0", features = ["derive"] }
-schemafy = "^0.6"
-chrono = { version = "0.4", features = ["serde"] }
-goblin = "0.5.1"
-base64 = "0.13"
+serde_json = "1"
+serde = { version = "1", features = ["derive"] }
+schemafy = "0.6"
+goblin = "0.6.0"
+base64 = "0.21"
 svd-parser = { version = "0.14.0", features = ["expand"] }
-
+directories = "4"
+sanitize-filename = "0.4"
+time = { version = "0.3", default-features = false, features = [
+    "alloc",
+    "formatting",
+    "large-dates",
+    "macros",
+] }
 
 [dev-dependencies]
 insta = "1.8.0"

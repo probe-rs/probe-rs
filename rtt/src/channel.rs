@@ -387,7 +387,7 @@ fn read_c_string(
         .iter()
         .position(|&b| b == 0)
         .map(|p| String::from_utf8_lossy(&bytes[..p]).into_owned());
-    log::debug!(
+    tracing::debug!(
         "probe-rs-rtt::Channel::read_c_string() result = {:?}",
         return_value
     );

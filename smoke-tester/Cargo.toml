@@ -1,6 +1,6 @@
 [package]
 name = "smoke_tester"
-version = "0.11.0"
+version.workspace = true
 authors = ["Dominik Boehi <dominik.boehi@gmail.com>"]
 edition = "2021"
 publish = false
@@ -9,11 +9,11 @@ publish = false
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-probe-rs = { path = "../probe-rs" }
-toml = "0.5.8"
+probe-rs = { workspace = true }
+toml = "0.6.0"
 anyhow = "1.0.40"
-serde = { version = "1.0.125", features = ["derive"] }
+serde = { version = "1", features = ["derive"] }
 pretty_env_logger = "0.4.0"
 log = "0.4.14"
-clap = "3.0"
+clap = "4.1"
 colored = "2.0.0"

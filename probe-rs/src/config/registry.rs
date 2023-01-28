@@ -37,7 +37,7 @@ pub enum RegistryError {
     Yaml(#[from] serde_yaml::Error),
     /// An invalid [`ChipFamily`] was encountered.
     #[error("Invalid chip family definition ({})", .0.name)]
-    InvalidChipFamilyDefinition(ChipFamily, String),
+    InvalidChipFamilyDefinition(Box<ChipFamily>, String),
 }
 
 fn add_generic_targets(vec: &mut Vec<ChipFamily>) {
@@ -45,6 +45,8 @@ fn add_generic_targets(vec: &mut Vec<ChipFamily>) {
         ChipFamily {
             name: "Generic ARMv6-M".to_owned(),
             manufacturer: None,
+            generated_from_pack: false,
+            pack_file_release: None,
             variants: vec![
                 Chip::generic_arm("Cortex-M0", CoreType::Armv6m),
                 Chip::generic_arm("Cortex-M0+", CoreType::Armv6m),
@@ -57,6 +59,8 @@ fn add_generic_targets(vec: &mut Vec<ChipFamily>) {
         ChipFamily {
             name: "Generic ARMv7-M".to_owned(),
             manufacturer: None,
+            generated_from_pack: false,
+            pack_file_release: None,
             variants: vec![Chip::generic_arm("Cortex-M3", CoreType::Armv7m)],
             flash_algorithms: vec![],
             source: TargetDescriptionSource::Generic,
@@ -64,6 +68,8 @@ fn add_generic_targets(vec: &mut Vec<ChipFamily>) {
         ChipFamily {
             name: "Generic ARMv7E-M".to_owned(),
             manufacturer: None,
+            generated_from_pack: false,
+            pack_file_release: None,
             variants: vec![
                 Chip::generic_arm("Cortex-M4", CoreType::Armv7em),
                 Chip::generic_arm("Cortex-M7", CoreType::Armv7em),
@@ -74,6 +80,8 @@ fn add_generic_targets(vec: &mut Vec<ChipFamily>) {
         ChipFamily {
             name: "Generic ARMv8-M".to_owned(),
             manufacturer: None,
+            generated_from_pack: false,
+            pack_file_release: None,
             variants: vec![
                 Chip::generic_arm("Cortex-M23", CoreType::Armv8m),
                 Chip::generic_arm("Cortex-M33", CoreType::Armv8m),
@@ -86,6 +94,8 @@ fn add_generic_targets(vec: &mut Vec<ChipFamily>) {
         ChipFamily {
             name: "Generic RISC-V".to_owned(),
             manufacturer: None,
+            pack_file_release: None,
+            generated_from_pack: false,
             variants: vec![Chip {
                 name: "riscv".to_owned(),
                 part: None,
@@ -114,8 +124,10 @@ impl Registry {
     fn from_builtin_families() -> Self {
         const BUILTIN_TARGETS: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/targets.bincode"));
 
-        let mut families: Vec<ChipFamily> = bincode::deserialize(BUILTIN_TARGETS)
-            .expect("Failed to deserialize builtin targets. This is a bug.");
+        let mut families: Vec<ChipFamily> = match bincode::deserialize(BUILTIN_TARGETS) {
+            Ok(families) => families,
+            Err(err) => panic!("Failed to deserialize builtin targets. This is a bug : {err:?}"),
+        };
 
         add_generic_targets(&mut families);
 
@@ -145,7 +157,7 @@ impl Registry {
     fn get_target_by_name(&self, name: impl AsRef<str>) -> Result<Target, RegistryError> {
         let name = name.as_ref();
 
-        log::debug!("Searching registry for chip with name {}", name);
+        tracing::debug!("Searching registry for chip with name {}", name);
 
         let (family, chip) = {
             // Try get the corresponding chip.
@@ -156,10 +168,10 @@ impl Registry {
                 for variant in family.variants.iter() {
                     if match_name_prefix(&variant.name, name) {
                         if variant.name.len() == name.len() {
-                            log::debug!("Exact match for chip name: {}", variant.name);
+                            tracing::debug!("Exact match for chip name: {}", variant.name);
                             exact_matches += 1;
                         } else {
-                            log::debug!("Partial match for chip name: {}", variant.name);
+                            tracing::debug!("Partial match for chip name: {}", variant.name);
                             partial_matches += 1;
                             if exact_matches > 0 {
                                 continue;
@@ -170,7 +182,7 @@ impl Registry {
                 }
             }
             if exact_matches > 1 || (exact_matches == 0 && partial_matches > 1) {
-                log::warn!(
+                tracing::warn!(
                     "Ignoring ambiguous matches for specified chip name {}",
                     name,
                 );
@@ -179,14 +191,14 @@ impl Registry {
             let (family, chip) = selected_family_and_chip
                 .ok_or_else(|| RegistryError::ChipNotFound(name.to_owned()))?;
             if exact_matches == 0 && partial_matches == 1 {
-                log::warn!(
+                tracing::warn!(
                     "Found chip {} which matches given partial name {}. Consider specifying its full name.",
                     chip.name,
                     name,
                 );
             }
             if chip.name.to_ascii_lowercase() != name.to_ascii_lowercase() {
-                log::warn!(
+                tracing::warn!(
                     "Matching {} based on wildcard. Consider specifying the chip as {} instead.",
                     name,
                     chip.name,
@@ -200,7 +212,7 @@ impl Registry {
     }
 
     fn search_chips(&self, name: &str) -> Vec<String> {
-        log::debug!("Searching registry for chip with name {}", name);
+        tracing::debug!("Searching registry for chip with name {}", name);
 
         let mut targets = Vec::new();
 
@@ -234,7 +246,7 @@ impl Registry {
                     let mut identified_chips = Vec::new();
 
                     for family in families {
-                        log::debug!("Checking family {}", family.name);
+                        tracing::debug!("Checking family {}", family.name);
 
                         let chips = family
                             .variants()
@@ -248,7 +260,7 @@ impl Registry {
                     if identified_chips.len() == 1 {
                         identified_chips.pop().unwrap()
                     } else {
-                        log::debug!(
+                        tracing::debug!(
                         "Found {} matching chips for information {:?}, unable to determine chip",
                         identified_chips.len(),
                         chip_info
@@ -272,7 +284,7 @@ impl Registry {
 
         family
             .validate()
-            .map_err(|e| RegistryError::InvalidChipFamilyDefinition(family.clone(), e))?;
+            .map_err(|e| RegistryError::InvalidChipFamilyDefinition(Box::new(family.clone()), e))?;
 
         let index = self
             .families

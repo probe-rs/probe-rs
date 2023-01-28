@@ -2,8 +2,8 @@ use std::time::Duration;
 
 use anyhow::Result;
 use probe_rs::{
-    config::MemoryRegion, Architecture, Core, CoreStatus, DebugProbeError, Error, HaltReason,
-    MemoryInterface,
+    config::MemoryRegion, Architecture, BreakpointCause, Core, CoreStatus, DebugProbeError, Error,
+    HaltReason, MemoryInterface,
 };
 
 const TEST_CODE: &[u8] = include_bytes!("test_arm.bin");
@@ -29,7 +29,7 @@ pub fn test_stepping(core: &mut Core, memory_regions: &[MemoryRegion]) -> Result
 
     core.halt(Duration::from_millis(100))?;
 
-    let code_load_address = ram_region.range.start as u64;
+    let code_load_address = ram_region.range.start;
 
     core.write_8(code_load_address, TEST_CODE)?;
 
@@ -39,7 +39,7 @@ pub fn test_stepping(core: &mut Core, memory_regions: &[MemoryRegion]) -> Result
 
     let core_information = core.step()?;
 
-    assert_eq!(core_information.pc as u64, code_load_address + 2);
+    assert_eq!(core_information.pc, code_load_address + 2);
 
     let core_status = core.status()?;
 
@@ -70,11 +70,11 @@ pub fn test_stepping(core: &mut Core, memory_regions: &[MemoryRegion]) -> Result
 
             let pc: u64 = core.read_core_reg(registers.program_counter())?;
 
-            println!("Core stopped at: {:#08x}", pc);
+            println!("Core stopped at: {pc:#08x}");
 
             let r2_val: u64 = core.read_core_reg(registers.platform_register(2))?;
 
-            println!("$r2 = {:#08x}", r2_val);
+            println!("$r2 = {r2_val:#08x}");
         }
         Err(other) => anyhow::bail!(other),
     }
@@ -83,13 +83,17 @@ pub fn test_stepping(core: &mut Core, memory_regions: &[MemoryRegion]) -> Result
 
     let core_status = core.status()?;
 
-    assert_eq!(core_status, CoreStatus::Halted(HaltReason::Breakpoint));
+    assert!(matches!(
+        core_status,
+        CoreStatus::Halted(HaltReason::Breakpoint(BreakpointCause::Hardware))
+            | CoreStatus::Halted(HaltReason::Breakpoint(BreakpointCause::Unknown))
+    ));
 
     let pc: u64 = core.read_core_reg(registers.program_counter())?;
 
     assert_eq!(pc, break_address);
 
-    println!("Core halted at {:#08x}, now trying to run...", pc);
+    println!("Core halted at {pc:#08x}, now trying to run...");
 
     // Increase PC by 2 to skip breakpoint.
     core.write_core_reg(registers.program_counter().into(), pc + 2)?;
@@ -111,22 +115,26 @@ pub fn test_stepping(core: &mut Core, memory_regions: &[MemoryRegion]) -> Result
 
             let pc: u64 = core.read_core_reg(registers.program_counter())?;
 
-            println!("Core stopped at: {:#08x}", pc);
+            println!("Core stopped at: {pc:#08x}");
 
             let r2_val: u64 = core.read_core_reg(registers.platform_register(2))?;
 
-            println!("$r2 = {:#08x}", r2_val);
+            println!("$r2 = {r2_val:#08x}");
         }
         Err(other) => anyhow::bail!(other),
     }
 
     let core_status = core.status()?;
 
-    assert_eq!(core_status, CoreStatus::Halted(HaltReason::Breakpoint));
+    assert!(matches!(
+        core_status,
+        CoreStatus::Halted(HaltReason::Breakpoint(BreakpointCause::Hardware))
+            | CoreStatus::Halted(HaltReason::Breakpoint(BreakpointCause::Unknown))
+    ));
 
     let pc: u64 = core.read_core_reg(registers.program_counter())?;
 
-    assert_eq!(pc, break_address, "{:#08x} != {:#08x}", pc, break_address);
+    assert_eq!(pc, break_address, "{pc:#08x} != {break_address:#08x}");
 
     // Register r2 should be 1 to indicate end of test.
     let r2_val: u64 = core.read_core_reg(registers.platform_register(2))?;

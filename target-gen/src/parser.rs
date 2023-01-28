@@ -62,6 +62,7 @@ pub fn extract_flash_algo(
     mut file: impl std::io::Read,
     file_name: &std::path::Path,
     default: bool,
+    fixed_load_address: bool,
 ) -> Result<RawFlashAlgorithm> {
     let mut buffer = vec![];
     file.read_to_end(&mut buffer)?;
@@ -81,7 +82,8 @@ pub fn extract_flash_algo(
 
     let code_section_offset = algorithm_binary.code_section.start;
 
-    // Extract the function pointers.
+    // Extract the function pointers,
+    // and check if a RTT szmbol is present.
     for sym in elf.syms.iter() {
         let name = &elf.strtab[sym.st_name];
 
@@ -91,8 +93,28 @@ pub fn extract_flash_algo(
             "EraseChip" => algo.pc_erase_all = Some(sym.st_value - code_section_offset as u64),
             "EraseSector" => algo.pc_erase_sector = sym.st_value - code_section_offset as u64,
             "ProgramPage" => algo.pc_program_page = sym.st_value - code_section_offset as u64,
+            "_SEGGER_RTT" => {
+                algo.rtt_location = Some(sym.st_value);
+                log::debug!("Found RTT control block at address {:#010x}", sym.st_value);
+            }
+
             _ => {}
         }
+    }
+
+    if fixed_load_address {
+        log::debug!(
+            "Flash algorithm will be loaded at fixed address {:#010x}",
+            algorithm_binary.code_section.load_address
+        );
+
+        anyhow::ensure!(
+            algorithm_binary.is_continuous_in_ram(),
+            "If the flash algorithm is not position independent, all sections have to follow each other in RAM. \
+            Please check your linkerscript."
+        );
+
+        algo.load_address = Some(algorithm_binary.code_section.load_address as u64);
     }
 
     algo.description = flash_device.name;

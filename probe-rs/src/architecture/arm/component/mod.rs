@@ -2,18 +2,24 @@
 
 mod dwt;
 mod itm;
+mod scs;
 mod swo;
 mod tmc;
 mod tpiu;
 mod trace_funnel;
 
+use super::ap::{GenericAp, MemoryAp};
 use super::memory::romtable::{CoresightComponent, PeripheralType, RomTableError};
+use super::memory::Component;
+use super::ArmError;
+use super::{ApAddress, ApInformation, DpAddress, MemoryApInformation};
 use crate::architecture::arm::core::armv6m::Demcr;
 use crate::architecture::arm::{ArmProbeInterface, SwoConfig, SwoMode};
 use crate::{Core, Error, MemoryInterface, MemoryMappedRegister};
 
+pub use self::itm::Itm;
 pub use dwt::Dwt;
-pub use itm::Itm;
+pub use scs::Scs;
 pub use swo::Swo;
 pub use tmc::TraceMemoryController;
 pub use tpiu::Tpiu;
@@ -53,17 +59,17 @@ pub trait DebugRegister: Clone + From<u32> + Into<u32> + Sized + std::fmt::Debug
     /// Loads the register value from the given debug component via the given core.
     fn load(
         component: &CoresightComponent,
-        interface: &mut Box<dyn ArmProbeInterface>,
-    ) -> Result<Self, Error> {
+        interface: &mut dyn ArmProbeInterface,
+    ) -> Result<Self, ArmError> {
         Ok(Self::from(component.read_reg(interface, Self::ADDRESS)?))
     }
 
     /// Loads the register value from the given component in given unit via the given core.
     fn load_unit(
         component: &CoresightComponent,
-        interface: &mut Box<dyn ArmProbeInterface>,
+        interface: &mut dyn ArmProbeInterface,
         unit: usize,
-    ) -> Result<Self, Error> {
+    ) -> Result<Self, ArmError> {
         Ok(Self::from(
             component.read_reg(interface, Self::ADDRESS + 16 * unit as u32)?,
         ))
@@ -73,8 +79,8 @@ pub trait DebugRegister: Clone + From<u32> + Into<u32> + Sized + std::fmt::Debug
     fn store(
         &self,
         component: &CoresightComponent,
-        interface: &mut Box<dyn ArmProbeInterface>,
-    ) -> Result<(), Error> {
+        interface: &mut dyn ArmProbeInterface,
+    ) -> Result<(), ArmError> {
         component.write_reg(interface, Self::ADDRESS, self.clone().into())
     }
 
@@ -82,9 +88,9 @@ pub trait DebugRegister: Clone + From<u32> + Into<u32> + Sized + std::fmt::Debug
     fn store_unit(
         &self,
         component: &CoresightComponent,
-        interface: &mut Box<dyn ArmProbeInterface>,
+        interface: &mut dyn ArmProbeInterface,
         unit: usize,
-    ) -> Result<(), Error> {
+    ) -> Result<(), ArmError> {
         component.write_reg(
             interface,
             Self::ADDRESS + 16 * unit as u32,
@@ -93,17 +99,69 @@ pub trait DebugRegister: Clone + From<u32> + Into<u32> + Sized + std::fmt::Debug
     }
 }
 
+/// Reads all the available ARM CoresightComponents of the currently attached target.
+///
+/// This will recursively parse the Romtable of the attached target
+/// and create a list of all the contained components.
+pub fn get_arm_components(
+    interface: &mut dyn ArmProbeInterface,
+    dp: DpAddress,
+) -> Result<Vec<CoresightComponent>, ArmError> {
+    let mut components = Vec::new();
+
+    for ap_index in 0..(interface.num_access_ports(dp)? as u8) {
+        let ap_information = interface
+            .ap_information(GenericAp::new(ApAddress { dp, ap: ap_index }))?
+            .clone();
+
+        let component = match ap_information {
+            ApInformation::MemoryAp(MemoryApInformation {
+                debug_base_address: 0,
+                ..
+            }) => Err(Error::Other(anyhow::anyhow!("AP has a base address of 0"))),
+            ApInformation::MemoryAp(MemoryApInformation {
+                address,
+                debug_base_address,
+                ..
+            }) => {
+                let ap = MemoryAp::new(address);
+                let mut memory = interface.memory_interface(ap)?;
+                let component = Component::try_parse(&mut *memory, debug_base_address)?;
+                Ok(CoresightComponent::new(component, ap))
+            }
+            ApInformation::Other { address, .. } => {
+                // Return an error, only possible to get Component from MemoryAP
+                Err(Error::Other(anyhow::anyhow!(
+                    "AP {:#x?} is not a MemoryAP, unable to get ARM component.",
+                    address
+                )))
+            }
+        };
+
+        match component {
+            Ok(component) => {
+                components.push(component);
+            }
+            Err(e) => {
+                tracing::info!("Not counting AP {} because of: {}", ap_index, e);
+            }
+        }
+    }
+
+    Ok(components)
+}
+
 /// Goes through every component in the vector and tries to find the first component with the given type
-fn find_component(
+pub fn find_component(
     components: &[CoresightComponent],
     peripheral_type: PeripheralType,
-) -> Result<&CoresightComponent, Error> {
-    components
+) -> Result<&CoresightComponent, ArmError> {
+    let component = components
         .iter()
         .find_map(|component| component.find_component(peripheral_type))
-        .ok_or_else(|| {
-            Error::architecture_specific(RomTableError::ComponentNotFound(peripheral_type))
-        })
+        .ok_or_else(|| RomTableError::ComponentNotFound(peripheral_type))?;
+
+    Ok(component)
 }
 
 /// Configure the Trace Port Interface Unit
@@ -116,7 +174,7 @@ fn find_component(
 /// * `component` - The TPIU CoreSight component found.
 /// * `config` - The SWO pin configuration to use.
 fn configure_tpiu(
-    interface: &mut Box<dyn ArmProbeInterface>,
+    interface: &mut dyn ArmProbeInterface,
     component: &CoresightComponent,
     config: &SwoConfig,
 ) -> Result<(), Error> {
@@ -146,7 +204,7 @@ fn configure_tpiu(
 ///
 /// Expects to be given a list of all ROM table `components` as the second argument.
 pub(crate) fn setup_tracing(
-    interface: &mut Box<dyn ArmProbeInterface>,
+    interface: &mut dyn ArmProbeInterface,
     components: &[CoresightComponent],
     sink: &TraceSink,
 ) -> Result<(), Error> {
@@ -229,9 +287,9 @@ pub(crate) fn setup_tracing(
 /// # Returns
 /// All data stored in trace memory, with an upper bound at the size of internal trace memory.
 pub(crate) fn read_trace_memory(
-    interface: &mut Box<dyn ArmProbeInterface>,
+    interface: &mut dyn ArmProbeInterface,
     components: &[CoresightComponent],
-) -> Result<Vec<u8>, Error> {
+) -> Result<Vec<u8>, ArmError> {
     let mut tmc =
         TraceMemoryController::new(interface, find_component(components, PeripheralType::Tmc)?);
 
@@ -279,7 +337,7 @@ pub(crate) fn read_trace_memory(
                 // ITM ATID, see Itm::tx_enable()
                 13 => itm_trace.push(data),
                 0 => (),
-                id => log::warn!("Unexpected trace source ATID {id}: {data}, ignoring"),
+                id => tracing::warn!("Unexpected trace source ATID {id}: {data}, ignoring"),
             }
         }
         id = frame.id();
@@ -293,11 +351,11 @@ pub(crate) fn read_trace_memory(
 ///
 /// Expects to be given a list of all ROM table `components` as the second argument.
 pub(crate) fn add_swv_data_trace(
-    interface: &mut Box<dyn ArmProbeInterface>,
+    interface: &mut dyn ArmProbeInterface,
     components: &[CoresightComponent],
     unit: usize,
     address: u32,
-) -> Result<(), Error> {
+) -> Result<(), ArmError> {
     let mut dwt = Dwt::new(interface, find_component(components, PeripheralType::Dwt)?);
     dwt.enable_data_trace(unit, address)
 }
@@ -307,10 +365,10 @@ pub(crate) fn add_swv_data_trace(
 ///
 /// Expects to be given a list of all ROM table `components` as the second argument.
 pub fn remove_swv_data_trace(
-    interface: &mut Box<dyn ArmProbeInterface>,
+    interface: &mut dyn ArmProbeInterface,
     components: &[CoresightComponent],
     unit: usize,
-) -> Result<(), Error> {
+) -> Result<(), ArmError> {
     let mut dwt = Dwt::new(interface, find_component(components, PeripheralType::Dwt)?);
     dwt.disable_data_trace(unit)
 }

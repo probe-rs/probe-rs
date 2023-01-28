@@ -2,10 +2,12 @@ use probe_rs_target::{Architecture, ChipFamily};
 
 use super::{Core, MemoryRegion, RawFlashAlgorithm, RegistryError, TargetDescriptionSource};
 use crate::architecture::arm::sequences::{
+    atsame5x::AtSAME5x,
+    infineon::XMC4000,
     nrf52::Nrf52,
     nrf53::Nrf5340,
     nrf91::Nrf9160,
-    nxp::{MIMXRT10xx, LPC55S69},
+    nxp::{MIMXRT10xx, MIMXRT11xx, LPC55S69},
     stm32f_series::Stm32fSeries,
     stm32h7::Stm32h7,
     ArmDebugSequence,
@@ -28,10 +30,8 @@ pub struct Target {
     pub flash_algorithms: Vec<RawFlashAlgorithm>,
     /// The memory map of the target.
     pub memory_map: Vec<MemoryRegion>,
-
     /// Source of the target description. Used for diagnostics.
     pub(crate) source: TargetDescriptionSource,
-
     /// Debug sequences for the given target.
     pub debug_sequence: DebugSequence,
 }
@@ -72,7 +72,7 @@ impl Target {
         // Make sure we are given a valid family:
         family
             .validate()
-            .map_err(|e| RegistryError::InvalidChipFamilyDefinition(family.clone(), e))?;
+            .map_err(|e| RegistryError::InvalidChipFamilyDefinition(Box::new(family.clone()), e))?;
 
         let chip = family
             .variants
@@ -96,32 +96,42 @@ impl Target {
         };
 
         if chip.name.starts_with("MIMXRT10") {
-            log::warn!("Using custom sequence for MIMXRT10xx");
+            tracing::warn!("Using custom sequence for MIMXRT10xx");
             debug_sequence = DebugSequence::Arm(MIMXRT10xx::create());
+        } else if chip.name.starts_with("MIMXRT11") {
+            tracing::warn!("Using custom sequence for MIMXRT11xx");
+            debug_sequence = DebugSequence::Arm(MIMXRT11xx::create());
         } else if chip.name.starts_with("LPC55S16") || chip.name.starts_with("LPC55S69") {
-            log::warn!("Using custom sequence for LPC55S16/LPC55S69");
+            tracing::warn!("Using custom sequence for LPC55S16/LPC55S69");
             debug_sequence = DebugSequence::Arm(LPC55S69::create());
         } else if chip.name.starts_with("esp32c3") {
-            log::warn!("Using custom sequence for ESP32c3");
+            tracing::warn!("Using custom sequence for ESP32c3");
             debug_sequence = DebugSequence::Riscv(ESP32C3::create());
         } else if chip.name.starts_with("nRF5340") {
-            log::warn!("Using custom sequence for nRF5340");
+            tracing::warn!("Using custom sequence for nRF5340");
             debug_sequence = DebugSequence::Arm(Nrf5340::create());
         } else if chip.name.starts_with("nRF52") {
-            log::warn!("Using custom sequence for nRF52");
+            tracing::warn!("Using custom sequence for nRF52");
             debug_sequence = DebugSequence::Arm(Nrf52::create());
         } else if chip.name.starts_with("nRF9160") {
-            log::warn!("Using custom sequence for nRF9160");
+            tracing::warn!("Using custom sequence for nRF9160");
             debug_sequence = DebugSequence::Arm(Nrf9160::create());
         } else if chip.name.starts_with("STM32H7") {
-            log::warn!("Using custom sequence for STM32H7");
+            tracing::warn!("Using custom sequence for STM32H7");
             debug_sequence = DebugSequence::Arm(Stm32h7::create());
-        } else if chip.name.starts_with("STM32F2")
+        } else if chip.name.starts_with("STM32F1")
+            || chip.name.starts_with("STM32F2")
             || chip.name.starts_with("STM32F4")
             || chip.name.starts_with("STM32F7")
         {
-            log::warn!("Using custom sequence for STM32F2/4/7");
+            tracing::warn!("Using custom sequence for STM32F1/2/4/7");
             debug_sequence = DebugSequence::Arm(Stm32fSeries::create());
+        } else if chip.name.starts_with("ATSAMD5") || chip.name.starts_with("ATSAME5") {
+            tracing::warn!("Using custom sequence for {}", chip.name);
+            debug_sequence = DebugSequence::Arm(AtSAME5x::create());
+        } else if chip.name.starts_with("XMC4") {
+            tracing::warn!("Using custom sequence for XMC4000");
+            debug_sequence = DebugSequence::Arm(XMC4000::create());
         }
 
         Ok(Target {

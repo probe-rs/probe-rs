@@ -2,7 +2,7 @@
 use bitfield::bitfield;
 use std::mem::size_of;
 
-use crate::HaltReason;
+use crate::{core::BreakpointCause, HaltReason};
 
 /// A debug register that is accessible to the external debugger
 pub trait Armv8DebugRegister {
@@ -135,7 +135,8 @@ impl Edscr {
     pub fn halt_reason(&self) -> HaltReason {
         match self.status() {
             // Breakpoint debug event
-            0b000111 => HaltReason::Breakpoint,
+            // TODO: The DBGDSCR register will contain information about whether this was a Software or Hardware breakpoint.
+            0b000111 => HaltReason::Breakpoint(BreakpointCause::Unknown),
             // External debug request.
             0b010011 => HaltReason::Request,
             // Halting step
@@ -148,8 +149,8 @@ impl Edscr {
             0b100111 => HaltReason::Exception,
             // Watchpoint
             0b101011 => HaltReason::Watchpoint,
-            // HLT instruction.
-            0b101111 => HaltReason::Breakpoint,
+            // HLT instruction - causes entry into Debug state.
+            0b101111 => HaltReason::Breakpoint(BreakpointCause::Software),
             // Software access to debug register.
             0b110011 => HaltReason::Exception,
             // Exception Catch.

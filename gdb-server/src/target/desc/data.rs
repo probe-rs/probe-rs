@@ -181,7 +181,7 @@ impl TargetDescription {
             let second_id: RegisterId = second_reg.into();
 
             self.regs.push(GdbRegister {
-                name: format!("{}{}", name_pattern, i).to_owned(),
+                name: format!("{name_pattern}{i}").to_owned(),
                 size: first_reg.size_in_bits() * 2,
                 _type: reg_type,
                 source: GdbRegisterSource::TwoWordRegister {
@@ -219,7 +219,7 @@ fn size_to_type(size: usize) -> &'static str {
         32 => "uint32",
         64 => "uint64",
         128 => "uint128",
-        _ => panic!("Unsupported size: {}", size),
+        _ => panic!("Unsupported size: {size}"),
     }
 }
 
@@ -239,7 +239,7 @@ pub fn build_target_description(
         CoreType::Armv8a => match isa {
             InstructionSet::A32 => build_cortex_a_registers(&mut desc, regs),
             InstructionSet::A64 => build_aarch64_registers(&mut desc, regs),
-            _ => panic!("Inconsistent ISA for Armv8-a: {:#?}", isa),
+            _ => panic!("Inconsistent ISA for Armv8-a: {isa:#?}"),
         },
         CoreType::Riscv => build_riscv_registers(&mut desc, regs),
     };

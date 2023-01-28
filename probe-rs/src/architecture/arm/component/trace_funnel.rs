@@ -4,8 +4,7 @@
 //! This module provides access and control of the trace funnel CoreSight component block.
 use super::DebugRegister;
 use crate::architecture::arm::memory::romtable::CoresightComponent;
-use crate::architecture::arm::ArmProbeInterface;
-use crate::Error;
+use crate::architecture::arm::{ArmError, ArmProbeInterface};
 use bitfield::bitfield;
 
 const REGISTER_OFFSET_ACCESS: u32 = 0xFB0;
@@ -13,13 +12,13 @@ const REGISTER_OFFSET_ACCESS: u32 = 0xFB0;
 /// Trace funnel unit
 pub struct TraceFunnel<'a> {
     component: &'a CoresightComponent,
-    interface: &'a mut Box<dyn ArmProbeInterface>,
+    interface: &'a mut dyn ArmProbeInterface,
 }
 
 impl<'a> TraceFunnel<'a> {
     /// Construct a new TraceFunnel component.
     pub fn new(
-        interface: &'a mut Box<dyn ArmProbeInterface>,
+        interface: &'a mut dyn ArmProbeInterface,
         component: &'a CoresightComponent,
     ) -> Self {
         TraceFunnel {
@@ -29,7 +28,7 @@ impl<'a> TraceFunnel<'a> {
     }
 
     /// Unlock the funnel and enable it for tracing the target.
-    pub fn unlock(&mut self) -> Result<(), Error> {
+    pub fn unlock(&mut self) -> Result<(), ArmError> {
         self.component
             .write_reg(self.interface, REGISTER_OFFSET_ACCESS, 0xC5AC_CE55)?;
 
@@ -41,7 +40,7 @@ impl<'a> TraceFunnel<'a> {
     /// # Note
     /// The trace funnel acts as a selector for multiple sources. This function allows you to block
     /// or pass specific trace sources selectively.
-    pub fn enable_port(&mut self, mask: u8) -> Result<(), Error> {
+    pub fn enable_port(&mut self, mask: u8) -> Result<(), ArmError> {
         let mut control = Control::load(self.component, self.interface)?;
         control.set_slave_enable(mask);
         control.store(self.component, self.interface)

@@ -1,3 +1,4 @@
+mod benchmark;
 mod common;
 mod debugger;
 mod gdb;
@@ -5,6 +6,9 @@ mod info;
 mod run;
 mod trace;
 
+include!(concat!(env!("OUT_DIR"), "/meta.rs"));
+
+use benchmark::{benchmark, BenchmarkOptions};
 use debugger::CliState;
 
 use probe_rs::{
@@ -24,6 +28,12 @@ use probe_rs_cli_util::{
 use rustyline::Editor;
 
 use anyhow::{Context, Result};
+use time::OffsetDateTime;
+use tracing::metadata::LevelFilter;
+use tracing_subscriber::{
+    fmt::format::FmtSpan, prelude::__tracing_subscriber_SubscriberExt, util::SubscriberInitExt,
+    EnvFilter, Layer,
+};
 
 use std::{fs::File, path::PathBuf};
 use std::{io, time::Instant};
@@ -33,7 +43,9 @@ use std::{num::ParseIntError, path::Path};
 #[clap(
     name = "probe-rs CLI",
     about = "A CLI for on top of the debug probe capabilities provided by probe-rs",
-    author = "Noah Hüsser <yatekii@yatekii.ch> / Dominik Böhi <dominik.boehi@gmail.ch>"
+    author = "Noah Hüsser <yatekii@yatekii.ch> / Dominik Böhi <dominik.boehi@gmail.ch>",
+    version = meta::CARGO_VERSION,
+    long_version = meta::LONG_VERSION
 )]
 enum Cli {
     /// List all connected debug probes
@@ -62,7 +74,7 @@ enum Cli {
         )]
         gdb_connection_string: Option<String>,
 
-        #[structopt(
+        #[clap(
             name = "reset-halt",
             long = "reset-halt",
             help = "Use this flag to reset and halt (instead of just a halt) the attached core after attaching to the target."
@@ -79,121 +91,125 @@ enum Cli {
         #[clap(flatten)]
         common: ProbeOptions,
 
-        #[structopt(long, parse(from_os_str))]
+        #[clap(long, value_parser)]
         /// Binary to debug
         exe: Option<PathBuf>,
     },
     /// Dump memory from attached target
     Dump {
-        #[structopt(flatten)]
+        #[clap(flatten)]
         shared: CoreOptions,
 
-        #[structopt(flatten)]
+        #[clap(flatten)]
         common: ProbeOptions,
 
         /// The address of the memory to dump from the target.
-        #[structopt(parse(try_from_str = parse_u64))]
+        #[clap(value_parser = parse_u64)]
         loc: u64,
         /// The amount of memory (in words) to dump.
-        #[structopt(parse(try_from_str = parse_u32))]
+        #[clap(value_parser = parse_u32)]
         words: u32,
     },
     /// Download memory to attached target
     Download {
-        #[structopt(flatten)]
+        #[clap(flatten)]
         common: ProbeOptions,
 
         /// Format of the file to be downloaded to the flash. Possible values are case-insensitive.
-        #[clap(arg_enum, ignore_case = true, default_value = "elf", long)]
+        #[clap(value_enum, ignore_case = true, default_value = "elf", long)]
         format: DownloadFileType,
 
         /// The address in memory where the binary will be put at. This is only considered when `bin` is selected as the format.
-        #[structopt(long, parse(try_from_str = parse_u64))]
+        #[clap(long, value_parser = parse_u64)]
         base_address: Option<u64>,
         /// The number of bytes to skip at the start of the binary file. This is only considered when `bin` is selected as the format.
-        #[structopt(long, parse(try_from_str = parse_u32))]
+        #[clap(long, value_parser = parse_u32)]
         skip_bytes: Option<u32>,
 
         /// The path to the file to be downloaded to the flash
         path: String,
 
         /// Whether to erase the entire chip before downloading
-        #[structopt(long)]
+        #[clap(long)]
         chip_erase: bool,
 
         /// Whether to disable fancy progress reporting
-        #[structopt(long)]
+        #[clap(long)]
         disable_progressbars: bool,
 
         /// Disable double-buffering when downloading flash.  If downloading times out, try this option.
-        #[structopt(long = "disable-double-buffering")]
+        #[clap(long = "disable-double-buffering")]
         disable_double_buffering: bool,
     },
     /// Erase all nonvolatile memory of attached target
     Erase {
-        #[structopt(flatten)]
+        #[clap(flatten)]
         common: ProbeOptions,
     },
     /// Flash and run an ELF program
-    #[structopt(name = "run")]
+    #[clap(name = "run")]
     Run {
-        #[structopt(flatten)]
+        #[clap(flatten)]
         common: ProbeOptions,
 
         /// The path to the ELF file to flash and run
         path: String,
 
         /// Whether to erase the entire chip before downloading
-        #[structopt(long)]
+        #[clap(long)]
         chip_erase: bool,
 
         /// Disable double-buffering when downloading flash.  If downloading times out, try this option.
-        #[structopt(long = "disable-double-buffering")]
+        #[clap(long = "disable-double-buffering")]
         disable_double_buffering: bool,
     },
     /// Trace a memory location on the target
-    #[structopt(name = "trace")]
+    #[clap(name = "trace")]
     Trace {
-        #[structopt(flatten)]
+        #[clap(flatten)]
         shared: CoreOptions,
 
-        #[structopt(flatten)]
+        #[clap(flatten)]
         common: ProbeOptions,
 
         /// The address of the memory to dump from the target.
-        #[structopt(parse(try_from_str = parse_u64))]
+        #[clap(value_parser = parse_u64)]
         loc: u64,
     },
     /// Configure and monitor ITM trace packets from the target.
-    #[structopt(name = "itm")]
+    #[clap(name = "itm")]
     Itm {
-        #[structopt(flatten)]
+        #[clap(flatten)]
         shared: CoreOptions,
 
-        #[structopt(flatten)]
+        #[clap(flatten)]
         common: ProbeOptions,
 
-        #[structopt(parse(try_from_str = parse_u64))]
+        #[clap(value_parser = parse_u64)]
         duration_ms: u64,
-
-        #[structopt(long)]
-        output_file: Option<String>,
 
         #[clap(subcommand)]
         source: ItmSource,
     },
     #[clap(subcommand)]
     Chip(Chip),
+    Benchmark {
+        #[clap(flatten)]
+        common: ProbeOptions,
+
+        #[clap(flatten)]
+        options: BenchmarkOptions,
+    },
 }
 
-#[derive(clap::StructOpt)]
+#[derive(clap::Parser)]
 /// Inspect internal registry of supported chips
 enum Chip {
     /// Lists all the available families and their chips with their full.
-    #[structopt(name = "list")]
+    #[clap(name = "list")]
     List,
     /// Shows chip properties of a specific chip
-    #[structopt(name = "info")]
+    #[clap(name = "info")]
     Info {
         /// The name of the chip to display.
         name: String,
@@ -201,9 +217,9 @@ enum Chip {
 }
 
 /// Shared options for core selection, shared between commands
-#[derive(clap::StructOpt)]
+#[derive(clap::Parser)]
 pub(crate) struct CoreOptions {
-    #[structopt(long, default_value = "0")]
+    #[clap(long, default_value = "0")]
     core: usize,
 }
 
@@ -226,12 +242,51 @@ pub(crate) enum ItmSource {
 }
 
 fn main() -> Result<()> {
-    // Initialize the logging backend.
-    pretty_env_logger::init();
+    let project_dirs = directories::ProjectDirs::from("rs", "probe-rs", "probe-rs")
+        .context("the application storage directory could not be determined")?;
+    let directory = project_dirs.data_dir();
+    let logname = sanitize_filename::sanitize_with_options(
+        format!(
+            "{}.log",
+            OffsetDateTime::now_local().unwrap().unix_timestamp_nanos() / 1_000_000
+        ),
+        sanitize_filename::Options {
+            replacement: "_",
+            ..Default::default()
+        },
+    );
+    std::fs::create_dir_all(directory).context(format!("{directory:?} could not be created"))?;
 
+    let log_path = directory.join(logname);
+    let log_file = File::create(&log_path)?;
+
+    let file_subscriber = tracing_subscriber::fmt::layer()
+        .json()
+        .with_file(true)
+        .with_line_number(true)
+        .with_span_events(FmtSpan::FULL)
+        .with_writer(log_file);
+
+    let stdout_subscriber = tracing_subscriber::fmt::layer()
+        .compact()
+        .without_time()
+        .with_filter(
+            EnvFilter::builder()
+                .with_default_directive(LevelFilter::ERROR.into())
+                .from_env_lossy(),
+        );
+
+    tracing_subscriber::registry()
+        .with(stdout_subscriber)
+        .with(file_subscriber)
+        .init();
+
+    tracing::info!("Writing log to {:?}", log_path);
+
+    // Parse the commandline options with structopt.
     let matches = Cli::parse();
 
-    match matches {
+    let result = match matches {
         Cli::List {} => list_connected_devices(),
         Cli::Info { common } => crate::info::show_info_of_device(&common),
         Cli::Gdb {
@@ -289,7 +344,6 @@ fn main() -> Result<()> {
             common,
             duration_ms,
             source,
-            output_file,
         } => {
             let sink = match source {
                 ItmSource::TraceMemory => TraceSink::TraceMemory,
@@ -300,12 +354,16 @@ fn main() -> Result<()> {
                 &common,
                 sink,
                 std::time::Duration::from_millis(duration_ms),
-                output_file,
             )
         }
         Cli::Chip(Chip::List) => print_families(io::stdout()).map_err(Into::into),
         Cli::Chip(Chip::Info { name }) => print_chip_info(name, io::stdout()),
-    }
+        Cli::Benchmark { common, options } => benchmark(common, options),
+    };
+
+    tracing::info!("Wrote log to {:?}", log_path);
+
+    result
 }
 
 fn list_connected_devices() -> Result<()> {
@@ -316,7 +374,7 @@ fn list_connected_devices() -> Result<()> {
         links
             .iter()
             .enumerate()
-            .for_each(|(num, link)| println!("[{}]: {:?}", num, link));
+            .for_each(|(num, link)| println!("[{num}]: {link:?}"));
     } else {
         println!("No devices were found.");
     }
@@ -354,7 +412,7 @@ fn dump_memory(
         );
     }
     // Print stats.
-    println!("Read {:?} words in {:?}", words, elapsed);
+    println!("Read {words:?} words in {elapsed:?}");
 
     Ok(())
 }
@@ -386,7 +444,6 @@ fn download_program_fast(
         &mut session,
         Path::new(path),
         &FlashOptions {
-            version: false,
             list_chips: false,
             list_probes: false,
             disable_progressbars,
@@ -513,7 +570,7 @@ fn debug(shared_options: &CoreOptions, common: &ProbeOptions, exe: Option<PathBu
                     ReadlineError::Eof | ReadlineError::Interrupted => return Ok(()),
                     actual_error => {
                         // Show error message and quit
-                        println!("Error handling input: {:?}", actual_error);
+                        println!("Error handling input: {actual_error:?}");
                         break;
                     }
                 }
@@ -524,7 +581,7 @@ fn debug(shared_options: &CoreOptions, common: &ProbeOptions, exe: Option<PathBu
     Ok(())
 }
 
-#[derive(clap::ArgEnum, Debug, Clone, Copy)]
+#[derive(clap::ValueEnum, Debug, Clone, Copy)]
 enum DownloadFileType {
     Elf,
     Hex,

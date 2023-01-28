@@ -1,13 +1,14 @@
 //! Register types and the core interface for armv8-a
 
 use crate::architecture::arm::core::armv8a_debug_regs::*;
+use crate::architecture::arm::memory::adi_v5_memory_interface::ArmProbe;
 use crate::architecture::arm::sequences::ArmDebugSequence;
+use crate::architecture::arm::ArmError;
 use crate::core::{RegisterFile, RegisterValue};
 use crate::error::Error;
-use crate::memory::{valid_32_address, Memory};
+use crate::memory::valid_32bit_address;
 use crate::CoreInterface;
 use crate::CoreStatus;
-use crate::DebugProbeError;
 use crate::MemoryInterface;
 use crate::RegisterId;
 use crate::{Architecture, CoreInformation, CoreType, InstructionSet};
@@ -49,7 +50,7 @@ fn prep_instr_for_itr_32(instruction: u32) -> u32 {
 
 /// Interface for interacting with an ARMv8-A core
 pub struct Armv8a<'probe> {
-    memory: Memory<'probe>,
+    memory: Box<dyn ArmProbe + 'probe>,
 
     state: &'probe mut CortexAState,
 
@@ -64,7 +65,7 @@ pub struct Armv8a<'probe> {
 
 impl<'probe> Armv8a<'probe> {
     pub(crate) fn new(
-        mut memory: Memory<'probe>,
+        mut memory: Box<dyn ArmProbe + 'probe>,
         state: &'probe mut CortexAState,
         base_address: u64,
         cti_address: u64,
@@ -75,12 +76,12 @@ impl<'probe> Armv8a<'probe> {
             let address = Edscr::get_mmio_address(base_address);
             let edscr = Edscr(memory.read_word_32(address)?);
 
-            log::debug!("State when connecting: {:x?}", edscr);
+            tracing::debug!("State when connecting: {:x?}", edscr);
 
             let core_state = if edscr.halted() {
                 let reason = edscr.halt_reason();
 
-                log::debug!("Core was halted when connecting, reason: {:?}", reason);
+                tracing::debug!("Core was halted when connecting, reason: {:?}", reason);
 
                 CoreStatus::Halted(reason)
             } else {
@@ -113,7 +114,7 @@ impl<'probe> Armv8a<'probe> {
     /// Execute an instruction
     fn execute_instruction(&mut self, instruction: u32) -> Result<Edscr, Error> {
         if !self.state.current_state.is_halted() {
-            return Err(Error::architecture_specific(Armv8aError::NotHalted));
+            return Err(Error::Arm(Armv8aError::NotHalted.into()));
         }
 
         let mut final_instruction = instruction;
@@ -143,7 +144,7 @@ impl<'probe> Armv8a<'probe> {
 
             self.memory.write_word_32(address, edrcr.into())?;
 
-            return Err(Error::architecture_specific(Armv8aError::DataAbort));
+            return Err(Error::Arm(Armv8aError::DataAbort.into()));
         }
 
         Ok(edscr)
@@ -260,7 +261,7 @@ impl<'probe> Armv8a<'probe> {
                 if writeback {
                     match i {
                         0..=14 => {
-                            let instruction = build_mrc(14, 0, i as u16, 0, 5, 0);
+                            let instruction = build_mrc(14, 0, i, 0, 5, 0);
 
                             self.execute_instruction_with_input_32(instruction, val.try_into()?)?;
                         }
@@ -291,7 +292,7 @@ impl<'probe> Armv8a<'probe> {
                             self.execute_instruction(instruction)?;
                         }
                         _ => {
-                            panic!("Logic missing for writeback of register {}", i);
+                            panic!("Logic missing for writeback of register {i}");
                         }
                     }
                 }
@@ -346,7 +347,7 @@ impl<'probe> Armv8a<'probe> {
                             self.execute_instruction(instruction)?;
                         }
                         _ => {
-                            panic!("Logic missing for writeback of register {}", i);
+                            panic!("Logic missing for writeback of register {i}");
                         }
                     }
                 }
@@ -389,7 +390,7 @@ impl<'probe> Armv8a<'probe> {
 
             self.execute_instruction_with_input_64(instruction, value)
         } else {
-            let value = valid_32_address(value)?;
+            let value = valid_32bit_address(value)?;
 
             let instruction = build_mrc(14, 0, reg, 0, 5, 0);
 
@@ -489,8 +490,8 @@ impl<'probe> Armv8a<'probe> {
 
                 Ok(value.into())
             }
-            _ => Err(Error::architecture_specific(
-                Armv8aError::InvalidRegisterNumber(reg_num, 32),
+            _ => Err(Error::Arm(
+                Armv8aError::InvalidRegisterNumber(reg_num, 32).into(),
             )),
         }
     }
@@ -599,14 +600,14 @@ impl<'probe> Armv8a<'probe> {
 
                 Ok(fpsr.into())
             }
-            _ => Err(Error::architecture_specific(
-                Armv8aError::InvalidRegisterNumber(reg_num, 64),
+            _ => Err(Error::Arm(
+                Armv8aError::InvalidRegisterNumber(reg_num, 64).into(),
             )),
         }
     }
 
     fn read_cpu_memory_aarch32_32(&mut self, address: u64) -> Result<u32, Error> {
-        let address = valid_32_address(address)?;
+        let address = valid_32bit_address(address)?;
 
         // Save r0, r1
         self.prepare_for_clobber(0)?;
@@ -662,7 +663,7 @@ impl<'probe> Armv8a<'probe> {
     }
 
     fn write_cpu_memory_aarch32_32(&mut self, address: u64, data: u32) -> Result<(), Error> {
-        let address = valid_32_address(address)?;
+        let address = valid_32bit_address(address)?;
 
         // Save r0, r1
         self.prepare_for_clobber(0)?;
@@ -729,7 +730,7 @@ impl<'probe> CoreInterface for Armv8a<'probe> {
             }
             std::thread::sleep(Duration::from_millis(1));
         }
-        Err(Error::Probe(DebugProbeError::Timeout))
+        Err(Error::Arm(ArmError::Timeout))
     }
 
     fn core_halted(&mut self) -> Result<bool, Error> {
@@ -829,7 +830,7 @@ impl<'probe> CoreInterface for Armv8a<'probe> {
 
     fn reset(&mut self) -> Result<(), Error> {
         self.sequence.reset_system(
-            &mut self.memory,
+            &mut *self.memory,
             crate::CoreType::Armv8a,
             Some(self.base_address),
         )?;
@@ -842,19 +843,19 @@ impl<'probe> CoreInterface for Armv8a<'probe> {
 
     fn reset_and_halt(&mut self, timeout: Duration) -> Result<CoreInformation, Error> {
         self.sequence.reset_catch_set(
-            &mut self.memory,
+            &mut *self.memory,
             crate::CoreType::Armv8a,
             Some(self.base_address),
         )?;
         self.sequence.reset_system(
-            &mut self.memory,
+            &mut *self.memory,
             crate::CoreType::Armv8a,
             Some(self.base_address),
         )?;
 
         // Release from reset
         self.sequence.reset_catch_clear(
-            &mut self.memory,
+            &mut *self.memory,
             crate::CoreType::Armv8a,
             Some(self.base_address),
         )?;
@@ -928,18 +929,14 @@ impl<'probe> CoreInterface for Armv8a<'probe> {
         }
     }
 
-    fn write_core_reg(&mut self, address: RegisterId, value: RegisterValue) -> Result<()> {
+    fn write_core_reg(&mut self, address: RegisterId, value: RegisterValue) -> Result<(), Error> {
         let reg_num = address.0;
         let current_mode = if self.state.is_64_bit { 64 } else { 32 };
 
         if (reg_num as usize) >= self.state.register_cache.len() {
-            return Err(
-                Error::architecture_specific(Armv8aError::InvalidRegisterNumber(
-                    reg_num,
-                    current_mode,
-                ))
-                .into(),
-            );
+            return Err(Error::Arm(
+                Armv8aError::InvalidRegisterNumber(reg_num, current_mode).into(),
+            ));
         }
         self.state.register_cache[reg_num as usize] = Some((value, true));
 
@@ -1051,7 +1048,7 @@ impl<'probe> CoreInterface for Armv8a<'probe> {
         }
         // Core is neither halted nor sleeping, so we assume it is running.
         if self.state.current_state.is_halted() {
-            log::warn!("Core is running, but we expected it to be halted");
+            tracing::warn!("Core is running, but we expected it to be halted");
         }
 
         self.state.current_state = CoreStatus::Running;
@@ -1134,6 +1131,7 @@ impl<'probe> MemoryInterface for Armv8a<'probe> {
         // Return the byte
         Ok(data.to_le_bytes()[byte_offset as usize])
     }
+
     fn read_64(&mut self, address: u64, data: &mut [u64]) -> Result<(), Error> {
         for (i, word) in data.iter_mut().enumerate() {
             *word = self.read_word_64(address + ((i as u64) * 8))?;
@@ -1141,6 +1139,7 @@ impl<'probe> MemoryInterface for Armv8a<'probe> {
 
         Ok(())
     }
+
     fn read_32(&mut self, address: u64, data: &mut [u32]) -> Result<(), Error> {
         for (i, word) in data.iter_mut().enumerate() {
             *word = self.read_word_32(address + ((i as u64) * 4))?;
@@ -1148,6 +1147,7 @@ impl<'probe> MemoryInterface for Armv8a<'probe> {
 
         Ok(())
     }
+
     fn read_8(&mut self, address: u64, data: &mut [u8]) -> Result<(), Error> {
         for (i, byte) in data.iter_mut().enumerate() {
             *byte = self.read_word_8(address + (i as u64))?;
@@ -1155,6 +1155,7 @@ impl<'probe> MemoryInterface for Armv8a<'probe> {
 
         Ok(())
     }
+
     fn write_word_64(&mut self, address: u64, data: u64) -> Result<(), Error> {
         if self.state.is_64_bit {
             self.write_cpu_memory_aarch64_64(address, data)
@@ -1166,6 +1167,7 @@ impl<'probe> MemoryInterface for Armv8a<'probe> {
             self.write_cpu_memory_aarch32_32(address + 4, high_word)
         }
     }
+
     fn write_word_32(&mut self, address: u64, data: u32) -> Result<(), Error> {
         if self.state.is_64_bit {
             self.write_cpu_memory_aarch64_32(address, data)
@@ -1173,6 +1175,7 @@ impl<'probe> MemoryInterface for Armv8a<'probe> {
             self.write_cpu_memory_aarch32_32(address, data)
         }
     }
+
     fn write_word_8(&mut self, address: u64, data: u8) -> Result<(), Error> {
         // Find the word this is in and its byte offset
         let byte_offset = address % 4;
@@ -1185,6 +1188,7 @@ impl<'probe> MemoryInterface for Armv8a<'probe> {
 
         self.write_word_32(word_start, u32::from_le_bytes(word_bytes))
     }
+
     fn write_64(&mut self, address: u64, data: &[u64]) -> Result<(), Error> {
         for (i, word) in data.iter().enumerate() {
             self.write_word_64(address + ((i as u64) * 8), *word)?;
@@ -1192,6 +1196,7 @@ impl<'probe> MemoryInterface for Armv8a<'probe> {
 
         Ok(())
     }
+
     fn write_32(&mut self, address: u64, data: &[u32]) -> Result<(), Error> {
         for (i, word) in data.iter().enumerate() {
             self.write_word_32(address + ((i as u64) * 4), *word)?;
@@ -1199,6 +1204,7 @@ impl<'probe> MemoryInterface for Armv8a<'probe> {
 
         Ok(())
     }
+
     fn write_8(&mut self, address: u64, data: &[u8]) -> Result<(), Error> {
         for (i, byte) in data.iter().enumerate() {
             self.write_word_8(address + ((i as u64) * 4), *byte)?;
@@ -1206,6 +1212,11 @@ impl<'probe> MemoryInterface for Armv8a<'probe> {
 
         Ok(())
     }
+
+    fn supports_8bit_transfers(&self) -> Result<bool, Error> {
+        Ok(false)
+    }
+
     fn flush(&mut self) -> Result<(), Error> {
         // Nothing to do - this runs through the CPU which automatically handles any caching
         Ok(())
@@ -1214,10 +1225,12 @@ impl<'probe> MemoryInterface for Armv8a<'probe> {
 
 #[cfg(test)]
 mod test {
-    use crate::architecture::arm::{
-        ap::MemoryAp, communication_interface::SwdSequence,
-        memory::adi_v5_memory_interface::ArmProbe, sequences::DefaultArmSequence, ApAddress,
-        DpAddress,
+    use crate::{
+        architecture::arm::{
+            ap::MemoryAp, communication_interface::SwdSequence,
+            memory::adi_v5_memory_interface::ArmProbe, sequences::DefaultArmSequence, ArmError,
+        },
+        DebugProbeError,
     };
 
     use super::*;
@@ -1266,11 +1279,11 @@ mod test {
     }
 
     impl ArmProbe for MockProbe {
-        fn read_8(&mut self, _ap: MemoryAp, _address: u64, _data: &mut [u8]) -> Result<(), Error> {
+        fn read_8(&mut self, _address: u64, _data: &mut [u8]) -> Result<(), ArmError> {
             todo!()
         }
 
-        fn read_32(&mut self, _ap: MemoryAp, address: u64, data: &mut [u32]) -> Result<(), Error> {
+        fn read_32(&mut self, address: u64, data: &mut [u32]) -> Result<(), ArmError> {
             if self.expected_ops.is_empty() {
                 panic!(
                     "Received unexpected read_32 op: register {:#}",
@@ -1282,9 +1295,8 @@ mod test {
 
             let expected_op = self.expected_ops.remove(0);
 
-            assert_eq!(
+            assert!(
                 expected_op.read,
-                true,
                 "R/W mismatch for register: Expected {:#} Actual: {:#}",
                 address_to_reg_num(expected_op.address),
                 address_to_reg_num(address)
@@ -1302,11 +1314,11 @@ mod test {
             Ok(())
         }
 
-        fn write_8(&mut self, _ap: MemoryAp, _address: u64, _data: &[u8]) -> Result<(), Error> {
+        fn write_8(&mut self, _address: u64, _data: &[u8]) -> Result<(), ArmError> {
             todo!()
         }
 
-        fn write_32(&mut self, _ap: MemoryAp, address: u64, data: &[u32]) -> Result<(), Error> {
+        fn write_32(&mut self, address: u64, data: &[u32]) -> Result<(), ArmError> {
             if self.expected_ops.is_empty() {
                 panic!(
                     "Received unexpected write_32 op: register {:#}",
@@ -1318,7 +1330,7 @@ mod test {
 
             let expected_op = self.expected_ops.remove(0);
 
-            assert_eq!(expected_op.read, false);
+            assert!(!expected_op.read);
             assert_eq!(
                 expected_op.address,
                 address,
@@ -1336,7 +1348,11 @@ mod test {
             Ok(())
         }
 
-        fn flush(&mut self) -> Result<(), Error> {
+        fn flush(&mut self) -> Result<(), ArmError> {
+            todo!()
+        }
+
+        fn ap(&mut self) -> MemoryAp {
             todo!()
         }
 
@@ -1346,22 +1362,21 @@ mod test {
             &mut crate::architecture::arm::ArmCommunicationInterface<
                 crate::architecture::arm::communication_interface::Initialized,
             >,
-            Error,
+            DebugProbeError,
         > {
             todo!()
         }
 
-        fn read_64(
-            &mut self,
-            _ap: MemoryAp,
-            _address: u64,
-            _data: &mut [u64],
-        ) -> Result<(), Error> {
+        fn read_64(&mut self, _address: u64, _data: &mut [u64]) -> Result<(), ArmError> {
             todo!()
         }
 
-        fn write_64(&mut self, _ap: MemoryAp, _address: u64, _data: &[u64]) -> Result<(), Error> {
+        fn write_64(&mut self, _address: u64, _data: &[u64]) -> Result<(), ArmError> {
             todo!()
+        }
+
+        fn supports_8bit_transfers(&self) -> Result<bool, ArmError> {
+            Ok(false)
         }
 
         fn supports_native_64bit_access(&mut self) -> bool {
@@ -1370,7 +1385,7 @@ mod test {
     }
 
     impl SwdSequence for MockProbe {
-        fn swj_sequence(&mut self, _bit_len: u8, _bits: u64) -> Result<(), Error> {
+        fn swj_sequence(&mut self, _bit_len: u8, _bits: u64) -> Result<(), DebugProbeError> {
             todo!()
         }
 
@@ -1379,7 +1394,7 @@ mod test {
             _pin_out: u32,
             _pin_select: u32,
             _pin_wait: u32,
-        ) -> Result<u32, Error> {
+        ) -> Result<u32, DebugProbeError> {
             todo!()
         }
     }
@@ -1618,13 +1633,7 @@ mod test {
         // Add expectations
         add_status_expectations(&mut probe, true);
 
-        let mock_mem = Memory::new(
-            probe,
-            MemoryAp::new(ApAddress {
-                ap: 0,
-                dp: DpAddress::Default,
-            }),
-        );
+        let mock_mem = Box::new(probe) as _;
 
         let mut state = CortexAState::new();
 
@@ -1637,7 +1646,7 @@ mod test {
         )
         .unwrap();
 
-        assert_eq!(core.state.is_64_bit, false);
+        assert!(!core.state.is_64_bit);
     }
 
     #[test]
@@ -1655,13 +1664,7 @@ mod test {
         edscr.set_status(0b010011);
         probe.expected_read(Edscr::get_mmio_address(TEST_BASE_ADDRESS), edscr.into());
 
-        let mock_mem = Memory::new(
-            probe,
-            MemoryAp::new(ApAddress {
-                ap: 0,
-                dp: DpAddress::Default,
-            }),
-        );
+        let mock_mem = Box::new(probe) as _;
 
         let mut armv8a = Armv8a::new(
             mock_mem,
@@ -1673,8 +1676,8 @@ mod test {
         .unwrap();
 
         // First read false, second read true
-        assert_eq!(false, armv8a.core_halted().unwrap());
-        assert_eq!(true, armv8a.core_halted().unwrap());
+        assert!(!armv8a.core_halted().unwrap());
+        assert!(armv8a.core_halted().unwrap());
     }
 
     #[test]
@@ -1692,13 +1695,7 @@ mod test {
         edscr.set_status(0b010011);
         probe.expected_read(Edscr::get_mmio_address(TEST_BASE_ADDRESS), edscr.into());
 
-        let mock_mem = Memory::new(
-            probe,
-            MemoryAp::new(ApAddress {
-                ap: 0,
-                dp: DpAddress::Default,
-            }),
-        );
+        let mock_mem = Box::new(probe) as _;
 
         let mut armv8a = Armv8a::new(
             mock_mem,
@@ -1727,13 +1724,7 @@ mod test {
         edscr.set_status(0b000010);
         probe.expected_read(Edscr::get_mmio_address(TEST_BASE_ADDRESS), edscr.into());
 
-        let mock_mem = Memory::new(
-            probe,
-            MemoryAp::new(ApAddress {
-                ap: 0,
-                dp: DpAddress::Default,
-            }),
-        );
+        let mock_mem = Box::new(probe) as _;
 
         let mut armv8a = Armv8a::new(
             mock_mem,
@@ -1759,13 +1750,7 @@ mod test {
         edscr.set_status(0b010011);
         probe.expected_read(Edscr::get_mmio_address(TEST_BASE_ADDRESS), edscr.into());
 
-        let mock_mem = Memory::new(
-            probe,
-            MemoryAp::new(ApAddress {
-                ap: 0,
-                dp: DpAddress::Default,
-            }),
-        );
+        let mock_mem = Box::new(probe) as _;
 
         let mut armv8a = Armv8a::new(
             mock_mem,
@@ -1795,13 +1780,7 @@ mod test {
         // Read register
         add_read_reg_expectations(&mut probe, 2, REG_VALUE);
 
-        let mock_mem = Memory::new(
-            probe,
-            MemoryAp::new(ApAddress {
-                ap: 0,
-                dp: DpAddress::Default,
-            }),
-        );
+        let mock_mem = Box::new(probe) as _;
 
         let mut armv8a = Armv8a::new(
             mock_mem,
@@ -1838,13 +1817,7 @@ mod test {
         // Read register
         add_read_reg_64_expectations(&mut probe, 2, REG_VALUE);
 
-        let mock_mem = Memory::new(
-            probe,
-            MemoryAp::new(ApAddress {
-                ap: 0,
-                dp: DpAddress::Default,
-            }),
-        );
+        let mock_mem = Box::new(probe) as _;
 
         let mut armv8a = Armv8a::new(
             mock_mem,
@@ -1882,13 +1855,7 @@ mod test {
         add_read_reg_expectations(&mut probe, 0, 0);
         add_read_pc_expectations(&mut probe, REG_VALUE);
 
-        let mock_mem = Memory::new(
-            probe,
-            MemoryAp::new(ApAddress {
-                ap: 0,
-                dp: DpAddress::Default,
-            }),
-        );
+        let mock_mem = Box::new(probe) as _;
 
         let mut armv8a = Armv8a::new(
             mock_mem,
@@ -1926,13 +1893,7 @@ mod test {
         add_read_reg_64_expectations(&mut probe, 0, 0);
         add_read_pc_64_expectations(&mut probe, REG_VALUE);
 
-        let mock_mem = Memory::new(
-            probe,
-            MemoryAp::new(ApAddress {
-                ap: 0,
-                dp: DpAddress::Default,
-            }),
-        );
+        let mock_mem = Box::new(probe) as _;
 
         let mut armv8a = Armv8a::new(
             mock_mem,
@@ -1970,13 +1931,7 @@ mod test {
         add_read_reg_expectations(&mut probe, 0, 0);
         add_read_cpsr_expectations(&mut probe, REG_VALUE);
 
-        let mock_mem = Memory::new(
-            probe,
-            MemoryAp::new(ApAddress {
-                ap: 0,
-                dp: DpAddress::Default,
-            }),
-        );
+        let mock_mem = Box::new(probe) as _;
 
         let mut armv8a = Armv8a::new(
             mock_mem,
@@ -2014,13 +1969,7 @@ mod test {
         add_read_reg_64_expectations(&mut probe, 0, 0);
         add_read_cpsr_64_expectations(&mut probe, REG_VALUE);
 
-        let mock_mem = Memory::new(
-            probe,
-            MemoryAp::new(ApAddress {
-                ap: 0,
-                dp: DpAddress::Default,
-            }),
-        );
+        let mock_mem = Box::new(probe) as _;
 
         let mut armv8a = Armv8a::new(
             mock_mem,
@@ -2068,13 +2017,7 @@ mod test {
         add_read_reg_expectations(&mut probe, 0, 0);
         add_read_pc_expectations(&mut probe, REG_VALUE);
 
-        let mock_mem = Memory::new(
-            probe,
-            MemoryAp::new(ApAddress {
-                ap: 0,
-                dp: DpAddress::Default,
-            }),
-        );
+        let mock_mem = Box::new(probe) as _;
 
         let mut armv8a = Armv8a::new(
             mock_mem,
@@ -2108,13 +2051,7 @@ mod test {
 
         add_resume_cleanup_expectations(&mut probe);
 
-        let mock_mem = Memory::new(
-            probe,
-            MemoryAp::new(ApAddress {
-                ap: 0,
-                dp: DpAddress::Default,
-            }),
-        );
+        let mock_mem = Box::new(probe) as _;
 
         let mut armv8a = Armv8a::new(
             mock_mem,
@@ -2140,13 +2077,7 @@ mod test {
         // Read breakpoint count
         add_idr_expectations(&mut probe, BP_COUNT);
 
-        let mock_mem = Memory::new(
-            probe,
-            MemoryAp::new(ApAddress {
-                ap: 0,
-                dp: DpAddress::Default,
-            }),
-        );
+        let mock_mem = Box::new(probe) as _;
 
         let mut armv8a = Armv8a::new(
             mock_mem,
@@ -2197,13 +2128,7 @@ mod test {
         );
         probe.expected_read(Dbgbcr::get_mmio_address(TEST_BASE_ADDRESS) + (3 * 16), 0);
 
-        let mock_mem = Memory::new(
-            probe,
-            MemoryAp::new(ApAddress {
-                ap: 0,
-                dp: DpAddress::Default,
-            }),
-        );
+        let mock_mem = Box::new(probe) as _;
 
         let mut armv8a = Armv8a::new(
             mock_mem,
@@ -2244,13 +2169,7 @@ mod test {
         probe.expected_write(Dbgbvr::get_mmio_address(TEST_BASE_ADDRESS) + 4, 0);
         probe.expected_write(Dbgbcr::get_mmio_address(TEST_BASE_ADDRESS), dbgbcr.into());
 
-        let mock_mem = Memory::new(
-            probe,
-            MemoryAp::new(ApAddress {
-                ap: 0,
-                dp: DpAddress::Default,
-            }),
-        );
+        let mock_mem = Box::new(probe) as _;
 
         let mut armv8a = Armv8a::new(
             mock_mem,
@@ -2277,13 +2196,7 @@ mod test {
         probe.expected_write(Dbgbvr::get_mmio_address(TEST_BASE_ADDRESS) + 4, 0);
         probe.expected_write(Dbgbcr::get_mmio_address(TEST_BASE_ADDRESS), 0);
 
-        let mock_mem = Memory::new(
-            probe,
-            MemoryAp::new(ApAddress {
-                ap: 0,
-                dp: DpAddress::Default,
-            }),
-        );
+        let mock_mem = Box::new(probe) as _;
 
         let mut armv8a = Armv8a::new(
             mock_mem,
@@ -2314,13 +2227,7 @@ mod test {
 
         add_read_memory_expectations(&mut probe, MEMORY_ADDRESS, MEMORY_VALUE);
 
-        let mock_mem = Memory::new(
-            probe,
-            MemoryAp::new(ApAddress {
-                ap: 0,
-                dp: DpAddress::Default,
-            }),
-        );
+        let mock_mem = Box::new(probe) as _;
 
         let mut armv8a = Armv8a::new(
             mock_mem,
@@ -2351,13 +2258,7 @@ mod test {
 
         add_read_memory_aarch64_expectations(&mut probe, MEMORY_ADDRESS, MEMORY_VALUE);
 
-        let mock_mem = Memory::new(
-            probe,
-            MemoryAp::new(ApAddress {
-                ap: 0,
-                dp: DpAddress::Default,
-            }),
-        );
+        let mock_mem = Box::new(probe) as _;
 
         let mut armv8a = Armv8a::new(
             mock_mem,
@@ -2388,13 +2289,7 @@ mod test {
         add_read_reg_expectations(&mut probe, 1, 0);
         add_read_memory_expectations(&mut probe, MEMORY_WORD_ADDRESS, MEMORY_VALUE);
 
-        let mock_mem = Memory::new(
-            probe,
-            MemoryAp::new(ApAddress {
-                ap: 0,
-                dp: DpAddress::Default,
-            }),
-        );
+        let mock_mem = Box::new(probe) as _;
 
         let mut armv8a = Armv8a::new(
             mock_mem,
@@ -2425,13 +2320,7 @@ mod test {
         add_read_reg_64_expectations(&mut probe, 1, 0);
         add_read_memory_aarch64_expectations(&mut probe, MEMORY_WORD_ADDRESS, MEMORY_VALUE);
 
-        let mock_mem = Memory::new(
-            probe,
-            MemoryAp::new(ApAddress {
-                ap: 0,
-                dp: DpAddress::Default,
-            }),
-        );
+        let mock_mem = Box::new(probe) as _;
 
         let mut armv8a = Armv8a::new(
             mock_mem,

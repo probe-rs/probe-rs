@@ -1,44 +1,45 @@
 [package]
 name = "probe-rs-cli-util"
-version = "0.13.0"
+version.workspace = true
 authors = [
     "Noah Hüsser <yatekii@yatekii.ch>",
     "Dominik Boehi <dominik.boehi@gmail.com>",
 ]
-edition = "2021"
+edition.workspace = true
 description = "Helper library for CLI applications based on probe-rs."
 documentation = "https://docs.rs/probe-rs-cli-util/"
-homepage = "https://github.com/probe-rs/probe-rs"
-repository = "https://github.com/probe-rs/probe-rs"
-readme = "../README.md"
+homepage.workspace = true
+repository.workspace = true
+readme.workspace = true
 categories = ["embedded", "hardware-support", "development-tools::debugging"]
 keywords = ["embedded"]
-license = "MIT OR Apache-2.0"
+license.workspace = true
 
 [features]
 default = ["anyhow"]
 
 [dependencies]
-probe-rs-rtt = { version = "0.13.0", path = "../rtt" }
-probe-rs = { version = "0.13.0", path = "../probe-rs" }
+probe-rs-rtt = { workspace = true }
+probe-rs = { workspace = true }
 
 thiserror = "1.0"
 anyhow = { version = "1.0", optional = true }
 indicatif = "0.17.0"
-env_logger = "0.9.0"
+env_logger = "0.10.0"
 log = "0.4.0"
 once_cell = "1.7.2"
 colored = "2.0.0"
-cargo_toml = "0.11.1"
-serde = { version = "1.0.115", features = ["derive"] }
+cargo_toml = "0.14.0"
+serde = { version = "1", features = ["derive"] }
 cargo_metadata = "0.15.0"
 dunce = "1.0.1"
-sentry = { version = "0.27.0", features = ["anyhow"], optional = true }
+sentry = { version = "0.29.0", features = ["anyhow"], optional = true }
 simplelog = "0.12.0"
 terminal_size = "0.2.0"
-clap = { version = "3.0", features = ["derive"] }
+clap = { version = "4.1", features = ["derive"] }
 byte-unit = "4.0.13"
-chrono = { version = "0.4", features = ["serde"] }
-goblin = "0.5.1"
+goblin = "0.6.0"
 num-traits = "0.2.14"
-defmt-decoder = { version = "0.3.1", features = ["unstable"] }
+defmt-decoder = { version = "0.3.4", features = ["unstable"] }
+git-version = { version = "0.3" }
+time = "0.3"

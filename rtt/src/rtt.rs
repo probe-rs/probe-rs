@@ -87,7 +87,7 @@ impl Rtt {
         // Validate that the control block starts with the ID bytes
         let rtt_id = &mem[Self::O_ID..(Self::O_ID + Self::RTT_ID.len())];
         if rtt_id != Self::RTT_ID {
-            log::trace!(
+            tracing::trace!(
                 "Expected control block to start with RTT ID: {:?}\n. Got instead: {:?}",
                 String::from_utf8_lossy(&Self::RTT_ID),
                 String::from_utf8_lossy(rtt_id)
@@ -103,8 +103,7 @@ impl Rtt {
         // *Very* conservative sanity check, most people
         if max_up_channels > 255 || max_down_channels > 255 {
             return Err(Error::ControlBlockCorrupted(format!(
-                "Nonsensical array sizes at {:08x}: max_up_channels={} max_down_channels={}",
-                ptr, max_up_channels, max_down_channels
+                "Nonsensical array sizes at {ptr:08x}: max_up_channels={max_up_channels} max_down_channels={max_down_channels}"
             )));
         }
 
@@ -121,7 +120,7 @@ impl Rtt {
 
         // Validate that the entire control block fits within the region
         if mem.len() < cb_len {
-            log::debug!("Control block doesn't fit in scanned memory region.");
+            tracing::debug!("Control block doesn't fit in scanned memory region.");
             return Ok(None);
         }
 
@@ -136,7 +135,7 @@ impl Rtt {
             {
                 up_channels.insert(i, UpChannel(chan));
             } else {
-                log::warn!("Buffer for up channel {} not initialized", i);
+                tracing::warn!("Buffer for up channel {} not initialized", i);
             }
         }
 
@@ -149,7 +148,7 @@ impl Rtt {
             {
                 down_channels.insert(i, DownChannel(chan));
             } else {
-                log::warn!("Buffer for down channel {} not initialized", i);
+                tracing::warn!("Buffer for down channel {} not initialized", i);
             }
         }
 
@@ -179,13 +178,13 @@ impl Rtt {
     ) -> Result<Rtt, Error> {
         let ranges: Vec<Range<u32>> = match region {
             ScanRegion::Exact(addr) => {
-                log::debug!("Scanning at exact address: 0x{:X}", addr);
+                tracing::debug!("Scanning at exact address: 0x{:X}", addr);
 
                 return Rtt::from(core, memory_map, *addr, None)?
                     .ok_or(Error::ControlBlockNotFound);
             }
             ScanRegion::Ram => {
-                log::debug!("Scanning RAM");
+                tracing::debug!("Scanning RAM");
 
                 memory_map
                     .iter()
@@ -199,7 +198,7 @@ impl Rtt {
                     .collect()
             }
             ScanRegion::Range(region) => {
-                log::debug!("Scanning region: {:?}", region);
+                tracing::debug!("Scanning region: {:?}", region);
 
                 vec![region.clone()]
             }

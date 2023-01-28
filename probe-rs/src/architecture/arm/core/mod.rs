@@ -1,7 +1,7 @@
 use crate::{
     core::{
-        MemoryMappedRegister, RegisterDataType, RegisterDescription, RegisterFile, RegisterId,
-        RegisterKind, RegisterValue,
+        BreakpointCause, MemoryMappedRegister, RegisterDataType, RegisterDescription, RegisterFile,
+        RegisterId, RegisterKind, RegisterValue,
     },
     CoreStatus, HaltReason,
 };
@@ -930,12 +930,14 @@ impl Dfsr {
         Dfsr(0b11111)
     }
 
+    /// This only returns the correct halt_reason for armv(x)-m variants. The armv(x)-a variants have their own implementation.
+    // TODO: The different implementations between -m and -a can do with cleanup/refactoring.
     fn halt_reason(&self) -> HaltReason {
         if self.0 == 0 {
             // No bit is set
             HaltReason::Unknown
         } else if self.0.count_ones() > 1 {
-            log::debug!("DFSR: {:?}", self);
+            tracing::debug!("DFSR: {:?}", self);
 
             // We cannot identify why the chip halted,
             // it could be for multiple reasons.
@@ -945,12 +947,12 @@ impl Dfsr {
             // Because of this, we still return breakpoint
             // even if other reasons are possible as well.
             if self.bkpt() {
-                HaltReason::Breakpoint
+                HaltReason::Breakpoint(BreakpointCause::Unknown)
             } else {
                 HaltReason::Multiple
             }
         } else if self.bkpt() {
-            HaltReason::Breakpoint
+            HaltReason::Breakpoint(BreakpointCause::Unknown)
         } else if self.external() {
             HaltReason::External
         } else if self.dwttrap() {

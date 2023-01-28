@@ -64,7 +64,7 @@ impl FlashLoader {
     ///
     /// The chunk can cross flash boundaries as long as one flash region connects to another flash region.
     pub fn add_data(&mut self, address: u64, data: &[u8]) -> Result<(), FlashError> {
-        log::trace!(
+        tracing::trace!(
             "Adding data at address {:#010x} with size {} bytes",
             address,
             data.len()
@@ -158,11 +158,11 @@ impl FlashLoader {
         let num_sections = extract_from_elf(&mut extracted_data, &elf_buffer)?;
 
         if num_sections == 0 {
-            log::warn!("No loadable segments were found in the ELF file.");
+            tracing::warn!("No loadable segments were found in the ELF file.");
             return Err(FileDownloadError::NoLoadableSegments);
         }
 
-        log::info!("Found {} loadable sections:", num_sections);
+        tracing::info!("Found {} loadable sections:", num_sections);
 
         for section in &extracted_data {
             let source = if section.section_names.is_empty() {
@@ -173,7 +173,7 @@ impl FlashLoader {
                 "Multiple sections".to_owned()
             };
 
-            log::info!(
+            tracing::info!(
                 "    {} at {:08X?} ({} byte{})",
                 source,
                 section.address,
@@ -199,11 +199,11 @@ impl FlashLoader {
         session: &mut Session,
         options: DownloadOptions<'_>,
     ) -> Result<(), FlashError> {
-        log::debug!("committing FlashLoader!");
+        tracing::debug!("committing FlashLoader!");
 
-        log::debug!("Contents of builder:");
+        tracing::debug!("Contents of builder:");
         for (&address, data) in &self.builder.data {
-            log::debug!(
+            tracing::debug!(
                 "    data: {:08x}-{:08x} ({} bytes)",
                 address,
                 address + data.len() as u64,
@@ -211,11 +211,11 @@ impl FlashLoader {
             );
         }
 
-        log::debug!("Flash algorithms:");
+        tracing::debug!("Flash algorithms:");
         for algorithm in &session.target().flash_algorithms {
             let Range { start, end } = algorithm.flash_properties.address_range;
 
-            log::debug!(
+            tracing::debug!(
                 "    algo {}: {:08x}-{:08x} ({} bytes)",
                 algorithm.name,
                 start,
@@ -227,7 +227,7 @@ impl FlashLoader {
         // Iterate over all memory regions, and program their data.
 
         if self.memory_map != session.target().memory_map {
-            log::warn!("Memory map of flash loader does not match memory map of target!");
+            tracing::warn!("Memory map of flash loader does not match memory map of target!");
         }
 
         let mut algos: HashMap<(String, String), Vec<NvmRegion>> = HashMap::new();
@@ -241,10 +241,10 @@ impl FlashLoader {
         // using a given algorithm erases all regions controlled by it. Therefore, we must do
         // chip erase once per algorithm, not once per region. Otherwise subsequent chip erases will
         // erase previous regions' flashed contents.
-        log::debug!("Regions:");
+        tracing::debug!("Regions:");
         for region in &self.memory_map {
             if let MemoryRegion::Nvm(region) = region {
-                log::debug!(
+                tracing::debug!(
                     "    region: {:08x}-{:08x} ({} bytes)",
                     region.range.start,
                     region.range.end,
@@ -254,7 +254,7 @@ impl FlashLoader {
                 // If we have no data in this region, ignore it.
                 // This avoids uselessly initializing and deinitializing its flash algorithm.
                 if !self.builder.has_data_in_range(&region.range) {
-                    log::debug!("     -- empty, ignoring!");
+                    tracing::debug!("     -- empty, ignoring!");
                     continue;
                 }
 
@@ -272,12 +272,12 @@ impl FlashLoader {
                     .or_default();
                 entry.push(region.clone());
 
-                log::debug!("     -- using algorithm: {}", algo.name);
+                tracing::debug!("     -- using algorithm: {}", algo.name);
             }
         }
 
         if options.dry_run {
-            log::info!("Skipping programming, dry run!");
+            tracing::info!("Skipping programming, dry run!");
 
             if let Some(progress) = options.progress {
                 progress.failed_filling();
@@ -290,7 +290,7 @@ impl FlashLoader {
 
         // Iterate all flash algorithms we need to use.
         for ((algo_name, core_name), regions) in algos {
-            log::debug!("Flashing ranges for algo: {}", algo_name);
+            tracing::debug!("Flashing ranges for algo: {}", algo_name);
 
             // This can't fail, algo_name comes from the target.
             let algo = session.target().flash_algorithm_by_name(&algo_name);
@@ -309,13 +309,13 @@ impl FlashLoader {
             // If the flash algo doesn't support erase all, disable chip erase.
             if do_chip_erase && !flasher.is_chip_erase_supported() {
                 do_chip_erase = false;
-                log::warn!("Chip erase was the selected method to erase the sectors but this chip does not support chip erases (yet).");
-                log::warn!("A manual sector erase will be performed.");
+                tracing::warn!("Chip erase was the selected method to erase the sectors but this chip does not support chip erases (yet).");
+                tracing::warn!("A manual sector erase will be performed.");
             }
 
             if do_chip_erase {
-                log::debug!("    Doing chip erase...");
-                flasher.run_erase(|active| active.erase_all())?;
+                tracing::debug!("    Doing chip erase...");
+                flasher.run_erase_all()?;
 
                 if let Some(progress) = options.progress {
                     progress.finished_erasing();
@@ -324,12 +324,12 @@ impl FlashLoader {
 
             let mut do_use_double_buffering = flasher.double_buffering_supported();
             if do_use_double_buffering && options.disable_double_buffering {
-                log::info!("Disabled double-buffering support for loader via passed option, though target supports it.");
+                tracing::info!("Disabled double-buffering support for loader via passed option, though target supports it.");
                 do_use_double_buffering = false;
             }
 
             for region in regions {
-                log::debug!(
+                tracing::debug!(
                     "    programming region: {:08x}-{:08x} ({} bytes)",
                     region.range.start,
                     region.range.end,
@@ -348,12 +348,12 @@ impl FlashLoader {
             }
         }
 
-        log::debug!("committing RAM!");
+        tracing::debug!("committing RAM!");
 
         // Commit RAM last, because NVM flashing overwrites RAM
         for region in &self.memory_map {
             if let MemoryRegion::Ram(region) = region {
-                log::debug!(
+                tracing::debug!(
                     "    region: {:08x}-{:08x} ({} bytes)",
                     region.range.start,
                     region.range.end,
@@ -375,27 +375,26 @@ impl FlashLoader {
                 let mut some = false;
                 for (address, data) in self.builder.data_in_range(&region.range) {
                     some = true;
-                    log::debug!(
+                    tracing::debug!(
                         "     -- writing: {:08x}-{:08x} ({} bytes)",
                         address,
                         address + data.len() as u64,
                         data.len()
                     );
                     // Write data to memory.
-                    core.write_8(address as u64, data)
-                        .map_err(FlashError::Core)?;
+                    core.write_8(address, data).map_err(FlashError::Core)?;
                 }
 
                 if !some {
-                    log::debug!("     -- empty.")
+                    tracing::debug!("     -- empty.")
                 }
             }
         }
 
         if options.verify {
-            log::debug!("Verifying!");
+            tracing::debug!("Verifying!");
             for (&address, data) in &self.builder.data {
-                log::debug!(
+                tracing::debug!(
                     "    data: {:08x}-{:08x} ({} bytes)",
                     address,
                     address + data.len() as u64,
@@ -417,7 +416,7 @@ impl FlashLoader {
                 let mut core = session.core(core_index).map_err(FlashError::Core)?;
 
                 let mut written_data = vec![0; data.len()];
-                core.read(address as u64, &mut written_data)
+                core.read(address, &mut written_data)
                     .map_err(FlashError::Core)?;
 
                 if data != &written_data {
@@ -472,5 +471,13 @@ impl FlashLoader {
                 }
             }
         }
+    }
+
+    /// Return data chunks stored in the `FlashLoader` as pairs of address and bytes.
+    pub fn data(&self) -> impl Iterator<Item = (u64, &[u8])> {
+        self.builder
+            .data
+            .iter()
+            .map(|(address, data)| (*address, data.as_slice()))
     }
 }

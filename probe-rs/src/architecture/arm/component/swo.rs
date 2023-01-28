@@ -15,13 +15,13 @@ const REGISTER_OFFSET_ACCESS: u32 = 0xFB0;
 /// Serial Wire Output unit.
 pub struct Swo<'a> {
     component: &'a CoresightComponent,
-    interface: &'a mut Box<dyn ArmProbeInterface>,
+    interface: &'a mut dyn ArmProbeInterface,
 }
 
 impl<'a> Swo<'a> {
     /// Construct a new SWO component.
     pub fn new(
-        interface: &'a mut Box<dyn ArmProbeInterface>,
+        interface: &'a mut dyn ArmProbeInterface,
         component: &'a CoresightComponent,
     ) -> Self {
         Swo {

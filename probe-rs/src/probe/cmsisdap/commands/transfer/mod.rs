@@ -61,11 +61,11 @@ impl InnerTransferRequest {
     fn to_bytes(&self, buffer: &mut [u8]) -> Result<usize, SendError> {
         buffer[0] = (self.APnDP as u8)
             | (self.RnW as u8) << 1
-            | (if self.A2 { 1 } else { 0 }) << 2
-            | (if self.A3 { 1 } else { 0 }) << 3
-            | (if self.value_match { 1 } else { 0 }) << 4
-            | (if self.match_mask { 1 } else { 0 }) << 5
-            | (if self.td_timestamp_request { 1 } else { 0 }) << 7;
+            | u8::from(self.A2) << 2
+            | u8::from(self.A3) << 3
+            | u8::from(self.value_match) << 4
+            | u8::from(self.match_mask) << 5
+            | u8::from(self.td_timestamp_request) << 7;
         if let Some(data) = self.data {
             let data = data.to_le_bytes();
             buffer[1..5].copy_from_slice(&data[..]);
@@ -86,26 +86,33 @@ pub struct InnerTransferResponse {
 }
 
 impl InnerTransferResponse {
-    fn from_bytes(req: &InnerTransferRequest, buffer: &[u8]) -> Result<(Self, usize), SendError> {
+    fn from_bytes(
+        req: &InnerTransferRequest,
+        ack: Ack,
+        buffer: &[u8],
+    ) -> Result<(Self, usize), SendError> {
         let mut resp = Self {
             td_timestamp: None,
             data: None,
         };
 
         let mut offset = 0;
-        if req.td_timestamp_request {
-            if buffer.len() < offset + 4 {
-                return Err(SendError::NotEnoughData);
+        // Only expect response data if the transfer was successful
+        if let Ack::Ok = ack {
+            if req.td_timestamp_request {
+                if buffer.len() < offset + 4 {
+                    return Err(SendError::NotEnoughData);
+                }
+                resp.td_timestamp = Some(buffer.pread_with(offset, LE).unwrap());
+                offset += 4;
             }
-            resp.td_timestamp = Some(buffer.pread_with(offset, LE).unwrap());
-            offset += 4;
-        }
-        if req.RnW == RW::R {
-            if buffer.len() < offset + 4 {
-                return Err(SendError::NotEnoughData);
+            if req.RnW == RW::R {
+                if buffer.len() < offset + 4 {
+                    return Err(SendError::NotEnoughData);
+                }
+                resp.data = Some(buffer.pread_with(offset, LE).unwrap());
+                offset += 4;
             }
-            resp.data = Some(buffer.pread_with(offset, LE).unwrap());
-            offset += 4;
         }
 
         Ok((resp, offset))
@@ -171,7 +178,7 @@ impl Request for TransferRequest {
         }
         let transfer_count = buffer[0];
         if transfer_count as usize > self.transfers.len() {
-            log::error!("Transfer count larger than requested number of transfers");
+            tracing::error!("Transfer count larger than requested number of transfers");
             return Err(SendError::UnexpectedAnswer);
         }
 
@@ -189,9 +196,17 @@ impl Request for TransferRequest {
 
         buffer = &buffer[2..];
         let mut transfers = Vec::new();
-        for i in 0..transfer_count as usize {
+        let xfer_count_and_ack = (0..transfer_count).map(|i| {
+            if i + 1 == transfer_count {
+                (i as usize, last_transfer_response.ack.clone())
+            } else {
+                (i as usize, Ack::Ok)
+            }
+        });
+
+        for (i, ack) in xfer_count_and_ack {
             let req = &self.transfers[i];
-            let (resp, len) = InnerTransferResponse::from_bytes(req, buffer)?;
+            let (resp, len) = InnerTransferResponse::from_bytes(req, ack, buffer)?;
             transfers.push(resp);
             buffer = &buffer[len..];
         }
@@ -205,7 +220,7 @@ impl Request for TransferRequest {
 }
 
 #[allow(clippy::enum_variant_names)]
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub enum Ack {
     /// TODO: ??????????????????????? Docs are weird?
     /// OK (for SWD protocol), OK or FAULT (for JTAG protocol),
@@ -290,7 +305,7 @@ impl Request for TransferBlockRequest {
 
         let num_transfers = (buffer.len() - 3) / 4;
 
-        log::debug!(
+        tracing::debug!(
             "Expected {} responses, got {} responses with data..",
             transfer_count,
             num_transfers
@@ -362,8 +377,8 @@ impl InnerTransferBlockRequest {
     fn to_bytes(&self, buffer: &mut [u8], offset: usize) -> Result<usize, SendError> {
         buffer[offset] = (self.ap_n_dp as u8)
             | (self.r_n_w as u8) << 1
-            | (if self.a2 { 1 } else { 0 }) << 2
-            | (if self.a3 { 1 } else { 0 }) << 3;
+            | u8::from(self.a2) << 2
+            | u8::from(self.a3) << 3;
         Ok(1)
     }
 }

@@ -1,8 +1,6 @@
-pub(crate) mod communication_interface;
-
+use crate::architecture::arm::memory::adi_v5_memory_interface::ArmProbe;
 use crate::architecture::riscv::RiscVState;
 use crate::{CoreType, InstructionSet};
-pub use communication_interface::CommunicationInterface;
 use num_traits::Zero;
 pub use probe_rs_target::{Architecture, CoreAccessOptions};
 
@@ -12,7 +10,7 @@ use crate::architecture::{
 };
 use crate::error;
 use crate::Target;
-use crate::{Error, Memory, MemoryInterface};
+use crate::{Error, MemoryInterface};
 use anyhow::{anyhow, Result};
 use std::cmp::Ordering;
 use std::convert::Infallible;
@@ -75,7 +73,7 @@ impl RegisterDescription {
     }
 
     /// Get the width to format this register as a hex string
-    /// Assumes a format string like {:#0<width>x}
+    /// Assumes a format string like `{:#0<width>x}`
     pub fn format_hex_width(&self) -> usize {
         (self.size_in_bytes() * 2) + 2
     }
@@ -132,6 +130,48 @@ pub enum RegisterValue {
 }
 
 impl RegisterValue {
+    /// A helper function to increment an address by a fixed number of bytes.
+    pub fn incremenet_address(&mut self, bytes: usize) -> Result<(), Error> {
+        match self {
+            RegisterValue::U32(value) => {
+                if let Some(reg_val) = value.checked_add(bytes as u32) {
+                    *value = reg_val;
+                    Ok(())
+                } else {
+                    Err(Error::Other(anyhow!(
+                        "Overflow error: Attempting to add {} bytes to Register value {}",
+                        bytes,
+                        self
+                    )))
+                }
+            }
+            RegisterValue::U64(value) => {
+                if let Some(reg_val) = value.checked_add(bytes as u64) {
+                    *value = reg_val;
+                    Ok(())
+                } else {
+                    Err(Error::Other(anyhow!(
+                        "Overflow error: Attempting to add {} bytes to Register value {}",
+                        bytes,
+                        self
+                    )))
+                }
+            }
+            RegisterValue::U128(value) => {
+                if let Some(reg_val) = value.checked_add(bytes as u128) {
+                    *value = reg_val;
+                    Ok(())
+                } else {
+                    Err(Error::Other(anyhow!(
+                        "Overflow error: Attempting to add {} bytes to Register value {}",
+                        bytes,
+                        self
+                    )))
+                }
+            }
+        }
+    }
+
     /// A helper function to determine if the contained register value is equal to the maximum value that can be stored in that datatype.
     pub fn is_max_value(&self) -> bool {
         match self {
@@ -193,12 +233,13 @@ impl PartialEq for RegisterValue {
 impl core::fmt::Display for RegisterValue {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
-            RegisterValue::U32(register_value) => write!(f, "{:#010x}", register_value),
-            RegisterValue::U64(register_value) => write!(f, "{:#018x}", register_value),
-            RegisterValue::U128(register_value) => write!(f, "{:#034x}", register_value),
+            RegisterValue::U32(register_value) => write!(f, "{register_value:#010x}"),
+            RegisterValue::U64(register_value) => write!(f, "{register_value:#018x}"),
+            RegisterValue::U128(register_value) => write!(f, "{register_value:#034x}"),
         }
     }
 }
+
 impl From<u32> for RegisterValue {
     fn from(val: u32) -> Self {
         Self::U32(val)
@@ -468,7 +509,11 @@ pub trait CoreInterface: MemoryInterface {
     fn read_core_reg(&mut self, address: RegisterId) -> Result<RegisterValue, error::Error>;
 
     /// Write the value of a core register.
-    fn write_core_reg(&mut self, address: RegisterId, value: RegisterValue) -> Result<()>;
+    fn write_core_reg(
+        &mut self,
+        address: RegisterId,
+        value: RegisterValue,
+    ) -> Result<(), error::Error>;
 
     /// Returns all the available breakpoint units of the core.
     fn available_breakpoint_units(&mut self) -> Result<u32, error::Error>;
@@ -550,6 +595,10 @@ impl<'probe> MemoryInterface for Core<'probe> {
         self.inner.read_8(address, data)
     }
 
+    fn read(&mut self, address: u64, data: &mut [u8]) -> Result<(), Error> {
+        self.inner.read(address, data)
+    }
+
     fn write_word_64(&mut self, addr: u64, data: u64) -> Result<(), Error> {
         self.inner.write_word_64(addr, data)
     }
@@ -572,6 +621,14 @@ impl<'probe> MemoryInterface for Core<'probe> {
 
     fn write_8(&mut self, addr: u64, data: &[u8]) -> Result<(), Error> {
         self.inner.write_8(addr, data)
+    }
+
+    fn write(&mut self, addr: u64, data: &[u8]) -> Result<(), Error> {
+        self.inner.write(addr, data)
+    }
+
+    fn supports_8bit_transfers(&self) -> Result<bool, error::Error> {
+        self.inner.supports_8bit_transfers()
     }
 
     fn flush(&mut self) -> Result<(), Error> {
@@ -651,7 +708,7 @@ impl SpecificCoreState {
     pub(crate) fn attach_arm<'probe, 'target: 'probe>(
         &'probe mut self,
         state: &'probe mut CoreState,
-        memory: Memory<'probe>,
+        memory: Box<dyn ArmProbe + 'probe>,
         target: &'target Target,
     ) -> Result<Core<'probe>, Error> {
         let debug_sequence = match &target.debug_sequence {
@@ -763,6 +820,7 @@ impl<'probe> Core<'probe> {
 
     /// Wait until the core is halted. If the core does not halt on its own,
     /// a [`DebugProbeError::Timeout`](crate::DebugProbeError::Timeout) error will be returned.
+    #[tracing::instrument(skip(self))]
     pub fn wait_for_core_halted(&mut self, timeout: Duration) -> Result<(), error::Error> {
         self.inner.wait_for_core_halted(timeout)
     }
@@ -775,11 +833,13 @@ impl<'probe> Core<'probe> {
 
     /// Try to halt the core. This function ensures the core is actually halted, and
     /// returns a [`DebugProbeError::Timeout`](crate::DebugProbeError::Timeout) otherwise.
+    #[tracing::instrument(skip(self))]
     pub fn halt(&mut self, timeout: Duration) -> Result<CoreInformation, error::Error> {
         self.inner.halt(timeout)
     }
 
     /// Continue to execute instructions.
+    #[tracing::instrument(skip(self))]
     pub fn run(&mut self) -> Result<(), error::Error> {
         self.inner.run()
     }
@@ -788,6 +848,7 @@ impl<'probe> Core<'probe> {
     /// should be halted after reset, use the [`reset_and_halt`] function.
     ///
     /// [`reset_and_halt`]: Core::reset_and_halt
+    #[tracing::instrument(skip(self))]
     pub fn reset(&mut self) -> Result<(), error::Error> {
         self.inner.reset()
     }
@@ -796,16 +857,19 @@ impl<'probe> Core<'probe> {
     /// reset, use the [`reset`] function.
     ///
     /// [`reset`]: Core::reset
+    #[tracing::instrument(skip(self))]
     pub fn reset_and_halt(&mut self, timeout: Duration) -> Result<CoreInformation, error::Error> {
         self.inner.reset_and_halt(timeout)
     }
 
     /// Steps one instruction and then enters halted state again.
+    #[tracing::instrument(skip(self))]
     pub fn step(&mut self) -> Result<CoreInformation, error::Error> {
         self.inner.step()
     }
 
     /// Returns the current status of the core.
+    #[tracing::instrument(skip(self))]
     pub fn status(&mut self) -> Result<CoreStatus, error::Error> {
         self.inner.status()
     }
@@ -818,18 +882,23 @@ impl<'probe> Core<'probe> {
     /// it can be [RegisterValue] to allow the caller to support arbitrary
     /// length registers.
     ///
-    /// To add support to convert to a custom type implement [TryInto<CustomType>]
+    /// To add support to convert to a custom type implement [`TryInto<CustomType>`]
     /// for [RegisterValue]].
     ///
     /// # Errors
     ///
     /// If `T` isn't large enough to hold the register value an error will be raised.
+    #[tracing::instrument(skip(self, address), fields(address))]
     pub fn read_core_reg<T>(&mut self, address: impl Into<RegisterId>) -> Result<T, error::Error>
     where
         RegisterValue: TryInto<T>,
         Result<T, <RegisterValue as TryInto<T>>::Error>: RegisterValueResultExt<T>,
     {
-        let value = self.inner.read_core_reg(address.into())?;
+        let address = address.into();
+
+        tracing::Span::current().record("address", format!("{address:?}"));
+
+        let value = self.inner.read_core_reg(address)?;
 
         value.try_into().into_crate_error()
     }
@@ -839,11 +908,12 @@ impl<'probe> Core<'probe> {
     /// # Errors
     ///
     /// If T is too large to write to the target register an error will be raised.
+    #[tracing::instrument(skip(self, value))]
     pub fn write_core_reg<T>(&mut self, address: RegisterId, value: T) -> Result<(), error::Error>
     where
         T: Into<RegisterValue>,
     {
-        Ok(self.inner.write_core_reg(address, value.into())?)
+        self.inner.write_core_reg(address, value.into())
     }
 
     /// Returns all the available breakpoint units of the core.
@@ -857,6 +927,7 @@ impl<'probe> Core<'probe> {
     }
 
     /// Configure the debug module to ensure software breakpoints will enter Debug Mode.
+    #[tracing::instrument(skip(self))]
     pub fn debug_on_sw_breakpoint(&mut self, enabled: bool) -> Result<(), error::Error> {
         self.inner.debug_on_sw_breakpoint(enabled)
     }
@@ -887,6 +958,7 @@ impl<'probe> Core<'probe> {
     ///
     /// The amount of hardware breakpoints which are supported is chip specific,
     /// and can be queried using the `get_available_breakpoint_units` function.
+    #[tracing::instrument(skip(self))]
     pub fn set_hw_breakpoint(&mut self, address: u64) -> Result<(), error::Error> {
         if !self.inner.hw_breakpoints_enabled() {
             self.enable_breakpoints(true)?;
@@ -903,7 +975,7 @@ impl<'probe> Core<'probe> {
             None => self.find_free_breakpoint_comparator_index()?,
         };
 
-        log::debug!(
+        tracing::debug!(
             "Trying to set HW breakpoint #{} with comparator address  {:#08x}",
             breakpoint_comparator_index,
             address
@@ -918,6 +990,7 @@ impl<'probe> Core<'probe> {
     /// Set a hardware breakpoint
     ///
     /// This function will try to clear a hardware breakpoint at `address` if there exists a breakpoint at that address.
+    #[tracing::instrument(skip(self))]
     pub fn clear_hw_breakpoint(&mut self, address: u64) -> Result<(), error::Error> {
         let bp_position = self
             .inner
@@ -925,7 +998,7 @@ impl<'probe> Core<'probe> {
             .iter()
             .position(|bp| bp.is_some() && bp.unwrap() == address);
 
-        log::debug!(
+        tracing::debug!(
             "Will clear HW breakpoint    #{} with comparator address    {:#08x}",
             bp_position.unwrap_or(usize::MAX),
             address
@@ -948,6 +1021,7 @@ impl<'probe> Core<'probe> {
     /// This function will clear all HW breakpoints which are configured on the target,
     /// regardless if they are set by probe-rs, AND regardless if they are enabled or not.
     /// Also used as a helper function in [`Session::drop`](crate::session::Session).
+    #[tracing::instrument(skip(self))]
     pub fn clear_all_hw_breakpoints(&mut self) -> Result<(), error::Error> {
         for breakpoint in (self.inner.hw_breakpoints()?).into_iter().flatten() {
             self.clear_hw_breakpoint(breakpoint)?
@@ -980,6 +1054,7 @@ impl<'probe> Core<'probe> {
     }
 
     /// Called during session tear down to do any pending cleanup
+    #[tracing::instrument(skip(self))]
     pub(crate) fn on_session_stop(&mut self) -> Result<(), Error> {
         self.inner.on_session_stop()
     }
@@ -1018,6 +1093,17 @@ impl CoreStatus {
     }
 }
 
+/// When the core halts due to a breakpoint request, some architectures will allow us to distinguish between a software and hardware breakpoint.
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
+pub enum BreakpointCause {
+    /// We encountered a hardware breakpoint.
+    Hardware,
+    /// We encountered a software breakpoint instruction.
+    Software,
+    /// We were not able to distinguish if this was a hardware or software breakpoint.
+    Unknown,
+}
+
 /// The reason why a core was halted.
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum HaltReason {
@@ -1027,9 +1113,8 @@ pub enum HaltReason {
     /// step ends up on a breakpoint, after which both breakpoint and step / request
     /// are set.
     Multiple,
-    /// Core halted due to a breakpoint, either
-    /// a *soft* or a *hard* breakpoint.
-    Breakpoint,
+    /// Core halted due to a breakpoint. The cause is `Unknown` if we cannot distinguish between a hardware and software breakpoint.
+    Breakpoint(BreakpointCause),
     /// Core halted due to an exception, e.g. an
     /// an interrupt.
     Exception,

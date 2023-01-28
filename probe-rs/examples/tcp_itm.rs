@@ -1,7 +1,7 @@
 use probe_rs::architecture::arm::{component::TraceSink, swo::SwoConfig};
 use probe_rs::{Error, Permissions};
 
-use itm_decode::{Decoder, DecoderOptions, TracePacket};
+use itm::{Decoder, DecoderOptions, TracePacket};
 
 use serde::{Deserialize, Serialize};
 use std::net::{SocketAddr, TcpListener, TcpStream};
@@ -32,73 +32,70 @@ fn main() -> Result<(), Error> {
 
     let mut timestamp: f64 = 0.0;
 
-    let mut decoder = Decoder::new(DecoderOptions::default());
+    let decoder = Decoder::new(session.swo_reader()?, DecoderOptions { ignore_eof: true });
 
     let mut stimuli = vec![String::new(); 32];
 
     println!("Starting SWO trace ...");
 
-    loop {
-        let bytes = session.read_trace_data()?;
+    for packet in decoder.singles() {
+        match packet {
+            Ok(TracePacket::LocalTimestamp1 { ts, data_relation }) => {
+                tracing::debug!(
+                    "Timestamp packet: data_relation={:?} ts={}",
+                    data_relation,
+                    ts
+                );
+                let mut time_delta: f64 = ts as f64;
+                // Divide by core clock frequency to go from ticks to seconds.
+                time_delta /= 16_000_000.0;
+                timestamp += time_delta;
+            }
+            // TracePacket::DwtData { id, payload } => {
+            //     tracing::warn!("Dwt: id={} payload={:?}", id, payload);
 
-        decoder.push(&bytes);
-        while let Ok(Some(packet)) = decoder.pull() {
-            match packet {
-                TracePacket::LocalTimestamp1 { ts, data_relation } => {
-                    log::debug!(
-                        "Timestamp packet: data_relation={:?} ts={}",
-                        data_relation,
-                        ts
-                    );
-                    let mut time_delta: f64 = ts as f64;
-                    // Divide by core clock frequency to go from ticks to seconds.
-                    time_delta /= 16_000_000.0;
-                    timestamp += time_delta;
-                }
-                // TracePacket::DwtData { id, payload } => {
-                //     log::warn!("Dwt: id={} payload={:?}", id, payload);
+            //     if id == 17 {
+            //         let value: i32 = payload.pread(0).unwrap();
+            //         tracing::trace!("VAL={}", value);
+            //         // client.send_sample("a", timestamp, value as f64).unwrap();
+            //     }
+            // }
+            Ok(TracePacket::Instrumentation { port, payload }) => {
+                let id = port as usize;
+                // First decode the string data from the stimuli.
+                stimuli[id].push_str(&String::from_utf8_lossy(&payload));
+                // Then collect all the lines we have gotten so far.
+                let data = stimuli[id].clone();
+                let mut lines: Vec<_> = data.lines().collect();
 
-                //     if id == 17 {
-                //         let value: i32 = payload.pread(0).unwrap();
-                //         log::trace!("VAL={}", value);
-                //         // client.send_sample("a", timestamp, value as f64).unwrap();
-                //     }
-                // }
-                TracePacket::Instrumentation { port, payload } => {
-                    let id = port as usize;
-                    // First decode the string data from the stimuli.
-                    stimuli[id].push_str(&String::from_utf8_lossy(&payload));
-                    // Then collect all the lines we have gotten so far.
-                    let data = stimuli[id].clone();
-                    let mut lines: Vec<_> = data.lines().collect();
-
-                    // If there is at least one char in the total of all received chars, look at the last one.
-                    let last_char = stimuli[id].chars().last();
-                    if let Some(last_char) = last_char {
-                        // If the last one is not a newline (this is always the last one for Windows (\r\n) as well as Linux (\n)),
-                        // we keep the last line as it was not fully received yet.
-                        if last_char != '\n' {
-                            // Get the last line and keep it if there is even one.
-                            if let Some(last_line) = lines.pop() {
-                                stimuli[id] = last_line.to_string();
-                            }
-                        } else {
-                            stimuli[id] = String::new();
+                // If there is at least one char in the total of all received chars, look at the last one.
+                let last_char = stimuli[id].chars().last();
+                if let Some(last_char) = last_char {
+                    // If the last one is not a newline (this is always the last one for Windows (\r\n) as well as Linux (\n)),
+                    // we keep the last line as it was not fully received yet.
+                    if last_char != '\n' {
+                        // Get the last line and keep it if there is even one.
+                        if let Some(last_line) = lines.pop() {
+                            stimuli[id] = last_line.to_string();
                         }
-                    }
-
-                    // Finally print all due lines!
-                    for line in lines {
-                        println!("{}> {}", id, line);
+                    } else {
+                        stimuli[id] = String::new();
                     }
                 }
-                _ => {
-                    log::warn!("Trace packet: {:?}", packet);
+
+                // Finally print all due lines!
+                for line in lines {
+                    println!("{id}> {line}");
                 }
             }
-            log::debug!("{}", timestamp);
+            _ => {
+                tracing::warn!("Trace packet: {:?}", packet);
+            }
         }
+        tracing::debug!("{}", timestamp);
     }
+
+    Ok(())
 }
 
 pub struct TcpPublisher {
@@ -124,7 +121,7 @@ impl TcpPublisher {
                     if err.kind() == std::io::ErrorKind::WouldBlock {
                     } else {
                         to_remove.push(i);
-                        log::error!("Writing to a tcp socket experienced an error: {:?}", err)
+                        tracing::error!("Writing to a tcp socket experienced an error: {:?}", err)
                     }
                 }
             }
@@ -197,7 +194,7 @@ impl SwoPublisher<Box<dyn Any + Send>> for TcpPublisher {
         let (_outbound, tx) = channel::<O>();
         let (halt_tx, halt_rx) = channel::<()>();
 
-        log::info!("Opening websocket on '{}'", self.connection_string);
+        tracing::info!("Opening websocket on '{}'", self.connection_string);
         let server = TcpListener::bind(&self.connection_string).unwrap();
         server.set_nonblocking(true).unwrap();
 
@@ -219,20 +216,20 @@ impl SwoPublisher<Box<dyn Any + Send>> for TcpPublisher {
                             // Make sure we operate in nonblocking mode.
                             // Is is required so read does not block forever.
                             stream.set_nonblocking(true).unwrap();
-                            log::info!("Accepted a new websocket connection from {}", addr);
+                            tracing::info!("Accepted a new websocket connection from {}", addr);
                             sockets.push((stream, addr));
                         }
                         Some(Err(err)) => {
                             if err.kind() == std::io::ErrorKind::WouldBlock {
                             } else {
-                                log::error!(
+                                tracing::error!(
                                     "Connecting to a websocket experienced an error: {:?}",
                                     err
                                 )
                             }
                         }
                         None => {
-                            log::error!("The TCP listener iterator was exhausted. Shutting down websocket listener.");
+                            tracing::error!("The TCP listener iterator was exhausted. Shutting down websocket listener.");
                             return;
                         }
                     }
@@ -266,7 +263,7 @@ impl SwoPublisher<Box<dyn Any + Send>> for TcpPublisher {
             h.0.join()
         }) {
             Some(Err(err)) => {
-                log::error!("An error occurred during thread execution: {:?}", err);
+                tracing::error!("An error occurred during thread execution: {:?}", err);
                 Err(err)
             }
             _ => Ok(()),

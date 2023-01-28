@@ -15,13 +15,13 @@ const REGISTER_OFFSET_TPIU_FFCR: u32 = 0x304;
 /// Trace port interface unit unit.
 pub struct Tpiu<'a> {
     component: &'a CoresightComponent,
-    interface: &'a mut Box<dyn ArmProbeInterface>,
+    interface: &'a mut dyn ArmProbeInterface,
 }
 
 impl<'a> Tpiu<'a> {
     /// Create a new TPIU interface from a probe and a ROM table component.
     pub fn new(
-        interface: &'a mut Box<dyn ArmProbeInterface>,
+        interface: &'a mut dyn ArmProbeInterface,
         component: &'a CoresightComponent,
     ) -> Self {
         Tpiu {

@@ -6,6 +6,8 @@ pub(crate) mod ftdi;
 pub(crate) mod jlink;
 pub(crate) mod stlink;
 
+use self::espusbjtag::list_espjtag_devices;
+use crate::architecture::riscv::communication_interface::RiscvError;
 use crate::error::Error;
 use crate::Session;
 use crate::{
@@ -25,8 +27,6 @@ use crate::{
 };
 use jlink::list_jlink_devices;
 use std::{convert::TryFrom, fmt};
-
-use self::espusbjtag::list_espjtag_devices;
 
 /// Used to log warnings when the measured target voltage is
 /// lower than 1.4V, if at all measureable.
@@ -62,8 +62,7 @@ impl std::str::FromStr for WireProtocol {
             "swd" => Ok(WireProtocol::Swd),
             "jtag" => Ok(WireProtocol::Jtag),
             _ => Err(format!(
-                "'{}' is not a valid protocol. Choose from [swd, jtag].",
-                s
+                "'{s}' is not a valid protocol. Choose from [swd, jtag]."
             )),
         }
     }
@@ -82,12 +81,10 @@ pub enum BatchCommand {
 impl fmt::Display for BatchCommand {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            BatchCommand::Read(port, addr) => write!(f, "Read(port={:?}, addr={})", port, addr),
-            BatchCommand::Write(port, addr, data) => write!(
-                f,
-                "Write(port={:?}, addr={}, data=0x{:08x}",
-                port, addr, data
-            ),
+            BatchCommand::Read(port, addr) => write!(f, "Read(port={port:?}, addr={addr})"),
+            BatchCommand::Write(port, addr, data) => {
+                write!(f, "Write(port={port:?}, addr={addr}, data=0x{data:08x}")
+            }
         }
     }
 }
@@ -111,13 +108,6 @@ pub enum DebugProbeError {
     /// The selected wire protocol is not supported with given probe.
     #[error("Probe does not support {0}")]
     UnsupportedProtocol(WireProtocol),
-    // TODO: This is core specific, so should probably be moved there.
-    /// A timeout occurred during an operation.
-    #[error("Operation timed out")]
-    Timeout,
-    /// An error that is specific to the selected  target core architecture occoured.
-    #[error("An error specific to the selected architecture occurred")]
-    ArchitectureSpecific(#[source] Box<dyn std::error::Error + Send + Sync>),
     /// The selected probe does not support the selected interface.
     /// This happens if a probe does not support certain functionality, such as:
     /// - ARM debugging
@@ -161,12 +151,13 @@ pub enum DebugProbeError {
     /// This can happen when a probe does not allow for setting speed manually for example.
     #[error("Command not supported by probe: {0}")]
     CommandNotSupportedByProbe(&'static str),
-    /// The hardware breakpoint could not be set because all breakpoint units are in use.
-    #[error("Unable to set hardware breakpoint, all available breakpoint units are in use.")]
-    BreakpointUnitsExceeded,
     /// Some other error occurred.
     #[error(transparent)]
     Other(#[from] anyhow::Error),
+
+    /// A timeout occured during probe operation.
+    #[error("Timeout occured during probe operation.")]
+    Timeout,
 }
 
 /// An error during probe creation accured.
@@ -246,6 +237,7 @@ impl Probe {
     /// Get a list of all debug probes found.
     /// This can be used to select the debug probe which
     /// should be used.
+    #[tracing::instrument]
     pub fn list_all() -> Vec<DebugProbeInfo> {
         let mut list = cmsisdap::tools::list_cmsisdap_devices();
         #[cfg(feature = "ftdi")]
@@ -264,6 +256,7 @@ impl Probe {
     /// Create a [`Probe`] from [`DebugProbeInfo`]. Use the
     /// [`Probe::list_all()`] function to get the information
     /// about all probes available.
+    #[tracing::instrument(skip_all)]
     pub fn open(selector: impl Into<DebugProbeSelector> + Clone) -> Result<Self, DebugProbeError> {
         match cmsisdap::CmsisDap::new_from_selector(selector.clone()) {
             Ok(link) => return Ok(Probe::from_specific_probe(link)),
@@ -330,11 +323,11 @@ impl Probe {
         if let Some(dap_probe) = self.try_as_dap_probe() {
             DefaultArmSequence(()).reset_hardware_assert(dap_probe)?;
         } else {
-            log::info!(
+            tracing::info!(
                 "Custom reset sequences are not supported on {}.",
                 self.get_name()
             );
-            log::info!("Falling back to standard probe reset.");
+            tracing::info!("Falling back to standard probe reset.");
             self.target_reset_assert()?;
         }
 
@@ -353,9 +346,15 @@ impl Probe {
         permissions: Permissions,
     ) -> Result<Session, Error> {
         self.attached = true;
-
         // The session will de-assert reset after connecting to the debug interface.
-        Session::new(self, target.into(), AttachMethod::UnderReset, permissions)
+        Session::new(self, target.into(), AttachMethod::UnderReset, permissions).map_err(|e| {
+            if matches!(e, Error::Timeout) {
+                Error::Other(
+                anyhow::anyhow!("Timeout while attaching to target under reset. This can happen if the target is not responding to the reset sequence. Ensure the chip's reset pin is connected, or try attaching without reset."))
+            } else {
+                e
+            }
+        })
     }
 
     pub(crate) fn inner_attach(&mut self) -> Result<(), DebugProbeError> {
@@ -371,8 +370,15 @@ impl Probe {
         }
     }
 
+    /// Get the currently selected protocol
+    ///
+    /// Depending on the probe, this might not be available.
+    pub fn protocol(&self) -> Option<WireProtocol> {
+        self.inner.active_protocol()
+    }
+
     /// Leave debug mode
-    pub fn detach(&mut self) -> Result<(), DebugProbeError> {
+    pub fn detach(&mut self) -> Result<(), crate::Error> {
         self.attached = false;
         self.inner.detach()?;
         Ok(())
@@ -388,7 +394,7 @@ impl Probe {
     ///
     /// This is not supported on all probes.
     pub fn target_reset_assert(&mut self) -> Result<(), DebugProbeError> {
-        log::debug!("Asserting target reset");
+        tracing::debug!("Asserting target reset");
         self.inner.target_reset_assert()
     }
 
@@ -397,7 +403,7 @@ impl Probe {
     ///
     /// This is not supported on all probes.
     pub fn target_reset_deassert(&mut self) -> Result<(), DebugProbeError> {
-        log::debug!("Deasserting target reset");
+        tracing::debug!("Deasserting target reset");
         self.inner.target_reset_deassert()
     }
 
@@ -454,9 +460,9 @@ impl Probe {
     /// If an error occurs while trying to connect, the probe is returned.
     pub fn try_into_riscv_interface(
         self,
-    ) -> Result<RiscvCommunicationInterface, (Self, DebugProbeError)> {
+    ) -> Result<RiscvCommunicationInterface, (Self, RiscvError)> {
         if !self.attached {
-            Err((self, DebugProbeError::NotAttached))
+            Err((self, DebugProbeError::NotAttached.into()))
         } else {
             self.inner
                 .try_get_riscv_interface()
@@ -537,7 +543,11 @@ pub trait DebugProbe: Send + fmt::Debug {
     /// Detach from the chip.
     ///
     /// This should run all the necessary protocol deinit routines.
-    fn detach(&mut self) -> Result<(), DebugProbeError>;
+    ///
+    /// If the probe uses batched commands, this will also cause all
+    /// remaining commands to be executed. If an error occurs during
+    /// this execution, the probe might remain in the attached state.
+    fn detach(&mut self) -> Result<(), crate::Error>;
 
     /// This should hard reset the target device.
     fn target_reset(&mut self) -> Result<(), DebugProbeError>;
@@ -575,10 +585,10 @@ pub trait DebugProbe: Send + fmt::Debug {
     /// probe actually supports this by calling [DebugProbe::has_riscv_interface] first.
     fn try_get_riscv_interface(
         self: Box<Self>,
-    ) -> Result<RiscvCommunicationInterface, (Box<dyn DebugProbe>, DebugProbeError)> {
+    ) -> Result<RiscvCommunicationInterface, (Box<dyn DebugProbe>, RiscvError)> {
         Err((
             self.into_probe(),
-            DebugProbeError::InterfaceNotAvailable("RISCV"),
+            DebugProbeError::InterfaceNotAvailable("RISCV").into(),
         ))
     }
 
@@ -662,7 +672,7 @@ impl std::fmt::Debug for DebugProbeInfo {
             self.product_id,
             self.serial_number
                 .clone()
-                .map_or("".to_owned(), |v| format!("Serial: {}, ", v)),
+                .map_or("".to_owned(), |v| format!("Serial: {v}, ")),
             self.probe_type
         )
     }
@@ -783,7 +793,7 @@ impl fmt::Display for DebugProbeSelector {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{:04x}:{:04x}", self.vendor_id, self.product_id)?;
         if let Some(ref sn) = self.serial_number {
-            write!(f, ":{}", sn)?;
+            write!(f, ":{sn}")?;
         }
         Ok(())
     }
@@ -829,6 +839,7 @@ pub trait JTAGAccess: DebugProbe {
         for write in writes {
             match self
                 .write_register(write.address, &write.data, write.len)
+                .map_err(crate::Error::Probe)
                 .and_then(|response| (write.transform)(response))
             {
                 Ok(res) => results.push(res),
@@ -847,18 +858,18 @@ pub struct JtagWriteCommand {
     pub address: u32,
     pub data: Vec<u8>,
     pub len: u32,
-    pub transform: fn(Vec<u8>) -> Result<CommandResult, DebugProbeError>,
+    pub transform: fn(Vec<u8>) -> Result<CommandResult, crate::Error>,
 }
 
 #[derive(thiserror::Error, Debug)]
 pub struct BatchExecutionError {
     #[source]
-    pub error: DebugProbeError,
+    pub error: crate::Error,
     pub results: Vec<CommandResult>,
 }
 
 impl BatchExecutionError {
-    pub fn new(error: DebugProbeError, results: Vec<CommandResult>) -> BatchExecutionError {
+    pub fn new(error: crate::Error, results: Vec<CommandResult>) -> BatchExecutionError {
         BatchExecutionError { error, results }
     }
 }

@@ -20,6 +20,17 @@ fn main() {
 
     let mut files = vec![];
     visit_dirs(Path::new("targets"), &mut files).unwrap();
+
+    // Check if there are any additional targets to generate for
+    match env::var("PROBE_RS_TARGETS_DIR") {
+        Ok(additional_target_dir) => {
+            visit_dirs(Path::new(&additional_target_dir), &mut files).unwrap();
+        }
+        Err(_err) => {
+            // Do nothing as you dont have to add any other targets
+        }
+    }
+
     for file in files {
         let string = read_to_string(&file).expect(
             "Algorithm definition file could not be read. This is a bug. Please report it.",
@@ -29,7 +40,7 @@ fn main() {
 
         match yaml {
             Ok(familiy) => families.push(familiy),
-            Err(e) => panic!("Failed to parse target file: {:?} because:\n{}", file, e),
+            Err(e) => panic!("Failed to parse target file: {file:?} because:\n{e}"),
         }
     }
 
@@ -40,7 +51,12 @@ fn main() {
     let dest_path = Path::new(&out_dir).join("targets.bincode");
     std::fs::write(dest_path, &families_bin).unwrap();
 
-    let _: Vec<ChipFamily> = bincode::deserialize(&families_bin).unwrap();
+    let _: Vec<ChipFamily> = match bincode::deserialize(&families_bin) {
+        Ok(chip_families) => chip_families,
+        Err(deserialize_error) => panic!(
+            "Failed to deserialize supported target definitions from bincode: {deserialize_error:?}"
+        ),
+    };
 }
 
 /// One possible implementation of walking a directory only visiting files.
@@ -51,8 +67,10 @@ fn visit_dirs(dir: &Path, targets: &mut Vec<PathBuf>) -> io::Result<()> {
             let path = entry.path();
             if path.is_dir() {
                 visit_dirs(&path, targets)?;
-            } else {
-                targets.push(path.to_owned());
+            } else if let Some(extension) = path.extension() {
+                if extension.eq_ignore_ascii_case("yaml") {
+                    targets.push(path);
+                }
             }
         }
     }

@@ -12,7 +12,7 @@ use anyhow::{anyhow, Context, Result};
 struct Cli {
     #[clap(long = "chip")]
     chip: Option<String>,
-    #[clap(long = "address", parse(try_from_str = parse_hex))]
+    #[clap(long = "address", value_parser = parse_hex)]
     address: u64,
     #[clap(long = "size")]
     size: usize,
@@ -117,8 +117,7 @@ fn main() -> Result<()> {
             let mismatch_address = matches.address + index as u64 * 4;
 
             eprintln!(
-                "Readback data differs at address {:08x}: expected word {:08x}, got word {:08x}",
-                mismatch_address, sample_data, readback_data
+                "Readback data differs at address {mismatch_address:08x}: expected word {sample_data:08x}, got word {readback_data:08x}"
             );
 
             error_count += 1;
@@ -130,7 +129,15 @@ fn main() -> Result<()> {
     }
 
     if error_count > 0 {
-        println!("First element: {:08x}", sample_data[0]);
+        println!(
+            "First element: {:08x} ?= {:08x}",
+            sample_data[0], readback_data[0]
+        );
+        println!(
+            "Last element: {:08x} ?= {:08x}",
+            sample_data[sample_data.len() - 1],
+            readback_data[readback_data.len() - 1]
+        );
         eprintln!("Verification failed!");
     } else {
         println!("Verification succesful.");

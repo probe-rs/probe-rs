@@ -26,7 +26,7 @@ pub const _ITM_PID: [u8; 8] = [0x1, 0xB0, 0x3b, 0x0, 0x4, 0x0, 0x0, 0x0];
 /// The same count value can be used to insert timestamps in the ETM trace stream, allowing coarse-grain correlation.
 pub struct Itm<'a> {
     component: &'a CoresightComponent,
-    interface: &'a mut Box<dyn ArmProbeInterface>,
+    interface: &'a mut dyn ArmProbeInterface,
 }
 
 const _REGISTER_OFFSET_ITM_TPR: u32 = 0xE40;
@@ -36,7 +36,7 @@ const REGISTER_OFFSET_ACCESS: u32 = 0xFB0;
 impl<'a> Itm<'a> {
     /// Create a new ITM interface from a probe and a ROM table component.
     pub fn new(
-        interface: &'a mut Box<dyn ArmProbeInterface>,
+        interface: &'a mut dyn ArmProbeInterface,
         component: &'a CoresightComponent,
     ) -> Self {
         Itm {

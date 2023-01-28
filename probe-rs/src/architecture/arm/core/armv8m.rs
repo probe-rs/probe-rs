@@ -1,12 +1,12 @@
 //! Register types and the core interface for armv8-M
 
+use crate::architecture::arm::memory::adi_v5_memory_interface::ArmProbe;
 use crate::architecture::arm::sequences::ArmDebugSequence;
+use crate::architecture::arm::ArmError;
 use crate::core::RegisterFile;
 use crate::error::Error;
-use crate::memory::{valid_32_address, Memory};
-use crate::{
-    architecture::arm::core::register, CoreStatus, DebugProbeError, HaltReason, MemoryInterface,
-};
+use crate::memory::valid_32bit_address;
+use crate::{architecture::arm::core::register, CoreStatus, HaltReason, MemoryInterface};
 use crate::{Architecture, CoreInformation};
 use crate::{CoreInterface, CoreType, InstructionSet, MemoryMappedRegister};
 use crate::{RegisterId, RegisterValue};
@@ -24,7 +24,7 @@ use std::{
 
 /// The state of a core that can be used to persist core state across calls to multiple different cores.
 pub struct Armv8m<'probe> {
-    memory: Memory<'probe>,
+    memory: Box<dyn ArmProbe + 'probe>,
 
     state: &'probe mut CortexMState,
 
@@ -33,7 +33,7 @@ pub struct Armv8m<'probe> {
 
 impl<'probe> Armv8m<'probe> {
     pub(crate) fn new(
-        mut memory: Memory<'probe>,
+        mut memory: Box<dyn ArmProbe + 'probe>,
         state: &'probe mut CortexMState,
         sequence: Arc<dyn ArmDebugSequence>,
     ) -> Result<Self, Error> {
@@ -41,7 +41,7 @@ impl<'probe> Armv8m<'probe> {
             // determine current state
             let dhcsr = Dhcsr(memory.read_word_32(Dhcsr::ADDRESS)?);
 
-            log::debug!("State when connecting: {:x?}", dhcsr);
+            tracing::debug!("State when connecting: {:x?}", dhcsr);
 
             let core_state = if dhcsr.s_sleep() {
                 CoreStatus::Sleeping
@@ -50,7 +50,7 @@ impl<'probe> Armv8m<'probe> {
 
                 let reason = dfsr.halt_reason();
 
-                log::debug!("Core was halted when connecting, reason: {:?}", reason);
+                tracing::debug!("Core was halted when connecting, reason: {:?}", reason);
 
                 CoreStatus::Halted(reason)
             } else {
@@ -83,24 +83,18 @@ impl<'probe> CoreInterface for Armv8m<'probe> {
         let start = Instant::now();
 
         while start.elapsed() < timeout {
-            let dhcsr_val = Dhcsr(self.memory.read_word_32(Dhcsr::ADDRESS)?);
-            if dhcsr_val.s_halt() {
+            if self.core_halted()? {
                 return Ok(());
             }
+
             std::thread::sleep(Duration::from_millis(1));
         }
-        Err(Error::Probe(DebugProbeError::Timeout))
+        Err(Error::Arm(ArmError::Timeout))
     }
 
     fn core_halted(&mut self) -> Result<bool, Error> {
         // Wait until halted state is active again.
-        let dhcsr_val = Dhcsr(self.memory.read_word_32(Dhcsr::ADDRESS)?);
-
-        if dhcsr_val.s_halt() {
-            Ok(true)
-        } else {
-            Ok(false)
-        }
+        Ok(self.status()?.is_halted())
     }
 
     fn halt(&mut self, timeout: Duration) -> Result<CoreInformation, Error> {
@@ -145,7 +139,8 @@ impl<'probe> CoreInterface for Armv8m<'probe> {
 
     fn reset(&mut self) -> Result<(), Error> {
         self.sequence
-            .reset_system(&mut self.memory, crate::CoreType::Armv8m, None)
+            .reset_system(&mut *self.memory, crate::CoreType::Armv8m, None)?;
+        Ok(())
     }
 
     fn reset_and_halt(&mut self, _timeout: Duration) -> Result<CoreInformation, Error> {
@@ -153,9 +148,9 @@ impl<'probe> CoreInterface for Armv8m<'probe> {
         // This will halt the core after reset.
 
         self.sequence
-            .reset_catch_set(&mut self.memory, crate::CoreType::Armv8m, None)?;
+            .reset_catch_set(&mut *self.memory, crate::CoreType::Armv8m, None)?;
         self.sequence
-            .reset_system(&mut self.memory, crate::CoreType::Armv8m, None)?;
+            .reset_system(&mut *self.memory, crate::CoreType::Armv8m, None)?;
 
         // Update core status
         let _ = self.status()?;
@@ -167,7 +162,7 @@ impl<'probe> CoreInterface for Armv8m<'probe> {
         }
 
         self.sequence
-            .reset_catch_clear(&mut self.memory, crate::CoreType::Armv8m, None)?;
+            .reset_catch_clear(&mut *self.memory, crate::CoreType::Armv8m, None)?;
 
         // try to read the program counter
         let pc_value = self.read_core_reg(register::PC.id)?;
@@ -180,14 +175,16 @@ impl<'probe> CoreInterface for Armv8m<'probe> {
 
     fn step(&mut self) -> Result<CoreInformation, Error> {
         // First check if we stopped on a breakpoint, because this requires special handling before we can continue.
-        let was_breakpoint =
-            if self.state.current_state == CoreStatus::Halted(HaltReason::Breakpoint) {
-                log::debug!("Core was halted on breakpoint, disabling breakpoints");
-                self.enable_breakpoints(false)?;
-                true
-            } else {
-                false
-            };
+        let pc_before_step = self.read_core_reg(self.registers().program_counter().id)?;
+        let was_breakpoint = if matches!(
+            self.state.current_state,
+            CoreStatus::Halted(HaltReason::Breakpoint(_))
+        ) {
+            self.enable_breakpoints(false)?;
+            true
+        } else {
+            false
+        };
 
         let mut value = Dhcsr(0);
         // Leave halted state.
@@ -203,28 +200,46 @@ impl<'probe> CoreInterface for Armv8m<'probe> {
 
         self.wait_for_core_halted(Duration::from_millis(100))?;
 
+        // Try to read the new program counter.
+        let mut pc_after_step = self.read_core_reg(self.registers().program_counter().id)?;
+
         // Re-enable breakpoints before we continue.
         if was_breakpoint {
+            // If we were stopped on a software breakpoint, then we need to manually advance the PC, or else we will be stuck here forever.
+            if pc_before_step == pc_after_step
+                && !self
+                    .hw_breakpoints()?
+                    .contains(&pc_before_step.try_into().ok())
+            {
+                tracing::debug!("Encountered a breakpoint instruction @ {}. We need to manually advance the program counter to the next instruction.", pc_after_step);
+                // Advance the program counter by the architecture specific byte size of the BKPT instruction.
+                pc_after_step.incremenet_address(2)?;
+                self.write_core_reg(self.registers().program_counter().id, pc_after_step)?;
+            }
             self.enable_breakpoints(true)?;
         }
 
-        // try to read the program counter
-        let pc_value = self.read_core_reg(register::PC.id)?;
-
-        // get pc
         Ok(CoreInformation {
-            pc: pc_value.try_into()?,
+            pc: pc_after_step.try_into()?,
         })
     }
 
     fn read_core_reg(&mut self, address: RegisterId) -> Result<RegisterValue, Error> {
-        let value = super::cortex_m::read_core_reg(&mut self.memory, address)?;
-        Ok(value.into())
+        if self.state.current_state.is_halted() {
+            let value = super::cortex_m::read_core_reg(&mut *self.memory, address)?;
+            Ok(value.into())
+        } else {
+            Err(Error::Arm(ArmError::CoreNotHalted))
+        }
     }
 
-    fn write_core_reg(&mut self, address: RegisterId, value: RegisterValue) -> Result<()> {
-        super::cortex_m::write_core_reg(&mut self.memory, address, value.try_into()?)?;
-        Ok(())
+    fn write_core_reg(&mut self, address: RegisterId, value: RegisterValue) -> Result<(), Error> {
+        if self.state.current_state.is_halted() {
+            super::cortex_m::write_core_reg(&mut *self.memory, address, value.try_into()?)?;
+            Ok(())
+        } else {
+            Err(Error::Arm(ArmError::CoreNotHalted))
+        }
     }
 
     fn available_breakpoint_units(&mut self) -> Result<u32, Error> {
@@ -249,7 +264,7 @@ impl<'probe> CoreInterface for Armv8m<'probe> {
     }
 
     fn set_hw_breakpoint(&mut self, bp_unit_index: usize, addr: u64) -> Result<(), Error> {
-        let addr = valid_32_address(addr)?;
+        let addr = valid_32bit_address(addr)?;
 
         let mut val = FpCompN::from(0);
 
@@ -306,7 +321,9 @@ impl<'probe> CoreInterface for Armv8m<'probe> {
         let dhcsr = Dhcsr(self.memory.read_word_32(Dhcsr::ADDRESS)?);
 
         if dhcsr.s_lockup() {
-            log::warn!("The core is in locked up status as a result of an unrecoverable exception");
+            tracing::warn!(
+                "The core is in locked up status as a result of an unrecoverable exception"
+            );
 
             self.state.current_state = CoreStatus::LockedUp;
 
@@ -316,7 +333,7 @@ impl<'probe> CoreInterface for Armv8m<'probe> {
         if dhcsr.s_sleep() {
             // Check if we assumed the core to be halted
             if self.state.current_state.is_halted() {
-                log::warn!("Expected core to be halted, but core is running");
+                tracing::warn!("Expected core to be halted, but core is running");
             }
 
             self.state.current_state = CoreStatus::Sleeping;
@@ -342,11 +359,11 @@ impl<'probe> CoreInterface for Armv8m<'probe> {
                 // that the reason for the halt has changed. No bits set
                 // means that we have an unkown HaltReason.
                 if reason == HaltReason::Unknown {
-                    log::debug!("Cached halt reason: {:?}", self.state.current_state);
+                    tracing::debug!("Cached halt reason: {:?}", self.state.current_state);
                     return Ok(self.state.current_state);
                 }
 
-                log::debug!(
+                tracing::debug!(
                     "Reason for halt has changed, old reason was {:?}, new reason is {:?}",
                     &self.state.current_state,
                     &reason
@@ -360,7 +377,7 @@ impl<'probe> CoreInterface for Armv8m<'probe> {
 
         // Core is neither halted nor sleeping, so we assume it is running.
         if self.state.current_state.is_halted() {
-            log::warn!("Core is running, but we expected it to be halted");
+            tracing::warn!("Core is running, but we expected it to be halted");
         }
 
         self.state.current_state = CoreStatus::Running;
@@ -397,43 +414,90 @@ impl<'probe> MemoryInterface for Armv8m<'probe> {
         self.memory.supports_native_64bit_access()
     }
     fn read_word_32(&mut self, address: u64) -> Result<u32, Error> {
-        self.memory.read_word_32(address)
+        self.memory
+            .read_word_32(address)
+            .map_err(From::<ArmError>::from)
     }
     fn read_word_8(&mut self, address: u64) -> Result<u8, Error> {
-        self.memory.read_word_8(address)
+        self.memory
+            .read_word_8(address)
+            .map_err(From::<ArmError>::from)
     }
+
     fn read_64(&mut self, address: u64, data: &mut [u64]) -> Result<(), crate::error::Error> {
-        self.memory.read_64(address, data)
+        self.memory
+            .read_64(address, data)
+            .map_err(From::<ArmError>::from)
     }
+
     fn read_32(&mut self, address: u64, data: &mut [u32]) -> Result<(), Error> {
-        self.memory.read_32(address, data)
+        self.memory
+            .read_32(address, data)
+            .map_err(From::<ArmError>::from)
     }
+
     fn read_8(&mut self, address: u64, data: &mut [u8]) -> Result<(), Error> {
-        self.memory.read_8(address, data)
+        self.memory
+            .read_8(address, data)
+            .map_err(From::<ArmError>::from)
     }
+
     fn read_word_64(&mut self, address: u64) -> Result<u64, crate::error::Error> {
-        self.memory.read_word_64(address)
+        self.memory
+            .read_word_64(address)
+            .map_err(From::<ArmError>::from)
     }
+
     fn write_word_64(&mut self, address: u64, data: u64) -> Result<(), crate::error::Error> {
-        self.memory.write_word_64(address, data)
+        self.memory
+            .write_word_64(address, data)
+            .map_err(From::<ArmError>::from)
     }
+
     fn write_word_32(&mut self, address: u64, data: u32) -> Result<(), Error> {
-        self.memory.write_word_32(address, data)
+        self.memory
+            .write_word_32(address, data)
+            .map_err(From::<ArmError>::from)
     }
+
     fn write_word_8(&mut self, address: u64, data: u8) -> Result<(), Error> {
-        self.memory.write_word_8(address, data)
+        self.memory
+            .write_word_8(address, data)
+            .map_err(From::<ArmError>::from)
     }
+
     fn write_64(&mut self, address: u64, data: &[u64]) -> Result<(), crate::error::Error> {
-        self.memory.write_64(address, data)
+        self.memory
+            .write_64(address, data)
+            .map_err(From::<ArmError>::from)
     }
+
     fn write_32(&mut self, address: u64, data: &[u32]) -> Result<(), Error> {
-        self.memory.write_32(address, data)
+        self.memory
+            .write_32(address, data)
+            .map_err(From::<ArmError>::from)
     }
+
     fn write_8(&mut self, address: u64, data: &[u8]) -> Result<(), Error> {
-        self.memory.write_8(address, data)
+        self.memory
+            .write_8(address, data)
+            .map_err(From::<ArmError>::from)
     }
+
+    fn write(&mut self, address: u64, data: &[u8]) -> Result<(), Error> {
+        self.memory
+            .write(address, data)
+            .map_err(From::<ArmError>::from)
+    }
+
+    fn supports_8bit_transfers(&self) -> Result<bool, Error> {
+        self.memory
+            .supports_8bit_transfers()
+            .map_err(From::<ArmError>::from)
+    }
+
     fn flush(&mut self) -> Result<(), Error> {
-        self.memory.flush()
+        self.memory.flush().map_err(From::<ArmError>::from)
     }
 }
 

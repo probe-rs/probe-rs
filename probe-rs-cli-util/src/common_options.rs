@@ -9,15 +9,15 @@
 //!
 //! #[derive(clap::Parser)]
 //! struct Opts {
-//!     #[structopt(long = "some-opt")]
+//!     #[clap(long = "some-opt")]
 //!     opt: String,
 //!
-//!     #[structopt(flatten)]
+//!     #[clap(flatten)]
 //!     flash_options: FlashOptions,
 //! }
 //!
 //! fn main() {
-//!     let opts = Opts::from_iter(std::env::args());
+//!     let opts = Opts::parse();
 //!
 //!     opts.flash_options.probe_options.maybe_load_chip_desc().unwrap();
 //!
@@ -45,68 +45,66 @@ use probe_rs::{
 };
 
 /// Common options when flashing a target device.
-#[derive(Debug, clap::StructOpt)]
+#[derive(Debug, clap::Parser)]
 pub struct FlashOptions {
-    #[structopt(short = 'V', long = "version")]
-    pub version: bool,
-    #[structopt(name = "list-chips", long = "list-chips")]
+    #[clap(name = "list-chips", long = "list-chips")]
     pub list_chips: bool,
-    #[structopt(
+    #[clap(
         name = "list-probes",
         long = "list-probes",
         help = "Lists all the connected probes that can be seen.\n\
         If udev rules or permissions are wrong, some probes might not be listed."
     )]
     pub list_probes: bool,
-    #[structopt(name = "disable-progressbars", long = "disable-progressbars")]
+    #[clap(name = "disable-progressbars", long = "disable-progressbars")]
     pub disable_progressbars: bool,
-    #[structopt(
+    #[clap(
         long = "disable-double-buffering",
         help = "Use this flag to disable double-buffering when downloading flash data.  If download fails during\
         programming with timeout errors, try this option."
     )]
     pub disable_double_buffering: bool,
-    #[structopt(
+    #[clap(
         name = "reset-halt",
         long = "reset-halt",
         help = "Use this flag to reset and halt (instead of just a reset) the attached core after flashing the target."
     )]
     pub reset_halt: bool,
-    #[structopt(
+    #[clap(
         name = "level",
         long = "log",
         help = "Use this flag to set the log level.\n\
         Default is `warning`. Possible choices are [error, warning, info, debug, trace]."
     )]
     pub log: Option<log::Level>,
-    #[structopt(
+    #[clap(
         name = "restore-unwritten",
         long = "restore-unwritten",
         help = "Enable this flag to restore all bytes erased in the sector erase but not overwritten by any page."
     )]
     pub restore_unwritten: bool,
-    #[structopt(
+    #[clap(
         name = "filename",
         long = "flash-layout",
         help = "Requests the flash builder to output the layout into the given file in SVG format."
     )]
     pub flash_layout_output_path: Option<String>,
-    #[structopt(
+    #[clap(
         name = "elf file",
         long = "elf",
         help = "The path to the ELF file to be flashed."
     )]
     pub elf: Option<PathBuf>,
-    #[structopt(
+    #[clap(
         name = "directory",
         long = "work-dir",
         help = "The work directory from which cargo-flash should operate from."
     )]
     pub work_dir: Option<PathBuf>,
-    #[structopt(flatten)]
+    #[clap(flatten)]
     /// Arguments which are forwarded to 'cargo build'.
     pub cargo_options: CargoOptions,
-    #[structopt(flatten)]
+    #[clap(flatten)]
     /// Argument relating to probe/chip selection/configuration.
     pub probe_options: ProbeOptions,
 }
@@ -308,7 +306,7 @@ impl ProbeOptions {
         let mut loader = FlashLoader::new(target.memory_map.to_vec(), target.source().clone());
 
         // Add data from the ELF.
-        let mut file = File::open(&elf_path).map_err(|error| OperationError::FailedToOpenElf {
+        let mut file = File::open(elf_path).map_err(|error| OperationError::FailedToOpenElf {
             source: error,
             path: elf_path.to_path_buf(),
         })?;
@@ -323,27 +321,27 @@ impl ProbeOptions {
 }
 
 /// Common options used when building artifacts with cargo.
-#[derive(clap::StructOpt, Debug, Default)]
+#[derive(clap::Parser, Debug, Default)]
 pub struct CargoOptions {
-    #[structopt(name = "binary", long = "bin", hide = true)]
+    #[clap(name = "binary", long = "bin", hide = true)]
     pub bin: Option<String>,
-    #[structopt(name = "example", long = "example", hide = true)]
+    #[clap(name = "example", long = "example", hide = true)]
     pub example: Option<String>,
-    #[structopt(name = "package", short = 'p', long = "package", hide = true)]
+    #[clap(name = "package", short = 'p', long = "package", hide = true)]
     pub package: Option<String>,
-    #[structopt(name = "release", long = "release", hide = true)]
+    #[clap(name = "release", long = "release", hide = true)]
     pub release: bool,
-    #[structopt(name = "target", long = "target", hide = true)]
+    #[clap(name = "target", long = "target", hide = true)]
     pub target: Option<String>,
-    #[structopt(name = "PATH", long = "manifest-path", hide = true)]
+    #[clap(name = "PATH", long = "manifest-path", hide = true)]
     pub manifest_path: Option<PathBuf>,
-    #[structopt(long, hide = true)]
+    #[clap(long, hide = true)]
     pub no_default_features: bool,
-    #[structopt(long, hide = true)]
+    #[clap(long, hide = true)]
     pub all_features: bool,
-    #[structopt(long, hide = true)]
+    #[clap(long, hide = true)]
     pub features: Vec<String>,
-    #[structopt(hide = true)]
+    #[clap(hide = true)]
     /// Escape hatch: all args passed after a sentinel `--` end up here,
     /// unprocessed. Used to pass arguments to cargo not declared in
     /// [CargoOptions].
@@ -355,13 +353,15 @@ impl CargoOptions {
     /// --help. Example usage:
     /// ```no_run
     /// use probe_rs_cli_util::common_options::{FlashOptions, CargoOptions};
-    /// use probe_rs_cli_util::clap::Parser;
+    /// use probe_rs_cli_util::clap::{Parser, CommandFactory, FromArgMatches};
     ///
-    /// let matches = FlashOptions::clap()
+    /// let help_message = CargoOptions::help_message("cargo flash");
+    ///
+    /// let matches = FlashOptions::command()
     ///     .bin_name("cargo flash")
-    ///     .after_help(CargoOptions::help_message("cargo flash").as_str())
+    ///     .after_help(&help_message)
     ///     .get_matches_from(std::env::args());
-    /// let opts = FlashOptions::from_clap(&matches);
+    /// let opts = FlashOptions::from_arg_matches(&matches);
     /// ```
     pub fn help_message(bin: &str) -> String {
         format!(
@@ -383,11 +383,10 @@ CARGO BUILD OPTIONS:
     Additionally, all options passed after a sentinel '--'
     are also forwarded.
 
-    For example, if you run the command '{} --release -- \
+    For example, if you run the command '{bin} --release -- \
     --some-cargo-flag', this means that 'cargo build \
     --release --some-cargo-flag' will be called.
-"#,
-            bin
+"#
         )
     }
 
@@ -457,7 +456,7 @@ pub enum OperationError {
     FlashingFailed {
         #[source]
         source: FlashError,
-        target: Target,
+        target: Box<Target>, // Box to reduce enum size
         target_spec: Option<String>,
         path: PathBuf,
     },
@@ -493,7 +492,7 @@ pub enum OperationError {
         source: DebugProbeError,
         protocol: WireProtocol,
     },
-    #[error("The protocol speed coudl not be set to '{speed}' kHz.")]
+    #[error("The protocol speed could not be set to '{speed}' kHz.")]
     FailedToSelectProtocolSpeed {
         #[source]
         source: DebugProbeError,
@@ -532,7 +531,7 @@ pub fn list_connected_probes(mut f: impl Write) -> Result<(), std::io::Error> {
     if !probes.is_empty() {
         writeln!(f, "The following debug probes were found:")?;
         for (num, link) in probes.iter().enumerate() {
-            writeln!(f, "[{}]: {:?}", num, link)?;
+            writeln!(f, "[{num}]: {link:?}")?;
         }
     } else {
         writeln!(f, "No debug probes were found.")?;

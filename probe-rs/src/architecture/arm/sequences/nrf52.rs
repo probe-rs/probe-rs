@@ -2,11 +2,12 @@
 
 use std::sync::Arc;
 
-use super::ArmDebugSequence;
-use crate::{
-    architecture::arm::{component::TraceSink, memory::CoresightComponent, ArmProbeInterface},
-    Error,
+use super::{ArmDebugSequence, ArmDebugSequenceError};
+use crate::architecture::arm::{
+    ap::MemoryAp, component::TraceSink, memory::CoresightComponent, ApAddress, ArmError,
+    ArmProbeInterface, DpAddress,
 };
+use crate::session::MissingPermissions;
 
 /// An error when operating a core ROM table component occurred.
 #[derive(thiserror::Error, Debug)]
@@ -20,6 +21,11 @@ pub enum ComponentError {
     NordicNoTraceMem,
 }
 
+const RESET: u8 = 0x00;
+const ERASEALL: u8 = 0x04;
+const ERASEALLSTATUS: u8 = 0x08;
+const APPROTECTSTATUS: u8 = 0x0C;
+
 /// Marker struct indicating initialization sequencing for nRF52 family parts.
 pub struct Nrf52 {}
 
@@ -28,10 +34,19 @@ impl Nrf52 {
     pub fn create() -> Arc<Self> {
         Arc::new(Self {})
     }
+
+    fn is_core_unlocked(
+        &self,
+        iface: &mut dyn ArmProbeInterface,
+        ctrl_ap: ApAddress,
+    ) -> Result<bool, ArmError> {
+        let status = iface.read_raw_ap_register(ctrl_ap, APPROTECTSTATUS)?;
+        Ok(status != 0)
+    }
 }
 
 mod clock {
-    use crate::Memory;
+    use crate::architecture::arm::{memory::adi_v5_memory_interface::ArmProbe, ArmError};
     use bitfield::bitfield;
 
     /// The base address of the DBGMCU component
@@ -53,31 +68,72 @@ mod clock {
         const ADDRESS: u64 = 0x55C;
 
         /// Read the control register from memory.
-        pub fn read(memory: &mut Memory<'_>) -> Result<Self, crate::Error> {
+        pub fn read(memory: &mut dyn ArmProbe) -> Result<Self, ArmError> {
             let contents = memory.read_word_32(CLOCK + Self::ADDRESS)?;
             Ok(Self(contents))
         }
 
         /// Write the control register to memory.
-        pub fn write(&mut self, memory: &mut Memory<'_>) -> Result<(), crate::Error> {
+        pub fn write(&mut self, memory: &mut dyn ArmProbe) -> Result<(), ArmError> {
             memory.write_word_32(CLOCK + Self::ADDRESS, self.0)
         }
     }
 }
 
 impl ArmDebugSequence for Nrf52 {
+    fn debug_device_unlock(
+        &self,
+        iface: &mut dyn ArmProbeInterface,
+        _default_ap: MemoryAp,
+        permissions: &crate::Permissions,
+    ) -> Result<(), ArmError> {
+        let ctrl_ap = ApAddress {
+            ap: 1,
+            dp: DpAddress::Default,
+        };
+
+        tracing::info!("Checking if core is unlocked");
+        if self.is_core_unlocked(iface, ctrl_ap)? {
+            tracing::info!("Core is already unlocked");
+            return Ok(());
+        }
+
+        tracing::warn!("Core is locked. Erase procedure will be started to unlock it.");
+        permissions
+            .erase_all()
+            .map_err(|MissingPermissions(desc)| ArmError::MissingPermissions(desc))?;
+
+        // Reset
+        iface.write_raw_ap_register(ctrl_ap, RESET, 1)?;
+        iface.write_raw_ap_register(ctrl_ap, RESET, 0)?;
+
+        // Start erase
+        iface.write_raw_ap_register(ctrl_ap, ERASEALL, 1)?;
+
+        // Wait for erase done
+        while iface.read_raw_ap_register(ctrl_ap, ERASEALLSTATUS)? != 0 {}
+
+        // Reset again
+        iface.write_raw_ap_register(ctrl_ap, RESET, 1)?;
+        iface.write_raw_ap_register(ctrl_ap, RESET, 0)?;
+
+        if !self.is_core_unlocked(iface, ctrl_ap)? {
+            return Err(ArmDebugSequenceError::custom("Could not unlock core").into());
+        }
+
+        Err(ArmError::ReAttachRequired)
+    }
+
     fn trace_start(
         &self,
-        interface: &mut Box<dyn ArmProbeInterface>,
+        interface: &mut dyn ArmProbeInterface,
         components: &[CoresightComponent],
         sink: &TraceSink,
-    ) -> Result<(), crate::Error> {
+    ) -> Result<(), ArmError> {
         let tpiu_clock = match sink {
             TraceSink::TraceMemory => {
-                log::error!("nRF52 does not have a trace buffer");
-                return Err(Error::architecture_specific(
-                    ComponentError::NordicNoTraceMem,
-                ));
+                tracing::error!("nRF52 does not have a trace buffer");
+                return Err(ArmError::from(ComponentError::NordicNoTraceMem));
             }
 
             TraceSink::Tpiu(config) => config.tpiu_clk(),
@@ -91,13 +147,13 @@ impl ArmDebugSequence for Nrf52 {
             32_000_000 => 0,
             tpiu_clk => {
                 let e = ComponentError::NordicUnsupportedTPUICLKValue(tpiu_clk);
-                log::error!("{:?}", e);
-                return Err(Error::architecture_specific(e));
+                tracing::error!("{:?}", e);
+                return Err(ArmError::from(e));
             }
         };
 
         let mut memory = interface.memory_interface(components[0].ap)?;
-        let mut config = clock::TraceConfig::read(&mut memory)?;
+        let mut config = clock::TraceConfig::read(&mut *memory)?;
         config.set_traceportspeed(portspeed);
         if matches!(sink, TraceSink::Tpiu(_)) {
             config.set_tracemux(2);
@@ -105,8 +161,14 @@ impl ArmDebugSequence for Nrf52 {
             config.set_tracemux(1);
         }
 
-        config.write(&mut memory)?;
+        config.write(&mut *memory)?;
 
         Ok(())
+    }
+}
+
+impl From<ComponentError> for ArmError {
+    fn from(value: ComponentError) -> ArmError {
+        ArmError::DebugSequence(ArmDebugSequenceError::custom(value))
     }
 }

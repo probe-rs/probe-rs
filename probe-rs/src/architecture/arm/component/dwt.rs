@@ -10,19 +10,19 @@ use bitfield::bitfield;
 
 use super::super::memory::romtable::CoresightComponent;
 use super::DebugRegister;
-use crate::architecture::arm::ArmProbeInterface;
+use crate::architecture::arm::{ArmError, ArmProbeInterface};
 use crate::Error;
 
 /// A struct representing a DWT unit on target.
 pub struct Dwt<'a> {
     component: &'a CoresightComponent,
-    interface: &'a mut Box<dyn ArmProbeInterface>,
+    interface: &'a mut dyn ArmProbeInterface,
 }
 
 impl<'a> Dwt<'a> {
     /// Creates a new DWT component representation.
     pub fn new(
-        interface: &'a mut Box<dyn ArmProbeInterface>,
+        interface: &'a mut dyn ArmProbeInterface,
         component: &'a CoresightComponent,
     ) -> Self {
         Dwt {
@@ -35,18 +35,18 @@ impl<'a> Dwt<'a> {
     pub fn info(&mut self) -> Result<(), Error> {
         let ctrl = Ctrl::load(self.component, self.interface)?;
 
-        log::info!("DWT info:");
-        log::info!("  number of comparators available: {}", ctrl.numcomp());
-        log::info!("  trace sampling support: {}", !ctrl.notrcpkt());
-        log::info!("  compare match support: {}", !ctrl.noexttrig());
-        log::info!("  cyccnt support: {}", !ctrl.nocyccnt());
-        log::info!("  performance counter support: {}", !ctrl.noprfcnt());
+        tracing::info!("DWT info:");
+        tracing::info!("  number of comparators available: {}", ctrl.numcomp());
+        tracing::info!("  trace sampling support: {}", !ctrl.notrcpkt());
+        tracing::info!("  compare match support: {}", !ctrl.noexttrig());
+        tracing::info!("  cyccnt support: {}", !ctrl.nocyccnt());
+        tracing::info!("  performance counter support: {}", !ctrl.noprfcnt());
 
         Ok(())
     }
 
     /// Enables the DWT component.
-    pub fn enable(&mut self) -> Result<(), Error> {
+    pub fn enable(&mut self) -> Result<(), ArmError> {
         let mut ctrl = Ctrl::load(self.component, self.interface)?;
         ctrl.set_synctap(0x01);
         ctrl.set_cyccntena(true);
@@ -54,7 +54,7 @@ impl<'a> Dwt<'a> {
     }
 
     /// Enables data tracing on a specific address in memory on a specific DWT unit.
-    pub fn enable_data_trace(&mut self, unit: usize, address: u32) -> Result<(), Error> {
+    pub fn enable_data_trace(&mut self, unit: usize, address: u32) -> Result<(), ArmError> {
         let mut comp = Comp::load_unit(self.component, self.interface, unit)?;
         comp.set_comp(address);
         comp.store_unit(self.component, self.interface, unit)?;
@@ -74,21 +74,21 @@ impl<'a> Dwt<'a> {
     }
 
     /// Disables data tracing on the given unit.
-    pub fn disable_data_trace(&mut self, unit: usize) -> Result<(), Error> {
+    pub fn disable_data_trace(&mut self, unit: usize) -> Result<(), ArmError> {
         let mut function = Function::load_unit(self.component, self.interface, unit)?;
         function.set_function(0x0);
         function.store_unit(self.component, self.interface, unit)
     }
 
     /// Enable exception tracing.
-    pub fn enable_exception_trace(&mut self) -> Result<(), Error> {
+    pub fn enable_exception_trace(&mut self) -> Result<(), ArmError> {
         let mut ctrl = Ctrl::load(self.component, self.interface)?;
         ctrl.set_exctrcena(true);
         ctrl.store(self.component, self.interface)
     }
 
     /// Disable exception tracing.
-    pub fn disable_exception_trace(&mut self) -> Result<(), Error> {
+    pub fn disable_exception_trace(&mut self) -> Result<(), ArmError> {
         let mut ctrl = Ctrl::load(self.component, self.interface)?;
         ctrl.set_exctrcena(false);
         ctrl.store(self.component, self.interface)

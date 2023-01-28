@@ -1,4 +1,7 @@
-use crate::debug_adapter::{dap_adapter::*, protocol::ProtocolAdapter};
+use crate::{
+    debug_adapter::{dap_adapter::*, protocol::ProtocolAdapter},
+    DebuggerError,
+};
 use probe_rs::Core;
 use probe_rs_cli_util::rtt;
 
@@ -55,7 +58,15 @@ impl DebuggerRttChannel {
                     }
                 })
                 .and_then(|rtt_channel| {
-                    rtt_channel.get_rtt_data(core, rtt_target.defmt_state.as_ref())
+                    match rtt_channel.get_rtt_data(core, rtt_target.defmt_state.as_ref()) {
+                        Ok(data_result) => data_result,
+                        Err(rtt_error) => {
+                            debug_adapter
+                                .send_error_response(&DebuggerError::Other(rtt_error))
+                                .ok();
+                            None
+                        }
+                    }
                 })
                 .and_then(|(channel_number, channel_data)| {
                     if debug_adapter

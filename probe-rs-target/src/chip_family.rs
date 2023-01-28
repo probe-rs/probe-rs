@@ -82,8 +82,10 @@ pub enum InstructionSet {
     A32,
     /// ARM A64 (aarch64) instruction set
     A64,
-    /// RISC-V 32-bit instruction set
+    /// RISC-V 32-bit uncompressed instruction sets (RV32) - covers all ISA variants that use 32-bit instructions.
     RV32,
+    /// RISC-V 32-bit compressed instruction sets (RV32C) - covers all ISA variants that allow compressed 16-bit instructions.
+    RV32C,
 }
 
 impl InstructionSet {
@@ -96,21 +98,13 @@ impl InstructionSet {
             }
             InstructionSet::A32 => 4,
             InstructionSet::A64 => 4,
-            InstructionSet::RV32 => {
-                // Assume that we are using the RV32C (compressed) instruction set.
-                // TODO: Need an impl of RV32 and RV32C to properly differentiate this, then we don't need to assume.
-                2
-            }
+            InstructionSet::RV32 => 4,
+            InstructionSet::RV32C => 2,
         }
     }
-    /// Get the maximum instruction size in bytes.
+    /// Get the maximum instruction size in bytes. All supported architectures have a maximum instruction size of 4 bytes.
     pub fn get_maximum_instruction_size(&self) -> u8 {
-        match self {
-            InstructionSet::Thumb2 => 4,
-            InstructionSet::A32 => 4,
-            InstructionSet::A64 => 4,
-            InstructionSet::RV32 => 4,
-        }
+        4
     }
 }
 
@@ -124,16 +118,21 @@ pub struct ChipFamily {
     /// E.g. `nRF52832`.
     pub name: String,
     /// The JEP106 code of the manufacturer.
-    #[cfg_attr(
-        not(feature = "bincode"),
-        serde(skip_serializing_if = "Option::is_none")
-    )]
     pub manufacturer: Option<JEP106Code>,
+    /// The `target-gen` process will set this to `true`.
+    /// Please change this to `false` if this file is modified from the generated, or is a manually created target description.
+    #[serde(default)]
+    pub generated_from_pack: bool,
+    /// The latest release of the pack file from which this was generated.
+    /// Values:
+    /// - `Some("1.3.0")` if the latest pack file release was for example "1.3.0".
+    /// - `None` if this was not generated from a pack file, or has been modified since it was generated.
+    #[serde(default)]
+    pub pack_file_release: Option<String>,
     /// This vector holds all the variants of the family.
     pub variants: Vec<Chip>,
     /// This vector holds all available algorithms.
     pub flash_algorithms: Vec<RawFlashAlgorithm>,
-
     #[serde(skip, default = "default_source")]
     /// Source of the target description, used for diagnostics
     pub source: TargetDescriptionSource,

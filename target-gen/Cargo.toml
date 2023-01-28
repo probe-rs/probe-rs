@@ -1,41 +1,42 @@
 [package]
 name = "target-gen"
-version = "0.13.0"
+version.workspace = true
 authors = ["Noah Huesser <yatekii@yatekii.ch>"]
-edition = "2018"
+edition.workspace = true
 description = "A cli tool to create new target files for probe-rs ot of CMSIS-Packs."
-documentation = "https://docs.rs/probe-rs/"
-homepage = "https://github.com/probe-rs/probe-rs"
-repository = "https://github.com/probe-rs/probe-rs"
-readme = "../README.md"
+documentation.workspace = true
+homepage.workspace = true
+repository.workspace = true
+readme = "README.md"
 categories = ["embedded", "hardware-support", "development-tools::debugging"]
 keywords = ["embedded"]
-license = "MIT OR Apache-2.0"
+license.workspace = true
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-probe-rs = { path = "../probe-rs", version = "0.13.0", default-features = false }
-probe-rs-target = { path = "../probe-rs-target", version = "0.13.0", default-features = false }
-cmsis-pack = { version = "0.6.0" }
-
-# , path = "../cmsis-pack-manager/rust/cmsis-pack"
-# , git = "https://github.com/probe-rs/cmsis-pack-manager.git"
-
-goblin = "0.5.1"
+probe-rs = { path = "../probe-rs", version = "0.14.2", default-features = false }
+probe-rs-target = { path = "../probe-rs-target", version = "0.14.2", default-features = false }
+cmsis-pack = { version = "0.6.1" }
+goblin = { version = "0.6.0", default-features = false, features = [
+    "elf32",
+    "elf64",
+    "endian_fd",
+    "archive",
+    "std",
+] }
 scroll = "0.11.0"
-serde_yaml = "0.9.0"
+serde_yaml = "^0.9"
 log = "0.4.16"
 zip = "0.6.2"
-clap = { version = "3.1", features = ["derive"] }
-base64 = "0.13.0"
-simplelog = "0.12.0"
+clap = { version = "4.1", features = ["derive"] }
+base64 = "0.21.0"
 anyhow = "1.0.57"
 reqwest = { version = "0.11.10", features = ["json", "blocking"] }
-serde = { version = "1.0.136", features = ["derive"] }
-# chrono = { version = "0.4.0", features = ["serde"] }
+serde = { version = "1", features = ["derive"] }
 futures = "0.3.21"
 tokio = { version = "1.18.0", features = ["macros", "rt", "rt-multi-thread"] }
+tracing-subscriber = { version = "0.3.16", features = ["env-filter"] }
 
 [dev-dependencies]
 assert_cmd = "2.0.4"

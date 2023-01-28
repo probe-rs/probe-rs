@@ -16,6 +16,7 @@ mod chip_family;
 mod flash_algorithm;
 mod flash_properties;
 mod memory;
+pub(crate) mod serialize;
 
 pub use chip::{ArmCoreAccessOptions, Chip, Core, CoreAccessOptions, RiscvCoreAccessOptions};
 pub use chip_family::{
@@ -24,5 +25,6 @@ pub use chip_family::{
 pub use flash_algorithm::RawFlashAlgorithm;
 pub use flash_properties::FlashProperties;
 pub use memory::{
-    MemoryRange, MemoryRegion, NvmRegion, PageInfo, RamRegion, SectorDescription, SectorInfo,
+    GenericRegion, MemoryRange, MemoryRegion, NvmRegion, PageInfo, RamRegion, SectorDescription,
+    SectorInfo,
 };

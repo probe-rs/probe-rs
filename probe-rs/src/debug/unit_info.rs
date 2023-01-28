@@ -33,7 +33,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
         stackframe_registers: Option<&DebugRegisters>,
         find_inlined: bool,
     ) -> Result<Vec<FunctionDie>, DebugError> {
-        log::trace!("Searching Function DIE for address {}", address);
+        tracing::trace!("Searching Function DIE for address {}", address);
 
         let mut entries_cursor = self.unit.entries();
         while let Ok(Some((_depth, current))) = entries_cursor.next_dfs() {
@@ -61,7 +61,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                     die.frame_base = Some(address);
                                 }
                             } else {
-                                log::trace!(
+                                tracing::trace!(
                                 "No stackframe registers provided, skipping frame_base calculation for function DIE."
                             );
                             }
@@ -70,7 +70,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                             let mut functions = vec![die];
 
                             if find_inlined {
-                                log::debug!(
+                                tracing::debug!(
                                     "Found DIE, now checking for inlined functions: name={:?}",
                                     functions[0].function_name()
                                 );
@@ -82,9 +82,9 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                 )?;
 
                                 if inlined_functions.is_empty() {
-                                    log::debug!("No inlined function found!");
+                                    tracing::debug!("No inlined function found!");
                                 } else {
-                                    log::debug!(
+                                    tracing::debug!(
                                         "{} inlined functions for address {}",
                                         inlined_functions.len(),
                                         address
@@ -94,7 +94,10 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
 
                                 return Ok(functions);
                             } else {
-                                log::debug!("Found DIE: name={:?}", functions[0].function_name());
+                                tracing::debug!(
+                                    "Found DIE: name={:?}",
+                                    functions[0].function_name()
+                                );
                             }
                             return Ok(functions);
                         }
@@ -159,13 +162,15 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                             }
                                         }
                                     }
-                                    other_value => log::warn!(
+                                    other_value => tracing::warn!(
                                         "Unsupported DW_AT_abstract_origin value: {:?}",
                                         other_value
                                     ),
                                 }
                             } else {
-                                log::warn!("No abstract origin for inlined function, skipping.");
+                                tracing::warn!(
+                                    "No abstract origin for inlined function, skipping."
+                                );
                                 return Ok(vec![]);
                             }
                         }
@@ -219,8 +224,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                 ),
                 other_attribute_value => {
                     child_variable.set_value(VariableValue::Error(format!(
-                        "Unimplemented: Attribute Value for DW_AT_abstract_origin {:?}",
-                        other_attribute_value
+                        "Unimplemented: Attribute Value for DW_AT_abstract_origin {other_attribute_value:?}"
                     )));
                     None
                 }
@@ -276,7 +280,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
             },
             Err(debug_error) => {
                 // An Err() result indicates something happened that we have not accounted for, and therefore will propogate upwards to terminate the process in an ungraceful manner. This should be treated as a bug.
-                log::error!("Encounted an unexpected error while resolving the location for variable {:?}. Please report this as a bug", child_variable.name);
+                tracing::error!("Encounted an unexpected error while resolving the location for variable {:?}. Please report this as a bug", child_variable.name);
                 return Err(debug_error);
             }
         }
@@ -374,8 +378,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                             }
                             other_attribute_value => {
                                 child_variable.set_value(VariableValue::Error(format!(
-                                    "Unimplemented: Attribute Value for DW_AT_type {:?}",
-                                    other_attribute_value
+                                    "Unimplemented: Attribute Value for DW_AT_type {other_attribute_value:?}"
                                 )));
                             }
                         }
@@ -389,15 +392,13 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                 )));
                             } else {
                                 child_variable.set_value(VariableValue::Error(format!(
-                                    "Unimplemented: Flag Value for DW_AT_enum_class {:?}",
-                                    is_enum_class
+                                    "Unimplemented: Flag Value for DW_AT_enum_class {is_enum_class:?}"
                                 )));
                             }
                         }
                         other_attribute_value => {
                             child_variable.set_value(VariableValue::Error(format!(
-                                "Unimplemented: Attribute Value for DW_AT_enum_class: {:?}",
-                                other_attribute_value
+                                "Unimplemented: Attribute Value for DW_AT_enum_class: {other_attribute_value:?}"
                             )));
                         }
                     },
@@ -407,8 +408,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                         }
                         other_attribute_value => {
                             child_variable.set_value(VariableValue::Error(format!(
-                                "Unimplemented: Attribute Value for DW_AT_const_value: {:?}",
-                                other_attribute_value
+                                "Unimplemented: Attribute Value for DW_AT_const_value: {other_attribute_value:?}"
                             )));
                         }
                     },
@@ -451,16 +451,14 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                     discriminant_variable
                                         .get_value(cache)
                                         .parse()
-                                        .unwrap_or(u64::MAX)
-                                        as u64,
+                                        .unwrap_or(u64::MAX),
                                 );
                             }
                             cache.remove_cache_entry(discriminant_variable.variable_key)?;
                         }
                         other_attribute_value => {
                             child_variable.set_value(VariableValue::Error(format!(
-                                "Unimplemented: Attribute Value for DW_AT_discr {:?}",
-                                other_attribute_value
+                                "Unimplemented: Attribute Value for DW_AT_discr {other_attribute_value:?}"
                             )));
                         }
                     },
@@ -513,10 +511,12 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                         // Processed by `extract_type()`
                     }
                     other_attribute => {
+                        #[allow(clippy::format_in_format_args)]
+                        // This follows the examples of the "format!" documenation as the way to limit string length of a {:?} parameter.
                         child_variable.set_value(VariableValue::Error(format!(
-                            "Unimplemented: Variable Attribute {:?} : {:?}, with children = {}",
-                            other_attribute.static_string(),
-                            tree_node.entry().attr_value(other_attribute),
+                            "Unimplemented: Variable Attribute {:.100} : {:.100}, with children = {}",
+                            format!("{:?}", other_attribute.static_string()),
+                            format!("{:?}", tree_node.entry().attr_value(other_attribute)),
                             tree_node.entry().has_children()
                         )));
                     }
@@ -548,12 +548,13 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
             {
                 program_counter.try_into()?
             } else {
-                return Err(DebugError::Other(anyhow::anyhow!(
-                    "Cannot unwind `Variable` without a valid PC (program_counter)"
-                )));
+                return Err(DebugError::UnwindIncompleteResults {
+                    message: "Cannot unwind `Variable` without a valid PC (program_counter)"
+                        .to_string(),
+                });
             };
 
-            log::trace!("process_tree for parent {}", parent_variable.variable_key);
+            tracing::trace!("process_tree for parent {}", parent_variable.variable_key);
 
             let mut child_nodes = parent_node.children();
             while let Some(mut child_node) = child_nodes.next()? {
@@ -593,7 +594,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                             VariableName::Namespace(name) => {
                                             VariableName::Namespace(format!("{}::{}", name, extract_name(self.debug_info, attr.value())))
                                             }
-                                            other => return Err(DebugError::Other(anyhow::anyhow!("Unable to construct namespace variable, unexpected parent name: {:?}", other)))
+                                            other => return Err(DebugError::UnwindIncompleteResults {message: format!("Unable to construct namespace variable, unexpected parent name: {other:?}")})
                                         }
 
                                     } else { VariableName::AnonymousNamespace};
@@ -614,9 +615,10 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                             cache.remove_cache_entry(namespace_variable.variable_key)?;
                         }
                     }
-                    gimli::DW_TAG_variable |    // Typical top-level variables.
-                    gimli::DW_TAG_member |      // Members of structured types.
-                    gimli::DW_TAG_enumerator    // Possible values for enumerators, used by extract_type() when processing DW_TAG_enumeration_type.
+                    gimli::DW_TAG_formal_parameter | // Parameters to functions.
+                    gimli::DW_TAG_variable         | // Typical top-level variables.
+                    gimli::DW_TAG_member           | // Members of structured types.
+                    gimli::DW_TAG_enumerator         // Possible values for enumerators, used by extract_type() when processing DW_TAG_enumeration_type.
                     => {
                         let mut child_variable = cache.cache_variable(Some(parent_variable.variable_key), Variable::new(
                         self.unit.header.offset().as_debug_info_offset(),
@@ -712,7 +714,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                         let mut in_scope =  false;
                         if let Ok(Some(low_pc_attr)) = child_node.entry().attr(gimli::DW_AT_low_pc) {
                             let low_pc = match low_pc_attr.value() {
-                                gimli::AttributeValue::Addr(value) => value as u64,
+                                gimli::AttributeValue::Addr(value) => value,
                                 _other => u64::MAX,
                             };
                             let high_pc = if let Ok(Some(high_pc_attr))
@@ -777,7 +779,6 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                     other => {
                         // One of two things are true here. Either we've encountered a DwTag that is implemented in `extract_type`, and whould be ignored, or we have encountered an unimplemented  DwTag.
                         match other {
-                            gimli::DW_TAG_formal_parameter | // Parameters to functions are not included in our processing of variables.
                             gimli::DW_TAG_inlined_subroutine | // Inlined subroutines are handled at the [StackFame] level
                             gimli::DW_TAG_base_type |
                             gimli::DW_TAG_pointer_type |
@@ -818,7 +819,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                     VariantRole::Variant(const_value as u64)
                                 }
                                 other_attribute_value => {
-                                    variable.set_value(VariableValue::Error(format!("Unimplemented: Attribute Value for DW_AT_discr_value: {:?}", other_attribute_value)));
+                                    variable.set_value(VariableValue::Error(format!("Unimplemented: Attribute Value for DW_AT_discr_value: {:.100}", format!("{other_attribute_value:?}"))));
                                     VariantRole::Variant(u64::MAX)
                                 }
                             }
@@ -831,8 +832,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                 }
                 Err(_error) => {
                     variable.set_value(VariableValue::Error(format!(
-                        "Error: Retrieving DW_AT_discr_value for variable {:?}",
-                        variable
+                        "Error: Retrieving DW_AT_discr_value for variable {variable:?}"
                     )));
                     VariantRole::NonVariant
                 }
@@ -862,34 +862,13 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                 optional_name_attr.map(|name_attr| extract_name(self.debug_info, name_attr.value()))
             }
             Err(error) => {
-                let message = format!("Error: evaluating type name: {:?} ", error);
+                let message = format!("Error: evaluating type name: {error:?} ");
                 child_variable.set_value(VariableValue::Error(message.clone()));
                 Some(message)
             }
         };
 
         if child_variable.is_valid() {
-            match &child_variable.type_name {
-                VariableType::Struct(type_name)
-                    if type_name.starts_with("&str")
-                        || type_name.starts_with("Option")
-                        || type_name.starts_with("Some")
-                        || type_name.starts_with("Result")
-                        || type_name.starts_with("Ok")
-                        || type_name.starts_with("Err") =>
-                {
-                    // In some cases, it really simplifies the UX if we can auto resolve the children and derive a value that is visible at first glance to the user.
-                    child_variable.variable_node_type = VariableNodeType::RecurseToBaseType;
-                }
-                VariableType::Pointer(Some(name))
-                    if name.starts_with("*const") || name.starts_with("*mut") =>
-                {
-                    // In some cases, it really simplifies the UX if we can auto resolve the children and derive a value that is visible at first glance to the user.
-                    child_variable.variable_node_type = VariableNodeType::RecurseToBaseType;
-                }
-                _ => (),
-            }
-
             child_variable.byte_size = extract_byte_size(self.debug_info, node.entry());
 
             match node.entry().tag() {
@@ -899,13 +878,14 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                             VariableLocation::Address(address) => {
                                 // This is a member of an array type, and needs special handling.
                                 let (location, has_overflowed) = address.overflowing_add(
-                                    child_member_index as u64 * child_variable.byte_size as u64,
+                                    child_member_index as u64 * child_variable.byte_size,
                                 );
 
                                 if has_overflowed {
-                                    return Err(DebugError::Other(anyhow::anyhow!(
-                                        "Overflow calculating variable address"
-                                    )));
+                                    return Err(DebugError::UnwindIncompleteResults {
+                                        message: "Overflow calculating variable address"
+                                            .to_string(),
+                                    });
                                 } else {
                                     child_variable.memory_location =
                                         VariableLocation::Address(location);
@@ -931,12 +911,34 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                 Some(data_type_attribute) => {
                                     match data_type_attribute.value() {
                                         gimli::AttributeValue::UnitRef(unit_ref) => {
-                                            if child_variable.variable_node_type
-                                                == VariableNodeType::RecurseToBaseType
+                                            // The default behaviour is to defer the processing of child types.
+                                            child_variable.variable_node_type =
+                                                VariableNodeType::ReferenceOffset(unit_ref);
+                                            if let VariableType::Pointer(optional_name) =
+                                                &child_variable.type_name
                                             {
-                                                // Resolve the children of this variable, because they contain essential information required to resolve the value
-                                                child_variable.variable_node_type =
-                                                    VariableNodeType::ReferenceOffset(unit_ref);
+                                                #[allow(clippy::unwrap_used)]
+                                                // Use of `unwrap` below is safe because we first check for `is_none()`.
+                                                if optional_name.is_none()
+                                                    || optional_name
+                                                        .as_ref()
+                                                        .unwrap()
+                                                        .starts_with("*const")
+                                                    || optional_name
+                                                        .as_ref()
+                                                        .unwrap()
+                                                        .starts_with("*mut")
+                                                {
+                                                    // Resolve the children of this variable, because they contain essential information required to resolve the value
+                                                    self.debug_info.cache_deferred_variables(
+                                                        cache,
+                                                        core,
+                                                        &mut child_variable,
+                                                        stack_frame_registers,
+                                                        frame_base,
+                                                    )?;
+                                                }
+                                            } else {
                                                 self.debug_info.cache_deferred_variables(
                                                     cache,
                                                     core,
@@ -944,16 +946,13 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                                     stack_frame_registers,
                                                     frame_base,
                                                 )?;
-                                            } else {
-                                                child_variable.variable_node_type =
-                                                    VariableNodeType::ReferenceOffset(unit_ref);
                                             }
                                         }
                                         other_attribute_value => {
                                             child_variable.set_value(VariableValue::Error(
                                                 format!(
-                                            "Unimplemented: Attribute Value for DW_AT_type {:?}",
-                                            other_attribute_value
+                                            "Unimplemented: Attribute Value for DW_AT_type {:.100}",
+                                            format!("{other_attribute_value:?}")
                                         ),
                                             ));
                                         }
@@ -969,8 +968,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                         }
                         Err(error) => {
                             child_variable.set_value(VariableValue::Error(format!(
-                                "Error: Failed to decode pointer reference: {:?}",
-                                error
+                                "Error: Failed to decode pointer reference: {error:?}"
                             )));
                         }
                     }
@@ -981,13 +979,14 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                             VariableLocation::Address(address) => {
                                 // This is a member of an array type, and needs special handling.
                                 let (location, has_overflowed) = address.overflowing_add(
-                                    child_member_index as u64 * child_variable.byte_size as u64,
+                                    child_member_index as u64 * child_variable.byte_size,
                                 );
 
                                 if has_overflowed {
-                                    return Err(DebugError::Other(anyhow::anyhow!(
-                                        "Overflow calculating variable address"
-                                    )));
+                                    return Err(DebugError::UnwindIncompleteResults {
+                                        message: "Overflow calculating variable address"
+                                            .to_string(),
+                                    });
                                 } else {
                                     child_variable.memory_location =
                                         VariableLocation::Address(location);
@@ -1003,21 +1002,31 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                         VariableType::Struct(type_name.unwrap_or_else(|| "<unnamed>".to_string()));
 
                     if child_variable.memory_location != VariableLocation::Unavailable {
-                        if child_variable.variable_node_type == VariableNodeType::RecurseToBaseType
-                        {
-                            // In some cases, it really simplifies the UX if we can auto resolve the children and dreive a value that is visible at first glance to the user.
-                            child_variable = self.process_tree(
-                                node,
-                                child_variable,
-                                core,
-                                stack_frame_registers,
-                                frame_base,
-                                cache,
-                            )?;
-                        } else {
-                            // Defer the processing of child types.
+                        if let VariableType::Struct(name) = &child_variable.type_name {
+                            // The default behaviour is to defer the processing of child types.
                             child_variable.variable_node_type =
                                 VariableNodeType::TypeOffset(node.entry().offset());
+                            // In some cases, it really simplifies the UX if we can auto resolve the children and dreive a value that is visible at first glance to the user.
+                            if name.starts_with("&str")
+                                || name.starts_with("Option")
+                                || name.starts_with("Some")
+                                || name.starts_with("Result")
+                                || name.starts_with("Ok")
+                                || name.starts_with("Err")
+                            {
+                                let temp_node_type = child_variable.variable_node_type;
+                                child_variable.variable_node_type =
+                                    VariableNodeType::RecurseToBaseType;
+                                child_variable = self.process_tree(
+                                    node,
+                                    child_variable,
+                                    core,
+                                    stack_frame_registers,
+                                    frame_base,
+                                    cache,
+                                )?;
+                                child_variable.variable_node_type = temp_node_type;
+                            }
                         }
                     } else {
                         // If something is already broken, then do nothing ...
@@ -1169,8 +1178,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                                             Some(array_member_index);
                                                         array_member_variable.name =
                                                             VariableName::Named(format!(
-                                                                "__{}",
-                                                                array_member_index
+                                                                "__{array_member_index}"
                                                             ));
                                                         array_member_variable.source_location =
                                                             child_variable.source_location.clone();
@@ -1190,9 +1198,8 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                         other_attribute_value => {
                                             child_variable.set_value(VariableValue::Error(
                                                 format!(
-                                            "Unimplemented: Attribute Value for DW_AT_type {:?}",
-                                            other_attribute_value
-                                        ),
+                                                    "Unimplemented: Attribute Value for DW_AT_type {other_attribute_value:?}"
+                                                ),
                                             ));
                                         }
                                     }
@@ -1207,8 +1214,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                         }
                         Err(error) => {
                             child_variable.set_value(VariableValue::Error(format!(
-                                "Error: Failed to decode pointer reference: {:?}",
-                                error
+                                "Error: Failed to decode pointer reference: {error:?}"
                             )));
                         }
                     }
@@ -1219,13 +1225,14 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                             VariableLocation::Address(address) => {
                                 // This is a member of an array type, and needs special handling.
                                 let (location, has_overflowed) = address.overflowing_add(
-                                    child_member_index as u64 * child_variable.byte_size as u64,
+                                    child_member_index as u64 * child_variable.byte_size,
                                 );
 
                                 if has_overflowed {
-                                    return Err(DebugError::Other(anyhow::anyhow!(
-                                        "Overflow calculating variable address"
-                                    )));
+                                    return Err(DebugError::UnwindIncompleteResults {
+                                        message: "Overflow calculating variable address"
+                                            .to_string(),
+                                    });
                                 } else {
                                     child_variable.memory_location =
                                         VariableLocation::Address(location);
@@ -1279,15 +1286,14 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                                 None => VariableType::Unknown,
                                             },
                                             Err(error) => VariableType::Other(format!(
-                                                "Error: evaluating subroutine type name: {:?} ",
-                                                error
+                                                "Error: evaluating subroutine type name: {error:?} "
                                             )),
                                         };
                                     }
                                     other_attribute_value => {
                                         child_variable.set_value(VariableValue::Error(format!(
-                                            "Unimplemented: Attribute Value for DW_AT_type {:?}",
-                                            other_attribute_value
+                                            "Unimplemented: Attribute Value for DW_AT_type {:.100}",
+                                            format!("{other_attribute_value:?}")
                                         )));
                                     }
                                 },
@@ -1302,8 +1308,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                         }
                         Err(error) => {
                             child_variable.set_value(VariableValue::Error(format!(
-                                "Error: Failed to decode subroutine type reference: {:?}",
-                                error
+                                "Error: Failed to decode subroutine type reference: {error:?}"
                             )));
                         }
                     }
@@ -1355,7 +1360,16 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                 | gimli::DW_AT_data_member_location
                 | gimli::DW_AT_frame_base => match attr.value() {
                     gimli::AttributeValue::Exprloc(expression) => {
-                        return self.evaluate_expression(core, expression, stack_frame_registers, frame_base);
+                        return match self.evaluate_expression(core, expression, stack_frame_registers, frame_base) {
+                            Ok(result) => Ok(result),
+                            Err(error) => {
+                                if matches!(error, DebugError::UnwindIncompleteResults { message: _ }) {
+                                    Ok(ExpressionResult::Location(VariableLocation::Unavailable))
+                                } else {
+                                    Err(error)
+                                }
+                            },
+                        };
                     }
                     gimli::AttributeValue::Udata(offset_from_parent) => match parent_location {
                         VariableLocation::Address(address) => {
@@ -1380,7 +1394,6 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                     .get_program_counter()
                                     .and_then(|reg| reg.value)
                                 {
-                                    // let program_counter: u64 = pc.try_into()?;
                                     let mut expression: Option<gimli::Expression<GimliReader>> =
                                         None;
                                     while let Some(location) = match locations.next() {
@@ -1399,12 +1412,21 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                         }
                                     }
                                     if let Some(valid_expression) = expression {
-                                        return self.evaluate_expression(
+                                        return match self.evaluate_expression(
                                             core,
                                             valid_expression,
                                             stack_frame_registers,
                                             frame_base,
-                                        );
+                                        ) {
+                                            Ok(result) => Ok(result),
+                                            Err(error) => {
+                                                if matches!(error, DebugError::UnwindIncompleteResults { message: _ }) {
+                                                    Ok(ExpressionResult::Location(VariableLocation::Unavailable))
+                                                } else {
+                                                    Err(error)
+                                                }
+                                            },
+                                        };
                                     } else {
                                         return Ok(ExpressionResult::Location(
                                             VariableLocation::Unavailable,
@@ -1423,7 +1445,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                     }
                     other_attribute_value => {
                         return Ok(ExpressionResult::Location(VariableLocation::Unsupported(
-                            format!( "Unimplemented: extract_location() Could not extract location from: {:?}", other_attribute_value))))
+                            format!( "Unimplemented: extract_location() Could not extract location from: {:.100}", format!("{other_attribute_value:?}")))))
                     }
                 },
                 gimli::DW_AT_address_class => {
@@ -1432,15 +1454,14 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                             // Nothing to do in this case where it is zero
                             if address_class != gimli::DwAddr(0) {
                                 return Ok(ExpressionResult::Location(VariableLocation::Unsupported(format!(
-                                    "Unimplemented: extract_location() found unsupported DW_AT_address_class(gimli::DwAddr({:?}))",
-                                    address_class
+                                    "Unimplemented: extract_location() found unsupported DW_AT_address_class(gimli::DwAddr({address_class:?}))"
                                 ))))
                             }
                         }
                         other_attribute_value => {
                             return Ok(ExpressionResult::Location(VariableLocation::Unsupported(format!(
-                                "Unimplemented: extract_location() found invalid DW_AT_address_class: {:?}",
-                                other_attribute_value
+                                "Unimplemented: extract_location() found invalid DW_AT_address_class: {:.100}",
+                                format!("{other_attribute_value:?}")
                             ))))
                         }
                     }
@@ -1470,7 +1491,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
             self.expression_to_piece(core, expression, stack_frame_registers, frame_base)?;
         if pieces.is_empty() {
             Ok(ExpressionResult::Location(VariableLocation::Error(
-                format!("Error: expr_to_piece() returned 0 results: {:?}", pieces),
+                format!("Error: expr_to_piece() returned 0 results: {pieces:?}"),
             )))
         } else if pieces.len() > 1 {
             Ok(ExpressionResult::Location(VariableLocation::Error(
@@ -1483,8 +1504,8 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                     Ok(ExpressionResult::Location(VariableLocation::Unavailable))
                 }
                 Location::Address { address } => {
-                    if *address == u32::MAX as u64 {
-                        Ok(ExpressionResult::Location(VariableLocation::Error("BUG: Cannot resolve due to rust-lang issue https://github.com/rust-lang/rust/issues/32574".to_string())))
+                    if address.is_zero() {
+                        Ok(ExpressionResult::Location(VariableLocation::Error("The value of this variable has been optimized out of the debug info, by the compiler.".to_string())))
                     } else {
                         Ok(ExpressionResult::Location(VariableLocation::Address(
                             *address,
@@ -1537,21 +1558,20 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                             )),
                             Err(error) => Ok(ExpressionResult::Location(
                                 VariableLocation::Error(format!(
-                                    "Error: Cannot convert register value to location address: {:?}",
-                                    error
+                                    "Error: Cannot convert register value to location address: {error:?}"
                                 )),
                             )),
                         }
                     } else {
                         Ok(ExpressionResult::Location(VariableLocation::Error(
-                            format!("Error: Cannot resolve register: {:?}", register),
+                            format!("Error: Cannot resolve register: {register:?}"),
                         )))
                     }
                 }
                 l => Ok(ExpressionResult::Location(VariableLocation::Error(
                     format!(
-                        "Unimplemented: extract_location() found a location type: {:?}",
-                        l
+                        "Unimplemented: extract_location() found a location type: {:.100}",
+                        format!("{l:?}")
                     ),
                 ))),
             }
@@ -1579,12 +1599,12 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                     let mut buff = vec![0u8; size as usize];
                     if let Some(core) = core.as_mut() {
                         core.read(address, &mut buff).map_err(|_| {
-                        DebugError::Other(anyhow::anyhow!("Unexpected error while reading debug expressions from target memory. Please report this as a bug."))
+                        DebugError::UnwindIncompleteResults {message: "Unexpected error while reading debug expressions from target memory. Please report this as a bug.".to_string()}
                     })?;
                         match size {
                             1 => evaluation.resume_with_memory(gimli::Value::U8(buff[0]))?,
                             2 => {
-                                let val = (u16::from(buff[0]) << 8) | (u16::from(buff[1]) as u16);
+                                let val = (u16::from(buff[0]) << 8) | (u16::from(buff[1]));
                                 evaluation.resume_with_memory(gimli::Value::U16(val))?
                             }
                             4 => {
@@ -1595,32 +1615,32 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                 evaluation.resume_with_memory(gimli::Value::U32(val))?
                             }
                             x => {
-                                todo!(
-                                    "Requested memory with size {}, which is not supported yet.",
-                                    x
-                                );
+                                return Err(DebugError::UnwindIncompleteResults {
+                            message: format!("Unimplemented: Requested memory with size {x}, which is not supported yet."
+                                )});
                             }
                         }
                     } else {
-                        return Err(DebugError::Other(anyhow::anyhow!(
-                            "Cannot unwind `Variable` location without a valid reference to the core."
-                        )));
+                        return Err(DebugError::UnwindIncompleteResults {
+                            message: "Cannot unwind `Variable` location without a valid reference to the core.".to_string()
+                    });
                     }
                 }
                 RequiresFrameBase => {
                     let frame_base = if let Some(frame_base) = frame_base {
                         frame_base
                     } else {
-                        return Err(DebugError::Other(anyhow::anyhow!("Cannot unwind `Variable` location without a valid frame base address.)")));
+                        return Err(DebugError::UnwindIncompleteResults {message: "Cannot unwind `Variable` location without a valid frame base address.)".to_string()});
                     };
 
                     match evaluation.resume_with_frame_base(frame_base) {
                         Ok(evaluation_result) => evaluation_result,
                         Err(error) => {
-                            return Err(DebugError::Other(anyhow::anyhow!(
-                                "Error while calculating `Variable::memory_location`:{}.",
-                                error
-                            )))
+                            return Err(DebugError::UnwindIncompleteResults {
+                                message: format!(
+                                    "Error while calculating `Variable::memory_location`:{error}."
+                                ),
+                            })
                         }
                     }
                 }
@@ -1634,37 +1654,30 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                     {
                         Some(raw_value) => {
                             if base_type != gimli::UnitOffset(0) {
-                                return Err(DebugError::Other(anyhow::anyhow!(
-                                    "Unimplemented: Support for type {:?} in `RequiresRegister` request is not yet implemented.",
-                                    base_type
-                                )));
+                                return Err(DebugError::UnwindIncompleteResults {
+                                    message: format!("Unimplemented: Support for type {base_type:?} in `RequiresRegister` request is not yet implemented."
+                                )});
                             }
                             raw_value
                         }
                         None => {
-                            return Err(DebugError::Other(anyhow::anyhow!(
-                                    "Error while calculating `Variable::memory_location`. No value for register #:{}.",
+                            return Err(DebugError::UnwindIncompleteResults {
+                                    message: format!("Error while calculating `Variable::memory_location`. No value for register #:{}.",
                                     register.0
-                                )));
+                                )});
                         }
                     };
 
                     evaluation.resume_with_register(gimli::Value::Generic(raw_value.try_into()?))?
                 }
                 RequiresRelocatedAddress(address_index) => {
-                    if address_index.is_zero() {
-                        // This is a rust-lang bug for statics ... https://github.com/rust-lang/rust/issues/32574.
-                        evaluation.resume_with_relocated_address(u64::MAX)?
-                    } else {
-                        // The address_index as an offset from 0, so just pass it into the next step.
-                        evaluation.resume_with_relocated_address(address_index)?
-                    }
+                    // The address_index as an offset from 0, so just pass it into the next step.
+                    evaluation.resume_with_relocated_address(address_index)?
                 }
                 unimplemented_expression => {
-                    return Err(DebugError::Other(anyhow::anyhow!(
-                        "Unimplemented: Expressions that include {:?} are not currently supported.",
-                        unimplemented_expression
-                    )));
+                    return Err(DebugError::UnwindIncompleteResults {
+                        message: format!("Unimplemented: Expressions that include {unimplemented_expression:?} are not currently supported."
+                    )});
                 }
             }
         }

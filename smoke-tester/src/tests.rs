@@ -34,8 +34,7 @@ pub fn test_register_access(tracker: &TestTracker, core: &mut Core) -> Result<()
 
         assert_eq!(
             test_value, readback,
-            "Error writing register {:?}, read value does not match written value.",
-            register
+            "Error writing register {register:?}, read value does not match written value."
         );
 
         test_value = test_value.wrapping_shl(1);
@@ -56,8 +55,8 @@ pub fn test_memory_access(
             probe_rs::config::MemoryRegion::Ram(ram)
                 if ram.cores.iter().any(|c| c == core_name) =>
             {
-                let ram_start = ram.range.start as u64;
-                let ram_size = (ram.range.end - ram.range.start) as u64;
+                let ram_start = ram.range.start;
+                let ram_size = ram.range.end - ram.range.start;
 
                 println_test_status!(tracker, blue, "Test - RAM Start 32");
                 // Write first word
@@ -82,11 +81,11 @@ pub fn test_memory_access(
                 let data = 0x23;
                 // Write last byte
                 core.write_word_8(address, data)
-                    .with_context(|| format!("Write_word_8 to address {:08x}", address))?;
+                    .with_context(|| format!("Write_word_8 to address {address:08x}"))?;
 
                 let value = core
                     .read_word_8(address)
-                    .with_context(|| format!("read_word_8 from address {:08x}", address))?;
+                    .with_context(|| format!("read_word_8 from address {address:08x}"))?;
                 assert_eq!(value, data);
 
                 println_test_status!(tracker, blue, "Test - RAM End 8");
@@ -123,7 +122,7 @@ pub fn test_hw_breakpoints(
     for region in memory_regions {
         match region {
             probe_rs::config::MemoryRegion::Nvm(nvm) => {
-                let initial_breakpoint_addr = nvm.range.start as u64;
+                let initial_breakpoint_addr = nvm.range.start;
 
                 let num_breakpoints = core.available_breakpoint_units()?;
 

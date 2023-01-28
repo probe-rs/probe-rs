@@ -15,6 +15,7 @@ use registers::RegisterGroup;
 use std::{
     borrow,
     cmp::Ordering,
+    convert::TryInto,
     num::NonZeroU64,
     ops::ControlFlow,
     path::{Path, PathBuf},
@@ -164,7 +165,7 @@ impl DebugInfo {
                                                                     &unit, header, file_entry,
                                                                 )
                                                             {
-                                                                log::debug!(
+                                                                tracing::debug!(
                                                                     "{} - {:?}",
                                                                     address,
                                                                     previous_row.isa()
@@ -199,7 +200,7 @@ impl DebugInfo {
                                                                 &unit, header, file_entry,
                                                             )
                                                         {
-                                                            log::debug!(
+                                                            tracing::debug!(
                                                                 "{} - {:?}",
                                                                 address,
                                                                 row.isa()
@@ -228,7 +229,7 @@ impl DebugInfo {
                                     }
                                 }
                                 Err(error) => {
-                                    log::warn!(
+                                    tracing::warn!(
                                         "No valid source code ranges found for address {}: {:?}",
                                         address,
                                         error
@@ -239,7 +240,7 @@ impl DebugInfo {
                     }
                 }
                 Err(error) => {
-                    log::warn!(
+                    tracing::warn!(
                         "No valid source code ranges found for address {}: {:?}",
                         address,
                         error
@@ -364,10 +365,10 @@ impl DebugInfo {
                                             VariableName::Named(name.replacen('&', "*", 1));
                                     } else {
                                         referenced_variable.name =
-                                            VariableName::Named(format!("*{}", name));
+                                            VariableName::Named(format!("*{name}"));
                                     }
                                 }
-                                other => referenced_variable.name = VariableName::Named(format!("Error: Unable to generate name, parent variable does not have a name but is special variable {:?}", other)),
+                                other => referenced_variable.name = VariableName::Named(format!("Error: Unable to generate name, parent variable does not have a name but is special variable {other:?}")),
                             }
 
                         match &parent_variable.memory_location {
@@ -380,7 +381,7 @@ impl DebugInfo {
                                         VariableLocation::Address(memory_location as u64)
                                     }
                                     Err(error) => {
-                                        log::error!("Failed to read referenced variable address from memory location {} : {}.", parent_variable.memory_location , error);
+                                        tracing::error!("Failed to read referenced variable address from memory location {} : {}.", parent_variable.memory_location , error);
                                         VariableLocation::Error(format!("Failed to read referenced variable address from memory location {} : {}.", parent_variable.memory_location, error))
                                     }
                                 };
@@ -388,8 +389,7 @@ impl DebugInfo {
                             other => {
                                 referenced_variable.memory_location =
                                     VariableLocation::Unsupported(format!(
-                                        "Location {:?} not supported for referenced variables.",
-                                        other
+                                        "Location {other:?} not supported for referenced variables."
                                     ));
                             }
                         }
@@ -544,7 +544,7 @@ impl DebugInfo {
                     .function_name()
                     .unwrap_or_else(|| unknown_function.clone());
 
-                log::debug!("UNWIND: Function name: {}", function_name);
+                tracing::debug!("UNWIND: Function name: {}", function_name);
 
                 let next_function = &functions[index + 1];
 
@@ -557,7 +557,7 @@ impl DebugInfo {
                     // The first instruction of the inlined function is used as the call site
                     inlined_call_site = Some(RegisterValue::from(next_function.low_pc));
 
-                    log::debug!(
+                    tracing::debug!(
                         "UNWIND: Callsite for inlined function {:?}",
                         next_function.function_name()
                     );
@@ -566,9 +566,9 @@ impl DebugInfo {
                 }
 
                 if let Some(inlined_call_site) = inlined_call_site {
-                    log::debug!("UNWIND: Call site: {:?}", inlined_caller_source_location);
+                    tracing::debug!("UNWIND: Call site: {:?}", inlined_caller_source_location);
 
-                    log::trace!("UNWIND: Function name: {}", function_name);
+                    tracing::trace!("UNWIND: Function name: {}", function_name);
 
                     // Now that we have the function_name and function_source_location, we can create the appropriate variable caches for this stack frame.
                     // Resolve the statics that belong to the compilation unit that this function is in.
@@ -576,7 +576,7 @@ impl DebugInfo {
                         .create_static_scope_cache(core, &unit_info)
                         .map_or_else(
                             |error| {
-                                log::error!(
+                                tracing::error!(
                                     "Could not resolve static variables. {}. Continuing...",
                                     error
                                 );
@@ -590,7 +590,7 @@ impl DebugInfo {
                         .create_function_scope_cache(core, function_die, &unit_info)
                         .map_or_else(
                             |error| {
-                                log::error!(
+                                tracing::error!(
                                     "Could not resolve function variables. {}. Continuing...",
                                     error
                                 );
@@ -612,7 +612,7 @@ impl DebugInfo {
                         local_variables,
                     });
                 } else {
-                    log::warn!(
+                    tracing::warn!(
                         "UNWIND: Unknown call site for inlined function {}.",
                         function_name
                     );
@@ -636,7 +636,7 @@ impl DebugInfo {
                 .create_static_scope_cache(core, &unit_info)
                 .map_or_else(
                     |error| {
-                        log::error!(
+                        tracing::error!(
                             "Could not resolve static variables. {}. Continuing...",
                             error
                         );
@@ -650,7 +650,7 @@ impl DebugInfo {
                 .create_function_scope_cache(core, last_function, &unit_info)
                 .map_or_else(
                     |error| {
-                        log::error!(
+                        tracing::error!(
                             "Could not resolve function variables. {}. Continuing...",
                             error
                         );
@@ -736,7 +736,7 @@ impl DebugInfo {
             let frame_pc = frame_pc_register_value
                 .try_into()
                 .map_err(|error| crate::Error::Other(anyhow::anyhow!("Cannot convert register value for program counter to a 64-bit integeer value: {:?}", error)))?;
-            log::trace!(
+            tracing::trace!(
                 "UNWIND: Will generate `StackFrame` for function at address (PC) {}",
                 frame_pc,
             );
@@ -749,7 +749,7 @@ impl DebugInfo {
                         // If we encountered INLINED functions (all `StackFrames`s in this Vec, except for the last one, which is the containing NON-INLINED function), these are simply added to the list of stack_frames we return.
                         #[allow(clippy::unwrap_used)]
                         let inlined_frame = cached_stack_frames.pop().unwrap(); // unwrap is safe while .len() > 1
-                        log::trace!(
+                        tracing::trace!(
                             "UNWIND: Found inlined function - name={}, pc={}",
                             inlined_frame.function_name,
                             inlined_frame.pc
@@ -762,13 +762,13 @@ impl DebugInfo {
                         cached_stack_frames.pop().unwrap() // unwrap is safe for .len==1
                     } else {
                         // Obviously something has gone wrong and zero stackframes were returned in the vector.
-                        log::error!("UNWIND: No `StackFrame` information: available");
+                        tracing::error!("UNWIND: No `StackFrame` information: available");
                         // There is no point in continuing with the unwind, so let's get out of here.
                         break;
                     }
                 }
                 Err(e) => {
-                    log::error!("UNWIND: Unable to complete `StackFrame` information: {}", e);
+                    tracing::error!("UNWIND: Unable to complete `StackFrame` information: {}", e);
                     // There is no point in continuing with the unwind, so let's get out of here.
                     break;
                 }
@@ -780,18 +780,18 @@ impl DebugInfo {
                 if check_return_address.is_max_value() || check_return_address.is_zero() {
                     // When we encounter the starting (after reset) return address, we've reached the bottom of the stack, so no more unwinding after this.
                     stack_frames.push(return_frame);
-                    log::trace!("UNWIND: Stack unwind complete - Reached the 'Reset' value of the LR register.");
+                    tracing::trace!("UNWIND: Stack unwind complete - Reached the 'Reset' value of the LR register.");
                     break;
                 }
             } else {
                 // If the debug info rules result in a None return address, we cannot continue unwinding.
                 stack_frames.push(return_frame);
-                log::trace!("UNWIND: Stack unwind complete - LR register value is 'None.");
+                tracing::trace!("UNWIND: Stack unwind complete - LR register value is 'None.");
                 break;
             }
 
             // PART 2: Setup the registers for the next iteration (a.k.a. unwind previous frame, a.k.a. "callee", in the call stack).
-            log::trace!(
+            tracing::trace!(
                 "UNWIND - Preparing `StackFrameIterator` to unwind NON-INLINED function {:?} at {:?}",
                 return_frame.function_name,
                 return_frame.source_location
@@ -809,8 +809,15 @@ impl DebugInfo {
                                 .and_then(|register| register.value);
                             match reg_val {
                                 Some(reg_val) => {
+                                    if reg_val.is_zero() {
+                                        // If we encounter this rule for CFA, it implies the scenario depends on a FP/frame pointer to continue successfully.
+                                        // Therefore, if reg_val is zero (i.e. FP is zero), then we do not have enough information to determine the CFA by rule.
+                                        stack_frames.push(return_frame);
+                                        tracing::trace!("UNWIND: Stack unwind complete - The FP register value unwound to a value of zero.");
+                                        break;
+                                    }
                                     let unwind_cfa = add_to_address(reg_val.try_into()?, *offset);
-                                    log::trace!(
+                                    tracing::trace!(
                                         "UNWIND - CFA : {:#010x}\tRule: {:?}",
                                         unwind_cfa,
                                         unwind_info.cfa()
@@ -818,7 +825,7 @@ impl DebugInfo {
                                     Some(unwind_cfa)
                                 }
                                 None => {
-                                    log::error!("UNWIND: `StackFrameIterator` unable to determine the unwind CFA: Missing value of register {}",register.0);
+                                    tracing::error!("UNWIND: `StackFrameIterator` unable to determine the unwind CFA: Missing value of register {}",register.0);
                                     stack_frames.push(return_frame);
                                     break;
                                 }
@@ -889,7 +896,7 @@ impl DebugInfo {
                         }
                     } else {
                         stack_frames.push(return_frame);
-                        log::trace!("UNWIND: Stack unwind complete. No available debug info for program counter {}: {}", frame_pc, error);
+                        tracing::trace!("UNWIND: Stack unwind complete. No available debug info for program counter {}: {}", frame_pc, error);
                         break;
                     }
                 }
@@ -908,7 +915,7 @@ impl DebugInfo {
         line: u64,
         column: Option<u64>,
     ) -> Result<(Option<u64>, Option<SourceLocation>), DebugError> {
-        log::debug!(
+        tracing::debug!(
             "Looking for breakpoint location for {}:{}:{}",
             path.display(),
             line,
@@ -1166,11 +1173,10 @@ fn unwind_register(
     let register_rule = debug_register
         .dwarf_id
         .and_then(|register_position| {
-            unwind_info
-                .map(|unwind_info| unwind_info.register(gimli::Register(register_position as u16)))
+            unwind_info.map(|unwind_info| unwind_info.register(gimli::Register(register_position)))
         })
         .unwrap_or(gimli::RegisterRule::Undefined);
-    let mut register_rule_string = format!("{:?}", register_rule);
+    let mut register_rule_string = format!("{register_rule:?}");
     let new_value = match register_rule {
         Undefined => {
             // In many cases, the DWARF has `Undefined` rules for variables like frame pointer, program counter, etc., so we hard-code some rules here to make sure unwinding can continue. If there is a valid rule, it will bypass these hardcoded ones.
@@ -1204,7 +1210,7 @@ fn unwind_register(
                     register_rule_string = "PC=(unwound LR) (dwarf Undefined)".to_string();
                     unwound_return_address.and_then(|return_address| {
                         if return_address.is_max_value() || return_address.is_zero() {
-                            log::warn!("No reliable return address is available, so we cannot determine the program counter to unwind the previous frame.");
+                            tracing::warn!("No reliable return address is available, so we cannot determine the program counter to unwind the previous frame.");
                             None
                         } else {
                             match return_address {
@@ -1221,7 +1227,7 @@ fn unwind_register(
                                     Some(RegisterValue::U64(return_address))
                                 },
                                 RegisterValue::U128(_) => {
-                                    log::warn!("128 bit address space not supported");
+                                    tracing::warn!("128 bit address space not supported");
                                     None
                                 }
                             }
@@ -1242,7 +1248,7 @@ fn unwind_register(
             if let Some(unwind_cfa) = unwind_cfa {
                 let previous_frame_register_address = add_to_address(unwind_cfa, address_offset);
                 let address_size = callee_frame_registers.get_address_size_bytes();
-                register_rule_string = format!("CFA {:?}", register_rule);
+                register_rule_string = format!("CFA {register_rule:?}");
                 let result = match address_size {
                     4 => {
                         let mut buff = [0u8; 4];
@@ -1255,7 +1261,7 @@ fn unwind_register(
                             .map(|_| RegisterValue::U64(u64::from_le_bytes(buff)))
                     }
                     _ => {
-                        log::error!(
+                        tracing::error!(
                             "UNWIND: Address size {} not supported.  Please report this as a bug.",
                             address_size
                         );
@@ -1272,13 +1278,14 @@ fn unwind_register(
                         Some(register_value)
                     }
                     Err(error) => {
-                        log::error!(
-                            "UNWIND: Failed to read from address {} ({} bytes): {}",
+                        tracing::error!(
+                            "UNWIND: Failed to read value for register {} from address {} ({} bytes): {}",
+                            debug_register.name,
                             RegisterValue::from(previous_frame_register_address),
                             4,
                             error
                         );
-                        log::error!(
+                        tracing::error!(
                             "UNWIND: Rule: Offset {} from address {:#010x}",
                             address_offset,
                             unwind_cfa
@@ -1287,7 +1294,7 @@ fn unwind_register(
                     }
                 }
             } else {
-                log::error!("UNWIND: Tried to unwind `RegisterRule` at CFA = None. Please report this as a bug.");
+                tracing::error!("UNWIND: Tried to unwind `RegisterRule` at CFA = None. Please report this as a bug.");
                 return ControlFlow::Break(());
             }
         }
@@ -1296,7 +1303,7 @@ fn unwind_register(
     };
     debug_register.value = new_value;
 
-    log::trace!(
+    tracing::trace!(
         "UNWIND - {:>10}: Caller: {}\tCallee: {}\tRule: {}",
         debug_register.get_register_name(),
         debug_register.value.unwrap_or_default(),

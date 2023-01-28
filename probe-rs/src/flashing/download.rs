@@ -42,7 +42,7 @@ impl FromStr for Format {
             })),
             "hex" | "ihex" | "intelhex" => Ok(Format::Hex),
             "elf" => Ok(Format::Elf),
-            _ => Err(format!("Format '{}' is unknown.", s)),
+            _ => Err(format!("Format '{s}' is unknown.")),
         }
     }
 }
@@ -225,7 +225,7 @@ pub(super) fn extract_from_elf<'data>(
         let mut elf_section = Vec::new();
 
         if !segment_data.is_empty() && segment.p_type(endian) == PT_LOAD {
-            log::info!(
+            tracing::info!(
                 "Found loadable segment, physical address: {:#010x}, virtual address: {:#010x}, flags: {:#x}",
                 p_paddr,
                 p_vaddr,
@@ -243,15 +243,19 @@ pub(super) fn extract_from_elf<'data>(
                 };
 
                 if sector.contains_range(&(section_offset..section_offset + section_filesize)) {
-                    log::info!("Matching section: {:?}", section.name()?);
+                    tracing::info!("Matching section: {:?}", section.name()?);
 
                     #[cfg(feature = "hexdump")]
                     for line in hexdump::hexdump_iter(section.data()?) {
-                        log::trace!("{}", line);
+                        tracing::trace!("{}", line);
                     }
 
                     for (offset, relocation) in section.relocations() {
-                        log::info!("Relocation: offset={}, relocation={:?}", offset, relocation);
+                        tracing::info!(
+                            "Relocation: offset={}, relocation={:?}",
+                            offset,
+                            relocation
+                        );
                     }
 
                     elf_section.push(section.name()?.to_owned());
@@ -259,7 +263,7 @@ pub(super) fn extract_from_elf<'data>(
             }
 
             if elf_section.is_empty() {
-                log::info!("Not adding segment, no matching sections found.");
+                tracing::info!("Not adding segment, no matching sections found.");
             } else {
                 let section_data =
                     &elf_data[segment_offset as usize..][..segment_filesize as usize];

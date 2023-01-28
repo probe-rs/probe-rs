@@ -7,7 +7,8 @@ use cmsis_pack::pdsc::{Core, Device, Package, Processor};
 use cmsis_pack::{pack_index::PdscRef, utils::FromElem};
 use futures::StreamExt;
 use probe_rs::config::{
-    Chip, ChipFamily, Core as ProbeCore, MemoryRegion, NvmRegion, RamRegion, RawFlashAlgorithm,
+    Chip, ChipFamily, Core as ProbeCore, GenericRegion, MemoryRegion, NvmRegion, RamRegion,
+    RawFlashAlgorithm,
 };
 use probe_rs::{Architecture, CoreType};
 use probe_rs_target::{ArmCoreAccessOptions, CoreAccessOptions, RiscvCoreAccessOptions};
@@ -25,15 +26,35 @@ pub(crate) fn handle_package<T>(
     pdsc: Package,
     mut kind: Kind<T>,
     families: &mut Vec<ChipFamily>,
+    only_supported_familes: bool,
 ) -> Result<()>
 where
     T: std::io::Seek + std::io::Read,
 {
     // Forge a definition file for each device in the .pdsc file.
+    let pack_file_release = Some(pdsc.releases.latest_release().version.clone());
     let mut devices = pdsc.devices.0.into_iter().collect::<Vec<_>>();
     devices.sort_by(|a, b| a.0.cmp(&b.0));
 
     for (device_name, device) in devices {
+        // Only process this, if this belongs to a supported family.
+        let currently_supported_chip_families = probe_rs::config::families().map_err(|e| {
+            anyhow!(
+                "Currently supported chip families could not be read: {:?}",
+                e
+            )
+        })?;
+
+        if only_supported_familes
+            && !currently_supported_chip_families
+                .iter()
+                .any(|supported_family| supported_family.name == device.family)
+        {
+            // We only want to continue if the chip family is already represented as supported probe_rs target chip family.
+            log::debug!("Unsupprted chip family {}. Skipping ...", device.family);
+            return Ok(());
+        }
+
         // Check if this device family is already known.
         let mut potential_family = families
             .iter_mut()
@@ -45,6 +66,8 @@ where
             families.push(ChipFamily {
                 name: device.family.clone(),
                 manufacturer: None,
+                generated_from_pack: true,
+                pack_file_release: pack_file_release.clone(),
                 variants: Vec::new(),
                 flash_algorithms: Vec::new(),
                 source: probe_rs::config::TargetDescriptionSource::BuiltIn,
@@ -52,9 +75,6 @@ where
             // This unwrap is always safe as we insert at least one item previously.
             families.last_mut().unwrap()
         };
-
-        // Extract the RAM info from the .pdsc file.
-        let ram = get_ram(&device);
 
         // Extract the flash algorithm, block & sector size and the erased byte value from the ELF binary.
         let variant_flash_algorithms = device
@@ -66,11 +86,13 @@ where
                         archive.by_name(&flash_algorithm.file_name.as_path().to_string_lossy())?,
                         &flash_algorithm.file_name,
                         flash_algorithm.default,
+                        false, // Algorithms from CMSIS-Pack files are position independent
                     ),
                     Kind::Directory(path) => crate::parser::extract_flash_algo(
                         std::fs::File::open(path.join(&flash_algorithm.file_name))?,
                         &flash_algorithm.file_name,
                         flash_algorithm.default,
+                        false, // Algorithms from CMSIS-Pack files are position independent
                     ),
                 }?;
 
@@ -97,13 +119,6 @@ where
             )
             .collect::<Vec<_>>();
 
-        // Extract the flash info from the .pdsc file.
-        let flash = get_flash(&device);
-
-        if device.processors.len() > 1 {
-            println!("{:#?}", device.processors);
-        }
-
         let flash_algorithm_names: Vec<_> = variant_flash_algorithms
             .iter()
             .map(|fa| fa.name.to_string())
@@ -118,14 +133,6 @@ where
             .map(|(_, s)| s.clone())
             .collect();
 
-        let mut memory_map: Vec<MemoryRegion> = Vec::new();
-        if let Some(mem) = ram {
-            memory_map.push(MemoryRegion::Ram(mem));
-        }
-        if let Some(mem) = flash {
-            memory_map.push(MemoryRegion::Nvm(mem));
-        }
-
         let cores = device
             .processors
             .iter()
@@ -136,7 +143,7 @@ where
             name: device_name,
             part: None,
             cores,
-            memory_map,
+            memory_map: get_mem_map(&device),
             flash_algorithms: flash_algorithm_names,
         });
     }
@@ -197,6 +204,7 @@ pub(crate) fn visit_dirs(path: &Path, families: &mut Vec<ChipFamily>) -> Result<
                     Package::from_path(&entry.path())?,
                     Kind::Directory(path),
                     families,
+                    false,
                 )
                 .context(format!(
                     "Failed to process .pdsc file {}.",
@@ -212,8 +220,7 @@ pub(crate) fn visit_dirs(path: &Path, families: &mut Vec<ChipFamily>) -> Result<
 pub(crate) fn visit_file(path: &Path, families: &mut Vec<ChipFamily>) -> Result<()> {
     log::info!("Trying to open pack file: {}.", path.display());
     // If we get a file, try to unpack it.
-    let file = fs::File::open(&path)?;
-
+    let file = fs::File::open(path)?;
     let mut archive = zip::ZipArchive::new(file)?;
 
     let mut pdsc_file = find_pdsc_in_archive(&mut archive)?
@@ -233,11 +240,16 @@ pub(crate) fn visit_file(path: &Path, families: &mut Vec<ChipFamily>) -> Result<
 
     drop(pdsc_file);
 
-    handle_package(package, Kind::Archive(&mut archive), families)
+    handle_package(package, Kind::Archive(&mut archive), families, false)
 }
 
-pub(crate) fn visit_arm_files(families: &mut Vec<ChipFamily>) -> Result<()> {
+pub(crate) fn visit_arm_files(
+    families: &mut Vec<ChipFamily>,
+    filter: Option<String>,
+) -> Result<()> {
     let packs = crate::fetch::get_vidx()?;
+
+    //TODO: The multi-threaded logging makes it very difficult to track which errors/warnings belong where - needs some rework.
     Builder::new_multi_thread()
         .enable_all()
         .build()
@@ -245,9 +257,23 @@ pub(crate) fn visit_arm_files(families: &mut Vec<ChipFamily>) -> Result<()> {
         .block_on(async move {
             let mut stream = futures::stream::iter(packs.pdsc_index.iter().enumerate().filter_map(
                 |(i, pack)| {
+                    let only_supported_familes = if let Some(ref filter) = filter {
+                        // If we are filtering for specific filter patterns, then skip all the ones we don't want.
+                        if !pack.name.contains(filter) {
+                            return None;
+                        } else {
+                            log::info!("Found matching chip family: {}", pack.name);
+                        }
+                        // If we are filtering for specific filter patterns, then do not restrict these to the list of supported families.
+                        false
+                    } else {
+                        // If we are not filtering for specific filter patterns, then only include the supported families.
+                        true
+                    };
                     if pack.deprecated.is_none() {
+                        // We only want to download the pack if it is not deprecated.
                         log::info!("Working PACK {}/{} ...", i, packs.pdsc_index.len());
-                        Some(visit_arm_file(pack))
+                        Some(visit_arm_file(pack, only_supported_familes))
                     } else {
                         log::warn!("Pack {} is deprecated. Skipping ...", pack.name);
                         None
@@ -263,7 +289,10 @@ pub(crate) fn visit_arm_files(families: &mut Vec<ChipFamily>) -> Result<()> {
         })
 }
 
-pub(crate) async fn visit_arm_file(pack: &PdscRef) -> Vec<ChipFamily> {
+pub(crate) async fn visit_arm_file(
+    pack: &PdscRef,
+    only_supported_familes: bool,
+) -> Vec<ChipFamily> {
     let url = format!(
         "{url}/{vendor}.{name}.{version}.pack",
         url = pack.url,
@@ -334,12 +363,21 @@ pub(crate) async fn visit_arm_file(pack: &PdscRef) -> Vec<ChipFamily> {
         }
     };
 
+    let pdsc_name = pdsc_file.name().to_owned();
+
     drop(pdsc_file);
 
     let mut families = vec![];
 
-    match handle_package(package, Kind::Archive(&mut archive), &mut families) {
-        Ok(_) => {}
+    match handle_package(
+        package,
+        Kind::Archive(&mut archive),
+        &mut families,
+        only_supported_familes,
+    ) {
+        Ok(_) => {
+            log::info!("Handled package {}", pdsc_name);
+        }
         Err(err) => log::error!("Something went wrong while handling pack {}: {}", url, err),
     };
 
@@ -383,79 +421,138 @@ where
     }
 }
 
-// Clippy complains about `region.range.start == cur.range.end`, but that is correct ;).
-#[allow(clippy::suspicious_operation_groupings)]
-pub(crate) fn get_ram(device: &Device) -> Option<RamRegion> {
-    let mut regions: Vec<RamRegion> = Vec::new();
-    for memory in device.memories.0.values() {
-        if memory.default && memory.access.read && memory.access.write {
-            regions.push(RamRegion {
-                range: memory.start..memory.start + memory.size,
-                is_boot_memory: memory.startup,
-                cores: vec!["main".to_owned()],
-                name: None,
-            });
-        }
-    }
-    if regions.len() > 1 {
-        // Sort by start address
-        regions.sort_by_key(|r| r.range.start);
-        let mut merged: Vec<RamRegion> = Vec::new();
-        let mut cur = regions.first().cloned().unwrap();
-        for region in regions.iter().skip(1) {
-            if region.is_boot_memory == cur.is_boot_memory && region.range.start == cur.range.end {
-                // Merge with previous region
-                cur.range.end = region.range.end;
-            } else {
-                merged.push(cur);
-                cur = region.clone();
-            }
-        }
-        merged.push(cur);
-        regions = merged;
-
-        // Sort by region size
-        regions.sort_by_key(|r| r.range.end - r.range.start)
-    }
-
-    regions.last().cloned()
+/// A flag to indicate what type of memory this is.
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+enum MemoryType {
+    /// A RAM memory.
+    Ram,
+    /// A Non Volatile memory.
+    Nvm,
+    /// Generic
+    Generic,
 }
 
-pub(crate) fn get_flash(device: &Device) -> Option<NvmRegion> {
-    // Make a Vec of all memories which are flash-like
-    let mut regions = Vec::new();
-    for memory in device.memories.0.values() {
-        if memory.default && memory.access.read && memory.access.execute && !memory.access.write {
-            regions.push(NvmRegion {
-                range: memory.start..memory.start + memory.size,
-                is_boot_memory: memory.startup,
-                cores: vec!["main".to_owned()],
-                name: None,
-            });
-        }
-    }
+/// A struct to combine essential information from [`cmsis_pack::pdsc::Device::memories`].
+/// This is used to apply the necessary sorting and filtering in creating [`MemoryRegion`]s.
+// The sequence of the fields is important for the sorting by derived natural order.
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+struct DeviceMemory {
+    memory_type: MemoryType,
+    p_name: Option<String>,
+    is_boot_memory: bool,
+    memory_start: u64,
+    memory_end: u64,
+    name: String,
+}
 
-    if regions.len() > 1 {
-        // Sort by start address
-        regions.sort_by_key(|r| r.range.start);
+// From PR's https://github.com/probe-rs/target-gen/pull/20 and https://github.com/probe-rs/target-gen/pull/25:
+// TODO: What is the logic that justifies PR#20 selecting the largest memory? Shouldn't we match flash algo's with RAM based on load_address?
+// Flash and RAM regions are not guaranteed to be sorted in the PDSC file, so we:
+// - Sort them here.
+// - Merge contiguous regions.
+// Update: For multiple cores, we have to take processor access into account during this merge.
+/// Sorts the memory regions in the package and merges contiguous regions with the same attributes.
+pub(crate) fn get_mem_map(device: &Device) -> Vec<MemoryRegion> {
+    let mut device_memories: Vec<DeviceMemory> = device
+        .memories
+        .0
+        .iter()
+        .map(|(name, memory)| DeviceMemory {
+            name: name.clone(),
+            p_name: memory.p_name.clone(),
+            memory_type: if memory.default && memory.access.read && memory.access.write {
+                MemoryType::Ram
+            } else if memory.default
+                && memory.access.read
+                && memory.access.execute
+                && !memory.access.write
+            {
+                MemoryType::Nvm
+            } else {
+                MemoryType::Generic
+            },
+            memory_start: memory.start,
+            memory_end: memory.start + memory.size,
+            is_boot_memory: memory.startup,
+        })
+        .collect();
 
-        // Merge contiguous flash regions
-        let mut merged = Vec::new();
-        let mut cur = regions.first().cloned().unwrap();
+    // Merge memory regions with the same attributes.
+    if device_memories.len() > 1 {
+        // Sort by memory type, then by processor name, then by boot memory, then by start address.
+        device_memories.sort();
 
-        for region in regions.iter().skip(1) {
-            if region.range.start == cur.range.end {
-                cur.range.end = region.range.end;
+        let mut merged: Vec<DeviceMemory> = Vec::new();
+        let mut cur = device_memories.first().cloned().unwrap();
+        for region in device_memories.iter().skip(1) {
+            if region.is_boot_memory == cur.is_boot_memory && region.memory_start == cur.memory_end
+            {
+                // Merge with previous region.
+                cur.memory_end = region.memory_end;
+                cur.name = format!("{} + {}", cur.name, region.name);
             } else {
                 merged.push(cur);
                 cur = region.clone();
             }
         }
-
         merged.push(cur);
-        regions = merged;
+        device_memories = merged;
     }
 
-    // Return lowest-addressed region
-    regions.first().cloned()
+    // Finally, sort so that the LARGEST contiguous region is first for each core.
+    device_memories.sort_by_cached_key(|region| {
+        (
+            region.memory_type.clone(),
+            region.p_name.clone(),
+            (region.memory_start as i128 - region.memory_end as i128),
+        )
+    });
+
+    // Convert DeviceMemory's to MemoryRegion's, and assign cores to shared reqions.
+    let mut mem_map = vec![];
+    for region in &device_memories {
+        let current_core = region
+            .p_name
+            .as_ref()
+            .map(|s| s.to_ascii_lowercase())
+            .unwrap_or_else(|| "main".to_string());
+        match region.memory_type {
+            MemoryType::Ram => if let Some(MemoryRegion::Ram(existing_region)) = mem_map.iter_mut().find(|existing_region|{
+                matches!(existing_region, MemoryRegion::Ram(ram_region) if ram_region.name == Some(region.name.clone()))})
+                {
+                    existing_region.cores.push(current_core);
+                } else {
+                    mem_map.push(MemoryRegion::Ram(RamRegion {
+                    name: Some(region.name.clone()),
+                    range: region.memory_start..region.memory_end,
+                    is_boot_memory: region.is_boot_memory,
+                    cores: vec![current_core],
+                    }));
+                },
+            MemoryType::Nvm => if let Some(MemoryRegion::Nvm(existing_region)) = mem_map.iter_mut().find(|existing_region|{
+                matches!(existing_region, MemoryRegion::Nvm(nvm_region) if nvm_region.name == Some(region.name.clone()))})
+                {
+                    existing_region.cores.push(current_core);
+                } else {
+                    mem_map.push(MemoryRegion::Nvm(NvmRegion {
+                    name: Some(region.name.clone()),
+                    range: region.memory_start..region.memory_end,
+                    is_boot_memory: region.is_boot_memory,
+                    cores: vec![current_core],
+                    }));
+                },
+            MemoryType::Generic => if let Some(MemoryRegion::Generic(existing_region)) = mem_map.iter_mut().find(|existing_region|{
+                matches!(existing_region, MemoryRegion::Generic(generic_region) if generic_region.name == Some(region.name.clone()))})
+                {
+                    existing_region.cores.push(current_core);
+                } else {
+                    mem_map.push(MemoryRegion::Generic(GenericRegion {
+                    name: Some(region.name.clone()),
+                    range: region.memory_start..region.memory_end,
+                    cores: vec![current_core],
+                    }));
+                },
+        };
+    }
+    mem_map
 }

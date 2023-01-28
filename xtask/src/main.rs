@@ -1,44 +1,44 @@
-use std::env;
+use clap::Parser;
 use xshell::{cmd, Shell};
 
 type DynError = Box<dyn std::error::Error>;
 
 fn main() {
     if let Err(e) = try_main() {
-        eprintln!("{}", e);
+        eprintln!("{e}");
         std::process::exit(-1);
     }
 }
 
-fn try_main() -> Result<(), DynError> {
-    let task = env::args().nth(1);
-    match task.as_deref() {
-        Some("release") => release(
-            &env::args()
-                .nth(2)
-                .ok_or("Please give me the version of the next release (e.g. 0.2.0).")?,
-        )?,
-        Some("fetch-prs") => fetch_prs()?,
-        _ => print_help(),
-    }
-    Ok(())
+#[derive(clap::Parser)]
+#[clap(
+    about = "Various housekeeping and CLI scripts",
+    author = "Noah Hüsser <yatekii@yatekii.ch> / Dominik Böhi <dominik.boehi@gmail.ch>"
+)]
+enum Cli {
+    /// Fetches all the PRs since the current release which need a changelog.
+    FetchPrs,
+    /// Starts the release process for the given version by creating a new MR.
+    Release {
+        /// The version to be released in semver format.
+        version: String,
+    },
+    /// Generate the output for the GH release from the different CHANGELOG.md's.
+    GenerateReleaseChangelog {
+        /// Use this when generating the changelog output locally to not
+        /// automatically translate the GH API control characters and keep
+        /// it human readable.
+        #[clap(long)]
+        local: bool,
+    },
 }
 
-fn print_help() {
-    eprintln!(
-        "Tasks:
-fetch-prs
-    Help: Fetches all the PRs since the current release.
-
-release <next_release>
-    Arguments:
-        - <next_release>: The version number of the next to be released version on crates.io (e.g. 0.2.0)
-    Help: Performs the following steps to trigger a new release:
-        1. Bump all probe-rs dependency numbers.
-        2. Create a commit.
-        3. Create a PR with a label.
-"
-    )
+fn try_main() -> Result<(), DynError> {
+    match Cli::parse() {
+        Cli::FetchPrs => fetch_prs(),
+        Cli::Release { version } => create_release_pr(version),
+        Cli::GenerateReleaseChangelog { local } => generate_release_changelog(local),
+    }
 }
 
 fn fetch_prs() -> Result<(), DynError> {
@@ -54,35 +54,61 @@ fn fetch_prs() -> Result<(), DynError> {
     Ok(())
 }
 
-fn release(version: &str) -> Result<(), DynError> {
+fn create_release_pr(version: String) -> Result<(), DynError> {
     let sh = Shell::new()?;
 
     // Make sure we are on the master branch and we have the latest state pulled from our source of truth, GH.
-    cmd!(sh, "git checkout master").run()?;
-    cmd!(sh, "git pull").run()?;
-
-    // Bump the crate versions.
     cmd!(
         sh,
-        "cargo workspaces version -y --no-git-commit custom {version}"
+        "gh workflow run 'Open a release PR' --ref master -f version={version}"
     )
     .run()?;
 
-    // Checkout a release branch
-    cmd!(sh, "git checkout -b v{version}").run()?;
+    Ok(())
+}
 
-    // Create the release commit.
-    let message = format!("Prepare for the v{} release.", version);
-    cmd!(sh, "git commit -a -m {message}").run()?;
-    cmd!(sh, "git push -u origin v{version}").run()?;
-
-    // Create the PR with a proper label, which then gets picked up by the CI.
-    let message = format!(
-        "Bump probe-rs versions in preparation for the v{} release.",
-        version
+fn generate_release_changelog(local: bool) -> Result<(), DynError> {
+    let probe_rs_changelog = extract_changelog_for_newest_version(
+        local,
+        &std::fs::read_to_string("CHANGELOG.md").unwrap(),
     );
-    let title = format!("Release v{}", version);
-    cmd!(sh, "gh pr create --label 'release' --title {title} --repo 'probe-rs/probe-rs' --body {message} --draft").run()?;
+    let cargo_flash_changelog = extract_changelog_for_newest_version(
+        local,
+        &std::fs::read_to_string("cargo-flash/CHANGELOG.md").unwrap(),
+    );
+    let cargo_embed_changelog = extract_changelog_for_newest_version(
+        local,
+        &std::fs::read_to_string("cargo-embed/CHANGELOG.md").unwrap(),
+    );
+    let cli_changelog = extract_changelog_for_newest_version(
+        local,
+        &std::fs::read_to_string("cli/CHANGELOG.md").unwrap(),
+    );
+
+    println!("# probe-rs (library)");
+    println!("{probe_rs_changelog}");
+    println!("# cargo-flash (cargo extension)");
+    println!("{cargo_flash_changelog}");
+    println!("# cargo-embed (cargo extension)");
+    println!("{cargo_embed_changelog}");
+    println!("# probe-rs-cli (CLI)");
+    println!("{cli_changelog}");
 
     Ok(())
+}
+
+fn extract_changelog_for_newest_version(local: bool, changelog: &str) -> String {
+    let re = regex::Regex::new(
+        r"## \[\d+.\d+.\d+\]\n\n(?:Released \d+-\d+-\d+)?\n?\n?((?:[\n]|.)*?)## \[\d+.\d+.\d+\]",
+    )
+    .unwrap();
+    let captures = re.captures(changelog).unwrap();
+    let release_text = captures[1].trim_start().trim_end();
+
+    // The GH API expects those special characters to be replaced.
+    if !local {
+        release_text.replace('%', "%25").replace('\n', "%0A")
+    } else {
+        release_text.to_string()
+    }
 }

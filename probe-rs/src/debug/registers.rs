@@ -16,7 +16,8 @@ pub enum RegisterGroup {
     Singleton,
 }
 
-/// Stores the relevant information from [`RegisterDescription`] as well as additional information required during debug.
+/// Stores the relevant information from [`RegisterDescription`](crate::core::RegisterDescription)
+/// as well as additional information required during debug.
 #[derive(Debug, Clone, PartialEq)]
 pub struct DebugRegister {
     /// To lookup platform specific details of register definitions.
@@ -136,7 +137,7 @@ impl DebugRegisters {
                             value: match core.read_core_reg(platform_register.id) {
                                 Ok::<RegisterValue, Error>(register_value) => Some(register_value),
                                 Err(e) => {
-                                    log::warn!(
+                                    tracing::warn!(
                                         "Failed to read value for register {:?}: {}",
                                         platform_register,
                                         e
@@ -147,7 +148,7 @@ impl DebugRegisters {
                         });
                     }
                 } else {
-                    log::warn!(
+                    tracing::warn!(
                         "Unsupported platform register type or size for register: {:?}",
                         platform_register
                     );

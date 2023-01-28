@@ -76,9 +76,9 @@ pub fn run_flash_download(
                     let total_fill_size: u64 = flash_layout.fills().iter().map(|s| s.size()).sum();
 
                     if let Some(fp) = fill_progress.as_ref() {
-                        fp.set_length(total_fill_size as u64)
+                        fp.set_length(total_fill_size)
                     }
-                    erase_progress.set_length(total_sector_size as u64);
+                    erase_progress.set_length(total_sector_size);
                     program_progress.set_length(total_page_size as u64);
                     let visualizer = flash_layout.visualize();
                     flash_layout_output_path
@@ -105,11 +105,11 @@ pub fn run_flash_download(
                     program_progress.inc(size as u64);
                 }
                 SectorErased { size, .. } => {
-                    erase_progress.inc(size as u64);
+                    erase_progress.inc(size);
                 }
                 PageFilled { size, .. } => {
                     if let Some(fp) = fill_progress.as_ref() {
-                        fp.inc(size as u64)
+                        fp.inc(size)
                     };
                 }
                 FailedErasing => {
@@ -143,7 +143,7 @@ pub fn run_flash_download(
         loader.commit(session, download_option).map_err(|error| {
             OperationError::FlashingFailed {
                 source: error,
-                target: session.target().clone(),
+                target: Box::new(session.target().clone()),
                 target_spec: opt.probe_options.chip.clone(),
                 path: path.to_path_buf(),
             }
@@ -152,7 +152,7 @@ pub fn run_flash_download(
         loader.commit(session, download_option).map_err(|error| {
             OperationError::FlashingFailed {
                 source: error,
-                target: session.target().clone(),
+                target: Box::new(session.target().clone()),
                 target_spec: opt.probe_options.chip.clone(),
                 path: path.to_path_buf(),
             }

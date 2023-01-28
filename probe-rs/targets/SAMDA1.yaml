@@ -1,0 +1,342 @@
+name: SAMDA1
+variants:
+  - name: ATSAMDA1E14B
+    part: ~
+    cores:
+      - name: main
+        type: armv6m
+        core_access_options:
+          !Arm
+            ap: 0
+            psel: 0
+            debug_base: ~
+            cti_base: ~
+    memory_map:
+      - !Ram
+          name: ~
+          range:
+            start: 536870912
+            end: 536875008
+          is_boot_memory: false
+          cores:
+            - main
+      - !Nvm
+          name: ~
+          range:
+            start: 0
+            end: 16384
+          is_boot_memory: true
+          cores:
+            - main
+    flash_algorithms:
+      - atsamda1_16
+  - name: ATSAMDA1E15B
+    part: ~
+    cores:
+      - name: main
+        type: armv6m
+        core_access_options:
+          !Arm
+            ap: 0
+            psel: 0
+            debug_base: ~
+            cti_base: ~
+    memory_map:
+      - !Ram
+          name: ~
+          range:
+            start: 536870912
+            end: 536875008
+          is_boot_memory: false
+          cores:
+            - main
+      - !Nvm
+          name: ~
+          range:
+            start: 0
+            end: 32768
+          is_boot_memory: true
+          cores:
+            - main
+    flash_algorithms:
+      - atsamda1_32
+  - name: ATSAMDA1E16B
+    part: ~
+    cores:
+      - name: main
+        type: armv6m
+        core_access_options:
+          !Arm
+            ap: 0
+            psel: 0
+            debug_base: ~
+            cti_base: ~
+    memory_map:
+      - !Ram
+          name: ~
+          range:
+            start: 536870912
+            end: 536879104
+          is_boot_memory: false
+          cores:
+            - main
+      - !Nvm
+          name: ~
+          range:
+            start: 0
+            end: 65536
+          is_boot_memory: true
+          cores:
+            - main
+    flash_algorithms:
+      - atsamda1_64
+  - name: ATSAMDA1G14B
+    part: ~
+    cores:
+      - name: main
+        type: armv6m
+        core_access_options:
+          !Arm
+            ap: 0
+            psel: 0
+            debug_base: ~
+            cti_base: ~
+    memory_map:
+      - !Ram
+          name: ~
+          range:
+            start: 536870912
+            end: 536875008
+          is_boot_memory: false
+          cores:
+            - main
+      - !Nvm
+          name: ~
+          range:
+            start: 0
+            end: 16384
+          is_boot_memory: true
+          cores:
+            - main
+    flash_algorithms:
+      - atsamda1_16
+  - name: ATSAMDA1G15B
+    part: ~
+    cores:
+      - name: main
+        type: armv6m
+        core_access_options:
+          !Arm
+            ap: 0
+            psel: 0
+            debug_base: ~
+            cti_base: ~
+    memory_map:
+      - !Ram
+          name: ~
+          range:
+            start: 536870912
+            end: 536875008
+          is_boot_memory: false
+          cores:
+            - main
+      - !Nvm
+          name: ~
+          range:
+            start: 0
+            end: 32768
+          is_boot_memory: true
+          cores:
+            - main
+    flash_algorithms:
+      - atsamda1_32
+  - name: ATSAMDA1G16B
+    part: ~
+    cores:
+      - name: main
+        type: armv6m
+        core_access_options:
+          !Arm
+            ap: 0
+            psel: 0
+            debug_base: ~
+            cti_base: ~
+    memory_map:
+      - !Ram
+          name: ~
+          range:
+            start: 536870912
+            end: 536879104
+          is_boot_memory: false
+          cores:
+            - main
+      - !Nvm
+          name: ~
+          range:
+            start: 0
+            end: 65536
+          is_boot_memory: true
+          cores:
+            - main
+    flash_algorithms:
+      - atsamda1_64
+  - name: ATSAMDA1J14B
+    part: ~
+    cores:
+      - name: main
+        type: armv6m
+        core_access_options:
+          !Arm
+            ap: 0
+            psel: 0
+            debug_base: ~
+            cti_base: ~
+    memory_map:
+      - !Ram
+          name: ~
+          range:
+            start: 536870912
+            end: 536875008
+          is_boot_memory: false
+          cores:
+            - main
+      - !Nvm
+          name: ~
+          range:
+            start: 0
+            end: 16384
+          is_boot_memory: true
+          cores:
+            - main
+    flash_algorithms:
+      - atsamda1_16
+  - name: ATSAMDA1J15B
+    part: ~
+    cores:
+      - name: main
+        type: armv6m
+        core_access_options:
+          !Arm
+            ap: 0
+            psel: 0
+            debug_base: ~
+            cti_base: ~
+    memory_map:
+      - !Ram
+          name: ~
+          range:
+            start: 536870912
+            end: 536875008
+          is_boot_memory: false
+          cores:
+            - main
+      - !Nvm
+          name: ~
+          range:
+            start: 0
+            end: 32768
+          is_boot_memory: true
+          cores:
+            - main
+    flash_algorithms:
+      - atsamda1_32
+  - name: ATSAMDA1J16B
+    part: ~
+    cores:
+      - name: main
+        type: armv6m
+        core_access_options:
+          !Arm
+            ap: 0
+            psel: 0
+            debug_base: ~
+            cti_base: ~
+    memory_map:
+      - !Ram
+          name: ~
+          range:
+            start: 536870912
+            end: 536879104
+          is_boot_memory: false
+          cores:
+            - main
+      - !Nvm
+          name: ~
+          range:
+            start: 0
+            end: 65536
+          is_boot_memory: true
+          cores:
+            - main
+    flash_algorithms:
+      - atsamda1_64
+flash_algorithms:
+  - name: atsamda1_16
+    description: ATSAMDA1 16kB Flash
+    default: true
+    instructions: QSEJBgpoUgcB1QQiCmAoSiZJUWAnSUlECGAAIHBHACBwRw8hiQIBQEIIDyBAAgJAELUfSMJhIEoCgAJ90gf80B1MASI/PJICixgM4EoIwmEEgAJ90gf80AJ9kgcB1QEgEL3/MQExmULw0wAgEL0QtRFMD0vkHByAHH3kB/zQyRyJCIkAAuAQygkfEMAAKfrRCUg9OBiAGH3AB/zQGH2ABwHVASAQvQAgEL0AAJ4ABAAAQABBBAAAAEGlAAAAAAAAAAAAAA==
+    load_address: ~
+    pc_init: 1
+    pc_uninit: 31
+    pc_program_page: 111
+    pc_erase_sector: 35
+    pc_erase_all: ~
+    data_section_offset: 188
+    flash_properties:
+      address_range:
+        start: 0
+        end: 16384
+      page_size: 64
+      erased_byte_value: 255
+      program_page_timeout: 100
+      erase_sector_timeout: 1000
+      sectors:
+        - size: 1024
+          address: 0
+    cores: []
+  - name: atsamda1_32
+    description: ATSAMDA1 32kB Flash
+    default: true
+    instructions: QSEJBgpoUgcB1QQiCmAoSiZJUWAnSUlECGAAIHBHACBwRw8hyQIBQEIIDyCAAgJAELUfSMJhIEoCgAJ90gf80B1MASI/PNICixgM4EoIwmEEgAJ90gf80AJ9kgcB1QEgEL3/MQExmULw0wAgEL0QtRFMD0vkHByAHH3kB/zQyRyJCIkAAuAQygkfEMAAKfrRCUg9OBiAGH3AB/zQGH2ABwHVASAQvQAgEL0AAJ4ABAAAQABBBAAAAEGlAAAAAAAAAAAAAA==
+    load_address: ~
+    pc_init: 1
+    pc_uninit: 31
+    pc_program_page: 111
+    pc_erase_sector: 35
+    pc_erase_all: ~
+    data_section_offset: 188
+    flash_properties:
+      address_range:
+        start: 0
+        end: 32768
+      page_size: 64
+      erased_byte_value: 255
+      program_page_timeout: 100
+      erase_sector_timeout: 1000
+      sectors:
+        - size: 2048
+          address: 0
+    cores: []
+  - name: atsamda1_64
+    description: ATSAMDA1 64kB Flash
+    default: true
+    instructions: QSEJBgpoUgcB1QQiCmAoSiZJUWAnSUlECGAAIHBHACBwRw8hCQMBQEIIDyDAAgJAELUfSMJhIEoCgAJ90gf80B1MASI/PBIDixgM4EoIwmEEgAJ90gf80AJ9kgcB1QEgEL3/MQExmULw0wAgEL0QtRFMD0vkHByAHH3kB/zQyRyJCIkAAuAQygkfEMAAKfrRCUg9OBiAGH3AB/zQGH2ABwHVASAQvQAgEL0AAJ4ABAAAQABBBAAAAEGlAAAAAAAAAAAAAA==
+    load_address: ~
+    pc_init: 1
+    pc_uninit: 31
+    pc_program_page: 111
+    pc_erase_sector: 35
+    pc_erase_all: ~
+    data_section_offset: 188
+    flash_properties:
+      address_range:
+        start: 0
+        end: 65536
+      page_size: 64
+      erased_byte_value: 255
+      program_page_timeout: 100
+      erase_sector_timeout: 1000
+      sectors:
+        - size: 4096
+          address: 0
+    cores: []

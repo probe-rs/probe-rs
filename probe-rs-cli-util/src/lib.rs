@@ -1,6 +1,7 @@
 pub mod common_options;
 pub mod flash;
 pub mod logging;
+pub mod meta;
 pub mod rtt;
 
 use cargo_toml::Manifest;
@@ -113,7 +114,7 @@ pub fn build_artifact(work_dir: &Path, args: &[String]) -> Result<Artifact, Arti
         .current_dir(work_dir)
         .arg("build")
         .args(args)
-        .args(&["--message-format", "json-diagnostic-rendered-ansi"])
+        .args(["--message-format", "json-diagnostic-rendered-ansi"])
         .stdout(Stdio::piped())
         .spawn()
         .map_err(ArtifactError::Io)?;
@@ -143,7 +144,7 @@ pub fn build_artifact(work_dir: &Path, args: &[String]) -> Result<Artifact, Arti
             }
             Message::CompilerMessage(message) => {
                 if let Some(rendered) = message.message.rendered {
-                    print!("{}", rendered);
+                    print!("{rendered}");
                 }
             }
             // Ignore other messages.

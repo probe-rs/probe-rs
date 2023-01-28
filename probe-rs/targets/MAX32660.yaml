@@ -1,0 +1,51 @@
+name: MAX32660
+generated_from_pack: true
+pack_file_release: 1.4.0
+variants:
+- name: MAX32660
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20018000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x40000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - max32660
+flash_algorithms:
+- name: max32660
+  description: MAX32660 256KB Flash
+  default: true
+  instructions: iUlgIEhgSmqISEhEgmAAIkpiimhCYEJoIvBwQkJgQmhC8ABSQmBAaIhgcEd+SYpofkhIREJgQmgi8HBCQmBCaIpggGhIYnBHACBwRwAgcEcAtf/31f90S5lodEhIREFgQWgh9H9BQWBBaEH0KkFBYEFomWBBaEHwAgFBYEBomGCYaMAB/NT/99H/WGqAB0/wAAAB1VhiASAAvQC1QwtbA//3rv9gSQtgimhgSEhEQmBCaCL0f0JCYEJoQvSqQkJgQmiKYEJoQvAEAkJgQGiIYIhowAH81EhqgAcF1QAgSGL/96T/ASAAvf/3oP8AIAC9+LUTRgxGBUb/94L/SkiBaEpKSkRRYFFoIfAAYVFgUWhB8BABUWBRaIFgDuAFYBloAWNRaEHwAQFRYFFogWCBaMkB/NQbHSQfLR0ELAHT6Qbs0RFogCkg0RAsHtOBaFFgUWgh8BABUWBRaIFgBWAZaAFjWWhBY5logWPZaMFjUWhB8AEBUWBRaIFggWjJAfzUEDMQPBA1ECzo0gQsHNOBaFFgUWgh8ABhUWBRaEHwEAFRYFFogWAFYBloAWNRaEHwAQFRYFFogWCBaMkB/NQbHSQfLR0ELO7SFLMZoQloAJGGaAAhVmBWaCbwAGZWYFZoRvAQBlZgVmiGYG5GE/gBe3dUSRxkHvnRBWAAmQFjUWhB8AEBUWBRaIFggWjJAfzUQGqABwPV//cJ/wEg+L3/9wX/ACD4vQAAAJACQAQAAAD/////AAAAACAAAAAAAAAAAAAAAA==
+  pc_init: 0x49
+  pc_uninit: 0x4d
+  pc_program_page: 0xf1
+  pc_erase_sector: 0x9b
+  pc_erase_all: 0x51
+  data_section_offset: 0x234
+  flash_properties:
+    address_range:
+      start: 0x0
+      end: 0x40000
+    page_size: 0x400
+    erased_byte_value: 0xff
+    program_page_timeout: 1000
+    erase_sector_timeout: 5000
+    sectors:
+    - size: 0x2000
+      address: 0x0

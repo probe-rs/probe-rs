@@ -5,7 +5,9 @@
 use core::iter::Iterator;
 
 use crate::{
-    architecture::arm::{component::DebugRegister, memory::CoresightComponent, ArmProbeInterface},
+    architecture::arm::{
+        component::DebugRegister, memory::CoresightComponent, ArmError, ArmProbeInterface,
+    },
     Error,
 };
 
@@ -35,13 +37,13 @@ pub enum Mode {
 /// The embedded trace memory controller.
 pub struct TraceMemoryController<'a> {
     component: &'a CoresightComponent,
-    interface: &'a mut Box<dyn ArmProbeInterface>,
+    interface: &'a mut dyn ArmProbeInterface,
 }
 
 impl<'a> TraceMemoryController<'a> {
     /// Construct a new embedded trace fifo controller.
     pub fn new(
-        interface: &'a mut Box<dyn ArmProbeInterface>,
+        interface: &'a mut dyn ArmProbeInterface,
         component: &'a CoresightComponent,
     ) -> Self {
         Self {
@@ -76,7 +78,7 @@ impl<'a> TraceMemoryController<'a> {
     }
 
     /// Attempt to read a value out of the FIFO
-    pub fn read(&mut self) -> Result<Option<u32>, Error> {
+    pub fn read(&mut self) -> Result<Option<u32>, ArmError> {
         // Read the RRD register.
         match self
             .component
@@ -148,7 +150,7 @@ impl<'a> TraceMemoryController<'a> {
     }
 
     /// Get the size of the FIFO in bytes.
-    pub fn fifo_size(&mut self) -> Result<u32, Error> {
+    pub fn fifo_size(&mut self) -> Result<u32, ArmError> {
         let size_words = self
             .component
             .read_reg(self.interface, REGISTER_OFFSET_RSZ)?;

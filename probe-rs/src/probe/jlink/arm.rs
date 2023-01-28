@@ -3,7 +3,7 @@ use std::{iter, time::Duration};
 use crate::{
     architecture::arm::{
         dp::{Abort, Ctrl, RdBuff, DPIDR},
-        DapError, DpAddress, Pins, PortType, RawDapAccess, Register,
+        ArmError, DapError, DpAddress, Pins, PortType, RawDapAccess, Register,
     },
     probe::JTAGAccess,
     DebugProbe, DebugProbeError,
@@ -157,11 +157,7 @@ fn build_jtag_payload_and_address(transfer: &DapTransfer) -> (u64, u32) {
         payload |= (transfer.address as u64 & 0b1000) >> 1;
         payload |= (transfer.address as u64 & 0b0100) >> 1;
         // RnW, bit 0
-        payload |= if transfer.direction == TransferDirection::Read {
-            1
-        } else {
-            0
-        };
+        payload |= u64::from(transfer.direction == TransferDirection::Read);
 
         (payload, address)
     }
@@ -193,7 +189,7 @@ fn perform_jtag_transfer<P: JTAGAccess + RawProtocolIo>(
     let result = probe.write_register(address, &data[..], JTAG_DR_BIT_LENGTH)?;
 
     // Clock out any idle time
-    let idle_sequence = iter::repeat(false).take(transfer.idle_cycles_after as usize);
+    let idle_sequence = iter::repeat(false).take(transfer.idle_cycles_after);
     probe.jtag_io(idle_sequence.to_owned(), idle_sequence)?;
 
     let received = parse_jtag_response(&result);
@@ -218,7 +214,7 @@ fn perform_jtag_transfer<P: JTAGAccess + RawProtocolIo>(
             TransferStatus::Ok
         }
         _ => {
-            log::error!("Unexpected DAP response: {}", status);
+            tracing::error!("Unexpected DAP response: {}", status);
 
             TransferStatus::Failed(DapError::NoAcknowledge)
         }
@@ -285,7 +281,7 @@ fn perform_jtag_transfers<P: JTAGAccess + RawProtocolIo>(
         )?;
 
         if Ctrl(received_value).sticky_err() {
-            log::debug!("JTAG transaction set failed: {:#X?}", transfers);
+            tracing::debug!("JTAG transaction set failed: {:#X?}", transfers);
 
             // Clear the sticky bit so future transactions succeed
             let (_, _) = perform_jtag_transfer(
@@ -337,7 +333,7 @@ fn perform_swd_transfers<P: RawProtocolIo>(
 
         probe.probe_statistics().report_swd_response(&response);
 
-        log::debug!("Transfer result {}: {:x?}", i, response);
+        tracing::debug!("Transfer result {}: {:x?}", i, response);
 
         match response {
             Ok(val) => {
@@ -458,7 +454,7 @@ fn perform_transfers<P: DebugProbe + RawProtocolIo + JTAGAccess>(
         }
 
         if transfer.is_write() {
-            log::trace!("Adding {} idle cycles after transfer!", idle_cycles);
+            tracing::trace!("Adding {} idle cycles after transfer!", idle_cycles);
 
             final_transfers.last_mut().unwrap().idle_cycles_after = idle_cycles;
         }
@@ -485,7 +481,7 @@ fn perform_transfers<P: DebugProbe + RawProtocolIo + JTAGAccess>(
             probe.swd_settings().idle_cycles_after_transfer;
     }
 
-    log::debug!(
+    tracing::debug!(
         "Performing {} transfers ({} additional transfers)",
         num_transfers,
         num_transfers - transfers.len()
@@ -774,7 +770,7 @@ fn parse_swd_response(response: &[bool], direction: TransferDirection) -> Result
 
     let read_value_offset = ack_offset + 3;
 
-    let register_val: Vec<bool> = (&response[read_value_offset..read_value_offset + 32]).to_owned();
+    let register_val: Vec<bool> = response[read_value_offset..read_value_offset + 32].to_owned();
 
     let parity_bit = response[read_value_offset + 32];
 
@@ -799,7 +795,7 @@ fn parse_swd_response(response: &[bool], direction: TransferDirection) -> Result
 
             // Make sure the parity is correct.
             if (value.count_ones() % 2 == 1) == parity_bit {
-                log::trace!("DAP read {}.", value);
+                tracing::trace!("DAP read {}.", value);
                 Ok(value)
             } else {
                 Err(DapError::IncorrectParity)
@@ -810,7 +806,7 @@ fn parse_swd_response(response: &[bool], direction: TransferDirection) -> Result
         }
     } else {
         // Invalid response
-        log::debug!(
+        tracing::debug!(
             "Unexpected response from target, does not conform to SWD specfication (ack={:?})",
             ack
         );
@@ -833,7 +829,7 @@ pub trait RawProtocolIo {
 
     fn probe_statistics(&mut self) -> &mut ProbeStatistics;
 
-    /// Try to perform a line reset, followed by a read of the DPIDR register.
+    /// Try to perform a SWD line reset, followed by a read of the DPIDR register.
     ///
     /// Returns Ok if the read of the DPIDR register was succesful, and Err
     /// otherwise. In case of JLink Errors, the actual error is returned.
@@ -842,7 +838,7 @@ pub trait RawProtocolIo {
     /// might be in the middle of a transfer the first time we try the reset.
     ///
     /// See section B4.3.3 in the ADIv5 Specification.
-    fn line_reset(&mut self) -> Result<(), DebugProbeError>;
+    fn line_reset(&mut self) -> Result<(), ArmError>;
 }
 
 impl RawProtocolIo for JLink {
@@ -878,8 +874,8 @@ impl RawProtocolIo for JLink {
         Ok(iter.collect())
     }
 
-    fn line_reset(&mut self) -> Result<(), DebugProbeError> {
-        log::debug!("Performing line reset!");
+    fn line_reset(&mut self) -> Result<(), ArmError> {
+        tracing::debug!("Performing line reset!");
 
         const NUM_RESET_BITS: u8 = 50;
 
@@ -903,12 +899,12 @@ impl RawProtocolIo for JLink {
             match &transfers[0].status {
                 TransferStatus::Ok => return Ok(()),
                 TransferStatus::Pending => {
-                    log::debug!("Unexpected pending status in line reset.");
+                    tracing::debug!("Unexpected pending status in line reset.");
                     // Transfer will be retried.
                 }
                 TransferStatus::Failed(e) => {
-                    log::debug!("Error reading DPIDR register after line reset: {e:?}");
-                    result = Err(DebugProbeError::ArchitectureSpecific(e.clone().into()));
+                    tracing::debug!("Error reading DPIDR register after line reset: {e:?}");
+                    result = Err(ArmError::from(e.clone()));
                 }
             }
         }
@@ -927,16 +923,17 @@ impl RawProtocolIo for JLink {
 }
 
 impl<Probe: DebugProbe + RawProtocolIo + JTAGAccess + 'static> RawDapAccess for Probe {
-    fn select_dp(&mut self, dp: DpAddress) -> Result<(), DebugProbeError> {
+    fn select_dp(&mut self, dp: DpAddress) -> Result<(), ArmError> {
         match dp {
             DpAddress::Default => Ok(()), // nop
             DpAddress::Multidrop(_) => Err(DebugProbeError::ProbeSpecific(
                 anyhow::anyhow!("JLink doesn't support multidrop SWD yet").into(),
-            )),
+            )
+            .into()),
         }
     }
 
-    fn raw_read_register(&mut self, port: PortType, address: u8) -> Result<u32, DebugProbeError> {
+    fn raw_read_register(&mut self, port: PortType, address: u8) -> Result<u32, ArmError> {
         let dap_wait_retries = self.swd_settings().num_retries_after_wait;
         let mut idle_cycles = std::cmp::max(1, self.swd_settings().num_idle_cycles_between_writes);
 
@@ -956,7 +953,7 @@ impl<Probe: DebugProbe + RawProtocolIo + JTAGAccess + 'static> RawDapAccess for 
                 }
                 TransferStatus::Failed(DapError::WaitResponse) => {
                     // If ack[1] is set the host must retry the request. So let's do that right away!
-                    log::debug!(
+                    tracing::debug!(
                         "DAP WAIT, (read), retries remaining {}.",
                         dap_wait_retries - retry
                     );
@@ -973,7 +970,7 @@ impl<Probe: DebugProbe + RawProtocolIo + JTAGAccess + 'static> RawDapAccess for 
                         abort.into(),
                     )?;
 
-                    log::debug!("Cleared sticky overrun bit");
+                    tracing::debug!("Cleared sticky overrun bit");
 
                     idle_cycles = std::cmp::min(
                         self.swd_settings().max_retry_idle_cycles_after_wait,
@@ -983,38 +980,50 @@ impl<Probe: DebugProbe + RawProtocolIo + JTAGAccess + 'static> RawDapAccess for 
                     continue;
                 }
                 TransferStatus::Failed(DapError::FaultResponse) => {
-                    log::debug!("DAP FAULT");
+                    tracing::debug!("DAP FAULT");
 
                     // A fault happened during operation.
 
-                    // To get a clue about the actual fault we read the ctrl register,
-                    // which will have the fault status flags set.
-                    let response =
-                        RawDapAccess::raw_read_register(self, PortType::DebugPort, Ctrl::ADDRESS)?;
-                    let ctrl = Ctrl::from(response);
-                    log::debug!(
-                        "Reading DAP register failed. Ctrl/Stat register value is: {:#?}",
-                        ctrl
-                    );
+                    // To get a clue about the actual fault we want to read the ctrl register,
+                    // which will have the fault status flags set. But we only do this
+                    // if we are *not* currently reading the ctrl register, otherwise
+                    // this could end up being an endless recursion.
 
-                    // Check the reason for the fault
-                    // Other fault reasons than overrun or write error are not handled yet.
-                    if ctrl.sticky_orun() || ctrl.sticky_err() {
-                        // We did not handle a WAIT state properly
-
-                        // Because we use overrun detection, we now have to clear the overrun error
-                        let mut abort = Abort(0);
-
-                        // Clear sticky error flags
-                        abort.set_orunerrclr(ctrl.sticky_orun());
-                        abort.set_stkerrclr(ctrl.sticky_err());
-
-                        RawDapAccess::raw_write_register(
+                    if address != Ctrl::ADDRESS {
+                        let response = RawDapAccess::raw_read_register(
                             self,
                             PortType::DebugPort,
-                            Abort::ADDRESS,
-                            abort.into(),
+                            Ctrl::ADDRESS,
                         )?;
+                        let ctrl = Ctrl::try_from(response)?;
+                        tracing::debug!(
+                            "Reading DAP register failed. Ctrl/Stat register value is: {:#?}",
+                            ctrl
+                        );
+
+                        // Check the reason for the fault
+                        // Other fault reasons than overrun or write error are not handled yet.
+                        if ctrl.sticky_orun() || ctrl.sticky_err() {
+                            // We did not handle a WAIT state properly
+
+                            // Because we use overrun detection, we now have to clear the overrun error
+                            let mut abort = Abort(0);
+
+                            // Clear sticky error flags
+                            abort.set_orunerrclr(ctrl.sticky_orun());
+                            abort.set_stkerrclr(ctrl.sticky_err());
+
+                            RawDapAccess::raw_write_register(
+                                self,
+                                PortType::DebugPort,
+                                Abort::ADDRESS,
+                                abort.into(),
+                            )?;
+                        }
+                    } else {
+                        tracing::warn!(
+                            "Error reading CTRL/STAT register. This should not happen..."
+                        );
                     }
 
                     return Err(DapError::FaultResponse.into());
@@ -1022,7 +1031,7 @@ impl<Probe: DebugProbe + RawProtocolIo + JTAGAccess + 'static> RawDapAccess for 
                 // The other errors mean that something went wrong with the protocol itself,
                 // so we try to perform a line reset, and recover.
                 TransferStatus::Failed(_) => {
-                    log::debug!("DAP NACK");
+                    tracing::debug!("DAP NACK");
 
                     // Because we clock the SWDCLK line after receving the WAIT response,
                     // the target might be in weird state. If we perform a line reset,
@@ -1036,8 +1045,8 @@ impl<Probe: DebugProbe + RawProtocolIo + JTAGAccess + 'static> RawDapAccess for 
         }
 
         // If we land here, the DAP operation timed out.
-        log::error!("DAP read timeout.");
-        Err(DebugProbeError::Timeout)
+        tracing::error!("DAP read timeout.");
+        Err(ArmError::Timeout)
     }
 
     fn raw_read_block(
@@ -1045,7 +1054,7 @@ impl<Probe: DebugProbe + RawProtocolIo + JTAGAccess + 'static> RawDapAccess for 
         port: PortType,
         address: u8,
         values: &mut [u32],
-    ) -> Result<(), DebugProbeError> {
+    ) -> Result<(), ArmError> {
         let mut succesful_transfers = 0;
 
         let mut idle_cycles = std::cmp::max(1, self.swd_settings().num_idle_cycles_between_writes);
@@ -1069,7 +1078,7 @@ impl<Probe: DebugProbe + RawProtocolIo + JTAGAccess + 'static> RawDapAccess for 
                         succesful_transfers += 1;
                     }
                     TransferStatus::Failed(err) => {
-                        log::debug!(
+                        tracing::debug!(
                             "Error in access {}/{} of block access: {}",
                             index + 1,
                             values.len(),
@@ -1096,7 +1105,7 @@ impl<Probe: DebugProbe + RawProtocolIo + JTAGAccess + 'static> RawDapAccess for 
                                 idle_cycles * 2,
                             );
 
-                            log::debug!("Retrying access {}", index_offset + index + 1);
+                            tracing::debug!("Retrying access {}", index_offset + index + 1);
 
                             continue 'transfer;
                         }
@@ -1118,7 +1127,7 @@ impl<Probe: DebugProbe + RawProtocolIo + JTAGAccess + 'static> RawDapAccess for 
         port: PortType,
         address: u8,
         value: u32,
-    ) -> Result<(), DebugProbeError> {
+    ) -> Result<(), ArmError> {
         let dap_wait_retries = self.swd_settings().num_retries_after_wait;
         let mut idle_cycles = std::cmp::max(1, self.swd_settings().num_idle_cycles_between_writes);
 
@@ -1138,7 +1147,7 @@ impl<Probe: DebugProbe + RawProtocolIo + JTAGAccess + 'static> RawDapAccess for 
                 }
                 TransferStatus::Failed(DapError::WaitResponse) => {
                     // If ack[1] is set the host must retry the request. So let's do that right away!
-                    log::debug!(
+                    tracing::debug!(
                         "DAP WAIT, (write), retries remaining {}.",
                         dap_wait_retries - retry
                     );
@@ -1155,7 +1164,7 @@ impl<Probe: DebugProbe + RawProtocolIo + JTAGAccess + 'static> RawDapAccess for 
                         abort.into(),
                     )?;
 
-                    log::debug!("Cleared sticky overrun bit");
+                    tracing::debug!("Cleared sticky overrun bit");
 
                     idle_cycles = std::cmp::min(
                         self.swd_settings().max_retry_idle_cycles_after_wait,
@@ -1165,7 +1174,7 @@ impl<Probe: DebugProbe + RawProtocolIo + JTAGAccess + 'static> RawDapAccess for 
                     continue;
                 }
                 TransferStatus::Failed(DapError::FaultResponse) => {
-                    log::debug!("DAP FAULT");
+                    tracing::debug!("DAP FAULT");
                     // A fault happened during operation.
 
                     // To get a clue about the actual fault we read the ctrl register,
@@ -1174,8 +1183,8 @@ impl<Probe: DebugProbe + RawProtocolIo + JTAGAccess + 'static> RawDapAccess for 
                     let response =
                         RawDapAccess::raw_read_register(self, PortType::DebugPort, Ctrl::ADDRESS)?;
 
-                    let ctrl = Ctrl::from(response);
-                    log::trace!(
+                    let ctrl = Ctrl::try_from(response)?;
+                    tracing::trace!(
                         "Writing DAP register failed. Ctrl/Stat register value is: {:#?}",
                         ctrl
                     );
@@ -1205,7 +1214,7 @@ impl<Probe: DebugProbe + RawProtocolIo + JTAGAccess + 'static> RawDapAccess for 
                 // The other errors mean that something went wrong with the protocol itself,
                 // so we try to perform a line reset, and recover.
                 TransferStatus::Failed(_) => {
-                    log::debug!("DAP NACK");
+                    tracing::debug!("DAP NACK");
 
                     // Because we clock the SWDCLK line after receving the WAIT response,
                     // the target might be in weird state. If we perform a line reset,
@@ -1219,8 +1228,8 @@ impl<Probe: DebugProbe + RawProtocolIo + JTAGAccess + 'static> RawDapAccess for 
         }
 
         // If we land here, the DAP operation timed out.
-        log::error!("DAP write timeout.");
-        Err(DebugProbeError::Timeout)
+        tracing::error!("DAP write timeout.");
+        Err(ArmError::Timeout)
     }
 
     fn raw_write_block(
@@ -1228,7 +1237,7 @@ impl<Probe: DebugProbe + RawProtocolIo + JTAGAccess + 'static> RawDapAccess for 
         port: PortType,
         address: u8,
         values: &[u32],
-    ) -> Result<(), DebugProbeError> {
+    ) -> Result<(), ArmError> {
         let mut succesful_transfers = 0;
 
         let mut idle_cycles = std::cmp::max(1, self.swd_settings().num_idle_cycles_between_writes);
@@ -1254,7 +1263,7 @@ impl<Probe: DebugProbe + RawProtocolIo + JTAGAccess + 'static> RawDapAccess for 
                         succesful_transfers += 1;
                     }
                     TransferStatus::Failed(err) => {
-                        log::debug!(
+                        tracing::debug!(
                             "Error in access {}/{} of block access: {}",
                             index_offset + index + 1,
                             values.len(),
@@ -1281,7 +1290,7 @@ impl<Probe: DebugProbe + RawProtocolIo + JTAGAccess + 'static> RawDapAccess for 
                                 idle_cycles * 2,
                             );
 
-                            log::debug!("Retrying access {}", index_offset + index + 1);
+                            tracing::debug!("Retrying access {}", index_offset + index + 1);
 
                             continue 'transfer;
                         }
@@ -1376,7 +1385,7 @@ mod test {
     use std::iter;
 
     use crate::{
-        architecture::arm::{PortType, RawDapAccess},
+        architecture::arm::{ArmError, PortType, RawDapAccess},
         probe::JTAGAccess,
         DebugProbe, DebugProbeError,
     };
@@ -1672,7 +1681,7 @@ mod test {
             Ok(transfer_response)
         }
 
-        fn line_reset(&mut self) -> Result<(), crate::DebugProbeError> {
+        fn line_reset(&mut self) -> Result<(), ArmError> {
             Ok(())
         }
 
@@ -1713,7 +1722,7 @@ mod test {
             todo!()
         }
 
-        fn detach(&mut self) -> Result<(), crate::DebugProbeError> {
+        fn detach(&mut self) -> Result<(), crate::Error> {
             todo!()
         }
 
@@ -1769,7 +1778,7 @@ mod test {
         let mut mock = MockJaylink::new();
 
         let result = mock.select_protocol(crate::WireProtocol::Jtag);
-        assert_eq!(false, result.is_err());
+        assert!(result.is_ok());
 
         // Read request
         mock.add_jtag_response(PortType::AccessPort, 4, true, DapAcknowledge::Ok, 0, 0);
@@ -1824,7 +1833,7 @@ mod test {
         let mut mock = MockJaylink::new();
 
         let result = mock.select_protocol(crate::WireProtocol::Jtag);
-        assert_eq!(false, result.is_err());
+        assert!(result.is_ok());
 
         // Read
         mock.add_jtag_response(PortType::AccessPort, 4, true, DapAcknowledge::Ok, 0, 0);
@@ -1875,7 +1884,7 @@ mod test {
         let mut mock = MockJaylink::new();
 
         let result = mock.select_protocol(crate::WireProtocol::Jtag);
-        assert_eq!(false, result.is_err());
+        assert!(result.is_ok());
 
         mock.add_jtag_response(
             PortType::AccessPort,
@@ -1932,7 +1941,7 @@ mod test {
         let mut mock = MockJaylink::new();
 
         let result = mock.select_protocol(crate::WireProtocol::Jtag);
-        assert_eq!(false, result.is_err());
+        assert!(result.is_ok());
 
         mock.add_jtag_response(
             PortType::AccessPort,

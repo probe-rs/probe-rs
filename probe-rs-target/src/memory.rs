@@ -1,3 +1,4 @@
+use crate::serialize::{hex_range, hex_u_int};
 use core::ops::Range;
 use serde::{Deserialize, Serialize};
 
@@ -7,8 +8,10 @@ pub struct NvmRegion {
     /// A name to describe the region
     pub name: Option<String>,
     /// Address range of the region
+    #[serde(serialize_with = "hex_range")]
     pub range: Range<u64>,
     /// True if the chip boots from this memory
+    #[serde(default)]
     pub is_boot_memory: bool,
     /// List of cores that can access this region
     pub cores: Vec<String>,
@@ -29,8 +32,10 @@ pub struct RamRegion {
     /// A name to describe the region
     pub name: Option<String>,
     /// Address range of the region
+    #[serde(serialize_with = "hex_range")]
     pub range: Range<u64>,
     /// True if the chip boots from this memory
+    #[serde(default)]
     pub is_boot_memory: bool,
     /// List of cores that can access this region
     pub cores: Vec<String>,
@@ -42,6 +47,7 @@ pub struct GenericRegion {
     /// A name to describe the region
     pub name: Option<String>,
     /// Address range of the region
+    #[serde(serialize_with = "hex_range")]
     pub range: Range<u64>,
     /// List of cores that can access this region
     pub cores: Vec<String>,
@@ -70,9 +76,11 @@ pub struct SectorInfo {
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct SectorDescription {
     /// Size of each individual flash sector
+    #[serde(serialize_with = "hex_u_int")]
     pub size: u64,
     /// Start address of the group of flash sectors, relative
     /// to the start address of the flash.
+    #[serde(serialize_with = "hex_u_int")]
     pub address: u64,
 }
 

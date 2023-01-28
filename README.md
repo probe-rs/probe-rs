@@ -3,7 +3,7 @@
 a modern, embedded debugging toolkit,
 written in Rust
 
-[![crates.io](https://img.shields.io/crates/v/probe-rs)](https://crates.io/crates/probe-rs) [![documentation](https://docs.rs/probe-rs/badge.svg)](https://docs.rs/probe-rs) [![Actions Status](https://img.shields.io/github/workflow/status/probe-rs/probe-rs/Run%20CI)](https://github.com/probe-rs/probe-rs/actions) [![chat](https://img.shields.io/badge/chat-probe--rs%3Amatrix.org-brightgreen)](https://matrix.to/#/#probe-rs:matrix.org) 
+[![crates.io](https://img.shields.io/crates/v/probe-rs)](https://crates.io/crates/probe-rs) [![documentation](https://docs.rs/probe-rs/badge.svg)](https://docs.rs/probe-rs) [![Actions Status](https://img.shields.io/github/actions/workflow/status/probe-rs/probe-rs/ci.yml?branch=master)](https://github.com/probe-rs/probe-rs/actions) [![chat](https://img.shields.io/badge/chat-probe--rs%3Amatrix.org-brightgreen)](https://matrix.to/#/#probe-rs:matrix.org)
 
 The goal of this library is to provide a toolset to interact with a variety of embedded MCUs and debug probes.
 
@@ -35,17 +35,18 @@ If you think probe-rs makes your embedded journey more enjoyable or even earns y
 
 ## Downloading a file
 
-The `cargo-flash` utility can be used as a cargo subcommand to download a compiled Rust program onto a target device. It can also be used to download arbitrary ELF files that might come out of a C/C++ compiler. Have a look at [cargo-flash](https://github.com/probe-rs/cargo-flash) for more information.
+The `cargo-flash` utility can be used as a cargo subcommand to download a compiled Rust program onto a target device. It can also be used to download arbitrary ELF files that might come out of a C/C++ compiler. Have a look at [cargo-flash](./cargo-flash) for more information.
 
 ## Better debugging with probe-rs
 
-If you are looking for a more extended debugging experience, please head over to [cargo-embed](https://github.com/probe-rs/cargo-embed) which provides support for GDB, RTT, and config files.
+If you are looking for a more extended debugging experience, please have a look at [cargo-embed](./cargo-embed) which provides support for GDB, RTT, and config files.
 
 ## VSCode
 
-We are implementing [Microsoft DAP](https://microsoft.github.io/debug-adapter-protocol/). This makes embedded debugging via probe-rs available in modern code editors implementing the standard, such as VSCode. To support this, probe-rs includes a debugger which supports both basic command line debugging, and more extensive capabilities when run as a DAP server. Please see [probe-rs-debugger](./debugger) and [vscode](https://github.com/probe-rs/vscode) for more information.
+We have implemented the [Microsoft DAP protocol](https://microsoft.github.io/debug-adapter-protocol/). This makes embedded debugging via probe-rs available in modern code editors implementing the standard, such as VSCode. Please see [probe-rs-debugger](./debugger) and [vscode](https://github.com/probe-rs/vscode) for more information.
 
 ## Usage Examples
+
 ### Halting the attached chip
 
 ```rust
@@ -126,10 +127,10 @@ Building requires Rust and Cargo which can be installed [using rustup](https://r
 
 ```console
 # Ubuntu
-> sudo apt install -y libusb-1.0-0-dev libftdi1-dev libudev-dev
+> sudo apt install -y libusb-1.0-0-dev libftdi1-dev libudev-dev libssl-dev
 
 # Fedora
-> sudo dnf install -y libusbx-devel libftdi-devel libudev-devel
+> sudo dnf install -y libusbx-devel libftdi-devel libudev-devel openssl-devel
 ```
 
 On Windows you can use [vcpkg](https://github.com/microsoft/vcpkg#quick-start-windows):
@@ -150,10 +151,6 @@ See [the vcpkg crate documentation](https://docs.rs/vcpkg/) for more information
 Target files are generated using [target-gen](https://github.com/probe-rs/probe-rs/tree/master/target-gen) from CMSIS packs provided [here](https://developer.arm.com/tools-and-software/embedded/cmsis/cmsis-search).
 Generated files are then placed in `probe-rs/targets` for inclusion in the probe-rs project.
 
-## Sponsors
-
-[![Technokrat](https://technokrat.ch/static/img/svg_banner-light.svg)](https://technokrat.ch)
-
 ## Acknowledgements
 
 In early stages of this library, we profited invaluably from the pyOCD code to understand how flashing works. Also it's always a good reference to cross check how ARM specific things work. So, a big thank you to the team behind pyOCD!
@@ -162,10 +159,10 @@ In early stages of this library, we profited invaluably from the pyOCD code to u
 
 Licensed under either of
 
- * Apache License, Version 2.0 ([LICENSE-APACHE](LICENSE-APACHE) or
-   http://www.apache.org/licenses/LICENSE-2.0)
- * MIT license ([LICENSE-MIT](LICENSE-MIT) or
-   http://opensource.org/licenses/MIT) at your option.
+- Apache License, Version 2.0 ([LICENSE-APACHE](LICENSE-APACHE) or
+  http://www.apache.org/licenses/LICENSE-2.0)
+- MIT license ([LICENSE-MIT](LICENSE-MIT) or
+  http://opensource.org/licenses/MIT) at your option.
 
 ## Contributing
 

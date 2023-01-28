@@ -1,0 +1,96 @@
+name: Open a release PR
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Version to release
+        required: true
+        type: string
+
+jobs:
+  make-release-pr:
+    permissions:
+      id-token: write # Enable OIDC
+      pull-requests: write
+      contents: write
+    runs-on: ubuntu-latest
+    env:
+      BRANCH_NAME: release/${{ inputs.version }}
+    steps:
+      - uses: actions/checkout@v3
+      - uses: chainguard-dev/actions/setup-gitsign@main
+      - name: install cargo-release
+        run: |
+          curl -LsSf https://github.com/crate-ci/cargo-release/releases/download/v0.24.0/cargo-release-v0.24.0-x86_64-unknown-linux-gnu.tar.gz | tar xzf - -C ${CARGO_HOME:-~/.cargo}/bin
+      - name: Install semver checks
+        run: |
+          curl -LsSf https://github.com/obi1kenobi/cargo-semver-checks/releases/download/v0.15.2/cargo-semver-checks-x86_64-unknown-linux-musl.tar.gz | tar xzf - -C ${CARGO_HOME:-~/.cargo}/bin
+      - name: Install libusb, libudev (linux)
+        run: |
+          sudo apt update
+          sudo apt install -y libusb-1.0-0-dev libudev-dev
+      - name: Install SSH
+        run: |
+          apt-get update -y && apt-get install openssh-client -y
+          eval $(ssh-agent -s -a $SSH_AUTH_SOCK)
+          echo "$SSH_SIGNING_KEY" | tr -d '\r' | ssh-add -
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+        env:
+          SSH_SIGNING_KEY: ${{ secrets.SSH_SIGNING_KEY }}
+          SSH_AUTH_SOCK: /tmp/ssh_agent.sock
+
+      - name: Git setup
+        run: |
+          git config user.name "probe-rs"
+          git config user.email "bot@probe.rs"
+          git config --global gpg.format ssh
+          git config --global user.signingkey 'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGr8+OZiQ6EHlhZcsPbnbkiW0wBtgNYGR2J5SI+QOw9Q bot@probe.rs'
+          git fetch --unshallow
+          git fetch --tags
+
+      - name: Create branch
+        run: |
+          git checkout -b ${BRANCH_NAME}
+
+      - name: Bump versions
+        run: |
+          cargo release version ${{ inputs.version }} --execute --verbose --no-confirm --allow-branch ${BRANCH_NAME}
+          cargo release replace --execute --verbose --no-confirm
+          cargo release hook --execute --verbose --no-confirm
+          cargo release commit --execute --verbose --no-confirm --sign-commit
+        env:
+          SSH_AUTH_SOCK: /tmp/ssh_agent.sock
+
+      - name: Check semver compliance
+        run: |
+          cargo semver-checks check-release -p probe-rs -p probe-rs-target -p probe-rs-rtt -p probe-rs-cli-util
+
+      - name: Push branch
+        run: |
+          git push origin ${BRANCH_NAME}
+
+      - name: create pull request
+        run: |
+          gh pr create -B master -H "${BRANCH_NAME}"\
+            --title "Release ${BRANCH_NAME}"\
+            --label "release"\
+            --body "This is the release PR for **${{ inputs.version }}**.
+          ---
+          It releases:
+
+          - probe-rs
+          - probe-rs-target
+          - probe-rs-rtt
+          - probe-rs-cli-util
+          - probe-rs-cli
+          - probe-rs-debugger
+          - gdb-server
+          - target-gen
+          - rtthost
+          - cargo-embed
+          - cargo-flash
+          ---
+          Use \`bors r+\` to merge."
+        env:
+            GITHUB_TOKEN: ${{ secrets.GH_PAT }}

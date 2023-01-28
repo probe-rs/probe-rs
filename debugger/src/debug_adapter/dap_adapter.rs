@@ -8,6 +8,7 @@ use crate::{
     DebuggerError,
 };
 use anyhow::{anyhow, Result};
+use base64::{engine::general_purpose as base64_engine, Engine as _};
 use capstone::{
     arch::arm::ArchMode as armArchMode, arch::arm64::ArchMode as aarch64ArchMode,
     arch::riscv::ArchMode as riscvArchMode, prelude::*, Capstone, Endian,
@@ -15,34 +16,43 @@ use capstone::{
 use dap_types::*;
 use parse_int::parse;
 use probe_rs::{
+    architecture::{arm::ArmError, riscv::communication_interface::RiscvError},
     debug::{
         ColumnType, DebugRegisters, SourceLocation, SteppingMode, VariableName, VariableNodeType,
     },
     Architecture::Riscv,
-    CoreStatus, CoreType, HaltReason, InstructionSet, MemoryInterface, RegisterValue,
+    CoreStatus, CoreType, Error, HaltReason, InstructionSet, MemoryInterface, RegisterValue,
 };
 use probe_rs_cli_util::rtt;
 use serde::{de::DeserializeOwned, Serialize};
-use std::{convert::TryInto, path::Path, str, string::ToString, thread, time::Duration};
+use std::{convert::TryInto, path::Path, str, string::ToString, time::Duration};
 
 /// Progress ID used for progress reporting when the debug adapter protocol is used.
 type ProgressId = i64;
 
 pub struct DebugAdapter<P: ProtocolAdapter> {
-    /// Track the last_known_status of the probe.
-    /// The debug client needs to be notified when the probe changes state,
-    /// and the only way is to poll the probe status periodically.
-    /// For instance, when the client sets the probe running,
-    /// and the probe halts because of a breakpoint, we need to notify the client.
-    pub(crate) last_known_status: CoreStatus,
     pub(crate) halt_after_reset: bool,
+    /// NOTE: VSCode sends a 'threads' request when it receives the response from the `ConfigurationDone` request, irrespective of target state.
+    /// This can lead to duplicate `threads->stacktrace->etc.` sequences if & when the target halts and sends a 'stopped' event.
+    /// See <https://github.com/golang/vscode-go/issues/940> for more info.
+    /// In order to avoid overhead and duplicate responses, we will implement the following logic.
+    /// - `configuration_done` will ignore target status, and simply notify VSCode when it is done.
+    /// - `threads` will check for [DebugAdapter::configuration_done] and ...
+    ///   - If it is `false`, it will ...
+    ///     - send back a threads response, with `all_threads_stopped=Some(false)`, and set [DebugAdapter::configuration_done] to `true`.
+    ///   - If it is `true`, it will respond with thread information as expected.
+    configuration_done: bool,
+    /// Flag to indicate if all cores of the target are halted. This is used to accurately report the `all_threads_stopped` field in the DAP `StoppedEvent`, as well as to prevent unnecessary polling of core status.
+    /// The default is `true`, and will be set to `false` if any of the cores report a status other than `CoreStatus::Halted(_)`.
+    pub(crate) all_cores_halted: bool,
+    /// Progress ID used for progress reporting when the debug adapter protocol is used.
     progress_id: ProgressId,
     /// Flag to indicate if the connected client supports progress reporting.
     pub(crate) supports_progress_reporting: bool,
     /// Flags to improve breakpoint accuracy.
-    /// [DWARF] spec at Sect 2.14 uses 1 based numbering, with a 0 indicating not-specified. We will follow that standard, and translate incoming requests depending on the DAP Client treatment of 0 or 1 based numbering.
+    /// DWARF spec at Sect 2.14 uses 1 based numbering, with a 0 indicating not-specified. We will follow that standard, and translate incoming requests depending on the DAP Client treatment of 0 or 1 based numbering.
     pub(crate) lines_start_at_1: bool,
-    /// [DWARF] spec at Sect 2.14 uses 1 based numbering, with a 0 indicating not-specified. We will follow that standard, and translate incoming requests depending on the DAP Client treatment of 0 or 1 based numbering.
+    /// DWARF spec at Sect 2.14 uses 1 based numbering, with a 0 indicating not-specified. We will follow that standard, and translate incoming requests depending on the DAP Client treatment of 0 or 1 based numbering.
     pub(crate) columns_start_at_1: bool,
     adapter: P,
 }
@@ -50,8 +60,9 @@ pub struct DebugAdapter<P: ProtocolAdapter> {
 impl<P: ProtocolAdapter> DebugAdapter<P> {
     pub fn new(adapter: P) -> DebugAdapter<P> {
         DebugAdapter {
-            last_known_status: CoreStatus::Unknown,
             halt_after_reset: false,
+            configuration_done: false,
+            all_cores_halted: true,
             progress_id: 0,
             supports_progress_reporting: false,
             lines_start_at_1: true,
@@ -60,47 +71,11 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         }
     }
 
-    pub(crate) fn status(&mut self, target_core: &mut CoreHandle, request: Request) -> Result<()> {
-        let status = match target_core.core.status() {
-            Ok(status) => {
-                self.last_known_status = status;
-                status
-            }
-            Err(error) => {
-                return self.send_response::<()>(
-                    request,
-                    Err(DebuggerError::Other(anyhow!(
-                        "Could not read core status. {:?}",
-                        error
-                    ))),
-                )
-            }
-        };
-        if status.is_halted() {
-            let pc: Result<u64, crate::Error> = target_core
-                .core
-                .read_core_reg(target_core.core.registers().program_counter());
-            match pc {
-                Ok(pc) => self.send_response(
-                    request,
-                    Ok(Some(format!(
-                        "Status: {:?} at address {:#010x}",
-                        status.short_long_status().1,
-                        pc
-                    ))),
-                ),
-
-                Err(error) => self
-                    .send_response::<()>(request, Err(DebuggerError::Other(anyhow!("{}", error)))),
-            }
-        } else {
-            self.send_response(request, Ok(Some(status.short_long_status().1.to_string())))
-        }
+    pub(crate) fn configuration_is_done(&self) -> bool {
+        self.configuration_done
     }
 
     pub(crate) fn pause(&mut self, target_core: &mut CoreHandle, request: Request) -> Result<()> {
-        // let args: PauseArguments = get_arguments(&request)?;
-
         match target_core.core.halt(Duration::from_millis(500)) {
             Ok(cpu_info) => {
                 let new_status = match target_core.core.status() {
@@ -110,17 +85,6 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                         return Err(anyhow!("Failed to retrieve core status"));
                     }
                 };
-                self.last_known_status = new_status;
-                let event_body = Some(StoppedEventBody {
-                    reason: "pause".to_owned(),
-                    description: Some(self.last_known_status.short_long_status().1.to_owned()),
-                    thread_id: Some(target_core.core.id() as i64),
-                    preserve_focus_hint: Some(false),
-                    text: None,
-                    all_threads_stopped: Some(false), // TODO: Implement multi-core logic here
-                    hit_breakpoint_ids: None,
-                });
-                self.send_event("stopped", event_body)?;
                 self.send_response(
                     request,
                     Ok(Some(format!(
@@ -128,8 +92,16 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                         cpu_info.pc
                     ))),
                 )?;
-                self.last_known_status = CoreStatus::Halted(HaltReason::Request);
-
+                let event_body = Some(StoppedEventBody {
+                    reason: "pause".to_owned(),
+                    description: Some(new_status.short_long_status(Some(cpu_info.pc)).1),
+                    thread_id: Some(target_core.core.id() as i64),
+                    preserve_focus_hint: Some(false),
+                    text: None,
+                    all_threads_stopped: Some(self.all_cores_halted),
+                    hit_breakpoint_ids: None,
+                });
+                self.send_event("stopped", event_body)?;
                 Ok(())
             }
             Err(error) => {
@@ -172,11 +144,11 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             }
         }
         if !buff.is_empty() || num_bytes_unread == 0 {
-            let response = base64::encode(&buff);
+            let response = base64_engine::STANDARD.encode(&buff);
             self.send_response(
                 request,
                 Ok(Some(ReadMemoryResponseBody {
-                    address: format!("{:#010x}", address),
+                    address: format!("{address:#010x}"),
                     data: Some(response),
                     unreadable_bytes: None,
                 })),
@@ -222,7 +194,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                 ))),
             );
         };
-        let data_bytes = match base64::decode(&arguments.data) {
+        let data_bytes = match base64_engine::STANDARD.decode(&arguments.data) {
             Ok(decoded_bytes) => decoded_bytes,
             Err(error) => {
                 return self.send_response::<()>(
@@ -253,7 +225,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                     "memory",
                     Some(MemoryEventBody {
                         count: data_bytes.len() as i64,
-                        memory_reference: format!("{:#010x}", address),
+                        memory_reference: format!("{address:#010x}"),
                         offset: 0,
                     }),
                 )
@@ -309,7 +281,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                 .and_then(|reg| reg.value)
             {
                 response_body.type_ = Some(format!("{}", VariableName::RegistersRoot));
-                response_body.result = format!("{}", register_value);
+                response_body.result = format!("{register_value}");
             } else {
                 // If the expression wasn't pointing to a register, then check if is a local or static variable in our stack_frame
                 let mut variable: Option<probe_rs::debug::Variable> = None;
@@ -513,6 +485,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             }
         }
 
+        target_core.reset_core_status(self);
         // Different code paths if we invoke this from a request, versus an internal function.
         if let Some(request) = request {
             // Use reset_and_halt(), and then resume again afterwards, depending on the reset_after_halt flag.
@@ -522,12 +495,12 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                     target_core.core.debug_on_sw_breakpoint(true)?;
 
                     // For RISC-V, we need to re-enable any breakpoints that were previously set, because the core reset 'forgets' them.
-                    let saved_breakpoints = target_core
-                        .core_data
-                        .breakpoints
-                        .drain(..)
-                        .collect::<Vec<ActiveBreakpoint>>();
                     if target_core.core.architecture() == Riscv {
+                        let saved_breakpoints = target_core
+                            .core_data
+                            .breakpoints
+                            .drain(..)
+                            .collect::<Vec<ActiveBreakpoint>>();
                         for breakpoint in saved_breakpoints {
                             match target_core.set_breakpoint(
                                 breakpoint.breakpoint_address,
@@ -536,7 +509,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                                 Ok(_) => {}
                                 Err(error) => {
                                     //This will cause the debugger to show the user an error, but not stop the debugger.
-                                    log::error!(
+                                    tracing::error!(
                                         "Failed to re-enable breakpoint {:?} after reset. {}",
                                         breakpoint,
                                         error
@@ -546,16 +519,17 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                         }
                     }
 
-                    // Now that we have the breakpoints re-enabled, we can decide if it is appropriat to resume the core.
+                    // Now that we have the breakpoints re-enabled, we can decide if it is appropriate to resume the core.
                     if !self.halt_after_reset {
                         match self.r#continue(target_core, request.clone()) {
                             Ok(_) => {
+                                self.send_response::<()>(request, Ok(None))?;
                                 let event_body = Some(ContinuedEventBody {
                                     all_threads_continued: Some(false), // TODO: Implement multi-core logic here
                                     thread_id: target_core.core.id() as i64,
                                 });
                                 self.send_event("continued", event_body)?;
-                                self.send_response::<()>(request, Ok(None))
+                                Ok(())
                             }
                             Err(error) => self.send_response::<()>(
                                 request,
@@ -563,23 +537,22 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                             ),
                         }
                     } else {
+                        self.send_response::<()>(request, Ok(None))?;
                         let event_body = Some(StoppedEventBody {
-                            reason: "reset".to_owned(),
+                            reason: "restart".to_owned(),
                             description: Some(
                                 CoreStatus::Halted(HaltReason::External)
-                                    .short_long_status()
-                                    .1
-                                    .to_string(),
+                                    .short_long_status(None)
+                                    .1,
                             ),
                             thread_id: Some(target_core.core.id() as i64),
                             preserve_focus_hint: None,
                             text: None,
-                            all_threads_stopped: Some(false), // TODO: Implement multi-core logic here
+                            all_threads_stopped: Some(self.all_cores_halted),
                             hit_breakpoint_ids: None,
                         });
                         self.send_event("stopped", event_body)?;
-                        self.last_known_status = CoreStatus::Halted(HaltReason::External);
-                        self.send_response::<()>(request, Ok(None))
+                        Ok(())
                     }
                 }
                 Err(error) => self
@@ -589,31 +562,26 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             // The DAP Client will always do a `reset_and_halt`, and then will consider `halt_after_reset` value after the `configuration_done` request.
             // Otherwise the probe will run past the `main()` before the DAP Client has had a chance to set breakpoints in `main()`.
             match target_core.core.reset_and_halt(Duration::from_millis(500)) {
-                Ok(_) => {
+                Ok(core_info) => {
                     // Ensure ebreak enters debug mode, this is necessary for soft breakpoints to work on architectures like RISC-V.
                     target_core.core.debug_on_sw_breakpoint(true)?;
 
-                    if let Some(request) = request {
-                        return self.send_response::<()>(request, Ok(None));
-                    }
-                    // Only notify the DAP client if we are NOT in initialization stage (`CoreStatus::Unknown`).
-                    if self.last_known_status != CoreStatus::Unknown {
+                    // Only notify the DAP client if we are NOT in initialization stage ([`DebugAdapter::configuration_done`]).
+                    if self.configuration_is_done() {
                         let event_body = Some(StoppedEventBody {
-                            reason: "reset".to_owned(),
+                            reason: "restart".to_owned(),
                             description: Some(
                                 CoreStatus::Halted(HaltReason::External)
-                                    .short_long_status()
-                                    .1
-                                    .to_string(),
+                                    .short_long_status(Some(core_info.pc))
+                                    .1,
                             ),
                             thread_id: Some(target_core.core.id() as i64),
                             preserve_focus_hint: None,
                             text: None,
-                            all_threads_stopped: Some(false), // TODO: Implement multi-core logic here
+                            all_threads_stopped: Some(self.all_cores_halted),
                             hit_breakpoint_ids: None,
                         });
                         self.send_event("stopped", event_body)?;
-                        self.last_known_status = CoreStatus::Halted(HaltReason::External);
                     }
                     Ok(())
                 }
@@ -631,17 +599,6 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         }
     }
 
-    /// NOTE: VSCode sends a 'threads' request when it receives the response from this request, irrespective of target state.
-    /// This can lead to duplicate `threads->stacktrace->etc.` sequences if & when the target halts and sends a 'stopped' event.
-    /// See [https://github.com/golang/vscode-go/issues/940] for more info.
-    /// In order to avoid overhead and duplicate responses, we will implement the following logic.
-    /// - `configuration_done` will ignore target status, and simply notify VSCode that we're done.
-    /// - `threads` will check for [DebugAdapter::last_known_status] and ...
-    ///   - If it is `Unknown`, it will ...
-    ///     - send back a threads response, with `all_threds_stopped=Some(false)`
-    ///     - check on actual core status, and update [DebugAdapter::last_known_status] as well as synch status with the VSCode client.
-    ///   - If it is `Halted`, it will respond with thread information as expected.
-    ///   - Any other status will send and error.
     pub(crate) fn configuration_done(
         &mut self,
         _core_data: &mut CoreHandle,
@@ -724,19 +681,18 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                                         Some(valid_breakpoint_location),
                                         breakpoint_source_location,
                                         format!(
-                                            "Source breakpoint at memory address: {:#010X}",
-                                            valid_breakpoint_location
+                                            "Source breakpoint at memory address: {valid_breakpoint_location:#010X}"
                                         ),
                                     ),
                                     Err(err) => {
-                                        (None, None, format!("Warning: Could not set breakpoint at memory address: {:#010x}: {}", valid_breakpoint_location, err))
+                                        (None, None, format!("Warning: Could not set breakpoint at memory address: {valid_breakpoint_location:#010x}: {err}"))
                                     }
                                 }
                             }
                         Ok(_) => {
                             (None, None, "Cannot set breakpoint here. Try reducing `opt-level` in `Cargo.toml`, or choose a different source location".to_string())
                         }
-                        Err(error) => (None, None, format!("Cannot set breakpoint here. Try reducing `opt-level` in `Cargo.toml`, or choose a different source location: {:?}", error)),
+                        Err(error) => (None, None, format!("Cannot set breakpoint here. Try reducing `opt-level` in `Cargo.toml`, or choose a different source location: {error:?}")),
                     }
                 } else {
                     (None, None, "No source path provided for set_breakpoints(). Please report this as a bug.".to_string())
@@ -757,13 +713,13 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                             .and_then(|sl| sl.line.map(|line| line as i64)),
                         message: Some(reason_msg),
                         source: None,
-                        instruction_reference: Some(format!("{:#010X}", verified_breakpoint)),
+                        instruction_reference: Some(format!("{verified_breakpoint:#010X}")),
                         offset: None,
                         verified: true,
                     });
                 } else {
                     // In addition to sending the error to the 'Hover' message, also write it to the Debug Console Log.
-                    self.log_to_console(format!("WARNING: {}", reason_msg));
+                    self.log_to_console(format!("WARNING: {reason_msg}"));
                     self.show_message(MessageSeverity::Warning, reason_msg.clone());
                     created_breakpoints.push(Breakpoint {
                         column: bp.column,
@@ -811,7 +767,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         // Always clear existing breakpoints before setting new ones.
         match target_core.clear_breakpoints(BreakpointType::InstructionBreakpoint) {
             Ok(_) => {}
-            Err(error) => log::warn!("Failed to clear instruction breakpoints. {}", error),
+            Err(error) => tracing::warn!("Failed to clear instruction breakpoints. {}", error),
         }
 
         // Set the new (potentially an empty list) breakpoints.
@@ -844,7 +800,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                     Ok(_) => {
                         breakpoint_response.verified = true;
                         breakpoint_response.instruction_reference =
-                            Some(format!("{:#010x}", memory_reference));
+                            Some(format!("{memory_reference:#010x}"));
                         // Try to resolve the source location for this breakpoint.
                         match target_core
                             .core_data
@@ -862,22 +818,21 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                                     });
                             }
                             None => {
-                                log::debug!("The request `SetInstructionBreakpoints` could not resolve a source location for memory reference: {:#010}", memory_reference);
+                                tracing::debug!("The request `SetInstructionBreakpoints` could not resolve a source location for memory reference: {:#010}", memory_reference);
                             }
                         }
                     }
                     Err(error) => {
                         let message = format!(
-                            "Warning: Could not set breakpoint at memory address: {:#010x}: {}",
-                            memory_reference, error
+                            "Warning: Could not set breakpoint at memory address: {memory_reference:#010x}: {error}"
                         )
                         .to_string();
                         // In addition to sending the error to the 'Hover' message, also write it to the Debug Console Log.
-                        self.log_to_console(format!("Warning: {}", message));
+                        self.log_to_console(format!("Warning: {message}"));
                         self.show_message(MessageSeverity::Warning, message.clone());
                         breakpoint_response.message = Some(message);
                         breakpoint_response.instruction_reference =
-                            Some(format!("{:#010x}", memory_reference));
+                            Some(format!("{memory_reference:#010x}"));
                     }
                 }
             } else {
@@ -899,56 +854,11 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
 
     pub(crate) fn threads(&mut self, target_core: &mut CoreHandle, request: Request) -> Result<()> {
         // TODO: Implement actual thread resolution. For now, we just use the core id as the thread id.
+        let current_core_status = target_core.core.status()?;
         let mut threads: Vec<Thread> = vec![];
-        match self.last_known_status {
-            CoreStatus::Unknown => {
-                // We are probably here because the `configuration_done` request just happened, so we can make sure the client and debugger are in synch.
-                match target_core.core.status() {
-                    Ok(core_status) => {
-                        self.last_known_status = core_status;
-                        // Make sure the DAP Client and the DAP Server are in sync with the status of the core.
-                        if core_status.is_halted() {
-                            if self.halt_after_reset
-                                || core_status == CoreStatus::Halted(HaltReason::Breakpoint)
-                            {
-                                let event_body = Some(StoppedEventBody {
-                                    reason: core_status.short_long_status().0.to_owned(),
-                                    description: Some(
-                                        core_status.short_long_status().1.to_string(),
-                                    ),
-                                    thread_id: Some(target_core.core.id() as i64),
-                                    preserve_focus_hint: None,
-                                    text: None,
-                                    all_threads_stopped: Some(false), // TODO: Implement multi-core logic here
-                                    hit_breakpoint_ids: None,
-                                });
-                                self.send_event("stopped", event_body)?;
-                            } else {
-                                let single_thread = Thread {
-                                    id: target_core.core.id() as i64,
-                                    name: target_core.core_data.target_name.clone(),
-                                };
-                                threads.push(single_thread);
-                                self.send_response(
-                                    request.clone(),
-                                    Ok(Some(ThreadsResponseBody { threads })),
-                                )?;
-                                return self.r#continue(target_core, request);
-                            }
-                        }
-                    }
-                    Err(error) => {
-                        return self.send_response::<()>(
-                            request,
-                            Err(DebuggerError::Other(anyhow!(
-                                "Could not read core status to synchronize the client and the probe. {:?}",
-                                error
-                            ))),
-                        );
-                    }
-                }
-            }
-            CoreStatus::Halted(_) => {
+        if self.configuration_is_done() {
+            // We can handle this request normally.
+            if current_core_status.is_halted() {
                 let single_thread = Thread {
                     id: target_core.core.id() as i64,
                     name: target_core.core_data.target_name.clone(),
@@ -964,7 +874,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                             .send_response::<()>(request, Err(DebuggerError::ProbeRs(error)))
                     }
                 };
-                log::debug!(
+                tracing::debug!(
                     "Updating the stack frame data for core #{}",
                     target_core.core.id()
                 );
@@ -973,18 +883,54 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                     .core_data
                     .debug_info
                     .unwind(&mut target_core.core, pc)?;
+                return self.send_response(request, Ok(Some(ThreadsResponseBody { threads })));
             }
-            CoreStatus::Running | CoreStatus::LockedUp | CoreStatus::Sleeping => {
-                return self.send_response::<()>(
-                    request,
-                    Err(DebuggerError::Other(anyhow!(
-                        "Received request for `threads`, while last known core status was {:?}",
-                        self.last_known_status
-                    ))),
-                );
+        } else {
+            // This is the initial call to `threads` that happens after the `configuration_done` request, and requires special handling. (see [`DebugAdapter.configuration_done`])
+            self.configuration_done = true;
+            // At startup, we have to make sure the DAP Client and the DAP Server are in sync with the status of the core.
+            if current_core_status.is_halted() {
+                if self.halt_after_reset
+                    || matches!(
+                        current_core_status,
+                        CoreStatus::Halted(HaltReason::Breakpoint(_))
+                    )
+                {
+                    let program_counter = target_core
+                        .core
+                        .read_core_reg(target_core.core.registers().program_counter())
+                        .ok();
+                    let event_body = Some(StoppedEventBody {
+                        reason: current_core_status
+                            .short_long_status(program_counter)
+                            .0
+                            .to_owned(),
+                        description: Some(current_core_status.short_long_status(program_counter).1),
+                        thread_id: Some(target_core.core.id() as i64),
+                        preserve_focus_hint: None,
+                        text: None,
+                        all_threads_stopped: Some(self.all_cores_halted),
+                        hit_breakpoint_ids: None,
+                    });
+                    return self.send_event("stopped", event_body);
+                } else {
+                    let single_thread = Thread {
+                        id: target_core.core.id() as i64,
+                        name: target_core.core_data.target_name.clone(),
+                    };
+                    threads.push(single_thread);
+                    self.send_response(request.clone(), Ok(Some(ThreadsResponseBody { threads })))?;
+                    return self.r#continue(target_core, request);
+                }
             }
         }
-        self.send_response(request, Ok(Some(ThreadsResponseBody { threads })))
+        self.send_response::<()>(
+            request,
+            Err(DebuggerError::Other(anyhow!(
+                "Received request for `threads`, while last known core status was {:?}",
+                current_core_status
+            ))),
+        )
     }
 
     pub(crate) fn stack_trace(
@@ -1113,13 +1059,13 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                         let source = if let Some(source_location) = &frame.source_location {
                             get_dap_source(source_location)
                         } else {
-                            log::debug!("No source location present for frame!");
+                            tracing::debug!("No source location present for frame!");
                             None
                         };
 
                         // TODO: Can we add more meaningful info to `module_id`, etc.
                         StackFrame {
-                            id: frame.id as i64,
+                            id: frame.id,
                             name: function_display_name,
                             source,
                             line,
@@ -1192,7 +1138,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             }
         };
 
-        log::trace!("Getting scopes for frame {}", arguments.frame_id,);
+        tracing::trace!("Getting scopes for frame {}", arguments.frame_id,);
 
         if let Some(stack_frame) = target_core.get_stackframe(arguments.frame_id) {
             dap_scopes.push(Scope {
@@ -1309,6 +1255,11 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                 .riscv()
                 .mode(riscvArchMode::RiscV32)
                 .endian(Endian::Little)
+                .build(),
+            InstructionSet::RV32C => Capstone::new()
+                .riscv()
+                .mode(riscvArchMode::RiscV32)
+                .endian(Endian::Little)
                 .extra_mode(std::iter::once(
                     capstone::arch::riscv::ArchExtraMode::RiscVC,
                 ))
@@ -1319,7 +1270,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
 
         // Adjust instruction offset as required for variable length instruction sets.
         let instruction_offset_as_bytes = match target_instruction_set {
-            InstructionSet::Thumb2 | InstructionSet::RV32 => {
+            InstructionSet::Thumb2 | InstructionSet::RV32C => {
                 // Since we cannot guarantee the size of individual instructions, let's assume we will read the 120% of the requested number of 16-bit instructions.
                 (instruction_offset
                     * target_core
@@ -1329,7 +1280,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                     / 4
                     * 5
             }
-            InstructionSet::A32 | InstructionSet::A64 => {
+            InstructionSet::A32 | InstructionSet::A64 | InstructionSet::RV32 => {
                 instruction_offset
                     * target_core
                         .core
@@ -1372,9 +1323,9 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
 
         // The memory address for the next instruction to be disassembled
         let mut instruction_pointer = if let Some(read_pointer) = read_pointer {
-            read_pointer as u64
+            read_pointer
         } else {
-            let error_message = format!("Unable to calculate starting address for disassembly request with memory reference:{:#010X}, byte offset:{:#010X}, and instruction offset:{:#010X}.", memory_reference, byte_offset, instruction_offset);
+            let error_message = format!("Unable to calculate starting address for disassembly request with memory reference:{memory_reference:#010X}, byte offset:{byte_offset:#010X}, and instruction offset:{instruction_offset:#010X}.");
             return Err(DebuggerError::Other(anyhow!(error_message)));
         };
 
@@ -1406,13 +1357,12 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                         Err(memory_read_error) => {
                             // If we can't read data at a given address, then create a "invalid instruction" record, and keep trying.
                             assembly_lines.push(dap_types::DisassembledInstruction {
-                                address: format!("{:#010X}", current_read_pointer),
+                                address: format!("{current_read_pointer:#010X}"),
                                 column: None,
                                 end_column: None,
                                 end_line: None,
                                 instruction: format!(
-                                    "<instruction address not readable : {:?}>",
-                                    memory_read_error
+                                    "<instruction address not readable : {memory_read_error:?}>"
                                 ),
                                 instruction_bytes: None,
                                 line: None,
@@ -1426,7 +1376,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                 }
             }
 
-            match cs.disasm_all(&code_buffer, instruction_pointer as u64) {
+            match cs.disasm_all(&code_buffer, instruction_pointer) {
                 Ok(instructions) => {
                     if num_traits::Zero::is_zero(&instructions.len()) {
                         // The capstone library sometimes returns an empty result set, instead of an Err. Catch it here or else we risk an infinte loop looking for a valid instruction.
@@ -1440,7 +1390,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                         .iter()
                         .map(|instruction| {
                             // Before processing, update the code buffer appropriately
-                            code_buffer = code_buffer.split_at(instruction.len() as usize).1.to_vec();
+                            code_buffer = code_buffer.split_at(instruction.len()).1.to_vec();
 
                             // Variable width instruction sets my not use the full `code_buffer`, so we need to read ahead, to ensure we have enough code in the buffer to disassemble the 'widest' of instructions in the instruction set.
                             read_more_bytes = code_buffer.len() < target_instruction_set.get_maximum_instruction_size() as usize;
@@ -1474,7 +1424,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                                 }
                             } else {
                                 // It won't affect the outcome, but log it for completeness.
-                                log::debug!("The request `Disassemble` could not resolve a source location for memory reference: {:#010}", instruction.address());
+                                tracing::debug!("The request `Disassemble` could not resolve a source location for memory reference: {:#010}", instruction.address());
                             }
 
                             // Create the instruction data.
@@ -1572,7 +1522,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         }
     }
 
-    /// The MS DAP Specification only gives us the unique reference of the variable, and does not tell us which StackFrame it belongs to, nor does it specify if this variable is in the local, register or static scope. Unfortunately this means we have to search through all the available [VariableCache]'s until we find it. To minimize the impact of this, we will search in the most 'likely' places first (first stack frame's locals, then statics, then registers, then move to next stack frame, and so on ...)
+    /// The MS DAP Specification only gives us the unique reference of the variable, and does not tell us which StackFrame it belongs to, nor does it specify if this variable is in the local, register or static scope. Unfortunately this means we have to search through all the available [`probe_rs::debug::variable_cache::VariableCache`]'s until we find it. To minimize the impact of this, we will search in the most 'likely' places first (first stack frame's locals, then statics, then registers, then move to next stack frame, and so on ...)
     pub(crate) fn variables(
         &mut self,
         target_core: &mut CoreHandle,
@@ -1619,10 +1569,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                             memory_reference: variable
                                 .memory_location
                                 .memory_address()
-                                .map_or_else(
-                                    |_| None,
-                                    |address| Some(format!("{:#010x}", address)),
-                                ),
+                                .map_or_else(|_| None, |address| Some(format!("{address:#010x}"))),
                             indexed_variables: Some(indexed_child_variables_cnt),
                             named_variables: Some(named_child_variables_cnt),
                             presentation_hint: None,
@@ -1721,7 +1668,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                                 frame_base,
                             )?;
                         } else {
-                            log::error!("Could not cache deferred child variables for variable: {}. No register data available.", parent_variable.name);
+                            tracing::error!("Could not cache deferred child variables for variable: {}. No register data available.", parent_variable.name);
                         }
                     }
                 }
@@ -1736,7 +1683,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                             "named" => !variable.is_indexed(),
                             other => {
                                 // This will yield an empty Vec, which will result in a user facing error as well as the log below.
-                                log::error!("Received invalid variable filter: {}", other);
+                                tracing::error!("Received invalid variable filter: {}", other);
                                 false
                             }
                         },
@@ -1786,7 +1733,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
     ) -> Result<()> {
         match target_core.core.run() {
             Ok(_) => {
-                self.last_known_status = target_core.core.status().unwrap_or(CoreStatus::Unknown);
+                target_core.reset_core_status(self);
                 if request.command.as_str() == "continue" {
                     // If this continue was initiated as part of some other request, then do not respond.
                     self.send_response(
@@ -1799,31 +1746,35 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                 // We have to consider the fact that sometimes the `run()` is successfull,
                 // but "immediately" afterwards, the MCU hits a breakpoint or exception.
                 // So we have to check the status again to be sure.
-                thread::sleep(Duration::from_millis(100)); // Small delay to make sure the MCU hits user breakpoints early in `main()`.
-                let core_status = match target_core.core.status() {
-                    Ok(new_status) => match new_status {
-                        CoreStatus::Halted(_) => {
-                            let event_body = Some(StoppedEventBody {
-                                reason: new_status.short_long_status().0.to_owned(),
-                                description: Some(new_status.short_long_status().1.to_string()),
-                                thread_id: Some(target_core.core.id() as i64),
-                                preserve_focus_hint: None,
-                                text: None,
-                                all_threads_stopped: Some(false), // TODO: Implement multi-core logic here
-                                hit_breakpoint_ids: None,
-                            });
-                            self.send_event("stopped", event_body)?;
-                            new_status
+                match if target_core.core_data.breakpoints.is_empty() {
+                    target_core
+                        .core
+                        .wait_for_core_halted(Duration::from_millis(200))
+                } else {
+                    // Use slightly longer timeout when we know there breakpoints configured.
+                    target_core
+                        .core
+                        .wait_for_core_halted(Duration::from_millis(500))
+                } {
+                    Ok(_) => {
+                        // The core has halted, so we can proceed.
+                    }
+                    Err(wait_error) => {
+                        if matches!(
+                            wait_error,
+                            Error::Arm(ArmError::Timeout) | Error::Riscv(RiscvError::Timeout)
+                        ) {
+                            // The core is still running.
+                        } else {
+                            // Some other error occured, so we have to send an error response.
+                            return Err(wait_error.into());
                         }
-                        other => other,
-                    },
-                    Err(_) => CoreStatus::Unknown,
-                };
-                self.last_known_status = core_status;
+                    }
+                }
+
                 Ok(())
             }
             Err(error) => {
-                self.last_known_status = CoreStatus::Halted(HaltReason::Unknown);
                 self.send_response::<()>(request, Err(DebuggerError::Other(anyhow!("{}", error))))?;
                 Err(error.into())
             }
@@ -1882,6 +1833,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         target_core: &mut CoreHandle,
         request: Request,
     ) -> Result<(), anyhow::Error> {
+        target_core.reset_core_status(self);
         let (new_status, program_counter) = match stepping_granularity
             .step(&mut target_core.core, &target_core.core_data.debug_info)
         {
@@ -1893,7 +1845,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                 } => {
                     self.show_message(
                         MessageSeverity::Information,
-                        format!("Step error @{:#010X}: {}", pc_at_error, message),
+                        format!("Step error @{pc_at_error:#010X}: {message}"),
                     );
                     (target_core.core.status()?, *pc_at_error)
                 }
@@ -1904,26 +1856,32 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             },
         };
 
-        self.last_known_status = new_status;
         self.send_response::<()>(request, Ok(None))?;
-        if matches!(self.last_known_status, CoreStatus::Halted(_)) {
+
+        // We override the halt reason because our implementation of stepping uses breakpoints and results in a "BreakPoint" halt reason, which is not appropriate here.
+        target_core.core_data.last_known_status = CoreStatus::Halted(HaltReason::Step);
+        if matches!(new_status, CoreStatus::Halted(_)) {
             let event_body = Some(StoppedEventBody {
-                reason: "step".to_owned(),
-                description: Some(format!(
-                    "{} at address {:#010x}",
-                    new_status.short_long_status().1,
-                    program_counter
-                )),
+                reason: target_core
+                    .core_data
+                    .last_known_status
+                    .short_long_status(None)
+                    .0
+                    .to_string(),
+                description: Some(
+                    CoreStatus::Halted(HaltReason::Step)
+                        .short_long_status(Some(program_counter))
+                        .1,
+                ),
                 thread_id: Some(target_core.core.id() as i64),
                 preserve_focus_hint: None,
                 text: None,
-                all_threads_stopped: Some(false), // TODO: Implement multi-core logic here
+                all_threads_stopped: Some(self.all_cores_halted),
                 hit_breakpoint_ids: None,
             });
-            self.send_event("stopped", event_body)
-        } else {
-            Ok(())
+            self.send_event("stopped", event_body)?;
         }
+        Ok(())
     }
 
     /// The DAP protocol uses three related values to determine how to invoke the `Variables` request.
@@ -1993,9 +1951,9 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                 std::error::Error::source(&response);
             while let Some(source_error) = child_error {
                 offset_iterations += 1;
-                response_message = format!("{}\n", response_message,);
+                response_message = format!("{response_message}\n",);
                 for _offset_counter in 0..offset_iterations {
-                    response_message = format!("{}\t", response_message);
+                    response_message = format!("{response_message}\t");
                 }
                 response_message = format!(
                     "{}{}",
@@ -2180,7 +2138,7 @@ fn get_dap_source(source_location: &SourceLocation) -> Option<Source> {
                 name: source_location
                     .file
                     .clone()
-                    .map(|file_name| format!("<unavailable>: {}", file_name)),
+                    .map(|file_name| format!("<unavailable>: {file_name}")),
                 path: Some(path.to_string_lossy().to_string()),
                 source_reference: None,
                 presentation_hint: Some("deemphasize".to_string()),
@@ -2213,40 +2171,64 @@ pub fn get_arguments<T: DeserializeOwned>(req: &Request) -> Result<T, crate::Deb
 }
 
 pub(crate) trait DapStatus {
-    fn short_long_status(&self) -> (&'static str, &'static str);
+    fn short_long_status(&self, program_counter: Option<u64>) -> (&'static str, String);
 }
 impl DapStatus for CoreStatus {
     /// Return a tuple with short and long descriptions of the core status for human machine interface / hmi. The short status matches with the strings implemented by the Microsoft DAP protocol, e.g. `let (short_status, long status) = CoreStatus::short_long_status(core_status)`
-    fn short_long_status(&self) -> (&'static str, &'static str) {
+    fn short_long_status(&self, program_counter: Option<u64>) -> (&'static str, String) {
         match self {
-            CoreStatus::Running => ("continued", "Core is running"),
-            CoreStatus::Sleeping => ("sleeping", "Core is in SLEEP mode"),
+            CoreStatus::Running => ("continued", "Core is running".to_string()),
+            CoreStatus::Sleeping => ("sleeping", "Core is in SLEEP mode".to_string()),
             CoreStatus::LockedUp => (
                 "lockedup",
-                "Core is in LOCKUP status - encountered an unrecoverable exception",
+                "Core is in LOCKUP status - encountered an unrecoverable exception".to_string(),
             ),
             CoreStatus::Halted(halt_reason) => match halt_reason {
-                HaltReason::Breakpoint => (
+                HaltReason::Breakpoint(cause) => (
                     "breakpoint",
-                    "Core halted due to a breakpoint (software or hardware)",
+                    format!(
+                        "Halted on breakpoint ({:?}) @{}.",
+                        cause,
+                        if let Some(program_counter) = program_counter {
+                            format!("{program_counter:#010x}")
+                        } else {
+                            "(unspecified location)".to_string()
+                        }
+                    ),
                 ),
                 HaltReason::Exception => (
                     "exception",
-                    "Core halted due to an exception, e.g. interupt handler",
+                    "Core halted due to an exception, e.g. interupt handler".to_string(),
                 ),
                 HaltReason::Watchpoint => (
                     "data breakpoint",
-                    "Core halted due to a watchpoint or data breakpoint",
+                    "Core halted due to a watchpoint or data breakpoint".to_string(),
                 ),
-                HaltReason::Step => ("step", "Core halted after a 'step' instruction"),
+                HaltReason::Step => (
+                    "step",
+                    format!(
+                        "Halted after a 'step' instruction @{}.",
+                        if let Some(program_counter) = program_counter {
+                            format!("{program_counter:#010x}")
+                        } else {
+                            "(unspecified location)".to_string()
+                        }
+                    ),
+                ),
                 HaltReason::Request => (
                     "pause",
-                    "Core halted due to a user (debugger client) request",
+                    "Core halted due to a user (debugger client) request".to_string(),
                 ),
-                HaltReason::External => ("external", "Core halted due to an external request"),
-                _other => ("unrecognized", "Core halted: unrecognized cause"),
+                HaltReason::External => (
+                    "external",
+                    "Core halted due to an external request".to_string(),
+                ),
+                _other => (
+                    "unrecognized",
+                    "Core halted: unrecognized cause".to_string(),
+                ),
             },
-            CoreStatus::Unknown => ("unknown", "Core status cannot be determined"),
+            CoreStatus::Unknown => ("unknown", "Core status cannot be determined".to_string()),
         }
     }
 }

@@ -17,6 +17,7 @@ pub(super) fn is_stlink_device<T: UsbContext>(device: &Device<T>) -> bool {
     }
 }
 
+#[tracing::instrument(skip_all)]
 pub fn list_stlink_devices() -> Vec<DebugProbeInfo> {
     rusb::Context::new()
         .and_then(|context| context.devices())
@@ -33,13 +34,13 @@ pub fn list_stlink_devices() -> Vec<DebugProbeInfo> {
                             // Reading the serial number can fail, e.g. if the driver for the probe
                             // is not installed. In this case we can still list the probe,
                             // just without serial number.
-                            log::debug!(
+                            tracing::debug!(
                                 "Failed to read serial number of device {:04x}:{:04x} : {}",
                                 descriptor.vendor_id(),
                                 descriptor.product_id(),
                                 e
                             );
-                            log::debug!("This might be happening because of a missing driver.");
+                            tracing::debug!("This might be happening because of a missing driver.");
                             None
                         }
                     };
@@ -78,7 +79,7 @@ pub(super) fn read_serial_number<T: rusb::UsbContext>(
         if s.len() < 24 {
             // Some STLink (especially V2) have their serial number stored as a 12 bytes binary string
             // containing non printable characters, so convert to a hex string to make them printable.
-            s.as_bytes().iter().map(|b| format!("{:02X}", b)).collect()
+            s.as_bytes().iter().map(|b| format!("{b:02X}")).collect()
         } else {
             // Other STlink (especially V2-1) have their serial number already stored as a 24 characters
             // hex string so they don't need to ba converted

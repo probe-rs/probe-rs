@@ -37,25 +37,22 @@ jobs:
         if: (matrix.os == 'ubuntu-latest') || (matrix.os == 'ubuntu-20.04')
 
       - name: Install stable toolchain
-        uses: actions-rs/toolchain@v1.0.7
-        with:
-          toolchain: stable
-          override: true
+        uses: dtolnay/rust-toolchain@stable
 
       - name: Cache Dependencies
-        uses: Swatinem/rust-cache@v2.0.0
+        uses: Swatinem/rust-cache@v2.2.0
 
       - name: cargo check for probe-rs, --no-default-features
         uses: actions-rs/cargo@v1.0.3
         with:
           command: check
-          args: -p probe-rs --no-default-features
+          args: -p probe-rs --no-default-features --locked
 
       - name: Run cargo check
         uses: actions-rs/cargo@v1.0.3
         with:
           command: check
-          args: --all-features
+          args: --all-features --locked
 
   test:
     name: Test Suite
@@ -85,25 +82,18 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
 
       - name: Install stable toolchain
-        uses: actions-rs/toolchain@v1.0.7
+        uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: stable
-          override: true
-          target: thumbv7m-none-eabi
-
+          targets: thumbv7m-none-eabi
+      
       - name: Cache Dependencies
-        uses: Swatinem/rust-cache@v2.0.0
+        uses: Swatinem/rust-cache@v2.2.0
 
       - name: Run cargo test
         uses: actions-rs/cargo@v1.0.3
         with:
           command: test
-          args: --all-features
-
-      - name: Build with default features
-        uses: actions-rs/cargo@v1.0.3
-        with:
-          command: build
+          args: --all-features --locked
 
   fmt:
     name: Rustfmt
@@ -113,13 +103,9 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Install stable toolchain
-        uses: actions-rs/toolchain@v1.0.7
+        uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: stable
-          override: true
-
-      - name: Install rustfmt
-        run: rustup component add rustfmt
+          components: rustfmt
 
       - name: Run cargo fmt
         uses: actions-rs/cargo@v1.0.3
@@ -140,19 +126,49 @@ jobs:
           sudo apt install -y libusb-1.0-0-dev libudev-dev
 
       - name: Install stable toolchain
-        uses: actions-rs/toolchain@v1.0.7
+        uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: stable
-          override: true
-
-      - name: Install clippy
-        run: rustup component add clippy
+          components: clippy
 
       - name: Cache Dependencies
-        uses: Swatinem/rust-cache@v2.0.0
+        uses: Swatinem/rust-cache@v2.2.0
 
       - name: Run cargo clippy
         uses: actions-rs/clippy-check@v1.0.7
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          args: --all-features
+          args: --all-features --locked
+        env:
+          RUSTFLAGS: '-D warnings'
+
+  cargo-deny:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - uses: EmbarkStudios/cargo-deny-action@v1
+
+  doc:
+    name: Check docs
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v3
+
+      - name: Install libusb
+        run: |
+          sudo apt update
+          sudo apt install -y libusb-1.0-0-dev libudev-dev
+
+      - name: Install stable toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Dependencies
+        uses: Swatinem/rust-cache@v2.2.0
+
+      - name: Run cargo doc
+        uses: actions-rs/cargo@v1.0.3
+        with:
+          command: doc
+          args: --all-features --locked
+        env:
+          RUSTDOCFLAGS: '-D warnings'

@@ -31,9 +31,9 @@ struct RawDutDefinition {
 impl RawDutDefinition {
     /// Try to parse a DUT definition from a file.
     fn from_file(file: &Path) -> Result<Self> {
-        let file_content = std::fs::read(file)?;
+        let file_content = std::fs::read_to_string(file)?;
 
-        let definition: RawDutDefinition = toml::from_slice(&file_content)?;
+        let definition: RawDutDefinition = toml::from_str(&file_content)?;
 
         Ok(definition)
     }
@@ -146,7 +146,7 @@ impl DutDefinition {
         match &self.probe_selector {
             Some(selector) => {
                 let probe = Probe::open(selector.clone())
-                    .with_context(|| format!("Failed to open probe with selector {}", selector))?;
+                    .with_context(|| format!("Failed to open probe with selector {selector}"))?;
 
                 Ok(probe)
             }
@@ -174,23 +174,7 @@ impl DutDefinition {
 
         let flash_test_binary = raw_definition.flash_test_binary.map(PathBuf::from);
 
-        let flash_test_binary = match flash_test_binary {
-            Some(path) => {
-                if path.is_absolute() {
-                    Some(path)
-                } else {
-                    // For relative paths, join the path with the location of the source file to create an absolute path.
-
-                    let source_file_directory =
-                        source_file.parent().unwrap_or_else(|| Path::new("."));
-
-                    let flash_binary_location = source_file_directory.join(path);
-
-                    Some(flash_binary_location.canonicalize()?)
-                }
-            }
-            None => None,
-        };
+        let flash_test_binary = flash_test_binary.filter(|path| path.is_absolute());
 
         Ok(Self {
             chip: target,
@@ -203,7 +187,7 @@ impl DutDefinition {
 }
 
 fn lookup_unique_target(chip: &str) -> Result<Target> {
-    let targets = search_chips(&chip)?;
+    let targets = search_chips(chip)?;
 
     ensure!(
         !targets.is_empty(),
@@ -218,7 +202,7 @@ fn lookup_unique_target(chip: &str) -> Result<Target> {
         );
 
         for target in &targets {
-            eprintln!("\t{}", target);
+            eprintln!("\t{target}");
         }
 
         bail!("Chip definition does not match exactly.");

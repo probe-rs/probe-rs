@@ -6,7 +6,8 @@ use std::convert::{TryFrom, TryInto};
 use std::iter;
 use std::time::{Duration, Instant};
 
-use crate::architecture::arm::RawDapAccess;
+use crate::architecture::arm::{ArmError, RawDapAccess};
+use crate::architecture::riscv::communication_interface::RiscvError;
 use crate::{
     architecture::{
         arm::{
@@ -18,7 +19,7 @@ use crate::{
     probe::{
         DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeType, JTAGAccess, WireProtocol,
     },
-    DebugProbeSelector, Error as ProbeRsError,
+    DebugProbeSelector,
 };
 
 use self::arm::{ProbeStatistics, SwdSettings};
@@ -99,7 +100,7 @@ impl JLink {
     }
 
     fn read_dr(&mut self, register_bits: usize) -> Result<Vec<u8>, DebugProbeError> {
-        log::debug!("Read {} bits from DR", register_bits);
+        tracing::debug!("Read {} bits from DR", register_bits);
 
         let tms_enter_shift = [true, false, false];
 
@@ -121,7 +122,7 @@ impl JLink {
 
         let mut response = self.handle.jtag_io(tms, tdi)?;
 
-        log::trace!("Response: {:?}", response);
+        tracing::trace!("Response: {:?}", response);
 
         let _remainder = response.split_off(tms_enter_shift.len());
 
@@ -140,7 +141,7 @@ impl JLink {
             result.push(bits_to_byte(response.split_off(remaining_bits)) as u8);
         }
 
-        log::debug!("Read from DR: {:?}", result);
+        tracing::debug!("Read from DR: {:?}", result);
 
         Ok(result)
     }
@@ -150,7 +151,7 @@ impl JLink {
     /// will be truncated to `len` bits. If data has less
     /// than `len` bits, an error will be returned.
     fn write_ir(&mut self, data: &[u8], len: usize) -> Result<(), DebugProbeError> {
-        log::debug!("Write IR: {:?}, len={}", data, len);
+        tracing::debug!("Write IR: {:?}, len={}", data, len);
 
         // Check the bit length, enough data has to be
         // available
@@ -213,12 +214,12 @@ impl JLink {
 
         tdi.extend_from_slice(&tdi_enter_idle);
 
-        log::trace!("tms: {:?}", tms);
-        log::trace!("tdi: {:?}", tdi);
+        tracing::trace!("tms: {:?}", tms);
+        tracing::trace!("tdi: {:?}", tdi);
 
         let response = self.handle.jtag_io(tms, tdi)?;
 
-        log::trace!("Response: {:?}", response);
+        tracing::trace!("Response: {:?}", response);
 
         if len >= 8 {
             return Err(DebugProbeError::NotImplemented(
@@ -234,7 +235,7 @@ impl JLink {
     }
 
     fn write_dr(&mut self, data: &[u8], register_bits: usize) -> Result<Vec<u8>, DebugProbeError> {
-        log::debug!("Write DR: {:?}, len={}", data, register_bits);
+        tracing::debug!("Write DR: {:?}, len={}", data, register_bits);
 
         let tms_enter_shift = [true, false, false];
 
@@ -290,7 +291,7 @@ impl JLink {
 
         let mut response = self.handle.jtag_io(tms, tdi)?;
 
-        log::trace!("Response: {:?}", response);
+        tracing::trace!("Response: {:?}", response);
 
         let _remainder = response.split_off(tms_enter_shift.len());
 
@@ -309,7 +310,7 @@ impl JLink {
             result.push(bits_to_byte(response.split_off(remaining_bits)) as u8);
         }
 
-        log::trace!("result: {:?}", result);
+        tracing::trace!("result: {:?}", result);
 
         Ok(result)
     }
@@ -348,7 +349,7 @@ impl DebugProbe for JLink {
                 super::ProbeCreationError::NotFound,
             ));
         } else if jlinks.len() > 1 {
-            log::warn!("More than one matching J-Link was found. Opening the first one.")
+            tracing::warn!("More than one matching J-Link was found. Opening the first one.")
         }
         let jlink_handle = jlinks.pop().unwrap()?;
 
@@ -371,7 +372,7 @@ impl DebugProbe for JLink {
                     .filter(|p| p.is_err())
                     .for_each(|protocol| {
                         if let Err(JlinkError::UnknownInterface(interface)) = protocol {
-                            log::debug!(
+                            tracing::debug!(
                             "J-Link returned interface {:?}, which is not supported by probe-rs.",
                             interface
                         );
@@ -433,7 +434,7 @@ impl DebugProbe for JLink {
         }
 
         if let Ok(speeds) = self.handle.read_speeds() {
-            log::debug!("Supported speeds: {:?}", speeds);
+            tracing::debug!("Supported speeds: {:?}", speeds);
 
             let max_speed_khz = speeds.max_speed_hz() / 1000;
 
@@ -453,7 +454,7 @@ impl DebugProbe for JLink {
     }
 
     fn attach(&mut self) -> Result<(), super::DebugProbeError> {
-        log::debug!("Attaching to J-Link");
+        tracing::debug!("Attaching to J-Link");
 
         let configured_protocol = match self.protocol {
             Some(protocol) => protocol,
@@ -470,10 +471,10 @@ impl DebugProbe for JLink {
         let actual_protocol = self.select_interface(Some(configured_protocol))?;
 
         if actual_protocol != configured_protocol {
-            log::warn!("Protocol {} is configured, but not supported by the probe. Using protocol {} instead", configured_protocol, actual_protocol);
+            tracing::warn!("Protocol {} is configured, but not supported by the probe. Using protocol {} instead", configured_protocol, actual_protocol);
         }
 
-        log::debug!("Attaching with protocol '{}'", actual_protocol);
+        tracing::debug!("Attaching with protocol '{}'", actual_protocol);
         self.protocol = Some(actual_protocol);
 
         // Get reference to JayLink instance
@@ -481,37 +482,37 @@ impl DebugProbe for JLink {
 
         // Log some information about the probe
         let serial = self.handle.serial_string().trim_start_matches('0');
-        log::info!("J-Link: S/N: {}", serial);
-        log::debug!("J-Link: Capabilities: {:?}", capabilities);
+        tracing::info!("J-Link: S/N: {}", serial);
+        tracing::debug!("J-Link: Capabilities: {:?}", capabilities);
         let fw_version = self
             .handle
             .read_firmware_version()
             .unwrap_or_else(|_| "?".into());
-        log::info!("J-Link: Firmware version: {}", fw_version);
+        tracing::info!("J-Link: Firmware version: {}", fw_version);
         match self.handle.read_hardware_version() {
-            Ok(hw_version) => log::info!("J-Link: Hardware version: {}", hw_version),
-            Err(_) => log::info!("J-Link: Hardware version: ?"),
+            Ok(hw_version) => tracing::info!("J-Link: Hardware version: {}", hw_version),
+            Err(_) => tracing::info!("J-Link: Hardware version: ?"),
         };
 
         // Check and report the target voltage.
         let target_voltage = self.get_target_voltage()?.expect("The J-Link returned None when it should only be able to return Some(f32) or an error. Please report this bug!");
         if target_voltage < crate::probe::LOW_TARGET_VOLTAGE_WARNING_THRESHOLD {
-            log::warn!(
+            tracing::warn!(
                 "J-Link: Target voltage (VTref) is {:2.2} V. Is your target device powered?",
                 target_voltage
             );
         } else {
-            log::info!("J-Link: Target voltage: {:2.2} V", target_voltage);
+            tracing::info!("J-Link: Target voltage: {:2.2} V", target_voltage);
         }
 
         match actual_protocol {
             WireProtocol::Jtag => {
                 // try some JTAG stuff
 
-                log::debug!("Resetting JTAG chain using trst");
+                tracing::debug!("Resetting JTAG chain using trst");
                 self.handle.reset_trst()?;
 
-                log::debug!("Resetting JTAG chain by setting tms high for 32 bits");
+                tracing::debug!("Resetting JTAG chain by setting tms high for 32 bits");
 
                 // Reset JTAG chain (5 times TMS high), and enter idle state afterwards
                 let tms = vec![true, true, true, true, true, false];
@@ -519,7 +520,7 @@ impl DebugProbe for JLink {
 
                 let response: Vec<_> = self.handle.jtag_io(tms, tdi)?.collect();
 
-                log::debug!("Response to reset: {:?}", response);
+                tracing::debug!("Response to reset: {:?}", response);
 
                 // try to read the idcode until we have some non-zero bytes
                 let start = Instant::now();
@@ -532,7 +533,7 @@ impl DebugProbe for JLink {
                     }
                 };
 
-                log::info!("JTAG IDCODE: {:#010x}", idcode);
+                tracing::info!("JTAG IDCODE: {:#010x}", idcode);
             }
             WireProtocol::Swd => {
                 // Attaching is handled in sequence
@@ -541,12 +542,12 @@ impl DebugProbe for JLink {
             }
         }
 
-        log::debug!("Attached succesfully");
+        tracing::debug!("Attached succesfully");
 
         Ok(())
     }
 
-    fn detach(&mut self) -> Result<(), super::DebugProbeError> {
+    fn detach(&mut self) -> Result<(), crate::Error> {
         Ok(())
     }
 
@@ -566,7 +567,7 @@ impl DebugProbe for JLink {
 
     fn try_get_riscv_interface(
         self: Box<Self>,
-    ) -> Result<RiscvCommunicationInterface, (Box<dyn DebugProbe>, DebugProbeError)> {
+    ) -> Result<RiscvCommunicationInterface, (Box<dyn DebugProbe>, RiscvError)> {
         if self.supported_protocols.contains(&WireProtocol::Jtag) {
             match RiscvCommunicationInterface::new(self) {
                 Ok(interface) => Ok(interface),
@@ -575,7 +576,7 @@ impl DebugProbe for JLink {
         } else {
             Err((
                 RawDapAccess::into_probe(self),
-                DebugProbeError::InterfaceNotAvailable("JTAG"),
+                DebugProbeError::InterfaceNotAvailable("JTAG").into(),
             ))
         }
     }
@@ -681,19 +682,19 @@ impl JTAGAccess for JLink {
 impl DapProbe for JLink {}
 
 impl SwoAccess for JLink {
-    fn enable_swo(&mut self, config: &SwoConfig) -> Result<(), ProbeRsError> {
+    fn enable_swo(&mut self, config: &SwoConfig) -> Result<(), ArmError> {
         self.swo_config = Some(*config);
         self.handle
             .swo_start(SwoMode::Uart, config.baud(), SWO_BUFFER_SIZE.into())
-            .map_err(|e| ProbeRsError::Probe(DebugProbeError::ArchitectureSpecific(Box::new(e))))?;
+            .map_err(|e| ArmError::from(DebugProbeError::ProbeSpecific(Box::new(e))))?;
         Ok(())
     }
 
-    fn disable_swo(&mut self) -> Result<(), ProbeRsError> {
+    fn disable_swo(&mut self) -> Result<(), ArmError> {
         self.swo_config = None;
         self.handle
             .swo_stop()
-            .map_err(|e| ProbeRsError::Probe(DebugProbeError::ArchitectureSpecific(Box::new(e))))?;
+            .map_err(|e| ArmError::from(DebugProbeError::ProbeSpecific(Box::new(e))))?;
         Ok(())
     }
 
@@ -701,7 +702,7 @@ impl SwoAccess for JLink {
         Some(SWO_BUFFER_SIZE.into())
     }
 
-    fn read_swo_timeout(&mut self, timeout: std::time::Duration) -> Result<Vec<u8>, ProbeRsError> {
+    fn read_swo_timeout(&mut self, timeout: std::time::Duration) -> Result<Vec<u8>, ArmError> {
         let end = std::time::Instant::now() + timeout;
         let mut buf = vec![0; SWO_BUFFER_SIZE.into()];
 
@@ -711,9 +712,10 @@ impl SwoAccess for JLink {
 
         let mut bytes = vec![];
         loop {
-            let data = self.handle.swo_read(&mut buf).map_err(|e| {
-                ProbeRsError::Probe(DebugProbeError::ArchitectureSpecific(Box::new(e)))
-            })?;
+            let data = self
+                .handle
+                .swo_read(&mut buf)
+                .map_err(|e| ArmError::from(DebugProbeError::ProbeSpecific(Box::new(e))))?;
             bytes.extend(data.as_ref());
             let now = std::time::Instant::now();
             if now + poll_interval < end {
@@ -738,6 +740,7 @@ pub(crate) fn bits_to_byte(bits: impl IntoIterator<Item = bool>) -> u32 {
     bit_val
 }
 
+#[tracing::instrument(skip_all)]
 pub(crate) fn list_jlink_devices() -> Vec<DebugProbeInfo> {
     match jaylink::scan_usb() {
         Ok(devices) => devices
@@ -764,7 +767,7 @@ pub(crate) fn list_jlink_devices() -> Vec<DebugProbeInfo> {
                 DebugProbeInfo::new(
                     format!(
                         "J-Link{}",
-                        product.map(|p| format!(" ({})", p)).unwrap_or_default()
+                        product.map(|p| format!(" ({p})")).unwrap_or_default()
                     ),
                     vid,
                     pid,

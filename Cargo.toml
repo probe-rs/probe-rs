@@ -1,6 +1,19 @@
+[workspace.package]
+version = "0.14.2"
+edition = "2021"
+
+documentation = "https://docs.rs/probe-rs/"
+homepage = "https://github.com/probe-rs/probe-rs"
+repository = "https://github.com/probe-rs/probe-rs"
+readme = "README.md"
+license = "MIT OR Apache-2.0"
+
+
 [workspace]
 members = [
+    "cargo-embed",
     "cli",
+    "cargo-flash",
     "debugger",
     "gdb-server",
     "probe-rs",
@@ -10,12 +23,17 @@ members = [
     "rtthost",
     "smoke-tester",
     "xtask",
-    "target-gen"
+    "target-gen",
 ]
 
-[profile.release]
-debug = true
-split-debuginfo = "unpacked"
+[workspace.dependencies]
+probe-rs = { path = "probe-rs", version = "0.14.2" }
+probe-rs-cli-util = { path = "probe-rs-cli-util", version = "0.14.2" }
+probe-rs-rtt = { path = "rtt", version = "0.14.2" }
+probe-rs-target = { path = "probe-rs-target", version = "0.14.2" }
+gdb-server = { path = "gdb-server", version = "0.14.2" }
 
-[profile.dev]
-split-debuginfo = "unpacked"
+log = "0.4.6"
+pretty_env_logger = "0.4.0"
+thiserror = "1.0"
+anyhow = "1.0.34"
