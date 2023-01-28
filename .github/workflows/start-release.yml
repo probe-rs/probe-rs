@@ -73,15 +73,12 @@ jobs:
       - name: create pull request
         run: |
           gh pr create -B master -H "${BRANCH_NAME}"\
-            --title "Release ${BRANCH_NAME}"\
+            --title "Release ${{ inputs.version }}"\
             --label "release"\
-            --body "This is the release PR for **${{ inputs.version }}**.
-          ---
-          It releases:
+            --body "Released packages are:
 
           - probe-rs
           - probe-rs-target
-          - probe-rs-rtt
           - probe-rs-cli-util
           - probe-rs-cli
           - probe-rs-debugger
@@ -89,8 +86,6 @@ jobs:
           - target-gen
           - rtthost
           - cargo-embed
-          - cargo-flash
-          ---
-          Use \`bors r+\` to merge."
+          - cargo-flash"
         env:
             GITHUB_TOKEN: ${{ secrets.GH_PAT }}
