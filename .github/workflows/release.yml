@@ -19,7 +19,7 @@ jobs:
       - name: Checkout sources
         uses: actions/checkout@v3
 
-      - uses: echo ${{ github.event.type }}
+      - run: echo ${{ github.event.type }}
 
       - name: Install libusb and libftdi (linux)
         run: |
