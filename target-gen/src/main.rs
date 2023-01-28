@@ -17,7 +17,7 @@ use tracing_subscriber::EnvFilter;
 
 use crate::commands::{
     elf::{cmd_elf, serialize_to_yaml_file},
-    run::cmd_run,
+    test::cmd_test,
 };
 
 #[derive(clap::Parser)]
@@ -135,7 +135,7 @@ fn main() -> Result<()> {
             target_artifact,
             template_path,
             definition_export_path,
-        } => cmd_run(
+        } => cmd_test(
             target_artifact.as_path(),
             template_path.as_path(),
             definition_export_path.as_path(),

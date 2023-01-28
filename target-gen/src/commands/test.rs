@@ -16,7 +16,9 @@ use xshell::{cmd, Shell};
 
 use crate::commands::elf::cmd_elf;
 
-pub fn cmd_run(
+const ALGORITHM_NAME: &str = "algorithm-test";
+
+pub fn cmd_test(
     target_artifact: &Path,
     template_path: &Path,
     definition_export_path: &Path,
@@ -29,7 +31,7 @@ pub fn cmd_run(
         true,
         Some(definition_export_path),
         true,
-        Some(String::from("algorithm-test")),
+        Some(String::from(ALGORITHM_NAME)),
     )?;
 
     if let Err(error) = generate_debug_info(target_artifact) {
@@ -39,9 +41,9 @@ pub fn cmd_run(
 
     probe_rs::config::add_target_from_yaml(definition_export_path)?;
     let mut session =
-        probe_rs::Session::auto_attach("algorithm-test", Permissions::new().allow_erase_all())?;
+        probe_rs::Session::auto_attach(ALGORITHM_NAME, Permissions::new().allow_erase_all())?;
 
-    let data_size = probe_rs::config::get_target_by_name("algorithm-test")?.flash_algorithms[0]
+    let data_size = probe_rs::config::get_target_by_name(ALGORITHM_NAME)?.flash_algorithms[0]
         .flash_properties
         .page_size;
 
@@ -172,7 +174,7 @@ pub fn run_flash_download(
     Ok(())
 }
 
-/// Erases the given flash sectors.
+/// Erases the flash.
 pub fn run_flash_erase(
     session: &mut Session,
     progress: &FlashProgress,
