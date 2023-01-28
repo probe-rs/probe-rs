@@ -52,4 +52,4 @@ replace = "## [Unreleased]\n\n## [{{version}}]\n\nReleased {{date}}"
 [[package.metadata.release.pre-release-replacements]]
 file = "CHANGELOG.md"
 search = "\\[unreleased\\]: https://github.com/probe-rs/cargo-embed/compare/v([a-z0-9.-]+)\\.\\.\\.master"
-replace = "[unreleased]: https://github.com/probe-rs/cargo-embed/compare/v{{version}}...master\n[v{{version}}]: https://github.com/probe-rs/cargo-embed/compare/v$1...v{{version}}"
+replace = "[unreleased]: https://github.com/probe-rs/cargo-embed/compare/v{{version}}...master\n[{{version}}]: https://github.com/probe-rs/cargo-embed/compare/v$1...v{{version}}"
