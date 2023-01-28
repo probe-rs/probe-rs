@@ -11,10 +11,7 @@ use super::FlashProgress;
 ///
 /// The optional progress will only be used to emit RTT messages.
 /// No actual indication for the state of the erase all operation will be given.
-pub fn erase_all(
-    session: &mut Session,
-    progress: Option<&FlashProgress>,
-) -> Result<(), FlashError> {
+pub fn erase_all(session: &mut Session, progress: Option<FlashProgress>) -> Result<(), FlashError> {
     tracing::debug!("Erasing all...");
 
     let mut algos: HashMap<(String, String), Vec<NvmRegion>> = HashMap::new();
@@ -53,7 +50,7 @@ pub fn erase_all(
         let algo = algo.unwrap().clone();
 
         let core_index = session.target().core_index_by_name(&core_name).unwrap();
-        let mut flasher = Flasher::new(session, core_index, &algo, progress)?;
+        let mut flasher = Flasher::new(session, core_index, &algo, progress.clone())?;
 
         if flasher.is_chip_erase_supported() {
             tracing::debug!("     -- chip erase supported, doing it.");
@@ -94,7 +91,7 @@ pub fn erase_all(
 /// Erases `sectors` sectors starting from `start_sector` from flash.
 pub fn erase_sectors(
     session: &mut Session,
-    progress: Option<&FlashProgress>,
+    progress: Option<FlashProgress>,
     start_sector: usize,
     sectors: usize,
 ) -> Result<(), FlashError> {
@@ -139,7 +136,7 @@ pub fn erase_sectors(
         let algo = algo.unwrap().clone();
 
         let core_index = session.target().core_index_by_name(&core_name).unwrap();
-        let mut flasher = Flasher::new(session, core_index, &algo, progress)?;
+        let mut flasher = Flasher::new(session, core_index, &algo, progress.clone())?;
 
         let sectors = flasher
             .flash_algorithm()

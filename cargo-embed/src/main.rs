@@ -410,7 +410,7 @@ fn main_try() -> Result<()> {
 
             let mut options = DownloadOptions::new();
 
-            options.progress = Some(&progress);
+            options.progress = Some(progress);
             options.keep_unwritten_bytes = config.flashing.restore_unwritten_bytes;
             options.do_chip_erase = config.flashing.do_chip_erase;
 

@@ -92,7 +92,7 @@ pub fn cmd_test(
 
     println!("{test}: Erasing sectorwise and writing two pages ...");
 
-    run_flash_erase(&mut session, &progress, false)?;
+    run_flash_erase(&mut session, progress.clone(), false)?;
     // TODO: The sector used here is not necessarily the sector the flash algorithm targets.
     // Make this configurable.
     let mut readback = vec![0; flash_properties.sectors[0].size as usize];
@@ -108,13 +108,13 @@ pub fn cmd_test(
         .map(|n| (n % 256) as u8)
         .collect::<Vec<_>>();
     loader.add_data(0x1, &data)?;
-    run_flash_download(&mut session, loader, &progress, true)?;
+    run_flash_download(&mut session, loader, progress.clone(), true)?;
     let mut readback = vec![0; data_size as usize];
     session.core(0)?.read_8(0x1, &mut readback)?;
     assert_eq!(readback, data);
 
     println!("{test}: Erasing the entire chip and writing two pages ...");
-    run_flash_erase(&mut session, &progress, true)?;
+    run_flash_erase(&mut session, progress.clone(), true)?;
     // TODO: The sector used here is not necessarily the sector the flash algorithm targets.
     // Make this configurable.
     let mut readback = vec![0; flash_properties.sectors[0].size as usize];
@@ -130,13 +130,13 @@ pub fn cmd_test(
         .map(|n| (n % 256) as u8)
         .collect::<Vec<_>>();
     loader.add_data(0x1, &data)?;
-    run_flash_download(&mut session, loader, &progress, true)?;
+    run_flash_download(&mut session, loader, progress.clone(), true)?;
     let mut readback = vec![0; data_size as usize];
     session.core(0)?.read_8(0x1, &mut readback)?;
     assert_eq!(readback, data);
 
     println!("{test}: Erasing sectorwise and writing two pages double buffered ...");
-    run_flash_erase(&mut session, &progress, false)?;
+    run_flash_erase(&mut session, progress.clone(), false)?;
     // TODO: The sector used here is not necessarily the sector the flash algorithm targets.
     // Make this configurable.
     let mut readback = vec![0; flash_properties.sectors[0].size as usize];
@@ -152,7 +152,7 @@ pub fn cmd_test(
         .map(|n| (n % 256) as u8)
         .collect::<Vec<_>>();
     loader.add_data(0x1, &data)?;
-    run_flash_download(&mut session, loader, &progress, false)?;
+    run_flash_download(&mut session, loader, progress, false)?;
     let mut readback = vec![0; data_size as usize];
     session.core(0)?.read_8(0x1, &mut readback)?;
     assert_eq!(readback, data);
@@ -165,7 +165,7 @@ pub fn cmd_test(
 pub fn run_flash_download(
     session: &mut Session,
     loader: FlashLoader,
-    progress: &FlashProgress,
+    progress: FlashProgress,
     disable_double_buffering: bool,
 ) -> Result<()> {
     let mut download_option = DownloadOptions::default();
@@ -184,7 +184,7 @@ pub fn run_flash_download(
 /// Otherwise it erases sectors 0 and 1.
 pub fn run_flash_erase(
     session: &mut Session,
-    progress: &FlashProgress,
+    progress: FlashProgress,
     do_chip_erase: bool,
 ) -> Result<()> {
     if do_chip_erase {

@@ -1,5 +1,5 @@
 use super::FlashLayout;
-use std::time::Duration;
+use std::{sync::Arc, time::Duration};
 
 /// A structure to manage the flashing procedure progress reporting.
 ///
@@ -14,15 +14,16 @@ use std::time::Duration;
 /// // Print events
 /// let progress = FlashProgress::new(|event| println!("Event: {:#?}", event));
 /// ```
+#[derive(Clone)]
 pub struct FlashProgress {
-    handler: Box<dyn Fn(ProgressEvent)>,
+    handler: Arc<dyn Fn(ProgressEvent)>,
 }
 
 impl FlashProgress {
     /// Create a new `FlashProgress` structure with a given `handler` to be called on events.
     pub fn new(handler: impl Fn(ProgressEvent) + 'static) -> Self {
         Self {
-            handler: Box::new(handler),
+            handler: Arc::new(handler),
         }
     }
 

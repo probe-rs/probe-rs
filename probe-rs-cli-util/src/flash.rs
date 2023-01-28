@@ -139,7 +139,7 @@ pub fn run_flash_download(
             }
         });
 
-        download_option.progress = Some(&progress);
+        download_option.progress = Some(progress);
 
         loader.commit(session, download_option).map_err(|error| {
             OperationError::FlashingFailed {
