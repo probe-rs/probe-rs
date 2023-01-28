@@ -24,20 +24,14 @@ enum Cli {
         version: String,
     },
     /// Generate the output for the GH release from the different CHANGELOG.md's.
-    GenerateReleaseChangelog {
-        /// Use this when generating the changelog output locally to not
-        /// automatically translate the GH API control characters and keep
-        /// it human readable.
-        #[clap(long)]
-        local: bool,
-    },
+    GenerateReleaseChangelog,
 }
 
 fn try_main() -> Result<(), DynError> {
     match Cli::parse() {
         Cli::FetchPrs => fetch_prs(),
         Cli::Release { version } => create_release_pr(version),
-        Cli::GenerateReleaseChangelog { local } => generate_release_changelog(local),
+        Cli::GenerateReleaseChangelog => generate_release_changelog(),
     }
 }
 
@@ -67,23 +61,17 @@ fn create_release_pr(version: String) -> Result<(), DynError> {
     Ok(())
 }
 
-fn generate_release_changelog(local: bool) -> Result<(), DynError> {
-    let probe_rs_changelog = extract_changelog_for_newest_version(
-        local,
-        &std::fs::read_to_string("CHANGELOG.md").unwrap(),
-    );
+fn generate_release_changelog() -> Result<(), DynError> {
+    let probe_rs_changelog =
+        extract_changelog_for_newest_version(&std::fs::read_to_string("CHANGELOG.md").unwrap());
     let cargo_flash_changelog = extract_changelog_for_newest_version(
-        local,
         &std::fs::read_to_string("cargo-flash/CHANGELOG.md").unwrap(),
     );
     let cargo_embed_changelog = extract_changelog_for_newest_version(
-        local,
         &std::fs::read_to_string("cargo-embed/CHANGELOG.md").unwrap(),
     );
-    let cli_changelog = extract_changelog_for_newest_version(
-        local,
-        &std::fs::read_to_string("cli/CHANGELOG.md").unwrap(),
-    );
+    let cli_changelog =
+        extract_changelog_for_newest_version(&std::fs::read_to_string("cli/CHANGELOG.md").unwrap());
 
     println!("# probe-rs (library)");
     println!("{probe_rs_changelog}");
@@ -97,7 +85,7 @@ fn generate_release_changelog(local: bool) -> Result<(), DynError> {
     Ok(())
 }
 
-fn extract_changelog_for_newest_version(local: bool, changelog: &str) -> String {
+fn extract_changelog_for_newest_version(changelog: &str) -> String {
     let re = regex::Regex::new(
         r"## \[\d+.\d+.\d+\]\n\n(?:Released \d+-\d+-\d+)?\n?\n?((?:[\n]|.)*?)## \[\d+.\d+.\d+\]",
     )
@@ -106,9 +94,5 @@ fn extract_changelog_for_newest_version(local: bool, changelog: &str) -> String 
     let release_text = captures[1].trim_start().trim_end();
 
     // The GH API expects those special characters to be replaced.
-    if !local {
-        release_text.replace('%', "%25").replace('\n', "%0A")
-    } else {
-        release_text.to_string()
-    }
+    release_text.to_string()
 }

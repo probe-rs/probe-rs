@@ -50,8 +50,7 @@ jobs:
       - name: Generate Release Notes
         id: notes
         run: |
-          NOTES=$(cargo xtask generate-release-changelog)
-          echo "notes=$NOTES" >> $GITHUB_OUTPUT
+          cargo xtask generate-release-changelog > GENERATED_CHANGELOG.md
 
       - name: Create a GitHub release
         uses: actions/create-release@v1
@@ -60,7 +59,7 @@ jobs:
         with:
           tag_name: $( echo '${{ github.head_ref }}' | sed 's?release/??' )
           release_name: $( echo '${{ github.head_ref }}' | sed 's?release/??' )
-          body: ${{ steps.notes.outputs.notes }}
+          body_path: GENERATED_CHANGELOG.md
           draft: true
           prerelease: false
 
