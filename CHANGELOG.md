@@ -21,11 +21,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
   This enables better debugging for flash-algorithms and should encourage development of said algorithms.
 
-  
 - Add support for FT4232HL probe.
 
 - probe-rs-cli: Add `--log-file` option to specify where the log file should be placed.
-  
+
+- target-gen: Add a command which enables the easy development and debugging of a flash algorithm.
+
+  `target-gen test` is a new command to automatically upload, run, print RTT messages and test
+  a flash algorithm. Have a look at the [template](https://github.com/probe-rs/flash-algorithm-template)
+  to create a new flash algorithm.
+
 ### Changed
 
 - cmsisdap: Increased read timeout from 100ms to 1000ms.
@@ -36,7 +41,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - probe-rs: Avoid nested calls to tracing macros, otherwise filtering doesn't work properly. (#1415)
 
 - probe-rs-cli: Reduce RTT polling frequency in run command to avoid USB instability issues.
-
 
 ## [0.14.2]
 
