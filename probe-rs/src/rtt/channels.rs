@@ -1,6 +1,6 @@
 //! List of RTT channels.
 
-use crate::RttChannel;
+use crate::rtt::RttChannel;
 use std::collections::{btree_map, BTreeMap};
 use std::mem;
 

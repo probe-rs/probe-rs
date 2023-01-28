@@ -178,9 +178,9 @@ Improved flashing for `cargo-flash` considering speed and useability.
 - Introduce cargo-flash which can automatically build & flash the target elf file.
 
 [unreleased]: https://github.com/probe-rs/cargo-flash/compare/v0.14.2...master
-[v0.14.2]: https://github.com/probe-rs/cargo-flash/compare/v0.14.1...v0.14.2
-[v0.14.1]: https://github.com/probe-rs/cargo-flash/compare/v0.14.0...v0.14.1
-[v0.14.0]: https://github.com/probe-rs/cargo-flash/compare/v0.13.0...v0.14.0
+[0.14.2]: https://github.com/probe-rs/cargo-flash/compare/v0.14.1...v0.14.2
+[0.14.1]: https://github.com/probe-rs/cargo-flash/compare/v0.14.0...v0.14.1
+[0.14.0]: https://github.com/probe-rs/cargo-flash/compare/v0.13.0...v0.14.0
 [0.13.0]: https://github.com/probe-rs/cargo-flash/releases/tag/v0.12.1..v0.13.0
 [0.12.1]: https://github.com/probe-rs/cargo-flash/releases/tag/v0.12.0..v0.12.1
 [0.12.0]: https://github.com/probe-rs/cargo-flash/releases/tag/v0.11.0..v0.12.0
