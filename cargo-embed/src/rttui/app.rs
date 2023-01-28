@@ -20,6 +20,8 @@ use tui::{
     Terminal,
 };
 
+use crate::DefmtInformation;
+
 use super::{
     channel::{ChannelState, DataFormat},
     event::Events,
@@ -154,10 +156,7 @@ impl App {
         None
     }
 
-    pub fn render(
-        &mut self,
-        defmt_state: &Option<(defmt_decoder::Table, Option<defmt_decoder::Locations>)>,
-    ) {
+    pub fn render(&mut self, defmt_state: Option<&DefmtInformation>) {
         let input = self.current_tab().input().to_owned();
         let has_down_channel = self.current_tab().has_down_channel();
         let scroll_offset = self.current_tab().scroll_offset();
@@ -289,16 +288,16 @@ impl App {
                                 ));
                             }
                             DataFormat::Defmt => {
-                                let (table, locs) = defmt_state.as_ref().expect(
+                                let defmt_state = defmt_state.as_ref().expect(
                                 "Running rtt in defmt mode but table or locations could not be loaded.",
                             );
-                                let mut stream_decoder = table.new_stream_decoder();
+                                let mut stream_decoder = defmt_state.table.new_stream_decoder();
                                 stream_decoder.received(&data);
                                 while let Ok(frame) = stream_decoder.decode()
                                 {
                                     // NOTE(`[]` indexing) all indices in `table` have already been
                                     // verified to exist in the `locs` map.
-                                    let loc = locs.as_ref().map(|locs| &locs[&frame.index()]);
+                                    let loc = defmt_state.location_information.as_ref().map(|locs| &locs[&frame.index()]);
 
                                     messages_wrapped.push(format!("{}", frame.display(false)));
                                     if let Some(loc) = loc {

@@ -7,7 +7,7 @@ use figment::{
 use probe_rs::rtt::ChannelMode;
 use probe_rs::WireProtocol;
 use serde::{Deserialize, Serialize};
-use std::path::PathBuf;
+use std::{path::PathBuf, time::Duration};
 
 /// A struct which holds all configs.
 #[derive(Debug, Clone)]
@@ -83,13 +83,34 @@ pub struct Rtt {
     /// Channels to be displayed, and options for them
     pub channels: Vec<ChannelConfig>,
     /// Connection timeout in ms.
-    pub timeout: usize,
+    #[serde(with = "duration_ms")]
+    pub timeout: Duration,
     /// Whether to show timestamps in RTTUI
     pub show_timestamps: bool,
     /// Whether to save rtt history buffer on exit to file named history.txt
     pub log_enabled: bool,
     /// Where to save rtt history buffer relative to manifest path.
     pub log_path: PathBuf,
+}
+
+mod duration_ms {
+    use std::time::Duration;
+
+    use serde::{Deserialize, Deserializer, Serializer};
+
+    pub fn serialize<S>(duration: &Duration, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_u128(duration.as_millis())
+    }
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<Duration, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        u64::deserialize(deserializer).map(Duration::from_millis)
+    }
 }
 
 /// The gdb config struct holding all the possible gdb options.
