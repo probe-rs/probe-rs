@@ -12,6 +12,7 @@ use probe_rs::{
     Probe, ProbeCreationError, Session,
 };
 use std::env::set_current_dir;
+use time::UtcOffset;
 
 /// The supported breakpoint types
 #[derive(Clone, Debug, PartialEq)]
@@ -34,10 +35,18 @@ pub struct SessionData {
     pub(crate) session: Session,
     /// [SessionData] will manage one [CoreData] per target core, that is also present in [SessionConfig::core_configs]
     pub(crate) core_data: Vec<CoreData>,
+
+    /// Offset used for RTC timestamps
+    ///
+    /// Getting the offset can fail, so it's better to store it.
+    timestamp_offset: UtcOffset,
 }
 
 impl SessionData {
-    pub(crate) fn new(config: &mut configuration::SessionConfig) -> Result<Self, DebuggerError> {
+    pub(crate) fn new(
+        config: &mut configuration::SessionConfig,
+        timestamp_offset: UtcOffset,
+    ) -> Result<Self, DebuggerError> {
         // `SessionConfig` Probe/Session level configurations initialization.
         let mut target_probe = match config.probe_selector.clone() {
             Some(selector) => Probe::open(selector.clone()).map_err(|e| match e {
@@ -177,6 +186,7 @@ impl SessionData {
         Ok(SessionData {
             session: target_session,
             core_data: core_data_vec,
+            timestamp_offset,
         })
     }
 
@@ -225,6 +235,8 @@ impl SessionData {
         let mut status_of_cores: Vec<CoreStatus> = vec![];
         let target_memory_map = &self.session.target().memory_map.clone();
 
+        let timestamp_offset = self.timestamp_offset;
+
         // Always set `all_cores_halted` to true, until one core is found to be running.
         debug_adapter.all_cores_halted = true;
         for core_config in session_config.core_configs.iter() {
@@ -249,6 +261,7 @@ impl SessionData {
                                         target_memory_map,
                                         core_config.program_binary.as_ref().unwrap(),
                                         &core_config.rtt_config,
+                                        timestamp_offset,
                                     ) {
                                         Ok(_) => {
                                             // Nothing else to do.

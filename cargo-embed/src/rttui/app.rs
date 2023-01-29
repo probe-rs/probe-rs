@@ -480,9 +480,13 @@ impl App {
     /// # Errors
     /// If getting the current time or formatting a timestamp fails,
     /// this function will abort and return a [`time::Error`].
-    pub fn poll_rtt(&mut self, core: &mut Core) -> Result<(), time::Error> {
+    pub fn poll_rtt(
+        &mut self,
+        core: &mut Core,
+        offset: time::UtcOffset,
+    ) -> Result<(), time::Error> {
         for channel in self.tabs.iter_mut() {
-            channel.poll_rtt(core)?;
+            channel.poll_rtt(core, offset)?;
         }
 
         Ok(())

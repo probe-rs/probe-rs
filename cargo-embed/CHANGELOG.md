@@ -5,6 +5,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+
+### Fixed
+
+- Ensure offset between local time and UTC gets determined as early as possible.
+
+  Determining the local time fails in multi-threaded programs, so it needs to be
+  done as early as possible. Otherwise the program will quit with an error saying that the local time could not have been determined.
+
 ## [0.15.0]
 
 Released 2023-01-28

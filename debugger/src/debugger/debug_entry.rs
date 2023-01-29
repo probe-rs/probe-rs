@@ -23,6 +23,7 @@ use std::{
     thread,
     time::Duration,
 };
+use time::UtcOffset;
 
 #[derive(clap::Parser, Copy, Clone, Debug, Deserialize)]
 pub(crate) enum TargetSessionType {
@@ -58,15 +59,22 @@ pub(crate) enum DebuggerStatus {
 ///   - `probe-rs-debug --debug --port <IP port number> <other options>` : Uses TCP Sockets to the defined IP port number to service DAP requests.
 pub struct Debugger {
     config: configuration::SessionConfig,
+
+    /// UTC offset used for timestamps
+    ///
+    /// Getting the offset fails in multithreaded programs, so it's
+    /// easier to determine it once and then save it.
+    timestamp_offset: UtcOffset,
 }
 
 impl Debugger {
-    pub fn new(port: Option<u16>) -> Self {
+    pub fn new(port: Option<u16>, timestamp_offset: UtcOffset) -> Self {
         Self {
             config: configuration::SessionConfig {
                 port,
                 ..Default::default()
             },
+            timestamp_offset,
         }
     }
 
@@ -488,13 +496,14 @@ impl Debugger {
             }
         };
 
-        let mut session_data = match session_data::SessionData::new(&mut self.config) {
-            Ok(session_data) => session_data,
-            Err(error) => {
-                debug_adapter.send_error_response(&error)?;
-                return Err(error);
-            }
-        };
+        let mut session_data =
+            match session_data::SessionData::new(&mut self.config, self.timestamp_offset) {
+                Ok(session_data) => session_data,
+                Err(error) => {
+                    debug_adapter.send_error_response(&error)?;
+                    return Err(error);
+                }
+            };
 
         // TODO: Currently the logic of processing MS DAP requests and executing them, is based on having a single core. It needs to be re-thought for multiple cores. Not all DAP requests require access to the core. One possible is to do the core attach inside each of the request implementations for those that need it, because the applicable core_index can be read from the request arguments.
         // TODO: Until we refactor this, we only support a single core (always the first one specified in `SessionConfig::core_configs`)
@@ -880,8 +889,13 @@ pub fn list_supported_chips() -> Result<()> {
     Ok(())
 }
 
-pub fn debug(port: Option<u16>, vscode: bool, log_info_message: &String) -> Result<()> {
-    let mut debugger = Debugger::new(port);
+pub fn debug(
+    port: Option<u16>,
+    vscode: bool,
+    log_info_message: &String,
+    timestamp_offset: UtcOffset,
+) -> Result<()> {
+    let mut debugger = Debugger::new(port, timestamp_offset);
 
     log_to_console_and_tracing("Starting as a DAP Protocol server".to_string());
 
