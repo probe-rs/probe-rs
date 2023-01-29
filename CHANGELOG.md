@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Released 2023-01-29
 
+probe-rs library is unchanged, version number is increased to keep in sync with other
+probe-rs packages.
+
 ## [0.15.0]
 
 Released 2023-01-28
