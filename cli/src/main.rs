@@ -28,7 +28,7 @@ use probe_rs_cli_util::{
 use rustyline::Editor;
 
 use anyhow::{Context, Result};
-use time::OffsetDateTime;
+use time::{OffsetDateTime, UtcOffset};
 use tracing::metadata::LevelFilter;
 use tracing_subscriber::{
     fmt::format::FmtSpan, prelude::__tracing_subscriber_SubscriberExt, util::SubscriberInitExt,
@@ -252,6 +252,10 @@ pub(crate) enum ItmSource {
     },
 }
 
+/// Determine the default location for the logfile
+///
+/// This has to be called as early as possible, and while the program
+/// is single-threaded. Otherwise, determining the local time might fail.
 fn default_logfile_location() -> Result<PathBuf> {
     let project_dirs = directories::ProjectDirs::from("rs", "probe-rs", "probe-rs")
         .context("the application storage directory could not be determined")?;
@@ -259,7 +263,7 @@ fn default_logfile_location() -> Result<PathBuf> {
     let logname = sanitize_filename::sanitize_with_options(
         format!(
             "{}.log",
-            OffsetDateTime::now_local().unwrap().unix_timestamp_nanos() / 1_000_000
+            OffsetDateTime::now_local()?.unix_timestamp_nanos() / 1_000_000
         ),
         sanitize_filename::Options {
             replacement: "_",
@@ -274,6 +278,9 @@ fn default_logfile_location() -> Result<PathBuf> {
 }
 
 fn main() -> Result<()> {
+    let utc_offset = UtcOffset::current_local_offset()
+        .context("Failed to determine local time for timestamps")?;
+
     // Parse the commandline options with structopt.
     let matches = Cli::parse();
 
@@ -354,7 +361,13 @@ fn main() -> Result<()> {
             path,
             chip_erase,
             disable_double_buffering,
-        } => run::run(common, &path, chip_erase, disable_double_buffering),
+        } => run::run(
+            common,
+            &path,
+            chip_erase,
+            disable_double_buffering,
+            utc_offset,
+        ),
         Subcommand::Erase { common } => erase(&common),
         Subcommand::Trace {
             shared,

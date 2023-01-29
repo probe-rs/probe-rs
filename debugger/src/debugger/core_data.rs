@@ -12,6 +12,7 @@ use crate::{
 use anyhow::{anyhow, Result};
 use probe_rs::{debug::debug_info::DebugInfo, Core, CoreStatus, Error};
 use probe_rs_cli_util::rtt::{self, ChannelMode, DataFormat};
+use time::UtcOffset;
 
 /// [CoreData] is used to cache data needed by the debugger, on a per-core basis.
 pub struct CoreData {
@@ -154,6 +155,7 @@ impl<'p> CoreHandle<'p> {
         target_memory_map: &[probe_rs::config::MemoryRegion],
         program_binary: &std::path::Path,
         rtt_config: &rtt::RttConfig,
+        timestamp_offset: UtcOffset,
     ) -> Result<()> {
         let mut debugger_rtt_channels: Vec<debug_rtt::DebuggerRttChannel> = vec![];
         match rtt::attach_to_rtt(
@@ -161,6 +163,7 @@ impl<'p> CoreHandle<'p> {
             target_memory_map,
             program_binary,
             rtt_config,
+            timestamp_offset,
         ) {
             Ok(target_rtt) => {
                 for any_channel in target_rtt.active_channels.iter() {

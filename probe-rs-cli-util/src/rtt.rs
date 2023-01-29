@@ -16,13 +16,14 @@ use std::{
     io::{Read, Seek},
     str::FromStr,
 };
-use time::OffsetDateTime;
+use time::{OffsetDateTime, UtcOffset};
 
 pub fn attach_to_rtt(
     core: &mut Core,
     memory_map: &[MemoryRegion],
     elf_file: &Path,
     rtt_config: &RttConfig,
+    timestamp_offset: UtcOffset,
 ) -> Result<crate::rtt::RttActiveTarget, anyhow::Error> {
     log::info!("Initializing RTT");
     let rtt_header_address = if let Ok(mut file) = File::open(elf_file) {
@@ -38,7 +39,7 @@ pub fn attach_to_rtt(
     match Rtt::attach_region(core, memory_map, &rtt_header_address) {
         Ok(rtt) => {
             log::info!("RTT initialized.");
-            let app = RttActiveTarget::new(rtt, elf_file, rtt_config)?;
+            let app = RttActiveTarget::new(rtt, elf_file, rtt_config, timestamp_offset)?;
             Ok(app)
         }
         Err(err) => Err(anyhow!("Error attempting to attach to RTT: {}", err)),
@@ -124,6 +125,12 @@ pub struct RttActiveChannel {
     rtt_buffer: RttBuffer,
     show_timestamps: bool,
     show_location: bool,
+
+    /// UTC offset used for creating timestamps
+    ///
+    /// Getting the offset can fail in multi-threaded programs,
+    /// so it needs to be stored.
+    timestamp_offset: UtcOffset,
 }
 
 /// A fully configured RttActiveChannel. The configuration will always try to 'default' based on information read from the RTT control block in the binary. Where insufficient information is available, it will use the supplied configuration, with final hardcoded defaults where no other information was available.
@@ -132,6 +139,7 @@ impl RttActiveChannel {
         up_channel: Option<UpChannel>,
         down_channel: Option<DownChannel>,
         channel_config: Option<RttChannelConfig>,
+        timestamp_offset: UtcOffset,
     ) -> Self {
         let full_config = match &channel_config {
             Some(channel_config) => channel_config.clone(),
@@ -188,6 +196,7 @@ impl RttActiveChannel {
             rtt_buffer: RttBuffer::new(buffer_size),
             show_timestamps: full_config.show_timestamps,
             show_location,
+            timestamp_offset,
         }
     }
 
@@ -244,7 +253,7 @@ impl RttActiveChannel {
                                 let incoming = String::from_utf8_lossy(&self.rtt_buffer.0[..bytes_read]).to_string();
                                 for (_i, line) in incoming.split_terminator('\n').enumerate() {
                                     if self.show_timestamps {
-                                        write!(formatted_data, "{} :", OffsetDateTime::now_local().unwrap())
+                                        write!(formatted_data, "{} :", OffsetDateTime::now_utc().to_offset(self.timestamp_offset))
                                             .map_or_else(|err| log::error!("Failed to format RTT data - {:?}", err), |r|r);
                                     }
                                     writeln!(formatted_data, "{line}").map_or_else(|err| log::error!("Failed to format RTT data - {:?}", err), |r|r);
@@ -337,6 +346,7 @@ impl RttActiveTarget {
         mut rtt: probe_rs::rtt::Rtt,
         elf_file: &Path,
         rtt_config: &RttConfig,
+        timestamp_offset: UtcOffset,
     ) -> Result<Self> {
         let mut active_channels = Vec::new();
         // For each channel configured in the RTT Control Block (`Rtt`), check if there are additional user configuration in a `RttChannelConfig`. If not, apply defaults.
@@ -349,7 +359,12 @@ impl RttActiveTarget {
                 .clone()
                 .into_iter()
                 .find(|channel| channel.channel_number == Some(number));
-            active_channels.push(RttActiveChannel::new(Some(channel), None, channel_config));
+            active_channels.push(RttActiveChannel::new(
+                Some(channel),
+                None,
+                channel_config,
+                timestamp_offset,
+            ));
         }
 
         for channel in down_channels {
@@ -359,7 +374,12 @@ impl RttActiveTarget {
                 .clone()
                 .into_iter()
                 .find(|channel| channel.channel_number == Some(number));
-            active_channels.push(RttActiveChannel::new(None, Some(channel), channel_config));
+            active_channels.push(RttActiveChannel::new(
+                None,
+                Some(channel),
+                channel_config,
+                timestamp_offset,
+            ));
         }
 
         // It doesn't make sense to pretend RTT is active, if there are no active channels
