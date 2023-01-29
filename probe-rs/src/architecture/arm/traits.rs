@@ -123,8 +123,8 @@ pub trait RawDapAccess {
         Ok(())
     }
 
-    /// Enumerate the JTAG chain.
-    fn jtag_enumerate(&mut self) -> Result<u16, DebugProbeError> {
+    /// For quick testing :)
+    fn blah(&mut self) -> Result<(), DebugProbeError> {
         todo!()
     }
 

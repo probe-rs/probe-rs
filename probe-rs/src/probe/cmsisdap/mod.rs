@@ -28,9 +28,14 @@ use commands::{
         info::Capabilities,
         reset::{ResetRequest, ResetResponse},
     },
-    jtag::sequence::{
-        Sequence as JtagSequence, SequenceRequest as JtagSequenceRequest,
-        SequenceResponse as JtagSequenceResponse,
+    jtag::{
+        configure::{
+            ConfigureRequest as JtagConfigureRequest, ConfigureResponse as JtagConfigureResponse,
+        },
+        sequence::{
+            Sequence as JtagSequence, SequenceRequest as JtagSequenceRequest,
+            SequenceResponse as JtagSequenceResponse,
+        },
     },
     swd,
     swj::{
@@ -306,7 +311,7 @@ impl CmsisDap {
             }
         }
 
-        todo!()
+        Ok(targets)
     }
 
     /// Detect number of connected TAPs in chain.
@@ -329,9 +334,14 @@ impl CmsisDap {
         ];
         self.send_jtag_sequences(JtagSequenceRequest::new(sequences)?)?;
 
-        // Shift 1280 ones into the IR register(s), 128 bits at a time.
+        // Shift 2560 ones into the IR register(s), 256 bits at a time.
         // This ensures the device(s) are in BYPASS.
-        let sequences = vec![JtagSequence::new(64, NO_CAPTURE, TMS_LOW, TDI_ONES)?];
+        let sequences = vec![
+            JtagSequence::new(64, NO_CAPTURE, TMS_LOW, TDI_ONES)?,
+            JtagSequence::new(64, NO_CAPTURE, TMS_LOW, TDI_ONES)?,
+            JtagSequence::new(64, NO_CAPTURE, TMS_LOW, TDI_ONES)?,
+            JtagSequence::new(64, NO_CAPTURE, TMS_LOW, TDI_ONES)?,
+        ];
         for _ in 0..10 {
             self.send_jtag_sequences(JtagSequenceRequest::new(sequences.clone())?)?;
         }
@@ -373,6 +383,15 @@ impl CmsisDap {
         }
 
         Ok(num_devices)
+    }
+
+    fn send_jtag_configure(&mut self, request: JtagConfigureRequest) -> Result<(), CmsisDapError> {
+        commands::send_command::<JtagConfigureRequest>(&mut self.device, request)
+            .map_err(CmsisDapError::from)
+            .and_then(|v| match v {
+                JtagConfigureResponse(Status::DAPOk) => Ok(()),
+                JtagConfigureResponse(Status::DAPError) => Err(CmsisDapError::ErrorResponse),
+            })
     }
 
     fn send_jtag_sequences(
@@ -971,11 +990,12 @@ impl RawDapAccess for CmsisDap {
         self
     }
 
-    fn jtag_enumerate(&mut self) -> Result<u16, DebugProbeError> {
-        let scan = self.jtag_scan();
+    // :)
+    fn blah(&mut self) -> Result<(), DebugProbeError> {
+        let ir_lengths = vec![4, 5];
+        self.send_jtag_configure(JtagConfigureRequest::new(ir_lengths)?)?;
 
-        let res = self.jtag_enumerate()?;
-        Ok(res)
+        return Ok(());
     }
 
     fn jtag_sequence(&mut self, cycles: u8, tms: bool, tdi: u64) -> Result<(), DebugProbeError> {

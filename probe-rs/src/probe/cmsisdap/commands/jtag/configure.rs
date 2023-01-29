@@ -30,11 +30,9 @@ impl Request for ConfigureRequest {
     fn parse_response(&self, buffer: &[u8]) -> Result<Self::Response, SendError> {
         let status = Status::from_byte(buffer[0])?;
 
-        Ok(ConfigureResponse { status })
+        Ok(ConfigureResponse(status))
     }
 }
 
 #[derive(Clone, Copy, Debug)]
-pub struct ConfigureResponse {
-    pub(crate) status: Status,
-}
+pub struct ConfigureResponse(pub(crate) Status);

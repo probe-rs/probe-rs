@@ -467,10 +467,11 @@ pub trait ArmDebugSequence: Send + Sync {
                 // Execute at least >5 TCK cycles with TMS high to enter the Test-Logic-Reset state
                 interface.swj_sequence(6, 0x3F)?;
 
-                // Enter Run-Test-Idle state
+                // Enter Run-Test-Idle state, as required by the DAP_Transfer command when using JTAG
                 interface.jtag_sequence(1, false, 0x01)?;
 
-                let num_devices = interface.jtag_enumerate()?;
+                // Configure JTAG IR lengths
+                interface.blah()?;
             }
             Some(crate::WireProtocol::Swd) => {
                 // Execute SWJ-DP Switch Sequence JTAG to SWD (0xE79E).
