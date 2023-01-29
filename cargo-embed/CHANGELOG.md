@@ -5,6 +5,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### FIxed
+
+- Formatting of timestamps in TUI output. Was broken due to the move from the chrono crate to
+  the time crate.
+
 ## [0.15.0]
 
 Released 2023-01-28

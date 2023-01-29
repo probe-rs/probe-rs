@@ -170,7 +170,9 @@ impl ChannelState {
                 // matters.
                 for (i, line) in incoming.split_terminator('\n').enumerate() {
                     if self.show_timestamps && (last_line_done || i > 0) {
-                        let ts = now.format(format_description!("%H:%M:%S%.3f"))?;
+                        let ts = now.format(format_description!(
+                            "[hour repr:24]:[minute]:[second].[subsecond digits:3]"
+                        ))?;
                         self.messages.push(format!("{ts} {line}"));
                     } else {
                         self.messages.push(line.to_string());
