@@ -16,8 +16,11 @@ jobs:
     if: github.event_name == 'workflow_dispatch' || (github.event.pull_request.merged == true && contains(github.event.pull_request.labels.*.name, 'release'))
 
     steps:
+
       - name: Checkout sources
         uses: actions/checkout@v3
+        with:
+          fetch-depth: 0  # This is a workaround for cargo-release, see https://github.com/crate-ci/cargo-release/issues/625
 
       - name: Install libusb and libftdi (linux)
         run: |
