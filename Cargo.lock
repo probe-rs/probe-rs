@@ -334,7 +334,7 @@ dependencies = [
 
 [[package]]
 name = "cargo-embed"
-version = "0.15.0"
+version = "0.16.0"
 dependencies = [
  "anyhow",
  "colored",
@@ -358,7 +358,7 @@ dependencies = [
 
 [[package]]
 name = "cargo-flash"
-version = "0.15.0"
+version = "0.16.0"
 dependencies = [
  "anyhow",
  "assert_cmd",
@@ -1034,7 +1034,7 @@ dependencies = [
 
 [[package]]
 name = "gdb-server"
-version = "0.15.0"
+version = "0.16.0"
 dependencies = [
  "anyhow",
  "gdbstub",
@@ -2075,7 +2075,7 @@ dependencies = [
 
 [[package]]
 name = "probe-rs"
-version = "0.15.0"
+version = "0.16.0"
 dependencies = [
  "anyhow",
  "base64 0.21.0",
@@ -2112,7 +2112,7 @@ dependencies = [
 
 [[package]]
 name = "probe-rs-cli"
-version = "0.15.0"
+version = "0.16.0"
 dependencies = [
  "anyhow",
  "bitfield",
@@ -2145,7 +2145,7 @@ dependencies = [
 
 [[package]]
 name = "probe-rs-cli-util"
-version = "0.15.0"
+version = "0.16.0"
 dependencies = [
  "anyhow",
  "byte-unit",
@@ -2173,7 +2173,7 @@ dependencies = [
 
 [[package]]
 name = "probe-rs-debugger"
-version = "0.15.0"
+version = "0.16.0"
 dependencies = [
  "anyhow",
  "base64 0.21.0",
@@ -2201,7 +2201,7 @@ dependencies = [
 
 [[package]]
 name = "probe-rs-target"
-version = "0.15.0"
+version = "0.16.0"
 dependencies = [
  "base64 0.21.0",
  "jep106",
@@ -2477,7 +2477,7 @@ dependencies = [
 
 [[package]]
 name = "rtthost"
-version = "0.15.0"
+version = "0.16.0"
 dependencies = [
  "clap",
  "pretty_env_logger",
@@ -2984,7 +2984,7 @@ checksum = "f67ad224767faa3c7d8b6d91985b78e70a1324408abcb1cfcc2be4c06bc06043"
 
 [[package]]
 name = "smoke_tester"
-version = "0.15.0"
+version = "0.16.0"
 dependencies = [
  "anyhow",
  "clap",
@@ -3090,7 +3090,7 @@ checksum = "55937e1799185b12863d447f42597ed69d9928686b8d88a1df17376a097d8369"
 
 [[package]]
 name = "target-gen"
-version = "0.15.0"
+version = "0.16.0"
 dependencies = [
  "anyhow",
  "assert_cmd",
@@ -3926,7 +3926,7 @@ checksum = "1dbabb1cbd15a1d6d12d9ed6b35cc6777d4af87ab3ba155ea37215f20beab80c"
 
 [[package]]
 name = "xtask"
-version = "0.15.0"
+version = "0.16.0"
 dependencies = [
  "clap",
  "regex",
