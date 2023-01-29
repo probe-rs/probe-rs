@@ -123,6 +123,17 @@ pub trait RawDapAccess {
         Ok(())
     }
 
+    /// Enumerate the JTAG chain.
+    fn jtag_enumerate(&mut self) -> Result<u16, DebugProbeError> {
+        todo!()
+    }
+
+    /// Send a specific output sequence over JTAG.
+    ///
+    /// This can only be used for output, and should be used to generate
+    /// the initial reset sequence, for example.
+    fn jtag_sequence(&mut self, cycles: u8, tms: bool, tdi: u64) -> Result<(), DebugProbeError>;
+
     /// Send a specific output sequence over JTAG or SWD.
     ///
     /// This can only be used for output, and should be used to generate

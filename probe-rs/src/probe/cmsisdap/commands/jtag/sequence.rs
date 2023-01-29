@@ -10,19 +10,33 @@ pub enum SequenceData {
 
 #[derive(Clone, Copy, Debug)]
 pub struct Sequence {
+    /// Number of TCK cycles: 1..64 (64 encoded as 0)
     tck_cycles: u8,
+
+    /// TDO capture
     tdo_capture: bool,
-    data: SequenceData,
+
+    /// TMS value
+    tms: bool,
+
+    /// Data generated on TDI
+    data: [u8; 8],
 }
 
 impl Sequence {
-    fn new(tck_cycles: u8, tdo_capture: bool, data: SequenceData) -> Result<Self, CmsisDapError> {
+    pub(crate) fn new(
+        tck_cycles: u8,
+        tdo_capture: bool,
+        tms: bool,
+        data: [u8; 8],
+    ) -> Result<Self, CmsisDapError> {
         if (tck_cycles > 64) {
             return Err(CmsisDapError::JTAGSequenceTooManyClockSequences);
         }
         Ok(Self {
             tck_cycles,
             tdo_capture,
+            tms,
             data,
         })
     }
@@ -34,7 +48,7 @@ pub struct SequenceRequest {
 }
 
 impl SequenceRequest {
-    fn new(sequences: Vec<Sequence>) -> Result<Self, CmsisDapError> {
+    pub(crate) fn new(sequences: Vec<Sequence>) -> Result<Self, CmsisDapError> {
         if sequences.len() > (u8::MAX as usize) {
             return Err(CmsisDapError::JTAGSequenceTooMuchData);
         }
@@ -53,55 +67,46 @@ impl Request for SequenceRequest {
     |******|****************|///////////////|//////////|
      */
     fn to_bytes(&self, buffer: &mut [u8]) -> Result<usize, SendError> {
-        use SequenceData::*;
-        let mut byte_count = 0;
-        //Sequence Count
-        buffer[byte_count] = self.sequences.len() as u8;
+        let mut transfer_len_bytes = 0;
+        buffer[transfer_len_bytes] = self.sequences.len() as u8;
+        transfer_len_bytes += 1;
 
-        byte_count += 1;
         self.sequences.iter().for_each(|&sequence| {
+            let tck_cycles = sequence.tck_cycles & 0x3F;
+            let tck_cycles = if tck_cycles == 0 { 64 } else { tck_cycles };
+
             let mut sequence_info = 0;
-            sequence_info = sequence_info | (sequence.tck_cycles & 0x1F);
-            sequence_info = sequence_info | ((if sequence.tdo_capture { 1u8 } else { 0u8 }) << 7);
+            sequence_info = sequence_info | (if tck_cycles == 64 { 0 } else { tck_cycles });
+            sequence_info = sequence_info | ((sequence.tms as u8) << 6);
+            sequence_info = sequence_info | ((sequence.tdo_capture as u8) << 7);
+            buffer[transfer_len_bytes] = sequence_info;
+            transfer_len_bytes += 1;
 
-            let sequence_data = match sequence.data {
-                TMS(v) => {
-                    sequence_info = sequence_info | (1u8 << 6);
-                    v
-                }
-                TDI(v) => v,
-            };
-
-            buffer[byte_count] = sequence_info;
-            byte_count += 1;
-            buffer[byte_count] = sequence_data;
-            byte_count += 1;
+            let byte_count: usize = (tck_cycles as usize + 7) / 8;
+            buffer[transfer_len_bytes..(transfer_len_bytes + byte_count)]
+                .copy_from_slice(&sequence.data[..byte_count]);
+            transfer_len_bytes += byte_count;
         });
-        Ok(byte_count + 1)
+        Ok(transfer_len_bytes)
     }
 
     fn parse_response(&self, buffer: &[u8]) -> Result<Self::Response, SendError> {
-        let tdo_count = self
-            .sequences
-            .iter()
-            .filter(|sequence| sequence.tdo_capture)
-            .count();
-
-        if buffer.len() < tdo_count + 1 {
-            return Err(SendError::NotEnoughData);
-        }
+        let mut received_len_bytes = 1;
         let status = Status::from_byte(buffer[0])?;
 
-        let tdo_data: Vec<u8> = buffer[1..=tdo_count]
-            .iter()
-            .map(|byte| byte.to_owned())
-            .collect();
+        self.sequences.iter().for_each(|&sequence| {
+            if sequence.tdo_capture {
+                let tck_cycles = sequence.tck_cycles & 0x3F;
+                let tck_cycles = if tck_cycles == 0 { 64 } else { tck_cycles };
+                let byte_count: usize = (tck_cycles as usize + 7) / 8;
+                received_len_bytes += byte_count;
+            }
+        });
 
-        Ok(SequenceResponse { status, tdo_data })
+        let response = buffer[1..received_len_bytes].to_vec();
+        Ok(SequenceResponse(status, response))
     }
 }
 
-pub struct SequenceResponse {
-    pub(crate) status: Status,
-    pub(crate) tdo_data: Vec<u8>,
-}
+#[derive(Debug)]
+pub struct SequenceResponse(pub(crate) Status, pub(crate) Vec<u8>);

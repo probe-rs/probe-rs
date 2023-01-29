@@ -463,11 +463,22 @@ pub trait ArmDebugSequence: Send + Sync {
             Some(crate::WireProtocol::Jtag) => {
                 // Execute SWJ-DP Switch Sequence SWD to JTAG (0xE73C).
                 interface.swj_sequence(16, 0xE73C)?;
+
+                // Execute at least >5 TCK cycles with TMS high to enter the Test-Logic-Reset state
+                interface.swj_sequence(6, 0x3F)?;
+
+                // Enter Run-Test-Idle state
+                interface.jtag_sequence(1, false, 0x01)?;
+
+                let num_devices = interface.jtag_enumerate()?;
             }
             Some(crate::WireProtocol::Swd) => {
                 // Execute SWJ-DP Switch Sequence JTAG to SWD (0xE79E).
                 // Change if SWJ-DP uses deprecated switch code (0xEDB6).
                 interface.swj_sequence(16, 0xE79E)?;
+
+                interface.swj_sequence(51, 0x0007_FFFF_FFFF_FFFF)?; // > 50 cycles SWDIO/TMS High.
+                interface.swj_sequence(3, 0x00)?; // At least 2 idle cycles (SWDIO/TMS Low).
             }
             _ => {
                 return Err(ArmDebugSequenceError::SequenceSpecific(
@@ -476,9 +487,6 @@ pub trait ArmDebugSequence: Send + Sync {
                 .into());
             }
         }
-
-        interface.swj_sequence(51, 0x0007_FFFF_FFFF_FFFF)?; // > 50 cycles SWDIO/TMS High.
-        interface.swj_sequence(3, 0x00)?; // At least 2 idle cycles (SWDIO/TMS Low).
 
         // End of atomic block.
 

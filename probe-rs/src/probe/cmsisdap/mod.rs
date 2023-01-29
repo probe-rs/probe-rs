@@ -28,6 +28,10 @@ use commands::{
         info::Capabilities,
         reset::{ResetRequest, ResetResponse},
     },
+    jtag::sequence::{
+        Sequence as JtagSequence, SequenceRequest as JtagSequenceRequest,
+        SequenceResponse as JtagSequenceResponse,
+    },
     swd,
     swj::{
         clock::{SWJClockRequest, SWJClockResponse},
@@ -65,6 +69,12 @@ pub struct CmsisDap {
     speed_khz: u32,
 
     batch: Vec<BatchCommand>,
+}
+
+#[derive(Debug, Clone)]
+struct JtagChainItem {
+    idcode: u32,
+    irlen: usize,
 }
 
 impl std::fmt::Debug for CmsisDap {
@@ -152,6 +162,228 @@ impl CmsisDap {
                 swd::configure::ConfigureResponse(Status::DAPError) => {
                     Err(CmsisDapError::ErrorResponse)
                 }
+            })
+    }
+
+    /// Reset JTAG state machine to Test-Logic-Reset.
+    fn jtag_ensure_test_logic_reset(&mut self) -> Result<(), CmsisDapError> {
+        // let tdi_bytes = 0x3Fu64.to_le_bytes();
+        let tdi_bytes = 0u64.to_le_bytes();
+        const TMS_HIGH: bool = true;
+        const NO_CAPTURE: bool = false;
+        let sequence = JtagSequence::new(6, NO_CAPTURE, TMS_HIGH, tdi_bytes)?;
+        let sequences = vec![sequence];
+
+        self.send_jtag_sequences(JtagSequenceRequest::new(sequences)?)?;
+
+        Ok(())
+    }
+
+    /// Reset JTAG state machine to Run-Test/Idle, as requisite precondition for DAP_Transfer commands.
+    fn jtag_ensure_run_test_idle(&mut self) -> Result<(), CmsisDapError> {
+        // These could be coalesced into one sequence request, but for now we'll keep things simple.
+
+        // First reach Test-Logic-Reset
+        self.jtag_ensure_test_logic_reset()?;
+
+        // Then transition to Run-Test-Idle
+        const NO_CAPTURE: bool = false;
+        const TMS_LOW: bool = false;
+        const TDI_ZEROES: [u8; 8] = [0x00; 8];
+        let sequence = JtagSequence::new(1, NO_CAPTURE, TMS_LOW, TDI_ZEROES)?;
+        let sequences = vec![sequence];
+        self.send_jtag_sequences(JtagSequenceRequest::new(sequences)?)?;
+
+        Ok(())
+    }
+
+    fn jtag_scan(&mut self) -> Result<Vec<JtagChainItem>, CmsisDapError> {
+        let num_targets = self.jtag_detect_num_targets()?;
+        let mut targets = vec![
+            JtagChainItem {
+                idcode: 0,
+                irlen: 0
+            };
+            num_targets
+        ];
+
+        if targets.len() == 0 {
+            return Ok(targets);
+        }
+
+        const CAPTURE: bool = true;
+        const NO_CAPTURE: bool = false;
+        const TDI_ZEROES: [u8; 8] = [0x00; 8];
+        const TDI_ONES: [u8; 8] = [!0x00; 8];
+        const TMS_LOW: bool = false;
+        const TMS_HIGH: bool = true;
+
+        // Transition to Test-Logic-Reset.
+        // This will set IR to IDCODE instruction for all connected devices,
+        // except for those that don't support it (in which case they will set IR to BYPASS).
+        //
+        // TODO: handle the BYPASS scenario.
+        // In this case, we can take advantage of the fact that by spec all IDCODEs have 1 as
+        // the least-significant-bit; because entering BYPASS implies an initial 0 in its DR,
+        // they can be discerned from IDCODE devices when shifting out.
+        self.jtag_ensure_test_logic_reset()?;
+
+        // Transition to Shift-DR
+        let sequences = vec![
+            JtagSequence::new(1, NO_CAPTURE, TMS_LOW, TDI_ZEROES)?,
+            JtagSequence::new(1, NO_CAPTURE, TMS_HIGH, TDI_ZEROES)?,
+            JtagSequence::new(2, NO_CAPTURE, TMS_LOW, TDI_ZEROES)?,
+        ];
+        self.send_jtag_sequences(JtagSequenceRequest::new(sequences)?)?;
+
+        // Gather all IDCODEs
+        for target in targets.iter_mut() {
+            let sequences = vec![JtagSequence::new(32, CAPTURE, TMS_LOW, TDI_ZEROES)?];
+            let idcode = self.send_jtag_sequences(JtagSequenceRequest::new(sequences)?)?;
+            target.idcode = u32::from_le_bytes(idcode.try_into().unwrap());
+        }
+
+        // Transition to Shift-IR
+        let sequences = vec![
+            JtagSequence::new(4, NO_CAPTURE, TMS_HIGH, TDI_ZEROES)?,
+            JtagSequence::new(2, NO_CAPTURE, TMS_LOW, TDI_ZEROES)?,
+        ];
+        self.send_jtag_sequences(JtagSequenceRequest::new(sequences)?)?;
+
+        // Now we try to determine the IR length of each device.
+        if targets.len() == 1 {
+            // Assume IR len will be at most 16 bits.
+            let sequences = vec![
+                JtagSequence::new(16, NO_CAPTURE, TMS_LOW, TDI_ONES)?,
+                JtagSequence::new(16, CAPTURE, TMS_LOW, TDI_ZEROES)?,
+            ];
+            let tdo = self.send_jtag_sequences(JtagSequenceRequest::new(sequences)?)?;
+            let bits = u16::from_le_bytes(tdo.try_into().unwrap());
+            targets[0].irlen = bits.trailing_zeros() as usize;
+        } else {
+            // When going through Capture-IR, many devices will fill the IR scan chain
+            // with all zeros, save for the LSB which will be set to 1
+            // (e.g. 0b0001).
+            //
+            // For ARM, see section B3.2.3 The Debug TAP State Machine (DBGTAPSM) of
+            // "Arm® Debug Interface Architecture Specification ADIv5.0 to ADIv5.2"
+            //
+            // We will assume this is the case for all devices.
+            // We will also assume the IR len will be at most 16 bits.
+            let mut r = Vec::with_capacity(2 * targets.len());
+
+            // Shift out IR in 128 bit chunks
+            for _ in 0..(r.capacity() + 15) / 16 {
+                let sequences = vec![
+                    JtagSequence::new(64, CAPTURE, TMS_LOW, TDI_ONES)?,
+                    JtagSequence::new(64, CAPTURE, TMS_LOW, TDI_ONES)?,
+                ];
+                r.extend(self.send_jtag_sequences(JtagSequenceRequest::new(sequences)?)?);
+            }
+
+            // Stolen from the ftdi module
+            let mut ir: u32 = 0;
+            let mut irbits: u32 = 0;
+            for (i, target) in targets.iter_mut().enumerate() {
+                if (!r.is_empty()) && irbits < 8 {
+                    let byte = r[0];
+                    r.remove(0);
+                    ir |= (byte as u32) << irbits;
+                    irbits += 8;
+                }
+                if ir & 0b11 == 0b01 {
+                    ir &= !1;
+                    let irlen = ir.trailing_zeros();
+                    ir >>= irlen;
+                    irbits -= irlen;
+                    tracing::debug!("tap {} irlen: {}", i, irlen);
+                    target.irlen = irlen as usize;
+                } else {
+                    tracing::debug!("invalid irlen for tap {}", i);
+                    // TODO: what error to return here?
+                    return Err(CmsisDapError::ErrorResponse);
+                }
+            }
+        }
+
+        todo!()
+    }
+
+    /// Detect number of connected TAPs in chain.
+    fn jtag_detect_num_targets(&mut self) -> Result<usize, CmsisDapError> {
+        const TMS_LOW: bool = false;
+        const TMS_HIGH: bool = true;
+        const CAPTURE: bool = true;
+        const NO_CAPTURE: bool = false;
+        const TDI_ZEROES: [u8; 8] = [0x00; 8];
+        const TDI_ONES: [u8; 8] = [!0x00; 8];
+
+        // Start at Test-Logic-Reset
+        self.jtag_ensure_test_logic_reset()?;
+
+        // Transition to Shift-IR
+        let sequences = vec![
+            JtagSequence::new(1, NO_CAPTURE, TMS_LOW, TDI_ZEROES)?,
+            JtagSequence::new(2, NO_CAPTURE, TMS_HIGH, TDI_ZEROES)?,
+            JtagSequence::new(2, NO_CAPTURE, TMS_LOW, TDI_ZEROES)?,
+        ];
+        self.send_jtag_sequences(JtagSequenceRequest::new(sequences)?)?;
+
+        // Shift 1280 ones into the IR register(s), 128 bits at a time.
+        // This ensures the device(s) are in BYPASS.
+        let sequences = vec![JtagSequence::new(64, NO_CAPTURE, TMS_LOW, TDI_ONES)?];
+        for _ in 0..10 {
+            self.send_jtag_sequences(JtagSequenceRequest::new(sequences.clone())?)?;
+        }
+
+        // Transition to Shift-DR (we're still in Shift-IR, so need TDI=1 on first cycle)
+        let sequences = vec![
+            JtagSequence::new(3, NO_CAPTURE, TMS_HIGH, 1u64.to_le_bytes())?,
+            JtagSequence::new(2, NO_CAPTURE, TMS_LOW, TDI_ZEROES)?,
+        ];
+        self.send_jtag_sequences(JtagSequenceRequest::new(sequences)?)?;
+
+        // Flush DR register(s) with zeroes.
+        // As DAP_Transfer only supports targeting 256 devices (the DAP index param is a single byte),
+        // we'll make the simplifying assumption that (at most) we will need to shift in 256 ones.
+        let sequences = vec![
+            JtagSequence::new(64, NO_CAPTURE, TMS_LOW, TDI_ZEROES)?,
+            JtagSequence::new(64, NO_CAPTURE, TMS_LOW, TDI_ZEROES)?,
+        ];
+        for _ in 0..2 {
+            self.send_jtag_sequences(JtagSequenceRequest::new(sequences.clone())?)?;
+        }
+
+        // Now shift in ones until we get a one out of TDO
+        let sequences = vec![
+            JtagSequence::new(64, CAPTURE, TMS_LOW, TDI_ONES)?,
+            JtagSequence::new(64, CAPTURE, TMS_LOW, TDI_ONES)?,
+        ];
+        let mut num_devices: usize = 0;
+        'outer: for _ in 0..2 {
+            let tdo = self.send_jtag_sequences(JtagSequenceRequest::new(sequences.clone())?)?;
+            for bits in tdo {
+                if bits == 0 {
+                    num_devices += 8;
+                } else {
+                    num_devices += bits.trailing_zeros() as usize;
+                    break 'outer;
+                }
+            }
+        }
+
+        Ok(num_devices)
+    }
+
+    fn send_jtag_sequences(
+        &mut self,
+        request: JtagSequenceRequest,
+    ) -> Result<Vec<u8>, CmsisDapError> {
+        commands::send_command::<JtagSequenceRequest>(&mut self.device, request)
+            .map_err(CmsisDapError::from)
+            .and_then(|v| match v {
+                JtagSequenceResponse(Status::DAPOk, tdo) => Ok(tdo),
+                JtagSequenceResponse(Status::DAPError, tdo) => Err(CmsisDapError::ErrorResponse),
             })
     }
 
@@ -509,10 +741,12 @@ impl DebugProbe for CmsisDap {
     fn select_protocol(&mut self, protocol: WireProtocol) -> Result<(), DebugProbeError> {
         match protocol {
             WireProtocol::Jtag => {
-                tracing::warn!(
-                    "Support for JTAG protocol is not yet implemented for CMSIS-DAP based probes."
-                );
-                Err(DebugProbeError::UnsupportedProtocol(WireProtocol::Jtag))
+                // tracing::warn!(
+                //     "Support for JTAG protocol is not yet implemented for CMSIS-DAP based probes."
+                // );
+                // Err(DebugProbeError::UnsupportedProtocol(WireProtocol::Jtag))
+                self.protocol = Some(WireProtocol::Jtag);
+                Ok(())
             }
             WireProtocol::Swd => {
                 self.protocol = Some(WireProtocol::Swd);
@@ -735,6 +969,25 @@ impl RawDapAccess for CmsisDap {
 
     fn into_probe(self: Box<Self>) -> Box<dyn DebugProbe> {
         self
+    }
+
+    fn jtag_enumerate(&mut self) -> Result<u16, DebugProbeError> {
+        let scan = self.jtag_scan();
+
+        let res = self.jtag_enumerate()?;
+        Ok(res)
+    }
+
+    fn jtag_sequence(&mut self, cycles: u8, tms: bool, tdi: u64) -> Result<(), DebugProbeError> {
+        self.connect_if_needed()?;
+
+        let tdi_bytes = tdi.to_le_bytes();
+        let sequence = JtagSequence::new(cycles, false, tms, tdi_bytes)?;
+        let sequences = vec![sequence];
+
+        self.send_jtag_sequences(JtagSequenceRequest::new(sequences)?)?;
+
+        Ok(())
     }
 
     fn swj_sequence(&mut self, bit_len: u8, bits: u64) -> Result<(), DebugProbeError> {

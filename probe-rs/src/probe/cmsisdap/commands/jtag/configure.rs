@@ -23,11 +23,7 @@ impl Request for ConfigureRequest {
 
     fn to_bytes(&self, buffer: &mut [u8]) -> Result<usize, SendError> {
         buffer[0] = self.ir_lengths.len() as u8;
-
-        self.ir_lengths.iter().enumerate().for_each(|(i, &v)| {
-            buffer[i + 1] = v;
-        });
-
+        buffer[1..self.ir_lengths.len() + 1].copy_from_slice(&self.ir_lengths[..]);
         Ok(self.ir_lengths.len() + 1)
     }
 
