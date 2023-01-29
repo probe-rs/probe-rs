@@ -11,12 +11,12 @@ use std::{
     fs::File,
     io::Write,
     panic,
-    path::Path,
+    path::{Path, PathBuf},
     process,
     sync::{Arc, Mutex},
     time::{Duration, Instant},
 };
-use time::OffsetDateTime;
+use time::{OffsetDateTime, UtcOffset};
 
 use probe_rs::{
     config::TargetSelector,
@@ -62,11 +62,25 @@ struct Opt {
     list_chips: bool,
     #[clap(name = "disable-progressbars", long = "disable-progressbars")]
     disable_progressbars: bool,
+    /// Work directory for the command.
+    #[clap(long)]
+    work_dir: Option<PathBuf>,
     #[clap(flatten)]
     cargo_options: CargoOptions,
 }
 
 fn main() {
+    // Determine the local offset as early as possible to avoid potential
+    // issues with multiple threads and getting the offset.
+    let offset = match UtcOffset::current_local_offset() {
+        Ok(offset) => offset,
+        Err(e) => {
+            log::debug!("Error getting local offset: {e}");
+            log::warn!("Unable to determine local time. All timestamps will be in UTC.");
+            UtcOffset::UTC
+        }
+    };
+
     let metadata: Arc<Mutex<Metadata>> = Arc::new(Mutex::new(Metadata {
         release: meta::CARGO_VERSION.to_string(),
         chip: None,
@@ -88,7 +102,7 @@ fn main() {
         next(info);
     }));
 
-    match main_try(metadata.clone()) {
+    match main_try(metadata.clone(), offset) {
         Ok(_) => (),
         Err(e) => {
             // Ensure stderr is flushed before calling proces::exit,
@@ -130,19 +144,31 @@ fn main() {
     }
 }
 
-fn main_try(metadata: Arc<Mutex<Metadata>>) -> Result<()> {
+fn main_try(metadata: Arc<Mutex<Metadata>>, offset: UtcOffset) -> Result<()> {
     let mut args = std::env::args();
 
     // When called by Cargo, the first argument after the binary name will be `embed`. If that's the
     // case, remove one argument (`Opt::from_iter` will remove the binary name by itself).
     if env::args().nth(1) == Some("embed".to_string()) {
+        log::debug!("Running as cargo subcommand.");
         args.next();
+    } else {
+        log::debug!("Running freestanding, not as cargo subcomman.");
     }
 
     let mut args: Vec<_> = args.collect();
 
     // Get commandline options.
     let opt = Opt::parse_from(&args);
+
+    if let Some(work_dir) = opt.work_dir {
+        std::env::set_current_dir(&work_dir).with_context(|| {
+            format!(
+                "Unable to change working directory to {}",
+                work_dir.display()
+            )
+        })?;
+    }
 
     let work_dir = std::env::current_dir()?;
 
@@ -403,7 +429,10 @@ fn main_try(metadata: Arc<Mutex<Metadata>>) -> Result<()> {
 
         let chip_name = config.general.chip.as_deref().unwrap_or_default();
 
-        let timestamp_millis = OffsetDateTime::now_local()?.unix_timestamp_nanos() / 1_000_000;
+        let timestamp_millis = OffsetDateTime::now_utc()
+            .to_offset(offset)
+            .unix_timestamp_nanos()
+            / 1_000_000;
 
         let logname = format!("{name}_{chip_name}_{timestamp_millis}");
         let mut app = rttui::app::App::new(rtt, &config, logname)?;
@@ -412,7 +441,7 @@ fn main_try(metadata: Arc<Mutex<Metadata>>) -> Result<()> {
                 let mut session_handle = session.lock().unwrap();
                 let mut core = session_handle.core(0)?;
 
-                app.poll_rtt(&mut core)?;
+                app.poll_rtt(&mut core, offset)?;
 
                 app.render(defmt_state.as_ref());
                 if app.handle_event(&mut core) {

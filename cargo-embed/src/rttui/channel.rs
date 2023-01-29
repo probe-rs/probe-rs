@@ -2,6 +2,7 @@ use std::fmt;
 
 use probe_rs::rtt::{ChannelMode, DownChannel, UpChannel};
 use probe_rs::Core;
+use time::UtcOffset;
 use time::{macros::format_description, OffsetDateTime};
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
@@ -128,7 +129,7 @@ impl ChannelState {
     ///
     /// # Errors
     /// This function can return a [`time::Error`] if getting the local time or formatting a timestamp fails.
-    pub fn poll_rtt(&mut self, core: &mut Core) -> Result<(), time::Error> {
+    pub fn poll_rtt(&mut self, core: &mut Core, offset: UtcOffset) -> Result<(), time::Error> {
         // TODO: Proper error handling.
         let count = if let Some(channel) = self.up_channel.as_mut() {
             match channel.read(core, self.rtt_buffer.0.as_mut()) {
@@ -148,7 +149,7 @@ impl ChannelState {
 
         match self.format {
             DataFormat::String => {
-                let now = OffsetDateTime::now_local()?;
+                let now = OffsetDateTime::now_utc().to_offset(offset);
 
                 // First, convert the incoming bytes to UTF8.
                 let mut incoming = String::from_utf8_lossy(&self.rtt_buffer.0[..count]).to_string();

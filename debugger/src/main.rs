@@ -12,7 +12,7 @@ use probe_rs::{
     architecture::arm::ap::AccessPortError, flashing::FileDownloadError, DebugProbeError, Error,
 };
 use std::{env::var, fs::File, io::stderr};
-use time::OffsetDateTime;
+use time::{OffsetDateTime, UtcOffset};
 use tracing::metadata::LevelFilter;
 use tracing_subscriber::{
     fmt::format::FmtSpan, prelude::__tracing_subscriber_SubscriberExt, util::SubscriberInitExt,
@@ -90,14 +90,17 @@ enum CliCommands {
 }
 
 fn main() -> Result<()> {
-    let log_info_message = setup_logging()?;
+    let time_offset = UtcOffset::current_local_offset()
+        .context("Failed to determine local time offset for timestamps")?;
+
+    let log_info_message = setup_logging(time_offset)?;
 
     let matches = CliCommands::parse();
 
     match matches {
         CliCommands::List {} => list_connected_devices()?,
         CliCommands::ListChips {} => list_supported_chips()?,
-        CliCommands::Debug { port, vscode } => debug(port, vscode, &log_info_message)?,
+        CliCommands::Debug { port, vscode } => debug(port, vscode, &log_info_message, time_offset)?,
     }
     Ok(())
 }
@@ -105,7 +108,9 @@ fn main() -> Result<()> {
 /// Setup logging, according to the following rules.
 /// 1. If the RUST_LOG environment variable is set, use it as a `LevelFilter` to configure a subscriber that logs to a file in the system's application data directory.
 /// 2. Irrespective of the RUST_LOG environment variable, configure a subscribe that will write with `LevelFilter::ERROR` to stderr, because these errors are picked up and reported to the user by the VSCode extension.
-fn setup_logging() -> Result<String, anyhow::Error> {
+///
+/// Determining the local time for logging purposes can fail, so it needs to be given as a parameter here.
+fn setup_logging(time_offset: UtcOffset) -> Result<String, anyhow::Error> {
     // We want to always log errors to stderr, but not to the log file.
     let stderr_subscriber = tracing_subscriber::fmt::layer()
         .compact()
@@ -122,7 +127,10 @@ fn setup_logging() -> Result<String, anyhow::Error> {
             let logname = sanitize_filename::sanitize_with_options(
                 format!(
                     "{}.log",
-                    OffsetDateTime::now_local()?.unix_timestamp_nanos() / 1_000_000
+                    OffsetDateTime::now_utc()
+                        .to_offset(time_offset)
+                        .unix_timestamp_nanos()
+                        / 1_000_000
                 ),
                 sanitize_filename::Options {
                     replacement: "_",

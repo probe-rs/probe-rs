@@ -7,12 +7,14 @@ use std::fs::File;
 use std::io::Write;
 use std::path::Path;
 use std::time::Duration;
+use time::UtcOffset;
 
 pub fn run(
     common: ProbeOptions,
     path: &str,
     chip_erase: bool,
     disable_double_buffering: bool,
+    timestamp_offset: UtcOffset,
 ) -> Result<()> {
     let mut session = common.simple_attach()?;
 
@@ -52,7 +54,13 @@ pub fn run(
     let mut core = session.core(0)?;
     core.reset()?;
 
-    let mut rtta = match rtt::attach_to_rtt(&mut core, &memory_map, Path::new(path), &rtt_config) {
+    let mut rtta = match rtt::attach_to_rtt(
+        &mut core,
+        &memory_map,
+        Path::new(path),
+        &rtt_config,
+        timestamp_offset,
+    ) {
         Ok(target_rtt) => Some(target_rtt),
         Err(error) => {
             log::error!("{:?} Continuing without RTT... ", error);
